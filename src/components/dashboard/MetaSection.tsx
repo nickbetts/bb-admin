@@ -1,0 +1,250 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from "recharts";
+import { MetricCard } from "@/components/ui/MetricCard";
+import { SectionCard, LoadingSpinner } from "@/components/ui/index";
+import { formatNumber, formatCurrency, formatPercent, getDateRange } from "@/lib/utils";
+import { DollarSign, MousePointer, Eye, TrendingUp } from "lucide-react";
+
+interface MetaSectionProps {
+  accountId: string;
+  accessToken: string;
+  period: string;
+}
+
+interface MetaOverview {
+  totalSpend: number;
+  totalImpressions: number;
+  totalClicks: number;
+  avgCtr: number;
+  avgCpc: number;
+  avgCpm: number;
+  totalConversions: number;
+  avgRoas: number;
+}
+
+interface Campaign {
+  id: string;
+  name: string;
+  status: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  conversions: number;
+  roas: number;
+}
+
+interface DailyData {
+  date: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+}
+
+export function MetaSection({ accountId, accessToken, period }: MetaSectionProps) {
+  const [overview, setOverview] = useState<MetaOverview | null>(null);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [daily, setDaily] = useState<DailyData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      setError(null);
+      try {
+        const { startDate, endDate } = getDateRange(period);
+        const base = `/api/meta?accountId=${encodeURIComponent(accountId)}&accessToken=${encodeURIComponent(accessToken)}&startDate=${startDate}&endDate=${endDate}`;
+
+        const [ovRes, campRes, dailyRes] = await Promise.all([
+          fetch(`${base}&type=overview`),
+          fetch(`${base}&type=campaigns`),
+          fetch(`${base}&type=daily`),
+        ]);
+
+        if (!ovRes.ok) {
+          const err = await ovRes.json();
+          throw new Error(err.error ?? "Failed to fetch Meta Ads data");
+        }
+
+        const [ov, camp, d] = await Promise.all([
+          ovRes.json(),
+          campRes.json(),
+          dailyRes.json(),
+        ]);
+
+        setOverview(ov);
+        setCampaigns(Array.isArray(camp) ? camp : []);
+        setDaily(Array.isArray(d) ? d : []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load Meta Ads data");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [accountId, accessToken, period]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <LoadingSpinner size="lg" className="mx-auto mb-3" />
+          <p className="text-slate-400 text-sm">Loading Meta Ads data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
+        <p className="text-red-400 font-medium">Failed to load Meta Ads data</p>
+        <p className="text-slate-400 text-sm mt-1">{error}</p>
+      </div>
+    );
+  }
+
+  if (!overview) return null;
+
+  return (
+    <div className="space-y-5">
+      {/* Overview metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <MetricCard
+          title="Total Spend"
+          value={formatCurrency(overview.totalSpend)}
+          subtitle="Period spend"
+          icon={<DollarSign className="h-5 w-5" />}
+          color="red"
+        />
+        <MetricCard
+          title="Impressions"
+          value={formatNumber(overview.totalImpressions)}
+          subtitle={`CPM: ${formatCurrency(overview.avgCpm)}`}
+          icon={<Eye className="h-5 w-5" />}
+          color="blue"
+        />
+        <MetricCard
+          title="Clicks"
+          value={formatNumber(overview.totalClicks)}
+          subtitle={`CTR: ${formatPercent(overview.avgCtr)}`}
+          icon={<MousePointer className="h-5 w-5" />}
+          color="orange"
+        />
+        <MetricCard
+          title="ROAS"
+          value={`${overview.avgRoas.toFixed(2)}x`}
+          subtitle={`${overview.totalConversions} conversions`}
+          icon={<TrendingUp className="h-5 w-5" />}
+          color="green"
+        />
+      </div>
+
+      {/* Spend chart */}
+      {daily.length > 0 && (
+        <SectionCard title="Daily Spend" subtitle="Spend over time">
+          <ResponsiveContainer width="100%" height={240}>
+            <AreaChart data={daily}>
+              <defs>
+                <linearGradient id="spendGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 10 }} />
+              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{
+                  background: "#0f172a",
+                  border: "1px solid #1e293b",
+                  borderRadius: "8px",
+                  color: "#f1f5f9",
+                }}
+                formatter={(v) => [formatCurrency(Number(v)), "Spend"]}
+              />
+              <Area
+                type="monotone"
+                dataKey="spend"
+                stroke="#ef4444"
+                strokeWidth={2}
+                fill="url(#spendGrad)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </SectionCard>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Clicks vs conversions */}
+        {daily.length > 0 && (
+          <SectionCard title="Clicks & Conversions" subtitle="Daily performance">
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={daily} barSize={8}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 10 }} />
+                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} />
+                <Tooltip
+                  contentStyle={{
+                    background: "#0f172a",
+                    border: "1px solid #1e293b",
+                    borderRadius: "8px",
+                    color: "#f1f5f9",
+                  }}
+                />
+                <Bar dataKey="clicks" fill="#3b82f6" name="Clicks" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="conversions" fill="#10b981" name="Conversions" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </SectionCard>
+        )}
+
+        {/* Campaign table */}
+        {campaigns.length > 0 && (
+          <SectionCard title="Campaign Performance" subtitle="Active campaigns">
+            <div className="space-y-2">
+              {campaigns.slice(0, 5).map((campaign) => (
+                <div
+                  key={campaign.id}
+                  className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0"
+                >
+                  <div className="flex-1 min-w-0 mr-4">
+                    <p className="text-sm text-white font-medium truncate">
+                      {campaign.name}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {campaign.impressions.toLocaleString()} impressions ·{" "}
+                      {formatPercent(campaign.ctr)} CTR
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm text-white font-medium">
+                      {formatCurrency(campaign.spend)}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {campaign.roas.toFixed(1)}x ROAS
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        )}
+      </div>
+    </div>
+  );
+}

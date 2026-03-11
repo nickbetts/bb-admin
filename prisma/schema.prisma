@@ -1,0 +1,83 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String
+  role          String    @default("user")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Client {
+  id                  String    @id @default(cuid())
+  name                String
+  slug                String    @unique
+  website             String?
+  logoUrl             String?
+  ga4PropertyId       String?
+  semrushDomain       String?
+  metaAccountId       String?
+  metaAccessToken     String?
+  gaCredentials       String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  reports             Report[]
+}
+
+model Report {
+  id          String          @id @default(cuid())
+  clientId    String
+  title       String
+  period      String
+  status      String          @default("draft")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  client      Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  sections    ReportSection[]
+  screenshots Screenshot[]
+}
+
+model ReportSection {
+  id          String   @id @default(cuid())
+  reportId    String
+  sectionType String
+  title       String
+  commentary  String?
+  orderIndex  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  report      Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model Screenshot {
+  id        String   @id @default(cuid())
+  reportId  String
+  filename  String
+  url       String
+  caption   String?
+  orderIndex Int     @default(0)
+  createdAt DateTime @default(now())
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
