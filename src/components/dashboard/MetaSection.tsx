@@ -18,8 +18,7 @@ import { formatNumber, formatCurrency, formatPercent, getDateRange } from "@/lib
 import { DollarSign, MousePointer, Eye, TrendingUp } from "lucide-react";
 
 interface MetaSectionProps {
-  accountId: string;
-  accessToken: string;
+  clientId: string;
   period: string;
 }
 
@@ -54,7 +53,7 @@ interface DailyData {
   conversions: number;
 }
 
-export function MetaSection({ accountId, accessToken, period }: MetaSectionProps) {
+export function MetaSection({ clientId, period }: MetaSectionProps) {
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [daily, setDaily] = useState<DailyData[]>([]);
@@ -67,7 +66,7 @@ export function MetaSection({ accountId, accessToken, period }: MetaSectionProps
       setError(null);
       try {
         const { startDate, endDate } = getDateRange(period);
-        const base = `/api/meta?accountId=${encodeURIComponent(accountId)}&accessToken=${encodeURIComponent(accessToken)}&startDate=${startDate}&endDate=${endDate}`;
+        const base = `/api/meta?clientId=${encodeURIComponent(clientId)}&startDate=${startDate}&endDate=${endDate}`;
 
         const [ovRes, campRes, dailyRes] = await Promise.all([
           fetch(`${base}&type=overview`),
@@ -96,7 +95,7 @@ export function MetaSection({ accountId, accessToken, period }: MetaSectionProps
       }
     }
     fetchData();
-  }, [accountId, accessToken, period]);
+  }, [clientId, period]);
 
   if (loading) {
     return (

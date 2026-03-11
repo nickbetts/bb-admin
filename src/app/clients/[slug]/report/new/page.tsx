@@ -45,10 +45,7 @@ export default function NewReportPage({
     setError("");
 
     try {
-      // Get client ID from slug
-      const clientRes = await fetch(`/api/clients?slug=${slug}`);
-
-      // First get the client
+      // First get the client by fetching all clients and finding by slug
       const clientsRes = await fetch("/api/clients");
       const clients = await clientsRes.json();
       const client = clients.find((c: { slug: string }) => c.slug === slug);

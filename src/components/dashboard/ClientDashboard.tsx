@@ -12,7 +12,6 @@ interface Client {
   semrushDomain: string | null;
   ga4PropertyId: string | null;
   metaAccountId: string | null;
-  metaAccessToken: string | null;
 }
 
 interface ClientDashboardProps {
@@ -117,8 +116,7 @@ export function ClientDashboard({ client, period: initialPeriod }: ClientDashboa
 
       {activeTab === "paid" && client.metaAccountId ? (
         <MetaSection
-          accountId={client.metaAccountId}
-          accessToken={client.metaAccessToken ?? ""}
+          clientId={client.id}
           period={period}
         />
       ) : activeTab === "paid" ? (

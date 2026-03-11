@@ -31,7 +31,6 @@ interface Client {
   semrushDomain: string | null;
   ga4PropertyId: string | null;
   metaAccountId: string | null;
-  metaAccessToken: string | null;
 }
 
 interface Report {
@@ -356,8 +355,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             )}
             {section.sectionType === "paid_social" && report.client.metaAccountId && (
               <MetaSection
-                accountId={report.client.metaAccountId}
-                accessToken={report.client.metaAccessToken ?? ""}
+                clientId={report.client.id}
                 period="30d"
               />
             )}

@@ -42,10 +42,13 @@ next-env.d.ts
 
 /src/generated/prisma
 
-# SQLite database files (committed for development convenience, add to gitignore in production)
-# dev.db
-# dev.db-shm
-# dev.db-wal
+# SQLite database files
+dev.db
+dev.db-shm
+dev.db-wal
+prisma/dev.db
+prisma/dev.db-shm
+prisma/dev.db-wal
 
 # Uploaded files
 /public/uploads/

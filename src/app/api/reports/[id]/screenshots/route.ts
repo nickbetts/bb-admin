@@ -32,6 +32,15 @@ export async function POST(
       );
     }
 
+    // Validate file size (max 10MB)
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json(
+        { error: "File size must be under 10MB" },
+        { status: 400 }
+      );
+    }
+
     // Save file to public directory
     const uploadDir = path.join(process.cwd(), "public", "uploads", id);
     await mkdir(uploadDir, { recursive: true });
