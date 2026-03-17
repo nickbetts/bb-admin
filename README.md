@@ -22,9 +22,10 @@ A full-stack performance reporting dashboard for digital marketing agencies. Com
 
 ## Tech Stack
 
-- **Next.js 14** (App Router, TypeScript)
+- **Next.js 16** (App Router, TypeScript)
 - **Tailwind CSS** for styling
-- **Prisma v7 + SQLite** (via libsql) for database
+- **Prisma v7 + LibSQL** (SQLite locally, Turso in production) for database
+- **Vercel Blob** for screenshot file storage
 - **Recharts** for data visualisation
 - **jsPDF + html2canvas** for PDF export
 - **bcryptjs** for password hashing
@@ -195,3 +196,60 @@ prisma/
 ├── migrations/         # SQL migrations
 └── seed.ts             # Database seeder
 ```
+
+---
+
+## Deploying to Vercel
+
+### 1. Create a Turso database
+
+[Turso](https://turso.tech) is a cloud SQLite service that is fully compatible with the LibSQL adapter already used in this project.
+
+```bash
+# Install the Turso CLI and log in
+brew install tursodatabase/tap/turso
+turso auth login
+
+# Create a database and get credentials
+turso db create i3media-report
+turso db show i3media-report   # copy the URL
+turso db tokens create i3media-report  # copy the auth token
+```
+
+### 2. Run database migrations against Turso
+
+```bash
+DATABASE_URL="libsql://<your-db>.turso.io" \
+TURSO_AUTH_TOKEN="<your-auth-token>" \
+npx prisma migrate deploy
+
+DATABASE_URL="libsql://<your-db>.turso.io" \
+TURSO_AUTH_TOKEN="<your-auth-token>" \
+npm run db:seed
+```
+
+### 3. Add Vercel Blob storage
+
+In your Vercel project dashboard go to **Storage → Create → Blob** and follow the prompts. Vercel will automatically add `BLOB_READ_WRITE_TOKEN` to your project's environment variables.
+
+### 4. Connect the GitHub repo to Vercel
+
+1. Push this repo to GitHub.
+2. Go to [vercel.com/new](https://vercel.com/new) and import the repository.
+3. Vercel detects Next.js automatically — keep the default build settings.
+4. Add the following **Environment Variables** in the Vercel dashboard:
+
+| Variable | Value |
+|----------|-------|
+| `DATABASE_URL` | `libsql://<your-db>.turso.io` |
+| `TURSO_AUTH_TOKEN` | `<your-auth-token>` |
+| `BLOB_READ_WRITE_TOKEN` | *(auto-set by Vercel Blob)* |
+| `SEMRUSH_API_KEY` | `<your-key>` |
+| `GA4_ACCESS_TOKEN` | `<your-token>` |
+| `META_ACCESS_TOKEN` | `<your-token>` |
+
+5. Click **Deploy**. Subsequent pushes to the `main` branch will deploy automatically.
+
+### Auto-deployments (CI)
+
+The included `.github/workflows/ci.yml` workflow runs `eslint` and `next build` on every push and pull request, catching issues before they reach production. Vercel's own GitHub integration handles the actual deployment — no extra configuration is needed.

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { put, del } from "@vercel/blob";
+
+const VERCEL_BLOB_HOSTNAME = "public.blob.vercel-storage.com";
 
 export async function POST(
   request: NextRequest,
@@ -41,16 +42,9 @@ export async function POST(
       );
     }
 
-    // Save file to public directory
-    const uploadDir = path.join(process.cwd(), "public", "uploads", id);
-    await mkdir(uploadDir, { recursive: true });
-
-    const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-    const filepath = path.join(uploadDir, filename);
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filepath, buffer);
-
-    const url = `/uploads/${id}/${filename}`;
+    // Upload file to Vercel Blob
+    const filename = `uploads/${id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+    const blob = await put(filename, file, { access: "public" });
 
     // Get next order index
     const count = await prisma.screenshot.count({ where: { reportId: id } });
@@ -58,8 +52,8 @@ export async function POST(
     const screenshot = await prisma.screenshot.create({
       data: {
         reportId: id,
-        filename,
-        url,
+        filename: blob.pathname,
+        url: blob.url,
         caption,
         orderIndex: count,
       },
@@ -76,8 +70,7 @@ export async function POST(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ) {
   try {
     const session = await getSession();
@@ -92,7 +85,21 @@ export async function DELETE(
       return NextResponse.json({ error: "screenshotId is required" }, { status: 400 });
     }
 
-    await prisma.screenshot.delete({ where: { id: screenshotId } });
+    const screenshot = await prisma.screenshot.findUnique({
+      where: { id: screenshotId },
+    });
+
+    if (screenshot) {
+      // Delete from Vercel Blob if it's a blob URL
+      if (new URL(screenshot.url).hostname.endsWith(VERCEL_BLOB_HOSTNAME)) {
+        try {
+          await del(screenshot.url);
+        } catch {
+          // Ignore blob deletion errors
+        }
+      }
+      await prisma.screenshot.delete({ where: { id: screenshotId } });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
