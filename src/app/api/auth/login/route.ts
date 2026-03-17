@@ -1,58 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { randomBytes } from "crypto";
-import { prisma } from "@/lib/prisma";
+import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+
+const APP_PASSWORD = process.env.APP_PASSWORD ?? "i3ganggang";
+const SESSION_SECRET = process.env.SESSION_SECRET ?? "i3media-session-secret";
+const SESSION_DAYS = 7;
+
+function createSessionToken(): string {
+  const expiresAt = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000;
+  const nonce = randomBytes(16).toString("hex");
+  const payload = `${expiresAt}|${nonce}`;
+  const signature = createHmac("sha256", SESSION_SECRET)
+    .update(payload)
+    .digest("hex");
+  return `${payload}|${signature}`;
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const { password } = await request.json();
 
-    if (!email || !password) {
+    if (!password) {
       return NextResponse.json(
-        { error: "Email and password are required" },
+        { error: "Password is required" },
         { status: 400 }
       );
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Invalid credentials" },
-        { status: 401 }
-      );
+    let passwordMatch = false;
+    try {
+      const a = Buffer.from(password);
+      const b = Buffer.from(APP_PASSWORD);
+      passwordMatch =
+        a.length === b.length && timingSafeEqual(a, b);
+    } catch {
+      passwordMatch = false;
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        { error: "Invalid password" },
         { status: 401 }
       );
     }
 
-    // Create session
-    const token = randomBytes(32).toString("hex");
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+    const token = createSessionToken();
 
-    await prisma.session.create({
-      data: {
-        userId: user.id,
-        token,
-        expiresAt,
-      },
-    });
-
-    const response = NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
-    });
+    const response = NextResponse.json({ success: true });
 
     response.cookies.set("session_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * SESSION_DAYS,
       path: "/",
     });
 

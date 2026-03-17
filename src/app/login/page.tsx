@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { BarChart3, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -21,7 +20,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ password }),
       });
 
       if (res.ok) {
@@ -65,24 +64,10 @@ export default function LoginPage() {
             Welcome back
           </h2>
           <p className="text-sm text-slate-400 text-center mb-6">
-            Sign in to access your client dashboards
+            Enter the password to access your client dashboards
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Email address
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@i3media.co.uk"
-                required
-                className="w-full px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm"
-              />
-            </div>
-
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1.5">
                 Password
@@ -124,10 +109,6 @@ export default function LoginPage() {
               {loading ? "Signing in..." : "Sign in"}
             </button>
           </form>
-
-          <p className="text-xs text-slate-500 text-center mt-6">
-            Contact your administrator to request access
-          </p>
         </div>
       </div>
     </div>
