@@ -16,12 +16,13 @@ import {
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner } from "@/components/ui/index";
-import { formatNumber, formatPercent, formatDuration } from "@/lib/utils";
-import { Users, Eye, MousePointer, Clock } from "lucide-react";
+import { formatNumber, formatPercent, formatDuration, formatDateDisplay } from "@/lib/utils";
+import { Users, UserPlus, Eye, MousePointer, Clock, TrendingUp } from "lucide-react";
 
 interface GA4SectionProps {
   propertyId: string;
-  period: string;
+  startDate: string;
+  endDate: string;
 }
 
 interface GA4Overview {
@@ -58,7 +59,7 @@ interface TopPage {
 
 const SOURCE_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#84cc16"];
 
-export function GA4Section({ propertyId, period }: GA4SectionProps) {
+export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) {
   const [overview, setOverview] = useState<GA4Overview | null>(null);
   const [daily, setDaily] = useState<DailyData[]>([]);
   const [sources, setSources] = useState<TrafficSource[]>([]);
@@ -67,16 +68,18 @@ export function GA4Section({ propertyId, period }: GA4SectionProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function fetchData() {
       setLoading(true);
       setError(null);
       try {
-        const base = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}`;
+        const base = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${startDate}&endDate=${endDate}`;
         const [ovRes, dailyRes, srcRes, pagesRes] = await Promise.all([
-          fetch(`${base}&type=overview`),
-          fetch(`${base}&type=daily`),
-          fetch(`${base}&type=sources`),
-          fetch(`${base}&type=pages`),
+          fetch(`${base}&type=overview`, { signal: controller.signal }),
+          fetch(`${base}&type=daily`, { signal: controller.signal }),
+          fetch(`${base}&type=sources`, { signal: controller.signal }),
+          fetch(`${base}&type=pages`, { signal: controller.signal }),
         ]);
 
         if (!ovRes.ok) {
@@ -96,62 +99,76 @@ export function GA4Section({ propertyId, period }: GA4SectionProps) {
         setSources(Array.isArray(s) ? s : []);
         setPages(Array.isArray(p) ? p : []);
       } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load GA4 data");
       } finally {
         setLoading(false);
       }
     }
     fetchData();
-  }, [propertyId, period]);
+    return () => controller.abort();
+  }, [propertyId, startDate, endDate]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <LoadingSpinner size="lg" className="mx-auto mb-3" />
-          <p className="text-slate-400 text-sm">Loading GA4 data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
-        <p className="text-red-400 font-medium">Failed to load GA4 data</p>
-        <p className="text-slate-400 text-sm mt-1">{error}</p>
-        <p className="text-xs text-slate-500 mt-2">
-          Ensure GA4_ACCESS_TOKEN is set in your environment
-        </p>
-      </div>
-    );
-  }
-
-  if (!overview) return null;
-
-  // Prepare pie chart data for traffic sources
   const sourceChartData = sources.slice(0, 6).map((s) => ({
     name: `${s.source} / ${s.medium}`,
     value: s.sessions,
   }));
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
+      {/* Source + date header — always visible */}
+      <div className="flex items-center justify-between">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          Google Analytics 4
+        </span>
+        <span className="text-xs text-slate-500">
+          {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
+        </span>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <LoadingSpinner size="lg" className="mx-auto mb-3" />
+            <p className="text-slate-400 text-sm">Loading GA4 data...</p>
+          </div>
+        </div>
+      ) : error ? (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
+          <p className="text-red-400 font-medium">Failed to load GA4 data</p>
+          <p className="text-slate-400 text-sm mt-1">{error}</p>
+        </div>
+      ) : !overview ? null : (
+        <>
       {/* Overview metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
         <MetricCard
           title="Sessions"
           value={formatNumber(overview.sessions)}
-          subtitle="Total sessions"
+          subtitle="All sessions"
           icon={<Eye className="h-5 w-5" />}
           color="blue"
         />
         <MetricCard
           title="Users"
           value={formatNumber(overview.users)}
-          subtitle={`${formatNumber(overview.newUsers)} new`}
+          subtitle="Active users"
           icon={<Users className="h-5 w-5" />}
           color="purple"
+        />
+        <MetricCard
+          title="New Users"
+          value={formatNumber(overview.newUsers)}
+          subtitle="First-time visitors"
+          icon={<UserPlus className="h-5 w-5" />}
+          color="green"
+        />
+        <MetricCard
+          title="Pageviews"
+          value={formatNumber(overview.pageviews)}
+          subtitle="Total page views"
+          icon={<Eye className="h-5 w-5" />}
+          color="blue"
         />
         <MetricCard
           title="Bounce Rate"
@@ -167,12 +184,19 @@ export function GA4Section({ propertyId, period }: GA4SectionProps) {
           icon={<Clock className="h-5 w-5" />}
           color="green"
         />
+        <MetricCard
+          title="Conv. Rate"
+          value={formatPercent(overview.conversionRate)}
+          subtitle="Goal completions"
+          icon={<TrendingUp className="h-5 w-5" />}
+          color="purple"
+        />
       </div>
 
       {/* Daily sessions chart */}
       {daily.length > 0 && (
         <SectionCard title="Sessions Over Time" subtitle="Daily sessions trend">
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={daily}>
               <defs>
                 <linearGradient id="sessGrad" x1="0" y1="0" x2="0" y2="1">
@@ -220,7 +244,7 @@ export function GA4Section({ propertyId, period }: GA4SectionProps) {
         {/* Traffic sources pie */}
         {sources.length > 0 && (
           <SectionCard title="Traffic Sources" subtitle="Top acquisition channels">
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={260}>
               <PieChart>
                 <Pie
                   data={sourceChartData}
@@ -262,11 +286,11 @@ export function GA4Section({ propertyId, period }: GA4SectionProps) {
         {/* Top pages table */}
         {pages.length > 0 && (
           <SectionCard title="Top Pages" subtitle="By sessions">
-            <div className="space-y-2">
+            <div className="divide-y divide-white/[0.05]">
               {pages.slice(0, 6).map((page, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 py-1.5"
+                  className="flex items-center gap-3 py-3.5"
                 >
                   <span className="text-xs text-slate-600 w-5 shrink-0 text-right">
                     {i + 1}
@@ -285,6 +309,8 @@ export function GA4Section({ propertyId, period }: GA4SectionProps) {
           </SectionCard>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

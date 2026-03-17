@@ -30,17 +30,24 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 model Client {
   id                  String    @id @default(cuid())
   name                String
   slug                String    @unique
   website             String?
   logoUrl             String?
-  ga4PropertyId       String?
-  semrushDomain       String?
-  metaAccountId       String?
-  metaAccessToken     String?
-  gaCredentials       String?
+  ga4PropertyId         String?
+  semrushDomain         String?
+  metaAccountId         String?
+  metaAccessToken       String?
+  gaCredentials         String?
+  googleAdsCustomerId   String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   reports             Report[]

@@ -1,5 +1,13 @@
-// GA4 integration using Google Analytics Data API
-// Requires service account credentials or OAuth tokens
+// GA4 integration using Google Analytics Data API (service account — non-expiring)
+import { getGoogleAccessToken } from "@/lib/google-auth";
+
+async function buildGa4Headers(): Promise<Record<string, string>> {
+  const token = await getGoogleAccessToken();
+  return {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+}
 
 export interface GA4MetricsData {
   sessions: number;
@@ -33,23 +41,12 @@ export interface GA4TopPage {
   bounceRate: number;
 }
 
-function buildGa4Headers(): Record<string, string> {
-  const accessToken = process.env.GA4_ACCESS_TOKEN;
-  if (!accessToken) {
-    throw new Error("GA4_ACCESS_TOKEN is not configured");
-  }
-  return {
-    Authorization: `Bearer ${accessToken}`,
-    "Content-Type": "application/json",
-  };
-}
-
 export async function getGA4Overview(
   propertyId: string,
   startDate: string = "30daysAgo",
   endDate: string = "today"
 ): Promise<GA4MetricsData> {
-  const headers = buildGa4Headers();
+  const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
 
   const body = {
@@ -69,6 +66,7 @@ export async function getGA4Overview(
     method: "POST",
     headers,
     body: JSON.stringify(body),
+    cache: "no-store",
   });
 
   if (!response.ok) {
@@ -99,7 +97,7 @@ export async function getGA4DailyData(
   startDate: string = "30daysAgo",
   endDate: string = "today"
 ): Promise<GA4DailyData[]> {
-  const headers = buildGa4Headers();
+  const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
 
   const body = {
@@ -117,6 +115,7 @@ export async function getGA4DailyData(
     method: "POST",
     headers,
     body: JSON.stringify(body),
+    cache: "no-store",
   });
 
   if (!response.ok) {
@@ -145,7 +144,7 @@ export async function getGA4TrafficSources(
   startDate: string = "30daysAgo",
   endDate: string = "today"
 ): Promise<GA4TrafficSource[]> {
-  const headers = buildGa4Headers();
+  const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
 
   const body = {
@@ -160,6 +159,7 @@ export async function getGA4TrafficSources(
     method: "POST",
     headers,
     body: JSON.stringify(body),
+    cache: "no-store",
   });
 
   if (!response.ok) {
@@ -184,7 +184,7 @@ export async function getGA4TopPages(
   startDate: string = "30daysAgo",
   endDate: string = "today"
 ): Promise<GA4TopPage[]> {
-  const headers = buildGa4Headers();
+  const headers = await buildGa4Headers();
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
 
   const body = {
@@ -203,6 +203,7 @@ export async function getGA4TopPages(
     method: "POST",
     headers,
     body: JSON.stringify(body),
+    cache: "no-store",
   });
 
   if (!response.ok) {

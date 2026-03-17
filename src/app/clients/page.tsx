@@ -9,9 +9,9 @@ export default async function ClientsPage() {
   });
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white">Clients</h1>
           <p className="text-slate-400 text-sm mt-1">
@@ -46,15 +46,15 @@ export default async function ClientsPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {clients.map((client) => (
             <Link
               key={client.id}
               href={`/clients/${client.slug}`}
-              className="group rounded-xl border border-slate-800 bg-slate-900/50 p-5 hover:border-indigo-500/50 hover:bg-slate-800/50 transition-all"
+              className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 hover:border-indigo-500/30 hover:bg-white/[0.04] transition-all"
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold shrink-0">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-lg font-bold shrink-0 shadow-lg shadow-indigo-500/20">
                   {client.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -93,7 +93,7 @@ export default async function ClientsPage() {
                 )}
               </div>
 
-              <div className="mt-3 pt-3 border-t border-slate-800 flex items-center justify-between">
+              <div className="mt-4 pt-4 border-t border-white/[0.05] flex items-center justify-between">
                 <span className="text-xs text-slate-400">
                   {client._count.reports} report{client._count.reports !== 1 ? "s" : ""}
                 </span>
@@ -105,7 +105,7 @@ export default async function ClientsPage() {
           {/* Add new client card */}
           <Link
             href="/clients/new"
-            className="rounded-xl border border-dashed border-slate-700 p-5 flex flex-col items-center justify-center gap-2 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition-all text-center min-h-[140px]"
+            className="rounded-2xl border border-dashed border-white/[0.08] p-6 flex flex-col items-center justify-center gap-3 hover:border-indigo-500/30 hover:bg-indigo-500/[0.03] transition-all text-center min-h-[160px]"
           >
             <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center">
               <Plus className="h-5 w-5 text-slate-400" />

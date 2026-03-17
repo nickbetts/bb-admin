@@ -44,20 +44,20 @@ export function MetricCard({
   return (
     <div
       className={cn(
-        "relative rounded-xl border bg-gradient-to-br p-5 overflow-hidden",
+        "relative rounded-2xl border bg-gradient-to-br p-6 overflow-hidden",
         colorMap[color],
         className
       )}
     >
       <div className="flex items-start justify-between mb-3">
-        <p className="text-sm font-medium text-slate-400">{title}</p>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{title}</p>
         {icon && (
           <span className={cn("text-xl", iconColorMap[color])}>{icon}</span>
         )}
       </div>
-      <p className="text-2xl font-bold text-white mb-1">{value}</p>
+      <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
       {(subtitle || change !== undefined) && (
-        <div className="flex items-center gap-2 mt-2">
+        <div className="flex items-center gap-2 mt-2.5">
           {change !== undefined && (
             <span
               className={cn(

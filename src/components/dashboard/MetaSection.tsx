@@ -14,12 +14,13 @@ import {
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner } from "@/components/ui/index";
-import { formatNumber, formatCurrency, formatPercent, getDateRange } from "@/lib/utils";
+import { formatNumber, formatCurrency, formatPercent, formatDateDisplay } from "@/lib/utils";
 import { DollarSign, MousePointer, Eye, TrendingUp } from "lucide-react";
 
 interface MetaSectionProps {
   clientId: string;
-  period: string;
+  startDate: string;
+  endDate: string;
 }
 
 interface MetaOverview {
@@ -53,7 +54,7 @@ interface DailyData {
   conversions: number;
 }
 
-export function MetaSection({ clientId, period }: MetaSectionProps) {
+export function MetaSection({ clientId, startDate, endDate }: MetaSectionProps) {
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [daily, setDaily] = useState<DailyData[]>([]);
@@ -61,17 +62,18 @@ export function MetaSection({ clientId, period }: MetaSectionProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function fetchData() {
       setLoading(true);
       setError(null);
       try {
-        const { startDate, endDate } = getDateRange(period);
         const base = `/api/meta?clientId=${encodeURIComponent(clientId)}&startDate=${startDate}&endDate=${endDate}`;
 
         const [ovRes, campRes, dailyRes] = await Promise.all([
-          fetch(`${base}&type=overview`),
-          fetch(`${base}&type=campaigns`),
-          fetch(`${base}&type=daily`),
+          fetch(`${base}&type=overview`, { signal: controller.signal }),
+          fetch(`${base}&type=campaigns`, { signal: controller.signal }),
+          fetch(`${base}&type=daily`, { signal: controller.signal }),
         ]);
 
         if (!ovRes.ok) {
@@ -89,40 +91,44 @@ export function MetaSection({ clientId, period }: MetaSectionProps) {
         setCampaigns(Array.isArray(camp) ? camp : []);
         setDaily(Array.isArray(d) ? d : []);
       } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load Meta Ads data");
       } finally {
         setLoading(false);
       }
     }
     fetchData();
-  }, [clientId, period]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <LoadingSpinner size="lg" className="mx-auto mb-3" />
-          <p className="text-slate-400 text-sm">Loading Meta Ads data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
-        <p className="text-red-400 font-medium">Failed to load Meta Ads data</p>
-        <p className="text-slate-400 text-sm mt-1">{error}</p>
-      </div>
-    );
-  }
-
-  if (!overview) return null;
+    return () => controller.abort();
+  }, [clientId, startDate, endDate]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
+      {/* Source + date header — always visible */}
+      <div className="flex items-center justify-between">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-500/10 text-orange-400 border border-orange-500/20">
+          Meta Ads
+        </span>
+        <span className="text-xs text-slate-500">
+          {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
+        </span>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <LoadingSpinner size="lg" className="mx-auto mb-3" />
+            <p className="text-slate-400 text-sm">Loading Meta Ads data...</p>
+          </div>
+        </div>
+      ) : error ? (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
+          <p className="text-red-400 font-medium">Failed to load Meta Ads data</p>
+          <p className="text-slate-400 text-sm mt-1">{error}</p>
+        </div>
+      ) : !overview ? null : (
+        <>
       {/* Overview metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
         <MetricCard
           title="Total Spend"
           value={formatCurrency(overview.totalSpend)}
@@ -156,7 +162,7 @@ export function MetaSection({ clientId, period }: MetaSectionProps) {
       {/* Spend chart */}
       {daily.length > 0 && (
         <SectionCard title="Daily Spend" subtitle="Spend over time">
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={daily}>
               <defs>
                 <linearGradient id="spendGrad" x1="0" y1="0" x2="0" y2="1">
@@ -192,7 +198,7 @@ export function MetaSection({ clientId, period }: MetaSectionProps) {
         {/* Clicks vs conversions */}
         {daily.length > 0 && (
           <SectionCard title="Clicks & Conversions" subtitle="Daily performance">
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={240}>
               <BarChart data={daily} barSize={8}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 10 }} />
@@ -215,11 +221,11 @@ export function MetaSection({ clientId, period }: MetaSectionProps) {
         {/* Campaign table */}
         {campaigns.length > 0 && (
           <SectionCard title="Campaign Performance" subtitle="Active campaigns">
-            <div className="space-y-2">
+            <div className="divide-y divide-white/[0.05]">
               {campaigns.slice(0, 5).map((campaign) => (
                 <div
                   key={campaign.id}
-                  className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0"
+                  className="flex items-center justify-between py-3.5 first:pt-0 last:pb-0"
                 >
                   <div className="flex-1 min-w-0 mr-4">
                     <p className="text-sm text-white font-medium truncate">
@@ -244,6 +250,8 @@ export function MetaSection({ clientId, period }: MetaSectionProps) {
           </SectionCard>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

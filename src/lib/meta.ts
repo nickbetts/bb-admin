@@ -60,7 +60,8 @@ export async function getMetaAdsOverview(
   });
 
   const response = await fetch(
-    `${META_API_BASE}/act_${accountId}/insights?${params}`
+    `${META_API_BASE}/act_${accountId}/insights?${params}`,
+    { cache: "no-store" }
   );
 
   if (!response.ok) {
@@ -116,7 +117,8 @@ export async function getMetaCampaigns(
   });
 
   const response = await fetch(
-    `${META_API_BASE}/act_${accountId}/insights?${params}`
+    `${META_API_BASE}/act_${accountId}/insights?${params}`,
+    { cache: "no-store" }
   );
 
   if (!response.ok) {
@@ -182,7 +184,8 @@ export async function getMetaDailyData(
   });
 
   const response = await fetch(
-    `${META_API_BASE}/act_${accountId}/insights?${params}`
+    `${META_API_BASE}/act_${accountId}/insights?${params}`,
+    { cache: "no-store" }
   );
 
   if (!response.ok) {

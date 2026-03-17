@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Google Ads API Design Document — i3Media Client Reporting Tool</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Google Sans", Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.65;
+      color: #202124;
+      background: #fff;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 48px 60px;
+    }
+
+    /* Cover page */
+    .cover {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 80px 0;
+      border-bottom: 3px solid #4285F4;
+      margin-bottom: 60px;
+    }
+
+    .cover-logo {
+      font-size: 13pt;
+      font-weight: 700;
+      color: #4285F4;
+      letter-spacing: 0.05em;
+      margin-bottom: 60px;
+    }
+
+    .cover h1 {
+      font-size: 28pt;
+      font-weight: 700;
+      color: #202124;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    .cover .subtitle {
+      font-size: 14pt;
+      color: #5F6368;
+      margin-bottom: 48px;
+    }
+
+    .cover-meta {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 8px 0;
+      font-size: 10.5pt;
+      color: #3C4043;
+      border-top: 1px solid #E8EAED;
+      padding-top: 24px;
+      margin-top: 24px;
+    }
+
+    .cover-meta .label { color: #5F6368; font-weight: 500; }
+
+    /* Section structure */
+    h2 {
+      font-size: 16pt;
+      font-weight: 700;
+      color: #202124;
+      margin-top: 44px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #E8EAED;
+    }
+
+    h3 {
+      font-size: 12pt;
+      font-weight: 700;
+      color: #3C4043;
+      margin-top: 24px;
+      margin-bottom: 8px;
+    }
+
+    h4 {
+      font-size: 11pt;
+      font-weight: 600;
+      color: #3C4043;
+      margin-top: 16px;
+      margin-bottom: 6px;
+    }
+
+    p { margin-bottom: 10px; }
+
+    ul, ol {
+      margin: 8px 0 12px 24px;
+    }
+
+    li { margin-bottom: 4px; }
+
+    /* Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10pt;
+      margin: 16px 0;
+    }
+
+    th {
+      background: #F8F9FA;
+      text-align: left;
+      padding: 9px 12px;
+      font-weight: 600;
+      border: 1px solid #DADCE0;
+      color: #3C4043;
+    }
+
+    td {
+      padding: 8px 12px;
+      border: 1px solid #DADCE0;
+      vertical-align: top;
+    }
+
+    tr:nth-child(even) td { background: #FAFAFA; }
+
+    /* Code / query blocks */
+    pre {
+      background: #F8F9FA;
+      border: 1px solid #DADCE0;
+      border-left: 4px solid #4285F4;
+      border-radius: 4px;
+      padding: 12px 16px;
+      font-family: "Roboto Mono", "Courier New", monospace;
+      font-size: 9pt;
+      line-height: 1.5;
+      overflow-x: auto;
+      margin: 12px 0;
+      white-space: pre-wrap;
+    }
+
+    /* Callout boxes */
+    .callout {
+      border-left: 4px solid #4285F4;
+      background: #E8F0FE;
+      padding: 12px 16px;
+      border-radius: 0 4px 4px 0;
+      margin: 16px 0;
+      font-size: 10.5pt;
+    }
+
+    .callout.green {
+      border-left-color: #34A853;
+      background: #E6F4EA;
+    }
+
+    .callout.yellow {
+      border-left-color: #FBBC04;
+      background: #FEF9E7;
+    }
+
+    /* Flow diagram (text-based) */
+    .flow {
+      border: 1px solid #DADCE0;
+      border-radius: 6px;
+      padding: 20px;
+      margin: 16px 0;
+      font-size: 10pt;
+      background: #FAFAFA;
+    }
+
+    .flow-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 6px 0;
+    }
+
+    .flow-box {
+      border: 1px solid #DADCE0;
+      background: #fff;
+      border-radius: 4px;
+      padding: 6px 14px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .flow-box.blue { border-color: #4285F4; color: #4285F4; }
+    .flow-box.green { border-color: #34A853; color: #34A853; }
+    .flow-box.grey { background: #F8F9FA; color: #5F6368; }
+
+    .flow-arrow { color: #9AA0A6; font-size: 14pt; }
+
+    .flow-label {
+      font-size: 9pt;
+      color: #5F6368;
+      font-style: italic;
+    }
+
+    /* Page break for print */
+    .page-break { page-break-before: always; }
+
+    /* Print */
+    @media print {
+      body { padding: 20px 30px; }
+      .cover { min-height: auto; padding: 40px 0; }
+    }
+
+    /* Section number */
+    .section-num {
+      display: inline-block;
+      background: #4285F4;
+      color: #fff;
+      font-size: 9pt;
+      font-weight: 700;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 22px;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    footer {
+      margin-top: 60px;
+      border-top: 1px solid #E8EAED;
+      padding-top: 16px;
+      font-size: 9pt;
+      color: #9AA0A6;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── COVER PAGE ─────────────────────────────────────────────────────── -->
+  <div class="cover">
+    <div class="cover-logo">i3Media</div>
+    <h1>Google Ads API<br>Design Document</h1>
+    <div class="subtitle">i3Media Client Reporting Platform</div>
+    <div class="cover-meta">
+      <span class="label">Company</span>      <span>i3Media</span>
+      <span class="label">Product</span>      <span>i3Media Client Reporting Tool</span>
+      <span class="label">Version</span>      <span>1.0</span>
+      <span class="label">Prepared</span>     <span>March 2026</span>
+      <span class="label">API Use Case</span> <span>Reporting (Read-only)</span>
+      <span class="label">Access Requested</span> <span>Basic Access</span>
+    </div>
+  </div>
+
+  <!-- ── 1. OVERVIEW ───────────────────────────────────────────────────── -->
+  <h2><span class="section-num">1</span> Application Overview</h2>
+
+  <p>
+    i3Media is a digital marketing agency that manages Google Ads campaigns on behalf of
+    multiple clients under a Google Ads Manager (MCC) account. The <strong>i3Media Client
+    Reporting Tool</strong> is an internal, private web application used exclusively by
+    i3Media staff to pull live campaign performance data from the Google Ads API and
+    present it in a unified reporting dashboard alongside other marketing channels
+    (Google Analytics 4, Meta Ads, and SEMrush).
+  </p>
+
+  <p>
+    The tool aggregates key PPC metrics — clicks, cost, conversions, conversion value,
+    ROAS, CTR, and CPA — and displays them with campaign-level and ad group-level breakdowns
+    so account managers can monitor performance and prepare client reports efficiently.
+  </p>
+
+  <div class="callout green">
+    <strong>Intended Use:</strong> Read-only reporting. The tool does <em>not</em> create,
+    modify, pause, or delete any Google Ads campaigns, ad groups, ads, or keywords. All
+    API calls are <code>GoogleAdsService.Search</code> (GAQL) queries only.
+  </div>
+
+  <!-- ── 2. COMPANY & USERS ─────────────────────────────────────────────── -->
+  <h2><span class="section-num">2</span> Company &amp; User Information</h2>
+
+  <table>
+    <tr><th style="width:200px">Field</th><th>Details</th></tr>
+    <tr><td>Company name</td><td>i3Media</td></tr>
+    <tr><td>Application name</td><td>i3Media Client Reporting Tool</td></tr>
+    <tr><td>Application type</td><td>Private internal web application (not publicly available)</td></tr>
+    <tr><td>Primary users</td><td>i3Media agency staff (account managers and directors)</td></tr>
+    <tr><td>Number of users</td><td>Internal team only (&lt; 10 users)</td></tr>
+    <tr><td>Client accounts managed</td><td>All client Google Ads accounts are linked under a single i3Media MCC account</td></tr>
+    <tr><td>Deployment</td><td>Privately hosted; not accessible to external users or clients</td></tr>
+  </table>
+
+  <!-- ── 3. API USAGE ──────────────────────────────────────────────────── -->
+  <h2><span class="section-num">3</span> Google Ads API Usage</h2>
+
+  <h3>3.1 Purpose of API Access</h3>
+  <p>
+    The Google Ads API is used exclusively to retrieve performance reporting data for
+    Google Ads accounts managed by i3Media under its MCC. No write operations of any
+    kind are performed. The data retrieved is displayed within the i3Media reporting
+    dashboard to assist staff in analysing campaign performance and preparing client reports.
+  </p>
+
+  <h3>3.2 Permissible Use Category</h3>
+  <table>
+    <tr><th>Permissible Use</th><th>Used?</th><th>Reason</th></tr>
+    <tr><td>Reporting</td><td>✅ Yes</td><td>All API calls are read-only <code>GoogleAdsService.Search</code> queries for performance metrics</td></tr>
+    <tr><td>Ad creation / management</td><td>❌ No</td><td>The tool does not create, update, or delete any entities</td></tr>
+    <tr><td>Keyword research / planning</td><td>❌ No</td><td>No planning or keyword idea services are used</td></tr>
+  </table>
+
+  <h3>3.3 API Services Used</h3>
+  <table>
+    <tr><th>Service</th><th>Method</th><th>Purpose</th></tr>
+    <tr>
+      <td><code>GoogleAdsService</code></td>
+      <td><code>Search</code></td>
+      <td>Fetch account overview metrics, campaign and ad group performance, daily time series, and accessible customer accounts under MCC</td>
+    </tr>
+  </table>
+
+  <div class="callout">
+    <strong>Note:</strong> The tool uses the Google Ads REST API (v17) via
+    <code>POST customers/{id}/googleAds:search</code> with GAQL queries. No client
+    libraries are used; all requests are plain HTTPS calls from the server-side backend.
+  </div>
+
+  <h3>3.4 GAQL Queries Executed</h3>
+
+  <h4>Account-level overview metrics (aggregated totals)</h4>
+  <pre>SELECT
+  metrics.clicks,
+  metrics.cost_micros,
+  metrics.impressions,
+  metrics.conversions,
+  metrics.conversions_value
+FROM customer
+WHERE segments.date BETWEEN '{startDate}' AND '{endDate}'</pre>
+
+  <h4>Campaign-level performance breakdown</h4>
+  <pre>SELECT
+  campaign.id,
+  campaign.name,
+  campaign.status,
+  metrics.clicks,
+  metrics.cost_micros,
+  metrics.impressions,
+  metrics.conversions,
+  metrics.conversions_value
+FROM campaign
+WHERE segments.date BETWEEN '{startDate}' AND '{endDate}'
+  AND campaign.status != 'REMOVED'
+ORDER BY metrics.cost_micros DESC
+LIMIT 20</pre>
+
+  <h4>Ad group-level performance breakdown</h4>
+  <pre>SELECT
+  ad_group.id,
+  ad_group.name,
+  campaign.name,
+  metrics.clicks,
+  metrics.cost_micros,
+  metrics.impressions,
+  metrics.conversions,
+  metrics.conversions_value
+FROM ad_group
+WHERE segments.date BETWEEN '{startDate}' AND '{endDate}'
+  AND ad_group.status != 'REMOVED'
+ORDER BY metrics.cost_micros DESC
+LIMIT 20</pre>
+
+  <h4>Daily performance time series</h4>
+  <pre>SELECT
+  segments.date,
+  metrics.clicks,
+  metrics.cost_micros,
+  metrics.conversions,
+  metrics.impressions
+FROM customer
+WHERE segments.date BETWEEN '{startDate}' AND '{endDate}'
+ORDER BY segments.date ASC</pre>
+
+  <h4>Accessible customer accounts (MCC account listing)</h4>
+  <pre>SELECT
+  customer_client.id,
+  customer_client.descriptive_name,
+  customer_client.currency_code,
+  customer_client.manager
+FROM customer_client
+WHERE customer_client.status = 'ENABLED'
+ORDER BY customer_client.descriptive_name ASC</pre>
+
+  <!-- ── 4. ARCHITECTURE ───────────────────────────────────────────────── -->
+  <div class="page-break"></div>
+  <h2><span class="section-num">4</span> Technical Architecture &amp; Data Flow</h2>
+
+  <h3>4.1 High-Level Architecture</h3>
+  <p>
+    The tool is a server-rendered Next.js web application. All Google Ads API calls are
+    made server-side from API route handlers — the browser never communicates directly
+    with the Google Ads API, and credentials are never exposed to the client.
+  </p>
+
+  <div class="flow">
+    <div class="flow-row">
+      <div class="flow-box blue">i3Media Staff Browser</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">Next.js App<br>(Internal server)</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box blue">Google OAuth2<br>Token Endpoint</div>
+    </div>
+    <div class="flow-row" style="margin-left: 200px">
+      <div class="flow-arrow">↓</div>
+      <div class="flow-label">Access token returned (server-side only)</div>
+    </div>
+    <div class="flow-row">
+      <div class="flow-box grey" style="visibility:hidden">i3Media Staff Browser</div>
+      <div class="flow-arrow" style="visibility:hidden">→</div>
+      <div class="flow-box">Next.js API Route</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box blue">Google Ads API<br>(REST v17)</div>
+    </div>
+    <div class="flow-row" style="margin-left: 200px">
+      <div class="flow-arrow">↓</div>
+      <div class="flow-label">GAQL search response (server-side)</div>
+    </div>
+    <div class="flow-row">
+      <div class="flow-box blue">i3Media Staff Browser</div>
+      <div class="flow-arrow">←</div>
+      <div class="flow-box">Next.js App<br>(formats data as JSON)</div>
+    </div>
+    <div style="margin-top:12px; font-size:9pt; color:#5F6368;">
+      All API credentials (developer token, OAuth client ID/secret, refresh token) are stored
+      as server-side environment variables. They are never sent to the browser.
+    </div>
+  </div>
+
+  <h3>4.2 Authentication Flow</h3>
+  <ol>
+    <li>The application stores an OAuth2 <strong>refresh token</strong> obtained via a
+        one-time offline OAuth consent flow using the
+        <code>https://www.googleapis.com/auth/adwords</code> scope.</li>
+    <li>For each API request, the server exchanges the refresh token for a short-lived
+        access token by calling
+        <code>POST https://oauth2.googleapis.com/token</code>.</li>
+    <li>The access token is used to authenticate the Google Ads REST API call, along with
+        the <code>developer-token</code> and <code>login-customer-id</code> (MCC account ID)
+        headers.</li>
+    <li>The access token exists only in server memory for the duration of the request and
+        is never persisted or logged.</li>
+  </ol>
+
+  <h3>4.3 Request Lifecycle</h3>
+  <ol>
+    <li>A logged-in i3Media staff member selects a client and date range in the dashboard.</li>
+    <li>The browser sends a request to <code>GET /api/google-ads?customerId=…&amp;startDate=…&amp;endDate=…</code> — an internal Next.js API route.</li>
+    <li>The server authenticates the staff user's session (JWT cookie).</li>
+    <li>The server fetches a fresh OAuth2 access token using the stored refresh token.</li>
+    <li>The server makes four parallel <code>POST</code> calls to the Google Ads REST API
+        (overview, campaigns, ad groups, daily data).</li>
+    <li>Results are formatted and returned as JSON to the browser.</li>
+    <li>The dashboard displays formatted metrics (costs converted from micros, ROAS calculated, etc.).</li>
+    <li>No data from step 6 is stored in the database — it is fetched fresh on every request.</li>
+  </ol>
+
+  <!-- ── 5. FEATURE DESCRIPTION ────────────────────────────────────────── -->
+  <h2><span class="section-num">5</span> Feature Description &amp; UI Overview</h2>
+
+  <h3>5.1 Client Dashboard — Google Ads Tab</h3>
+  <p>
+    Each client in the system has a dedicated dashboard. The dashboard has tabs for
+    each integrated service. The <strong>"Paid Search (Google Ads)"</strong> tab
+    displays the following:
+  </p>
+
+  <h4>Summary Metric Cards</h4>
+  <ul>
+    <li><strong>Clicks</strong> — total clicks in the selected date range</li>
+    <li><strong>Cost</strong> — total spend (converted from micros to currency)</li>
+    <li><strong>Conversions</strong> — total reported conversions</li>
+    <li><strong>Conversion Value</strong> — total reported conversion value</li>
+    <li><strong>ROAS</strong> — Return on Ad Spend (conversions_value ÷ cost)</li>
+    <li><strong>CPA</strong> — Cost per Acquisition (cost ÷ conversions)</li>
+    <li><strong>Impressions</strong> — total ad impressions</li>
+    <li><strong>CTR</strong> — Click-Through Rate (clicks ÷ impressions)</li>
+    <li><strong>Avg. CPC</strong> — Average Cost Per Click</li>
+  </ul>
+
+  <h4>Spend &amp; Clicks Time Series Chart</h4>
+  <p>
+    A dual-axis area chart showing daily cost and click volume over the selected
+    date range, allowing account managers to identify trends and anomalies.
+  </p>
+
+  <h4>Campaign Performance Table</h4>
+  <p>
+    A sortable table listing the top 20 campaigns by spend, with columns for clicks,
+    cost, conversions, conversion value, ROAS, and CTR. ROAS is colour-coded
+    (green ≥ 2×, amber ≥ 1×, red &lt; 1×) for quick performance assessment.
+  </p>
+
+  <h4>Ad Group Performance Table</h4>
+  <p>
+    A table listing the top 20 ad groups by spend with their parent campaign name,
+    clicks, cost, conversions, conversion value, and ROAS.
+  </p>
+
+  <h3>5.2 Client Settings — Account Selection</h3>
+  <p>
+    When configuring a client, the tool calls the Google Ads API to list all enabled
+    customer accounts accessible under the i3Media MCC account. Staff select the
+    appropriate customer ID from a dropdown. This selection is stored in the application
+    database and used for subsequent API calls for that client.
+  </p>
+
+  <h3>5.3 Date Range Selection</h3>
+  <p>
+    Staff can select predefined date ranges (Last 7 days, 30 days, 90 days, 6 months)
+    or a custom date range using a date picker. The selected dates are passed as
+    <code>segments.date BETWEEN</code> filters in all GAQL queries.
+  </p>
+
+  <!-- ── 6. DATA HANDLING ──────────────────────────────────────────────── -->
+  <h2><span class="section-num">6</span> Data Handling &amp; Privacy</h2>
+
+  <h3>6.1 Data Stored</h3>
+  <table>
+    <tr><th>Data Item</th><th>Where Stored</th><th>Reason</th></tr>
+    <tr>
+      <td>Google Ads Customer ID (per client)</td>
+      <td>Application database (SQLite)</td>
+      <td>To identify which account to query for each client</td>
+    </tr>
+    <tr>
+      <td>OAuth2 refresh token</td>
+      <td>Server environment variable (<code>.env.local</code>)</td>
+      <td>To obtain access tokens for API calls</td>
+    </tr>
+    <tr>
+      <td>Developer token</td>
+      <td>Server environment variable</td>
+      <td>Required API header</td>
+    </tr>
+    <tr>
+      <td>Campaign / metric data</td>
+      <td><strong>Not stored</strong></td>
+      <td>Data is fetched live on each request and returned to the browser; nothing is persisted</td>
+    </tr>
+  </table>
+
+  <h3>6.2 Data Not Stored</h3>
+  <div class="callout green">
+    Performance data returned by the Google Ads API (clicks, costs, conversions, campaign
+    names, ad content, etc.) is <strong>not stored</strong> in any database or cache.
+    Each dashboard view fetches fresh data directly from the API. No Google Ads data is
+    retained after the HTTP response is sent to the browser.
+  </div>
+
+  <h3>6.3 Access Controls</h3>
+  <ul>
+    <li>The application requires session authentication (email + password) for all pages
+        and API routes.</li>
+    <li>Only i3Media staff with valid login credentials can access the tool.</li>
+    <li>The tool is not publicly hosted or accessible to clients.</li>
+    <li>All credentials are stored as server-side environment variables; they are
+        never exposed in client-side JavaScript or HTML.</li>
+  </ul>
+
+  <!-- ── 7. SECURITY ───────────────────────────────────────────────────── -->
+  <h2><span class="section-num">7</span> Security Practices</h2>
+
+  <table>
+    <tr><th>Practice</th><th>Implementation</th></tr>
+    <tr>
+      <td>Credential storage</td>
+      <td>All API credentials stored as OS-level environment variables on the server. Never committed to version control (listed in <code>.gitignore</code>).</td>
+    </tr>
+    <tr>
+      <td>Token handling</td>
+      <td>OAuth2 access tokens are obtained server-side per-request, exist only in memory, and are never logged or serialised.</td>
+    </tr>
+    <tr>
+      <td>HTTPS</td>
+      <td>Application is served over HTTPS in production. All Google API calls use HTTPS.</td>
+    </tr>
+    <tr>
+      <td>Minimal scope</td>
+      <td>OAuth consent is requested for only the <code>adwords</code> scope.</td>
+    </tr>
+    <tr>
+      <td>Read-only access</td>
+      <td>No write operations are performed against any Google Ads account. All GAQL queries use <code>SELECT</code> only.</td>
+    </tr>
+    <tr>
+      <td>Session security</td>
+      <td>User sessions use cryptographically signed JWT tokens with expiry. All API routes validate the session before processing.</td>
+    </tr>
+    <tr>
+      <td>Input validation</td>
+      <td>All parameters (customer ID, dates) are validated server-side before being interpolated into GAQL queries. Date ranges are sanitised to prevent injection.</td>
+    </tr>
+  </table>
+
+  <!-- ── 8. COMPLIANCE ─────────────────────────────────────────────────── -->
+  <h2><span class="section-num">8</span> Policy Compliance</h2>
+
+  <table>
+    <tr><th>Requirement</th><th>Status</th></tr>
+    <tr>
+      <td>Google Ads API Terms of Service compliance</td>
+      <td>✅ The tool is used solely for reporting on accounts managed by and owned by i3Media clients. No reselling of API access occurs.</td>
+    </tr>
+    <tr>
+      <td>Data use limited to stated purpose</td>
+      <td>✅ API data is used only to display performance metrics to i3Media staff for account management purposes.</td>
+    </tr>
+    <tr>
+      <td>No unauthorised account access</td>
+      <td>✅ The tool only accesses accounts linked to the i3Media MCC under which the developer token is registered.</td>
+    </tr>
+    <tr>
+      <td>User consent</td>
+      <td>✅ Not applicable — the OAuth token belongs to an i3Media account. All accessed accounts are owned/managed by i3Media on behalf of their clients under contractual agreement.</td>
+    </tr>
+    <tr>
+      <td>No ad creation or modification</td>
+      <td>✅ The tool makes zero write-type API calls. Only <code>GoogleAdsService.Search</code> is used.</td>
+    </tr>
+  </table>
+
+  <!-- ── 9. NON-APPLICABLE FEATURES ───────────────────────────────────── -->
+  <h2><span class="section-num">9</span> Features Not Used</h2>
+  <p>The following Google Ads API capabilities are explicitly <strong>not</strong> used
+  by this tool:</p>
+  <ul>
+    <li>Campaign, ad group, ad, or keyword creation or modification</li>
+    <li>Budget management or billing services</li>
+    <li>Audience or remarketing list management</li>
+    <li>Keyword planning or idea generation</li>
+    <li>Account creation (<code>CustomerService.CreateCustomerClient</code>)</li>
+    <li>User management or access invitations</li>
+    <li>Automated bidding or bid strategy management</li>
+    <li>Conversion action creation or modification</li>
+  </ul>
+
+  <!-- ── 10. SUMMARY ───────────────────────────────────────────────────── -->
+  <h2><span class="section-num">10</span> Summary</h2>
+
+  <p>
+    The i3Media Client Reporting Tool uses the Google Ads API for a single, well-defined
+    purpose: to retrieve performance metrics for Google Ads campaigns managed under the
+    i3Media MCC account and display them to i3Media staff in a private internal dashboard.
+  </p>
+
+  <p>
+    All API access is read-only. No data is stored beyond the minimum required (customer ID
+    per client). Credentials are handled securely server-side. The tool is not publicly
+    accessible and is used exclusively by authorised i3Media employees.
+  </p>
+
+  <div class="callout green">
+    Basic Access is required because the tool must query <strong>production accounts</strong>
+    (live Google Ads accounts with real campaigns) and requires more than the 2,880 daily
+    operations provided by Explorer Access in order to serve all managed client accounts
+    across the i3Media portfolio with the 15,000 operations/day limit of Basic Access.
+  </div>
+
+  <footer>
+    i3Media Client Reporting Tool — Google Ads API Design Document — March 2026 — Confidential
+  </footer>
+
+</body>
+</html>

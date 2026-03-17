@@ -57,6 +57,7 @@ export async function PATCH(
         metaAccountId: data.metaAccountId,
         metaAccessToken: data.metaAccessToken,
         logoUrl: data.logoUrl,
+        googleAdsCustomerId: data.googleAdsCustomerId,
       },
     });
 

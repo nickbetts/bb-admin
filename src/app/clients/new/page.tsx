@@ -1,25 +1,107 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
+
+interface GA4Property {
+  id: string;
+  displayName: string;
+  account: string;
+}
+
+interface MetaAccount {
+  id: string;
+  name: string;
+}
+
+interface SemrushProject {
+  projectId: number;
+  projectName: string;
+  domain: string;
+}
+
+interface GoogleAdsAccount {
+  id: string;
+  name: string;
+  currencyCode: string;
+  isManager: boolean;
+}
+
+const selectClass =
+  "w-full px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm appearance-none";
+
+const inputClass =
+  "w-full px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm";
 
 export default function NewClientPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [ga4Properties, setGa4Properties] = useState<GA4Property[]>([]);
+  const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
+  const [semrushProjects, setSemrushProjects] = useState<SemrushProject[]>([]);
+  const [googleAdsAccounts, setGoogleAdsAccounts] = useState<GoogleAdsAccount[]>([]);
+  const [ga4Loading, setGa4Loading] = useState(true);
+  const [metaLoading, setMetaLoading] = useState(true);
+  const [semrushLoading, setSemrushLoading] = useState(true);
+  const [googleAdsLoading, setGoogleAdsLoading] = useState(true);
+  const [ga4FetchError, setGa4FetchError] = useState("");
+  const [metaFetchError, setMetaFetchError] = useState("");
+  const [semrushFetchError, setSemrushFetchError] = useState("");
+  const [googleAdsFetchError, setGoogleAdsFetchError] = useState("");
+
   const [form, setForm] = useState({
     name: "",
-    website: "",
     semrushDomain: "",
     ga4PropertyId: "",
     metaAccountId: "",
-    metaAccessToken: "",
+    googleAdsCustomerId: "",
   });
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+  useEffect(() => {
+    fetch("/api/ga4/properties")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) setGa4FetchError(data.error);
+        else setGa4Properties(data);
+      })
+      .catch(() => setGa4FetchError("Failed to load GA4 properties"))
+      .finally(() => setGa4Loading(false));
+
+    fetch("/api/meta/accounts")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) setMetaFetchError(data.error);
+        else setMetaAccounts(data);
+      })
+      .catch(() => setMetaFetchError("Failed to load Meta accounts"))
+      .finally(() => setMetaLoading(false));
+
+    fetch("/api/semrush/projects")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) setSemrushFetchError(data.error);
+        else setSemrushProjects(data);
+      })
+      .catch(() => setSemrushFetchError("Failed to load SEMrush projects"))
+      .finally(() => setSemrushLoading(false));
+
+    fetch("/api/google-ads/accounts")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) setGoogleAdsFetchError(data.error);
+        else setGoogleAdsAccounts(data);
+      })
+      .catch(() => setGoogleAdsFetchError("Failed to load Google Ads accounts"))
+      .finally(() => setGoogleAdsLoading(false));
+  }, []);
+
+  function handleChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
@@ -83,20 +165,7 @@ export default function NewClientPage() {
                 onChange={handleChange}
                 placeholder="Acme Corporation"
                 required
-                className="w-full px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Website URL
-              </label>
-              <input
-                type="url"
-                name="website"
-                value={form.website}
-                onChange={handleChange}
-                placeholder="https://acme.com"
-                className="w-full px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm"
+                className={inputClass}
               />
             </div>
           </div>
@@ -112,19 +181,40 @@ export default function NewClientPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">
-              Domain to track
+              Project
             </label>
-            <input
-              type="text"
-              name="semrushDomain"
-              value={form.semrushDomain}
-              onChange={handleChange}
-              placeholder="acme.com"
-              className="w-full px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm"
-            />
-            <p className="text-xs text-slate-500 mt-1">
-              Domain without https:// (e.g. acme.com)
-            </p>
+            {semrushLoading ? (
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading projects…
+              </div>
+            ) : semrushFetchError ? (
+              <>
+                <input
+                  type="text"
+                  name="semrushDomain"
+                  value={form.semrushDomain}
+                  onChange={handleChange}
+                  placeholder="acme.com"
+                  className={inputClass}
+                />
+                <p className="text-xs text-red-400 mt-1">{semrushFetchError}</p>
+              </>
+            ) : (
+              <select
+                name="semrushDomain"
+                value={form.semrushDomain}
+                onChange={handleChange}
+                className={selectClass}
+              >
+                <option value="">— Select a project —</option>
+                {semrushProjects.map((p) => (
+                  <option key={p.projectId} value={p.domain}>
+                    {p.projectName} — {p.domain}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
 
@@ -138,19 +228,40 @@ export default function NewClientPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">
-              GA4 Property ID
+              GA4 Property
             </label>
-            <input
-              type="text"
-              name="ga4PropertyId"
-              value={form.ga4PropertyId}
-              onChange={handleChange}
-              placeholder="123456789"
-              className="w-full px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm"
-            />
-            <p className="text-xs text-slate-500 mt-1">
-              Found in GA4 Admin → Property Settings
-            </p>
+            {ga4Loading ? (
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading properties…
+              </div>
+            ) : ga4FetchError ? (
+              <>
+                <input
+                  type="text"
+                  name="ga4PropertyId"
+                  value={form.ga4PropertyId}
+                  onChange={handleChange}
+                  placeholder="123456789"
+                  className={inputClass}
+                />
+                <p className="text-xs text-red-400 mt-1">{ga4FetchError}</p>
+              </>
+            ) : (
+              <select
+                name="ga4PropertyId"
+                value={form.ga4PropertyId}
+                onChange={handleChange}
+                className={selectClass}
+              >
+                <option value="">— Select a GA4 property —</option>
+                {ga4Properties.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.displayName} ({p.account})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
 
@@ -163,33 +274,87 @@ export default function NewClientPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Ad Account ID
+                Ad Account
               </label>
-              <input
-                type="text"
-                name="metaAccountId"
-                value={form.metaAccountId}
-                onChange={handleChange}
-                placeholder="123456789012345"
-                className="w-full px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm"
-              />
+              {metaLoading ? (
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading ad accounts…
+                </div>
+              ) : metaFetchError ? (
+                <>
+                  <input
+                    type="text"
+                    name="metaAccountId"
+                    value={form.metaAccountId}
+                    onChange={handleChange}
+                    placeholder="123456789012345"
+                    className={inputClass}
+                  />
+                  <p className="text-xs text-red-400 mt-1">{metaFetchError}</p>
+                </>
+              ) : (
+                <select
+                  name="metaAccountId"
+                  value={form.metaAccountId}
+                  onChange={handleChange}
+                  className={selectClass}
+                >
+                  <option value="">— Select an ad account —</option>
+                  {metaAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Access Token
-              </label>
-              <input
-                type="password"
-                name="metaAccessToken"
-                value={form.metaAccessToken}
-                onChange={handleChange}
-                placeholder="EAAxxxxxx..."
-                className="w-full px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm"
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                From Meta Business Manager → System Users
-              </p>
-            </div>
+          </div>
+        </div>
+
+        {/* Google Ads Integration */}
+        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-6 h-6 rounded-full bg-yellow-500/10 flex items-center justify-center text-xs font-bold text-yellow-400">A</span>
+            <h2 className="text-sm font-semibold text-white">Google Ads</h2>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              Customer Account
+            </label>
+            {googleAdsLoading ? (
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading accounts…
+              </div>
+            ) : googleAdsFetchError ? null : (
+              <select
+                value={googleAdsAccounts.some((a) => a.id === form.googleAdsCustomerId) ? form.googleAdsCustomerId : ""}
+                onChange={(e) => setForm((prev) => ({ ...prev, googleAdsCustomerId: e.target.value }))}
+                className={selectClass + " mb-3"}
+              >
+                <option value="">— Pick from list —</option>
+                {googleAdsAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name !== a.id ? `${a.name} (${a.id})` : a.id}
+                  </option>
+                ))}
+              </select>
+            )}
+            <input
+              type="text"
+              name="googleAdsCustomerId"
+              value={form.googleAdsCustomerId}
+              onChange={handleChange}
+              placeholder="Enter account ID (e.g. 6943796207)"
+              className={inputClass}
+            />
+            <p className="text-xs text-slate-500 mt-1.5">
+              Not in the list? Paste any account ID directly above. Full account list requires Google Ads Basic Access approval.
+            </p>
+            {googleAdsFetchError && (
+              <p className="text-xs text-red-400 mt-1">{googleAdsFetchError}</p>
+            )}
           </div>
         </div>
 

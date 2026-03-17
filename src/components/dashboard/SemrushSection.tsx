@@ -18,12 +18,13 @@ import {
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard } from "@/components/ui/index";
 import { LoadingSpinner } from "@/components/ui/index";
-import { formatNumber, formatCurrency } from "@/lib/utils";
+import { formatNumber, formatCurrency, formatDateDisplay } from "@/lib/utils";
 import { TrendingUp, Search, ArrowUp, ArrowDown, Minus } from "lucide-react";
 
 interface SemrushSectionProps {
   domain: string;
-  period: string;
+  startDate: string;
+  endDate: string;
 }
 
 interface Overview {
@@ -58,7 +59,7 @@ interface DistributionItem {
 
 const POSITION_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
 
-export function SemrushSection({ domain, period }: SemrushSectionProps) {
+export function SemrushSection({ domain, startDate, endDate }: SemrushSectionProps) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -67,15 +68,17 @@ export function SemrushSection({ domain, period }: SemrushSectionProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function fetchData() {
       setLoading(true);
       setError(null);
       try {
         const [overviewRes, keywordsRes, historyRes, distRes] = await Promise.all([
-          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=overview`),
-          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=keywords`),
-          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=history`),
-          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=distribution`),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=overview`, { signal: controller.signal }),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=keywords`, { signal: controller.signal }),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=history`, { signal: controller.signal }),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=distribution`, { signal: controller.signal }),
         ]);
 
         if (!overviewRes.ok) {
@@ -95,40 +98,42 @@ export function SemrushSection({ domain, period }: SemrushSectionProps) {
         setHistory(Array.isArray(hist) ? hist : []);
         setDistribution(Array.isArray(dist) ? dist : []);
       } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load SemRush data");
       } finally {
         setLoading(false);
       }
     }
     fetchData();
-  }, [domain, period]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <LoadingSpinner size="lg" className="mx-auto mb-3" />
-          <p className="text-slate-400 text-sm">Loading SemRush data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
-        <p className="text-red-400 font-medium">Failed to load SemRush data</p>
-        <p className="text-slate-400 text-sm mt-1">{error}</p>
-      </div>
-    );
-  }
-
-  if (!overview) return null;
+    return () => controller.abort();
+  }, [domain, startDate, endDate]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
+      {/* Source + date header — always visible */}
+      <div className="flex items-center justify-between">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          SEMrush
+        </span>
+        <span className="text-xs text-slate-500">Live snapshot · {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</span>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <LoadingSpinner size="lg" className="mx-auto mb-3" />
+            <p className="text-slate-400 text-sm">Loading SEMrush data...</p>
+          </div>
+        </div>
+      ) : error ? (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
+          <p className="text-red-400 font-medium">Failed to load SEMrush data</p>
+          <p className="text-slate-400 text-sm mt-1">{error}</p>
+        </div>
+      ) : !overview ? null : (
+        <>
       {/* Overview metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
         <MetricCard
           title="Organic Traffic"
           value={formatNumber(overview.organicTraffic)}
@@ -158,7 +163,7 @@ export function SemrushSection({ domain, period }: SemrushSectionProps) {
           title="Organic Traffic Trend"
           subtitle={`${domain} — last 12 months`}
         >
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={history}>
               <defs>
                 <linearGradient id="trafficGrad" x1="0" y1="0" x2="0" y2="1">
@@ -201,7 +206,7 @@ export function SemrushSection({ domain, period }: SemrushSectionProps) {
             title="Keyword Position Distribution"
             subtitle="SERP positions"
           >
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={240}>
               <BarChart data={distribution} barSize={32}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis dataKey="range" tick={{ fill: "#64748b", fontSize: 11 }} />
@@ -233,7 +238,7 @@ export function SemrushSection({ domain, period }: SemrushSectionProps) {
             title="Keyword Count Trend"
             subtitle="Total ranking keywords"
           >
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={240}>
               <AreaChart data={history}>
                 <defs>
                   <linearGradient id="kwGrad" x1="0" y1="0" x2="0" y2="1">
@@ -301,8 +306,8 @@ export function SemrushSection({ domain, period }: SemrushSectionProps) {
                 {keywords.map((kw, i) => {
                   const change = kw.previousPosition - kw.position; // positive = moved up
                   return (
-                    <tr key={i} className="hover:bg-slate-800/30 transition">
-                      <td className="py-2.5 pr-4">
+                    <tr key={i} className="hover:bg-white/[0.02] transition">
+                      <td className="py-3.5 pr-4">
                         <p className="text-white font-medium truncate max-w-[200px]">
                           {kw.keyword}
                         </p>
@@ -355,6 +360,8 @@ export function SemrushSection({ domain, period }: SemrushSectionProps) {
             </table>
           </div>
         </SectionCard>
+      )}
+        </>
       )}
     </div>
   );

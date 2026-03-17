@@ -43,20 +43,20 @@ export function SectionCard({
   return (
     <div
       className={cn(
-        "rounded-xl border border-slate-800 bg-slate-900/50 overflow-hidden",
+        "rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden",
         className
       )}
     >
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+      <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.06]">
         <div>
           <h3 className="text-sm font-semibold text-white">{title}</h3>
           {subtitle && (
-            <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
           )}
         </div>
         {action && <div>{action}</div>}
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-6">{children}</div>
     </div>
   );
 }

@@ -7,6 +7,8 @@ import {
   getGA4TopPages,
 } from "@/lib/ga4";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
@@ -24,9 +26,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "propertyId is required" }, { status: 400 });
     }
 
-    if (!process.env.GA4_ACCESS_TOKEN) {
+    if (!process.env.GA4_CLIENT_EMAIL) {
       return NextResponse.json(
-        { error: "GA4 not configured. Please add GA4_ACCESS_TOKEN to environment." },
+        { error: "GA4 not configured. Please add GA4_CLIENT_EMAIL and GA4_PRIVATE_KEY to environment." },
         { status: 503 }
       );
     }

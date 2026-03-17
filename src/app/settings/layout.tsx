@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/Sidebar";
 
-export default async function ClientsLayout({
+export default async function SettingsLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -15,7 +15,7 @@ export default async function ClientsLayout({
   return (
     <div className="flex min-h-screen">
       <Sidebar user={{ name: session.user.name, email: session.user.email }} />
-      <main className="flex-1 overflow-y-auto bg-[#0a0b10]">
+      <main className="flex-1 overflow-y-auto bg-[#0a0b10] text-white">
         {children}
       </main>
     </div>

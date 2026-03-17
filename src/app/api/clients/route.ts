@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json();
-    const { name, website, semrushDomain, ga4PropertyId, metaAccountId } = data;
+    const { name, website, semrushDomain, ga4PropertyId, metaAccountId, googleAdsCustomerId } = data;
 
     if (!name) {
       return NextResponse.json({ error: "Client name is required" }, { status: 400 });
@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
         semrushDomain,
         ga4PropertyId,
         metaAccountId,
+        googleAdsCustomerId,
       },
     });
 

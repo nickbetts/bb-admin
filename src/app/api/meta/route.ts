@@ -3,6 +3,8 @@ import { getSession } from "@/lib/auth";
 import { getMetaAdsOverview, getMetaCampaigns, getMetaDailyData } from "@/lib/meta";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();

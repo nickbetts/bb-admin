@@ -6,7 +6,7 @@ import { ArrowLeft, Download, Upload, Trash2, Edit2, Check, X, BarChart3 } from 
 import { SemrushSection } from "@/components/dashboard/SemrushSection";
 import { GA4Section } from "@/components/dashboard/GA4Section";
 import { MetaSection } from "@/components/dashboard/MetaSection";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getDateRange } from "@/lib/utils";
 
 interface Section {
   id: string;
@@ -49,6 +49,7 @@ interface ReportViewProps {
 
 export function ReportView({ report: initialReport }: ReportViewProps) {
   const [report, setReport] = useState(initialReport);
+  const { startDate, endDate } = getDateRange("30d");
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [commentary, setCommentary] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
@@ -191,9 +192,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   }, [report.client.name, report.period]);
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-[#0a0b10]">
       {/* Top bar */}
-      <div className="sticky top-0 z-10 bg-slate-950/90 backdrop-blur border-b border-slate-800 px-6 py-3">
+      <div className="sticky top-0 z-10 bg-[#0a0b10]/90 backdrop-blur border-b border-white/[0.06] px-8 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
@@ -348,15 +349,16 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
             {/* Section data */}
             {section.sectionType === "seo" && report.client.semrushDomain && (
-              <SemrushSection domain={report.client.semrushDomain} period="30d" />
+              <SemrushSection domain={report.client.semrushDomain} startDate={startDate} endDate={endDate} />
             )}
             {section.sectionType === "web" && report.client.ga4PropertyId && (
-              <GA4Section propertyId={report.client.ga4PropertyId} period="30d" />
+              <GA4Section propertyId={report.client.ga4PropertyId} startDate={startDate} endDate={endDate} />
             )}
             {section.sectionType === "paid_social" && report.client.metaAccountId && (
               <MetaSection
                 clientId={report.client.id}
-                period="30d"
+                startDate={startDate}
+                endDate={endDate}
               />
             )}
           </div>

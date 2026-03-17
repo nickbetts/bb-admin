@@ -52,6 +52,12 @@ export function getDateRange(period: string): { startDate: string; endDate: stri
   };
 }
 
+export function formatDateDisplay(dateStr: string): string {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
 export function getPositionChange(current: number, previous: number): { value: number; type: "up" | "down" | "same" } {
   if (current === previous) return { value: 0, type: "same" };
   if (current < previous) return { value: previous - current, type: "up" };
