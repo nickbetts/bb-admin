@@ -157,13 +157,16 @@ Click **Export PDF** to generate a branded PDF report ready to share with the cl
 ## Scripts
 
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run ESLint
-npm run db:migrate   # Run Prisma migrations
-npm run db:seed      # Seed the database
-npm run db:reset     # Reset and re-run all migrations
+npm run dev               # Start development server
+npm run build             # Build for production
+npm run start             # Start production server
+npm run lint              # Run ESLint
+npm run db:migrate        # Run Prisma migrations
+npm run db:seed           # Seed the database
+npm run db:reset          # Reset and re-run all migrations
+npm run vercel:link       # Link repo to Vercel project
+npm run vercel:env:pull   # Pull Vercel env vars into .env.local
+npm run vercel:deploy     # Deploy to production
 ```
 
 ---
@@ -253,3 +256,27 @@ In your Vercel project dashboard go to **Storage → Create → Blob** and follo
 ### Auto-deployments (CI)
 
 The included `.github/workflows/ci.yml` workflow runs `eslint` and `next build` on every push and pull request, catching issues before they reach production. Vercel's own GitHub integration handles the actual deployment — no extra configuration is needed.
+
+### Troubleshooting: "Unable to open connection to local database dev.db"
+
+If you see this error (or `Digest: 540445248`) in the Vercel logs after deploying, it means `DATABASE_URL` is not set to a remote Turso URL in your Vercel project.
+
+Serverless functions cannot access local SQLite files. Fix it using the Vercel CLI (included as a dev dependency — run `npm install` first):
+
+```bash
+# 1. Link this repo to your Vercel project (one-off)
+npm run vercel:link
+
+# 2. Create a Turso database and note the URL + token (see "Deploying to Vercel" step 1)
+
+# 3. Add the env vars to production
+vercel env add DATABASE_URL production     # paste: libsql://<your-db>.turso.io
+vercel env add TURSO_AUTH_TOKEN production # paste: <your-auth-token>
+
+# 4. Redeploy
+npm run vercel:deploy
+```
+
+Or set them manually in the Vercel dashboard under **Settings → Environment Variables**, then trigger a redeploy.
+
+Login works without a database (sessions are cookie-based), but any page that reads or writes data — the dashboard, clients list, reports — requires a valid `DATABASE_URL`.
