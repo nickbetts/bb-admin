@@ -253,3 +253,15 @@ In your Vercel project dashboard go to **Storage → Create → Blob** and follo
 ### Auto-deployments (CI)
 
 The included `.github/workflows/ci.yml` workflow runs `eslint` and `next build` on every push and pull request, catching issues before they reach production. Vercel's own GitHub integration handles the actual deployment — no extra configuration is needed.
+
+### Troubleshooting: "Unable to open connection to local database dev.db"
+
+If you see this error (or `Digest: 540445248`) in the Vercel logs after deploying, it means `DATABASE_URL` is not set to a remote Turso URL in your Vercel project.
+
+Serverless functions cannot access local SQLite files. You must:
+
+1. Create a Turso database and obtain credentials (see step 1 above).
+2. Add `DATABASE_URL` and `TURSO_AUTH_TOKEN` to your Vercel project's **Settings → Environment Variables**.
+3. Trigger a redeployment (push a commit or use **Deployments → Redeploy** in the Vercel dashboard).
+
+Login works without a database (sessions are cookie-based), but any page that reads or writes data — the dashboard, clients list, reports — requires a valid `DATABASE_URL`.
