@@ -47,16 +47,16 @@ export function SectionCard({
         className
       )}
     >
-      <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+      <div className="flex items-center justify-between px-7 py-6 border-b border-slate-100">
         <div>
-          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+          <h3 className="text-base font-semibold text-slate-800">{title}</h3>
           {subtitle && (
-            <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
+            <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
           )}
         </div>
         {action && <div>{action}</div>}
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-7">{children}</div>
     </div>
   );
 }

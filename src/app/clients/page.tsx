@@ -9,18 +9,18 @@ export default async function ClientsPage() {
   });
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-10 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-10">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Clients</h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <h1 className="text-3xl font-bold text-slate-900">Clients</h1>
+          <p className="text-slate-500 text-sm mt-1.5">
             Manage your agency clients and their integrations
           </p>
         </div>
         <Link
           href="/clients/new"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition shadow-sm"
+          className="flex items-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition shadow-sm"
         >
           <Plus className="h-4 w-4" />
           Add Client

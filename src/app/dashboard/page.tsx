@@ -26,13 +26,13 @@ export default async function DashboardPage() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-10 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-10">
-        <h1 className="text-2xl font-bold text-slate-900">
+      <div className="mb-12">
+        <h1 className="text-3xl font-bold text-slate-900">
           {greeting()}, {session?.user.name ?? "there"} 👋
         </h1>
-        <p className="text-slate-500 mt-1">
+        <p className="text-slate-500 mt-2 text-base">
           Here&apos;s an overview of your clients and recent activity
         </p>
       </div>
