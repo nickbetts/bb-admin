@@ -103,7 +103,7 @@ export default async function ReportsPage() {
                     </Link>
                   </td>
                 </tr>
-              ))}}
+              ))}
             </tbody>
           </table>
         </div>
