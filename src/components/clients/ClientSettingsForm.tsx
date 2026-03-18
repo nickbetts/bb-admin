@@ -351,7 +351,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             className={inputClass}
           />
           <p className="text-xs text-slate-500 mt-1.5">
-            Not in the list? Paste any account ID directly above. Full account list requires Google Ads Basic Access approval.
+            Not in the list? Paste the account ID directly above.
           </p>
           {googleAdsFetchError && (
             <p className="text-xs text-red-400 mt-1">{googleAdsFetchError}</p>

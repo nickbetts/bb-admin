@@ -262,14 +262,38 @@ export async function getGoogleAdsDailyData(
 }
 
 export async function getGoogleAdsAccounts(): Promise<GoogleAdsAccount[]> {
-  // Use listAccessibleCustomers — the search endpoint requires Basic Access approval.
-  // Once approved, this can be swapped back to a customer_client GAQL query for names.
-  const accounts = await listAccessibleCustomers();
-  return accounts.map((a) => ({
-    id: a.id,
-    name: a.name,
-    currencyCode: "USD",
-    isManager: a.isManager,
+  const mccId = await getMccId();
+  if (!mccId) {
+    // No MCC configured — fall back to listing accessible customer IDs only
+    const accounts = await listAccessibleCustomers();
+    return accounts.map((a) => ({
+      id: a.id,
+      name: a.name,
+      currencyCode: "USD",
+      isManager: a.isManager,
+    }));
+  }
+
+  const token = await getAccessToken();
+  const query = `
+    SELECT
+      customer_client.id,
+      customer_client.descriptive_name,
+      customer_client.currency_code,
+      customer_client.manager,
+      customer_client.status
+    FROM customer_client
+    WHERE customer_client.level = 1
+      AND customer_client.status = 'ENABLED'
+    ORDER BY customer_client.descriptive_name ASC
+  `;
+
+  const data = await searchGoogleAds(mccId, query, token, mccId);
+  return (data.results ?? []).map((row: Record<string, Record<string, unknown>>) => ({
+    id: String(row.customerClient?.id ?? ""),
+    name: String(row.customerClient?.descriptiveName ?? ""),
+    currencyCode: String(row.customerClient?.currencyCode ?? ""),
+    isManager: Boolean(row.customerClient?.manager ?? false),
   }));
 }
 
