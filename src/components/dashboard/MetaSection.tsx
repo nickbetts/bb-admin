@@ -103,12 +103,13 @@ export function MetaSection({ clientId, startDate, endDate }: MetaSectionProps) 
 
   return (
     <div className="space-y-8">
-      {/* Source + date header — always visible */}
+      {/* Section header */}
       <div className="flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200">
-          Meta Ads
-        </span>
-        <span className="text-xs text-slate-500">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Paid Social</h2>
+          <p className="text-sm text-slate-500 mt-0.5">Ad performance data via Meta Ads</p>
+        </div>
+        <span className="text-sm text-slate-400">
           {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
         </span>
       </div>
@@ -170,16 +171,18 @@ export function MetaSection({ clientId, startDate, endDate }: MetaSectionProps) 
                   <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 10 }} />
               <YAxis tick={{ fill: "#64748b", fontSize: 11 }} />
               <Tooltip
                 contentStyle={{
-                  background: "#0f172a",
-                  border: "1px solid #1e293b",
+                  background: "#ffffff",
+                  border: "1px solid #e2e8f0",
                   borderRadius: "8px",
-                  color: "#f1f5f9",
+                  color: "#0f172a",
+                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.08)",
                 }}
+                labelStyle={{ color: "#64748b", fontSize: "11px" }}
                 formatter={(v) => [formatCurrency(Number(v)), "Spend"]}
               />
               <Area
@@ -200,16 +203,18 @@ export function MetaSection({ clientId, startDate, endDate }: MetaSectionProps) 
           <SectionCard title="Clicks & Conversions" subtitle="Daily performance">
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={daily} barSize={8}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 10 }} />
                 <YAxis tick={{ fill: "#64748b", fontSize: 11 }} />
                 <Tooltip
                   contentStyle={{
-                    background: "#0f172a",
-                    border: "1px solid #1e293b",
+                    background: "#ffffff",
+                    border: "1px solid #e2e8f0",
                     borderRadius: "8px",
-                    color: "#f1f5f9",
+                    color: "#0f172a",
+                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.08)",
                   }}
+                  labelStyle={{ color: "#64748b", fontSize: "11px" }}
                 />
                 <Bar dataKey="clicks" fill="#3b82f6" name="Clicks" radius={[2, 2, 0, 0]} />
                 <Bar dataKey="conversions" fill="#10b981" name="Conversions" radius={[2, 2, 0, 0]} />

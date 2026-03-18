@@ -110,12 +110,13 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
 
   return (
     <div className="space-y-8">
-      {/* Source + date header — always visible */}
+      {/* Section header */}
       <div className="flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-          SEMrush
-        </span>
-        <span className="text-xs text-slate-500">Live snapshot · {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</span>
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">SEO Performance</h2>
+          <p className="text-sm text-slate-500 mt-0.5">Organic traffic data via SEMrush</p>
+        </div>
+        <span className="text-sm text-slate-400">{formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</span>
       </div>
 
       {loading ? (
@@ -171,7 +172,7 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
                   <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey="date"
                 tick={{ fill: "#64748b", fontSize: 11 }}
@@ -180,11 +181,13 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
               <YAxis tick={{ fill: "#64748b", fontSize: 11 }} />
               <Tooltip
                 contentStyle={{
-                  background: "#0f172a",
-                  border: "1px solid #1e293b",
+                  background: "#ffffff",
+                  border: "1px solid #e2e8f0",
                   borderRadius: "8px",
-                  color: "#f1f5f9",
+                  color: "#0f172a",
+                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.08)",
                 }}
+                labelStyle={{ color: "#64748b", fontSize: "11px" }}
                 formatter={(value) => [formatNumber(Number(value)), "Traffic"]}
               />
               <Area
@@ -208,16 +211,18 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
           >
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={distribution} barSize={32}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="range" tick={{ fill: "#64748b", fontSize: 11 }} />
                 <YAxis tick={{ fill: "#64748b", fontSize: 11 }} />
                 <Tooltip
                   contentStyle={{
-                    background: "#0f172a",
-                    border: "1px solid #1e293b",
+                    background: "#ffffff",
+                    border: "1px solid #e2e8f0",
                     borderRadius: "8px",
-                    color: "#f1f5f9",
+                    color: "#0f172a",
+                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.08)",
                   }}
+                  labelStyle={{ color: "#64748b", fontSize: "11px" }}
                 />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                   {distribution.map((_, index) => (
@@ -246,7 +251,7 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis
                   dataKey="date"
                   tick={{ fill: "#64748b", fontSize: 11 }}
@@ -255,11 +260,13 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
                 <YAxis tick={{ fill: "#64748b", fontSize: 11 }} />
                 <Tooltip
                   contentStyle={{
-                    background: "#0f172a",
-                    border: "1px solid #1e293b",
+                    background: "#ffffff",
+                    border: "1px solid #e2e8f0",
                     borderRadius: "8px",
-                    color: "#f1f5f9",
+                    color: "#0f172a",
+                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.08)",
                   }}
+                  labelStyle={{ color: "#64748b", fontSize: "11px" }}
                   formatter={(value) => [formatNumber(Number(value)), "Keywords"]}
                 />
                 <Area

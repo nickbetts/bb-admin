@@ -123,17 +123,15 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
 
   return (
     <div className="space-y-8">
-      {/* Source badge */}
+      {/* Section header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
-            Google Ads
-          </span>
-          <span className="text-xs text-slate-500">
-            {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
-          </span>
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Paid Search</h2>
+          <p className="text-sm text-slate-500 mt-0.5">Campaign performance data via Google Ads</p>
         </div>
+        <span className="text-sm text-slate-400">
+          {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
+        </span>
       </div>
 
       {loading ? (
