@@ -126,8 +126,8 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
       {/* Source badge */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
             Google Ads
           </span>
           <span className="text-xs text-slate-500">
@@ -137,26 +137,26 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-slate-400 text-sm gap-2">
-          <span className="inline-block w-4 h-4 border-2 border-yellow-400/40 border-t-yellow-400 rounded-full animate-spin" />
+        <div className="flex items-center justify-center py-20 text-slate-500 text-sm gap-2">
+          <span className="inline-block w-4 h-4 border-2 border-yellow-200 border-t-yellow-500 rounded-full animate-spin" />
           Loading Google Ads data…
         </div>
       ) : error ? (
         error.includes("DEVELOPER_TOKEN_NOT_APPROVED") ? (
-          <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-5 py-5 space-y-2">
-            <p className="text-sm font-semibold text-yellow-400">Google Ads Basic Access required</p>
-            <p className="text-sm text-slate-300">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-5 space-y-2">
+            <p className="text-sm font-semibold text-amber-700">Google Ads Basic Access required</p>
+            <p className="text-sm text-slate-600">
               The Google Ads developer token is currently in test mode and cannot access real account data.
             </p>
-            <ol className="text-sm text-slate-400 list-decimal list-inside space-y-1">
-              <li>Sign in to <span className="text-yellow-400 font-mono">ads.google.com</span> with a manager account</li>
-              <li>Go to <strong className="text-slate-300">Tools → API Center</strong></li>
-              <li>Click <strong className="text-slate-300">Apply for Basic Access</strong> and submit the form</li>
+            <ol className="text-sm text-slate-500 list-decimal list-inside space-y-1">
+              <li>Sign in to <span className="text-amber-700 font-mono">ads.google.com</span> with a manager account</li>
+              <li>Go to <strong className="text-slate-700">Tools → API Center</strong></li>
+              <li>Click <strong className="text-slate-700">Apply for Basic Access</strong> and submit the form</li>
               <li>Approval typically takes 1–2 business days</li>
             </ol>
           </div>
         ) : (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-400">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-600">
           {error}
         </div>
         )
@@ -212,8 +212,8 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
 
           {/* Daily spend & clicks chart */}
           {chartData.length > 0 && (
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
-              <h3 className="text-sm font-semibold text-white mb-5">Spend & Clicks Over Time</h3>
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+              <h3 className="text-sm font-semibold text-slate-800 mb-5">Spend & Clicks Over Time</h3>
               <ResponsiveContainer width="100%" height={280}>
                 <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                   <defs>
@@ -226,7 +226,7 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
                       <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis
                     dataKey="date"
                     tick={{ fill: "#64748b", fontSize: 11 }}
@@ -252,12 +252,12 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#0f172a",
-                      border: "1px solid #1e293b",
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #e2e8f0",
                       borderRadius: "8px",
                       fontSize: "12px",
                     }}
-                    labelStyle={{ color: "#94a3b8" }}
+                    labelStyle={{ color: "#64748b" }}
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     formatter={(value: any, name: any) => {
                       const num = typeof value === "number" ? value : Number(value ?? 0);
@@ -291,14 +291,14 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
 
           {/* Campaign breakdown */}
           {data.campaigns.length > 0 && (
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-              <div className="px-6 py-5 border-b border-white/[0.06]">
-                <h3 className="text-sm font-semibold text-white">Campaign Performance</h3>
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div className="px-6 py-5 border-b border-slate-100">
+                <h3 className="text-sm font-semibold text-slate-800">Campaign Performance</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-white/[0.06] text-slate-500">
+                    <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
                       <th className="text-left px-6 py-4 font-medium">Campaign</th>
                       <th className="text-right px-4 py-4 font-medium">Clicks</th>
                       <th className="text-right px-4 py-4 font-medium">Cost</th>
@@ -308,38 +308,38 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
                       <th className="text-right px-6 py-4 font-medium">CTR</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-slate-100">
                     {data.campaigns.map((c) => (
-                      <tr key={c.id} className="hover:bg-white/[0.02] transition">
-                        <td className="px-6 py-4 text-slate-200 font-medium max-w-[200px] truncate">
+                      <tr key={c.id} className="hover:bg-slate-50 transition">
+                        <td className="px-6 py-4 text-slate-800 font-medium max-w-[200px] truncate">
                           {c.name}
                         </td>
-                        <td className="px-4 py-4 text-right text-slate-300">
+                        <td className="px-4 py-4 text-right text-slate-600">
                           {formatNumber(c.clicks)}
                         </td>
-                        <td className="px-4 py-4 text-right text-slate-300">
+                        <td className="px-4 py-4 text-right text-slate-600">
                           {formatCurrency(micros(c.costMicros))}
                         </td>
-                        <td className="px-4 py-4 text-right text-slate-300">
+                        <td className="px-4 py-4 text-right text-slate-600">
                           {formatNumber(c.conversions)}
                         </td>
-                        <td className="px-4 py-4 text-right text-slate-300">
+                        <td className="px-4 py-4 text-right text-slate-600">
                           {formatCurrency(c.conversionsValue)}
                         </td>
                         <td className="px-4 py-4 text-right">
                           <span
                             className={`font-semibold ${
                               roas(c.conversionsValue, c.costMicros) >= 2
-                                ? "text-emerald-400"
+                                ? "text-emerald-600"
                                 : roas(c.conversionsValue, c.costMicros) >= 1
-                                ? "text-yellow-400"
-                                : "text-red-400"
+                                ? "text-amber-600"
+                                : "text-red-600"
                             }`}
                           >
                             {roas(c.conversionsValue, c.costMicros).toFixed(2)}x
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-right text-slate-300">
+                        <td className="px-6 py-4 text-right text-slate-600">
                           {formatPercent(ctr(c.clicks, c.impressions))}
                         </td>
                       </tr>
@@ -352,14 +352,14 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
 
           {/* Ad group breakdown */}
           {data.adGroups.length > 0 && (
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-              <div className="px-6 py-5 border-b border-white/[0.06]">
-                <h3 className="text-sm font-semibold text-white">Ad Group Performance</h3>
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div className="px-6 py-5 border-b border-slate-100">
+                <h3 className="text-sm font-semibold text-slate-800">Ad Group Performance</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-white/[0.06] text-slate-500">
+                    <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
                       <th className="text-left px-6 py-4 font-medium">Ad Group</th>
                       <th className="text-left px-4 py-4 font-medium text-slate-600">Campaign</th>
                       <th className="text-right px-4 py-4 font-medium">Clicks</th>
@@ -369,35 +369,35 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
                       <th className="text-right px-6 py-4 font-medium">ROAS</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-slate-100">
                     {data.adGroups.map((ag) => (
-                      <tr key={ag.id} className="hover:bg-white/[0.02] transition">
-                        <td className="px-6 py-4 text-slate-200 font-medium max-w-[160px] truncate">
+                      <tr key={ag.id} className="hover:bg-slate-50 transition">
+                        <td className="px-6 py-4 text-slate-800 font-medium max-w-[160px] truncate">
                           {ag.name}
                         </td>
                         <td className="px-4 py-4 text-slate-500 max-w-[140px] truncate">
                           {ag.campaignName}
                         </td>
-                        <td className="px-4 py-4 text-right text-slate-300">
+                        <td className="px-4 py-4 text-right text-slate-600">
                           {formatNumber(ag.clicks)}
                         </td>
-                        <td className="px-4 py-4 text-right text-slate-300">
+                        <td className="px-4 py-4 text-right text-slate-600">
                           {formatCurrency(micros(ag.costMicros))}
                         </td>
-                        <td className="px-4 py-4 text-right text-slate-300">
+                        <td className="px-4 py-4 text-right text-slate-600">
                           {formatNumber(ag.conversions)}
                         </td>
-                        <td className="px-4 py-4 text-right text-slate-300">
+                        <td className="px-4 py-4 text-right text-slate-600">
                           {formatCurrency(ag.conversionsValue)}
                         </td>
                         <td className="px-6 py-4 text-right">
                           <span
                             className={`font-semibold ${
                               roas(ag.conversionsValue, ag.costMicros) >= 2
-                                ? "text-emerald-400"
+                                ? "text-emerald-600"
                                 : roas(ag.conversionsValue, ag.costMicros) >= 1
-                                ? "text-yellow-400"
-                                : "text-red-400"
+                                ? "text-amber-600"
+                                : "text-red-600"
                             }`}
                           >
                             {roas(ag.conversionsValue, ag.costMicros).toFixed(2)}x

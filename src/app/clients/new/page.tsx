@@ -30,10 +30,10 @@ interface GoogleAdsAccount {
 }
 
 const selectClass =
-  "w-full px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm appearance-none";
+  "w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition text-sm appearance-none shadow-sm";
 
 const inputClass =
-  "w-full px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm";
+  "w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition text-sm shadow-sm";
 
 export default function NewClientPage() {
   const router = useRouter();
@@ -133,30 +133,30 @@ export default function NewClientPage() {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
-      <div className="mb-6">
+      <div className="mb-8">
         <Link
           href="/clients"
-          className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition mb-4"
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 font-medium transition mb-4"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to clients
         </Link>
-        <h1 className="text-2xl font-bold text-white">Add New Client</h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <h1 className="text-2xl font-bold text-slate-900">Add New Client</h1>
+        <p className="text-slate-500 text-sm mt-1">
           Configure a new client with their integration details
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Info */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
-          <h2 className="text-sm font-semibold text-white mb-4">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+          <h2 className="text-sm font-semibold text-slate-900 mb-4">
             Basic Information
           </h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Client Name <span className="text-red-400">*</span>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Client Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -172,19 +172,19 @@ export default function NewClientPage() {
         </div>
 
         {/* SEO Integration */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
           <div className="flex items-center gap-2 mb-4">
-            <span className="w-6 h-6 rounded-full bg-orange-500/10 flex items-center justify-center text-xs font-bold text-orange-400">S</span>
-            <h2 className="text-sm font-semibold text-white">
+            <span className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center text-xs font-bold text-orange-600">S</span>
+            <h2 className="text-sm font-semibold text-slate-900">
               SemRush Integration
             </h2>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
               Project
             </label>
             {semrushLoading ? (
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 text-sm">
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading projects…
               </div>
@@ -198,7 +198,7 @@ export default function NewClientPage() {
                   placeholder="acme.com"
                   className={inputClass}
                 />
-                <p className="text-xs text-red-400 mt-1">{semrushFetchError}</p>
+                <p className="text-xs text-red-600 mt-1">{semrushFetchError}</p>
               </>
             ) : (
               <select
@@ -219,19 +219,19 @@ export default function NewClientPage() {
         </div>
 
         {/* GA4 Integration */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
           <div className="flex items-center gap-2 mb-4">
-            <span className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center text-xs font-bold text-blue-400">G</span>
-            <h2 className="text-sm font-semibold text-white">
+            <span className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">G</span>
+            <h2 className="text-sm font-semibold text-slate-900">
               Google Analytics 4
             </h2>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
               GA4 Property
             </label>
             {ga4Loading ? (
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 text-sm">
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading properties…
               </div>
@@ -245,7 +245,7 @@ export default function NewClientPage() {
                   placeholder="123456789"
                   className={inputClass}
                 />
-                <p className="text-xs text-red-400 mt-1">{ga4FetchError}</p>
+                <p className="text-xs text-red-600 mt-1">{ga4FetchError}</p>
               </>
             ) : (
               <select
@@ -266,18 +266,18 @@ export default function NewClientPage() {
         </div>
 
         {/* Meta Ads Integration */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
           <div className="flex items-center gap-2 mb-4">
-            <span className="w-6 h-6 rounded-full bg-indigo-500/10 flex items-center justify-center text-xs font-bold text-indigo-400">M</span>
-            <h2 className="text-sm font-semibold text-white">Meta Ads</h2>
+            <span className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-600">M</span>
+            <h2 className="text-sm font-semibold text-slate-900">Meta Ads</h2>
           </div>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 Ad Account
               </label>
               {metaLoading ? (
-                <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 text-sm">
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading ad accounts…
                 </div>
@@ -291,7 +291,7 @@ export default function NewClientPage() {
                     placeholder="123456789012345"
                     className={inputClass}
                   />
-                  <p className="text-xs text-red-400 mt-1">{metaFetchError}</p>
+                  <p className="text-xs text-red-600 mt-1">{metaFetchError}</p>
                 </>
               ) : (
                 <select
@@ -313,17 +313,17 @@ export default function NewClientPage() {
         </div>
 
         {/* Google Ads Integration */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
           <div className="flex items-center gap-2 mb-4">
-            <span className="w-6 h-6 rounded-full bg-yellow-500/10 flex items-center justify-center text-xs font-bold text-yellow-400">A</span>
-            <h2 className="text-sm font-semibold text-white">Google Ads</h2>
+            <span className="w-7 h-7 rounded-full bg-yellow-100 flex items-center justify-center text-xs font-bold text-yellow-700">A</span>
+            <h2 className="text-sm font-semibold text-slate-900">Google Ads</h2>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
               Customer Account
             </label>
             {googleAdsLoading ? (
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 text-sm">
+              <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading accounts…
               </div>
@@ -353,13 +353,13 @@ export default function NewClientPage() {
               Not in the list? Paste any account ID directly above. Full account list requires Google Ads Basic Access approval.
             </p>
             {googleAdsFetchError && (
-              <p className="text-xs text-red-400 mt-1">{googleAdsFetchError}</p>
+              <p className="text-xs text-red-600 mt-1">{googleAdsFetchError}</p>
             )}
           </div>
         </div>
 
         {error && (
-          <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+          <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
             {error}
           </div>
         )}
@@ -368,14 +368,14 @@ export default function NewClientPage() {
           <button
             type="submit"
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold transition disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition disabled:opacity-50 shadow-sm"
           >
             <Save className="h-4 w-4" />
             {loading ? "Creating..." : "Create Client"}
           </button>
           <Link
             href="/clients"
-            className="px-4 py-2.5 rounded-lg border border-slate-700 text-slate-300 text-sm hover:bg-slate-800 transition"
+            className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm hover:bg-slate-50 transition"
           >
             Cancel
           </Link>

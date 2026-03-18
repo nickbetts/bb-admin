@@ -62,36 +62,36 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto py-12 px-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Settings</h1>
+      <div className="mb-10">
+        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
         <p className="text-sm text-slate-500 mt-1">Manage global integrations and API configuration</p>
       </div>
 
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-7">
-        <h2 className="text-base font-semibold text-white mb-1">Google Ads Manager Account</h2>
-        <p className="text-sm text-slate-400 mb-2">
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-8">
+        <h2 className="text-base font-semibold text-slate-900 mb-1">Google Ads Manager Account</h2>
+        <p className="text-sm text-slate-500 mb-2">
           Select the MCC (manager) account used to access client Google Ads accounts.
         </p>
-        <p className="text-xs text-amber-400/80 mb-6 flex items-start gap-2">
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-6 flex items-start gap-2">
           <span className="mt-0.5">⚠</span>
           <span>Account names are unavailable until the Google Ads developer token is approved for Basic Access. Select your MCC by ID from the list below.</span>
         </p>
 
         {loading && <p className="text-sm text-slate-500">Loading accounts…</p>}
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
         {!loading && !error && (
           <>
             <select
               value={selectedMcc}
               onChange={(e) => setSelectedMcc(e.target.value)}
-              className="w-full bg-white/[0.05] border border-white/[0.08] text-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 mb-3 transition"
+              className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 mb-3 transition shadow-sm"
             >
-              <option value="" className="bg-slate-900">— Select an account —</option>
+              <option value="">— Select an account —</option>
               {accounts
                 .filter((a) => a.isManager)
                 .map((a) => (
-                  <option key={a.id} value={a.id} className="bg-slate-900">
+                  <option key={a.id} value={a.id}>
                     {a.name} ({a.id})
                   </option>
                 ))}
@@ -100,7 +100,7 @@ export default function SettingsPage() {
                   {accounts
                     .filter((a) => !a.isManager)
                     .map((a) => (
-                      <option key={a.id} value={a.id} className="bg-slate-900">
+                      <option key={a.id} value={a.id}>
                         {a.name} ({a.id})
                       </option>
                     ))}
@@ -110,14 +110,14 @@ export default function SettingsPage() {
 
             {currentMcc && (
               <p className="text-xs text-slate-500 mb-5">
-                Current: <span className="font-mono text-slate-400">{currentMcc}</span>
+                Current: <span className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">{currentMcc}</span>
               </p>
             )}
 
             <button
               onClick={handleSave}
               disabled={saving || selectedMcc === currentMcc || !selectedMcc}
-              className="px-5 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-500/20"
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
             >
               {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
             </button>

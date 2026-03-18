@@ -105,7 +105,7 @@ export function MetaSection({ clientId, startDate, endDate }: MetaSectionProps) 
     <div className="space-y-8">
       {/* Source + date header — always visible */}
       <div className="flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-500/10 text-orange-400 border border-orange-500/20">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200">
           Meta Ads
         </span>
         <span className="text-xs text-slate-500">
@@ -117,13 +117,13 @@ export function MetaSection({ clientId, startDate, endDate }: MetaSectionProps) 
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <LoadingSpinner size="lg" className="mx-auto mb-3" />
-            <p className="text-slate-400 text-sm">Loading Meta Ads data...</p>
+            <p className="text-slate-500 text-sm">Loading Meta Ads data...</p>
           </div>
         </div>
       ) : error ? (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
-          <p className="text-red-400 font-medium">Failed to load Meta Ads data</p>
-          <p className="text-slate-400 text-sm mt-1">{error}</p>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="text-red-600 font-medium">Failed to load Meta Ads data</p>
+          <p className="text-slate-500 text-sm mt-1">{error}</p>
         </div>
       ) : !overview ? null : (
         <>
@@ -228,19 +228,19 @@ export function MetaSection({ clientId, startDate, endDate }: MetaSectionProps) 
                   className="flex items-center justify-between py-3.5 first:pt-0 last:pb-0"
                 >
                   <div className="flex-1 min-w-0 mr-4">
-                    <p className="text-sm text-white font-medium truncate">
+                    <p className="text-sm text-slate-800 font-medium truncate">
                       {campaign.name}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-500">
                       {campaign.impressions.toLocaleString()} impressions ·{" "}
                       {formatPercent(campaign.ctr)} CTR
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm text-white font-medium">
+                    <p className="text-sm text-slate-800 font-medium">
                       {formatCurrency(campaign.spend)}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-500">
                       {campaign.roas.toFixed(1)}x ROAS
                     </p>
                   </div>

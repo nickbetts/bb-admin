@@ -118,7 +118,7 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
     <div className="space-y-8">
       {/* Source + date header — always visible */}
       <div className="flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
           Google Analytics 4
         </span>
         <span className="text-xs text-slate-500">
@@ -130,13 +130,13 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <LoadingSpinner size="lg" className="mx-auto mb-3" />
-            <p className="text-slate-400 text-sm">Loading GA4 data...</p>
+            <p className="text-slate-500 text-sm">Loading GA4 data...</p>
           </div>
         </div>
       ) : error ? (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
-          <p className="text-red-400 font-medium">Failed to load GA4 data</p>
-          <p className="text-slate-400 text-sm mt-1">{error}</p>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="text-red-600 font-medium">Failed to load GA4 data</p>
+          <p className="text-slate-500 text-sm mt-1">{error}</p>
         </div>
       ) : !overview ? null : (
         <>
@@ -286,21 +286,21 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
         {/* Top pages table */}
         {pages.length > 0 && (
           <SectionCard title="Top Pages" subtitle="By sessions">
-            <div className="divide-y divide-white/[0.05]">
+            <div className="divide-y divide-slate-100">
               {pages.slice(0, 6).map((page, i) => (
                 <div
                   key={i}
                   className="flex items-center gap-3 py-3.5"
                 >
-                  <span className="text-xs text-slate-600 w-5 shrink-0 text-right">
+                  <span className="text-xs text-slate-400 w-5 shrink-0 text-right">
                     {i + 1}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white truncate">{page.pagePath}</p>
+                    <p className="text-sm text-slate-800 truncate">{page.pagePath}</p>
                     <p className="text-xs text-slate-500 truncate">{page.pageTitle}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm text-white">{formatNumber(page.sessions)}</p>
+                    <p className="text-sm text-slate-800 font-medium">{formatNumber(page.sessions)}</p>
                     <p className="text-xs text-slate-500">sessions</p>
                   </div>
                 </div>

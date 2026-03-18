@@ -192,20 +192,20 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   }, [report.client.name, report.period]);
 
   return (
-    <div className="min-h-screen bg-[#0a0b10]">
+    <div className="min-h-screen bg-slate-50">
       {/* Top bar */}
-      <div className="sticky top-0 z-10 bg-[#0a0b10]/90 backdrop-blur border-b border-white/[0.06] px-8 py-4">
+      <div className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-slate-200 px-8 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href={`/clients/${report.client.slug}`}
-              className="text-slate-400 hover:text-white transition"
+              className="text-slate-400 hover:text-slate-700 transition"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <h1 className="text-sm font-semibold text-white">{report.title}</h1>
-              <p className="text-xs text-slate-400">
+              <h1 className="text-sm font-semibold text-slate-900">{report.title}</h1>
+              <p className="text-xs text-slate-500">
                 {report.client.name} · {report.period}
               </p>
             </div>
@@ -214,7 +214,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 text-xs hover:bg-slate-800 transition disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs hover:bg-slate-50 transition disabled:opacity-50"
             >
               <Upload className="h-3.5 w-3.5" />
               {uploading ? "Uploading..." : "Upload Screenshot"}
@@ -237,7 +237,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             <button
               onClick={handleExportPdf}
               disabled={exportingPdf}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-medium transition disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium transition disabled:opacity-50"
             >
               <Download className="h-3.5 w-3.5" />
               {exportingPdf ? "Generating PDF..." : "Export PDF"}
@@ -249,7 +249,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       {/* Report content */}
       <div className="max-w-5xl mx-auto p-6" ref={reportRef}>
         {/* Report header */}
-        <div className="mb-8 p-8 rounded-2xl bg-gradient-to-br from-indigo-900/30 via-slate-900 to-purple-900/20 border border-slate-800">
+        <div className="mb-8 p-8 rounded-2xl bg-gradient-to-br from-indigo-50 via-white to-violet-50 border border-indigo-100">
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-3 mb-4">
@@ -257,22 +257,22 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   <BarChart3 className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-xs text-indigo-400 font-semibold uppercase tracking-wider">
+                  <p className="text-xs text-indigo-600 font-semibold uppercase tracking-wider">
                     i3media
                   </p>
-                  <p className="text-xs text-slate-400">Digital Performance Report</p>
+                  <p className="text-xs text-slate-500">Digital Performance Report</p>
                 </div>
               </div>
-              <h1 className="text-3xl font-bold text-white mb-1">{report.title}</h1>
-              <p className="text-slate-400">
+              <h1 className="text-3xl font-bold text-slate-900 mb-1">{report.title}</h1>
+              <p className="text-slate-500">
                 {report.client.name} · {report.period}
               </p>
             </div>
             <div className="text-right">
-              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-slate-800 to-slate-700 flex items-center justify-center text-2xl font-bold text-white border border-slate-600">
+              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center text-2xl font-bold text-indigo-700 border border-indigo-200">
                 {report.client.name.charAt(0).toUpperCase()}
               </div>
-              <p className="text-xs text-slate-400 mt-2">{report.client.name}</p>
+              <p className="text-xs text-slate-500 mt-2">{report.client.name}</p>
             </div>
           </div>
         </div>
@@ -281,16 +281,16 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
         {report.sections.map((section) => (
           <div key={section.id} className="mb-8">
             {/* Section header with commentary */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/50 overflow-hidden mb-4">
-              <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800">
-                <h2 className="text-sm font-semibold text-white">{section.title}</h2>
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-4">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+                <h2 className="text-sm font-semibold text-slate-800">{section.title}</h2>
                 <button
                   onClick={() =>
                     editingSection === section.id
                       ? setEditingSection(null)
                       : handleEditSection(section)
                   }
-                  className="flex items-center gap-1 text-xs text-slate-400 hover:text-indigo-400 transition"
+                  className="flex items-center gap-1 text-xs text-slate-400 hover:text-indigo-600 transition"
                 >
                   <Edit2 className="h-3.5 w-3.5" />
                   {editingSection === section.id ? "Cancel" : "Add commentary"}
@@ -310,20 +310,20 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       }
                       placeholder="Add your commentary and insights for this section..."
                       rows={4}
-                      className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm resize-none"
+                      className="w-full px-4 py-3 rounded-lg bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition text-sm resize-none shadow-sm"
                     />
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleSaveSection(section.id)}
                         disabled={saving === section.id}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-medium transition disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium transition disabled:opacity-50"
                       >
                         <Check className="h-3.5 w-3.5" />
                         {saving === section.id ? "Saving..." : "Save"}
                       </button>
                       <button
                         onClick={() => setEditingSection(null)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 text-xs hover:bg-slate-800 transition"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs hover:bg-slate-50 transition"
                       >
                         <X className="h-3.5 w-3.5" />
                         Cancel
@@ -331,11 +331,11 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                     </div>
                   </div>
                 ) : section.commentary ? (
-                  <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-lg px-4 py-3">
-                    <p className="text-xs text-indigo-400 font-medium mb-1">
+                  <div className="bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-3">
+                    <p className="text-xs text-indigo-600 font-medium mb-1">
                       Commentary
                     </p>
-                    <p className="text-sm text-slate-300 whitespace-pre-wrap">
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap">
                       {section.commentary}
                     </p>
                   </div>
@@ -368,13 +368,13 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
         {report.screenshots.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-white">Additional Screenshots</h2>
+              <h2 className="text-sm font-semibold text-slate-800">Additional Screenshots</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {report.screenshots.map((screenshot) => (
                 <div
                   key={screenshot.id}
-                  className="relative group rounded-xl border border-slate-800 overflow-hidden"
+                  className="relative group rounded-xl border border-slate-200 overflow-hidden bg-white"
                 >
                   <img
                     src={screenshot.url}
@@ -382,8 +382,8 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                     className="w-full object-cover"
                   />
                   {screenshot.caption && (
-                    <div className="px-4 py-2 bg-slate-900 border-t border-slate-800">
-                      <p className="text-xs text-slate-400">{screenshot.caption}</p>
+                    <div className="px-4 py-2 bg-slate-50 border-t border-slate-100">
+                      <p className="text-xs text-slate-500">{screenshot.caption}</p>
                     </div>
                   )}
                   <button
@@ -399,14 +399,14 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
         )}
 
         {/* Footer */}
-        <div className="mt-12 pt-6 border-t border-slate-800 flex items-center justify-between">
+        <div className="mt-12 pt-6 border-t border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
               <BarChart3 className="h-3.5 w-3.5 text-white" />
             </div>
             <div>
-              <p className="text-xs font-bold text-white">i3media</p>
-              <p className="text-[10px] text-slate-400">Digital Marketing Agency</p>
+              <p className="text-xs font-bold text-slate-900">i3media</p>
+              <p className="text-[10px] text-slate-500">Digital Marketing Agency</p>
             </div>
           </div>
           <p className="text-xs text-slate-500">

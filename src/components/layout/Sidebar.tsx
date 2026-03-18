@@ -68,31 +68,30 @@ export function Sidebar({ user }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "flex flex-col h-screen sticky top-0 border-r border-white/[0.06] transition-all duration-300 shrink-0",
-        "bg-[#0d0f14]",
-        collapsed ? "w-[68px]" : "w-[240px]"
+        "flex flex-col h-screen sticky top-0 border-r border-slate-200 transition-all duration-300 shrink-0 bg-white",
+        collapsed ? "w-[72px]" : "w-[264px]"
       )}
     >
       {/* Logo */}
       <div className={cn(
-        "flex items-center border-b border-white/[0.06] h-16 shrink-0",
-        collapsed ? "justify-center px-4" : "justify-between px-5"
+        "flex items-center border-b border-slate-100 h-[68px] shrink-0",
+        collapsed ? "justify-center px-4" : "justify-between px-6"
       )}>
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/20">
-            <BarChart3 className="h-4 w-4 text-white" />
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/20">
+            <BarChart3 className="h-5 w-5 text-white" />
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="text-sm font-bold text-white leading-none">i3media</p>
-              <p className="text-[11px] text-slate-500 mt-0.5 leading-none tracking-wide uppercase">Reporting</p>
+              <p className="text-sm font-bold text-slate-900 leading-none">i3media</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 leading-none tracking-wide uppercase">Reporting</p>
             </div>
           )}
         </div>
         {!collapsed && (
           <button
             onClick={() => setCollapsed(true)}
-            className="text-slate-600 hover:text-slate-400 transition-colors p-1 rounded-md hover:bg-white/5 shrink-0"
+            className="text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-lg hover:bg-slate-100 shrink-0"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -103,16 +102,16 @@ export function Sidebar({ user }: SidebarProps) {
       {collapsed && (
         <button
           onClick={() => setCollapsed(false)}
-          className="flex items-center justify-center h-10 mx-3 mt-3 rounded-lg text-slate-600 hover:text-slate-400 hover:bg-white/5 transition-colors"
+          className="flex items-center justify-center h-10 mx-3 mt-4 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
         >
           <Menu className="h-4 w-4" />
         </button>
       )}
 
       {/* Navigation */}
-      <nav className="flex-1 py-4 px-3 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 py-5 px-3 space-y-1 overflow-y-auto">
         {!collapsed && (
-          <p className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest px-3 pb-2 pt-1">
+          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-3 pb-3 pt-1">
             Menu
           </p>
         )}
@@ -125,17 +124,17 @@ export function Sidebar({ user }: SidebarProps) {
               href={item.href}
               title={collapsed ? item.label : undefined}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group relative",
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group relative",
                 isActive
-                  ? "bg-indigo-500/[0.12] text-indigo-400"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.05]",
+                  ? "bg-indigo-50 text-indigo-700"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50",
                 collapsed && "justify-center px-0"
               )}
             >
               {isActive && (
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-indigo-500 rounded-r-full" />
               )}
-              <span className={cn(isActive ? "text-indigo-400" : "text-slate-500 group-hover:text-slate-300 transition-colors")}>
+              <span className={cn(isActive ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600 transition-colors")}>
                 {item.icon}
               </span>
               {!collapsed && <span>{item.label}</span>}
@@ -145,17 +144,17 @@ export function Sidebar({ user }: SidebarProps) {
       </nav>
 
       {/* User section */}
-      <div className="border-t border-white/[0.06] p-3 space-y-1">
+      <div className="border-t border-slate-100 p-4 space-y-1">
         {!collapsed && (
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-[11px] font-bold text-white shrink-0">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-[11px] font-bold text-white shrink-0">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-white truncate leading-none">
+              <p className="text-xs font-semibold text-slate-800 truncate leading-none">
                 {user.name ?? user.email.split("@")[0]}
               </p>
-              <p className="text-[11px] text-slate-500 truncate mt-0.5 leading-none">{user.email}</p>
+              <p className="text-[11px] text-slate-400 truncate mt-0.5 leading-none">{user.email}</p>
             </div>
           </div>
         )}
@@ -163,7 +162,7 @@ export function Sidebar({ user }: SidebarProps) {
           onClick={handleLogout}
           title={collapsed ? "Logout" : undefined}
           className={cn(
-            "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-slate-500 hover:text-red-400 hover:bg-red-500/[0.08] transition-all duration-150",
+            "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all duration-150",
             collapsed && "justify-center"
           )}
         >

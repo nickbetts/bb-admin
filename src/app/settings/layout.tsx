@@ -15,7 +15,7 @@ export default async function SettingsLayout({
   return (
     <div className="flex min-h-screen">
       <Sidebar user={{ name: session.user.name, email: session.user.email }} />
-      <main className="flex-1 overflow-y-auto bg-[#0a0b10] text-white">
+      <main className="flex-1 overflow-y-auto bg-slate-50">
         {children}
       </main>
     </div>

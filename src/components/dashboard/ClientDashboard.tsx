@@ -71,7 +71,7 @@ export function ClientDashboard({ client, period: initialPeriod }: ClientDashboa
       {/* Tabs + date controls */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         {/* Tab bar */}
-        <div className="flex gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+        <div className="flex gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -79,10 +79,10 @@ export function ClientDashboard({ client, period: initialPeriod }: ClientDashboa
               disabled={!tab.available}
               className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
                 activeTab === tab.id
-                  ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
+                  ? "bg-white text-indigo-700 shadow-sm border border-slate-200"
                   : tab.available
-                  ? "text-slate-400 hover:text-slate-200 hover:bg-white/[0.05]"
-                  : "text-slate-600 cursor-not-allowed"
+                  ? "text-slate-500 hover:text-slate-800 hover:bg-white/70"
+                  : "text-slate-400 cursor-not-allowed"
               }`}
             >
               {tab.label}
@@ -95,15 +95,15 @@ export function ClientDashboard({ client, period: initialPeriod }: ClientDashboa
 
         {/* Date controls */}
         <div className="flex flex-col items-end gap-2">
-          <div className="flex gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+          <div className="flex gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200">
             {periods.map((p) => (
               <button
                 key={p.value}
                 onClick={() => setPeriod(p.value)}
                 className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
                   period === p.value
-                    ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.05]"
+                    ? "bg-white text-indigo-700 shadow-sm border border-slate-200"
+                    : "text-slate-500 hover:text-slate-800 hover:bg-white/70"
                 }`}
               >
                 {p.value === "custom" && <Calendar className="h-3 w-3" />}
@@ -113,22 +113,22 @@ export function ClientDashboard({ client, period: initialPeriod }: ClientDashboa
           </div>
 
           {period === "custom" && (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 shadow-sm">
               <input
                 type="date"
                 value={customStart}
                 max={customEnd}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="bg-transparent text-xs text-slate-300 focus:outline-none [color-scheme:dark]"
+                className="bg-transparent text-xs text-slate-700 focus:outline-none"
               />
-              <span className="text-slate-600 text-xs">→</span>
+              <span className="text-slate-400 text-xs">→</span>
               <input
                 type="date"
                 value={customEnd}
                 min={customStart}
                 max={today}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="bg-transparent text-xs text-slate-300 focus:outline-none [color-scheme:dark]"
+                className="bg-transparent text-xs text-slate-700 focus:outline-none"
               />
             </div>
           )}
@@ -191,12 +191,12 @@ function NotConfigured({
   settingsHref: string;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-white/[0.08] p-16 text-center">
-      <p className="text-white font-semibold text-base">{name} not configured</p>
-      <p className="text-slate-400 text-sm mt-2 max-w-xs mx-auto">{description}</p>
+    <div className="rounded-2xl border border-dashed border-slate-300 p-16 text-center">
+      <p className="text-slate-800 font-semibold text-base">{name} not configured</p>
+      <p className="text-slate-500 text-sm mt-2 max-w-xs mx-auto">{description}</p>
       <a
         href={settingsHref}
-        className="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold transition shadow-lg shadow-indigo-500/20"
+        className="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition shadow-sm"
       >
         Configure settings
       </a>

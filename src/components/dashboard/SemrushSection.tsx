@@ -112,7 +112,7 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
     <div className="space-y-8">
       {/* Source + date header — always visible */}
       <div className="flex items-center justify-between">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
           SEMrush
         </span>
         <span className="text-xs text-slate-500">Live snapshot · {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</span>
@@ -122,13 +122,13 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <LoadingSpinner size="lg" className="mx-auto mb-3" />
-            <p className="text-slate-400 text-sm">Loading SEMrush data...</p>
+            <p className="text-slate-500 text-sm">Loading SEMrush data...</p>
           </div>
         </div>
       ) : error ? (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
-          <p className="text-red-400 font-medium">Failed to load SEMrush data</p>
-          <p className="text-slate-400 text-sm mt-1">{error}</p>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="text-red-600 font-medium">Failed to load SEMrush data</p>
+          <p className="text-slate-500 text-sm mt-1">{error}</p>
         </div>
       ) : !overview ? null : (
         <>
@@ -284,7 +284,7 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-800">
+                <tr className="border-b border-slate-100 bg-slate-50">
                   <th className="text-left py-2 pr-4 text-slate-400 font-medium text-xs">
                     Keyword
                   </th>
@@ -302,13 +302,13 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-100">
                 {keywords.map((kw, i) => {
                   const change = kw.previousPosition - kw.position; // positive = moved up
                   return (
-                    <tr key={i} className="hover:bg-white/[0.02] transition">
+                    <tr key={i} className="hover:bg-slate-50 transition">
                       <td className="py-3.5 pr-4">
-                        <p className="text-white font-medium truncate max-w-[200px]">
+                        <p className="text-slate-800 font-medium truncate max-w-[200px]">
                           {kw.keyword}
                         </p>
                         <p className="text-xs text-slate-500 truncate max-w-[200px]">
@@ -319,12 +319,12 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
                         <span
                           className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold ${
                             kw.position <= 3
-                              ? "bg-emerald-500/10 text-emerald-400"
+                              ? "bg-emerald-50 text-emerald-700"
                               : kw.position <= 10
-                              ? "bg-blue-500/10 text-blue-400"
+                              ? "bg-blue-50 text-blue-700"
                               : kw.position <= 20
-                              ? "bg-amber-500/10 text-amber-400"
-                              : "bg-slate-700 text-slate-300"
+                              ? "bg-amber-50 text-amber-700"
+                              : "bg-slate-100 text-slate-600"
                           }`}
                         >
                           {kw.position}
@@ -332,12 +332,12 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
                       </td>
                       <td className="py-2.5 px-3 text-center">
                         {change > 0 ? (
-                          <span className="flex items-center justify-center gap-0.5 text-xs text-emerald-400">
+                          <span className="flex items-center justify-center gap-0.5 text-xs text-emerald-600">
                             <ArrowUp className="h-3 w-3" />
                             {change}
                           </span>
                         ) : change < 0 ? (
-                          <span className="flex items-center justify-center gap-0.5 text-xs text-red-400">
+                          <span className="flex items-center justify-center gap-0.5 text-xs text-red-600">
                             <ArrowDown className="h-3 w-3" />
                             {Math.abs(change)}
                           </span>
@@ -347,10 +347,10 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
                           </span>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-right text-slate-300 text-xs">
+                      <td className="py-2.5 px-3 text-right text-slate-600 text-xs">
                         {formatNumber(kw.searchVolume)}
                       </td>
-                      <td className="py-2.5 px-3 text-right text-slate-300 text-xs">
+                      <td className="py-2.5 px-3 text-right text-slate-600 text-xs">
                         {kw.trafficPercent.toFixed(1)}%
                       </td>
                     </tr>

@@ -84,22 +84,22 @@ export default function NewReportPage({
       <div className="mb-6">
         <Link
           href={`/clients/${slug}`}
-          className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition mb-4"
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 font-medium transition mb-4"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to client
         </Link>
-        <h1 className="text-2xl font-bold text-white">Create New Report</h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <h1 className="text-2xl font-bold text-slate-900">Create New Report</h1>
+        <p className="text-slate-500 text-sm mt-1">
           Generate a performance report with live data
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-5 space-y-4">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
-              Report Title <span className="text-red-400">*</span>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Report Title <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -107,17 +107,17 @@ export default function NewReportPage({
               onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
               placeholder="Monthly Performance Report"
               required
-              className="w-full px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm"
+              className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition text-sm shadow-sm"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
-              Reporting Period <span className="text-red-400">*</span>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              Reporting Period <span className="text-red-500">*</span>
             </label>
             <select
               value={form.period}
               onChange={(e) => setForm((prev) => ({ ...prev, period: e.target.value }))}
-              className="w-full px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm"
+              className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition text-sm shadow-sm"
             >
               {PERIODS.map((p) => (
                 <option key={p} value={p}>
@@ -129,7 +129,7 @@ export default function NewReportPage({
         </div>
 
         {error && (
-          <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+          <div className="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-600">
             {error}
           </div>
         )}
@@ -138,14 +138,14 @@ export default function NewReportPage({
           <button
             type="submit"
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold transition disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition disabled:opacity-50 shadow-sm"
           >
             <Save className="h-4 w-4" />
             {loading ? "Creating..." : "Create Report"}
           </button>
           <Link
             href={`/clients/${slug}`}
-            className="px-4 py-2.5 rounded-lg border border-slate-700 text-slate-300 text-sm hover:bg-slate-800 transition"
+            className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm hover:bg-slate-50 transition"
           >
             Cancel
           </Link>

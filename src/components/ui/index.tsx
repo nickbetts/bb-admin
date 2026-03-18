@@ -17,7 +17,7 @@ export function LoadingSpinner({ size = "md", className }: LoadingSpinnerProps) 
   return (
     <div
       className={cn(
-        "animate-spin rounded-full border-slate-600 border-t-indigo-500",
+        "animate-spin rounded-full border-slate-200 border-t-indigo-600",
         sizeMap[size],
         className
       )}
@@ -43,13 +43,13 @@ export function SectionCard({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden",
+        "rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden",
         className
       )}
     >
-      <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.06]">
+      <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
         <div>
-          <h3 className="text-sm font-semibold text-white">{title}</h3>
+          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
           {subtitle && (
             <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
           )}
@@ -68,11 +68,11 @@ interface BadgeProps {
 
 export function Badge({ children, variant = "default" }: BadgeProps) {
   const variantMap = {
-    default: "bg-slate-700 text-slate-300",
-    success: "bg-emerald-500/10 text-emerald-400",
-    warning: "bg-amber-500/10 text-amber-400",
-    danger: "bg-red-500/10 text-red-400",
-    info: "bg-indigo-500/10 text-indigo-400",
+    default: "bg-slate-100 text-slate-600",
+    success: "bg-emerald-50 text-emerald-700",
+    warning: "bg-amber-50 text-amber-700",
+    danger: "bg-red-50 text-red-700",
+    info: "bg-indigo-50 text-indigo-700",
   };
 
   return (

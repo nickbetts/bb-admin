@@ -26,63 +26,69 @@ export default async function DashboardPage() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">
+      <div className="mb-10">
+        <h1 className="text-2xl font-bold text-slate-900">
           {greeting()}, {session?.user.name ?? "there"} 👋
         </h1>
-        <p className="text-slate-400 mt-1">
+        <p className="text-slate-500 mt-1">
           Here&apos;s an overview of your clients and recent activity
         </p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="rounded-xl border border-slate-800 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm text-slate-400">Total Clients</p>
-            <Users className="h-5 w-5 text-indigo-400" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-medium text-slate-500">Total Clients</p>
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center">
+              <Users className="h-5 w-5 text-indigo-600" />
+            </div>
           </div>
-          <p className="text-3xl font-bold text-white">{totalClients}</p>
+          <p className="text-3xl font-bold text-slate-900">{totalClients}</p>
         </div>
-        <div className="rounded-xl border border-slate-800 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm text-slate-400">Total Reports</p>
-            <FileText className="h-5 w-5 text-blue-400" />
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-medium text-slate-500">Total Reports</p>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
+              <FileText className="h-5 w-5 text-blue-600" />
+            </div>
           </div>
-          <p className="text-3xl font-bold text-white">{totalReports}</p>
+          <p className="text-3xl font-bold text-slate-900">{totalReports}</p>
         </div>
-        <div className="rounded-xl border border-slate-800 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm text-slate-400">Active Integrations</p>
-            <TrendingUp className="h-5 w-5 text-emerald-400" />
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-medium text-slate-500">Active Integrations</p>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-emerald-600" />
+            </div>
           </div>
-          <p className="text-3xl font-bold text-white">3</p>
-          <p className="text-xs text-slate-500 mt-1">SemRush · GA4 · Meta</p>
+          <p className="text-3xl font-bold text-slate-900">3</p>
+          <p className="text-xs text-slate-400 mt-1">SemRush · GA4 · Meta</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Clients */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
-            <h2 className="text-sm font-semibold text-white">Recent Clients</h2>
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+            <h2 className="text-sm font-semibold text-slate-800">Recent Clients</h2>
             <Link
               href="/clients/new"
-              className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition"
+              className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 font-medium transition"
             >
               <Plus className="h-3.5 w-3.5" />
               Add client
             </Link>
           </div>
-          <div className="divide-y divide-slate-800">
+          <div className="divide-y divide-slate-100">
             {clients.length === 0 ? (
-              <div className="px-5 py-8 text-center">
-                <p className="text-slate-400 text-sm">No clients yet</p>
+              <div className="px-6 py-10 text-center">
+                <p className="text-slate-500 text-sm">No clients yet</p>
                 <Link
                   href="/clients/new"
-                  className="inline-flex items-center gap-1.5 mt-3 text-xs text-indigo-400 hover:text-indigo-300"
+                  className="inline-flex items-center gap-1.5 mt-3 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Add your first client
@@ -93,14 +99,14 @@ export default async function DashboardPage() {
                 <Link
                   key={client.id}
                   href={`/clients/${client.slug}`}
-                  className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-800/50 transition group"
+                  className="flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
                       {client.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-white">
+                      <p className="text-sm font-semibold text-slate-800">
                         {client.name}
                       </p>
                       <p className="text-xs text-slate-400">
@@ -110,16 +116,16 @@ export default async function DashboardPage() {
                       </p>
                     </div>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-indigo-400 transition" />
+                  <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-500 transition" />
                 </Link>
               ))
             )}
           </div>
           {clients.length > 0 && (
-            <div className="px-5 py-3 border-t border-slate-800">
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50">
               <Link
                 href="/clients"
-                className="text-xs text-slate-400 hover:text-white transition"
+                className="text-xs font-medium text-slate-500 hover:text-slate-800 transition"
               >
                 View all clients →
               </Link>
@@ -128,15 +134,15 @@ export default async function DashboardPage() {
         </div>
 
         {/* Recent Reports */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/50 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
-            <h2 className="text-sm font-semibold text-white">Recent Reports</h2>
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+            <h2 className="text-sm font-semibold text-slate-800">Recent Reports</h2>
           </div>
-          <div className="divide-y divide-slate-800">
+          <div className="divide-y divide-slate-100">
             {recentReports.length === 0 ? (
-              <div className="px-5 py-8 text-center">
-                <p className="text-slate-400 text-sm">No reports yet</p>
-                <p className="text-xs text-slate-500 mt-1">
+              <div className="px-6 py-10 text-center">
+                <p className="text-slate-500 text-sm">No reports yet</p>
+                <p className="text-xs text-slate-400 mt-1">
                   Select a client and create a report
                 </p>
               </div>
@@ -145,10 +151,10 @@ export default async function DashboardPage() {
                 <Link
                   key={report.id}
                   href={`/reports/${report.id}`}
-                  className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-800/50 transition group"
+                  className="flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition group"
                 >
                   <div>
-                    <p className="text-sm font-medium text-white">
+                    <p className="text-sm font-semibold text-slate-800">
                       {report.title}
                     </p>
                     <p className="text-xs text-slate-400">
@@ -157,15 +163,15 @@ export default async function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         report.status === "published"
-                          ? "bg-emerald-500/10 text-emerald-400"
-                          : "bg-slate-700 text-slate-300"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-slate-100 text-slate-500"
                       }`}
                     >
                       {report.status}
                     </span>
-                    <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-indigo-400 transition" />
+                    <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-500 transition" />
                   </div>
                 </Link>
               ))
@@ -175,36 +181,36 @@ export default async function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/50 p-5">
-        <h2 className="text-sm font-semibold text-white mb-4">Quick Actions</h2>
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+        <h2 className="text-sm font-semibold text-slate-800 mb-5">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Link
             href="/clients/new"
-            className="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-700 hover:border-indigo-500/50 hover:bg-indigo-500/5 transition text-center"
+            className="flex flex-col items-center gap-2.5 p-5 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 transition text-center"
           >
-            <Users className="h-5 w-5 text-indigo-400" />
-            <span className="text-xs text-slate-300">Add Client</span>
+            <Users className="h-5 w-5 text-indigo-600" />
+            <span className="text-xs font-medium text-slate-600">Add Client</span>
           </Link>
           <Link
             href="/clients"
-            className="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-700 hover:border-blue-500/50 hover:bg-blue-500/5 transition text-center"
+            className="flex flex-col items-center gap-2.5 p-5 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition text-center"
           >
-            <FileText className="h-5 w-5 text-blue-400" />
-            <span className="text-xs text-slate-300">New Report</span>
+            <FileText className="h-5 w-5 text-blue-600" />
+            <span className="text-xs font-medium text-slate-600">New Report</span>
           </Link>
           <Link
             href="/clients"
-            className="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-700 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition text-center"
+            className="flex flex-col items-center gap-2.5 p-5 rounded-xl border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 transition text-center"
           >
-            <TrendingUp className="h-5 w-5 text-emerald-400" />
-            <span className="text-xs text-slate-300">View Analytics</span>
+            <TrendingUp className="h-5 w-5 text-emerald-600" />
+            <span className="text-xs font-medium text-slate-600">View Analytics</span>
           </Link>
           <Link
             href="/reports"
-            className="flex flex-col items-center gap-2 p-4 rounded-lg border border-slate-700 hover:border-amber-500/50 hover:bg-amber-500/5 transition text-center"
+            className="flex flex-col items-center gap-2.5 p-5 rounded-xl border border-slate-200 hover:border-amber-300 hover:bg-amber-50 transition text-center"
           >
-            <FileText className="h-5 w-5 text-amber-400" />
-            <span className="text-xs text-slate-300">Export PDF</span>
+            <FileText className="h-5 w-5 text-amber-600" />
+            <span className="text-xs font-medium text-slate-600">Export PDF</span>
           </Link>
         </div>
       </div>

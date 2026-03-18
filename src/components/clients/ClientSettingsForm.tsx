@@ -45,10 +45,10 @@ interface GoogleAdsAccount {
 }
 
 const selectClass =
-  "w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm appearance-none";
+  "w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition text-sm appearance-none shadow-sm";
 
 const inputClass =
-  "w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition text-sm";
+  "w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition text-sm shadow-sm";
 
 export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
   const router = useRouter();
@@ -154,10 +154,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Basic Info */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-7 space-y-5">
-        <h2 className="text-base font-semibold text-white">Basic Information</h2>
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-7 space-y-5">
+        <h2 className="text-base font-semibold text-slate-900">Basic Information</h2>
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
+          <label className="block text-sm font-medium text-slate-700 mb-2">
             Client Name
           </label>
           <input
@@ -171,19 +171,19 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       </div>
 
       {/* SemRush */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-7 space-y-5">
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-7 space-y-5">
         <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center text-xs font-bold text-orange-400">
+          <span className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-xs font-bold text-orange-600">
             S
           </span>
-          <h2 className="text-base font-semibold text-white">SemRush</h2>
+          <h2 className="text-base font-semibold text-slate-900">SemRush</h2>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
+          <label className="block text-sm font-medium text-slate-700 mb-2">
             Project
           </label>
           {semrushLoading ? (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 text-sm">
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading projects…
             </div>
@@ -197,7 +197,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                 placeholder="example.com"
                 className={inputClass}
               />
-              <p className="text-xs text-red-400 mt-1">{semrushFetchError}</p>
+              <p className="text-xs text-red-600 mt-1">{semrushFetchError}</p>
             </>
           ) : (
             <select
@@ -218,19 +218,19 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       </div>
 
       {/* GA4 */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-7 space-y-5">
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-7 space-y-5">
         <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-xs font-bold text-blue-400">
+          <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">
             G
           </span>
-          <h2 className="text-base font-semibold text-white">Google Analytics 4</h2>
+          <h2 className="text-base font-semibold text-slate-900">Google Analytics 4</h2>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
+          <label className="block text-sm font-medium text-slate-700 mb-2">
             Property
           </label>
           {ga4Loading ? (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 text-sm">
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading properties…
             </div>
@@ -244,7 +244,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                 placeholder="123456789"
                 className={inputClass}
               />
-              <p className="text-xs text-red-400 mt-1">{ga4FetchError}</p>
+              <p className="text-xs text-red-600 mt-1">{ga4FetchError}</p>
             </>
           ) : (
             <select
@@ -265,19 +265,19 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       </div>
 
       {/* Meta Ads */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-7 space-y-5">
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-7 space-y-5">
         <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-xs font-bold text-indigo-400">
+          <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-600">
             M
           </span>
-          <h2 className="text-base font-semibold text-white">Meta Ads</h2>
+          <h2 className="text-base font-semibold text-slate-900">Meta Ads</h2>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
+          <label className="block text-sm font-medium text-slate-700 mb-2">
             Ad Account
           </label>
           {metaLoading ? (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 text-sm">
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading ad accounts…
             </div>
@@ -291,7 +291,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                 placeholder="123456789"
                 className={inputClass}
               />
-              <p className="text-xs text-red-400 mt-1">{metaFetchError}</p>
+              <p className="text-xs text-red-600 mt-1">{metaFetchError}</p>
             </>
           ) : (
             <select
@@ -312,19 +312,19 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       </div>
 
       {/* Google Ads */}
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-7 space-y-5">
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-7 space-y-5">
         <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full bg-yellow-500/10 flex items-center justify-center text-xs font-bold text-yellow-400">
+          <span className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-xs font-bold text-yellow-700">
             A
           </span>
-          <h2 className="text-base font-semibold text-white">Google Ads</h2>
+          <h2 className="text-base font-semibold text-slate-900">Google Ads</h2>
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
+          <label className="block text-sm font-medium text-slate-700 mb-2">
             Customer Account
           </label>
           {googleAdsLoading ? (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 text-sm">
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading accounts…
             </div>
@@ -354,19 +354,19 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             Not in the list? Paste the account ID directly above.
           </p>
           {googleAdsFetchError && (
-            <p className="text-xs text-red-400 mt-1">{googleAdsFetchError}</p>
+            <p className="text-xs text-red-600 mt-1">{googleAdsFetchError}</p>
           )}
         </div>
       </div>
 
       {error && (
-        <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+        <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="px-4 py-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm text-emerald-400">
+        <div className="px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-700">
           Settings saved successfully!
         </div>
       )}
@@ -374,7 +374,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       <button
         type="submit"
         disabled={saving}
-        className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold transition disabled:opacity-50"
+        className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition disabled:opacity-50 shadow-sm"
       >
         <Save className="h-4 w-4" />
         {saving ? "Saving…" : "Save Settings"}
