@@ -13,9 +13,9 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="app-shell">
       <Sidebar user={{ name: session.user.name, email: session.user.email }} />
-      <main className="flex-1 overflow-y-auto bg-slate-50">
+      <main className="app-main">
         {children}
       </main>
     </div>

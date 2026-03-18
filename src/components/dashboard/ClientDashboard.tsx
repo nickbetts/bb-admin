@@ -70,40 +70,28 @@ export function ClientDashboard({ client, period: initialPeriod }: ClientDashboa
   return (
     <div>
       {/* Tab bar + date controls */}
-      <div className="border-b border-slate-200 flex items-center justify-between mb-10">
-        <nav className="flex">
+      <div className="tabs-bar">
+        <nav className="tabs-nav">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => tab.available && setActiveTab(tab.id)}
               disabled={!tab.available}
-              className={cn(
-                "px-6 py-4 text-sm font-medium border-b-2 -mb-px transition-all whitespace-nowrap",
-                activeTab === tab.id && tab.available
-                  ? "border-indigo-600 text-indigo-700"
-                  : tab.available
-                  ? "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
-                  : "border-transparent text-slate-300 cursor-not-allowed"
-              )}
+              className={cn("tab-btn", activeTab === tab.id && tab.available && "active")}
             >
               {tab.label}
             </button>
           ))}
         </nav>
 
-        <div className="flex items-center gap-1 pb-1">
+        <div className="period-pills">
           {periods.map((p) => (
             <button
               key={p.value}
               onClick={() => setPeriod(p.value)}
-              className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5",
-                period === p.value
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-              )}
+              className={cn("period-pill", period === p.value && "active")}
             >
-              {p.value === "custom" && <Calendar className="h-3 w-3" />}
+              {p.value === "custom" && <Calendar style={{ width: 12, height: 12 }} />}
               {p.label}
             </button>
           ))}
@@ -112,27 +100,24 @@ export function ClientDashboard({ client, period: initialPeriod }: ClientDashboa
 
       {/* Custom date range picker */}
       {period === "custom" && (
-        <div className="flex items-center gap-3 mb-8 px-5 py-3.5 bg-slate-50 rounded-xl border border-slate-200 w-fit">
-          <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
-          <span className="text-sm text-slate-500 font-medium">Custom range</span>
-          <div className="flex items-center gap-2 ml-1">
-            <input
-              type="date"
-              value={customStart}
-              max={customEnd}
-              onChange={(e) => setCustomStart(e.target.value)}
-              className="text-sm text-slate-700 bg-transparent focus:outline-none"
-            />
-            <span className="text-slate-400">→</span>
-            <input
-              type="date"
-              value={customEnd}
-              min={customStart}
-              max={today}
-              onChange={(e) => setCustomEnd(e.target.value)}
-              className="text-sm text-slate-700 bg-transparent focus:outline-none"
-            />
-          </div>
+        <div className="custom-range-bar">
+          <Calendar style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0 }} />
+          <span style={{ fontWeight: 500, color: "var(--text-2)" }}>Custom range</span>
+          <span style={{ color: "var(--border)" }}>|</span>
+          <input
+            type="date"
+            value={customStart}
+            max={customEnd}
+            onChange={(e) => setCustomStart(e.target.value)}
+          />
+          <span style={{ color: "var(--text-3)" }}>→</span>
+          <input
+            type="date"
+            value={customEnd}
+            min={customStart}
+            max={today}
+            onChange={(e) => setCustomEnd(e.target.value)}
+          />
         </div>
       )}
 
@@ -190,16 +175,13 @@ function NotConfigured({
   settingsHref: string;
 }) {
   return (
-    <div className="rounded-2xl border-2 border-dashed border-slate-200 p-16 text-center bg-slate-50/50">
-      <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-5">
-        <Calendar className="h-6 w-6 text-slate-400" />
+    <div className="empty-state">
+      <div className="empty-state-icon">
+        <Calendar style={{ width: 24, height: 24 }} />
       </div>
-      <p className="text-slate-800 font-semibold text-lg">{name} not configured</p>
-      <p className="text-slate-500 text-sm mt-2 max-w-sm mx-auto leading-relaxed">{description}</p>
-      <a
-        href={settingsHref}
-        className="inline-flex items-center gap-2 mt-8 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition shadow-sm"
-      >
+      <p className="empty-state-title">{name} not configured</p>
+      <p className="empty-state-desc">{description}</p>
+      <a href={settingsHref} className="btn btn-primary" style={{ marginTop: 28 }}>
         Configure in settings
       </a>
     </div>

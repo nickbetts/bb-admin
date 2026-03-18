@@ -42,38 +42,22 @@ export function MetricCard({
   const isPositive = change !== undefined && change >= 0;
 
   return (
-    <div
-      className={cn(
-        "relative rounded-2xl border bg-gradient-to-br p-7 overflow-hidden shadow-sm",
-        colorMap[color],
-        className
-      )}
-    >
-      <div className="flex items-start justify-between mb-3">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{title}</p>
+    <div className={cn("metric-card", className)}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+        <p className="metric-label">{title}</p>
         {icon && (
-          <span className={cn("text-2xl", iconColorMap[color])}>{icon}</span>
+          <span className={cn("text-xl", iconColorMap[color])}>{icon}</span>
         )}
       </div>
-      <p className="text-4xl font-bold text-slate-900 tracking-tight">{value}</p>
+      <p className="metric-value">{value}</p>
       {(subtitle || change !== undefined) && (
-        <div className="flex items-center gap-2 mt-2.5">
+        <div className="metric-footer">
           {change !== undefined && (
-            <span
-              className={cn(
-                "text-xs font-medium px-1.5 py-0.5 rounded",
-                isPositive
-                  ? "text-emerald-700 bg-emerald-100"
-                  : "text-red-700 bg-red-100"
-              )}
-            >
-              {isPositive ? "+" : ""}
-              {change.toFixed(1)}%
+            <span className={cn("metric-badge", isPositive ? "up" : "down")}>
+              {isPositive ? "+" : ""}{change.toFixed(1)}%
             </span>
           )}
-          {subtitle && (
-            <span className="text-xs text-slate-500">{subtitle}</span>
-          )}
+          {subtitle && <span style={{ fontSize: 12, color: "var(--text-3)" }}>{subtitle}</span>}
         </div>
       )}
     </div>

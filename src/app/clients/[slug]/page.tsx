@@ -30,136 +30,109 @@ export default async function ClientPage({ params, searchParams }: Props) {
   if (!client) notFound();
 
   return (
-    <div className="p-10 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="mb-10">
-        <Link
-          href="/clients"
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 font-medium transition mb-6"
+    <div className="page">
+      {/* Back link + header */}
+      <div style={{ marginBottom: 40 }}>
+        <Link href="/clients" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-3)", fontWeight: 500, textDecoration: "none", marginBottom: 28, transition: "color 0.15s" }}
+          onMouseEnter={e => (e.currentTarget.style.color = "var(--text)")}
+          onMouseLeave={e => (e.currentTarget.style.color = "var(--text-3)")}
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
+          <ArrowLeft style={{ width: 14, height: 14 }} />
           All clients
         </Link>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-6">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg shadow-indigo-500/20">
+
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+            <div style={{ width: 72, height: 72, borderRadius: 18, background: "linear-gradient(135deg, #6366f1, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 28, fontWeight: 700, flexShrink: 0, boxShadow: "0 8px 24px rgb(99 102 241 / 0.25)" }}>
               {client.name.charAt(0).toUpperCase()}
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">{client.name}</h1>
+              <h1 className="page-title">{client.name}</h1>
               {client.website && (
-                <a
-                  href={client.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-sm text-slate-500 hover:text-indigo-600 transition mt-1.5"
-                >
+                <a href={client.website} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--text-3)", textDecoration: "none", marginTop: 6 }}>
                   {client.website.replace(/^https?:\/\//, "")}
-                  <ExternalLink className="h-3 w-3" />
+                  <ExternalLink style={{ width: 11, height: 11 }} />
                 </a>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/clients/${slug}/report/new`}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition shadow-sm"
-            >
-              <Plus className="h-4 w-4" />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+            <Link href={`/clients/${slug}/report/new`} className="btn btn-primary">
+              <Plus style={{ width: 16, height: 16 }} />
               New Report
             </Link>
-            <Link
-              href={`/clients/${slug}/settings`}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition"
-            >
-              <Settings className="h-4 w-4" />
+            <Link href={`/clients/${slug}/settings`} className="btn btn-secondary">
+              <Settings style={{ width: 15, height: 15 }} />
               Settings
             </Link>
           </div>
         </div>
 
         {/* Integration badges */}
-        <div className="flex flex-wrap gap-3 mt-8">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 28 }}>
           {client.semrushDomain ? (
-            <span className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-full bg-orange-50 text-orange-700 border border-orange-200 font-medium">
-              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+            <span className="badge badge-orange" style={{ padding: "6px 14px", fontSize: 13 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f97316", display: "inline-block" }} />
               SemRush · {client.semrushDomain}
             </span>
           ) : (
-            <span className="text-sm px-4 py-2 rounded-full bg-slate-100 text-slate-400 border border-slate-200">
-              SemRush not configured
-            </span>
+            <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }}>SemRush not configured</span>
           )}
           {client.ga4PropertyId ? (
-            <span className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+            <span className="badge badge-blue" style={{ padding: "6px 14px", fontSize: 13 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#3b82f6", display: "inline-block" }} />
               GA4 · {client.ga4PropertyId}
             </span>
           ) : (
-            <span className="text-sm px-4 py-2 rounded-full bg-slate-100 text-slate-400 border border-slate-200">
-              GA4 not configured
-            </span>
+            <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }}>GA4 not configured</span>
           )}
           {client.metaAccountId ? (
-            <span className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 font-medium">
-              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+            <span className="badge badge-indigo" style={{ padding: "6px 14px", fontSize: 13 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#6366f1", display: "inline-block" }} />
               Meta Ads · {client.metaAccountId}
             </span>
           ) : (
-            <span className="text-sm px-4 py-2 rounded-full bg-slate-100 text-slate-400 border border-slate-200">
-              Meta Ads not configured
-            </span>
+            <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }}>Meta Ads not configured</span>
           )}
           {client.googleAdsCustomerId ? (
-            <span className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200 font-medium">
-              <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+            <span className="badge badge-green" style={{ padding: "6px 14px", fontSize: 13 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
               Google Ads · {client.googleAdsCustomerId}
             </span>
           ) : (
-            <span className="text-sm px-4 py-2 rounded-full bg-slate-100 text-slate-400 border border-slate-200">
-              Google Ads not configured
-            </span>
+            <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }}>Google Ads not configured</span>
           )}
         </div>
       </div>
 
-      {/* Dashboard */}
+      {/* Dashboard tabs */}
       <ClientDashboard client={client} period={period} />
 
       {/* Recent Reports */}
       {client.reports.length > 0 && (
-        <div className="mt-10 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
-            <h2 className="text-sm font-semibold text-slate-800">Recent Reports</h2>
-            <Link
-              href={`/clients/${slug}/report/new`}
-              className="text-xs font-medium text-indigo-600 hover:text-indigo-700 transition"
-            >
+        <div className="card" style={{ marginTop: 48 }}>
+          <div className="card-header">
+            <h2 className="card-title">Recent Reports</h2>
+            <Link href={`/clients/${slug}/report/new`} className="btn btn-ghost btn-sm">
               + New report
             </Link>
           </div>
-          <div className="divide-y divide-slate-100">
+          <div>
             {client.reports.map((report) => (
               <Link
                 key={report.id}
                 href={`/reports/${report.id}`}
-                className="flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition group"
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 28px", borderBottom: "1px solid var(--border-subtle)", textDecoration: "none", transition: "background 0.15s" }}
+                onMouseEnter={e => (e.currentTarget.style.background = "var(--border-subtle)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "")}
               >
                 <div>
-                  <p className="text-sm font-semibold text-slate-800">{report.title}</p>
-                  <p className="text-xs text-slate-400">{report.period}</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{report.title}</p>
+                  <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>{report.period}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      report.status === "published"
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-slate-100 text-slate-500"
-                    }`}
-                  >
-                    {report.status}
-                  </span>
-                </div>
+                <span className={report.status === "published" ? "badge badge-green" : "badge badge-slate"}>
+                  {report.status}
+                </span>
               </Link>
             ))}
           </div>
