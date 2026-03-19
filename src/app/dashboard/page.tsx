@@ -90,9 +90,7 @@ export default async function DashboardPage() {
                 <Link
                   key={client.id}
                   href={`/clients/${client.slug}`}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 28px", borderBottom: "1px solid var(--border-subtle)", textDecoration: "none", transition: "background 0.15s" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "var(--border-subtle)")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "")}
+                  className="flex items-center justify-between px-7 py-4 border-b border-[var(--border-subtle)] no-underline transition-colors hover:bg-[var(--border-subtle)]"
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 10, background: "linear-gradient(135deg, #6366f1, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 16, fontWeight: 700 }}>
@@ -135,9 +133,7 @@ export default async function DashboardPage() {
                 <Link
                   key={report.id}
                   href={`/reports/${report.id}`}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 28px", borderBottom: "1px solid var(--border-subtle)", textDecoration: "none", transition: "background 0.15s" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "var(--border-subtle)")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "")}
+                  className="flex items-center justify-between px-7 py-4 border-b border-[var(--border-subtle)] no-underline transition-colors hover:bg-[var(--border-subtle)]"
                 >
                   <div>
                     <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{report.title}</p>
@@ -165,17 +161,11 @@ export default async function DashboardPage() {
         </div>
         <div className="card-body">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
-            <Link href="/clients/new" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 12, border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.15s" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "#a5b4fc"; (e.currentTarget as HTMLAnchorElement).style.background = "#eef2ff"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLAnchorElement).style.background = ""; }}
-            >
+            <Link href="/clients/new" className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-xl border border-[var(--border)] no-underline transition-all hover:border-[#a5b4fc] hover:bg-[#eef2ff]">
               <Users style={{ width: 20, height: 20, color: "#6366f1" }} />
               <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Add Client</span>
             </Link>
-            <Link href="/clients" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 12, border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.15s" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "#93c5fd"; (e.currentTarget as HTMLAnchorElement).style.background = "#eff6ff"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLAnchorElement).style.background = ""; }}
-            >
+            <Link href="/clients" className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-xl border border-[var(--border)] no-underline transition-all hover:border-[#93c5fd] hover:bg-[#eff6ff]">
               <FileText style={{ width: 20, height: 20, color: "#3b82f6" }} />
               <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>New Report</span>
             </Link>
