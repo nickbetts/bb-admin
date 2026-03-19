@@ -16,7 +16,7 @@ import {
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
-import { formatNumber, formatPercent, formatDuration, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
+import { formatNumber, formatCurrency, formatPercent, formatDuration, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import { Users, UserPlus, Eye, MousePointer, Clock, TrendingUp } from "lucide-react";
 
 interface GA4SectionProps {
@@ -75,6 +75,13 @@ const DEVICE_COLORS: Record<string, string> = {
   desktop: "#3b82f6",
   tablet: "#10b981",
 };
+
+function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "currency"): string | undefined {
+  if (prev == null) return undefined;
+  const d = curr - prev;
+  const sign = d >= 0 ? "+" : "\u2212";
+  return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
+}
 
 export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) {
   const [overview, setOverview] = useState<GA4Overview | null>(null);
@@ -192,6 +199,7 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
           value={formatNumber(overview.sessions)}
           subtitle="All sessions"
           change={prevOverview ? pctChange(overview.sessions, prevOverview.sessions) : undefined}
+          changeDiff={prevOverview ? diffStr(overview.sessions, prevOverview.sessions, "count") : undefined}
           icon={<Eye className="h-5 w-5" />}
           color="blue"
         />
@@ -200,6 +208,7 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
           value={formatNumber(overview.users)}
           subtitle="Active users"
           change={prevOverview ? pctChange(overview.users, prevOverview.users) : undefined}
+          changeDiff={prevOverview ? diffStr(overview.users, prevOverview.users, "count") : undefined}
           icon={<Users className="h-5 w-5" />}
           color="purple"
         />
@@ -208,6 +217,7 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
           value={formatNumber(overview.newUsers)}
           subtitle="First-time visitors"
           change={prevOverview ? pctChange(overview.newUsers, prevOverview.newUsers) : undefined}
+          changeDiff={prevOverview ? diffStr(overview.newUsers, prevOverview.newUsers, "count") : undefined}
           icon={<UserPlus className="h-5 w-5" />}
           color="green"
         />
@@ -216,6 +226,7 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
           value={formatNumber(overview.pageviews)}
           subtitle="Total page views"
           change={prevOverview ? pctChange(overview.pageviews, prevOverview.pageviews) : undefined}
+          changeDiff={prevOverview ? diffStr(overview.pageviews, prevOverview.pageviews, "count") : undefined}
           icon={<Eye className="h-5 w-5" />}
           color="blue"
         />

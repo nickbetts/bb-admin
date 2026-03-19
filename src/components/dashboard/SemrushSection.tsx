@@ -68,6 +68,13 @@ interface Competitor {
 
 const POSITION_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
 
+function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "currency"): string | undefined {
+  if (prev == null) return undefined;
+  const d = curr - prev;
+  const sign = d >= 0 ? "+" : "\u2212";
+  return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
+}
+
 export function SemrushSection({ domain, startDate, endDate }: SemrushSectionProps) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
@@ -153,6 +160,7 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
           value={formatNumber(overview.organicTraffic)}
           subtitle="Monthly visits"
           change={history.length >= 2 ? pctChange(history[history.length - 1].organicTraffic, history[history.length - 2].organicTraffic) : undefined}
+          changeDiff={history.length >= 2 ? diffStr(history[history.length - 1].organicTraffic, history[history.length - 2].organicTraffic, "count") : undefined}
           changeLabel="vs prev month"
           icon={<TrendingUp className="h-5 w-5" />}
           color="purple"
@@ -162,6 +170,7 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
           value={formatNumber(overview.organicKeywords)}
           subtitle="Ranking keywords"
           change={history.length >= 2 ? pctChange(history[history.length - 1].organicKeywords, history[history.length - 2].organicKeywords) : undefined}
+          changeDiff={history.length >= 2 ? diffStr(history[history.length - 1].organicKeywords, history[history.length - 2].organicKeywords, "count") : undefined}
           changeLabel="vs prev month"
           icon={<Search className="h-5 w-5" />}
           color="blue"

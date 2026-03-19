@@ -80,13 +80,13 @@ export function Delta({ current, previous, format = "none", invert = false }: De
   if (format === "count") {
     const abs = Math.abs(diff);
     const rendered = abs >= 1000 ? formatNumber(Math.round(abs)) : abs % 1 === 0 ? String(Math.round(abs)) : abs.toFixed(1);
-    numPart = `${isUp ? "+" : "-"}${rendered} · `;
+    numPart = `${isUp ? "+" : "-"}${rendered} `;
   } else if (format === "currency") {
-    numPart = `${isUp ? "+" : "-"}${formatCurrency(Math.abs(diff))} · `;
+    numPart = `${isUp ? "+" : "-"}${formatCurrency(Math.abs(diff))} `;
   }
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 11, fontWeight: 500, color, whiteSpace: "nowrap" }}>
-      {arrow} {numPart}{pctStr}
+    <span style={{ display: "block", fontSize: 11, fontWeight: 500, color, whiteSpace: "nowrap", marginTop: 2 }}>
+      {arrow} {numPart}({pctStr})
     </span>
   );
 }

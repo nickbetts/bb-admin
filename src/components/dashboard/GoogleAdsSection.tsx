@@ -95,6 +95,13 @@ function ctr(clicks: number, impressions: number) {
   return clicks / impressions;
 }
 
+function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "currency"): string | undefined {
+  if (prev == null) return undefined;
+  const d = curr - prev;
+  const sign = d >= 0 ? "+" : "\u2212";
+  return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
+}
+
 export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
@@ -205,21 +212,25 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
               title="Clicks"
               value={formatNumber(data.overview.clicks)}
               change={prevOverview ? pctChange(data.overview.clicks, prevOverview.clicks) : undefined}
+              changeDiff={prevOverview ? diffStr(data.overview.clicks, prevOverview.clicks, "count") : undefined}
             />
             <MetricCard
               title="Cost"
               value={formatCurrency(micros(data.overview.costMicros))}
               change={prevOverview ? pctChange(micros(data.overview.costMicros), micros(prevOverview.costMicros)) : undefined}
+              changeDiff={prevOverview ? diffStr(micros(data.overview.costMicros), micros(prevOverview.costMicros), "currency") : undefined}
             />
             <MetricCard
               title="Conversions"
               value={formatNumber(data.overview.conversions)}
               change={prevOverview ? pctChange(data.overview.conversions, prevOverview.conversions) : undefined}
+              changeDiff={prevOverview ? diffStr(data.overview.conversions, prevOverview.conversions, "count") : undefined}
             />
             <MetricCard
               title="Conv. Value"
               value={formatCurrency(data.overview.conversionsValue)}
               change={prevOverview ? pctChange(data.overview.conversionsValue, prevOverview.conversionsValue) : undefined}
+              changeDiff={prevOverview ? diffStr(data.overview.conversionsValue, prevOverview.conversionsValue, "currency") : undefined}
             />
             <MetricCard
               title="ROAS"
@@ -230,6 +241,7 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
               title="CPA"
               value={formatCurrency(cpa(data.overview.costMicros, data.overview.conversions))}
               change={prevOverview ? pctChange(cpa(prevOverview.costMicros, prevOverview.conversions), cpa(data.overview.costMicros, data.overview.conversions)) : undefined}
+              changeDiff={prevOverview ? diffStr(cpa(data.overview.costMicros, data.overview.conversions), cpa(prevOverview.costMicros, prevOverview.conversions), "currency") : undefined}
             />
           </div>
 
@@ -239,6 +251,7 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
               title="Impressions"
               value={formatNumber(data.overview.impressions)}
               change={prevOverview ? pctChange(data.overview.impressions, prevOverview.impressions) : undefined}
+              changeDiff={prevOverview ? diffStr(data.overview.impressions, prevOverview.impressions, "count") : undefined}
             />
             <MetricCard
               title="CTR"

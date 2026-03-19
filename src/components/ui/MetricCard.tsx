@@ -7,6 +7,7 @@ interface MetricCardProps {
   value: string | number;
   subtitle?: string;
   change?: number;
+  changeDiff?: string;
   changeLabel?: string;
   icon?: React.ReactNode;
   className?: string;
@@ -34,6 +35,7 @@ export function MetricCard({
   value,
   subtitle,
   change,
+  changeDiff,
   changeLabel,
   icon,
   className,
@@ -55,6 +57,11 @@ export function MetricCard({
           {change !== undefined && (
             <span className={cn("metric-badge", isPositive ? "up" : "down")}>
               {isPositive ? "+" : ""}{change.toFixed(1)}%
+            </span>
+          )}
+          {changeDiff !== undefined && change !== undefined && (
+            <span style={{ fontSize: 12, fontWeight: 600, color: isPositive ? "#065f46" : "#991b1b" }}>
+              {changeDiff}
             </span>
           )}
           {(changeLabel || subtitle) && (
