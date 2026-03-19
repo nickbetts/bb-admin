@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { getMetaAdsOverview, getMetaCampaigns, getMetaDailyData } from "@/lib/meta";
+import { getMetaAdsOverview, getMetaCampaigns, getMetaCampaignsEnriched, getMetaDailyData } from "@/lib/meta";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +42,10 @@ export async function GET(request: NextRequest) {
       case "campaigns":
         return NextResponse.json(
           await getMetaCampaigns(client.metaAccountId, accessToken, startDate, endDate)
+        );
+      case "campaigns-enriched":
+        return NextResponse.json(
+          await getMetaCampaignsEnriched(client.metaAccountId, accessToken, startDate, endDate)
         );
       case "daily":
         return NextResponse.json(

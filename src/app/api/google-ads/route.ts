@@ -3,9 +3,11 @@ import { getSession } from "@/lib/auth";
 import {
   getGoogleAdsOverview,
   getGoogleAdsCampaigns,
+  getGoogleAdsCampaignsEnriched,
   getGoogleAdsAdGroups,
   getGoogleAdsDailyData,
   getGoogleAdsSearchTerms,
+  getGoogleAdsLandingPages,
 } from "@/lib/google-ads";
 
 export const dynamic = "force-dynamic";
@@ -33,15 +35,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [overview, campaigns, adGroups, daily, searchTerms] = await Promise.all([
-      getGoogleAdsOverview(customerId, startDate, endDate),
-      getGoogleAdsCampaigns(customerId, startDate, endDate),
-      getGoogleAdsAdGroups(customerId, startDate, endDate),
-      getGoogleAdsDailyData(customerId, startDate, endDate),
-      getGoogleAdsSearchTerms(customerId, startDate, endDate),
-    ]);
+    const [overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages] =
+      await Promise.all([
+        getGoogleAdsOverview(customerId, startDate, endDate),
+        getGoogleAdsCampaigns(customerId, startDate, endDate),
+        getGoogleAdsCampaignsEnriched(customerId, startDate, endDate),
+        getGoogleAdsAdGroups(customerId, startDate, endDate),
+        getGoogleAdsDailyData(customerId, startDate, endDate),
+        getGoogleAdsSearchTerms(customerId, startDate, endDate),
+        getGoogleAdsLandingPages(customerId, startDate, endDate),
+      ]);
 
-    return NextResponse.json({ overview, campaigns, adGroups, daily, searchTerms });
+    return NextResponse.json({ overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Google Ads data error:", message);

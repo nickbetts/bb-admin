@@ -371,6 +371,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             {section.sectionType === "paid_social" && report.client.metaAccountId && (
               <MetaSection
                 clientId={report.client.id}
+                clientName={report.client.name}
                 startDate={startDate}
                 endDate={endDate}
               />

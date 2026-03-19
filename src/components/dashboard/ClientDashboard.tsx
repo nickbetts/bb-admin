@@ -150,7 +150,7 @@ export function ClientDashboard({ client, period: initialPeriod }: ClientDashboa
       ) : null}
 
       {activeTab === "paid" && client.metaAccountId ? (
-        <MetaSection clientId={client.id} startDate={startDate} endDate={endDate} />
+        <MetaSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} />
       ) : activeTab === "paid" ? (
         <NotConfigured
           name="Paid Social (Meta)"
@@ -160,7 +160,7 @@ export function ClientDashboard({ client, period: initialPeriod }: ClientDashboa
       ) : null}
 
       {activeTab === "googleads" && client.googleAdsCustomerId ? (
-        <GoogleAdsSection customerId={client.googleAdsCustomerId} startDate={startDate} endDate={endDate} />
+        <GoogleAdsSection customerId={client.googleAdsCustomerId} clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} />
       ) : activeTab === "googleads" ? (
         <NotConfigured
           name="Paid Search (Google Ads)"

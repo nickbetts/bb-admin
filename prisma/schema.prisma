@@ -54,6 +54,7 @@ model Client {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   reports             Report[]
+  snapshots           MetricSnapshot[]
 }
 
 model Report {
@@ -98,4 +99,21 @@ model GoogleConnection {
   email        String
   refreshToken String
   createdAt    DateTime @default(now())
+}
+
+// Stores periodic metric snapshots for each client/section to enable
+// historical trending, anomaly detection over multiple periods, and
+// a lightweight change-log experience.
+model MetricSnapshot {
+  id          String   @id @default(cuid())
+  clientId    String
+  sectionType String   // "googleads" | "meta" | "ga4" | "searchconsole" | "seo"
+  periodStart String   // ISO date e.g. "2025-03-01"
+  periodEnd   String   // ISO date e.g. "2025-03-31"
+  metrics     String   // JSON blob of key→number metrics
+  campaignData String? // JSON blob of per-campaign metrics array
+  createdAt   DateTime @default(now())
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, sectionType, periodStart, periodEnd])
 }

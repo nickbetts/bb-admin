@@ -20,6 +20,7 @@ import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
 interface MetaSectionProps {
   clientId: string;
+  clientName?: string;
   startDate: string;
   endDate: string;
 }
@@ -47,6 +48,14 @@ interface Campaign {
   roas: number;
 }
 
+interface CampaignEnriched extends Campaign {
+  dailyBudget: number | null;
+  lifetimeBudget: number | null;
+  bidStrategy: string;
+  frequency: number;
+  objective: string;
+}
+
 interface DailyData {
   date: string;
   spend: number;
@@ -55,9 +64,10 @@ interface DailyData {
   conversions: number;
 }
 
-export function MetaSection({ clientId, startDate, endDate }: MetaSectionProps) {
+export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSectionProps) {
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [campaignsEnriched, setCampaignsEnriched] = useState<CampaignEnriched[]>([]);
   const [daily, setDaily] = useState<DailyData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,9 +81,10 @@ export function MetaSection({ clientId, startDate, endDate }: MetaSectionProps) 
       try {
         const base = `/api/meta?clientId=${encodeURIComponent(clientId)}&startDate=${startDate}&endDate=${endDate}`;
 
-        const [ovRes, campRes, dailyRes] = await Promise.all([
+        const [ovRes, campRes, enrichedRes, dailyRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=campaigns`, { signal: controller.signal }),
+          fetch(`${base}&type=campaigns-enriched`, { signal: controller.signal }),
           fetch(`${base}&type=daily`, { signal: controller.signal }),
         ]);
 
@@ -82,14 +93,16 @@ export function MetaSection({ clientId, startDate, endDate }: MetaSectionProps) 
           throw new Error(err.error ?? "Failed to fetch Meta Ads data");
         }
 
-        const [ov, camp, d] = await Promise.all([
+        const [ov, camp, enriched, d] = await Promise.all([
           ovRes.json(),
           campRes.json(),
+          enrichedRes.ok ? enrichedRes.json() : Promise.resolve([]),
           dailyRes.json(),
         ]);
 
         setOverview(ov);
         setCampaigns(Array.isArray(camp) ? camp : []);
+        setCampaignsEnriched(Array.isArray(enriched) ? enriched : []);
         setDaily(Array.isArray(d) ? d : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
@@ -101,6 +114,32 @@ export function MetaSection({ clientId, startDate, endDate }: MetaSectionProps) 
     fetchData();
     return () => controller.abort();
   }, [clientId, startDate, endDate]);
+
+  // Auto-save a metric snapshot for historical trending (non-critical, fire-and-forget)
+  useEffect(() => {
+    if (!overview) return;
+    fetch("/api/ai/snapshots", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientId,
+        sectionType: "meta",
+        periodStart: startDate,
+        periodEnd: endDate,
+        metrics: {
+          totalSpend: overview.totalSpend,
+          totalImpressions: overview.totalImpressions,
+          totalClicks: overview.totalClicks,
+          avgCtr: overview.avgCtr,
+          avgCpc: overview.avgCpc,
+          avgCpm: overview.avgCpm,
+          totalConversions: overview.totalConversions,
+          avgRoas: overview.avgRoas,
+        },
+        campaignData: campaignsEnriched.length ? campaignsEnriched : campaigns,
+      }),
+    }).catch((err) => { console.debug("Snapshot save failed (non-critical):", err); });
+  }, [clientId, overview, campaignsEnriched, campaigns, startDate, endDate]);
 
   return (
     <div className="space-y-8">
@@ -272,7 +311,13 @@ export function MetaSection({ clientId, startDate, endDate }: MetaSectionProps) 
             avgCpm: overview.avgCpm,
             totalConversions: overview.totalConversions,
             avgRoas: overview.avgRoas,
+            avgFrequency: campaignsEnriched.length > 0
+              ? campaignsEnriched.reduce((s, c) => s + (c.frequency ?? 0), 0) / campaignsEnriched.length
+              : 0,
           }}
+          campaignData={campaignsEnriched.length ? campaignsEnriched as unknown as Record<string, unknown>[] : undefined}
+          clientId={clientId}
+          clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
         />
       )}

@@ -140,6 +140,26 @@ export interface GoogleAdsAdGroup {
   conversionsValue: number;
 }
 
+/** Enriched campaign data including budget, bidding strategy, and impression share */
+export interface GoogleAdsCampaignEnriched extends GoogleAdsCampaign {
+  channelType: string;               // SEARCH | DISPLAY | SHOPPING | PERFORMANCE_MAX etc.
+  biddingStrategyType: string;       // TARGET_CPA | TARGET_ROAS | ENHANCED_CPC etc.
+  dailyBudgetMicros: number;         // Daily budget in micros
+  searchImpressionShare: number | null;           // 0–1 (null for non-search campaigns)
+  searchBudgetLostImpressionShare: number | null; // 0–1 share lost due to budget
+  searchRankLostImpressionShare: number | null;   // 0–1 share lost due to ad rank
+  absoluteTopImpressionPct: number | null;        // 0–1 % of impressions as absolute #1
+  topImpressionPct: number | null;                // 0–1 % of impressions in top 3
+}
+
+/** A unique landing page URL observed in ads during the period */
+export interface GoogleAdsLandingPage {
+  url: string;
+  clicks: number;
+  impressions: number;
+  conversions: number;
+}
+
 export interface GoogleAdsDailyPoint {
   date: string;
   clicks: number;
@@ -229,6 +249,104 @@ export async function getGoogleAdsCampaigns(
     conversions: Number(row.metrics?.conversions ?? 0),
     conversionsValue: Number(row.metrics?.conversionsValue ?? 0),
   }));
+}
+
+export async function getGoogleAdsCampaignsEnriched(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsCampaignEnriched[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  // Note: search impression share fields are only populated for Search/Shopping campaigns;
+  // they will be null/undefined for Display/Performance Max — handled gracefully below.
+  const query = `
+    SELECT
+      campaign.id,
+      campaign.name,
+      campaign.status,
+      campaign.advertising_channel_type,
+      campaign.bidding_strategy_type,
+      campaign_budget.amount_micros,
+      metrics.clicks,
+      metrics.cost_micros,
+      metrics.impressions,
+      metrics.conversions,
+      metrics.conversions_value,
+      metrics.search_impression_share,
+      metrics.search_budget_lost_impression_share,
+      metrics.search_rank_lost_impression_share,
+      metrics.absolute_top_impression_percentage,
+      metrics.top_impression_percentage
+    FROM campaign
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+      AND campaign.status != 'REMOVED'
+    ORDER BY metrics.cost_micros DESC
+    LIMIT 20
+  `;
+
+  const data = await searchGoogleAds(customerId, query, token, mccId);
+
+  type GadsRow = Record<string, Record<string, unknown>>;
+  const parseShare = (v: unknown): number | null => {
+    const n = Number(v);
+    return isNaN(n) || n < 0 ? null : n;
+  };
+  return (data.results ?? []).map((row: GadsRow) => {
+    const m = row.metrics ?? {};
+    return {
+      id: String(row.campaign?.id ?? ""),
+      name: String(row.campaign?.name ?? ""),
+      status: String(row.campaign?.status ?? ""),
+      channelType: String(row.campaign?.advertisingChannelType ?? ""),
+      biddingStrategyType: String(row.campaign?.biddingStrategyType ?? ""),
+      dailyBudgetMicros: Number(row.campaignBudget?.amountMicros ?? 0),
+      clicks: Number(m.clicks ?? 0),
+      costMicros: Number(m.costMicros ?? 0),
+      impressions: Number(m.impressions ?? 0),
+      conversions: Number(m.conversions ?? 0),
+      conversionsValue: Number(m.conversionsValue ?? 0),
+      searchImpressionShare: parseShare(m.searchImpressionShare),
+      searchBudgetLostImpressionShare: parseShare(m.searchBudgetLostImpressionShare),
+      searchRankLostImpressionShare: parseShare(m.searchRankLostImpressionShare),
+      absoluteTopImpressionPct: parseShare(m.absoluteTopImpressionPercentage),
+      topImpressionPct: parseShare(m.topImpressionPercentage),
+    };
+  });
+}
+
+export async function getGoogleAdsLandingPages(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsLandingPage[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      landing_page_view.unexpanded_final_url,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.conversions
+    FROM landing_page_view
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+    ORDER BY metrics.clicks DESC
+    LIMIT 20
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    return (data.results ?? []).map((row: GadsRow) => ({
+      url: String(row.landingPageView?.unexpandedFinalUrl ?? ""),
+      clicks: Number(row.metrics?.clicks ?? 0),
+      impressions: Number(row.metrics?.impressions ?? 0),
+      conversions: Number(row.metrics?.conversions ?? 0),
+    }));
+  } catch {
+    // landing_page_view may not be available for all account types; fail gracefully
+    return [];
+  }
 }
 
 export async function getGoogleAdsAdGroups(
