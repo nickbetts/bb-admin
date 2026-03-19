@@ -33,10 +33,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
     <div className="page">
       {/* Back link + header */}
       <div style={{ marginBottom: 40 }}>
-        <Link href="/clients" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-3)", fontWeight: 500, textDecoration: "none", marginBottom: 28, transition: "color 0.15s" }}
-          onMouseEnter={e => (e.currentTarget.style.color = "var(--text)")}
-          onMouseLeave={e => (e.currentTarget.style.color = "var(--text-3)")}
-        >
+        <Link href="/clients" className="inline-flex items-center gap-1.5 text-[13px] font-medium no-underline mb-7 transition-colors text-[var(--text-3)] hover:text-[var(--text)]">
           <ArrowLeft style={{ width: 14, height: 14 }} />
           All clients
         </Link>
@@ -122,9 +119,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
               <Link
                 key={report.id}
                 href={`/reports/${report.id}`}
-                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 28px", borderBottom: "1px solid var(--border-subtle)", textDecoration: "none", transition: "background 0.15s" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "var(--border-subtle)")}
-                onMouseLeave={e => (e.currentTarget.style.background = "")}
+                className="flex items-center justify-between px-7 py-4 border-b border-[var(--border-subtle)] no-underline transition-colors hover:bg-[var(--border-subtle)]"
               >
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{report.title}</p>

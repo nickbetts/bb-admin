@@ -74,10 +74,7 @@ export default async function ClientsPage() {
             </Link>
           ))}
 
-          <Link href="/clients/new" style={{ borderRadius: "var(--r-lg)", border: "2px dashed var(--border)", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, textDecoration: "none", transition: "all 0.2s", minHeight: 180 }}
-            onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "#a5b4fc"; (e.currentTarget as HTMLAnchorElement).style.background = "#eef2ff"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLAnchorElement).style.background = ""; }}
-          >
+          <Link href="/clients/new" className="flex flex-col items-center justify-center gap-3 rounded-[var(--r-lg)] border-2 border-dashed border-[var(--border)] p-6 no-underline transition-all min-h-[180px] hover:border-[#a5b4fc] hover:bg-[#eef2ff]">
             <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Plus style={{ width: 20, height: 20, color: "var(--text-3)" }} />
             </div>
