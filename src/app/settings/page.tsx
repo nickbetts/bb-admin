@@ -229,10 +229,10 @@ function SettingsInner() {
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <svg style={{ width: 16, height: 16, color: "#f59e0b", flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
                 </svg>
                 <span style={{ fontSize: 13, fontWeight: 600, color: "#92400e" }}>
-                  Before connecting — one-time setup required per Google Workspace org
+                  Got a &ldquo;This app is blocked&rdquo; error? — only applies to Google Workspace accounts
                 </span>
               </div>
               <svg
@@ -246,9 +246,12 @@ function SettingsInner() {
             {prereqOpen && (
               <div style={{ padding: "12px 16px 16px", borderTop: "1px solid #fcd34d", display: "flex", flexDirection: "column", gap: 12 }}>
                 <p style={{ fontSize: 13, color: "#78350f" }}>
-                  If the account you&apos;re connecting is a Google Workspace account (e.g.{" "}
-                  <code style={{ fontFamily: "monospace", fontSize: 11, background: "#fef3c7", padding: "1px 5px", borderRadius: 4 }}>name@company.com</code>),
-                  the Workspace admin needs to trust this app once. It takes about 2 minutes.
+                  <strong>Personal Gmail accounts (@gmail.com) connect straight away</strong> — just click Connect account above.
+                </p>
+                <p style={{ fontSize: 13, color: "#78350f" }}>
+                  If the account is a <strong>Google Workspace account</strong> (e.g.{" "}
+                  <code style={{ fontFamily: "monospace", fontSize: 11, background: "#fef3c7", padding: "1px 5px", borderRadius: 4 }}>name@company.com</code>)
+                  {" "}and you see a <em>&ldquo;This app is blocked&rdquo;</em> error, the Workspace admin needs to trust this app once. It takes about 2 minutes:
                 </p>
 
                 <ol style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
