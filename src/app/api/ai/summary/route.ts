@@ -178,6 +178,26 @@ function detectGoogleAdsCampaignAnomalies(
         context: c.name,
       });
     }
+
+    // Auction pressure: budget constrained + low impression share together
+    if (
+      c.searchBudgetLostImpressionShare != null &&
+      c.searchBudgetLostImpressionShare > 0.2 &&
+      c.searchImpressionShare != null &&
+      c.searchImpressionShare < 0.5 &&
+      (c.channelType === "SEARCH" || !c.channelType)
+    ) {
+      const budgetPct = Math.round(c.searchBudgetLostImpressionShare * 100);
+      const isPct = Math.round(c.searchImpressionShare * 100);
+      anomalies.push({
+        metric: "Auction Competitiveness",
+        value: `IS: ${isPct}%`,
+        severity: "high",
+        direction: "down",
+        description: `"${c.name}" is budget-constrained (${budgetPct}% IS lost to budget) with only ${isPct}% impression share — increasing budget could significantly boost reach`,
+        context: c.name,
+      });
+    }
   }
 
   return anomalies;
@@ -187,14 +207,14 @@ function detectMetaCampaignAnomalies(campaigns: MetaCampaignContext[]): Anomaly[
   const anomalies: Anomaly[] = [];
 
   for (const c of campaigns) {
-    if (c.frequency != null && c.frequency > 5) {
-      const severity: "high" | "medium" | "low" = c.frequency >= 8 ? "high" : "medium";
+    if (c.frequency != null && c.frequency > 3.5) {
+      const severity: "high" | "medium" | "low" = c.frequency >= 7 ? "high" : c.frequency >= 5 ? "medium" : "low";
       anomalies.push({
         metric: "Ad Frequency",
         value: c.frequency.toFixed(1),
         severity,
         direction: "up",
-        description: `"${c.name}" has a frequency of ${c.frequency.toFixed(1)}x — risk of ad fatigue reducing engagement`,
+        description: `"${c.name}" has a frequency of ${c.frequency.toFixed(1)}x — ${c.frequency >= 5 ? "high risk of ad fatigue; creative refresh recommended" : "audience is seeing ads repeatedly; monitor CTR for fatigue signs"}`,
         context: c.name,
       });
     }
@@ -206,6 +226,22 @@ function detectMetaCampaignAnomalies(campaigns: MetaCampaignContext[]): Anomaly[
         severity: "high",
         direction: "down",
         description: `"${c.name}" ROAS of ${c.roas.toFixed(2)}x means spend exceeds revenue — immediate review recommended`,
+        context: c.name,
+      });
+    }
+
+    // Creative fatigue correlation: high frequency + low CTR
+    if (
+      c.frequency != null && c.frequency > 3.5 &&
+      c.ctr != null && c.ctr < 0.5 &&
+      c.spend > 50
+    ) {
+      anomalies.push({
+        metric: "Creative Fatigue",
+        value: `${c.frequency.toFixed(1)}x freq, ${c.ctr.toFixed(2)}% CTR`,
+        severity: "medium",
+        direction: "down",
+        description: `"${c.name}" shows creative fatigue signals: ${c.frequency.toFixed(1)}x frequency with ${c.ctr.toFixed(2)}% CTR — consider refreshing ad creatives or expanding the audience`,
         context: c.name,
       });
     }
@@ -227,7 +263,7 @@ const SECTION_CONFIGS: Record<
 > = {
   ga4: {
     name: "Web Analytics (GA4)",
-    higherIsBetter: ["sessions", "users", "newUsers", "pageviews", "avgSessionDuration", "conversionRate"],
+    higherIsBetter: ["sessions", "users", "newUsers", "pageviews", "avgSessionDuration", "conversionRate", "engagedSessions", "engagementRate"],
     lowerIsBetter: ["bounceRate"],
     metricLabels: {
       sessions: "Sessions",
@@ -237,11 +273,13 @@ const SECTION_CONFIGS: Record<
       bounceRate: "Bounce Rate",
       avgSessionDuration: "Avg Session Duration",
       conversionRate: "Conversion Rate",
+      engagedSessions: "Engaged Sessions",
+      engagementRate: "Engagement Rate",
     },
   },
   googleads: {
     name: "Google Ads",
-    higherIsBetter: ["clicks", "conversions", "conversionValue", "roas", "ctr", "searchImpressionShare"],
+    higherIsBetter: ["clicks", "conversions", "conversionValue", "roas", "ctr", "searchImpressionShare", "qualityScore"],
     lowerIsBetter: ["cpc", "cpa", "searchBudgetLostIS", "searchRankLostIS"],
     metricLabels: {
       clicks: "Clicks",
@@ -256,6 +294,7 @@ const SECTION_CONFIGS: Record<
       searchImpressionShare: "Search Impression Share",
       searchBudgetLostIS: "IS Lost (Budget)",
       searchRankLostIS: "IS Lost (Rank)",
+      qualityScore: "Avg Quality Score",
     },
   },
   meta: {
@@ -359,10 +398,14 @@ function buildCampaignSummaryText(
 
 function buildLandingPageText(pages: LandingPageContext[]): string {
   if (!pages.length) return "";
-  const rows = pages.slice(0, 8).map(
-    (p) =>
-      `  • ${p.url} — ${p.clicks} clicks${p.conversions != null ? `, ${p.conversions} conversions` : ""}`
-  );
+  const rows = pages.slice(0, 8).map((p) => {
+    const cvr =
+      p.conversions != null && p.clicks > 0
+        ? ` (${((p.conversions / p.clicks) * 100).toFixed(1)}% CVR)`
+        : "";
+    const convPart = p.conversions != null ? `, ${p.conversions} conversions${cvr}` : "";
+    return `  • ${p.url} — ${p.clicks} clicks${convPart}`;
+  });
   return `Top landing pages:\n${rows.join("\n")}`;
 }
 
@@ -388,6 +431,32 @@ function buildHistoricalTrendText(
   });
 
   return `Historical trend (last ${recent.length} periods):\n${lines.join("\n")}`;
+}
+
+function detectLandingPageAnomalies(pages: LandingPageContext[]): Anomaly[] {
+  const anomalies: Anomaly[] = [];
+  for (const page of pages) {
+    if (page.clicks >= 100 && (page.conversions ?? 0) === 0) {
+      anomalies.push({
+        metric: "Landing Page — Zero Conversions",
+        value: `${page.clicks} clicks`,
+        severity: "high",
+        direction: "down",
+        description: `${page.url} received ${page.clicks} clicks but 0 conversions — check landing page relevance, load speed, or form/checkout issues`,
+        context: page.url,
+      });
+    } else if (page.clicks >= 50 && page.conversions != null && page.conversions === 0) {
+      anomalies.push({
+        metric: "Landing Page — Zero Conversions",
+        value: `${page.clicks} clicks`,
+        severity: "medium",
+        direction: "down",
+        description: `${page.url} received ${page.clicks} clicks with 0 conversions — review page experience and call-to-action`,
+        context: page.url,
+      });
+    }
+  }
+  return anomalies;
 }
 
 // ─── POST handler ──────────────────────────────────────────────────────────────
@@ -457,7 +526,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const allAnomalies = [...accountLevelAnomalies, ...campaignAnomalies].sort((a, b) => {
+    // Landing page anomalies (high click volume, zero conversions)
+    const landingPageAnomalies = landingPages?.length
+      ? detectLandingPageAnomalies(landingPages)
+      : [];
+
+    const allAnomalies = [...accountLevelAnomalies, ...campaignAnomalies, ...landingPageAnomalies].sort((a, b) => {
       const sev: Record<string, number> = { high: 3, medium: 2, low: 1 };
       return (sev[b.severity] ?? 0) - (sev[a.severity] ?? 0);
     });
@@ -496,8 +570,10 @@ export async function POST(request: NextRequest) {
 You write incisive, data-driven performance summaries for client reports. Your audience is experienced clients who want frank, actionable analysis — not vague reassurances.
 Be specific with numbers. Use British English. Prioritise insights that drive decisions.
 Where anomalies exist, explain likely causes and concrete remediation steps.
-For paid media (Google Ads, Meta Ads), factor in bid strategies, budget constraints, impression share, campaign-level performance and ad fatigue.
-For landing pages, comment on URL structure/relevance and any patterns that suggest quality or relevance issues.
+For paid media (Google Ads, Meta Ads), factor in bid strategies, budget constraints, impression share, quality scores, campaign-level performance, and ad fatigue.
+For landing pages, flag pages with high traffic but no conversions as a priority issue, and comment on URL structure/relevance.
+Look for cross-metric patterns: e.g. stable clicks + falling conversions points to a landing page or tracking issue; rising CPCs + falling impression share suggests competitive pressure.
+Distinguish between symptoms and root causes. Prioritise the 1-2 issues that will have the biggest commercial impact.
 Keep summaries punchy: aim for clarity over length.`;
 
     const contextParts = [
@@ -519,8 +595,8 @@ ${contextParts.join("\n")}
 
 Please provide:
 1. A 3-4 sentence executive summary covering overall performance, standout wins, and key concerns
-2. 4-6 key insights (specific, data-backed observations — reference campaign names, impression share figures, budget utilisation, frequency, landing pages where relevant)
-3. 3-4 prioritised, actionable recommendations (with specific suggested changes — e.g. bid adjustments, budget reallocation, creative refresh, landing page improvements)
+2. 4-6 key insights (specific, data-backed observations — reference campaign names, impression share figures, budget utilisation, quality scores, frequency, landing page CVR where relevant)
+3. 3-4 prioritised, actionable recommendations (with specific suggested changes — e.g. bid adjustments, budget reallocation, creative refresh, landing page improvements, quality score fixes)
 
 Respond in JSON format:
 {
