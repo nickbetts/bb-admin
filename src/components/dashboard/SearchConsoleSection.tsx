@@ -18,6 +18,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
 import { formatNumber, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import { MousePointer, Eye, TrendingUp, Search } from "lucide-react";
+import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
 interface SearchConsoleSectionProps {
   siteUrl: string;
@@ -463,6 +464,26 @@ export function SearchConsoleSection({
             </SectionCard>
           )}
         </div>
+      )}
+
+      {/* AI Insights */}
+      {!loading && !error && overview && (
+        <AiInsightsPanel
+          sectionType="searchconsole"
+          metrics={{
+            clicks: overview.clicks,
+            impressions: overview.impressions,
+            ctr: overview.ctr,
+            position: overview.position,
+          }}
+          previousMetrics={prevOverview ? {
+            clicks: prevOverview.clicks,
+            impressions: prevOverview.impressions,
+            ctr: prevOverview.ctr,
+            position: prevOverview.position,
+          } : undefined}
+          dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+        />
       )}
     </div>
   );

@@ -18,6 +18,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
 import { formatNumber, formatCurrency, formatPercent, formatDuration, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import { Users, UserPlus, Eye, MousePointer, Clock, TrendingUp } from "lucide-react";
+import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
 interface GA4SectionProps {
   propertyId: string;
@@ -458,6 +459,32 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
             </SectionCard>
           )}
         </div>
+      )}
+
+      {/* AI Insights */}
+      {!loading && !error && overview && (
+        <AiInsightsPanel
+          sectionType="ga4"
+          metrics={{
+            sessions: overview.sessions,
+            users: overview.users,
+            newUsers: overview.newUsers,
+            pageviews: overview.pageviews,
+            bounceRate: overview.bounceRate,
+            avgSessionDuration: overview.avgSessionDuration,
+            conversionRate: overview.conversionRate,
+          }}
+          previousMetrics={prevOverview ? {
+            sessions: prevOverview.sessions,
+            users: prevOverview.users,
+            newUsers: prevOverview.newUsers,
+            pageviews: prevOverview.pageviews,
+            bounceRate: prevOverview.bounceRate,
+            avgSessionDuration: prevOverview.avgSessionDuration,
+            conversionRate: prevOverview.conversionRate,
+          } : undefined}
+          dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+        />
       )}
         </>
       )}

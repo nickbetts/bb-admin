@@ -13,6 +13,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
 interface GoogleAdsOverview {
   clicks: number;
@@ -115,33 +116,36 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    setLoading(true);
-    setError("");
-    setData(null);
-    setPrevOverview(null);
-    setPrevData(null);
+    async function load() {
+      setLoading(true);
+      setError("");
+      setData(null);
+      setPrevOverview(null);
+      setPrevData(null);
 
-    const params = new URLSearchParams({ customerId, startDate, endDate });
-    const prev = getPreviousPeriod(startDate, endDate);
-    const prevParams = new URLSearchParams({ customerId, startDate: prev.startDate, endDate: prev.endDate });
+      const params = new URLSearchParams({ customerId, startDate, endDate });
+      const prev = getPreviousPeriod(startDate, endDate);
+      const prevParams = new URLSearchParams({ customerId, startDate: prev.startDate, endDate: prev.endDate });
 
-    Promise.all([
-      fetch(`/api/google-ads?${params}`, { signal: controller.signal, cache: "no-store" }).then((r) => r.json()),
-      fetch(`/api/google-ads?${prevParams}`, { signal: controller.signal, cache: "no-store" }).then((r) => r.json()),
-    ])
-      .then(([json, prevJson]) => {
+      try {
+        const [json, prevJson] = await Promise.all([
+          fetch(`/api/google-ads?${params}`, { signal: controller.signal, cache: "no-store" }).then((r) => r.json()),
+          fetch(`/api/google-ads?${prevParams}`, { signal: controller.signal, cache: "no-store" }).then((r) => r.json()),
+        ]);
         if (json.error) setError(json.error);
         else setData(json);
         if (!prevJson?.error && prevJson?.overview) {
           setPrevOverview(prevJson.overview);
           setPrevData(prevJson);
         }
-      })
-      .catch((err) => {
-        if (err.name !== "AbortError") setError("Failed to load Google Ads data");
-      })
-      .finally(() => setLoading(false));
+      } catch (err) {
+        if (err instanceof Error && err.name !== "AbortError") setError("Failed to load Google Ads data");
+      } finally {
+        setLoading(false);
+      }
+    }
 
+    load();
     return () => controller.abort();
   }, [customerId, startDate, endDate]);
 
@@ -534,6 +538,38 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
             </div>
           )}
         </>
+      )}
+
+      {/* AI Insights */}
+      {!loading && !error && data?.overview && (
+        <AiInsightsPanel
+          sectionType="googleads"
+          metrics={{
+            clicks: data.overview.clicks,
+            impressions: data.overview.impressions,
+            cost: micros(data.overview.costMicros),
+            conversions: data.overview.conversions,
+            conversionValue: data.overview.conversionsValue,
+            ctr: ctr(data.overview.clicks, data.overview.impressions),
+            roas: roas(data.overview.conversionsValue, data.overview.costMicros),
+            cpa: data.overview.conversions > 0
+              ? micros(data.overview.costMicros) / data.overview.conversions
+              : 0,
+          }}
+          previousMetrics={prevOverview ? {
+            clicks: prevOverview.clicks,
+            impressions: prevOverview.impressions,
+            cost: micros(prevOverview.costMicros),
+            conversions: prevOverview.conversions,
+            conversionValue: prevOverview.conversionsValue,
+            ctr: ctr(prevOverview.clicks, prevOverview.impressions),
+            roas: roas(prevOverview.conversionsValue, prevOverview.costMicros),
+            cpa: prevOverview.conversions > 0
+              ? micros(prevOverview.costMicros) / prevOverview.conversions
+              : 0,
+          } : undefined}
+          dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+        />
       )}
     </div>
   );
