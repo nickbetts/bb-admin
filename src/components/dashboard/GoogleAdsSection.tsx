@@ -34,6 +34,17 @@ interface GoogleAdsCampaign {
   conversionsValue: number;
 }
 
+interface GoogleAdsCampaignEnriched extends GoogleAdsCampaign {
+  channelType: string;
+  biddingStrategyType: string;
+  dailyBudgetMicros: number;
+  searchImpressionShare: number | null;
+  searchBudgetLostImpressionShare: number | null;
+  searchRankLostImpressionShare: number | null;
+  absoluteTopImpressionPct: number | null;
+  topImpressionPct: number | null;
+}
+
 interface GoogleAdsAdGroup {
   id: string;
   name: string;
@@ -62,16 +73,27 @@ interface GoogleAdsSearchTerm {
   conversionsValue: number;
 }
 
+interface GoogleAdsLandingPage {
+  url: string;
+  clicks: number;
+  impressions: number;
+  conversions: number;
+}
+
 interface GoogleAdsData {
   overview: GoogleAdsOverview;
   campaigns: GoogleAdsCampaign[];
+  campaignsEnriched: GoogleAdsCampaignEnriched[];
   adGroups: GoogleAdsAdGroup[];
   daily: GoogleAdsDailyPoint[];
   searchTerms: GoogleAdsSearchTerm[];
+  landingPages: GoogleAdsLandingPage[];
 }
 
 interface Props {
   customerId: string;
+  clientId?: string;
+  clientName?: string;
   startDate: string;
   endDate: string;
 }
@@ -103,7 +125,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
+export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate }: Props) {
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
   const [prevOverview, setPrevOverview] = useState<GoogleAdsOverview | null>(null);
@@ -148,6 +170,33 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
     load();
     return () => controller.abort();
   }, [customerId, startDate, endDate]);
+
+  // Auto-save a metric snapshot for historical trending (non-critical, fire-and-forget)
+  useEffect(() => {
+    if (!clientId || !data?.overview) return;
+    const overview = data.overview;
+    fetch("/api/ai/snapshots", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientId,
+        sectionType: "googleads",
+        periodStart: startDate,
+        periodEnd: endDate,
+        metrics: {
+          clicks: overview.clicks,
+          impressions: overview.impressions,
+          cost: micros(overview.costMicros),
+          conversions: overview.conversions,
+          conversionValue: overview.conversionsValue,
+          ctr: ctr(overview.clicks, overview.impressions),
+          roas: roas(overview.conversionsValue, overview.costMicros),
+          cpa: overview.conversions > 0 ? micros(overview.costMicros) / overview.conversions : 0,
+        },
+        campaignData: data.campaignsEnriched?.length ? data.campaignsEnriched : data.campaigns,
+      }),
+    }).catch((err) => { console.debug("Snapshot save failed (non-critical):", err); });
+  }, [clientId, data, startDate, endDate]);
 
   const chartData = (data?.daily ?? []).map((d) => ({
     date: d.date.slice(5), // MM-DD
@@ -568,6 +617,10 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
               ? micros(prevOverview.costMicros) / prevOverview.conversions
               : 0,
           } : undefined}
+          campaignData={data.campaignsEnriched?.length ? data.campaignsEnriched as unknown as Record<string, unknown>[] : undefined}
+          landingPages={data.landingPages?.length ? data.landingPages : undefined}
+          clientId={clientId}
+          clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
         />
       )}

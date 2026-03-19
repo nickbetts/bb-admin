@@ -12,6 +12,7 @@ interface Anomaly {
   severity: "high" | "medium" | "low";
   direction: "up" | "down";
   description: string;
+  context?: string; // e.g. campaign name for campaign-level anomalies
 }
 
 interface AiSummaryResponse {
@@ -20,6 +21,61 @@ interface AiSummaryResponse {
   insights: string[];
   recommendations: string[];
 }
+
+// ─── Campaign-level data shapes ────────────────────────────────────────────────
+
+interface GoogleAdsCampaignContext {
+  id?: string;
+  name: string;
+  status?: string;
+  channelType?: string;
+  biddingStrategyType?: string;
+  dailyBudgetMicros?: number;
+  clicks: number;
+  costMicros: number;
+  impressions: number;
+  conversions: number;
+  conversionsValue: number;
+  searchImpressionShare?: number | null;
+  searchBudgetLostImpressionShare?: number | null;
+  searchRankLostImpressionShare?: number | null;
+  absoluteTopImpressionPct?: number | null;
+  topImpressionPct?: number | null;
+}
+
+interface MetaCampaignContext {
+  id?: string;
+  name: string;
+  status?: string;
+  dailyBudget?: number | null;
+  lifetimeBudget?: number | null;
+  bidStrategy?: string;
+  objective?: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  conversions: number;
+  roas: number;
+  frequency?: number;
+}
+
+type CampaignContext = GoogleAdsCampaignContext | MetaCampaignContext;
+
+interface LandingPageContext {
+  url: string;
+  clicks: number;
+  impressions?: number;
+  conversions?: number;
+}
+
+interface HistoricalSnapshot {
+  periodStart: string;
+  periodEnd: string;
+  metrics: Record<string, number>;
+}
+
+// ─── Anomaly detection ─────────────────────────────────────────────────────────
 
 function detectAnomalies(
   metrics: Record<string, number>,
@@ -74,6 +130,92 @@ function detectAnomalies(
   });
 }
 
+function detectGoogleAdsCampaignAnomalies(
+  campaigns: GoogleAdsCampaignContext[]
+): Anomaly[] {
+  const anomalies: Anomaly[] = [];
+
+  for (const c of campaigns) {
+    if (c.searchBudgetLostImpressionShare != null && c.searchBudgetLostImpressionShare > 0.1) {
+      const pct = Math.round(c.searchBudgetLostImpressionShare * 100);
+      const severity: "high" | "medium" | "low" = pct >= 30 ? "high" : pct >= 15 ? "medium" : "low";
+      anomalies.push({
+        metric: "Impression Share Lost (Budget)",
+        value: `${pct}%`,
+        severity,
+        direction: "down",
+        description: `"${c.name}" is losing ${pct}% of eligible impressions due to budget constraints`,
+        context: c.name,
+      });
+    }
+
+    if (c.searchRankLostImpressionShare != null && c.searchRankLostImpressionShare > 0.15) {
+      const pct = Math.round(c.searchRankLostImpressionShare * 100);
+      const severity: "high" | "medium" | "low" = pct >= 40 ? "high" : pct >= 20 ? "medium" : "low";
+      anomalies.push({
+        metric: "Impression Share Lost (Rank)",
+        value: `${pct}%`,
+        severity,
+        direction: "down",
+        description: `"${c.name}" is losing ${pct}% of eligible impressions due to low ad rank`,
+        context: c.name,
+      });
+    }
+
+    if (
+      c.searchImpressionShare != null &&
+      c.searchImpressionShare < 0.3 &&
+      c.impressions > 100 &&
+      (c.channelType === "SEARCH" || !c.channelType)
+    ) {
+      const pct = Math.round(c.searchImpressionShare * 100);
+      anomalies.push({
+        metric: "Search Impression Share",
+        value: `${pct}%`,
+        severity: pct < 15 ? "high" : "medium",
+        direction: "down",
+        description: `"${c.name}" has only ${pct}% search impression share — significant room to capture more eligible impressions`,
+        context: c.name,
+      });
+    }
+  }
+
+  return anomalies;
+}
+
+function detectMetaCampaignAnomalies(campaigns: MetaCampaignContext[]): Anomaly[] {
+  const anomalies: Anomaly[] = [];
+
+  for (const c of campaigns) {
+    if (c.frequency != null && c.frequency > 5) {
+      const severity: "high" | "medium" | "low" = c.frequency >= 8 ? "high" : "medium";
+      anomalies.push({
+        metric: "Ad Frequency",
+        value: c.frequency.toFixed(1),
+        severity,
+        direction: "up",
+        description: `"${c.name}" has a frequency of ${c.frequency.toFixed(1)}x — risk of ad fatigue reducing engagement`,
+        context: c.name,
+      });
+    }
+
+    if (c.roas > 0 && c.roas < 1.0 && c.spend > 50) {
+      anomalies.push({
+        metric: "ROAS Below 1x",
+        value: `${c.roas.toFixed(2)}x`,
+        severity: "high",
+        direction: "down",
+        description: `"${c.name}" ROAS of ${c.roas.toFixed(2)}x means spend exceeds revenue — immediate review recommended`,
+        context: c.name,
+      });
+    }
+  }
+
+  return anomalies;
+}
+
+// ─── Section configs ───────────────────────────────────────────────────────────
+
 const SECTION_CONFIGS: Record<
   string,
   {
@@ -99,8 +241,8 @@ const SECTION_CONFIGS: Record<
   },
   googleads: {
     name: "Google Ads",
-    higherIsBetter: ["clicks", "conversions", "conversionValue", "roas", "ctr"],
-    lowerIsBetter: ["cpc", "cpa"],
+    higherIsBetter: ["clicks", "conversions", "conversionValue", "roas", "ctr", "searchImpressionShare"],
+    lowerIsBetter: ["cpc", "cpa", "searchBudgetLostIS", "searchRankLostIS"],
     metricLabels: {
       clicks: "Clicks",
       impressions: "Impressions",
@@ -111,12 +253,15 @@ const SECTION_CONFIGS: Record<
       roas: "ROAS",
       cpa: "CPA",
       cost: "Total Spend",
+      searchImpressionShare: "Search Impression Share",
+      searchBudgetLostIS: "IS Lost (Budget)",
+      searchRankLostIS: "IS Lost (Rank)",
     },
   },
   meta: {
     name: "Meta Ads",
     higherIsBetter: ["totalClicks", "totalConversions", "avgRoas", "avgCtr"],
-    lowerIsBetter: ["totalSpend", "avgCpc", "avgCpm"],
+    lowerIsBetter: ["totalSpend", "avgCpc", "avgCpm", "avgFrequency"],
     metricLabels: {
       totalSpend: "Total Spend",
       totalImpressions: "Impressions",
@@ -126,6 +271,7 @@ const SECTION_CONFIGS: Record<
       avgCpm: "CPM",
       totalConversions: "Conversions",
       avgRoas: "ROAS",
+      avgFrequency: "Avg Frequency",
     },
   },
   seo: {
@@ -153,6 +299,99 @@ const SECTION_CONFIGS: Record<
   },
 };
 
+// ─── Prompt builder helpers ────────────────────────────────────────────────────
+
+function buildCampaignSummaryText(
+  sectionType: string,
+  campaigns: CampaignContext[]
+): string {
+  if (!campaigns.length) return "";
+
+  if (sectionType === "googleads") {
+    const rows = (campaigns as GoogleAdsCampaignContext[]).map((c) => {
+      const micros = (v: number) => v / 1_000_000;
+      const cost = micros(c.costMicros);
+      const roas = cost > 0 ? (c.conversionsValue / cost).toFixed(2) : "N/A";
+      const cpa = c.conversions > 0 ? (cost / c.conversions).toFixed(2) : "N/A";
+      const budget = c.dailyBudgetMicros
+        ? `£${micros(c.dailyBudgetMicros).toFixed(0)}/day budget`
+        : "";
+      const bidding = c.biddingStrategyType
+        ? `bidding: ${c.biddingStrategyType.replace(/_/g, " ").toLowerCase()}`
+        : "";
+      const is =
+        c.searchImpressionShare != null
+          ? `IS: ${Math.round(c.searchImpressionShare * 100)}%`
+          : "";
+      const isLostBudget =
+        c.searchBudgetLostImpressionShare != null && c.searchBudgetLostImpressionShare > 0.02
+          ? `IS lost budget: ${Math.round(c.searchBudgetLostImpressionShare * 100)}%`
+          : "";
+      const isLostRank =
+        c.searchRankLostImpressionShare != null && c.searchRankLostImpressionShare > 0.02
+          ? `IS lost rank: ${Math.round(c.searchRankLostImpressionShare * 100)}%`
+          : "";
+      const channelType = c.channelType ? c.channelType.replace(/_/g, " ").toLowerCase() : "";
+      const meta = [channelType, budget, bidding, is, isLostBudget, isLostRank].filter(Boolean).join(", ");
+      return `  • ${c.name} [${c.status ?? ""}]: spend £${cost.toFixed(2)}, ROAS ${roas}x, CPA £${cpa}, ${c.clicks} clicks${meta ? ` (${meta})` : ""}`;
+    });
+    return `Campaign breakdown:\n${rows.join("\n")}`;
+  }
+
+  if (sectionType === "meta") {
+    const rows = (campaigns as MetaCampaignContext[]).map((c) => {
+      const budget = c.dailyBudget
+        ? `£${c.dailyBudget.toFixed(0)}/day`
+        : c.lifetimeBudget
+        ? `£${c.lifetimeBudget.toFixed(0)} lifetime`
+        : "";
+      const freq = c.frequency != null ? `freq: ${c.frequency.toFixed(1)}x` : "";
+      const obj = c.objective ? `obj: ${c.objective.replace(/_/g, " ").toLowerCase()}` : "";
+      const bid = c.bidStrategy ? `bid: ${c.bidStrategy.replace(/_/g, " ").toLowerCase()}` : "";
+      const meta = [budget, freq, obj, bid].filter(Boolean).join(", ");
+      return `  • ${c.name} [${c.status ?? ""}]: spend £${c.spend.toFixed(2)}, ROAS ${c.roas.toFixed(2)}x, ${c.conversions} conversions${meta ? ` (${meta})` : ""}`;
+    });
+    return `Campaign breakdown:\n${rows.join("\n")}`;
+  }
+
+  return "";
+}
+
+function buildLandingPageText(pages: LandingPageContext[]): string {
+  if (!pages.length) return "";
+  const rows = pages.slice(0, 8).map(
+    (p) =>
+      `  • ${p.url} — ${p.clicks} clicks${p.conversions != null ? `, ${p.conversions} conversions` : ""}`
+  );
+  return `Top landing pages:\n${rows.join("\n")}`;
+}
+
+function buildHistoricalTrendText(
+  snapshots: HistoricalSnapshot[],
+  metricLabels: Record<string, string>
+): string {
+  if (snapshots.length < 2) return "";
+
+  const recent = snapshots.slice(0, 3);
+  const keyMetrics = Object.keys(recent[0].metrics).slice(0, 5);
+
+  const lines = keyMetrics.map((key) => {
+    const label = metricLabels[key] ?? key;
+    const values = recent
+      .map((s) => {
+        const v = s.metrics[key];
+        return v != null ? `${s.periodStart}: ${typeof v === "number" ? v.toLocaleString() : v}` : null;
+      })
+      .filter(Boolean)
+      .join(" → ");
+    return `  • ${label}: ${values}`;
+  });
+
+  return `Historical trend (last ${recent.length} periods):\n${lines.join("\n")}`;
+}
+
+// ─── POST handler ──────────────────────────────────────────────────────────────
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as {
@@ -161,9 +400,21 @@ export async function POST(request: NextRequest) {
       previousMetrics?: Record<string, number>;
       clientName?: string;
       dateRange?: string;
+      campaignData?: CampaignContext[];
+      landingPages?: LandingPageContext[];
+      historicalSnapshots?: HistoricalSnapshot[];
     };
 
-    const { sectionType, metrics, previousMetrics, clientName, dateRange } = body;
+    const {
+      sectionType,
+      metrics,
+      previousMetrics,
+      clientName,
+      dateRange,
+      campaignData,
+      landingPages,
+      historicalSnapshots,
+    } = body;
 
     const apiKeySetting = await prisma.appSetting.findUnique({
       where: { key: "openaiApiKey" },
@@ -185,13 +436,31 @@ export async function POST(request: NextRequest) {
       metricLabels: {},
     };
 
-    const anomalies = detectAnomalies(
+    // Account-level period-over-period anomalies
+    const accountLevelAnomalies = detectAnomalies(
       metrics,
       previousMetrics,
       config.higherIsBetter,
       config.lowerIsBetter,
       config.metricLabels
     );
+
+    // Campaign-level structural anomalies (impression share, frequency, ROAS)
+    let campaignAnomalies: Anomaly[] = [];
+    if (sectionType === "googleads" && campaignData?.length) {
+      campaignAnomalies = detectGoogleAdsCampaignAnomalies(
+        campaignData as GoogleAdsCampaignContext[]
+      );
+    } else if (sectionType === "meta" && campaignData?.length) {
+      campaignAnomalies = detectMetaCampaignAnomalies(
+        campaignData as MetaCampaignContext[]
+      );
+    }
+
+    const allAnomalies = [...accountLevelAnomalies, ...campaignAnomalies].sort((a, b) => {
+      const sev: Record<string, number> = { high: 3, medium: 2, low: 1 };
+      return (sev[b.severity] ?? 0) - (sev[a.severity] ?? 0);
+    });
 
     const openai = new OpenAI({ apiKey });
 
@@ -206,23 +475,52 @@ export async function POST(request: NextRequest) {
       : null;
 
     const anomalyText =
-      anomalies.length > 0
-        ? `Notable changes:\n${anomalies.map((a) => `- ${a.description}`).join("\n")}`
+      allAnomalies.length > 0
+        ? `Notable anomalies detected:\n${allAnomalies.map((a) => `- [${a.severity.toUpperCase()}] ${a.description}`).join("\n")}`
         : "No significant anomalies detected vs previous period.";
 
-    const systemPrompt = `You are an expert digital marketing analyst at i3media, a UK digital marketing agency. 
-You write clear, concise, professional performance summaries for client reports.
-Be specific with numbers. Use British English. Keep summaries punchy and actionable.
-Focus on what matters most to the client. Avoid jargon where possible.`;
+    const campaignText = campaignData?.length
+      ? buildCampaignSummaryText(sectionType, campaignData)
+      : "";
 
-    const userPrompt = `Analyse the following ${config.name} data for ${clientName ?? "the client"} over ${dateRange ?? "the selected period"} and provide:
-1. A 2-3 sentence executive summary highlighting the most important performance points
-2. 3-4 key insights (specific observations from the data)
-3. 2-3 actionable recommendations
+    const landingPageText = landingPages?.length
+      ? buildLandingPageText(landingPages)
+      : "";
 
-${config.name} metrics for current period: ${metricsText}
-${prevText ? `Previous period: ${prevText}` : ""}
-${anomalyText}
+    const historicalText =
+      historicalSnapshots && historicalSnapshots.length >= 2
+        ? buildHistoricalTrendText(historicalSnapshots, config.metricLabels)
+        : "";
+
+    const systemPrompt = `You are a senior digital marketing analyst at i3media, a UK performance marketing agency.
+You write incisive, data-driven performance summaries for client reports. Your audience is experienced clients who want frank, actionable analysis — not vague reassurances.
+Be specific with numbers. Use British English. Prioritise insights that drive decisions.
+Where anomalies exist, explain likely causes and concrete remediation steps.
+For paid media (Google Ads, Meta Ads), factor in bid strategies, budget constraints, impression share, campaign-level performance and ad fatigue.
+For landing pages, comment on URL structure/relevance and any patterns that suggest quality or relevance issues.
+Keep summaries punchy: aim for clarity over length.`;
+
+    const contextParts = [
+      `${config.name} performance for ${clientName ?? "the client"} — ${dateRange ?? "selected period"}`,
+      "",
+      `Account-level metrics (current period): ${metricsText}`,
+      prevText ? `Previous period: ${prevText}` : "",
+      "",
+      anomalyText,
+      "",
+      campaignText,
+      landingPageText,
+      historicalText,
+    ].filter(Boolean);
+
+    const userPrompt = `Analyse the following ${config.name} data and provide a comprehensive performance review.
+
+${contextParts.join("\n")}
+
+Please provide:
+1. A 3-4 sentence executive summary covering overall performance, standout wins, and key concerns
+2. 4-6 key insights (specific, data-backed observations — reference campaign names, impression share figures, budget utilisation, frequency, landing pages where relevant)
+3. 3-4 prioritised, actionable recommendations (with specific suggested changes — e.g. bid adjustments, budget reallocation, creative refresh, landing page improvements)
 
 Respond in JSON format:
 {
@@ -238,8 +536,8 @@ Respond in JSON format:
         { role: "user", content: userPrompt },
       ],
       response_format: { type: "json_object" },
-      max_tokens: 800,
-      temperature: 0.4,
+      max_tokens: 1200,
+      temperature: 0.35,
     });
 
     const content = completion.choices[0]?.message?.content ?? "{}";
@@ -252,7 +550,7 @@ Respond in JSON format:
 
     const result: AiSummaryResponse = {
       summary: parsed.summary ?? "Unable to generate summary.",
-      anomalies,
+      anomalies: allAnomalies,
       insights: parsed.insights ?? [],
       recommendations: parsed.recommendations ?? [],
     };

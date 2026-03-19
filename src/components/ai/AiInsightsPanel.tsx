@@ -11,6 +11,7 @@ interface Anomaly {
   severity: "high" | "medium" | "low";
   direction: "up" | "down";
   description: string;
+  context?: string;
 }
 
 interface AiInsightsResult {
@@ -26,6 +27,12 @@ interface AiInsightsPanelProps {
   previousMetrics?: Record<string, number>;
   clientName?: string;
   dateRange?: string;
+  /** Per-campaign enriched data (Google Ads or Meta) to pass to the AI for deeper analysis */
+  campaignData?: Record<string, unknown>[];
+  /** Landing page URLs with traffic stats for landing page assessment */
+  landingPages?: { url: string; clicks: number; impressions?: number; conversions?: number }[];
+  /** Client ID for loading/saving metric snapshots (enables historical trends) */
+  clientId?: string;
   /** When true, shows only a compact "Generate commentary" button for use in reports */
   compact?: boolean;
   /** Called with the AI-generated text so the parent can use it (e.g. for report commentary) */
@@ -67,12 +74,19 @@ function AnomalyCard({ anomaly }: { anomaly: Anomaly }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className={`text-xs font-semibold ${styles.text}`}>{anomaly.metric}</span>
-          <span className={`text-xs font-bold ${changeColor}`}>
-            {arrow} {anomaly.changePercent != null ? `${Math.abs(anomaly.changePercent).toFixed(1)}%` : ""}
-          </span>
+          {anomaly.changePercent != null && (
+            <span className={`text-xs font-bold ${changeColor}`}>
+              {arrow} {Math.abs(anomaly.changePercent).toFixed(1)}%
+            </span>
+          )}
           <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${styles.badge}`}>
             {anomaly.severity}
           </span>
+          {anomaly.context && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium truncate max-w-[160px]">
+              {anomaly.context}
+            </span>
+          )}
         </div>
         <p className={`text-xs mt-0.5 ${styles.text} opacity-80`}>{anomaly.description}</p>
       </div>
@@ -86,6 +100,9 @@ export function AiInsightsPanel({
   previousMetrics,
   clientName,
   dateRange,
+  campaignData,
+  landingPages,
+  clientId,
   compact = false,
   onInsightsGenerated,
 }: AiInsightsPanelProps) {
@@ -98,6 +115,21 @@ export function AiInsightsPanel({
     setLoading(true);
     setError(null);
     try {
+      // Optionally fetch historical snapshots for trend context
+      let historicalSnapshots: unknown[] = [];
+      if (clientId && sectionType) {
+        try {
+          const snapRes = await fetch(
+            `/api/ai/snapshots?clientId=${encodeURIComponent(clientId)}&sectionType=${encodeURIComponent(sectionType)}&limit=6`
+          );
+          if (snapRes.ok) {
+            historicalSnapshots = await snapRes.json();
+          }
+        } catch (err) {
+          console.debug("Failed to fetch historical snapshots (non-critical):", err);
+        }
+      }
+
       const res = await fetch("/api/ai/summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -107,6 +139,9 @@ export function AiInsightsPanel({
           previousMetrics,
           clientName,
           dateRange,
+          campaignData,
+          landingPages,
+          historicalSnapshots: historicalSnapshots.length >= 2 ? historicalSnapshots : undefined,
         }),
       });
 
