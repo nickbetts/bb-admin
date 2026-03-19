@@ -232,7 +232,7 @@ function SettingsInner() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
                 </svg>
                 <span style={{ fontSize: 13, fontWeight: 600, color: "#92400e" }}>
-                  Got a &ldquo;This app is blocked&rdquo; error? — only applies to Google Workspace accounts
+                  Getting a &ldquo;This app is blocked&rdquo; error? — two possible fixes
                 </span>
               </div>
               <svg
@@ -244,66 +244,89 @@ function SettingsInner() {
             </button>
 
             {prereqOpen && (
-              <div style={{ padding: "12px 16px 16px", borderTop: "1px solid #fcd34d", display: "flex", flexDirection: "column", gap: 12 }}>
-                <p style={{ fontSize: 13, color: "#78350f" }}>
-                  <strong>Personal Gmail accounts (@gmail.com) connect straight away</strong> — just click Connect account above.
-                </p>
-                <p style={{ fontSize: 13, color: "#78350f" }}>
-                  If the account is a <strong>Google Workspace account</strong> (e.g.{" "}
-                  <code style={{ fontFamily: "monospace", fontSize: 11, background: "#fef3c7", padding: "1px 5px", borderRadius: 4 }}>name@company.com</code>)
-                  {" "}and you see a <em>&ldquo;This app is blocked&rdquo;</em> error, the Workspace admin needs to trust this app once. It takes about 2 minutes:
-                </p>
+              <div style={{ padding: "12px 16px 16px", borderTop: "1px solid #fcd34d", display: "flex", flexDirection: "column", gap: 16 }}>
 
-                <ol style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-                  <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>1</span>
-                    <span style={{ fontSize: 13, color: "#78350f" }}>Open Google Admin Console → <strong>Security → API Controls → Manage Third-Party App Access</strong></span>
-                  </li>
-                  <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>2</span>
-                    <span style={{ fontSize: 13, color: "#78350f" }}>Click <strong>Add app → OAuth App Name Or Client ID</strong></span>
-                  </li>
-                  <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>3</span>
-                    <span style={{ fontSize: 13, color: "#78350f" }}>Paste this Client ID and search:</span>
-                  </li>
-                </ol>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #fcd34d", borderRadius: "var(--r-sm)", padding: "8px 12px" }}>
-                  <code style={{ flex: 1, fontSize: 11, fontFamily: "monospace", color: "#374151", wordBreak: "break-all", userSelect: "all" as const }}>
-                    960440447654-l1mh1bcondon0eaauab53kt4r8um4d9j.apps.googleusercontent.com
-                  </code>
-                  <button
-                    onClick={copyClientId}
-                    style={{ flexShrink: 0, fontSize: 11, fontWeight: 500, background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: "#78350f" }}
+                {/* Cause 1: Testing mode */}
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "#78350f", marginBottom: 6 }}>
+                    Fix 1 — Any Google account (most common cause)
+                  </p>
+                  <p style={{ fontSize: 13, color: "#78350f", marginBottom: 8 }}>
+                    The OAuth app is in <strong>Testing mode</strong>, which blocks all accounts that haven&apos;t been explicitly added as test users. To fix, add the Google account email as a test user in Google Cloud Console:
+                  </p>
+                  <ol style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                      <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>1</span>
+                      <span style={{ fontSize: 13, color: "#78350f" }}>Open Google Cloud Console → <strong>APIs &amp; Services → OAuth consent screen</strong></span>
+                    </li>
+                    <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                      <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>2</span>
+                      <span style={{ fontSize: 13, color: "#78350f" }}>Scroll to <strong>Test users</strong> and click <strong>Add users</strong></span>
+                    </li>
+                    <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                      <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>3</span>
+                      <span style={{ fontSize: 13, color: "#78350f" }}>Add the email address of the Google account you want to connect, then save</span>
+                    </li>
+                  </ol>
+                  <a
+                    href="https://console.cloud.google.com/apis/credentials/consent"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-sm"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#d97706", color: "#fff", border: "none", width: "fit-content", marginTop: 10 }}
                   >
-                    {clientIdCopied ? "Copied ✓" : "Copy"}
-                  </button>
+                    Open OAuth consent screen
+                    <svg style={{ width: 14, height: 14 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
                 </div>
 
-                <ol style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-                  <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>4</span>
-                    <span style={{ fontSize: 13, color: "#78350f" }}>Select the app, set access to <strong>Trusted</strong>, and save</span>
-                  </li>
-                  <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>5</span>
-                    <span style={{ fontSize: 13, color: "#78350f" }}>Come back here and click <strong>Connect account</strong> above</span>
-                  </li>
-                </ol>
+                <div style={{ borderTop: "1px solid #fcd34d" }} />
 
-                <a
-                  href="https://admin.google.com/ac/owl/list?tab=configuredApps"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-sm"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#d97706", color: "#fff", border: "none", width: "fit-content" }}
-                >
-                  Open Google Admin Console
-                  <svg style={{ width: 14, height: 14 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
+                {/* Cause 2: Workspace org */}
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "#78350f", marginBottom: 6 }}>
+                    Fix 2 — Google Workspace accounts only (e.g. <code style={{ fontFamily: "monospace", fontSize: 11, background: "#fef3c7", padding: "1px 5px", borderRadius: 4 }}>name@company.com</code>)
+                  </p>
+                  <p style={{ fontSize: 13, color: "#78350f", marginBottom: 8 }}>
+                    Workspace admins can block third-party OAuth apps for their org. The admin needs to trust this app:
+                  </p>
+                  <ol style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                      <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>1</span>
+                      <span style={{ fontSize: 13, color: "#78350f" }}>Google Admin Console → <strong>Security → API Controls → Manage Third-Party App Access</strong></span>
+                    </li>
+                    <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                      <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>2</span>
+                      <span style={{ fontSize: 13, color: "#78350f" }}>Click <strong>Add app → OAuth App Name Or Client ID</strong>, paste this Client ID and set to <strong>Trusted</strong>:</span>
+                    </li>
+                  </ol>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #fcd34d", borderRadius: "var(--r-sm)", padding: "8px 12px", marginTop: 8 }}>
+                    <code style={{ flex: 1, fontSize: 11, fontFamily: "monospace", color: "#374151", wordBreak: "break-all", userSelect: "all" as const }}>
+                      960440447654-l1mh1bcondon0eaauab53kt4r8um4d9j.apps.googleusercontent.com
+                    </code>
+                    <button
+                      onClick={copyClientId}
+                      style={{ flexShrink: 0, fontSize: 11, fontWeight: 500, background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: "#78350f" }}
+                    >
+                      {clientIdCopied ? "Copied ✓" : "Copy"}
+                    </button>
+                  </div>
+                  <a
+                    href="https://admin.google.com/ac/owl/list?tab=configuredApps"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-sm"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#d97706", color: "#fff", border: "none", width: "fit-content", marginTop: 10 }}
+                  >
+                    Open Google Admin Console
+                    <svg style={{ width: 14, height: 14 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                </div>
+
               </div>
             )}
           </div>
