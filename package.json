@@ -10,6 +10,7 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset",
+    "db:push": "prisma db push",
     "vercel:link": "vercel link",
     "vercel:env:pull": "vercel env pull .env.local",
     "vercel:deploy": "vercel --prod"
