@@ -43,11 +43,13 @@ model Client {
   website             String?
   logoUrl             String?
   ga4PropertyId         String?
+  ga4PropertyName       String?
   semrushDomain         String?
   metaAccountId         String?
   metaAccessToken       String?
   gaCredentials         String?
   googleAdsCustomerId   String?
+  googleAdsAccountName  String?
   searchConsoleSiteUrl  String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt

@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner } from "@/components/ui/index";
-import { formatNumber, formatDateDisplay } from "@/lib/utils";
+import { formatNumber, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import { MousePointer, Eye, TrendingUp, Search } from "lucide-react";
 
 interface SearchConsoleSectionProps {
@@ -63,6 +63,7 @@ export function SearchConsoleSection({
   endDate,
 }: SearchConsoleSectionProps) {
   const [overview, setOverview] = useState<GSCOverview | null>(null);
+  const [prevOverview, setPrevOverview] = useState<GSCOverview | null>(null);
   const [queries, setQueries] = useState<GSCQuery[]>([]);
   const [pages, setPages] = useState<GSCPage[]>([]);
   const [daily, setDaily] = useState<GSCDailyData[]>([]);
@@ -75,13 +76,17 @@ export function SearchConsoleSection({
     async function fetchData() {
       setLoading(true);
       setError(null);
+      setPrevOverview(null);
       try {
         const base = `/api/search-console?siteUrl=${encodeURIComponent(siteUrl)}&startDate=${startDate}&endDate=${endDate}`;
-        const [ovRes, queriesRes, pagesRes, dailyRes] = await Promise.all([
+        const prev = getPreviousPeriod(startDate, endDate);
+        const prevBase = `/api/search-console?siteUrl=${encodeURIComponent(siteUrl)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
+        const [ovRes, queriesRes, pagesRes, dailyRes, prevOvRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=queries`, { signal: controller.signal }),
           fetch(`${base}&type=pages`, { signal: controller.signal }),
           fetch(`${base}&type=daily`, { signal: controller.signal }),
+          fetch(`${prevBase}&type=overview`, { signal: controller.signal }),
         ]);
 
         if (!ovRes.ok) {
@@ -89,17 +94,19 @@ export function SearchConsoleSection({
           throw new Error(err.error ?? "Failed to fetch Search Console data");
         }
 
-        const [ov, q, p, d] = await Promise.all([
+        const [ov, q, p, d, prevOv] = await Promise.all([
           ovRes.json(),
           queriesRes.json(),
           pagesRes.json(),
           dailyRes.json(),
+          prevOvRes.ok ? prevOvRes.json() : Promise.resolve(null),
         ]);
 
         setOverview(ov);
         setQueries(Array.isArray(q) ? q : []);
         setPages(Array.isArray(p) ? p : []);
         setDaily(Array.isArray(d) ? d : []);
+        setPrevOverview(prevOv);
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load Search Console data");
@@ -142,24 +149,28 @@ export function SearchConsoleSection({
         <MetricCard
           title="Total Clicks"
           value={formatNumber(overview?.clicks ?? 0)}
+          change={prevOverview ? pctChange(overview?.clicks ?? 0, prevOverview.clicks) : undefined}
           icon={<MousePointer className="h-5 w-5" />}
           color="purple"
         />
         <MetricCard
           title="Impressions"
           value={formatNumber(overview?.impressions ?? 0)}
+          change={prevOverview ? pctChange(overview?.impressions ?? 0, prevOverview.impressions) : undefined}
           icon={<Eye className="h-5 w-5" />}
           color="blue"
         />
         <MetricCard
           title="Average CTR"
           value={`${((overview?.ctr ?? 0) * 100).toFixed(2)}%`}
+          change={prevOverview ? pctChange(overview?.ctr ?? 0, prevOverview.ctr) : undefined}
           icon={<TrendingUp className="h-5 w-5" />}
           color="green"
         />
         <MetricCard
           title="Avg. Position"
           value={(overview?.position ?? 0).toFixed(1)}
+          change={prevOverview ? pctChange(prevOverview.position, overview?.position ?? 0) : undefined}
           icon={<Search className="h-5 w-5" />}
           color="orange"
         />

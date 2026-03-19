@@ -11,9 +11,11 @@ interface Client {
   website: string | null;
   semrushDomain: string | null;
   ga4PropertyId: string | null;
+  ga4PropertyName: string | null;
   metaAccountId: string | null;
   metaAccessToken: string | null;
   googleAdsCustomerId: string | null;
+  googleAdsAccountName: string | null;
   searchConsoleSiteUrl: string | null;
 }
 
@@ -82,8 +84,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
     name: client.name,
     semrushDomain: client.semrushDomain ?? "",
     ga4PropertyId: client.ga4PropertyId ?? "",
+    ga4PropertyName: client.ga4PropertyName ?? "",
     metaAccountId: client.metaAccountId ?? "",
     googleAdsCustomerId: client.googleAdsCustomerId ?? "",
+    googleAdsAccountName: client.googleAdsAccountName ?? "",
     searchConsoleSiteUrl: client.searchConsoleSiteUrl ?? "",
   });
 
@@ -259,7 +263,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                 type="text"
                 name="ga4PropertyId"
                 value={form.ga4PropertyId}
-                onChange={handleChange}
+                onChange={(e) => setForm((prev) => ({ ...prev, ga4PropertyId: e.target.value, ga4PropertyName: "" }))}
                 placeholder="123456789"
                 className={inputClass}
               />
@@ -269,7 +273,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <select
               name="ga4PropertyId"
               value={form.ga4PropertyId}
-              onChange={handleChange}
+              onChange={(e) => {
+                const prop = ga4Properties.find((p) => p.id === e.target.value);
+                setForm((prev) => ({ ...prev, ga4PropertyId: e.target.value, ga4PropertyName: prop?.displayName ?? "" }));
+              }}
               className={selectClass}
             >
               <option value="">— Select a GA4 property —</option>
@@ -350,7 +357,14 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
           ) : googleAdsFetchError ? null : (
             <select
               value={googleAdsAccounts.some((a) => a.id === form.googleAdsCustomerId) ? form.googleAdsCustomerId : ""}
-              onChange={(e) => setForm((prev) => ({ ...prev, googleAdsCustomerId: e.target.value }))}
+              onChange={(e) => {
+                const acc = googleAdsAccounts.find((a) => a.id === e.target.value);
+                setForm((prev) => ({
+                  ...prev,
+                  googleAdsCustomerId: e.target.value,
+                  googleAdsAccountName: acc && acc.name !== acc.id ? acc.name : "",
+                }));
+              }}
               className={selectClass + " mb-3"}
             >
               <option value="">— Pick from list —</option>
@@ -365,7 +379,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             type="text"
             name="googleAdsCustomerId"
             value={form.googleAdsCustomerId}
-            onChange={handleChange}
+            onChange={(e) => setForm((prev) => ({ ...prev, googleAdsCustomerId: e.target.value, googleAdsAccountName: "" }))}
             placeholder="Enter account ID (e.g. 6943796207)"
             className={inputClass}
           />

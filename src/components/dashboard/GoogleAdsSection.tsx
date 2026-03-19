@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { MetricCard } from "@/components/ui/MetricCard";
-import { formatCurrency, formatNumber, formatPercent, formatDateDisplay } from "@/lib/utils";
+import { formatCurrency, formatNumber, formatPercent, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import {
   AreaChart,
   Area,
@@ -86,6 +86,7 @@ function ctr(clicks: number, impressions: number) {
 
 export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
   const [data, setData] = useState<GoogleAdsData | null>(null);
+  const [prevOverview, setPrevOverview] = useState<GoogleAdsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
@@ -98,13 +99,20 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
     setLoading(true);
     setError("");
     setData(null);
+    setPrevOverview(null);
 
     const params = new URLSearchParams({ customerId, startDate, endDate });
-    fetch(`/api/google-ads?${params}`, { signal: controller.signal, cache: "no-store" })
-      .then((r) => r.json())
-      .then((json) => {
+    const prev = getPreviousPeriod(startDate, endDate);
+    const prevParams = new URLSearchParams({ customerId, startDate: prev.startDate, endDate: prev.endDate });
+
+    Promise.all([
+      fetch(`/api/google-ads?${params}`, { signal: controller.signal, cache: "no-store" }).then((r) => r.json()),
+      fetch(`/api/google-ads?${prevParams}`, { signal: controller.signal, cache: "no-store" }).then((r) => r.json()),
+    ])
+      .then(([json, prevJson]) => {
         if (json.error) setError(json.error);
         else setData(json);
+        if (!prevJson?.error && prevJson?.overview) setPrevOverview(prevJson.overview);
       })
       .catch((err) => {
         if (err.name !== "AbortError") setError("Failed to load Google Ads data");
@@ -165,26 +173,32 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
             <MetricCard
               title="Clicks"
               value={formatNumber(data.overview.clicks)}
+              change={prevOverview ? pctChange(data.overview.clicks, prevOverview.clicks) : undefined}
             />
             <MetricCard
               title="Cost"
               value={formatCurrency(micros(data.overview.costMicros))}
+              change={prevOverview ? pctChange(micros(data.overview.costMicros), micros(prevOverview.costMicros)) : undefined}
             />
             <MetricCard
               title="Conversions"
               value={formatNumber(data.overview.conversions)}
+              change={prevOverview ? pctChange(data.overview.conversions, prevOverview.conversions) : undefined}
             />
             <MetricCard
               title="Conv. Value"
               value={formatCurrency(data.overview.conversionsValue)}
+              change={prevOverview ? pctChange(data.overview.conversionsValue, prevOverview.conversionsValue) : undefined}
             />
             <MetricCard
               title="ROAS"
               value={`${roas(data.overview.conversionsValue, data.overview.costMicros).toFixed(2)}x`}
+              change={prevOverview ? pctChange(roas(data.overview.conversionsValue, data.overview.costMicros), roas(prevOverview.conversionsValue, prevOverview.costMicros)) : undefined}
             />
             <MetricCard
               title="CPA"
               value={formatCurrency(cpa(data.overview.costMicros, data.overview.conversions))}
+              change={prevOverview ? pctChange(cpa(prevOverview.costMicros, prevOverview.conversions), cpa(data.overview.costMicros, data.overview.conversions)) : undefined}
             />
           </div>
 
@@ -193,10 +207,12 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
             <MetricCard
               title="Impressions"
               value={formatNumber(data.overview.impressions)}
+              change={prevOverview ? pctChange(data.overview.impressions, prevOverview.impressions) : undefined}
             />
             <MetricCard
               title="CTR"
               value={formatPercent(ctr(data.overview.clicks, data.overview.impressions))}
+              change={prevOverview ? pctChange(ctr(data.overview.clicks, data.overview.impressions), ctr(prevOverview.clicks, prevOverview.impressions)) : undefined}
             />
             <MetricCard
               title="Avg. CPC"

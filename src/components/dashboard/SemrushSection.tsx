@@ -18,7 +18,7 @@ import {
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard } from "@/components/ui/index";
 import { LoadingSpinner } from "@/components/ui/index";
-import { formatNumber, formatCurrency, formatDateDisplay } from "@/lib/utils";
+import { formatNumber, formatCurrency, formatDateDisplay, pctChange } from "@/lib/utils";
 import { TrendingUp, Search, ArrowUp, ArrowDown, Minus } from "lucide-react";
 
 interface SemrushSectionProps {
@@ -139,6 +139,8 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
           title="Organic Traffic"
           value={formatNumber(overview.organicTraffic)}
           subtitle="Monthly visits"
+          change={history.length >= 2 ? pctChange(history[history.length - 1].organicTraffic, history[history.length - 2].organicTraffic) : undefined}
+          changeLabel="vs prev month"
           icon={<TrendingUp className="h-5 w-5" />}
           color="purple"
         />
@@ -146,6 +148,8 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
           title="Organic Keywords"
           value={formatNumber(overview.organicKeywords)}
           subtitle="Ranking keywords"
+          change={history.length >= 2 ? pctChange(history[history.length - 1].organicKeywords, history[history.length - 2].organicKeywords) : undefined}
+          changeLabel="vs prev month"
           icon={<Search className="h-5 w-5" />}
           color="blue"
         />

@@ -16,7 +16,7 @@ import {
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner } from "@/components/ui/index";
-import { formatNumber, formatPercent, formatDuration, formatDateDisplay } from "@/lib/utils";
+import { formatNumber, formatPercent, formatDuration, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import { Users, UserPlus, Eye, MousePointer, Clock, TrendingUp } from "lucide-react";
 
 interface GA4SectionProps {
@@ -61,6 +61,7 @@ const SOURCE_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#
 
 export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) {
   const [overview, setOverview] = useState<GA4Overview | null>(null);
+  const [prevOverview, setPrevOverview] = useState<GA4Overview | null>(null);
   const [daily, setDaily] = useState<DailyData[]>([]);
   const [sources, setSources] = useState<TrafficSource[]>([]);
   const [pages, setPages] = useState<TopPage[]>([]);
@@ -73,13 +74,17 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
     async function fetchData() {
       setLoading(true);
       setError(null);
+      setPrevOverview(null);
       try {
         const base = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${startDate}&endDate=${endDate}`;
-        const [ovRes, dailyRes, srcRes, pagesRes] = await Promise.all([
+        const prev = getPreviousPeriod(startDate, endDate);
+        const prevBase = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
+        const [ovRes, dailyRes, srcRes, pagesRes, prevOvRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=daily`, { signal: controller.signal }),
           fetch(`${base}&type=sources`, { signal: controller.signal }),
           fetch(`${base}&type=pages`, { signal: controller.signal }),
+          fetch(`${prevBase}&type=overview`, { signal: controller.signal }),
         ]);
 
         if (!ovRes.ok) {
@@ -87,17 +92,19 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
           throw new Error(err.error ?? "Failed to fetch GA4 data");
         }
 
-        const [ov, d, s, p] = await Promise.all([
+        const [ov, d, s, p, prevOv] = await Promise.all([
           ovRes.json(),
           dailyRes.json(),
           srcRes.json(),
           pagesRes.json(),
+          prevOvRes.ok ? prevOvRes.json() : Promise.resolve(null),
         ]);
 
         setOverview(ov);
         setDaily(Array.isArray(d) ? d : []);
         setSources(Array.isArray(s) ? s : []);
         setPages(Array.isArray(p) ? p : []);
+        setPrevOverview(prevOv);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load GA4 data");
@@ -147,6 +154,7 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
           title="Sessions"
           value={formatNumber(overview.sessions)}
           subtitle="All sessions"
+          change={prevOverview ? pctChange(overview.sessions, prevOverview.sessions) : undefined}
           icon={<Eye className="h-5 w-5" />}
           color="blue"
         />
@@ -154,6 +162,7 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
           title="Users"
           value={formatNumber(overview.users)}
           subtitle="Active users"
+          change={prevOverview ? pctChange(overview.users, prevOverview.users) : undefined}
           icon={<Users className="h-5 w-5" />}
           color="purple"
         />
@@ -161,6 +170,7 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
           title="New Users"
           value={formatNumber(overview.newUsers)}
           subtitle="First-time visitors"
+          change={prevOverview ? pctChange(overview.newUsers, prevOverview.newUsers) : undefined}
           icon={<UserPlus className="h-5 w-5" />}
           color="green"
         />
@@ -168,6 +178,7 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
           title="Pageviews"
           value={formatNumber(overview.pageviews)}
           subtitle="Total page views"
+          change={prevOverview ? pctChange(overview.pageviews, prevOverview.pageviews) : undefined}
           icon={<Eye className="h-5 w-5" />}
           color="blue"
         />
@@ -175,6 +186,7 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
           title="Bounce Rate"
           value={formatPercent(overview.bounceRate)}
           subtitle="Lower is better"
+          change={prevOverview ? pctChange(prevOverview.bounceRate, overview.bounceRate) : undefined}
           icon={<MousePointer className="h-5 w-5" />}
           color="orange"
         />

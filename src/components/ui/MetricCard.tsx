@@ -57,7 +57,11 @@ export function MetricCard({
               {isPositive ? "+" : ""}{change.toFixed(1)}%
             </span>
           )}
-          {subtitle && <span style={{ fontSize: 12, color: "var(--text-3)" }}>{subtitle}</span>}
+          {(changeLabel || subtitle) && (
+            <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+              {change !== undefined && changeLabel ? changeLabel : subtitle}
+            </span>
+          )}
         </div>
       )}
     </div>

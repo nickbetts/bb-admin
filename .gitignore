@@ -53,3 +53,4 @@ prisma/dev.db-wal
 
 # Uploaded files
 /public/uploads/
+.env*.local

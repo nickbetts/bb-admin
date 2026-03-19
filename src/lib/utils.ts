@@ -63,3 +63,20 @@ export function getPositionChange(current: number, previous: number): { value: n
   if (current < previous) return { value: previous - current, type: "up" };
   return { value: current - previous, type: "down" };
 }
+
+export function getPreviousPeriod(startDate: string, endDate: string): { startDate: string; endDate: string } {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const diffMs = end.getTime() - start.getTime();
+  const prevEnd = new Date(start.getTime() - 86400000);
+  const prevStart = new Date(prevEnd.getTime() - diffMs);
+  return {
+    startDate: prevStart.toISOString().split("T")[0],
+    endDate: prevEnd.toISOString().split("T")[0],
+  };
+}
+
+export function pctChange(current: number, previous: number): number | undefined {
+  if (previous === 0) return undefined;
+  return ((current - previous) / previous) * 100;
+}

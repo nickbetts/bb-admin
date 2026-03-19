@@ -54,10 +54,12 @@ export async function PATCH(
         website: data.website,
         semrushDomain: data.semrushDomain,
         ga4PropertyId: data.ga4PropertyId,
+        ga4PropertyName: data.ga4PropertyName,
         metaAccountId: data.metaAccountId,
         metaAccessToken: data.metaAccessToken,
         logoUrl: data.logoUrl,
         googleAdsCustomerId: data.googleAdsCustomerId,
+        googleAdsAccountName: data.googleAdsAccountName,
         searchConsoleSiteUrl: data.searchConsoleSiteUrl,
       },
     });

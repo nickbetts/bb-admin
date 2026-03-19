@@ -78,7 +78,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
           {client.ga4PropertyId ? (
             <span className="badge badge-blue" style={{ padding: "6px 14px", fontSize: 13 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#3b82f6", display: "inline-block" }} />
-              GA4 · {client.ga4PropertyId}
+              GA4 · {client.ga4PropertyName ?? client.ga4PropertyId}
             </span>
           ) : (
             <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }}>GA4 not configured</span>
@@ -94,7 +94,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
           {client.googleAdsCustomerId ? (
             <span className="badge badge-green" style={{ padding: "6px 14px", fontSize: 13 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
-              Google Ads · {client.googleAdsCustomerId}
+              Google Ads · {client.googleAdsAccountName ?? client.googleAdsCustomerId}
             </span>
           ) : (
             <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }}>Google Ads not configured</span>
