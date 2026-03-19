@@ -6,10 +6,12 @@ import http from "http";
 import { URL } from "url";
 
 const CLIENT_ID =
-  "960440447654-o4q0gqe8gu74347pnoqk36p8pkjq5ev7.apps.googleusercontent.com";
-const CLIENT_SECRET = "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";
+  "960440447654-l1mh1bcondon0eaauab53kt4r8um4d9j.apps.googleusercontent.com";
+const CLIENT_SECRET = "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";
 const PORT = 4242;
 const REDIRECT_URI = `http://localhost:${PORT}`;
+// Note: http://localhost:4242 must be added as an Authorised redirect URI
+// in the web app OAuth client in Google Cloud Console for this script to work locally.
 
 const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
 authUrl.searchParams.set("client_id", CLIENT_ID);
