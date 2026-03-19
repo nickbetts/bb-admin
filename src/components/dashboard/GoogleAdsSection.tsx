@@ -88,6 +88,7 @@ interface GoogleAdsData {
   daily: GoogleAdsDailyPoint[];
   searchTerms: GoogleAdsSearchTerm[];
   landingPages: GoogleAdsLandingPage[];
+  avgQualityScore: number | null;
 }
 
 interface Props {
@@ -604,6 +605,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
             cpa: data.overview.conversions > 0
               ? micros(data.overview.costMicros) / data.overview.conversions
               : 0,
+            ...(data.avgQualityScore != null ? { qualityScore: data.avgQualityScore } : {}),
           }}
           previousMetrics={prevOverview ? {
             clicks: prevOverview.clicks,

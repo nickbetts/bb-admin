@@ -17,6 +17,8 @@ export interface GA4MetricsData {
   bounceRate: number;
   avgSessionDuration: number;
   conversionRate: number;
+  engagedSessions: number;
+  engagementRate: number;
 }
 
 export interface GA4TrafficSource {
@@ -59,6 +61,8 @@ export async function getGA4Overview(
       { name: "bounceRate" },
       { name: "averageSessionDuration" },
       { name: "conversions" },
+      { name: "engagedSessions" },
+      { name: "engagementRate" },
     ],
   };
 
@@ -89,6 +93,8 @@ export async function getGA4Overview(
     bounceRate: parseFloat(values[4]?.value ?? "0") * 100,
     avgSessionDuration: parseFloat(values[5]?.value ?? "0"),
     conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
+    engagedSessions: parseInt(values[7]?.value ?? "0"),
+    engagementRate: parseFloat(values[8]?.value ?? "0") * 100,
   };
 }
 

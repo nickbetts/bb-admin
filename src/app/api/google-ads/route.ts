@@ -8,6 +8,7 @@ import {
   getGoogleAdsDailyData,
   getGoogleAdsSearchTerms,
   getGoogleAdsLandingPages,
+  getGoogleAdsAvgQualityScore,
 } from "@/lib/google-ads";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages] =
+    const [overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore] =
       await Promise.all([
         getGoogleAdsOverview(customerId, startDate, endDate),
         getGoogleAdsCampaigns(customerId, startDate, endDate),
@@ -44,9 +45,10 @@ export async function GET(request: NextRequest) {
         getGoogleAdsDailyData(customerId, startDate, endDate),
         getGoogleAdsSearchTerms(customerId, startDate, endDate),
         getGoogleAdsLandingPages(customerId, startDate, endDate),
+        getGoogleAdsAvgQualityScore(customerId),
       ]);
 
-    return NextResponse.json({ overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages });
+    return NextResponse.json({ overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Google Ads data error:", message);

@@ -34,6 +34,8 @@ interface GA4Overview {
   bounceRate: number;
   avgSessionDuration: number;
   conversionRate: number;
+  engagedSessions: number;
+  engagementRate: number;
 }
 
 interface DailyData {
@@ -473,6 +475,8 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
             bounceRate: overview.bounceRate,
             avgSessionDuration: overview.avgSessionDuration,
             conversionRate: overview.conversionRate,
+            engagedSessions: overview.engagedSessions ?? 0,
+            engagementRate: overview.engagementRate ?? 0,
           }}
           previousMetrics={prevOverview ? {
             sessions: prevOverview.sessions,
@@ -482,6 +486,8 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
             bounceRate: prevOverview.bounceRate,
             avgSessionDuration: prevOverview.avgSessionDuration,
             conversionRate: prevOverview.conversionRate,
+            engagedSessions: prevOverview.engagedSessions ?? 0,
+            engagementRate: prevOverview.engagementRate ?? 0,
           } : undefined}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
         />

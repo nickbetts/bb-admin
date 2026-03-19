@@ -456,6 +456,47 @@ export async function getGoogleAdsSearchTerms(
   }));
 }
 
+/**
+ * Fetches keyword-level quality scores and returns the account-wide average.
+ * Quality Score is only available for active keywords on Search campaigns.
+ * Returns null if no quality scores are available for the account.
+ */
+export async function getGoogleAdsAvgQualityScore(
+  customerId: string
+): Promise<number | null> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      ad_group_criterion.quality_info.quality_score
+    FROM ad_group_criterion
+    WHERE ad_group_criterion.type = 'KEYWORD'
+      AND ad_group_criterion.status = 'ENABLED'
+      AND ad_group.status = 'ENABLED'
+      AND campaign.status = 'ENABLED'
+      AND campaign.advertising_channel_type = 'SEARCH'
+      AND ad_group_criterion.quality_info.quality_score > 0
+    LIMIT 200
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsQsRow = Record<string, Record<string, unknown>>;
+    const scores = (data.results ?? [])
+      .map((row: GadsQsRow) => {
+        const qualityInfo = row.adGroupCriterion?.qualityInfo as Record<string, unknown> | undefined;
+        return Number(qualityInfo?.qualityScore ?? 0);
+      })
+      .filter((s: number) => s > 0);
+    if (scores.length === 0) return null;
+    const avg = scores.reduce((sum: number, s: number) => sum + s, 0) / scores.length;
+    return Math.round(avg * 10) / 10;
+  } catch {
+    // Quality score may not be available — fail gracefully
+    return null;
+  }
+}
+
 export async function getGoogleAdsAccounts(): Promise<GoogleAdsAccount[]> {
   const mccId = await getMccId();
   if (!mccId) {
