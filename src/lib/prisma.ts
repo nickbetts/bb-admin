@@ -4,7 +4,7 @@ import { PrismaLibSql } from "@prisma/adapter-libsql";
 function createPrismaClient() {
   const url = process.env.DATABASE_URL ?? "file:dev.db";
 
-  if (process.env.NODE_ENV === "production" && url.startsWith("file:")) {
+  if (process.env.NODE_ENV === "production" && url.startsWith("file:") && !process.env.CI) {
     throw new Error(
       "DATABASE_URL must be set to a remote Turso/libSQL URL in production " +
         "(e.g. libsql://<your-db>.turso.io). " +
