@@ -17,29 +17,61 @@ async function getMccId(): Promise<string | null> {
 }
 
 async function getAccessToken(): Promise<string> {
-  const res = await fetch(TOKEN_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: process.env.GOOGLE_ADS_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET!,
-      refresh_token: process.env.GOOGLE_ADS_REFRESH_TOKEN!,
-      grant_type: "refresh_token",
-    }),
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    // Surface invalid_grant clearly so the UI can show targeted recovery instructions
-    if (text.includes("invalid_grant")) {
-      throw new Error(`invalid_grant: The Google Ads refresh token has expired or been revoked. Re-run scripts/get-gads-refresh-token.mjs and update GOOGLE_ADS_REFRESH_TOKEN in your environment.`);
+  // Build list of refresh tokens to try: env var first, then DB connections
+  const candidates: string[] = [];
+  if (process.env.GOOGLE_ADS_REFRESH_TOKEN?.trim()) {
+    candidates.push(process.env.GOOGLE_ADS_REFRESH_TOKEN.trim());
+  }
+  try {
+    const { prisma } = await import("./prisma");
+    const connections = await prisma.googleConnection.findMany({ orderBy: { createdAt: "asc" } });
+    for (const conn of connections) {
+      if (!candidates.includes(conn.refreshToken)) {
+        candidates.push(conn.refreshToken);
+      }
     }
+  } catch {
+    // DB unavailable — proceed with env var only
+  }
+
+  if (candidates.length === 0) {
+    throw new Error("No Google Ads refresh token configured. Connect a Google account in Settings.");
+  }
+
+  let lastError = "";
+  for (const refreshToken of candidates) {
+    const res = await fetch(TOKEN_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_ADS_CLIENT_ID!,
+        client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET!,
+        refresh_token: refreshToken,
+        grant_type: "refresh_token",
+      }),
+      cache: "no-store",
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return data.access_token as string;
+    }
+
+    const text = await res.text();
+    lastError = text;
+    // Immediately continue to the next candidate on invalid_grant
+    if (text.includes("invalid_grant")) continue;
+    // Non-auth errors (network, server fault) — throw right away
     throw new Error(`Token refresh failed: ${text}`);
   }
 
-  const data = await res.json();
-  return data.access_token as string;
+  if (lastError.includes("invalid_grant")) {
+    throw new Error(
+      `invalid_grant: All Google Ads refresh tokens have expired or been revoked. ` +
+      `Go to Settings and reconnect your Google account.`
+    );
+  }
+  throw new Error(`Token refresh failed: ${lastError}`);
 }
 
 function buildHeaders(accessToken: string, mccId?: string | null) {
