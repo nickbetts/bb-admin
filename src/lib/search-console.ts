@@ -191,3 +191,71 @@ export async function getGSCDailyData(
     impressions: row.impressions,
   }));
 }
+
+export interface GSCDevice {
+  device: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+export interface GSCCountry {
+  country: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+export async function getGSCDevices(
+  siteUrl: string,
+  startDate: string,
+  endDate: string
+): Promise<GSCDevice[]> {
+  const res = await gscPost(siteUrl, {
+    startDate,
+    endDate,
+    dimensions: ["device"],
+    rowLimit: 10,
+    orderBy: [{ fieldName: "clicks", sortOrder: "DESCENDING" }],
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Search Console API error: ${err}`);
+  }
+  const data = await res.json();
+  return (data.rows ?? []).map((row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
+    device: row.keys[0],
+    clicks: row.clicks,
+    impressions: row.impressions,
+    ctr: row.ctr,
+    position: row.position,
+  }));
+}
+
+export async function getGSCCountries(
+  siteUrl: string,
+  startDate: string,
+  endDate: string
+): Promise<GSCCountry[]> {
+  const res = await gscPost(siteUrl, {
+    startDate,
+    endDate,
+    dimensions: ["country"],
+    rowLimit: 15,
+    orderBy: [{ fieldName: "clicks", sortOrder: "DESCENDING" }],
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Search Console API error: ${err}`);
+  }
+  const data = await res.json();
+  return (data.rows ?? []).map((row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
+    country: row.keys[0],
+    clicks: row.clicks,
+    impressions: row.impressions,
+    ctr: row.ctr,
+    position: row.position,
+  }));
+}

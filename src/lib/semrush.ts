@@ -177,6 +177,50 @@ export async function getKeywordPositionDistribution(
   return Object.entries(distribution).map(([range, count]) => ({ range, count }));
 }
 
+export interface SemrushCompetitor {
+  domain: string;
+  commonKeywords: number;
+  organicKeywords: number;
+  organicTraffic: number;
+  organicCost: number;
+  adKeywords: number;
+}
+
+export async function getCompetitors(
+  domain: string,
+  database: string = "uk",
+  limit: number = 10
+): Promise<SemrushCompetitor[]> {
+  const apiKey = getApiKey();
+  const params = new URLSearchParams({
+    type: "domain_organic_organic",
+    key: apiKey,
+    export_columns: "Dn,Nq,Or,Ot,Oc,Ad",
+    domain,
+    database,
+    display_limit: limit.toString(),
+    display_sort: "nq_desc",
+  });
+
+  const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+  const lines = (response.data as string).trim().split("\n");
+
+  if (lines.length < 2) return [];
+
+  return lines.slice(1).map((line: string) => {
+    const [competitorDomain, commonKeywords, organicKeywords, organicTraffic, organicCost, adKeywords] =
+      line.split(";");
+    return {
+      domain: competitorDomain || "",
+      commonKeywords: parseInt(commonKeywords) || 0,
+      organicKeywords: parseInt(organicKeywords) || 0,
+      organicTraffic: parseInt(organicTraffic) || 0,
+      organicCost: parseFloat(organicCost) || 0,
+      adKeywords: parseInt(adKeywords) || 0,
+    };
+  });
+}
+
 export async function getBacklinks(
   domain: string,
   limit: number = 10

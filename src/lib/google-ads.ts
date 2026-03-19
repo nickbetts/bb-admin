@@ -261,6 +261,47 @@ export async function getGoogleAdsDailyData(
   }));
 }
 
+export interface GoogleAdsSearchTerm {
+  searchTerm: string;
+  clicks: number;
+  costMicros: number;
+  impressions: number;
+  conversions: number;
+  conversionsValue: number;
+}
+
+export async function getGoogleAdsSearchTerms(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsSearchTerm[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      search_term_view.search_term,
+      metrics.clicks,
+      metrics.cost_micros,
+      metrics.impressions,
+      metrics.conversions,
+      metrics.conversions_value
+    FROM search_term_view
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+    ORDER BY metrics.clicks DESC
+    LIMIT 25
+  `;
+
+  const data = await searchGoogleAds(customerId, query, token, mccId);
+  return (data.results ?? []).map((row: Record<string, Record<string, unknown>>) => ({
+    searchTerm: String(row.searchTermView?.searchTerm ?? ""),
+    clicks: Number(row.metrics?.clicks ?? 0),
+    costMicros: Number(row.metrics?.costMicros ?? 0),
+    impressions: Number(row.metrics?.impressions ?? 0),
+    conversions: Number(row.metrics?.conversions ?? 0),
+    conversionsValue: Number(row.metrics?.conversionsValue ?? 0),
+  }));
+}
+
 export async function getGoogleAdsAccounts(): Promise<GoogleAdsAccount[]> {
   const mccId = await getMccId();
   if (!mccId) {

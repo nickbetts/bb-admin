@@ -9,6 +9,10 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
@@ -50,6 +54,29 @@ interface GSCDailyData {
   impressions: number;
 }
 
+interface GSCDevice {
+  device: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+interface GSCCountry {
+  country: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+const DEVICE_COLORS: Record<string, string> = {
+  MOBILE: "#6366f1",
+  DESKTOP: "#3b82f6",
+  TABLET: "#10b981",
+};
+const DEVICE_FALLBACK_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b"];
+
 function positionBadgeClass(pos: number): string {
   if (pos <= 3) return "badge badge-green";
   if (pos <= 10) return "badge badge-blue";
@@ -69,6 +96,8 @@ export function SearchConsoleSection({
   const [pages, setPages] = useState<GSCPage[]>([]);
   const [prevPagesMap, setPrevPagesMap] = useState<Map<string, GSCPage>>(new Map());
   const [daily, setDaily] = useState<GSCDailyData[]>([]);
+  const [devices, setDevices] = useState<GSCDevice[]>([]);
+  const [countries, setCountries] = useState<GSCCountry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,7 +114,7 @@ export function SearchConsoleSection({
         const base = `/api/search-console?siteUrl=${encodeURIComponent(siteUrl)}&startDate=${startDate}&endDate=${endDate}`;
         const prev = getPreviousPeriod(startDate, endDate);
         const prevBase = `/api/search-console?siteUrl=${encodeURIComponent(siteUrl)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
-        const [ovRes, queriesRes, pagesRes, dailyRes, prevOvRes, prevQueriesRes, prevPagesRes] = await Promise.all([
+        const [ovRes, queriesRes, pagesRes, dailyRes, prevOvRes, prevQueriesRes, prevPagesRes, devicesRes, countriesRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=queries`, { signal: controller.signal }),
           fetch(`${base}&type=pages`, { signal: controller.signal }),
@@ -93,6 +122,8 @@ export function SearchConsoleSection({
           fetch(`${prevBase}&type=overview`, { signal: controller.signal }),
           fetch(`${prevBase}&type=queries`, { signal: controller.signal }),
           fetch(`${prevBase}&type=pages`, { signal: controller.signal }),
+          fetch(`${base}&type=devices`, { signal: controller.signal }),
+          fetch(`${base}&type=countries`, { signal: controller.signal }),
         ]);
 
         if (!ovRes.ok) {
@@ -100,7 +131,7 @@ export function SearchConsoleSection({
           throw new Error(err.error ?? "Failed to fetch Search Console data");
         }
 
-        const [ov, q, p, d, prevOv, prevQ, prevP] = await Promise.all([
+        const [ov, q, p, d, prevOv, prevQ, prevP, devs, ctrs] = await Promise.all([
           ovRes.json(),
           queriesRes.json(),
           pagesRes.json(),
@@ -108,6 +139,8 @@ export function SearchConsoleSection({
           prevOvRes.ok ? prevOvRes.json() : Promise.resolve(null),
           prevQueriesRes.ok ? prevQueriesRes.json() : Promise.resolve([]),
           prevPagesRes.ok ? prevPagesRes.json() : Promise.resolve([]),
+          devicesRes.ok ? devicesRes.json() : Promise.resolve([]),
+          countriesRes.ok ? countriesRes.json() : Promise.resolve([]),
         ]);
 
         setOverview(ov);
@@ -115,6 +148,8 @@ export function SearchConsoleSection({
         setPages(Array.isArray(p) ? p : []);
         setDaily(Array.isArray(d) ? d : []);
         setPrevOverview(prevOv);
+        setDevices(Array.isArray(devs) ? devs : []);
+        setCountries(Array.isArray(ctrs) ? ctrs : []);
         if (Array.isArray(prevQ)) setPrevQueriesMap(new Map(prevQ.map((pq: GSCQuery) => [pq.query, pq])));
         if (Array.isArray(prevP)) setPrevPagesMap(new Map(prevP.map((pp: GSCPage) => [pp.page, pp])));
       } catch (err) {
@@ -151,6 +186,13 @@ export function SearchConsoleSection({
     Clicks: d.clicks,
     Impressions: d.impressions,
   }));
+
+  const deviceChartData = devices.map((d) => ({
+    name: d.device.charAt(0) + d.device.slice(1).toLowerCase(),
+    value: d.clicks,
+    device: d.device,
+  }));
+  const totalDeviceClicks = devices.reduce((s, d) => s + d.clicks, 0);
 
   return (
     <div className="space-y-6">
@@ -338,6 +380,90 @@ export function SearchConsoleSection({
           )}
         </SectionCard>
       </div>
+
+      {/* Device & Country breakdown */}
+      {(devices.length > 0 || countries.length > 0) && (
+        <div className="grid-2">
+          {/* Device split donut */}
+          {deviceChartData.length > 0 && (
+            <SectionCard title="Clicks by Device" subtitle="Device type breakdown">
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={deviceChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={88}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {deviceChartData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={DEVICE_COLORS[entry.device] ?? DEVICE_FALLBACK_COLORS[index % DEVICE_FALLBACK_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                    formatter={(v) => [formatNumber(Number(v)), "Clicks"]}
+                  />
+                  <Legend
+                    formatter={(value: string) => (
+                      <span style={{ color: "#94a3b8", fontSize: 11 }}>{value}</span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex justify-around pt-1 pb-2">
+                {devices.map((d, i) => (
+                  <div key={i} className="text-center">
+                    <p className="text-xs text-slate-500">{d.device.charAt(0) + d.device.slice(1).toLowerCase()}</p>
+                    <p className="text-sm font-semibold text-slate-800">{totalDeviceClicks > 0 ? ((d.clicks / totalDeviceClicks) * 100).toFixed(0) : 0}%</p>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          )}
+
+          {/* Top countries table */}
+          {countries.length > 0 && (
+            <SectionCard title="Top Countries" subtitle="Ranked by clicks">
+              <div className="overflow-x-auto">
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <th style={{ textAlign: "left", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Country</th>
+                      <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                      <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
+                      <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {countries.map((c, i) => (
+                      <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                        <td style={{ padding: "10px 16px", color: "var(--text)", textTransform: "capitalize" }}>
+                          {c.country.toLowerCase()}
+                        </td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>
+                          {formatNumber(c.clicks)}
+                        </td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>
+                          {formatNumber(c.impressions)}
+                        </td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>
+                          {(c.ctr * 100).toFixed(1)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </SectionCard>
+          )}
+        </div>
+      )}
     </div>
   );
 }

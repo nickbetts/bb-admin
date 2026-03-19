@@ -52,11 +52,21 @@ interface GoogleAdsDailyPoint {
   impressions: number;
 }
 
+interface GoogleAdsSearchTerm {
+  searchTerm: string;
+  clicks: number;
+  costMicros: number;
+  impressions: number;
+  conversions: number;
+  conversionsValue: number;
+}
+
 interface GoogleAdsData {
   overview: GoogleAdsOverview;
   campaigns: GoogleAdsCampaign[];
   adGroups: GoogleAdsAdGroup[];
   daily: GoogleAdsDailyPoint[];
+  searchTerms: GoogleAdsSearchTerm[];
 }
 
 interface Props {
@@ -444,6 +454,54 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
                       </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Search terms report */}
+          {(data.searchTerms ?? []).length > 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div className="px-6 py-5 border-b border-slate-100">
+                <h3 className="text-sm font-semibold text-slate-800">Search Terms</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Top queries triggering your ads</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                      <th className="text-left px-6 py-4 font-medium">Search Term</th>
+                      <th className="text-right px-4 py-4 font-medium">Clicks</th>
+                      <th className="text-right px-4 py-4 font-medium">Impr.</th>
+                      <th className="text-right px-4 py-4 font-medium">CTR</th>
+                      <th className="text-right px-4 py-4 font-medium">Cost</th>
+                      <th className="text-right px-6 py-4 font-medium">Conv.</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {(data.searchTerms ?? []).map((st, i) => (
+                      <tr key={i} className="hover:bg-slate-50 transition">
+                        <td className="px-6 py-4 text-slate-800 font-medium max-w-[220px] truncate">
+                          {st.searchTerm}
+                        </td>
+                        <td className="px-4 py-4 text-right text-slate-700 font-semibold">
+                          {formatNumber(st.clicks)}
+                        </td>
+                        <td className="px-4 py-4 text-right text-slate-600">
+                          {formatNumber(st.impressions)}
+                        </td>
+                        <td className="px-4 py-4 text-right text-slate-600">
+                          {formatPercent(ctr(st.clicks, st.impressions))}
+                        </td>
+                        <td className="px-4 py-4 text-right text-slate-600">
+                          {formatCurrency(micros(st.costMicros))}
+                        </td>
+                        <td className="px-6 py-4 text-right text-slate-600">
+                          {st.conversions.toFixed(1)}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

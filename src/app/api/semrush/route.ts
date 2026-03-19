@@ -5,6 +5,7 @@ import {
   getTopOrganicKeywords,
   getDomainRankHistory,
   getKeywordPositionDistribution,
+  getCompetitors,
 } from "@/lib/semrush";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +42,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(await getDomainRankHistory(domain, database));
       case "distribution":
         return NextResponse.json(await getKeywordPositionDistribution(domain, database));
+      case "competitors":
+        return NextResponse.json(await getCompetitors(domain, database, 10));
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }

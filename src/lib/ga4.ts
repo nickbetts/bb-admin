@@ -223,3 +223,90 @@ export async function getGA4TopPages(
     })
   );
 }
+
+export interface GA4Country {
+  country: string;
+  sessions: number;
+  users: number;
+}
+
+export interface GA4Device {
+  device: string;
+  sessions: number;
+  users: number;
+}
+
+export async function getGA4Geography(
+  propertyId: string,
+  startDate: string = "30daysAgo",
+  endDate: string = "today"
+): Promise<GA4Country[]> {
+  const headers = await buildGa4Headers();
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+
+  const body = {
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: "country" }],
+    metrics: [{ name: "sessions" }, { name: "activeUsers" }],
+    orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+    limit: 15,
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`GA4 API error: ${err}`);
+  }
+
+  const data = await response.json();
+  return (data.rows ?? []).map(
+    (row: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }) => ({
+      country: row.dimensionValues[0]?.value ?? "",
+      sessions: parseInt(row.metricValues[0]?.value ?? "0"),
+      users: parseInt(row.metricValues[1]?.value ?? "0"),
+    })
+  );
+}
+
+export async function getGA4Devices(
+  propertyId: string,
+  startDate: string = "30daysAgo",
+  endDate: string = "today"
+): Promise<GA4Device[]> {
+  const headers = await buildGa4Headers();
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+
+  const body = {
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: "deviceCategory" }],
+    metrics: [{ name: "sessions" }, { name: "activeUsers" }],
+    orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`GA4 API error: ${err}`);
+  }
+
+  const data = await response.json();
+  return (data.rows ?? []).map(
+    (row: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }) => ({
+      device: row.dimensionValues[0]?.value ?? "",
+      sessions: parseInt(row.metricValues[0]?.value ?? "0"),
+      users: parseInt(row.metricValues[1]?.value ?? "0"),
+    })
+  );
+}

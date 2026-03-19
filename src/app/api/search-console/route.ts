@@ -5,6 +5,8 @@ import {
   getGSCTopQueries,
   getGSCTopPages,
   getGSCDailyData,
+  getGSCDevices,
+  getGSCCountries,
 } from "@/lib/search-console";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +44,10 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(await getGSCTopPages(siteUrl, startDate, endDate));
       case "daily":
         return NextResponse.json(await getGSCDailyData(siteUrl, startDate, endDate));
+      case "devices":
+        return NextResponse.json(await getGSCDevices(siteUrl, startDate, endDate));
+      case "countries":
+        return NextResponse.json(await getGSCCountries(siteUrl, startDate, endDate));
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }

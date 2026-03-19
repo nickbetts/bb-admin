@@ -5,6 +5,8 @@ import {
   getGA4DailyData,
   getGA4TrafficSources,
   getGA4TopPages,
+  getGA4Geography,
+  getGA4Devices,
 } from "@/lib/ga4";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +44,10 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(await getGA4TrafficSources(propertyId, startDate, endDate));
       case "pages":
         return NextResponse.json(await getGA4TopPages(propertyId, startDate, endDate));
+      case "geography":
+        return NextResponse.json(await getGA4Geography(propertyId, startDate, endDate));
+      case "devices":
+        return NextResponse.json(await getGA4Devices(propertyId, startDate, endDate));
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }

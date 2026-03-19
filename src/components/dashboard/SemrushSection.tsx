@@ -57,6 +57,15 @@ interface DistributionItem {
   count: number;
 }
 
+interface Competitor {
+  domain: string;
+  commonKeywords: number;
+  organicKeywords: number;
+  organicTraffic: number;
+  organicCost: number;
+  adKeywords: number;
+}
+
 const POSITION_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
 
 export function SemrushSection({ domain, startDate, endDate }: SemrushSectionProps) {
@@ -64,6 +73,7 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [distribution, setDistribution] = useState<DistributionItem[]>([]);
+  const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,11 +84,12 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
       setLoading(true);
       setError(null);
       try {
-        const [overviewRes, keywordsRes, historyRes, distRes] = await Promise.all([
+        const [overviewRes, keywordsRes, historyRes, distRes, competitorsRes] = await Promise.all([
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=overview`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=keywords`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=history`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=distribution`, { signal: controller.signal }),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=competitors`, { signal: controller.signal }),
         ]);
 
         if (!overviewRes.ok) {
@@ -86,17 +97,19 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
           throw new Error(err.error ?? "Failed to fetch SemRush data");
         }
 
-        const [ov, kw, hist, dist] = await Promise.all([
+        const [ov, kw, hist, dist, comps] = await Promise.all([
           overviewRes.json(),
           keywordsRes.json(),
           historyRes.json(),
           distRes.json(),
+          competitorsRes.ok ? competitorsRes.json() : Promise.resolve([]),
         ]);
 
         setOverview(ov);
         setKeywords(Array.isArray(kw) ? kw : []);
         setHistory(Array.isArray(hist) ? hist : []);
         setDistribution(Array.isArray(dist) ? dist : []);
+        setCompetitors(Array.isArray(comps) ? comps : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load SemRush data");
@@ -367,6 +380,55 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
                     </tr>
                   );
                 })}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Competitor landscape */}
+      {competitors.length > 0 && (
+        <SectionCard title="Competitor Landscape" subtitle={`Top organic competitors for ${domain}`}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <th className="text-left py-2 px-4 text-slate-400 font-medium text-xs">Domain</th>
+                  <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Common KW</th>
+                  <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Organic KW</th>
+                  <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Traffic</th>
+                  <th className="text-right py-2 px-4 text-slate-400 font-medium text-xs">Traffic Value</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {competitors.map((comp, i) => (
+                  <tr key={i} className="hover:bg-slate-50 transition">
+                    <td className="py-3 px-4">
+                      <a
+                        href={`https://${comp.domain}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-slate-800 hover:text-indigo-600 transition"
+                      >
+                        {comp.domain}
+                      </a>
+                    </td>
+                    <td className="py-3 px-3 text-right">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                        {formatNumber(comp.commonKeywords)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-right text-slate-600 text-xs">
+                      {formatNumber(comp.organicKeywords)}
+                    </td>
+                    <td className="py-3 px-3 text-right text-slate-600 text-xs">
+                      {formatNumber(comp.organicTraffic)}
+                    </td>
+                    <td className="py-3 px-4 text-right text-slate-600 text-xs">
+                      {formatCurrency(comp.organicCost)}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

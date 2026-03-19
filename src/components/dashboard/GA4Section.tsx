@@ -57,7 +57,24 @@ interface TopPage {
   bounceRate: number;
 }
 
+interface GA4Country {
+  country: string;
+  sessions: number;
+  users: number;
+}
+
+interface GA4Device {
+  device: string;
+  sessions: number;
+  users: number;
+}
+
 const SOURCE_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#84cc16"];
+const DEVICE_COLORS: Record<string, string> = {
+  mobile: "#6366f1",
+  desktop: "#3b82f6",
+  tablet: "#10b981",
+};
 
 export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) {
   const [overview, setOverview] = useState<GA4Overview | null>(null);
@@ -66,6 +83,8 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
   const [sources, setSources] = useState<TrafficSource[]>([]);
   const [pages, setPages] = useState<TopPage[]>([]);
   const [prevPages, setPrevPages] = useState<TopPage[]>([]);
+  const [geography, setGeography] = useState<GA4Country[]>([]);
+  const [deviceSplit, setDeviceSplit] = useState<GA4Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,13 +100,15 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
         const base = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${startDate}&endDate=${endDate}`;
         const prev = getPreviousPeriod(startDate, endDate);
         const prevBase = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
-        const [ovRes, dailyRes, srcRes, pagesRes, prevOvRes, prevPagesRes] = await Promise.all([
+        const [ovRes, dailyRes, srcRes, pagesRes, prevOvRes, prevPagesRes, geoRes, devRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=daily`, { signal: controller.signal }),
           fetch(`${base}&type=sources`, { signal: controller.signal }),
           fetch(`${base}&type=pages`, { signal: controller.signal }),
           fetch(`${prevBase}&type=overview`, { signal: controller.signal }),
           fetch(`${prevBase}&type=pages`, { signal: controller.signal }),
+          fetch(`${base}&type=geography`, { signal: controller.signal }),
+          fetch(`${base}&type=devices`, { signal: controller.signal }),
         ]);
 
         if (!ovRes.ok) {
@@ -95,13 +116,15 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
           throw new Error(err.error ?? "Failed to fetch GA4 data");
         }
 
-        const [ov, d, s, p, prevOv, prevP] = await Promise.all([
+        const [ov, d, s, p, prevOv, prevP, geo, devs] = await Promise.all([
           ovRes.json(),
           dailyRes.json(),
           srcRes.json(),
           pagesRes.json(),
           prevOvRes.ok ? prevOvRes.json() : Promise.resolve(null),
           prevPagesRes.ok ? prevPagesRes.json() : Promise.resolve([]),
+          geoRes.ok ? geoRes.json() : Promise.resolve([]),
+          devRes.ok ? devRes.json() : Promise.resolve([]),
         ]);
 
         setOverview(ov);
@@ -110,6 +133,8 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
         setPages(Array.isArray(p) ? p : []);
         setPrevOverview(prevOv);
         setPrevPages(Array.isArray(prevP) ? prevP : []);
+        setGeography(Array.isArray(geo) ? geo : []);
+        setDeviceSplit(Array.isArray(devs) ? devs : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load GA4 data");
@@ -126,6 +151,12 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
     value: s.sessions,
   }));
   const prevPagesMap = new Map(prevPages.map((p) => [p.pagePath, p]));
+  const totalDeviceSessions = deviceSplit.reduce((s, d) => s + d.sessions, 0);
+  const deviceChartData = deviceSplit.map((d) => ({
+    name: d.device.charAt(0).toUpperCase() + d.device.slice(1),
+    value: d.sessions,
+    device: d.device,
+  }));
 
   return (
     <div className="space-y-8">
@@ -332,6 +363,91 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
           </SectionCard>
         )}
       </div>
+
+      {/* Device & Geography breakdown */}
+      {(deviceChartData.length > 0 || geography.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Device split donut */}
+          {deviceChartData.length > 0 && (
+            <SectionCard title="Sessions by Device" subtitle="Device category breakdown">
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={deviceChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={88}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {deviceChartData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={DEVICE_COLORS[entry.device] ?? ["#6366f1", "#3b82f6", "#10b981"][index % 3]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      background: "#ffffff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "8px",
+                      color: "#0f172a",
+                    }}
+                    formatter={(v) => [formatNumber(Number(v)), "Sessions"]}
+                  />
+                  <Legend
+                    formatter={(value: string) => (
+                      <span style={{ color: "#94a3b8", fontSize: 11 }}>{value}</span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex justify-around pt-1 pb-2">
+                {deviceSplit.map((d, i) => (
+                  <div key={i} className="text-center">
+                    <p className="text-xs text-slate-500 capitalize">{d.device}</p>
+                    <p className="text-sm font-semibold text-slate-800">
+                      {totalDeviceSessions > 0 ? ((d.sessions / totalDeviceSessions) * 100).toFixed(0) : 0}%
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          )}
+
+          {/* Top countries by sessions */}
+          {geography.length > 0 && (
+            <SectionCard title="Top Countries" subtitle="By sessions">
+              <div className="divide-y divide-slate-100">
+                {geography.slice(0, 8).map((c, i) => {
+                  const maxSessions = geography[0]?.sessions ?? 1;
+                  const barWidth = Math.round((c.sessions / maxSessions) * 100);
+                  return (
+                    <div key={i} className="flex items-center gap-3 py-3">
+                      <span className="text-xs text-slate-400 w-5 shrink-0 text-right">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-800">{c.country}</p>
+                        <div className="mt-1 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-400 rounded-full"
+                            style={{ width: `${barWidth}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-semibold text-slate-800">{formatNumber(c.sessions)}</p>
+                        <p className="text-xs text-slate-500">{formatNumber(c.users)} users</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </SectionCard>
+          )}
+        </div>
+      )}
         </>
       )}
     </div>
