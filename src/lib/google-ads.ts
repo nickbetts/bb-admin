@@ -31,6 +31,10 @@ async function getAccessToken(): Promise<string> {
 
   if (!res.ok) {
     const text = await res.text();
+    // Surface invalid_grant clearly so the UI can show targeted recovery instructions
+    if (text.includes("invalid_grant")) {
+      throw new Error(`invalid_grant: The Google Ads refresh token has expired or been revoked. Re-run scripts/get-gads-refresh-token.mjs and update GOOGLE_ADS_REFRESH_TOKEN in your environment.`);
+    }
     throw new Error(`Token refresh failed: ${text}`);
   }
 

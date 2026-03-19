@@ -179,6 +179,19 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
               <li>Approval typically takes 1–2 business days</li>
             </ol>
           </div>
+        ) : error.includes("invalid_grant") ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-5 space-y-2">
+            <p className="text-sm font-semibold text-amber-700">Google Ads OAuth token expired</p>
+            <p className="text-sm text-slate-600">
+              The refresh token has expired or been revoked — this typically happens when the Google Cloud OAuth app is in <strong>Testing</strong> mode (tokens expire after 7 days).
+            </p>
+            <ol className="text-sm text-slate-500 list-decimal list-inside space-y-1">
+              <li>Run <span className="font-mono text-amber-700">node scripts/get-gads-refresh-token.mjs</span> to generate a new token</li>
+              <li>Update <span className="font-mono text-amber-700">GOOGLE_ADS_REFRESH_TOKEN</span> in Vercel environment variables</li>
+              <li>Redeploy or run <span className="font-mono text-amber-700">npx vercel env pull</span> locally</li>
+              <li>To avoid this repeating, publish the OAuth consent screen in Google Cloud Console</li>
+            </ol>
+          </div>
         ) : (
         <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-600">
           {error}
