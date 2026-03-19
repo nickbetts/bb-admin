@@ -99,6 +99,14 @@ export default async function ClientPage({ params, searchParams }: Props) {
           ) : (
             <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }}>Google Ads not configured</span>
           )}
+          {client.searchConsoleSiteUrl ? (
+            <span className="badge badge-purple" style={{ padding: "6px 14px", fontSize: 13 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#8b5cf6", display: "inline-block" }} />
+              Search Console · {client.searchConsoleSiteUrl.replace(/^https?:\/\//, "").replace(/^sc-domain:/, "").replace(/\/$/, "")}
+            </span>
+          ) : (
+            <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }}>Search Console not configured</span>
+          )}
         </div>
       </div>
 
