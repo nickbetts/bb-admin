@@ -69,12 +69,8 @@ export default function SettingsPage() {
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-8">
         <h2 className="text-base font-semibold text-slate-900 mb-1">Google Ads Manager Account</h2>
-        <p className="text-sm text-slate-500 mb-2">
+        <p className="text-sm text-slate-500 mb-6">
           Select the MCC (manager) account used to access client Google Ads accounts.
-        </p>
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-6 flex items-start gap-2">
-          <span className="mt-0.5">⚠</span>
-          <span>Account names are unavailable until the Google Ads developer token is approved for Basic Access. Select your MCC by ID from the list below.</span>
         </p>
 
         {loading && <p className="text-sm text-slate-500">Loading accounts…</p>}
@@ -92,7 +88,7 @@ export default function SettingsPage() {
                 .filter((a) => a.isManager)
                 .map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.name} ({a.id})
+                    {a.name !== a.id ? `${a.name} (${a.id})` : a.id}
                   </option>
                 ))}
               {accounts.filter((a) => !a.isManager).length > 0 && (
@@ -101,7 +97,7 @@ export default function SettingsPage() {
                     .filter((a) => !a.isManager)
                     .map((a) => (
                       <option key={a.id} value={a.id}>
-                        {a.name} ({a.id})
+                        {a.name !== a.id ? `${a.name} (${a.id})` : a.id}
                       </option>
                     ))}
                 </optgroup>

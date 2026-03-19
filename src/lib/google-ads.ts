@@ -297,7 +297,7 @@ export async function getGoogleAdsAccounts(): Promise<GoogleAdsAccount[]> {
   }));
 }
 
-// Lists all accounts accessible to the authenticated user (no MCC needed)
+// Lists all accounts accessible to the authenticated user (requires Basic Access)
 export async function listAccessibleCustomers(): Promise<{ id: string; name: string; isManager: boolean }[]> {
   const token = await getAccessToken();
   const res = await fetch(`${ADS_BASE_URL}/customers:listAccessibleCustomers`, {
@@ -316,9 +316,30 @@ export async function listAccessibleCustomers(): Promise<{ id: string; name: str
   const { resourceNames } = await res.json() as { resourceNames: string[] };
   if (!resourceNames?.length) return [];
 
-  // Return IDs directly — per-account search queries require Basic Access approval
-  return resourceNames.map((rn) => {
-    const id = rn.replace("customers/", "");
-    return { id, name: id, isManager: false };
-  });
+  // Fetch name + manager flag for each account in parallel
+  const results = await Promise.allSettled(
+    resourceNames.map(async (rn) => {
+      const id = rn.replace("customers/", "");
+      const query = `SELECT customer.id, customer.descriptive_name, customer.manager FROM customer LIMIT 1`;
+      try {
+        const data = await searchGoogleAds(id, query, token, undefined);
+        const row = data.results?.[0];
+        return {
+          id,
+          name: String(row?.customer?.descriptiveName ?? id),
+          isManager: Boolean(row?.customer?.manager ?? false),
+        };
+      } catch {
+        return { id, name: id, isManager: false };
+      }
+    })
+  );
+
+  return results
+    .filter((r): r is PromiseFulfilledResult<{ id: string; name: string; isManager: boolean }> => r.status === "fulfilled")
+    .map((r) => r.value)
+    .sort((a, b) => {
+      if (a.isManager !== b.isManager) return a.isManager ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
 }
