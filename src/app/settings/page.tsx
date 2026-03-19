@@ -163,25 +163,35 @@ function SettingsInner() {
   const standardAccounts = accounts.filter((a) => !a.isManager);
 
   return (
-    <div className="max-w-3xl mx-auto py-12 px-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-        <p className="text-sm text-slate-500 mt-1">Manage global integrations and API configuration</p>
+    <div className="page">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Settings</h1>
+          <p className="page-desc">Manage global integrations and API configuration</p>
+        </div>
       </div>
 
       {/* OAuth result banner */}
       {banner && (
         <div
-          className={`rounded-xl px-5 py-3.5 text-sm font-medium flex items-center justify-between ${
-            banner.type === "success"
-              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-              : "bg-red-50 text-red-800 border border-red-200"
-          }`}
+          style={{
+            padding: "12px 18px",
+            borderRadius: "var(--r-sm)",
+            fontSize: 14,
+            fontWeight: 500,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 24,
+            ...(banner.type === "success"
+              ? { background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d" }
+              : { background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c" }),
+          }}
         >
           <span>{banner.message}</span>
           <button
             onClick={() => setBanner(null)}
-            className="ml-4 opacity-60 hover:opacity-100 transition-opacity text-lg leading-none"
+            style={{ marginLeft: 16, opacity: 0.6, fontSize: 18, lineHeight: 1, background: "none", border: "none", cursor: "pointer", color: "inherit" }}
           >
             ×
           </button>
@@ -189,18 +199,19 @@ function SettingsInner() {
       )}
 
       {/* Connected Google Accounts */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-8">
-        <div className="flex items-start justify-between mb-6">
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-header">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Connected Google Accounts</h2>
-            <p className="text-sm text-slate-500 mt-1">
+            <h2 className="card-title">Connected Google Accounts</h2>
+            <p className="card-subtitle">
               Add multiple Google accounts to access all their Manager (MCC) and client ad accounts. Every
               connected account&apos;s accounts are available in the client settings dropdowns.
             </p>
           </div>
           <a
             href="/api/auth/google-ads"
-            className="shrink-0 ml-6 inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+            className="btn btn-primary btn-sm"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0 }}
           >
             <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden="true">
               <path d="M12 11h8v2h-8v8h-2v-8H2v-2h8V3h2v8z" />
@@ -209,207 +220,212 @@ function SettingsInner() {
           </a>
         </div>
 
-        {/* Pre-requisite instructions */}
-        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
-          <button
-            onClick={() => setPrereqOpen((o) => !o)}
-            className="w-full flex items-center justify-between px-4 py-3 text-left"
-          >
-            <div className="flex items-center gap-2.5">
-              <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
-              <span className="text-sm font-semibold text-amber-800">
-                Before connecting — one-time setup required per Google Workspace org
-              </span>
-            </div>
-            <svg
-              className={`w-4 h-4 text-amber-500 transition-transform shrink-0 ${prereqOpen ? "rotate-180" : ""}`}
-              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        <div className="card-body">
+          {/* Pre-requisite instructions */}
+          <div style={{ marginBottom: 24, borderRadius: "var(--r)", border: "1px solid #fcd34d", background: "#fffbeb", overflow: "hidden" }}>
+            <button
+              onClick={() => setPrereqOpen((o) => !o)}
+              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <svg style={{ width: 16, height: 16, color: "#f59e0b", flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#92400e" }}>
+                  Before connecting — one-time setup required per Google Workspace org
+                </span>
+              </div>
+              <svg
+                style={{ width: 16, height: 16, color: "#f59e0b", flexShrink: 0, transition: "transform 0.2s", transform: prereqOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
 
-          {prereqOpen && (
-            <div className="px-4 pb-4 border-t border-amber-200 pt-3 space-y-4">
-              <p className="text-sm text-amber-900">
-                If the account you&apos;re connecting is a Google Workspace account (e.g.{" "}
-                <span className="font-mono text-xs bg-amber-100 px-1 rounded">name@company.com</span>),
-                the Workspace admin needs to trust this app once. It takes about 2 minutes.
-              </p>
+            {prereqOpen && (
+              <div style={{ padding: "12px 16px 16px", borderTop: "1px solid #fcd34d", display: "flex", flexDirection: "column", gap: 12 }}>
+                <p style={{ fontSize: 13, color: "#78350f" }}>
+                  If the account you&apos;re connecting is a Google Workspace account (e.g.{" "}
+                  <code style={{ fontFamily: "monospace", fontSize: 11, background: "#fef3c7", padding: "1px 5px", borderRadius: 4 }}>name@company.com</code>),
+                  the Workspace admin needs to trust this app once. It takes about 2 minutes.
+                </p>
 
-              <ol className="text-sm text-amber-900 space-y-2 list-none">
-                <li className="flex gap-3">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-xs font-bold flex items-center justify-center mt-0.5">1</span>
-                  <span>Open Google Admin Console → <strong>Security → API Controls → Manage Third-Party App Access</strong></span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-xs font-bold flex items-center justify-center mt-0.5">2</span>
-                  <span>Click <strong>Add app → OAuth App Name Or Client ID</strong></span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-xs font-bold flex items-center justify-center mt-0.5">3</span>
-                  <span>Paste this Client ID and search:</span>
-                </li>
-              </ol>
+                <ol style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>1</span>
+                    <span style={{ fontSize: 13, color: "#78350f" }}>Open Google Admin Console → <strong>Security → API Controls → Manage Third-Party App Access</strong></span>
+                  </li>
+                  <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>2</span>
+                    <span style={{ fontSize: 13, color: "#78350f" }}>Click <strong>Add app → OAuth App Name Or Client ID</strong></span>
+                  </li>
+                  <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>3</span>
+                    <span style={{ fontSize: 13, color: "#78350f" }}>Paste this Client ID and search:</span>
+                  </li>
+                </ol>
 
-              <div className="flex items-center gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2">
-                <code className="flex-1 text-xs text-slate-700 font-mono break-all select-all">
-                  960440447654-l1mh1bcondon0eaauab53kt4r8um4d9j.apps.googleusercontent.com
-                </code>
-                <button
-                  onClick={copyClientId}
-                  className="shrink-0 text-xs font-medium text-amber-700 hover:text-amber-900 transition-colors border border-amber-200 bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded"
+                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #fcd34d", borderRadius: "var(--r-sm)", padding: "8px 12px" }}>
+                  <code style={{ flex: 1, fontSize: 11, fontFamily: "monospace", color: "#374151", wordBreak: "break-all", userSelect: "all" as const }}>
+                    960440447654-l1mh1bcondon0eaauab53kt4r8um4d9j.apps.googleusercontent.com
+                  </code>
+                  <button
+                    onClick={copyClientId}
+                    style={{ flexShrink: 0, fontSize: 11, fontWeight: 500, background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: "#78350f" }}
+                  >
+                    {clientIdCopied ? "Copied ✓" : "Copy"}
+                  </button>
+                </div>
+
+                <ol style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>4</span>
+                    <span style={{ fontSize: 13, color: "#78350f" }}>Select the app, set access to <strong>Trusted</strong>, and save</span>
+                  </li>
+                  <li style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>5</span>
+                    <span style={{ fontSize: 13, color: "#78350f" }}>Come back here and click <strong>Connect account</strong> above</span>
+                  </li>
+                </ol>
+
+                <a
+                  href="https://admin.google.com/ac/owl/list?tab=configuredApps"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-sm"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#d97706", color: "#fff", border: "none", width: "fit-content" }}
                 >
-                  {clientIdCopied ? "Copied ✓" : "Copy"}
-                </button>
+                  Open Google Admin Console
+                  <svg style={{ width: 14, height: 14 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              </div>
+            )}
+          </div>
+
+          {connectionsLoading && <p style={{ fontSize: 13, color: "var(--text-3)", padding: "16px 0" }}>Loading connections…</p>}
+          {connectionsError && !connectionsLoading && (
+            <p style={{ fontSize: 13, color: "var(--danger)" }}>{connectionsError}</p>
+          )}
+
+          {!connectionsLoading && (
+            <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
+              {/* Primary account row */}
+              <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 0", borderBottom: "1px solid var(--border-subtle)" }}>
+                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--bg)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <GoogleIcon />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>Primary account</p>
+                  <p style={{ fontSize: 12, color: "var(--text-3)" }}>Configured via environment variable</p>
+                </div>
+                <span className="badge badge-green">Active</span>
               </div>
 
-              <ol className="text-sm text-amber-900 space-y-2 list-none">
-                <li className="flex gap-3">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-xs font-bold flex items-center justify-center mt-0.5">4</span>
-                  <span>Select the app, set access to <strong>Trusted</strong>, and save</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-xs font-bold flex items-center justify-center mt-0.5">5</span>
-                  <span>Come back here and click <strong>Connect account</strong> above</span>
-                </li>
-              </ol>
+              {connections.length === 0 && (
+                <p style={{ fontSize: 13, color: "var(--text-3)", padding: "20px 0", textAlign: "center" }}>
+                  No additional accounts connected. Click &ldquo;Connect account&rdquo; to add one.
+                </p>
+              )}
 
-              <a
-                href="https://admin.google.com/ac/owl/list?tab=configuredApps"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition-colors"
-              >
-                Open Google Admin Console
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
+              {connections.map((conn) => (
+                <div key={conn.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 0", borderBottom: "1px solid var(--border-subtle)" }}>
+                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--bg)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <GoogleIcon />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conn.email}</p>
+                    <p style={{ fontSize: 12, color: "var(--text-3)" }}>
+                      Connected{" "}
+                      {new Date(conn.createdAt).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </p>
+                  </div>
+                  <span className="badge badge-green">Active</span>
+                  <button
+                    onClick={() => handleRemoveConnection(conn.id)}
+                    disabled={removing === conn.id}
+                    className="btn btn-ghost btn-sm"
+                    style={{ color: "var(--danger)", opacity: removing === conn.id ? 0.4 : 1 }}
+                  >
+                    {removing === conn.id ? "Removing…" : "Disconnect"}
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>
-
-        {connectionsLoading && <p className="text-sm text-slate-400 py-4">Loading connections…</p>}
-        {connectionsError && !connectionsLoading && (
-          <p className="text-sm text-red-600">{connectionsError}</p>
-        )}
-
-        {!connectionsLoading && (
-          <div className="divide-y divide-slate-100">
-            {/* Always show the env-var primary connection row */}
-            <div className="flex items-center gap-4 py-3">
-              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                <GoogleIcon />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-800">Primary account</p>
-                <p className="text-xs text-slate-400">Configured via environment variable</p>
-              </div>
-              <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                Active
-              </span>
-            </div>
-
-            {connections.length === 0 && (
-              <p className="text-sm text-slate-400 py-5 text-center">
-                No additional accounts connected. Click &ldquo;Connect account&rdquo; to add one.
-              </p>
-            )}
-
-            {connections.map((conn) => (
-              <div key={conn.id} className="flex items-center gap-4 py-3">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                  <GoogleIcon />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">{conn.email}</p>
-                  <p className="text-xs text-slate-400">
-                    Connected{" "}
-                    {new Date(conn.createdAt).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-                <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  Active
-                </span>
-                <button
-                  onClick={() => handleRemoveConnection(conn.id)}
-                  disabled={removing === conn.id}
-                  className="text-xs text-slate-400 hover:text-red-500 transition-colors disabled:opacity-40 ml-2"
-                  title="Disconnect this account"
-                >
-                  {removing === conn.id ? "Removing…" : "Disconnect"}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Default MCC selector */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-8">
-        <h2 className="text-base font-semibold text-slate-900 mb-1">Default Manager Account</h2>
-        <p className="text-sm text-slate-500 mb-6">
-          Select which MCC is used as the default{" "}
-          <code className="bg-slate-100 px-1 rounded text-xs">login-customer-id</code> when fetching
-          data. All accounts across all connected Google accounts are listed here.
-        </p>
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <h2 className="card-title">Default Manager Account</h2>
+            <p className="card-subtitle">
+              Select which MCC is used as the default{" "}
+              <code style={{ fontFamily: "monospace", fontSize: 11, background: "var(--border-subtle)", padding: "2px 6px", borderRadius: 4 }}>login-customer-id</code>{" "}
+              when fetching data. All accounts across all connected Google accounts are listed here.
+            </p>
+          </div>
+        </div>
+        <div className="card-body">
+          {mccLoading && <p style={{ fontSize: 13, color: "var(--text-3)" }}>Loading accounts…</p>}
+          {mccError && <p style={{ fontSize: 13, color: "var(--danger)" }}>{mccError}</p>}
 
-        {mccLoading && <p className="text-sm text-slate-500">Loading accounts…</p>}
-        {mccError && <p className="text-sm text-red-600">{mccError}</p>}
+          {!mccLoading && !mccError && (
+            <>
+              <select
+                value={selectedMcc}
+                onChange={(e) => setSelectedMcc(e.target.value)}
+                className="form-input"
+                style={{ marginBottom: 12 }}
+              >
+                <option value="">— Select an account —</option>
+                {managerAccounts.length > 0 && (
+                  <optgroup label="Manager accounts (MCC)">
+                    {managerAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name !== a.id ? `${a.name} (${a.id})` : a.id}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {standardAccounts.length > 0 && (
+                  <optgroup label="Standard accounts">
+                    {standardAccounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name !== a.id ? `${a.name} (${a.id})` : a.id}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
 
-        {!mccLoading && !mccError && (
-          <>
-            <select
-              value={selectedMcc}
-              onChange={(e) => setSelectedMcc(e.target.value)}
-              className="w-full bg-white border border-slate-200 text-slate-800 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 mb-3 transition shadow-sm"
-            >
-              <option value="">— Select an account —</option>
-              {managerAccounts.length > 0 && (
-                <optgroup label="Manager accounts (MCC)">
-                  {managerAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name !== a.id ? `${a.name} (${a.id})` : a.id}
-                    </option>
-                  ))}
-                </optgroup>
+              {currentMcc && (
+                <p style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 16 }}>
+                  Current:{" "}
+                  <code style={{ fontFamily: "monospace", fontSize: 11, background: "var(--border-subtle)", padding: "2px 6px", borderRadius: 4, color: "var(--text-2)" }}>
+                    {currentMcc}
+                  </code>
+                </p>
               )}
-              {standardAccounts.length > 0 && (
-                <optgroup label="Standard accounts">
-                  {standardAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name !== a.id ? `${a.name} (${a.id})` : a.id}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
 
-            {currentMcc && (
-              <p className="text-xs text-slate-500 mb-5">
-                Current:{" "}
-                <span className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
-                  {currentMcc}
-                </span>
-              </p>
-            )}
-
-            <button
-              onClick={handleMccSave}
-              disabled={mccSaving || selectedMcc === currentMcc || !selectedMcc}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
-            >
-              {mccSaving ? "Saving…" : mccSaved ? "Saved ✓" : "Save"}
-            </button>
-          </>
-        )}
+              <button
+                onClick={handleMccSave}
+                disabled={mccSaving || selectedMcc === currentMcc || !selectedMcc}
+                className="btn btn-primary"
+              >
+                {mccSaving ? "Saving…" : mccSaved ? "Saved ✓" : "Save"}
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

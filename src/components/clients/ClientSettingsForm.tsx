@@ -52,11 +52,7 @@ interface GSCSite {
   permissionLevel: string;
 }
 
-const selectClass =
-  "w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition text-sm appearance-none shadow-sm";
 
-const inputClass =
-  "w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition text-sm shadow-sm";
 
 export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
   const router = useRouter();
@@ -175,302 +171,271 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* Basic Info */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-7 space-y-5">
-        <h2 className="text-base font-semibold text-slate-900">Basic Information</h2>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Client Name
-          </label>
-          <input
-            type="text"
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            className={inputClass}
-          />
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">Basic Information</h2>
+        </div>
+        <div className="card-body">
+          <div>
+            <label className="form-label">Client Name</label>
+            <input
+              type="text"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              className="form-input"
+            />
+          </div>
         </div>
       </div>
 
       {/* SemRush */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-7 space-y-5">
-        <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-xs font-bold text-orange-600">
-            S
-          </span>
-          <h2 className="text-base font-semibold text-slate-900">SemRush</h2>
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-xs font-bold text-orange-600">S</span>
+            <h2 className="card-title">SemRush</h2>
+          </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Project
-          </label>
-          {semrushLoading ? (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading projects…
-            </div>
-          ) : semrushFetchError ? (
-            <>
-              <input
-                type="text"
-                name="semrushDomain"
-                value={form.semrushDomain}
-                onChange={handleChange}
-                placeholder="example.com"
-                className={inputClass}
-              />
-              <p className="text-xs text-red-600 mt-1">{semrushFetchError}</p>
-            </>
-          ) : (
-            <select
-              name="semrushDomain"
-              value={form.semrushDomain}
-              onChange={handleChange}
-              className={selectClass}
-            >
-              <option value="">— Select a project —</option>
-              {semrushProjects.map((p) => (
-                <option key={p.projectId} value={p.domain}>
-                  {p.projectName} — {p.domain}
-                </option>
-              ))}
-            </select>
-          )}
+        <div className="card-body">
+          <div>
+            <label className="form-label">Project</label>
+            {semrushLoading ? (
+              <div className="form-input" style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)" }}>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading projects…
+              </div>
+            ) : semrushFetchError ? (
+              <>
+                <input type="text" name="semrushDomain" value={form.semrushDomain} onChange={handleChange} placeholder="example.com" className="form-input" />
+                <p className="text-xs text-red-600 mt-1">{semrushFetchError}</p>
+              </>
+            ) : (
+              <select name="semrushDomain" value={form.semrushDomain} onChange={handleChange} className="form-input">
+                <option value="">— Select a project —</option>
+                {semrushProjects.map((p) => (
+                  <option key={p.projectId} value={p.domain}>{p.projectName} — {p.domain}</option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
       </div>
 
       {/* GA4 */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-7 space-y-5">
-        <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">
-            G
-          </span>
-          <h2 className="text-base font-semibold text-slate-900">Google Analytics 4</h2>
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600">G</span>
+            <h2 className="card-title">Google Analytics 4</h2>
+          </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Property
-          </label>
-          {ga4Loading ? (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading properties…
-            </div>
-          ) : ga4FetchError ? (
-            <>
-              <input
-                type="text"
+        <div className="card-body">
+          <div>
+            <label className="form-label">Property</label>
+            {ga4Loading ? (
+              <div className="form-input" style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)" }}>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading properties…
+              </div>
+            ) : ga4FetchError ? (
+              <>
+                <input
+                  type="text"
+                  name="ga4PropertyId"
+                  value={form.ga4PropertyId}
+                  onChange={(e) => setForm((prev) => ({ ...prev, ga4PropertyId: e.target.value, ga4PropertyName: "" }))}
+                  placeholder="123456789"
+                  className="form-input"
+                />
+                <p className="text-xs text-red-600 mt-1">{ga4FetchError}</p>
+              </>
+            ) : (
+              <select
                 name="ga4PropertyId"
                 value={form.ga4PropertyId}
-                onChange={(e) => setForm((prev) => ({ ...prev, ga4PropertyId: e.target.value, ga4PropertyName: "" }))}
-                placeholder="123456789"
-                className={inputClass}
-              />
-              <p className="text-xs text-red-600 mt-1">{ga4FetchError}</p>
-            </>
-          ) : (
-            <select
-              name="ga4PropertyId"
-              value={form.ga4PropertyId}
-              onChange={(e) => {
-                const prop = ga4Properties.find((p) => p.id === e.target.value);
-                setForm((prev) => ({ ...prev, ga4PropertyId: e.target.value, ga4PropertyName: prop?.displayName ?? "" }));
-              }}
-              className={selectClass}
-            >
-              <option value="">— Select a GA4 property —</option>
-              {ga4Properties.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.displayName} ({p.account})
-                </option>
-              ))}
-            </select>
-          )}
+                onChange={(e) => {
+                  const prop = ga4Properties.find((p) => p.id === e.target.value);
+                  setForm((prev) => ({ ...prev, ga4PropertyId: e.target.value, ga4PropertyName: prop?.displayName ?? "" }));
+                }}
+                className="form-input"
+              >
+                <option value="">— Select a GA4 property —</option>
+                {ga4Properties.map((p) => (
+                  <option key={p.id} value={p.id}>{p.displayName} ({p.account})</option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Meta Ads */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-7 space-y-5">
-        <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-600">
-            M
-          </span>
-          <h2 className="text-base font-semibold text-slate-900">Meta Ads</h2>
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-600">M</span>
+            <h2 className="card-title">Meta Ads</h2>
+          </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Ad Account
-          </label>
-          {metaLoading ? (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading ad accounts…
-            </div>
-          ) : metaFetchError ? (
-            <>
-              <input
-                type="text"
-                name="metaAccountId"
-                value={form.metaAccountId}
-                onChange={handleChange}
-                placeholder="123456789"
-                className={inputClass}
-              />
-              <p className="text-xs text-red-600 mt-1">{metaFetchError}</p>
-            </>
-          ) : (
-            <select
-              name="metaAccountId"
-              value={form.metaAccountId}
-              onChange={handleChange}
-              className={selectClass}
-            >
-              <option value="">— Select an ad account —</option>
-              {metaAccounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          )}
+        <div className="card-body">
+          <div>
+            <label className="form-label">Ad Account</label>
+            {metaLoading ? (
+              <div className="form-input" style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)" }}>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading ad accounts…
+              </div>
+            ) : metaFetchError ? (
+              <>
+                <input type="text" name="metaAccountId" value={form.metaAccountId} onChange={handleChange} placeholder="123456789" className="form-input" />
+                <p className="text-xs text-red-600 mt-1">{metaFetchError}</p>
+              </>
+            ) : (
+              <select name="metaAccountId" value={form.metaAccountId} onChange={handleChange} className="form-input">
+                <option value="">— Select an ad account —</option>
+                {metaAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Google Ads */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-7 space-y-5">
-        <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-xs font-bold text-yellow-700">
-            A
-          </span>
-          <h2 className="text-base font-semibold text-slate-900">Google Ads</h2>
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-xs font-bold text-yellow-700">A</span>
+            <h2 className="card-title">Google Ads</h2>
+          </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Customer Account
-          </label>
-          {googleAdsLoading ? (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading accounts…
-            </div>
-          ) : googleAdsFetchError ? null : (
-            <select
-              value={googleAdsAccounts.some((a) => a.id === form.googleAdsCustomerId) ? form.googleAdsCustomerId : ""}
-              onChange={(e) => {
-                const acc = googleAdsAccounts.find((a) => a.id === e.target.value);
-                setForm((prev) => ({
-                  ...prev,
-                  googleAdsCustomerId: e.target.value,
-                  googleAdsAccountName: acc && acc.name !== acc.id ? acc.name : "",
-                }));
-              }}
-              className={selectClass + " mb-3"}
-            >
-              <option value="">— Pick from list —</option>
-              {googleAdsAccounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name !== a.id ? `${a.name} (${a.id})` : a.id}
-                </option>
-              ))}
-            </select>
-          )}
-          <input
-            type="text"
-            name="googleAdsCustomerId"
-            value={form.googleAdsCustomerId}
-            onChange={(e) => setForm((prev) => ({ ...prev, googleAdsCustomerId: e.target.value, googleAdsAccountName: "" }))}
-            placeholder="Enter account ID (e.g. 6943796207)"
-            className={inputClass}
-          />
-          <p className="text-xs text-slate-500 mt-1.5">
-            Not in the list? Paste the account ID directly above.
-          </p>
-          {googleAdsFetchError && (
-            <p className="text-xs text-red-600 mt-1">{googleAdsFetchError}</p>
-          )}
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div>
+            <label className="form-label">Customer Account</label>
+            {googleAdsLoading ? (
+              <div className="form-input" style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)" }}>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading accounts…
+              </div>
+            ) : !googleAdsFetchError && (
+              <select
+                value={googleAdsAccounts.some((a) => a.id === form.googleAdsCustomerId) ? form.googleAdsCustomerId : ""}
+                onChange={(e) => {
+                  const acc = googleAdsAccounts.find((a) => a.id === e.target.value);
+                  setForm((prev) => ({
+                    ...prev,
+                    googleAdsCustomerId: e.target.value,
+                    googleAdsAccountName: acc && acc.name !== acc.id ? acc.name : "",
+                  }));
+                }}
+                className="form-input"
+                style={{ marginBottom: 10 }}
+              >
+                <option value="">— Pick from list —</option>
+                {googleAdsAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>{a.name !== a.id ? `${a.name} (${a.id})` : a.id}</option>
+                ))}
+              </select>
+            )}
+            <input
+              type="text"
+              name="googleAdsCustomerId"
+              value={form.googleAdsCustomerId}
+              onChange={(e) => setForm((prev) => ({ ...prev, googleAdsCustomerId: e.target.value, googleAdsAccountName: "" }))}
+              placeholder="Enter account ID (e.g. 6943796207)"
+              className="form-input"
+            />
+            <p className="text-xs text-slate-500 mt-1.5">Not in the list? Paste the account ID directly above.</p>
+            {googleAdsFetchError && (
+              <p className="text-xs text-red-600 mt-1">{googleAdsFetchError}</p>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Search Console */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-7 space-y-5">
-        <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-700">
-            SC
-          </span>
-          <h2 className="text-base font-semibold text-slate-900">Google Search Console</h2>
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-700">SC</span>
+            <h2 className="card-title">Google Search Console</h2>
+          </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Site URL
-          </label>
-          {gscLoading ? (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading sites…
-            </div>
-          ) : gscFetchError ? (
-            <>
-              <input
-                type="text"
-                name="searchConsoleSiteUrl"
-                value={form.searchConsoleSiteUrl}
-                onChange={handleChange}
-                placeholder="https://example.com/ or sc-domain:example.com"
-                className={inputClass}
-              />
-              <p className="text-xs text-amber-600 mt-1">{gscFetchError} — enter site URL manually above.</p>
-            </>
-          ) : (
-            <>
-              <select
-                value={gscSites.some((s) => s.siteUrl === form.searchConsoleSiteUrl) ? form.searchConsoleSiteUrl : ""}
-                onChange={(e) => setForm((prev) => ({ ...prev, searchConsoleSiteUrl: e.target.value }))}
-                className={selectClass + " mb-3"}
-              >
-                <option value="">— Pick from list —</option>
-                {gscSites.map((s) => (
-                  <option key={s.siteUrl} value={s.siteUrl}>
-                    {s.siteUrl} ({s.permissionLevel})
-                  </option>
-                ))}
-              </select>
-              <input
-                type="text"
-                name="searchConsoleSiteUrl"
-                value={form.searchConsoleSiteUrl}
-                onChange={handleChange}
-                placeholder="https://example.com/ or sc-domain:example.com"
-                className={inputClass}
-              />
-              <p className="text-xs text-slate-500 mt-1.5">
-                Not in the list? Paste the site URL directly above.
-              </p>
-            </>
-          )}
+        <div className="card-body">
+          <div>
+            <label className="form-label">Site URL</label>
+            {gscLoading ? (
+              <div className="form-input" style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)" }}>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading sites…
+              </div>
+            ) : gscFetchError ? (
+              <>
+                <input
+                  type="text"
+                  name="searchConsoleSiteUrl"
+                  value={form.searchConsoleSiteUrl}
+                  onChange={handleChange}
+                  placeholder="https://example.com/ or sc-domain:example.com"
+                  className="form-input"
+                />
+                <p className="text-xs text-amber-600 mt-1">{gscFetchError} — enter site URL manually above.</p>
+              </>
+            ) : (
+              <>
+                <select
+                  value={gscSites.some((s) => s.siteUrl === form.searchConsoleSiteUrl) ? form.searchConsoleSiteUrl : ""}
+                  onChange={(e) => setForm((prev) => ({ ...prev, searchConsoleSiteUrl: e.target.value }))}
+                  className="form-input"
+                  style={{ marginBottom: 10 }}
+                >
+                  <option value="">— Pick from list —</option>
+                  {gscSites.map((s) => (
+                    <option key={s.siteUrl} value={s.siteUrl}>{s.siteUrl} ({s.permissionLevel})</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  name="searchConsoleSiteUrl"
+                  value={form.searchConsoleSiteUrl}
+                  onChange={handleChange}
+                  placeholder="https://example.com/ or sc-domain:example.com"
+                  className="form-input"
+                />
+                <p className="text-xs text-slate-500 mt-1.5">Not in the list? Paste the site URL directly above.</p>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
       {error && (
-        <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+        <div style={{ padding: "12px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-sm)", fontSize: 14, color: "#b91c1c" }}>
           {error}
         </div>
       )}
 
       {success && (
-        <div className="px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-700">
+        <div style={{ padding: "12px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "var(--r-sm)", fontSize: 14, color: "#15803d" }}>
           Settings saved successfully!
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={saving}
-        className="flex items-center gap-2 px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition disabled:opacity-50 shadow-sm"
-      >
-        <Save className="h-4 w-4" />
-        {saving ? "Saving…" : "Save Settings"}
-      </button>
+      <div>
+        <button
+          type="submit"
+          disabled={saving}
+          className="btn btn-primary"
+          style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+        >
+          <Save className="h-4 w-4" />
+          {saving ? "Saving…" : "Save Settings"}
+        </button>
+      </div>
     </form>
   );
 }
