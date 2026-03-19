@@ -150,6 +150,15 @@ function SettingsInner() {
     }
   }
 
+  const [prereqOpen, setPrereqOpen] = useState(false);
+  const [clientIdCopied, setClientIdCopied] = useState(false);
+
+  function copyClientId() {
+    navigator.clipboard.writeText("960440447654-l1mh1bcondon0eaauab53kt4r8um4d9j.apps.googleusercontent.com");
+    setClientIdCopied(true);
+    setTimeout(() => setClientIdCopied(false), 2000);
+  }
+
   const managerAccounts = accounts.filter((a) => a.isManager);
   const standardAccounts = accounts.filter((a) => !a.isManager);
 
@@ -198,6 +207,89 @@ function SettingsInner() {
             </svg>
             Connect account
           </a>
+        </div>
+
+        {/* Pre-requisite instructions */}
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
+          <button
+            onClick={() => setPrereqOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-4 py-3 text-left"
+          >
+            <div className="flex items-center gap-2.5">
+              <svg className="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+              <span className="text-sm font-semibold text-amber-800">
+                Before connecting — one-time setup required per Google Workspace org
+              </span>
+            </div>
+            <svg
+              className={`w-4 h-4 text-amber-500 transition-transform shrink-0 ${prereqOpen ? "rotate-180" : ""}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {prereqOpen && (
+            <div className="px-4 pb-4 border-t border-amber-200 pt-3 space-y-4">
+              <p className="text-sm text-amber-900">
+                If the account you&apos;re connecting is a Google Workspace account (e.g.{" "}
+                <span className="font-mono text-xs bg-amber-100 px-1 rounded">name@company.com</span>),
+                the Workspace admin needs to trust this app once. It takes about 2 minutes.
+              </p>
+
+              <ol className="text-sm text-amber-900 space-y-2 list-none">
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+                  <span>Open Google Admin Console → <strong>Security → API Controls → Manage Third-Party App Access</strong></span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-xs font-bold flex items-center justify-center mt-0.5">2</span>
+                  <span>Click <strong>Add app → OAuth App Name Or Client ID</strong></span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-xs font-bold flex items-center justify-center mt-0.5">3</span>
+                  <span>Paste this Client ID and search:</span>
+                </li>
+              </ol>
+
+              <div className="flex items-center gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2">
+                <code className="flex-1 text-xs text-slate-700 font-mono break-all select-all">
+                  960440447654-l1mh1bcondon0eaauab53kt4r8um4d9j.apps.googleusercontent.com
+                </code>
+                <button
+                  onClick={copyClientId}
+                  className="shrink-0 text-xs font-medium text-amber-700 hover:text-amber-900 transition-colors border border-amber-200 bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded"
+                >
+                  {clientIdCopied ? "Copied ✓" : "Copy"}
+                </button>
+              </div>
+
+              <ol className="text-sm text-amber-900 space-y-2 list-none">
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-xs font-bold flex items-center justify-center mt-0.5">4</span>
+                  <span>Select the app, set access to <strong>Trusted</strong>, and save</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-amber-200 text-amber-800 text-xs font-bold flex items-center justify-center mt-0.5">5</span>
+                  <span>Come back here and click <strong>Connect account</strong> above</span>
+                </li>
+              </ol>
+
+              <a
+                href="https://admin.google.com/ac/owl/list?tab=configuredApps"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition-colors"
+              >
+                Open Google Admin Console
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            </div>
+          )}
         </div>
 
         {connectionsLoading && <p className="text-sm text-slate-400 py-4">Loading connections…</p>}
