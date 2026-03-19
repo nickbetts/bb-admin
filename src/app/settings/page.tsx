@@ -50,6 +50,13 @@ function SettingsInner() {
   const [connectionsError, setConnectionsError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
 
+  // OpenAI API key state
+  const [openaiKey, setOpenaiKey] = useState("");
+  const [openaiKeyInput, setOpenaiKeyInput] = useState("");
+  const [openaiKeySaving, setOpenaiKeySaving] = useState(false);
+  const [openaiKeySaved, setOpenaiKeySaved] = useState(false);
+  const [openaiKeyError, setOpenaiKeyError] = useState<string | null>(null);
+
   // Banner from OAuth redirect
   const oauthErrorKey = searchParams.get("error");
   const oauthConnected = searchParams.get("connected");
@@ -100,6 +107,9 @@ function SettingsInner() {
       const mcc = settings.googleAdsMccId ?? "";
       setCurrentMcc(mcc);
       setSelectedMcc(mcc);
+      const storedKey = settings.openaiApiKey ?? "";
+      setOpenaiKey(storedKey);
+      setOpenaiKeyInput(storedKey ? "sk-…redacted" : "");
     } catch (err) {
       setMccError(err instanceof Error ? err.message : "Failed to load");
     } finally {
@@ -111,6 +121,29 @@ function SettingsInner() {
     loadConnections();
     loadMcc();
   }, [loadConnections, loadMcc]);
+
+  async function handleOpenaiKeySave() {
+    setOpenaiKeySaving(true);
+    setOpenaiKeySaved(false);
+    setOpenaiKeyError(null);
+    try {
+      const keyToSave = openaiKeyInput.startsWith("sk-…") ? openaiKey : openaiKeyInput;
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ openaiApiKey: keyToSave }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setOpenaiKey(keyToSave);
+      setOpenaiKeyInput(keyToSave ? "sk-…redacted" : "");
+      setOpenaiKeySaved(true);
+      setTimeout(() => setOpenaiKeySaved(false), 3000);
+    } catch (err) {
+      setOpenaiKeyError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setOpenaiKeySaving(false);
+    }
+  }
 
   async function handleMccSave() {
     setMccSaving(true);
@@ -384,6 +417,52 @@ function SettingsInner() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* OpenAI API Key */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-header">
+          <div>
+            <h2 className="card-title">OpenAI API Key</h2>
+            <p className="card-subtitle">
+              Required for AI-powered insights, anomaly detection, and automated report commentary.
+              Get your key from{" "}
+              <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>
+                platform.openai.com
+              </a>.
+            </p>
+          </div>
+        </div>
+        <div className="card-body">
+          {openaiKeyError && (
+            <p style={{ fontSize: 13, color: "var(--danger)", marginBottom: 12 }}>{openaiKeyError}</p>
+          )}
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <input
+              type="password"
+              className="form-input"
+              style={{ flex: 1, fontFamily: "monospace", fontSize: 13 }}
+              placeholder="sk-…"
+              value={openaiKeyInput}
+              onChange={(e) => setOpenaiKeyInput(e.target.value)}
+              onFocus={() => {
+                if (openaiKeyInput === "sk-…redacted") setOpenaiKeyInput("");
+              }}
+            />
+            <button
+              onClick={handleOpenaiKeySave}
+              disabled={openaiKeySaving || !openaiKeyInput || openaiKeyInput === "sk-…redacted"}
+              className="btn btn-primary"
+            >
+              {openaiKeySaving ? "Saving…" : openaiKeySaved ? "Saved ✓" : "Save"}
+            </button>
+          </div>
+          {openaiKey && (
+            <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>
+              ✓ API key configured — AI insights are enabled across all client dashboards.
+            </p>
           )}
         </div>
       </div>

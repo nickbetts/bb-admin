@@ -6,7 +6,8 @@ import { ArrowLeft, Download, Upload, Trash2, Edit2, Check, X, BarChart3 } from 
 import { SemrushSection } from "@/components/dashboard/SemrushSection";
 import { GA4Section } from "@/components/dashboard/GA4Section";
 import { MetaSection } from "@/components/dashboard/MetaSection";
-import { formatCurrency, getDateRange } from "@/lib/utils";
+import { getDateRange } from "@/lib/utils";
+import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
 interface Section {
   id: string;
@@ -312,7 +313,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       rows={4}
                       className="w-full px-4 py-3 rounded-lg bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition text-sm resize-none shadow-sm"
                     />
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <button
                         onClick={() => handleSaveSection(section.id)}
                         disabled={saving === section.id}
@@ -328,6 +329,19 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                         <X className="h-3.5 w-3.5" />
                         Cancel
                       </button>
+                      <AiInsightsPanel
+                        sectionType={section.sectionType === "paid_social" ? "meta" : section.sectionType}
+                        metrics={{}}
+                        clientName={report.client.name}
+                        dateRange={`${startDate} – ${endDate}`}
+                        compact
+                        onInsightsGenerated={(text) =>
+                          setCommentary((prev) => ({
+                            ...prev,
+                            [section.id]: text,
+                          }))
+                        }
+                      />
                     </div>
                   </div>
                 ) : section.commentary ? (

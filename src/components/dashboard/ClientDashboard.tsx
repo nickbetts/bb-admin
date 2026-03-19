@@ -54,8 +54,11 @@ export function ClientDashboard({ client, period: initialPeriod }: ClientDashboa
   const [activeTab, setActiveTab] = useState<Tab>(() => getDefaultTab(client));
 
   const today = toDateInputValue(new Date());
-  const thirtyDaysAgo = toDateInputValue(new Date(Date.now() - 30 * 86400000));
-  const [customStart, setCustomStart] = useState(thirtyDaysAgo);
+  const [customStart, setCustomStart] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return toDateInputValue(d);
+  });
   const [customEnd, setCustomEnd] = useState(today);
 
   const { startDate, endDate } = useMemo(() => {

@@ -20,6 +20,7 @@ import { SectionCard } from "@/components/ui/index";
 import { LoadingSpinner } from "@/components/ui/index";
 import { formatNumber, formatCurrency, formatDateDisplay, pctChange } from "@/lib/utils";
 import { TrendingUp, Search, ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
 interface SemrushSectionProps {
   domain: string;
@@ -444,6 +445,21 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
         </SectionCard>
       )}
         </>
+      )}
+
+      {/* AI Insights */}
+      {!loading && !error && overview && (
+        <AiInsightsPanel
+          sectionType="seo"
+          metrics={{
+            organicTraffic: overview.organicTraffic,
+            organicKeywords: overview.organicKeywords,
+            organicCost: overview.organicCost,
+            paidTraffic: overview.paidTraffic,
+            paidKeywords: overview.paidKeywords,
+          }}
+          dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+        />
       )}
     </div>
   );

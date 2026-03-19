@@ -16,6 +16,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner } from "@/components/ui/index";
 import { formatNumber, formatCurrency, formatPercent, formatDateDisplay } from "@/lib/utils";
 import { DollarSign, MousePointer, Eye, TrendingUp } from "lucide-react";
+import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
 interface MetaSectionProps {
   clientId: string;
@@ -256,6 +257,24 @@ export function MetaSection({ clientId, startDate, endDate }: MetaSectionProps) 
         )}
       </div>
         </>
+      )}
+
+      {/* AI Insights */}
+      {!loading && !error && overview && (
+        <AiInsightsPanel
+          sectionType="meta"
+          metrics={{
+            totalSpend: overview.totalSpend,
+            totalImpressions: overview.totalImpressions,
+            totalClicks: overview.totalClicks,
+            avgCtr: overview.avgCtr,
+            avgCpc: overview.avgCpc,
+            avgCpm: overview.avgCpm,
+            totalConversions: overview.totalConversions,
+            avgRoas: overview.avgRoas,
+          }}
+          dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+        />
       )}
     </div>
   );
