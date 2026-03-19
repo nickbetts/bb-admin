@@ -48,6 +48,7 @@ model Client {
   metaAccessToken       String?
   gaCredentials         String?
   googleAdsCustomerId   String?
+  searchConsoleSiteUrl  String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   reports             Report[]

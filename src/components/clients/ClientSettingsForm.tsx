@@ -14,6 +14,7 @@ interface Client {
   metaAccountId: string | null;
   metaAccessToken: string | null;
   googleAdsCustomerId: string | null;
+  searchConsoleSiteUrl: string | null;
 }
 
 interface ClientSettingsFormProps {
@@ -44,6 +45,11 @@ interface GoogleAdsAccount {
   isManager: boolean;
 }
 
+interface GSCSite {
+  siteUrl: string;
+  permissionLevel: string;
+}
+
 const selectClass =
   "w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition text-sm appearance-none shadow-sm";
 
@@ -60,14 +66,17 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
   const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
   const [semrushProjects, setSemrushProjects] = useState<SemrushProject[]>([]);
   const [googleAdsAccounts, setGoogleAdsAccounts] = useState<GoogleAdsAccount[]>([]);
+  const [gscSites, setGscSites] = useState<GSCSite[]>([]);
   const [ga4Loading, setGa4Loading] = useState(true);
   const [metaLoading, setMetaLoading] = useState(true);
   const [semrushLoading, setSemrushLoading] = useState(true);
   const [googleAdsLoading, setGoogleAdsLoading] = useState(true);
+  const [gscLoading, setGscLoading] = useState(true);
   const [ga4FetchError, setGa4FetchError] = useState("");
   const [metaFetchError, setMetaFetchError] = useState("");
   const [semrushFetchError, setSemrushFetchError] = useState("");
   const [googleAdsFetchError, setGoogleAdsFetchError] = useState("");
+  const [gscFetchError, setGscFetchError] = useState("");
 
   const [form, setForm] = useState({
     name: client.name,
@@ -75,6 +84,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
     ga4PropertyId: client.ga4PropertyId ?? "",
     metaAccountId: client.metaAccountId ?? "",
     googleAdsCustomerId: client.googleAdsCustomerId ?? "",
+    searchConsoleSiteUrl: client.searchConsoleSiteUrl ?? "",
   });
 
   useEffect(() => {
@@ -113,6 +123,15 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       })
       .catch(() => setGoogleAdsFetchError("Failed to load Google Ads accounts"))
       .finally(() => setGoogleAdsLoading(false));
+
+    fetch("/api/search-console/sites")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) setGscFetchError(data.error);
+        else setGscSites(data);
+      })
+      .catch(() => setGscFetchError("Failed to load Search Console sites"))
+      .finally(() => setGscLoading(false));
   }, []);
 
   function handleChange(
@@ -355,6 +374,65 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
           </p>
           {googleAdsFetchError && (
             <p className="text-xs text-red-600 mt-1">{googleAdsFetchError}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Search Console */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-7 space-y-5">
+        <div className="flex items-center gap-3">
+          <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-700">
+            SC
+          </span>
+          <h2 className="text-base font-semibold text-slate-900">Google Search Console</h2>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            Site URL
+          </label>
+          {gscLoading ? (
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading sites…
+            </div>
+          ) : gscFetchError ? (
+            <>
+              <input
+                type="text"
+                name="searchConsoleSiteUrl"
+                value={form.searchConsoleSiteUrl}
+                onChange={handleChange}
+                placeholder="https://example.com/ or sc-domain:example.com"
+                className={inputClass}
+              />
+              <p className="text-xs text-amber-600 mt-1">{gscFetchError} — enter site URL manually above.</p>
+            </>
+          ) : (
+            <>
+              <select
+                value={gscSites.some((s) => s.siteUrl === form.searchConsoleSiteUrl) ? form.searchConsoleSiteUrl : ""}
+                onChange={(e) => setForm((prev) => ({ ...prev, searchConsoleSiteUrl: e.target.value }))}
+                className={selectClass + " mb-3"}
+              >
+                <option value="">— Pick from list —</option>
+                {gscSites.map((s) => (
+                  <option key={s.siteUrl} value={s.siteUrl}>
+                    {s.siteUrl} ({s.permissionLevel})
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                name="searchConsoleSiteUrl"
+                value={form.searchConsoleSiteUrl}
+                onChange={handleChange}
+                placeholder="https://example.com/ or sc-domain:example.com"
+                className={inputClass}
+              />
+              <p className="text-xs text-slate-500 mt-1.5">
+                Not in the list? Paste the site URL directly above.
+              </p>
+            </>
           )}
         </div>
       </div>

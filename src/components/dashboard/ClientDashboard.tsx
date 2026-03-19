@@ -5,6 +5,7 @@ import { SemrushSection } from "./SemrushSection";
 import { GA4Section } from "./GA4Section";
 import { MetaSection } from "./MetaSection";
 import { GoogleAdsSection } from "./GoogleAdsSection";
+import { SearchConsoleSection } from "./SearchConsoleSection";
 import { getDateRange } from "@/lib/utils";
 import { Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ interface Client {
   ga4PropertyId: string | null;
   metaAccountId: string | null;
   googleAdsCustomerId: string | null;
+  searchConsoleSiteUrl: string | null;
 }
 
 interface ClientDashboardProps {
@@ -32,7 +34,7 @@ const periods = [
   { value: "custom", label: "Custom" },
 ];
 
-type Tab = "seo" | "web" | "paid" | "googleads";
+type Tab = "seo" | "web" | "paid" | "googleads" | "searchconsole";
 
 function toDateInputValue(d: Date) {
   return d.toISOString().split("T")[0];
@@ -41,6 +43,7 @@ function toDateInputValue(d: Date) {
 function getDefaultTab(client: Client): Tab {
   if (client.semrushDomain) return "seo";
   if (client.ga4PropertyId) return "web";
+  if (client.searchConsoleSiteUrl) return "searchconsole";
   if (client.metaAccountId) return "paid";
   if (client.googleAdsCustomerId) return "googleads";
   return "seo";
@@ -63,6 +66,7 @@ export function ClientDashboard({ client, period: initialPeriod }: ClientDashboa
   const tabs: { id: Tab; label: string; available: boolean }[] = [
     { id: "seo", label: "SEO / SemRush", available: !!client.semrushDomain },
     { id: "web", label: "Web Analytics (GA4)", available: !!client.ga4PropertyId },
+    { id: "searchconsole", label: "Search Console", available: !!client.searchConsoleSiteUrl },
     { id: "paid", label: "Paid Social (Meta)", available: !!client.metaAccountId },
     { id: "googleads", label: "Paid Search (Google Ads)", available: !!client.googleAdsCustomerId },
   ];
@@ -158,6 +162,16 @@ export function ClientDashboard({ client, period: initialPeriod }: ClientDashboa
         <NotConfigured
           name="Paid Search (Google Ads)"
           description="Add a Google Ads customer ID in client settings to see spend, clicks, conversions and ROAS"
+          settingsHref={`/clients/${client.slug}/settings`}
+        />
+      ) : null}
+
+      {activeTab === "searchconsole" && client.searchConsoleSiteUrl ? (
+        <SearchConsoleSection siteUrl={client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} />
+      ) : activeTab === "searchconsole" ? (
+        <NotConfigured
+          name="Search Console"
+          description="Add a Search Console site URL in client settings to see clicks, impressions, CTR and keyword rankings"
           settingsHref={`/clients/${client.slug}/settings`}
         />
       ) : null}
