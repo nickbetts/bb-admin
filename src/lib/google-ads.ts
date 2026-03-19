@@ -342,12 +342,37 @@ export async function getGoogleAdsAccounts(): Promise<GoogleAdsAccount[]> {
   }));
 }
 
-// Lists all accounts accessible to the authenticated user (requires Basic Access)
-export async function listAccessibleCustomers(): Promise<{ id: string; name: string; isManager: boolean }[]> {
-  const token = await getAccessToken();
+// Exchange a specific refresh token for an access token (used for multi-connection support)
+async function getAccessTokenForRefreshToken(refreshToken: string): Promise<string> {
+  const res = await fetch(TOKEN_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: process.env.GOOGLE_ADS_CLIENT_ID!,
+      client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET!,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    if (text.includes("invalid_grant")) {
+      throw new Error("invalid_grant: Refresh token has expired or been revoked.");
+    }
+    throw new Error(`Token refresh failed: ${text}`);
+  }
+  const data = await res.json();
+  return data.access_token as string;
+}
+
+// Core implementation that accepts an already-resolved access token
+async function listAccessibleCustomersWithToken(
+  accessToken: string
+): Promise<{ id: string; name: string; isManager: boolean }[]> {
   const res = await fetch(`${ADS_BASE_URL}/customers:listAccessibleCustomers`, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${accessToken}`,
       "developer-token": process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
     },
     cache: "no-store",
@@ -361,13 +386,12 @@ export async function listAccessibleCustomers(): Promise<{ id: string; name: str
   const { resourceNames } = await res.json() as { resourceNames: string[] };
   if (!resourceNames?.length) return [];
 
-  // Fetch name + manager flag for each account in parallel
   const results = await Promise.allSettled(
     resourceNames.map(async (rn) => {
       const id = rn.replace("customers/", "");
       const query = `SELECT customer.id, customer.descriptive_name, customer.manager FROM customer LIMIT 1`;
       try {
-        const data = await searchGoogleAds(id, query, token, undefined);
+        const data = await searchGoogleAds(id, query, accessToken, undefined);
         const row = data.results?.[0];
         return {
           id,
@@ -387,4 +411,99 @@ export async function listAccessibleCustomers(): Promise<{ id: string; name: str
       if (a.isManager !== b.isManager) return a.isManager ? -1 : 1;
       return a.name.localeCompare(b.name);
     });
+}
+
+// Fetch direct sub-accounts of a manager account using a provided access token
+async function getMccSubAccountsWithToken(
+  mccId: string,
+  accessToken: string
+): Promise<GoogleAdsAccount[]> {
+  const query = `
+    SELECT
+      customer_client.id,
+      customer_client.descriptive_name,
+      customer_client.currency_code,
+      customer_client.manager,
+      customer_client.status
+    FROM customer_client
+    WHERE customer_client.level = 1
+      AND customer_client.status = 'ENABLED'
+    ORDER BY customer_client.descriptive_name ASC
+  `;
+  const data = await searchGoogleAds(mccId, query, accessToken, mccId);
+  return (data.results ?? []).map((row: Record<string, Record<string, unknown>>) => ({
+    id: String(row.customerClient?.id ?? ""),
+    name: String(row.customerClient?.descriptiveName ?? ""),
+    currencyCode: String(row.customerClient?.currencyCode ?? ""),
+    isManager: Boolean(row.customerClient?.manager ?? false),
+  }));
+}
+
+// Returns all Google Ads accounts visible across every stored connection + the env var token.
+// Used to populate the account selector in client settings.
+export async function getAllGoogleAdsAccounts(): Promise<GoogleAdsAccount[]> {
+  const refreshTokens: string[] = [];
+
+  // Include env-var token for backward compatibility
+  if (process.env.GOOGLE_ADS_REFRESH_TOKEN?.trim()) {
+    refreshTokens.push(process.env.GOOGLE_ADS_REFRESH_TOKEN.trim());
+  }
+
+  // Include tokens from any stored DB connections
+  try {
+    const { prisma } = await import("./prisma");
+    const connections = await prisma.googleConnection.findMany();
+    for (const conn of connections) {
+      if (!refreshTokens.includes(conn.refreshToken)) {
+        refreshTokens.push(conn.refreshToken);
+      }
+    }
+  } catch {
+    // DB unavailable — continue with env var only
+  }
+
+  if (refreshTokens.length === 0) return [];
+
+  const allAccounts = new Map<string, GoogleAdsAccount>();
+
+  await Promise.allSettled(
+    refreshTokens.map(async (refreshToken) => {
+      try {
+        const accessToken = await getAccessTokenForRefreshToken(refreshToken);
+        const directAccounts = await listAccessibleCustomersWithToken(accessToken);
+
+        for (const acc of directAccounts) {
+          if (!allAccounts.has(acc.id)) {
+            allAccounts.set(acc.id, { id: acc.id, name: acc.name, currencyCode: "USD", isManager: acc.isManager });
+          }
+          // Drill into any manager accounts to get their sub-clients
+          if (acc.isManager) {
+            try {
+              const subAccounts = await getMccSubAccountsWithToken(acc.id, accessToken);
+              for (const sub of subAccounts) {
+                if (!allAccounts.has(sub.id)) {
+                  allAccounts.set(sub.id, sub);
+                }
+              }
+            } catch {
+              // Ignore errors for individual MCCs
+            }
+          }
+        }
+      } catch (err) {
+        console.error("getAllGoogleAdsAccounts: failed for a connection:", err);
+      }
+    })
+  );
+
+  return Array.from(allAccounts.values()).sort((a, b) => {
+    if (a.isManager !== b.isManager) return a.isManager ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+// Lists all accounts accessible to the authenticated user (requires Basic Access)
+export async function listAccessibleCustomers(): Promise<{ id: string; name: string; isManager: boolean }[]> {
+  const token = await getAccessToken();
+  return listAccessibleCustomersWithToken(token);
 }

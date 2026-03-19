@@ -91,3 +91,11 @@ model Screenshot {
   createdAt DateTime @default(now())
   report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
 }
+
+model GoogleConnection {
+  id           String   @id @default(cuid())
+  label        String
+  email        String
+  refreshToken String
+  createdAt    DateTime @default(now())
+}

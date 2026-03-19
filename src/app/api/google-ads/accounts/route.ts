@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { getGoogleAdsAccounts } from "@/lib/google-ads";
+import { getAllGoogleAdsAccounts } from "@/lib/google-ads";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export async function GET() {
       return NextResponse.json({ error: "Google Ads not configured" }, { status: 503 });
     }
 
-    const accounts = await getGoogleAdsAccounts();
+    const accounts = await getAllGoogleAdsAccounts();
     return NextResponse.json(accounts);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
