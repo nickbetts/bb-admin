@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn, formatNumber, formatCurrency } from "@/lib/utils";
 
 interface LoadingSpinnerProps {
   size?: "sm" | "md" | "lg";
@@ -51,6 +51,43 @@ export function SectionCard({
       </div>
       <div className="card-body">{children}</div>
     </div>
+  );
+}
+
+interface DeltaProps {
+  current: number;
+  previous: number | null | undefined;
+  /** 'count' shows numeric diff (K/M abbreviated); 'currency' shows formatted currency diff; 'none' shows % only */
+  format?: "count" | "currency" | "none";
+  /** invert: lower value = better (position, CPA, bounce rate) */
+  invert?: boolean;
+}
+
+/** Inline comparison indicator for table cells. Shows arrow + optional numeric diff + % change. */
+export function Delta({ current, previous, format = "none", invert = false }: DeltaProps) {
+  if (previous == null || previous === 0) return null;
+  const diff = current - previous;
+  const pctVal = (diff / previous) * 100;
+  if (Math.abs(pctVal) < 0.05) {
+    return <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500, whiteSpace: "nowrap" }}>→</span>;
+  }
+  const isUp = diff > 0;
+  const isGood = invert ? !isUp : isUp;
+  const color = isGood ? "#10b981" : "#ef4444";
+  const arrow = isUp ? "▲" : "▼";
+  const pctStr = `${isUp ? "+" : ""}${pctVal.toFixed(1)}%`;
+  let numPart = "";
+  if (format === "count") {
+    const abs = Math.abs(diff);
+    const rendered = abs >= 1000 ? formatNumber(Math.round(abs)) : abs % 1 === 0 ? String(Math.round(abs)) : abs.toFixed(1);
+    numPart = `${isUp ? "+" : "-"}${rendered} · `;
+  } else if (format === "currency") {
+    numPart = `${isUp ? "+" : "-"}${formatCurrency(Math.abs(diff))} · `;
+  }
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 11, fontWeight: 500, color, whiteSpace: "nowrap" }}>
+      {arrow} {numPart}{pctStr}
+    </span>
   );
 }
 

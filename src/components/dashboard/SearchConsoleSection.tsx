@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
-import { SectionCard, LoadingSpinner } from "@/components/ui/index";
+import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
 import { formatNumber, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import { MousePointer, Eye, TrendingUp, Search } from "lucide-react";
 
@@ -65,7 +65,9 @@ export function SearchConsoleSection({
   const [overview, setOverview] = useState<GSCOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GSCOverview | null>(null);
   const [queries, setQueries] = useState<GSCQuery[]>([]);
+  const [prevQueriesMap, setPrevQueriesMap] = useState<Map<string, GSCQuery>>(new Map());
   const [pages, setPages] = useState<GSCPage[]>([]);
+  const [prevPagesMap, setPrevPagesMap] = useState<Map<string, GSCPage>>(new Map());
   const [daily, setDaily] = useState<GSCDailyData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,16 +79,20 @@ export function SearchConsoleSection({
       setLoading(true);
       setError(null);
       setPrevOverview(null);
+      setPrevQueriesMap(new Map());
+      setPrevPagesMap(new Map());
       try {
         const base = `/api/search-console?siteUrl=${encodeURIComponent(siteUrl)}&startDate=${startDate}&endDate=${endDate}`;
         const prev = getPreviousPeriod(startDate, endDate);
         const prevBase = `/api/search-console?siteUrl=${encodeURIComponent(siteUrl)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
-        const [ovRes, queriesRes, pagesRes, dailyRes, prevOvRes] = await Promise.all([
+        const [ovRes, queriesRes, pagesRes, dailyRes, prevOvRes, prevQueriesRes, prevPagesRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=queries`, { signal: controller.signal }),
           fetch(`${base}&type=pages`, { signal: controller.signal }),
           fetch(`${base}&type=daily`, { signal: controller.signal }),
           fetch(`${prevBase}&type=overview`, { signal: controller.signal }),
+          fetch(`${prevBase}&type=queries`, { signal: controller.signal }),
+          fetch(`${prevBase}&type=pages`, { signal: controller.signal }),
         ]);
 
         if (!ovRes.ok) {
@@ -94,12 +100,14 @@ export function SearchConsoleSection({
           throw new Error(err.error ?? "Failed to fetch Search Console data");
         }
 
-        const [ov, q, p, d, prevOv] = await Promise.all([
+        const [ov, q, p, d, prevOv, prevQ, prevP] = await Promise.all([
           ovRes.json(),
           queriesRes.json(),
           pagesRes.json(),
           dailyRes.json(),
           prevOvRes.ok ? prevOvRes.json() : Promise.resolve(null),
+          prevQueriesRes.ok ? prevQueriesRes.json() : Promise.resolve([]),
+          prevPagesRes.ok ? prevPagesRes.json() : Promise.resolve([]),
         ]);
 
         setOverview(ov);
@@ -107,6 +115,8 @@ export function SearchConsoleSection({
         setPages(Array.isArray(p) ? p : []);
         setDaily(Array.isArray(d) ? d : []);
         setPrevOverview(prevOv);
+        if (Array.isArray(prevQ)) setPrevQueriesMap(new Map(prevQ.map((pq: GSCQuery) => [pq.query, pq])));
+        if (Array.isArray(prevP)) setPrevPagesMap(new Map(prevP.map((pp: GSCPage) => [pp.page, pp])));
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load Search Console data");
@@ -242,17 +252,30 @@ export function SearchConsoleSection({
                   </tr>
                 </thead>
                 <tbody>
-                  {queries.map((q, i) => (
+                  {queries.map((q, i) => {
+                    const prevQ = prevQueriesMap.get(q.query);
+                    return (
                     <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                       <td style={{ padding: "10px 16px", color: "var(--text)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.query}</td>
-                      <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>{formatNumber(q.clicks)}</td>
-                      <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(q.impressions)}</td>
-                      <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{(q.ctr * 100).toFixed(1)}%</td>
+                      <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>
+                        <div>{formatNumber(q.clicks)}</div>
+                        <Delta current={q.clicks} previous={prevQ?.clicks} format="count" />
+                      </td>
+                      <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>
+                        <div>{formatNumber(q.impressions)}</div>
+                        <Delta current={q.impressions} previous={prevQ?.impressions} format="count" />
+                      </td>
+                      <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>
+                        <div>{(q.ctr * 100).toFixed(1)}%</div>
+                        <Delta current={q.ctr} previous={prevQ?.ctr} format="none" />
+                      </td>
                       <td style={{ padding: "10px 16px", textAlign: "right" }}>
-                        <span className={positionBadgeClass(q.position)}>{q.position.toFixed(1)}</span>
+                        <div><span className={positionBadgeClass(q.position)}>{q.position.toFixed(1)}</span></div>
+                        <Delta current={q.position} previous={prevQ?.position} format="count" invert />
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -282,6 +305,7 @@ export function SearchConsoleSection({
                       const url = new URL(p.page);
                       displayPage = url.pathname + url.search;
                     } catch {}
+                    const prevP = prevPagesMap.get(p.page);
                     return (
                       <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                         <td style={{ padding: "10px 16px", color: "var(--text)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -289,11 +313,21 @@ export function SearchConsoleSection({
                             {displayPage}
                           </a>
                         </td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>{formatNumber(p.clicks)}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.impressions)}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{(p.ctr * 100).toFixed(1)}%</td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>
+                          <div>{formatNumber(p.clicks)}</div>
+                          <Delta current={p.clicks} previous={prevP?.clicks} format="count" />
+                        </td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>
+                          <div>{formatNumber(p.impressions)}</div>
+                          <Delta current={p.impressions} previous={prevP?.impressions} format="count" />
+                        </td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>
+                          <div>{(p.ctr * 100).toFixed(1)}%</div>
+                          <Delta current={p.ctr} previous={prevP?.ctr} format="none" />
+                        </td>
                         <td style={{ padding: "10px 16px", textAlign: "right" }}>
-                          <span className={positionBadgeClass(p.position)}>{p.position.toFixed(1)}</span>
+                          <div><span className={positionBadgeClass(p.position)}>{p.position.toFixed(1)}</span></div>
+                          <Delta current={p.position} previous={prevP?.position} format="count" invert />
                         </td>
                       </tr>
                     );

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { MetricCard } from "@/components/ui/MetricCard";
+import { Delta } from "@/components/ui/index";
 import { formatCurrency, formatNumber, formatPercent, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import {
   AreaChart,
@@ -86,6 +87,7 @@ function ctr(clicks: number, impressions: number) {
 
 export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
   const [data, setData] = useState<GoogleAdsData | null>(null);
+  const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
   const [prevOverview, setPrevOverview] = useState<GoogleAdsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -100,6 +102,7 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
     setError("");
     setData(null);
     setPrevOverview(null);
+    setPrevData(null);
 
     const params = new URLSearchParams({ customerId, startDate, endDate });
     const prev = getPreviousPeriod(startDate, endDate);
@@ -112,7 +115,10 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
       .then(([json, prevJson]) => {
         if (json.error) setError(json.error);
         else setData(json);
-        if (!prevJson?.error && prevJson?.overview) setPrevOverview(prevJson.overview);
+        if (!prevJson?.error && prevJson?.overview) {
+          setPrevOverview(prevJson.overview);
+          setPrevData(prevJson);
+        }
       })
       .catch((err) => {
         if (err.name !== "AbortError") setError("Failed to load Google Ads data");
@@ -128,6 +134,8 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
     clicks: d.clicks,
     conversions: d.conversions,
   }));
+  const prevCampaignsMap = new Map((prevData?.campaigns ?? []).map((c) => [c.id, c]));
+  const prevAdGroupsMap = new Map((prevData?.adGroups ?? []).map((ag) => [ag.id, ag]));
 
   return (
     <div className="space-y-8">
@@ -323,22 +331,28 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {data.campaigns.map((c) => (
+                    {data.campaigns.map((c) => {
+                      const prevC = prevCampaignsMap.get(c.id);
+                      return (
                       <tr key={c.id} className="hover:bg-slate-50 transition">
                         <td className="px-6 py-4 text-slate-800 font-medium max-w-[200px] truncate">
                           {c.name}
                         </td>
                         <td className="px-4 py-4 text-right text-slate-600">
-                          {formatNumber(c.clicks)}
+                          <div>{formatNumber(c.clicks)}</div>
+                          <Delta current={c.clicks} previous={prevC?.clicks} format="count" />
                         </td>
                         <td className="px-4 py-4 text-right text-slate-600">
-                          {formatCurrency(micros(c.costMicros))}
+                          <div>{formatCurrency(micros(c.costMicros))}</div>
+                          <Delta current={micros(c.costMicros)} previous={prevC ? micros(prevC.costMicros) : undefined} format="currency" />
                         </td>
                         <td className="px-4 py-4 text-right text-slate-600">
-                          {formatNumber(c.conversions)}
+                          <div>{formatNumber(c.conversions)}</div>
+                          <Delta current={c.conversions} previous={prevC?.conversions} format="count" />
                         </td>
                         <td className="px-4 py-4 text-right text-slate-600">
-                          {formatCurrency(c.conversionsValue)}
+                          <div>{formatCurrency(c.conversionsValue)}</div>
+                          <Delta current={c.conversionsValue} previous={prevC?.conversionsValue} format="currency" />
                         </td>
                         <td className="px-4 py-4 text-right">
                           <span
@@ -352,12 +366,15 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
                           >
                             {roas(c.conversionsValue, c.costMicros).toFixed(2)}x
                           </span>
+                          <Delta current={roas(c.conversionsValue, c.costMicros)} previous={prevC ? roas(prevC.conversionsValue, prevC.costMicros) : undefined} format="none" />
                         </td>
                         <td className="px-6 py-4 text-right text-slate-600">
-                          {formatPercent(ctr(c.clicks, c.impressions))}
+                          <div>{formatPercent(ctr(c.clicks, c.impressions))}</div>
+                          <Delta current={ctr(c.clicks, c.impressions)} previous={prevC ? ctr(prevC.clicks, prevC.impressions) : undefined} format="none" />
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -384,7 +401,9 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {data.adGroups.map((ag) => (
+                    {data.adGroups.map((ag) => {
+                      const prevAg = prevAdGroupsMap.get(ag.id);
+                      return (
                       <tr key={ag.id} className="hover:bg-slate-50 transition">
                         <td className="px-6 py-4 text-slate-800 font-medium max-w-[160px] truncate">
                           {ag.name}
@@ -393,16 +412,20 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
                           {ag.campaignName}
                         </td>
                         <td className="px-4 py-4 text-right text-slate-600">
-                          {formatNumber(ag.clicks)}
+                          <div>{formatNumber(ag.clicks)}</div>
+                          <Delta current={ag.clicks} previous={prevAg?.clicks} format="count" />
                         </td>
                         <td className="px-4 py-4 text-right text-slate-600">
-                          {formatCurrency(micros(ag.costMicros))}
+                          <div>{formatCurrency(micros(ag.costMicros))}</div>
+                          <Delta current={micros(ag.costMicros)} previous={prevAg ? micros(prevAg.costMicros) : undefined} format="currency" />
                         </td>
                         <td className="px-4 py-4 text-right text-slate-600">
-                          {formatNumber(ag.conversions)}
+                          <div>{formatNumber(ag.conversions)}</div>
+                          <Delta current={ag.conversions} previous={prevAg?.conversions} format="count" />
                         </td>
                         <td className="px-4 py-4 text-right text-slate-600">
-                          {formatCurrency(ag.conversionsValue)}
+                          <div>{formatCurrency(ag.conversionsValue)}</div>
+                          <Delta current={ag.conversionsValue} previous={prevAg?.conversionsValue} format="currency" />
                         </td>
                         <td className="px-6 py-4 text-right">
                           <span
@@ -416,9 +439,11 @@ export function GoogleAdsSection({ customerId, startDate, endDate }: Props) {
                           >
                             {roas(ag.conversionsValue, ag.costMicros).toFixed(2)}x
                           </span>
+                          <Delta current={roas(ag.conversionsValue, ag.costMicros)} previous={prevAg ? roas(prevAg.conversionsValue, prevAg.costMicros) : undefined} format="none" />
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -15,7 +15,7 @@ import {
   Legend,
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
-import { SectionCard, LoadingSpinner } from "@/components/ui/index";
+import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
 import { formatNumber, formatPercent, formatDuration, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import { Users, UserPlus, Eye, MousePointer, Clock, TrendingUp } from "lucide-react";
 
@@ -65,6 +65,7 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
   const [daily, setDaily] = useState<DailyData[]>([]);
   const [sources, setSources] = useState<TrafficSource[]>([]);
   const [pages, setPages] = useState<TopPage[]>([]);
+  const [prevPages, setPrevPages] = useState<TopPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,16 +76,18 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
       setLoading(true);
       setError(null);
       setPrevOverview(null);
+      setPrevPages([]);
       try {
         const base = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${startDate}&endDate=${endDate}`;
         const prev = getPreviousPeriod(startDate, endDate);
         const prevBase = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
-        const [ovRes, dailyRes, srcRes, pagesRes, prevOvRes] = await Promise.all([
+        const [ovRes, dailyRes, srcRes, pagesRes, prevOvRes, prevPagesRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=daily`, { signal: controller.signal }),
           fetch(`${base}&type=sources`, { signal: controller.signal }),
           fetch(`${base}&type=pages`, { signal: controller.signal }),
           fetch(`${prevBase}&type=overview`, { signal: controller.signal }),
+          fetch(`${prevBase}&type=pages`, { signal: controller.signal }),
         ]);
 
         if (!ovRes.ok) {
@@ -92,12 +95,13 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
           throw new Error(err.error ?? "Failed to fetch GA4 data");
         }
 
-        const [ov, d, s, p, prevOv] = await Promise.all([
+        const [ov, d, s, p, prevOv, prevP] = await Promise.all([
           ovRes.json(),
           dailyRes.json(),
           srcRes.json(),
           pagesRes.json(),
           prevOvRes.ok ? prevOvRes.json() : Promise.resolve(null),
+          prevPagesRes.ok ? prevPagesRes.json() : Promise.resolve([]),
         ]);
 
         setOverview(ov);
@@ -105,6 +109,7 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
         setSources(Array.isArray(s) ? s : []);
         setPages(Array.isArray(p) ? p : []);
         setPrevOverview(prevOv);
+        setPrevPages(Array.isArray(prevP) ? prevP : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load GA4 data");
@@ -120,6 +125,7 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
     name: `${s.source} / ${s.medium}`,
     value: s.sessions,
   }));
+  const prevPagesMap = new Map(prevPages.map((p) => [p.pagePath, p]));
 
   return (
     <div className="space-y-8">
@@ -318,7 +324,7 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-sm text-slate-800 font-medium">{formatNumber(page.sessions)}</p>
-                    <p className="text-xs text-slate-500">sessions</p>
+                    <Delta current={page.sessions} previous={prevPagesMap.get(page.pagePath)?.sessions} format="count" />
                   </div>
                 </div>
               ))}
