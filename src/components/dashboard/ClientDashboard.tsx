@@ -6,6 +6,7 @@ import { GA4Section } from "./GA4Section";
 import { MetaSection } from "./MetaSection";
 import { GoogleAdsSection } from "./GoogleAdsSection";
 import { SearchConsoleSection } from "./SearchConsoleSection";
+import { OverviewSection } from "./OverviewSection";
 import { getDateRange } from "@/lib/utils";
 import { Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,19 +35,14 @@ const periods = [
   { value: "custom", label: "Custom" },
 ];
 
-type Tab = "seo" | "web" | "paid" | "googleads" | "searchconsole";
+type Tab = "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole";
 
 function toDateInputValue(d: Date) {
   return d.toISOString().split("T")[0];
 }
 
-function getDefaultTab(client: Client): Tab {
-  if (client.semrushDomain) return "seo";
-  if (client.ga4PropertyId) return "web";
-  if (client.searchConsoleSiteUrl) return "searchconsole";
-  if (client.metaAccountId) return "paid";
-  if (client.googleAdsCustomerId) return "googleads";
-  return "seo";
+function getDefaultTab(_client: Client): Tab {
+  return "overview";
 }
 
 export function ClientDashboard({ client, period: initialPeriod }: ClientDashboardProps) {
@@ -67,6 +63,7 @@ export function ClientDashboard({ client, period: initialPeriod }: ClientDashboa
   }, [period, customStart, customEnd]);
 
   const tabs: { id: Tab; label: string; available: boolean }[] = [
+    { id: "overview", label: "Overview", available: true },
     { id: "seo", label: "SEO / SemRush", available: !!client.semrushDomain },
     { id: "web", label: "Web Analytics (GA4)", available: !!client.ga4PropertyId },
     { id: "searchconsole", label: "Search Console", available: !!client.searchConsoleSiteUrl },
@@ -129,6 +126,10 @@ export function ClientDashboard({ client, period: initialPeriod }: ClientDashboa
       )}
 
       {/* Section content */}
+      {activeTab === "overview" && (
+        <OverviewSection client={client} startDate={startDate} endDate={endDate} />
+      )}
+
       {activeTab === "seo" && client.semrushDomain ? (
         <SemrushSection domain={client.semrushDomain} startDate={startDate} endDate={endDate} />
       ) : activeTab === "seo" ? (
