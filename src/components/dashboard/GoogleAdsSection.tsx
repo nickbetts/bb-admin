@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { AiLandingPageAnalysis } from "@/components/ai/AiLandingPageAnalysis";
+import { SuperSummary } from "@/components/ai/SuperSummary";
 
 interface GoogleAdsOverview {
   clicks: number;
@@ -626,6 +627,42 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
             </div>
           )}
         </>
+      )}
+
+      {/* Super Summary */}
+      {!loading && !error && data?.overview && (
+        <SuperSummary
+          sectionType="googleads"
+          metrics={{
+            clicks: data.overview.clicks,
+            impressions: data.overview.impressions,
+            cost: micros(data.overview.costMicros),
+            conversions: data.overview.conversions,
+            conversionValue: data.overview.conversionsValue,
+            ctr: ctr(data.overview.clicks, data.overview.impressions),
+            roas: roas(data.overview.conversionsValue, data.overview.costMicros),
+            cpa: data.overview.conversions > 0
+              ? micros(data.overview.costMicros) / data.overview.conversions
+              : 0,
+            ...(data.avgQualityScore != null ? { qualityScore: data.avgQualityScore } : {}),
+          }}
+          previousMetrics={prevOverview ? {
+            clicks: prevOverview.clicks,
+            impressions: prevOverview.impressions,
+            cost: micros(prevOverview.costMicros),
+            conversions: prevOverview.conversions,
+            conversionValue: prevOverview.conversionsValue,
+            ctr: ctr(prevOverview.clicks, prevOverview.impressions),
+            roas: roas(prevOverview.conversionsValue, prevOverview.costMicros),
+            cpa: prevOverview.conversions > 0
+              ? micros(prevOverview.costMicros) / prevOverview.conversions
+              : 0,
+          } : undefined}
+          campaignData={data.campaignsEnriched?.length ? data.campaignsEnriched as unknown as Record<string, unknown>[] : undefined}
+          landingPages={data.landingPages?.length ? data.landingPages : undefined}
+          clientName={clientName}
+          dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+        />
       )}
 
       {/* AI Insights */}

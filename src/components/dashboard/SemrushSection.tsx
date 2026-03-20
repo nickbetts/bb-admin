@@ -21,6 +21,7 @@ import { LoadingSpinner } from "@/components/ui/index";
 import { formatNumber, formatCurrency, formatDateDisplay, pctChange } from "@/lib/utils";
 import { TrendingUp, Search, ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { SuperSummary } from "@/components/ai/SuperSummary";
 
 interface SemrushSectionProps {
   domain: string;
@@ -574,6 +575,29 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
         </SectionCard>
       )}
         </>
+      )}
+
+      {/* Super Summary */}
+      {!loading && !error && overview && (
+        <SuperSummary
+          sectionType="seo"
+          metrics={{
+            organicTraffic: overview.organicTraffic,
+            organicKeywords: overview.organicKeywords,
+            organicCost: overview.organicCost,
+            paidTraffic: overview.paidTraffic,
+            paidKeywords: overview.paidKeywords,
+          }}
+          dateRange={`${formatDateDisplay(startDate)} \u2013 ${formatDateDisplay(endDate)}`}
+          extraContext={keywords.length > 0 ? [
+            "Top organic keywords:",
+            ...keywords.slice(0, 10).map((kw) => {
+              const delta = kw.previousPosition > 0 ? kw.previousPosition - kw.position : null;
+              const deltaStr = delta != null ? (delta > 0 ? ` (\u2191${delta})` : delta < 0 ? ` (\u2193${Math.abs(delta)})` : " (=)") : "";
+              return `  \u2022 "${kw.keyword}" \u2014 pos ${kw.position}${deltaStr}, vol ${kw.searchVolume.toLocaleString()}, ${kw.trafficPercent.toFixed(1)}% traffic`;
+            }),
+          ].join("\n") : undefined}
+        />
       )}
 
       {/* AI Insights */}

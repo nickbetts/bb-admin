@@ -19,6 +19,7 @@ import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
 import { formatNumber, formatCurrency, formatPercent, formatDuration, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import { Users, UserPlus, Eye, MousePointer, Clock, TrendingUp } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { SuperSummary } from "@/components/ai/SuperSummary";
 
 interface GA4SectionProps {
   propertyId: string;
@@ -490,6 +491,42 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
             </SectionCard>
           )}
         </div>
+      )}
+
+      {/* Super Summary */}
+      {!loading && !error && overview && (
+        <SuperSummary
+          sectionType="ga4"
+          metrics={{
+            sessions: overview.sessions,
+            users: overview.users,
+            newUsers: overview.newUsers,
+            pageviews: overview.pageviews,
+            bounceRate: overview.bounceRate,
+            avgSessionDuration: overview.avgSessionDuration,
+            conversionRate: overview.conversionRate,
+            engagedSessions: overview.engagedSessions ?? 0,
+            engagementRate: overview.engagementRate ?? 0,
+          }}
+          previousMetrics={prevOverview ? {
+            sessions: prevOverview.sessions,
+            users: prevOverview.users,
+            newUsers: prevOverview.newUsers,
+            pageviews: prevOverview.pageviews,
+            bounceRate: prevOverview.bounceRate,
+            avgSessionDuration: prevOverview.avgSessionDuration,
+            conversionRate: prevOverview.conversionRate,
+            engagedSessions: prevOverview.engagedSessions ?? 0,
+            engagementRate: prevOverview.engagementRate ?? 0,
+          } : undefined}
+          dateRange={`${formatDateDisplay(startDate)} \u2013 ${formatDateDisplay(endDate)}`}
+          extraContext={sources.length > 0 ? [
+            "Top traffic sources this period:",
+            ...sources.slice(0, 6).map((s) =>
+              `  \u2022 ${s.source} / ${s.medium} \u2014 ${s.sessions.toLocaleString()} sessions, ${s.users.toLocaleString()} users`
+            ),
+          ].join("\n") : undefined}
+        />
       )}
 
       {/* AI Insights */}

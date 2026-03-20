@@ -5,8 +5,8 @@ import { fetchPageSignals, type PageSignals } from "@/lib/landing-page-analyzer"
 
 export const dynamic = "force-dynamic";
 
-// Allow up to 60 seconds for page fetching + AI calls
-export const maxDuration = 60;
+// Allow up to 120 seconds for page fetching + AI calls (web search is slower)
+export const maxDuration = 120;
 
 export interface LandingPageCategoryAnalysis {
   score: number; // 0–100
@@ -88,7 +88,36 @@ async function analysePages(
   clientName?: string,
   source?: string
 ): Promise<LandingPageAnalysisResult[]> {
-  // Build a concise text summary of each page's signals for the prompt
+  // Split pages into those with HTML data and those that need web search
+  const successPages = pages.filter((p) => !p.fetchError);
+  const failedPages = pages.filter((p) => !!p.fetchError);
+
+  // Run both groups in parallel
+  const [successResults, failedResults] = await Promise.all([
+    successPages.length > 0
+      ? analysePagesWithSignals(openai, successPages, clientName, source)
+      : Promise.resolve([]),
+    failedPages.length > 0
+      ? analysePagesWithWebSearch(openai, failedPages, clientName, source)
+      : Promise.resolve([]),
+  ]);
+
+  // Merge results back in original URL order
+  const resultMap = new Map<string, LandingPageAnalysisResult>();
+  for (const r of [...successResults, ...failedResults]) {
+    resultMap.set(r.url, r);
+  }
+
+  return pages.map((p) => resultMap.get(p.url) ?? emptyResult(p.url, p.fetchError));
+}
+
+/** Analyse pages where we have full HTML signals — standard chat completion. */
+async function analysePagesWithSignals(
+  openai: OpenAI,
+  pages: PageSignals[],
+  clientName?: string,
+  source?: string
+): Promise<LandingPageAnalysisResult[]> {
   const pageDescriptions = pages.map((p) => buildSignalSummary(p));
 
   const systemPrompt = `You are a senior CRO (Conversion Rate Optimisation) and SEO expert at i3media, a UK performance marketing agency.
@@ -106,7 +135,91 @@ Keep recommendations concise and actionable.`;
 Pages:
 ${pageDescriptions.join("\n\n")}
 
-For each page return an object with this exact shape:
+${RESULT_SCHEMA_INSTRUCTIONS}`;
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    response_format: { type: "json_object" },
+    max_tokens: 2500,
+    temperature: 0.25,
+  });
+
+  const raw = completion.choices[0]?.message?.content ?? "{}";
+  return parseAnalysisResponse(raw, pages);
+}
+
+/** Analyse pages where HTML fetch failed — use OpenAI web search to visit them. */
+async function analysePagesWithWebSearch(
+  openai: OpenAI,
+  pages: PageSignals[],
+  clientName?: string,
+  source?: string
+): Promise<LandingPageAnalysisResult[]> {
+  // Process failed pages individually so the AI can web-search each one
+  const results = await Promise.all(
+    pages.slice(0, 5).map(async (p) => {
+      try {
+        const prompt = `You are a senior CRO and SEO expert at i3media, a UK performance marketing agency.
+
+The page at ${p.url} could not be fetched automatically (${p.fetchError ?? "unknown error"}).
+Use web search to visit and inspect this page directly, then analyse it for ${clientName ?? "a client"}'s ${source === "meta" ? "Meta Ads" : "Google Ads"} landing page.
+
+Evaluate: CRO (headline, CTAs, trust signals, value proposition), SEO (title, meta desc, H1, structured data), Mobile (responsiveness), and Forms (field count, friction).
+Score each 0–100. Be specific — reference actual content you find on the page.
+
+Return ONLY a JSON object with this exact shape:
+{ "analyses": [${RESULT_SCHEMA_EXAMPLE}] }`;
+
+        const response = await openai.responses.create({
+          model: "gpt-4o-mini",
+          tools: [{ type: "web_search_preview" }],
+          input: prompt,
+        });
+
+        // Extract text from the Responses API format
+        let text = "";
+        for (const item of response.output) {
+          if (
+            item.type === "message" &&
+            "content" in item &&
+            Array.isArray(item.content)
+          ) {
+            for (const block of item.content) {
+              if (
+                typeof block === "object" &&
+                block !== null &&
+                "type" in block &&
+                block.type === "output_text" &&
+                "text" in block
+              ) {
+                text += (block as { text: string }).text;
+              }
+            }
+          }
+        }
+
+        const results = parseAnalysisResponse(text, [p]);
+        // Mark the fetch error on the result so the UI can show it
+        for (const r of results) {
+          if (p.fetchError) r.fetchError = p.fetchError;
+        }
+        return results;
+      } catch {
+        return [emptyResult(p.url, p.fetchError ?? "Web search analysis failed")];
+      }
+    })
+  );
+
+  // Also add empty results for any pages beyond the first 5
+  const extra = pages.slice(5).map((p) => emptyResult(p.url, p.fetchError));
+  return [...results.flat(), ...extra];
+}
+
+const RESULT_SCHEMA_INSTRUCTIONS = `For each page return an object with this exact shape:
 {
   "url": "<the page URL>",
   "overallScore": <0-100>,
@@ -121,29 +234,35 @@ For each page return an object with this exact shape:
 If a page could not be fetched (fetchError is set), still return an entry with scores of 0 and note the error in the summary.
 Respond with: { "analyses": [ ... ] }`;
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    response_format: { type: "json_object" },
-    max_tokens: 2500,
-    temperature: 0.25,
-  });
+const RESULT_SCHEMA_EXAMPLE = `{
+  "url": "<the page URL>",
+  "overallScore": 65,
+  "overallSummary": "...",
+  "topRecommendations": ["..."],
+  "cro": { "score": 60, "issues": ["..."], "recommendations": ["..."] },
+  "seo": { "score": 70, "issues": ["..."], "recommendations": ["..."] },
+  "mobile": { "score": 75, "issues": ["..."], "recommendations": ["..."] },
+  "forms": { "score": 55, "issues": ["..."], "recommendations": ["..."] }
+}`;
 
-  const raw = completion.choices[0]?.message?.content ?? "{}";
+function parseAnalysisResponse(raw: string, pages: PageSignals[]): LandingPageAnalysisResult[] {
+  // Strip markdown fences if the model added them
+  const cleaned = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "");
+
   let parsed: { analyses?: LandingPageAnalysisResult[] } = {};
   try {
-    parsed = JSON.parse(raw);
+    // Find JSON object in the response
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start !== -1 && end > start) {
+      parsed = JSON.parse(cleaned.substring(start, end + 1));
+    }
   } catch {
-    // If parsing fails, return minimal error results
     return pages.map((p) => emptyResult(p.url, p.fetchError));
   }
 
   const aiResults = parsed.analyses ?? [];
 
-  // Merge AI results with fetch errors for pages that failed
   return pages.map((p) => {
     const aiResult = aiResults.find((r) => r.url === p.url);
     if (!aiResult) return emptyResult(p.url, p.fetchError ?? "No AI result returned");

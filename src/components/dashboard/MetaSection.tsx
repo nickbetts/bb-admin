@@ -18,6 +18,7 @@ import { formatNumber, formatCurrency, formatPercent, formatDateDisplay, getPrev
 import { DollarSign, MousePointer, Eye, TrendingUp, AlertTriangle } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { AiLandingPageAnalysis } from "@/components/ai/AiLandingPageAnalysis";
+import { SuperSummary } from "@/components/ai/SuperSummary";
 
 interface MetaSectionProps {
   clientId: string;
@@ -514,6 +515,45 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
         </div>
       )}
         </>
+      )}
+
+      {/* Super Summary */}
+      {!loading && !error && overview && (
+        <SuperSummary
+          sectionType="meta"
+          metrics={{
+            totalSpend: overview.totalSpend,
+            totalImpressions: overview.totalImpressions,
+            totalClicks: overview.totalClicks,
+            avgCtr: overview.avgCtr,
+            avgCpc: overview.avgCpc,
+            avgCpm: overview.avgCpm,
+            totalConversions: overview.totalConversions,
+            avgRoas: overview.avgRoas,
+            reach: overview.reach,
+            frequency: overview.frequency,
+            outboundClicks: overview.outboundClicks,
+            landingPageViews: overview.landingPageViews,
+          }}
+          previousMetrics={prevOverview ? {
+            totalSpend: prevOverview.totalSpend,
+            totalImpressions: prevOverview.totalImpressions,
+            totalClicks: prevOverview.totalClicks,
+            avgCtr: prevOverview.avgCtr,
+            avgCpc: prevOverview.avgCpc,
+            avgCpm: prevOverview.avgCpm,
+            totalConversions: prevOverview.totalConversions,
+            avgRoas: prevOverview.avgRoas,
+            reach: prevOverview.reach,
+            frequency: prevOverview.frequency,
+            outboundClicks: prevOverview.outboundClicks,
+            landingPageViews: prevOverview.landingPageViews,
+          } : undefined}
+          campaignData={campaignsEnriched.length ? campaignsEnriched as unknown as Record<string, unknown>[] : undefined}
+          landingPages={landingPages.length ? landingPages : undefined}
+          clientName={clientName}
+          dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+        />
       )}
 
       {/* AI Insights */}

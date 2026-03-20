@@ -19,6 +19,7 @@ import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
 import { formatNumber, formatDateDisplay, pctChange } from "@/lib/utils";
 import { MousePointer, Eye, TrendingUp, Search } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { SuperSummary } from "@/components/ai/SuperSummary";
 
 interface SearchConsoleSectionProps {
   siteUrl: string;
@@ -503,6 +504,37 @@ export function SearchConsoleSection({
             </SectionCard>
           )}
         </div>
+      )}
+
+      {/* Super Summary */}
+      {!loading && !error && overview && (
+        <SuperSummary
+          sectionType="searchconsole"
+          metrics={{
+            clicks: overview.clicks,
+            impressions: overview.impressions,
+            ctr: overview.ctr,
+            position: overview.position,
+          }}
+          previousMetrics={prevOverview ? {
+            clicks: prevOverview.clicks,
+            impressions: prevOverview.impressions,
+            ctr: prevOverview.ctr,
+            position: prevOverview.position,
+          } : undefined}
+          dateRange={`${formatDateDisplay(startDate)} \u2013 ${formatDateDisplay(endDate)}`}
+          extraContext={queries.length > 0 ? [
+            "Top search queries:",
+            ...queries.slice(0, 10).map((q) => {
+              const prev = prevQueriesMap.get(q.query);
+              const posChange = prev != null ? (prev.position - q.position) : null;
+              const posStr = posChange != null
+                ? (posChange > 0.5 ? ` (\u2191${posChange.toFixed(1)} pos)` : posChange < -0.5 ? ` (\u2193${Math.abs(posChange).toFixed(1)} pos)` : "")
+                : "";
+              return `  \u2022 "${q.query}" \u2014 pos ${q.position.toFixed(1)}${posStr}, ${q.clicks} clicks, ${(q.ctr * 100).toFixed(1)}% CTR`;
+            }),
+          ].join("\n") : undefined}
+        />
       )}
 
       {/* AI Insights */}
