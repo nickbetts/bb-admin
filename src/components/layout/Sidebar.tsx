@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   Menu,
   BarChart3,
+  ScanSearch,
 } from "lucide-react";
 
 interface NavItem {
@@ -41,6 +42,14 @@ const navItems: NavItem[] = [
     href: "/settings",
     label: "Settings",
     icon: <Settings className="h-4 w-4" />,
+  },
+];
+
+const toolsNavItems: NavItem[] = [
+  {
+    href: "/tools/page-analyser",
+    label: "Page Analyser",
+    icon: <ScanSearch className="h-4 w-4" />,
   },
 ];
 
@@ -100,6 +109,24 @@ export function Sidebar({ user }: SidebarProps) {
       <nav className="sidebar-nav">
         {!collapsed && <p className="sidebar-nav-label">Menu</p>}
         {navItems.map((item) => {
+          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              title={collapsed ? item.label : undefined}
+              className={cn("nav-item", isActive && "active", collapsed && "justify-center")}
+              style={collapsed ? { justifyContent: "center" } : undefined}
+            >
+              <span className="nav-item-icon" style={{ display: "flex", width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                {item.icon}
+              </span>
+              {!collapsed && <span>{item.label}</span>}
+            </Link>
+          );
+        })}
+        {!collapsed && <p className="sidebar-nav-label" style={{ marginTop: 12 }}>Tools</p>}
+        {toolsNavItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
