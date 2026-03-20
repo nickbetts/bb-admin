@@ -108,6 +108,7 @@ interface MetaAdCreative {
   thumbnailUrl: string | null;
   imageUrl: string | null;
   videoUrl: string | null;
+  videoId: string | null;
   mediaType: "IMAGE" | "VIDEO" | "CAROUSEL" | "UNKNOWN";
   headline: string | null;
   bodyText: string | null;
@@ -185,7 +186,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
   const [error, setError] = useState<string | null>(null);
   const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
   const [expandedAdSets, setExpandedAdSets] = useState<Set<string>>(new Set());
-  const [lightbox, setLightbox] = useState<{ type: "image" | "video"; src: string; title: string } | null>(null);
+  const [lightbox, setLightbox] = useState<{ type: "image" | "video"; src: string; videoId?: string | null; title: string } | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -630,13 +631,15 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
                                         style={{ width: 56, height: 56, background: "#f8fafc" }}
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          const mediaSrc = cr.mediaType === "VIDEO" && cr.videoUrl
-                                            ? cr.videoUrl
-                                            : cr.imageUrl || cr.thumbnailUrl;
-                                          if (mediaSrc) {
+                                          const isVideo = cr.mediaType === "VIDEO" && (cr.videoId || cr.videoUrl);
+                                          const mediaSrc = isVideo
+                                            ? (cr.videoUrl ?? cr.imageUrl ?? cr.thumbnailUrl ?? "")
+                                            : (cr.imageUrl || cr.thumbnailUrl || "");
+                                          if (mediaSrc || cr.videoId) {
                                             setLightbox({
-                                              type: cr.mediaType === "VIDEO" && cr.videoUrl ? "video" : "image",
+                                              type: isVideo ? "video" : "image",
                                               src: mediaSrc,
+                                              videoId: cr.videoId,
                                               title: cr.adName,
                                             });
                                           }
@@ -802,14 +805,26 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
 
           <div className="relative max-w-[90vw] max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
             {lightbox.type === "video" ? (
-              <video
-                controls
-                autoPlay
-                className="max-w-[90vw] max-h-[85vh] rounded-lg shadow-2xl"
-                src={lightbox.src}
-              >
-                <track kind="captions" />
-              </video>
+              lightbox.videoId ? (
+                // Use Facebook's embedded player — direct CDN URLs are blocked cross-origin
+                <iframe
+                  src={`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(`https://www.facebook.com/video/embed?video_id=${lightbox.videoId}`)}&show_text=0&autoplay=1`}
+                  className="rounded-lg shadow-2xl"
+                  style={{ width: "min(80vw, 960px)", height: "min(80vw * 9/16, 540px)", aspectRatio: "16/9", border: "none" }}
+                  allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+                  allowFullScreen
+                  title={lightbox.title}
+                />
+              ) : (
+                <video
+                  controls
+                  autoPlay
+                  className="max-w-[90vw] max-h-[85vh] rounded-lg shadow-2xl"
+                  src={lightbox.src}
+                >
+                  <track kind="captions" />
+                </video>
+              )
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img

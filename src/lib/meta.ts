@@ -91,6 +91,7 @@ export interface MetaAdCreative {
   thumbnailUrl: string | null;
   imageUrl: string | null;
   videoUrl: string | null;
+  videoId: string | null;
   mediaType: "IMAGE" | "VIDEO" | "CAROUSEL" | "UNKNOWN";
   headline: string | null;
   bodyText: string | null;
@@ -1009,6 +1010,9 @@ export async function getMetaAdCreatives(
         creative?.thumbnail_url ??
         null;
 
+      // Store the video ID for embed player fallback
+      const resolvedVideoId = videoId;
+
       // Headline & body — check spec first, then asset feed spec
       const headline =
         spec?.link_data?.name ??
@@ -1035,6 +1039,7 @@ export async function getMetaAdCreatives(
         thumbnailUrl,
         imageUrl,
         videoUrl,
+        videoId: resolvedVideoId,
         mediaType,
         headline,
         bodyText,
