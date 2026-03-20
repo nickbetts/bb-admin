@@ -33,6 +33,10 @@ export interface MetaAdsOverview {
   avgCpc: number;
   avgCpm: number;
   totalConversions: number;
+  /** Human-readable label for the conversion type, e.g. "Purchases", "Leads" */
+  conversionLabel: string;
+  /** Monetary conversion value from action_values, 0 if unavailable */
+  totalConversionValue: number;
   avgRoas: number;
   reach: number;
   frequency: number;
@@ -77,6 +81,62 @@ export interface MetaAdsAdSet {
 
 const META_API_BASE = "https://graph.facebook.com/v19.0";
 
+type ActionRow = { action_type: string; value: string };
+
+// Priority-ordered conversion groups — first group with a non-zero count wins
+const CONVERSION_GROUPS: { label: string; types: string[] }[] = [
+  {
+    label: "Purchases",
+    types: [
+      "purchase",
+      "offsite_conversion.fb_pixel_purchase",
+      "onsite_web_purchase_lead",
+    ],
+  },
+  {
+    label: "Leads",
+    types: [
+      "lead",
+      "offsite_conversion.fb_pixel_lead",
+      "onsite_conversion.lead_grouped",
+      "onsite_conversion.messaging_conversation_started_7d",
+    ],
+  },
+  {
+    label: "Registrations",
+    types: [
+      "complete_registration",
+      "offsite_conversion.fb_pixel_complete_registration",
+    ],
+  },
+  {
+    label: "Applications",
+    types: ["submit_application"],
+  },
+];
+
+function resolveConversions(
+  actions: ActionRow[] | undefined,
+  actionValues: ActionRow[] | undefined,
+  conversionsRaw: { value: string }[] | undefined
+): { count: number; label: string; value: number } {
+  if (actions && actions.length > 0) {
+    for (const group of CONVERSION_GROUPS) {
+      const matching = actions.filter((a) => group.types.includes(a.action_type));
+      const count = matching.reduce((s, a) => s + parseInt(a.value || "0"), 0);
+      if (count > 0) {
+        const value = (actionValues ?? [])
+          .filter((a) => group.types.includes(a.action_type))
+          .reduce((s, a) => s + parseFloat(a.value || "0"), 0);
+        return { count, label: group.label, value };
+      }
+    }
+  }
+  // Fallback: sum the conversions array (Meta's configured conversion events)
+  const count = conversionsRaw?.reduce((s, c) => s + parseInt(c.value || "0"), 0) ?? 0;
+  return { count, label: "Conversions", value: 0 };
+}
+
 function getAccessToken(clientToken?: string): string {
   const token = clientToken || process.env.META_ACCESS_TOKEN;
   if (!token) {
@@ -94,7 +154,7 @@ export async function getMetaAdsOverview(
   const params = new URLSearchParams({
     access_token: getAccessToken(accessToken),
     fields:
-      "spend,impressions,clicks,outbound_clicks,ctr,cpc,cpm,reach,frequency,actions,conversions,purchase_roas",
+      "spend,impressions,clicks,outbound_clicks,ctr,cpc,cpm,reach,frequency,actions,action_values,conversions,purchase_roas",
     time_range: JSON.stringify({ since: startDate, until: endDate }),
     level: "account",
   });
@@ -121,6 +181,8 @@ export async function getMetaAdsOverview(
       avgCpc: 0,
       avgCpm: 0,
       totalConversions: 0,
+      conversionLabel: "Conversions",
+      totalConversionValue: 0,
       avgRoas: 0,
       reach: 0,
       frequency: 0,
@@ -129,6 +191,12 @@ export async function getMetaAdsOverview(
     };
   }
 
+  const conv = resolveConversions(
+    insight.actions as ActionRow[] | undefined,
+    insight.action_values as ActionRow[] | undefined,
+    insight.conversions as { value: string }[] | undefined
+  );
+
   return {
     totalSpend: parseFloat(insight.spend ?? "0"),
     totalImpressions: parseInt(insight.impressions ?? "0"),
@@ -136,20 +204,18 @@ export async function getMetaAdsOverview(
     avgCtr: parseFloat(insight.ctr ?? "0"),
     avgCpc: parseFloat(insight.cpc ?? "0"),
     avgCpm: parseFloat(insight.cpm ?? "0"),
-    totalConversions:
-      insight.conversions?.reduce(
-        (sum: number, c: { value: string }) => sum + parseInt(c.value),
-        0
-      ) ?? 0,
+    totalConversions: conv.count,
+    conversionLabel: conv.label,
+    totalConversionValue: conv.value,
     avgRoas: parseFloat(insight.purchase_roas?.[0]?.value ?? "0"),
     reach: parseInt(insight.reach ?? "0"),
     frequency: parseFloat(insight.frequency ?? "0"),
     outboundClicks: Array.isArray(insight.outbound_clicks)
       ? insight.outbound_clicks.reduce((sum: number, o: { value: string }) => sum + parseInt(o.value), 0)
       : 0,
-    landingPageViews: (insight.actions as { action_type: string; value: string }[] | undefined)
+    landingPageViews: (insight.actions as ActionRow[] | undefined)
       ?.find((a) => a.action_type === "landing_page_view")?.value
-      ? parseInt((insight.actions as { action_type: string; value: string }[]).find((a) => a.action_type === "landing_page_view")!.value)
+      ? parseInt((insight.actions as ActionRow[]).find((a) => a.action_type === "landing_page_view")!.value)
       : 0,
   };
 }

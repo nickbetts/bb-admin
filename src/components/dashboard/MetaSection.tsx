@@ -34,6 +34,8 @@ interface MetaOverview {
   avgCpc: number;
   avgCpm: number;
   totalConversions: number;
+  conversionLabel: string;
+  totalConversionValue: number;
   avgRoas: number;
   reach: number;
   frequency: number;
@@ -244,7 +246,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           changeDiff={prevOverview ? diffStr(overview.totalClicks, prevOverview.totalClicks, "count") : undefined}
         />
         <MetricCard
-          title="Conversions"
+          title={overview.conversionLabel}
           value={formatNumber(overview.totalConversions)}
           change={prevOverview ? pctChange(overview.totalConversions, prevOverview.totalConversions) : undefined}
           changeDiff={prevOverview ? diffStr(overview.totalConversions, prevOverview.totalConversions, "count") : undefined}
@@ -263,8 +265,20 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
       </div>
 
       {/* Secondary metrics */}
-      {(overview.reach > 0 || overview.outboundClicks > 0 || overview.landingPageViews > 0) && (
+      {(overview.reach > 0 || overview.outboundClicks > 0 || overview.landingPageViews > 0 || overview.totalConversionValue > 0) && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+          {overview.totalConversionValue > 0 && (
+            <MetricCard
+              title="Conv. Value"
+              value={formatCurrency(overview.totalConversionValue)}
+              change={prevOverview?.totalConversionValue != null
+                ? pctChange(overview.totalConversionValue, prevOverview.totalConversionValue ?? 0)
+                : undefined}
+              changeDiff={prevOverview?.totalConversionValue != null
+                ? diffStr(overview.totalConversionValue, prevOverview.totalConversionValue ?? 0, "currency")
+                : undefined}
+            />
+          )}
           <MetricCard
             title="Reach"
             value={formatNumber(overview.reach)}
