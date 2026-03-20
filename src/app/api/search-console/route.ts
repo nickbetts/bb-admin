@@ -8,8 +8,10 @@ import {
   getGSCDevices,
   getGSCCountries,
 } from "@/lib/search-console";
+import { getPreviousPeriod } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,6 +50,35 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(await getGSCDevices(siteUrl, startDate, endDate));
       case "countries":
         return NextResponse.json(await getGSCCountries(siteUrl, startDate, endDate));
+
+      // Fetches current + previous period overview in one invocation to avoid timeout issues
+      case "compare": {
+        const prev = getPreviousPeriod(startDate, endDate);
+        const [current, previous] = await Promise.all([
+          getGSCOverview(siteUrl, startDate, endDate),
+          getGSCOverview(siteUrl, prev.startDate, prev.endDate).catch(() => null),
+        ]);
+        return NextResponse.json({ current, previous });
+      }
+
+      // Fetches all current-period data + previous overview/queries/pages in one invocation
+      case "bulk": {
+        const prev = getPreviousPeriod(startDate, endDate);
+        const [overview, queries, pages, daily, devices, countries, prevOverview, prevQueries, prevPages] =
+          await Promise.all([
+            getGSCOverview(siteUrl, startDate, endDate),
+            getGSCTopQueries(siteUrl, startDate, endDate).catch(() => []),
+            getGSCTopPages(siteUrl, startDate, endDate).catch(() => []),
+            getGSCDailyData(siteUrl, startDate, endDate).catch(() => []),
+            getGSCDevices(siteUrl, startDate, endDate).catch(() => []),
+            getGSCCountries(siteUrl, startDate, endDate).catch(() => []),
+            getGSCOverview(siteUrl, prev.startDate, prev.endDate).catch(() => null),
+            getGSCTopQueries(siteUrl, prev.startDate, prev.endDate).catch(() => []),
+            getGSCTopPages(siteUrl, prev.startDate, prev.endDate).catch(() => []),
+          ]);
+        return NextResponse.json({ overview, queries, pages, daily, devices, countries, prevOverview, prevQueries, prevPages });
+      }
+
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }

@@ -16,7 +16,7 @@ import {
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
-import { formatNumber, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
+import { formatNumber, formatDateDisplay, pctChange } from "@/lib/utils";
 import { MousePointer, Eye, TrendingUp, Search } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
@@ -112,43 +112,22 @@ export function SearchConsoleSection({
       setPrevQueriesMap(new Map());
       setPrevPagesMap(new Map());
       try {
-        const base = `/api/search-console?siteUrl=${encodeURIComponent(siteUrl)}&startDate=${startDate}&endDate=${endDate}`;
-        const prev = getPreviousPeriod(startDate, endDate);
-        const prevBase = `/api/search-console?siteUrl=${encodeURIComponent(siteUrl)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
-        const [ovRes, queriesRes, pagesRes, dailyRes, prevOvRes, prevQueriesRes, prevPagesRes, devicesRes, countriesRes] = await Promise.all([
-          fetch(`${base}&type=overview`, { signal: controller.signal }),
-          fetch(`${base}&type=queries`, { signal: controller.signal }),
-          fetch(`${base}&type=pages`, { signal: controller.signal }),
-          fetch(`${base}&type=daily`, { signal: controller.signal }),
-          fetch(`${prevBase}&type=overview`, { signal: controller.signal }),
-          fetch(`${prevBase}&type=queries`, { signal: controller.signal }),
-          fetch(`${prevBase}&type=pages`, { signal: controller.signal }),
-          fetch(`${base}&type=devices`, { signal: controller.signal }),
-          fetch(`${base}&type=countries`, { signal: controller.signal }),
-        ]);
+        // Single bulk call — fetches all current + previous period data in one serverless invocation
+        const bulkUrl = `/api/search-console?siteUrl=${encodeURIComponent(siteUrl)}&startDate=${startDate}&endDate=${endDate}&type=bulk`;
+        const bulkRes = await fetch(bulkUrl, { signal: controller.signal });
 
-        if (!ovRes.ok) {
-          const err = await ovRes.json();
+        if (!bulkRes.ok) {
+          const err = await bulkRes.json();
           throw new Error(err.error ?? "Failed to fetch Search Console data");
         }
 
-        const [ov, q, p, d, prevOv, prevQ, prevP, devs, ctrs] = await Promise.all([
-          ovRes.json(),
-          queriesRes.json(),
-          pagesRes.json(),
-          dailyRes.json(),
-          prevOvRes.ok ? prevOvRes.json() : Promise.resolve(null),
-          prevQueriesRes.ok ? prevQueriesRes.json() : Promise.resolve([]),
-          prevPagesRes.ok ? prevPagesRes.json() : Promise.resolve([]),
-          devicesRes.ok ? devicesRes.json() : Promise.resolve([]),
-          countriesRes.ok ? countriesRes.json() : Promise.resolve([]),
-        ]);
+        const { overview: ov, queries: q, pages: p, daily: d, devices: devs, countries: ctrs, prevOverview: prevOv, prevQueries: prevQ, prevPages: prevP } = await bulkRes.json();
 
         setOverview(ov);
         setQueries(Array.isArray(q) ? q : []);
         setPages(Array.isArray(p) ? p : []);
         setDaily(Array.isArray(d) ? d : []);
-        setPrevOverview(prevOv);
+        setPrevOverview(prevOv ?? null);
         setDevices(Array.isArray(devs) ? devs : []);
         setCountries(Array.isArray(ctrs) ? ctrs : []);
         if (Array.isArray(prevQ)) setPrevQueriesMap(new Map(prevQ.map((pq: GSCQuery) => [pq.query, pq])));
@@ -188,6 +167,9 @@ export function SearchConsoleSection({
     Impressions: d.impressions,
   }));
 
+  // Only use prevOverview for comparisons if at least one metric is non-zero
+  const hasPrevData = prevOverview != null && (prevOverview.clicks > 0 || prevOverview.impressions > 0);
+
   const deviceChartData = devices.map((d) => ({
     name: d.device.charAt(0) + d.device.slice(1).toLowerCase(),
     value: d.clicks,
@@ -202,28 +184,32 @@ export function SearchConsoleSection({
         <MetricCard
           title="Total Clicks"
           value={formatNumber(overview?.clicks ?? 0)}
-          change={prevOverview ? pctChange(overview?.clicks ?? 0, prevOverview.clicks) : undefined}
+          change={hasPrevData ? pctChange(overview?.clicks ?? 0, prevOverview!.clicks) : undefined}
+          changeLabel={hasPrevData ? "vs prev period" : undefined}
           icon={<MousePointer className="h-5 w-5" />}
           color="purple"
         />
         <MetricCard
           title="Impressions"
           value={formatNumber(overview?.impressions ?? 0)}
-          change={prevOverview ? pctChange(overview?.impressions ?? 0, prevOverview.impressions) : undefined}
+          change={hasPrevData ? pctChange(overview?.impressions ?? 0, prevOverview!.impressions) : undefined}
+          changeLabel={hasPrevData ? "vs prev period" : undefined}
           icon={<Eye className="h-5 w-5" />}
           color="blue"
         />
         <MetricCard
           title="Average CTR"
           value={`${((overview?.ctr ?? 0) * 100).toFixed(2)}%`}
-          change={prevOverview ? pctChange(overview?.ctr ?? 0, prevOverview.ctr) : undefined}
+          change={hasPrevData ? pctChange(overview?.ctr ?? 0, prevOverview!.ctr) : undefined}
+          changeLabel={hasPrevData ? "vs prev period" : undefined}
           icon={<TrendingUp className="h-5 w-5" />}
           color="green"
         />
         <MetricCard
           title="Avg. Position"
           value={(overview?.position ?? 0).toFixed(1)}
-          change={prevOverview ? pctChange(prevOverview.position, overview?.position ?? 0) : undefined}
+          change={hasPrevData ? pctChange(prevOverview!.position, overview?.position ?? 0) : undefined}
+          changeLabel={hasPrevData ? "vs prev period" : undefined}
           icon={<Search className="h-5 w-5" />}
           color="orange"
         />
