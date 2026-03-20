@@ -183,23 +183,24 @@ export function AiInsightsPanel({
   }
 
   return (
-    <div className="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-indigo-50 overflow-hidden">
+    <div className="card">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-violet-200">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-violet-600 flex items-center justify-center">
-            <Sparkles className="h-3.5 w-3.5 text-white" />
+      <div className="card-header">
+        <div className="flex items-center gap-2.5">
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: "linear-gradient(135deg, #6366f1, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Sparkles className="h-4 w-4 text-white" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-violet-900">AI Insights</p>
-            <p className="text-[10px] text-violet-600">Powered by GPT-4o mini</p>
+            <p className="card-title">AI Insights</p>
+            <p className="card-subtitle">Powered by GPT-4o mini</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {result && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="p-1 rounded hover:bg-violet-100 text-violet-600 transition"
+              className="p-1.5 rounded-lg hover:bg-slate-100 transition"
+              style={{ color: "var(--text-3)" }}
             >
               {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </button>
@@ -207,21 +208,22 @@ export function AiInsightsPanel({
           <button
             onClick={generateInsights}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-medium transition disabled:opacity-50"
+            className="btn btn-primary btn-sm inline-flex items-center gap-1.5"
+            style={{ fontSize: 13, padding: "7px 14px" }}
           >
             {loading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Sparkles className="h-3.5 w-3.5" />
             )}
-            {loading ? "Generating..." : result ? "Regenerate" : "Generate Insights"}
+            {loading ? "Generating…" : result ? "Regenerate" : "Generate Insights"}
           </button>
         </div>
       </div>
 
       {/* Error state */}
       {error && (
-        <div className="px-5 py-4">
+        <div className="card-body" style={{ paddingTop: 20, paddingBottom: 20 }}>
           <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
             <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
             <p className="text-xs text-red-700">{error}</p>
@@ -231,45 +233,45 @@ export function AiInsightsPanel({
 
       {/* Loading skeleton */}
       {loading && !result && (
-        <div className="px-5 py-5 space-y-3">
-          <div className="h-3 bg-violet-200 rounded animate-pulse w-full" />
-          <div className="h-3 bg-violet-200 rounded animate-pulse w-4/5" />
-          <div className="h-3 bg-violet-200 rounded animate-pulse w-3/4" />
-          <div className="mt-2 h-2 bg-violet-100 rounded animate-pulse w-full" />
-          <div className="h-2 bg-violet-100 rounded animate-pulse w-5/6" />
+        <div className="card-body" style={{ paddingTop: 24, paddingBottom: 24, display: "flex", flexDirection: "column", gap: 10 }}>
+          {[100, 80, 90, 70, 85].map((w, i) => (
+            <div key={i} style={{ height: i < 3 ? 13 : 10, background: "#e2e8f0", borderRadius: 6, width: `${w}%`, animation: "pulse 1.5s ease-in-out infinite" }} />
+          ))}
         </div>
       )}
 
       {/* Empty state */}
       {!loading && !result && !error && (
-        <div className="px-5 py-6 text-center">
-          <Sparkles className="h-8 w-8 text-violet-300 mx-auto mb-2" />
-          <p className="text-sm text-violet-700 font-medium">AI-powered analysis</p>
-          <p className="text-xs text-violet-500 mt-1">
-            Click &quot;Generate Insights&quot; to get an AI summary, anomaly detection, and recommendations for this data.
+        <div className="card-body" style={{ textAlign: "center", paddingTop: 40, paddingBottom: 40 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+            <Sparkles className="h-5 w-5" style={{ color: "var(--accent)" }} />
+          </div>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>AI-powered analysis</p>
+          <p style={{ fontSize: 13, color: "var(--text-3)", maxWidth: 320, margin: "0 auto" }}>
+            Generate an AI summary, anomaly detection, key insights, and recommendations for this data.
           </p>
         </div>
       )}
 
       {/* Results */}
       {result && expanded && (
-        <div className="px-5 py-5 space-y-5">
+        <div>
           {/* Executive summary */}
-          <div>
-            <p className="text-xs font-semibold text-violet-700 uppercase tracking-wider mb-2">Summary</p>
-            <p className="text-sm text-slate-700 leading-relaxed">{result.summary}</p>
+          <div className="card-body" style={{ paddingBottom: 24 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", marginBottom: 10 }}>Summary</p>
+            <p style={{ fontSize: 14, color: "var(--text-2)", lineHeight: 1.7 }}>{result.summary}</p>
           </div>
 
           {/* Anomalies */}
           {result.anomalies.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-2">
+            <div className="card-body" style={{ paddingTop: 24, paddingBottom: 24, borderTop: "1px solid var(--border-subtle)" }}>
+              <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                  Anomaly Detection ({result.anomalies.length})
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)" }}>
+                  Anomalies ({result.anomalies.length})
                 </p>
               </div>
-              <div className="space-y-2">
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {result.anomalies.map((anomaly, i) => (
                   <AnomalyCard key={i} anomaly={anomaly} />
                 ))}
@@ -279,16 +281,16 @@ export function AiInsightsPanel({
 
           {/* Key insights */}
           {result.insights.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-2">
-                <TrendingUp className="h-3.5 w-3.5 text-indigo-500" />
-                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Key Insights</p>
+            <div className="card-body" style={{ paddingTop: 24, paddingBottom: 24, borderTop: "1px solid var(--border-subtle)" }}>
+              <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
+                <TrendingUp className="h-3.5 w-3.5" style={{ color: "var(--accent)" }} />
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)" }}>Key Insights</p>
               </div>
-              <ul className="space-y-1.5">
+              <ul style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {result.insights.map((insight, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 shrink-0" />
-                    <p className="text-sm text-slate-600">{insight}</p>
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", marginTop: 7, flexShrink: 0 }} />
+                    <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6 }}>{insight}</p>
                   </li>
                 ))}
               </ul>
@@ -297,16 +299,16 @@ export function AiInsightsPanel({
 
           {/* Recommendations */}
           {result.recommendations.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-2">
+            <div className="card-body" style={{ paddingTop: 24, paddingBottom: 24, borderTop: "1px solid var(--border-subtle)" }}>
+              <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
                 <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
-                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">Recommendations</p>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)" }}>Recommendations</p>
               </div>
-              <ul className="space-y-1.5">
+              <ul style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {result.recommendations.map((rec, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0" />
-                    <p className="text-sm text-slate-600">{rec}</p>
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", marginTop: 7, flexShrink: 0 }} />
+                    <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6 }}>{rec}</p>
                   </li>
                 ))}
               </ul>

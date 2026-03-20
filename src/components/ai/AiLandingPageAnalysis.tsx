@@ -105,19 +105,19 @@ function CategorySection({
   const hasContent = analysis.issues.length > 0 || analysis.recommendations.length > 0;
 
   return (
-    <div className="rounded-lg border border-slate-200 overflow-hidden">
+    <div style={{ border: "1px solid var(--border-subtle)", borderRadius: "var(--r)", overflow: "hidden" }}>
       <button
         onClick={() => hasContent && setOpen((v) => !v)}
-        className={`w-full flex items-center justify-between px-3 py-2 text-left transition ${hasContent ? "hover:bg-slate-50 cursor-pointer" : "cursor-default"}`}
+        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", textAlign: "left", background: "none", border: "none", cursor: hasContent ? "pointer" : "default" }}
       >
         <div className="flex items-center gap-2">
-          <span className="text-slate-500">{icon}</span>
-          <span className="text-xs font-semibold text-slate-700">{label}</span>
+          <span style={{ color: "var(--text-3)" }}>{icon}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>{label}</span>
         </div>
         <div className="flex items-center gap-2">
           <ScoreBadge score={analysis.score} />
           {hasContent && (
-            <span className="text-slate-400">
+            <span style={{ color: "var(--text-3)" }}>
               {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             </span>
           )}
@@ -125,15 +125,13 @@ function CategorySection({
       </button>
 
       {open && hasContent && (
-        <div className="px-3 pb-3 pt-1 space-y-2 border-t border-slate-100">
+        <div style={{ padding: "12px 14px 14px", borderTop: "1px solid var(--border-subtle)", display: "flex", flexDirection: "column", gap: 12 }}>
           {analysis.issues.length > 0 && (
             <div>
-              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                Issues
-              </p>
-              <ul className="space-y-1">
+              <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", marginBottom: 6 }}>Issues</p>
+              <ul style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 {analysis.issues.map((issue, i) => (
-                  <li key={i} className="flex items-start gap-1.5 text-xs text-slate-600">
+                  <li key={i} className="flex items-start gap-1.5" style={{ fontSize: 12, color: "var(--text-2)" }}>
                     <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0 mt-0.5" />
                     {issue}
                   </li>
@@ -143,12 +141,10 @@ function CategorySection({
           )}
           {analysis.recommendations.length > 0 && (
             <div>
-              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                Fixes
-              </p>
-              <ul className="space-y-1">
+              <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", marginBottom: 6 }}>Fixes</p>
+              <ul style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 {analysis.recommendations.map((rec, i) => (
-                  <li key={i} className="flex items-start gap-1.5 text-xs text-slate-600">
+                  <li key={i} className="flex items-start gap-1.5" style={{ fontSize: 12, color: "var(--text-2)" }}>
                     <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
                     {rec}
                   </li>
@@ -177,38 +173,40 @@ function PageAnalysisCard({ result }: { result: LandingPageAnalysisResult }) {
     ["cro", "seo", "mobile", "forms"];
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+    <div className="card" style={{ boxShadow: "none" }}>
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-slate-100">
-        <div className="flex items-start gap-2 min-w-0">
-          <Globe className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+      <div className="card-header" style={{ padding: "16px 20px" }}>
+        <div className="flex items-start gap-2.5 min-w-0">
+          <Globe className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "var(--text-3)" }} />
           <div className="min-w-0">
             <a
               href={result.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-medium text-slate-800 hover:text-violet-600 truncate block max-w-xs"
+              className="card-title hover:text-violet-600 truncate block"
+              style={{ fontSize: 13, textDecoration: "none" }}
               title={result.url}
             >
               {displayUrl}
-              <ExternalLink className="inline h-3 w-3 ml-1 opacity-50" />
+              <ExternalLink className="inline h-3 w-3 ml-1 opacity-40" />
             </a>
             {result.fetchError && (
-              <p className="text-xs text-amber-600 mt-0.5 flex items-center gap-1">
+              <p className="flex items-center gap-1 mt-1" style={{ fontSize: 11, color: "#d97706" }}>
                 <AlertTriangle className="h-3 w-3 shrink-0" />
                 {result.fetchError}
               </p>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="text-right">
-            <p className="text-xs text-slate-500">Overall</p>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div style={{ textAlign: "right" }}>
+            <p style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>Overall</p>
             <ScoreBadge score={result.overallScore} />
           </div>
           <button
             onClick={() => setExpanded((v) => !v)}
-            className="p-1.5 rounded hover:bg-slate-100 text-slate-500 transition"
+            className="p-1.5 rounded-lg hover:bg-slate-100 transition"
+            style={{ color: "var(--text-3)" }}
             aria-label={expanded ? "Collapse" : "Expand"}
           >
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -216,35 +214,33 @@ function PageAnalysisCard({ result }: { result: LandingPageAnalysisResult }) {
         </div>
       </div>
 
-      {/* Category score bar (always visible) */}
-      <div className="grid grid-cols-4 gap-1 px-4 py-2 bg-slate-50">
+      {/* Category score strip (always visible) */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: "var(--border-subtle)" }}>
         {categories.map((cat) => (
-          <div key={cat} className="text-center">
-            <p className="text-[10px] text-slate-500 font-medium">{CATEGORY_LABELS[cat]}</p>
-            <p className={`text-sm font-bold ${scoreColor(result[cat].score)}`}>{result[cat].score}</p>
+          <div key={cat} style={{ background: "var(--surface)", padding: "10px 0", textAlign: "center" }}>
+            <p style={{ fontSize: 10, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 2 }}>{CATEGORY_LABELS[cat]}</p>
+            <p className={`text-base font-bold ${scoreColor(result[cat].score)}`}>{result[cat].score}</p>
           </div>
         ))}
       </div>
 
       {/* Expanded detail */}
       {expanded && (
-        <div className="px-4 py-3 space-y-3">
+        <div className="card-body" style={{ paddingTop: 20, paddingBottom: 20, display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Summary */}
-          <p className="text-sm text-slate-700 leading-relaxed">{result.overallSummary}</p>
+          <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.7 }}>{result.overallSummary}</p>
 
           {/* Top recommendations */}
           {result.topRecommendations.length > 0 && (
-            <div className="rounded-lg bg-violet-50 border border-violet-200 p-3">
-              <div className="flex items-center gap-1.5 mb-2">
-                <Lightbulb className="h-3.5 w-3.5 text-violet-500" />
-                <p className="text-xs font-semibold text-violet-700 uppercase tracking-wider">
-                  Top Recommendations
-                </p>
+            <div style={{ background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r)", padding: "14px 16px" }}>
+              <div className="flex items-center gap-1.5" style={{ marginBottom: 10 }}>
+                <Lightbulb className="h-3.5 w-3.5" style={{ color: "var(--accent)" }} />
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--accent-text)" }}>Top Recommendations</p>
               </div>
-              <ul className="space-y-1">
+              <ul style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {result.topRecommendations.map((rec, i) => (
-                  <li key={i} className="flex items-start gap-1.5 text-xs text-violet-800">
-                    <span className="font-bold text-violet-400 shrink-0">{i + 1}.</span>
+                  <li key={i} className="flex items-start gap-1.5" style={{ fontSize: 12, color: "var(--accent-text)" }}>
+                    <span style={{ fontWeight: 700, color: "var(--accent)", minWidth: 16 }}>{i + 1}.</span>
                     {rec}
                   </li>
                 ))}
@@ -253,7 +249,7 @@ function PageAnalysisCard({ result }: { result: LandingPageAnalysisResult }) {
           )}
 
           {/* Category breakdowns */}
-          <div className="space-y-2">
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {categories.map((cat) => (
               <CategorySection
                 key={cat}
@@ -279,7 +275,7 @@ export function AiLandingPageAnalysis({
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
 
-  const urls = landingPages.map((p) => p.url).filter(Boolean);
+  const urls = [...new Set(landingPages.map((p) => p.url).filter(Boolean))].slice(0, 10);
 
   if (urls.length === 0) return null;
 
@@ -307,25 +303,24 @@ export function AiLandingPageAnalysis({
   }
 
   return (
-    <div className="rounded-xl border border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-50 overflow-hidden">
+    <div className="card">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-teal-200">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-teal-600 flex items-center justify-center">
-            <Globe className="h-3.5 w-3.5 text-white" />
+      <div className="card-header">
+        <div className="flex items-center gap-2.5">
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: "linear-gradient(135deg, #0d9488, #0891b2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Globe className="h-4 w-4 text-white" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-teal-900">Landing Page Analysis</p>
-            <p className="text-[10px] text-teal-600">
-              CRO · SEO · Mobile · Forms — {urls.length} page{urls.length !== 1 ? "s" : ""}
-            </p>
+            <p className="card-title">Landing Page Analysis</p>
+            <p className="card-subtitle">CRO · SEO · Mobile · Forms — {urls.length} page{urls.length !== 1 ? "s" : ""}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {results && (
             <button
               onClick={() => setExpanded((v) => !v)}
-              className="p-1 rounded hover:bg-teal-100 text-teal-600 transition"
+              className="p-1.5 rounded-lg hover:bg-slate-100 transition"
+              style={{ color: "var(--text-3)" }}
             >
               {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </button>
@@ -333,21 +328,22 @@ export function AiLandingPageAnalysis({
           <button
             onClick={analyse}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium transition disabled:opacity-50"
+            className="btn btn-primary btn-sm inline-flex items-center gap-1.5"
+            style={{ fontSize: 13, padding: "7px 14px", background: "#0d9488" }}
           >
             {loading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Globe className="h-3.5 w-3.5" />
             )}
-            {loading ? "Analysing..." : results ? "Re-analyse" : "Analyse Pages"}
+            {loading ? "Analysing…" : results ? "Re-analyse" : "Analyse Pages"}
           </button>
         </div>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="px-5 py-4">
+        <div className="card-body" style={{ paddingTop: 20, paddingBottom: 20 }}>
           <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
             <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
             <p className="text-xs text-red-700">{error}</p>
@@ -357,30 +353,29 @@ export function AiLandingPageAnalysis({
 
       {/* Loading skeleton */}
       {loading && !results && (
-        <div className="px-5 py-5 space-y-3">
-          <div className="h-3 bg-teal-200 rounded animate-pulse w-full" />
-          <div className="h-3 bg-teal-200 rounded animate-pulse w-4/5" />
-          <div className="h-3 bg-teal-200 rounded animate-pulse w-3/4" />
-          <div className="mt-2 h-2 bg-teal-100 rounded animate-pulse w-full" />
-          <div className="h-2 bg-teal-100 rounded animate-pulse w-5/6" />
+        <div className="card-body" style={{ paddingTop: 24, paddingBottom: 24, display: "flex", flexDirection: "column", gap: 10 }}>
+          {[100, 80, 90, 70, 85].map((w, i) => (
+            <div key={i} style={{ height: i < 3 ? 13 : 10, background: "#e2e8f0", borderRadius: 6, width: `${w}%`, animation: "pulse 1.5s ease-in-out infinite" }} />
+          ))}
         </div>
       )}
 
       {/* Empty state */}
       {!loading && !results && !error && (
-        <div className="px-5 py-6 text-center">
-          <Globe className="h-8 w-8 text-teal-300 mx-auto mb-2" />
-          <p className="text-sm text-teal-700 font-medium">AI Landing Page Review</p>
-          <p className="text-xs text-teal-500 mt-1 max-w-sm mx-auto">
-            Click &quot;Analyse Pages&quot; to fetch each landing page and get AI-powered CRO, SEO,
-            mobile responsiveness, and form recommendations.
+        <div className="card-body" style={{ textAlign: "center", paddingTop: 40, paddingBottom: 40 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 14, background: "#f0fdfa", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+            <Globe className="h-5 w-5" style={{ color: "#0d9488" }} />
+          </div>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>AI Landing Page Review</p>
+          <p style={{ fontSize: 13, color: "var(--text-3)", maxWidth: 340, margin: "0 auto" }}>
+            Fetch and analyse each landing page for CRO, SEO, mobile responsiveness, and form recommendations.
           </p>
         </div>
       )}
 
       {/* Results */}
       {results && expanded && (
-        <div className="px-5 py-4 space-y-3">
+        <div className="card-body" style={{ paddingTop: 20, paddingBottom: 20, display: "flex", flexDirection: "column", gap: 12 }}>
           {results.map((r, i) => (
             <PageAnalysisCard key={i} result={r} />
           ))}
