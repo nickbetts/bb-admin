@@ -805,26 +805,18 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
 
           <div className="relative max-w-[90vw] max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
             {lightbox.type === "video" ? (
-              lightbox.videoId ? (
-                // Use Facebook's embedded player — direct CDN URLs are blocked cross-origin
-                <iframe
-                  src={`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(`https://www.facebook.com/video/embed?video_id=${lightbox.videoId}`)}&show_text=0&autoplay=1`}
-                  className="rounded-lg shadow-2xl"
-                  style={{ width: "min(80vw, 960px)", height: "min(80vw * 9/16, 540px)", aspectRatio: "16/9", border: "none" }}
-                  allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
-                  allowFullScreen
-                  title={lightbox.title}
-                />
-              ) : (
-                <video
-                  controls
-                  autoPlay
-                  className="max-w-[90vw] max-h-[85vh] rounded-lg shadow-2xl"
-                  src={lightbox.src}
-                >
-                  <track kind="captions" />
-                </video>
-              )
+              <video
+                controls
+                autoPlay
+                className="max-w-[90vw] max-h-[85vh] rounded-lg shadow-2xl"
+                src={
+                  lightbox.videoId
+                    ? `/api/meta/video?videoId=${encodeURIComponent(lightbox.videoId)}&clientId=${encodeURIComponent(clientId)}`
+                    : lightbox.src
+                }
+              >
+                <track kind="captions" />
+              </video>
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img
