@@ -735,17 +735,52 @@ export async function getMetaAdCreatives(
 ): Promise<MetaAdCreative[]> {
   const token = getAccessToken(accessToken);
 
-  // Step 1: Fetch ads with creative object — request effective_image_url for
-  // full-res, plus object_story_spec for headline/body/video detection.
-  // Also request adset_id so we can link creatives to ad sets.
-  const adsParams = new URLSearchParams({
+  // ── Step 1: Fetch ad-level insights first — this tells us which ads were
+  // active in the date range, so we can then fetch creative data for exactly
+  // those ad IDs (avoids mismatch with the generic /ads endpoint).
+  type AdInsightRow = {
+    ad_id: string;
+    ad_name: string;
+    adset_id?: string;
+    adset_name?: string;
+    campaign_id?: string;
+    campaign_name?: string;
+    spend?: string;
+    impressions?: string;
+    clicks?: string;
+    ctr?: string;
+    cpc?: string;
+    actions?: ActionRow[];
+    action_values?: ActionRow[];
+    conversions?: { value: string }[];
+    purchase_roas?: { value: string }[];
+  };
+
+  const insightsParams = new URLSearchParams({
     access_token: token,
     fields:
-      "id,name,status,adset_id,creative{id,effective_image_url,image_url,thumbnail_url,object_story_spec,video_id}",
-    effective_status: '["ACTIVE","PAUSED","ARCHIVED","DELETED","DISAPPROVED","PENDING_REVIEW","PREAPPROVED","WITH_ISSUES"]',
+      "ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,actions,action_values,conversions,purchase_roas",
+    time_range: JSON.stringify({ since: startDate, until: endDate }),
+    level: "ad",
     limit: "100",
   });
 
+  const insightsResp = await fetch(
+    `${META_API_BASE}/act_${accountId}/insights?${insightsParams}`,
+    { cache: "no-store" }
+  );
+
+  if (!insightsResp.ok) {
+    const err = await insightsResp.text();
+    throw new Error(`Meta Ads API error: ${err}`);
+  }
+
+  const insightsData = await insightsResp.json();
+  const insightRows: AdInsightRow[] = insightsData.data ?? [];
+
+  // ── Step 2: Batch-fetch creative data for the specific ad IDs from insights.
+  // Uses the multi-ID endpoint (/?ids=...) so we get creative info for exactly
+  // the ads that appeared in the period, regardless of current status.
   type CreativeSpec = {
     id: string;
     effective_image_url?: string;
@@ -778,22 +813,36 @@ export async function getMetaAdCreatives(
     creative?: CreativeSpec;
   };
 
-  let adNodes: AdNode[] = [];
-  try {
-    const resp = await fetch(
-      `${META_API_BASE}/act_${accountId}/ads?${adsParams}`,
-      { cache: "no-store" }
-    );
-    if (resp.ok) adNodes = (await resp.json()).data ?? [];
-  } catch {
-    // Non-fatal — proceed with empty creative data
+  const adIds = [...new Set(insightRows.map((r) => r.ad_id))];
+  const adCreativeMap = new Map<string, AdNode>();
+
+  // Batch in chunks of 50 (API limit for multi-ID requests)
+  for (let i = 0; i < adIds.length; i += 50) {
+    const chunk = adIds.slice(i, i + 50);
+    try {
+      const batchParams = new URLSearchParams({
+        access_token: token,
+        ids: chunk.join(","),
+        fields:
+          "id,name,status,adset_id,creative{id,effective_image_url,image_url,thumbnail_url,object_story_spec,video_id}",
+      });
+      const resp = await fetch(`${META_API_BASE}/?${batchParams}`, {
+        cache: "no-store",
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        for (const [id, obj] of Object.entries(data as Record<string, AdNode>)) {
+          adCreativeMap.set(id, obj as AdNode);
+        }
+      }
+    } catch {
+      // Non-fatal — proceed with whatever creative data we have
+    }
   }
 
-  const adCreativeMap = new Map(adNodes.map((a) => [a.id, a]));
-
-  // Step 2: Collect video IDs and fetch their source URLs for video previews
+  // ── Step 3: Collect video IDs and fetch their source URLs for video previews
   const videoIds = new Set<string>();
-  for (const ad of adNodes) {
+  for (const [, ad] of adCreativeMap) {
     const vid =
       ad.creative?.video_id ??
       ad.creative?.object_story_spec?.video_data?.video_id;
@@ -802,21 +851,21 @@ export async function getMetaAdCreatives(
 
   const videoSourceMap = new Map<string, { source: string; picture: string }>();
   if (videoIds.size > 0) {
-    // Batch fetch video objects (source URL + picture thumbnail)
-    const ids = [...videoIds].slice(0, 30);
+    const ids = [...videoIds].slice(0, 50);
     try {
       const batchParams = new URLSearchParams({
         access_token: token,
         ids: ids.join(","),
         fields: "id,source,picture",
       });
-      const videoResp = await fetch(
-        `${META_API_BASE}/?${batchParams}`,
-        { cache: "no-store" }
-      );
+      const videoResp = await fetch(`${META_API_BASE}/?${batchParams}`, {
+        cache: "no-store",
+      });
       if (videoResp.ok) {
         const videoData = await videoResp.json();
-        for (const [id, obj] of Object.entries(videoData as Record<string, { source?: string; picture?: string }>)) {
+        for (const [id, obj] of Object.entries(
+          videoData as Record<string, { source?: string; picture?: string }>
+        )) {
           if (obj.source || obj.picture) {
             videoSourceMap.set(id, {
               source: obj.source ?? "",
@@ -830,47 +879,8 @@ export async function getMetaAdCreatives(
     }
   }
 
-  // Step 3: Fetch ad-level insights including adset_id and adset_name
-  const insightsParams = new URLSearchParams({
-    access_token: token,
-    fields:
-      "ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,actions,action_values,conversions,purchase_roas",
-    time_range: JSON.stringify({ since: startDate, until: endDate }),
-    level: "ad",
-    limit: "50",
-  });
-
-  const insightsResp = await fetch(
-    `${META_API_BASE}/act_${accountId}/insights?${insightsParams}`,
-    { cache: "no-store" }
-  );
-
-  if (!insightsResp.ok) {
-    const err = await insightsResp.text();
-    throw new Error(`Meta Ads API error: ${err}`);
-  }
-
-  type AdInsightRow = {
-    ad_id: string;
-    ad_name: string;
-    adset_id?: string;
-    adset_name?: string;
-    campaign_id?: string;
-    campaign_name?: string;
-    spend?: string;
-    impressions?: string;
-    clicks?: string;
-    ctr?: string;
-    cpc?: string;
-    actions?: ActionRow[];
-    action_values?: ActionRow[];
-    conversions?: { value: string }[];
-    purchase_roas?: { value: string }[];
-  };
-
-  const insightsData = await insightsResp.json();
-
-  const results: MetaAdCreative[] = (insightsData.data ?? []).map(
+  // ── Step 4: Combine insights with creative data ─────────────────────────
+  const results: MetaAdCreative[] = insightRows.map(
     (row: AdInsightRow) => {
       const ad = adCreativeMap.get(row.ad_id);
       const creative = ad?.creative;
