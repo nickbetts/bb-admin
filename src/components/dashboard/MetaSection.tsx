@@ -97,11 +97,52 @@ interface MetaAdSet {
   billingEvent: string;
 }
 
+interface MetaAdCreative {
+  adId: string;
+  adName: string;
+  campaignName: string;
+  status: string;
+  thumbnailUrl: string | null;
+  imageUrl: string | null;
+  mediaType: "IMAGE" | "VIDEO" | "CAROUSEL" | "UNKNOWN";
+  headline: string | null;
+  bodyText: string | null;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  conversions: number;
+  roas: number;
+  costPerConversion: number;
+}
+
 function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "currency"): string | undefined {
   if (prev == null) return undefined;
   const d = curr - prev;
   const sign = d >= 0 ? "+" : "\u2212";
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
+}
+
+/** Build a text summary of ad creative performance for AI context */
+function buildCreativeSummary(creatives: MetaAdCreative[]): string {
+  const lines = creatives.slice(0, 15).map((c) => {
+    const parts = [`"${c.adName}" (${c.mediaType})`];
+    parts.push(`Spend: ${formatCurrency(c.spend)}`);
+    parts.push(`Clicks: ${c.clicks}`);
+    parts.push(`CTR: ${c.ctr.toFixed(2)}%`);
+    parts.push(`Conv: ${c.conversions}`);
+    parts.push(`ROAS: ${c.roas.toFixed(2)}x`);
+    if (c.costPerConversion > 0) parts.push(`CPA: ${formatCurrency(c.costPerConversion)}`);
+    if (c.headline) parts.push(`Headline: "${c.headline}"`);
+    return parts.join(", ");
+  });
+
+  const videoCount = creatives.filter((c) => c.mediaType === "VIDEO").length;
+  const imageCount = creatives.filter((c) => c.mediaType === "IMAGE").length;
+  const carouselCount = creatives.filter((c) => c.mediaType === "CAROUSEL").length;
+
+  return `\nAd Creative Performance (${creatives.length} ads: ${imageCount} image, ${videoCount} video, ${carouselCount} carousel):\n${lines.join("\n")}`;
 }
 
 export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSectionProps) {
@@ -111,6 +152,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
   const [prevCampaigns, setPrevCampaigns] = useState<Campaign[]>([]);
   const [campaignsEnriched, setCampaignsEnriched] = useState<CampaignEnriched[]>([]);
   const [adSets, setAdSets] = useState<MetaAdSet[]>([]);
+  const [creatives, setCreatives] = useState<MetaAdCreative[]>([]);
   const [daily, setDaily] = useState<DailyData[]>([]);
   const [landingPages, setLandingPages] = useState<MetaLandingPage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,7 +169,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
         const prev = getPreviousPeriod(startDate, endDate);
         const prevBase = `/api/meta?clientId=${encodeURIComponent(clientId)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
 
-        const [ovRes, campRes, enrichedRes, dailyRes, lpRes, prevOvRes, prevCampRes, adSetsRes] = await Promise.all([
+        const [ovRes, campRes, enrichedRes, dailyRes, lpRes, prevOvRes, prevCampRes, adSetsRes, creativesRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=campaigns`, { signal: controller.signal }),
           fetch(`${base}&type=campaigns-enriched`, { signal: controller.signal }),
@@ -136,6 +178,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           fetch(`${prevBase}&type=overview`, { signal: controller.signal }),
           fetch(`${prevBase}&type=campaigns`, { signal: controller.signal }),
           fetch(`${base}&type=adsets`, { signal: controller.signal }),
+          fetch(`${base}&type=creatives`, { signal: controller.signal }),
         ]);
 
         if (!ovRes.ok) {
@@ -143,7 +186,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           throw new Error(err.error ?? "Failed to fetch Meta Ads data");
         }
 
-        const [ov, camp, enriched, d, lp, prevOv, prevCamp, adSetsData] = await Promise.all([
+        const [ov, camp, enriched, d, lp, prevOv, prevCamp, adSetsData, creativesData] = await Promise.all([
           ovRes.json(),
           campRes.json(),
           enrichedRes.ok ? enrichedRes.json() : Promise.resolve([]),
@@ -152,6 +195,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           prevOvRes.ok ? prevOvRes.json() : Promise.resolve(null),
           prevCampRes.ok ? prevCampRes.json() : Promise.resolve([]),
           adSetsRes.ok ? adSetsRes.json() : Promise.resolve([]),
+          creativesRes.ok ? creativesRes.json() : Promise.resolve([]),
         ]);
 
         setOverview(ov);
@@ -162,6 +206,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
         setPrevOverview(prevOv?.totalSpend != null ? prevOv : null);
         setPrevCampaigns(Array.isArray(prevCamp) ? prevCamp : []);
         setAdSets(Array.isArray(adSetsData) ? adSetsData : []);
+        setCreatives(Array.isArray(creativesData) ? creativesData : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load Meta Ads data");
@@ -514,6 +559,87 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           </div>
         </div>
       )}
+
+      {/* Ad Creatives Gallery */}
+      {creatives.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-800">Ad Creatives</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Performance breakdown by individual ad creative</p>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              {creatives.map((c) => (
+                <div key={c.adId} className="rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
+                  {/* Creative thumbnail */}
+                  <div className="relative" style={{ background: "#f8fafc", minHeight: 160 }}>
+                    {c.thumbnailUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={c.thumbnailUrl}
+                        alt={c.adName}
+                        className="w-full object-cover"
+                        style={{ maxHeight: 200, minHeight: 160 }}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center" style={{ height: 160 }}>
+                        <span className="text-slate-300 text-sm">No preview available</span>
+                      </div>
+                    )}
+                    {/* Media type badge */}
+                    <span style={{
+                      position: "absolute", top: 8, right: 8,
+                      padding: "3px 8px", borderRadius: 6,
+                      fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+                      background: c.mediaType === "VIDEO" ? "#7c3aed" : c.mediaType === "CAROUSEL" ? "#2563eb" : "#374151",
+                      color: "white", letterSpacing: "0.05em",
+                    }}>
+                      {c.mediaType === "UNKNOWN" ? "AD" : c.mediaType}
+                    </span>
+                  </div>
+                  {/* Creative info + metrics */}
+                  <div className="p-4">
+                    <p className="text-xs font-semibold text-slate-800 truncate" title={c.adName}>{c.adName}</p>
+                    <p className="text-[11px] text-slate-400 truncate mt-0.5">{c.campaignName}</p>
+                    {c.headline && (
+                      <p className="text-[11px] text-slate-500 mt-1.5 line-clamp-1" title={c.headline}>&ldquo;{c.headline}&rdquo;</p>
+                    )}
+                    {/* Metrics grid */}
+                    <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-slate-100">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">Spend</p>
+                        <p className="text-xs font-semibold text-slate-700">{formatCurrency(c.spend)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">Clicks</p>
+                        <p className="text-xs font-semibold text-slate-700">{formatNumber(c.clicks)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">CTR</p>
+                        <p className="text-xs font-semibold text-slate-700">{formatPercent(c.ctr)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">Conv.</p>
+                        <p className="text-xs font-semibold text-slate-700">{formatNumber(c.conversions)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">ROAS</p>
+                        <p className={`text-xs font-semibold ${c.roas >= 2 ? "text-emerald-600" : c.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>
+                          {c.roas.toFixed(2)}x
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">CPA</p>
+                        <p className="text-xs font-semibold text-slate-700">{c.costPerConversion > 0 ? formatCurrency(c.costPerConversion) : "—"}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
         </>
       )}
 
@@ -553,6 +679,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           landingPages={landingPages.length ? landingPages : undefined}
           clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+          extraContext={creatives.length ? buildCreativeSummary(creatives) : undefined}
         />
       )}
 
@@ -581,6 +708,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           clientId={clientId}
           clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+          extraContext={creatives.length ? buildCreativeSummary(creatives) : undefined}
         />
       )}
 

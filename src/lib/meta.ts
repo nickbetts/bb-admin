@@ -79,6 +79,27 @@ export interface MetaAdsAdSet {
   billingEvent: string;
 }
 
+/** Individual ad creative with performance data and media URLs */
+export interface MetaAdCreative {
+  adId: string;
+  adName: string;
+  campaignName: string;
+  status: string;
+  thumbnailUrl: string | null;
+  imageUrl: string | null;
+  mediaType: "IMAGE" | "VIDEO" | "CAROUSEL" | "UNKNOWN";
+  headline: string | null;
+  bodyText: string | null;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  conversions: number;
+  roas: number;
+  costPerConversion: number;
+}
+
 const META_API_BASE = "https://graph.facebook.com/v19.0";
 
 type ActionRow = { action_type: string; value: string };
@@ -694,4 +715,171 @@ export async function getMetaAdSets(
       billingEvent: meta?.billing_event ?? "",
     };
   });
+}
+
+/**
+ * Fetch individual ad creatives with thumbnail/image URLs, media type,
+ * headline/body text, and performance metrics. Returns up to 30 ads
+ * sorted by spend descending.
+ */
+export async function getMetaAdCreatives(
+  accountId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<MetaAdCreative[]> {
+  const token = getAccessToken(accessToken);
+
+  // Step 1: Fetch ads with creative object (thumbnail, image, object_story_spec)
+  const adsParams = new URLSearchParams({
+    access_token: token,
+    fields:
+      "id,name,status,creative{id,thumbnail_url,image_url,object_story_spec}",
+    effective_status: '["ACTIVE","PAUSED"]',
+    limit: "50",
+  });
+
+  type CreativeSpec = {
+    id: string;
+    thumbnail_url?: string;
+    image_url?: string;
+    object_story_spec?: {
+      link_data?: {
+        message?: string;
+        name?: string;
+        description?: string;
+        picture?: string;
+        child_attachments?: unknown[];
+      };
+      video_data?: {
+        video_id?: string;
+        image_url?: string;
+        title?: string;
+        message?: string;
+      };
+    };
+  };
+
+  type AdNode = {
+    id: string;
+    name: string;
+    status?: string;
+    creative?: CreativeSpec;
+  };
+
+  let adNodes: AdNode[] = [];
+  try {
+    const resp = await fetch(
+      `${META_API_BASE}/act_${accountId}/ads?${adsParams}`,
+      { cache: "no-store" }
+    );
+    if (resp.ok) adNodes = (await resp.json()).data ?? [];
+  } catch {
+    // Non-fatal — proceed with empty creative data
+  }
+
+  const adCreativeMap = new Map(adNodes.map((a) => [a.id, a]));
+
+  // Step 2: Fetch ad-level insights
+  const insightsParams = new URLSearchParams({
+    access_token: token,
+    fields:
+      "ad_id,ad_name,campaign_name,spend,impressions,clicks,ctr,cpc,conversions,purchase_roas",
+    time_range: JSON.stringify({ since: startDate, until: endDate }),
+    level: "ad",
+    limit: "50",
+  });
+
+  const insightsResp = await fetch(
+    `${META_API_BASE}/act_${accountId}/insights?${insightsParams}`,
+    { cache: "no-store" }
+  );
+
+  if (!insightsResp.ok) {
+    const err = await insightsResp.text();
+    throw new Error(`Meta Ads API error: ${err}`);
+  }
+
+  type AdInsightRow = {
+    ad_id: string;
+    ad_name: string;
+    campaign_name?: string;
+    spend?: string;
+    impressions?: string;
+    clicks?: string;
+    ctr?: string;
+    cpc?: string;
+    conversions?: { value: string }[];
+    purchase_roas?: { value: string }[];
+  };
+
+  const insightsData = await insightsResp.json();
+
+  const results: MetaAdCreative[] = (insightsData.data ?? []).map(
+    (row: AdInsightRow) => {
+      const ad = adCreativeMap.get(row.ad_id);
+      const creative = ad?.creative;
+      const spec = creative?.object_story_spec;
+
+      // Determine media type
+      let mediaType: MetaAdCreative["mediaType"] = "UNKNOWN";
+      if (spec?.link_data?.child_attachments) {
+        mediaType = "CAROUSEL";
+      } else if (spec?.video_data?.video_id) {
+        mediaType = "VIDEO";
+      } else if (
+        creative?.image_url ||
+        spec?.link_data?.picture ||
+        creative?.thumbnail_url
+      ) {
+        mediaType = "IMAGE";
+      }
+
+      // Best available image URL
+      const imageUrl =
+        creative?.image_url ??
+        spec?.link_data?.picture ??
+        spec?.video_data?.image_url ??
+        null;
+
+      const thumbnailUrl = creative?.thumbnail_url ?? imageUrl;
+
+      // Headline & body
+      const headline =
+        spec?.link_data?.name ??
+        spec?.video_data?.title ??
+        null;
+      const bodyText =
+        spec?.link_data?.message ??
+        spec?.video_data?.message ??
+        null;
+
+      const spend = parseFloat(row.spend ?? "0");
+      const conversions =
+        row.conversions?.reduce((sum, c) => sum + parseInt(c.value), 0) ?? 0;
+
+      return {
+        adId: row.ad_id,
+        adName: row.ad_name,
+        campaignName: row.campaign_name ?? "",
+        status: ad?.status ?? "ACTIVE",
+        thumbnailUrl,
+        imageUrl,
+        mediaType,
+        headline,
+        bodyText,
+        spend,
+        impressions: parseInt(row.impressions ?? "0"),
+        clicks: parseInt(row.clicks ?? "0"),
+        ctr: parseFloat(row.ctr ?? "0"),
+        cpc: parseFloat(row.cpc ?? "0"),
+        conversions,
+        roas: parseFloat(row.purchase_roas?.[0]?.value ?? "0"),
+        costPerConversion: conversions > 0 ? spend / conversions : 0,
+      };
+    }
+  );
+
+  // Sort by spend descending and limit to 30
+  return results.sort((a, b) => b.spend - a.spend).slice(0, 30);
 }
