@@ -14,6 +14,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { AiLandingPageAnalysis } from "@/components/ai/AiLandingPageAnalysis";
 
 interface GoogleAdsOverview {
   clicks: number;
@@ -626,6 +627,15 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
         />
       )}
+
+      {/* Landing Page Analysis */}
+      {!loading && !error && data?.landingPages?.length ? (
+        <AiLandingPageAnalysis
+          landingPages={data.landingPages}
+          clientName={clientName}
+          source="googleads"
+        />
+      ) : null}
     </div>
   );
 }
