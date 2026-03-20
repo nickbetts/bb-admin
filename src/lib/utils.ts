@@ -80,3 +80,41 @@ export function pctChange(current: number, previous: number): number | undefined
   if (previous === 0) return undefined;
   return ((current - previous) / previous) * 100;
 }
+
+/** Parse a named reporting period (e.g. "March 2025", "Q1 2025") into ISO date strings. */
+export function parsePeriodToDateRange(period: string): { startDate: string; endDate: string } {
+  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  // Quarterly: "Q1 2025", "Q2 2025", etc.
+  const quarterMatch = period.match(/^Q([1-4])\s+(\d{4})$/);
+  if (quarterMatch) {
+    const quarter = parseInt(quarterMatch[1]);
+    const year = parseInt(quarterMatch[2]);
+    const startMonth = (quarter - 1) * 3; // Q1=0, Q2=3, Q3=6, Q4=9
+    const endMonth = startMonth + 2;
+    const start = new Date(year, startMonth, 1);
+    const end = new Date(year, endMonth + 1, 0); // last day of endMonth
+    return {
+      startDate: start.toISOString().split("T")[0],
+      endDate: end.toISOString().split("T")[0],
+    };
+  }
+
+  // Monthly: "March 2025", "January 2026", etc.
+  const monthMatch = period.match(/^(\w+)\s+(\d{4})$/);
+  if (monthMatch) {
+    const monthIndex = MONTH_NAMES.indexOf(monthMatch[1]);
+    const year = parseInt(monthMatch[2]);
+    if (monthIndex !== -1) {
+      const start = new Date(year, monthIndex, 1);
+      const end = new Date(year, monthIndex + 1, 0); // last day of month
+      return {
+        startDate: start.toISOString().split("T")[0],
+        endDate: end.toISOString().split("T")[0],
+      };
+    }
+  }
+
+  // Fallback to last 30 days
+  return getDateRange("30d");
+}

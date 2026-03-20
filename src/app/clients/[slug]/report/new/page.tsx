@@ -5,24 +5,26 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
 
-const PERIODS = [
-  "January 2025",
-  "February 2025",
-  "March 2025",
-  "April 2025",
-  "May 2025",
-  "June 2025",
-  "July 2025",
-  "August 2025",
-  "September 2025",
-  "October 2025",
-  "November 2025",
-  "December 2025",
-  "Q1 2025",
-  "Q2 2025",
-  "Q3 2025",
-  "Q4 2025",
-];
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+function generatePeriods(): string[] {
+  const now = new Date();
+  const months: string[] = [];
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`);
+  }
+  const years = [...new Set([now.getFullYear(), now.getFullYear() - 1])];
+  const quarters: string[] = [];
+  for (const y of years) {
+    for (let q = 4; q >= 1; q--) {
+      quarters.push(`Q${q} ${y}`);
+    }
+  }
+  return [...months, ...quarters];
+}
+
+const PERIODS = generatePeriods();
 
 export default function NewReportPage({
   params,
@@ -36,7 +38,7 @@ export default function NewReportPage({
 
   const [form, setForm] = useState({
     title: "",
-    period: PERIODS[new Date().getMonth()],
+    period: PERIODS[0],
   });
 
   async function handleSubmit(e: React.FormEvent) {

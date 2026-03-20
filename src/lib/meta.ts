@@ -34,6 +34,10 @@ export interface MetaAdsOverview {
   avgCpm: number;
   totalConversions: number;
   avgRoas: number;
+  reach: number;
+  frequency: number;
+  outboundClicks: number;
+  landingPageViews: number;
 }
 
 export interface MetaAdsDailyData {
@@ -50,6 +54,25 @@ export interface MetaAdsLandingPage {
   clicks: number;
   impressions: number;
   conversions: number;
+}
+
+/** Individual ad set performance data */
+export interface MetaAdsAdSet {
+  id: string;
+  name: string;
+  campaignId: string;
+  campaignName: string;
+  status: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  conversions: number;
+  roas: number;
+  dailyBudget: number | null;
+  lifetimeBudget: number | null;
+  optimizationGoal: string;
+  billingEvent: string;
 }
 
 const META_API_BASE = "https://graph.facebook.com/v19.0";
@@ -71,7 +94,7 @@ export async function getMetaAdsOverview(
   const params = new URLSearchParams({
     access_token: getAccessToken(accessToken),
     fields:
-      "spend,impressions,clicks,ctr,cpc,cpm,reach,conversions,purchase_roas",
+      "spend,impressions,clicks,outbound_clicks,landing_page_views,ctr,cpc,cpm,reach,frequency,conversions,purchase_roas",
     time_range: JSON.stringify({ since: startDate, until: endDate }),
     level: "account",
   });
@@ -99,6 +122,10 @@ export async function getMetaAdsOverview(
       avgCpm: 0,
       totalConversions: 0,
       avgRoas: 0,
+      reach: 0,
+      frequency: 0,
+      outboundClicks: 0,
+      landingPageViews: 0,
     };
   }
 
@@ -115,6 +142,12 @@ export async function getMetaAdsOverview(
         0
       ) ?? 0,
     avgRoas: parseFloat(insight.purchase_roas?.[0]?.value ?? "0"),
+    reach: parseInt(insight.reach ?? "0"),
+    frequency: parseFloat(insight.frequency ?? "0"),
+    outboundClicks: Array.isArray(insight.outbound_clicks)
+      ? insight.outbound_clicks.reduce((sum: number, o: { value: string }) => sum + parseInt(o.value), 0)
+      : 0,
+    landingPageViews: parseInt(insight.landing_page_views ?? "0"),
   };
 }
 
@@ -489,4 +522,107 @@ export async function getMetaLandingPages(
     })
     .sort((a, b) => b.clicks - a.clicks)
     .slice(0, 20);
+}
+
+/**
+ * Fetch ad set level performance data. Includes budget and optimisation goal
+ * from the adsets endpoint combined with insights at the adset level.
+ */
+export async function getMetaAdSets(
+  accountId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<MetaAdsAdSet[]> {
+  const token = getAccessToken(accessToken);
+
+  // Step 1: fetch ad set configuration (budget, optimisation goal, billing event)
+  const adSetParams = new URLSearchParams({
+    access_token: token,
+    fields: "id,name,campaign_id,status,daily_budget,lifetime_budget,optimization_goal,billing_event",
+    limit: "50",
+  });
+
+  type AdSetNode = {
+    id: string;
+    name: string;
+    campaign_id: string;
+    status?: string;
+    daily_budget?: string;
+    lifetime_budget?: string;
+    optimization_goal?: string;
+    billing_event?: string;
+  };
+
+  let adSetNodes: AdSetNode[] = [];
+  try {
+    const resp = await fetch(
+      `${META_API_BASE}/act_${accountId}/adsets?${adSetParams}`,
+      { cache: "no-store" }
+    );
+    if (resp.ok) adSetNodes = (await resp.json()).data ?? [];
+  } catch {
+    // Non-fatal
+  }
+
+  const adSetMeta = new Map(adSetNodes.map((s) => [s.id, s]));
+
+  // Step 2: fetch insights at the adset level
+  const insightsParams = new URLSearchParams({
+    access_token: token,
+    fields:
+      "adset_id,adset_name,campaign_id,campaign_name,spend,impressions,clicks,ctr,conversions,purchase_roas",
+    time_range: JSON.stringify({ since: startDate, until: endDate }),
+    level: "adset",
+    limit: "50",
+  });
+
+  const insightsResp = await fetch(
+    `${META_API_BASE}/act_${accountId}/insights?${insightsParams}`,
+    { cache: "no-store" }
+  );
+
+  if (!insightsResp.ok) {
+    const err = await insightsResp.text();
+    throw new Error(`Meta Ads API error: ${err}`);
+  }
+
+  type AdSetInsightRow = {
+    adset_id: string;
+    adset_name: string;
+    campaign_id: string;
+    campaign_name: string;
+    spend?: string;
+    impressions?: string;
+    clicks?: string;
+    ctr?: string;
+    conversions?: { value: string }[];
+    purchase_roas?: { value: string }[];
+  };
+
+  const insightsData = await insightsResp.json();
+
+  return (insightsData.data ?? []).map((item: AdSetInsightRow) => {
+    const spend = parseFloat(item.spend ?? "0");
+    const conversions =
+      item.conversions?.reduce((sum, c) => sum + parseInt(c.value), 0) ?? 0;
+    const meta = adSetMeta.get(item.adset_id);
+    return {
+      id: item.adset_id,
+      name: item.adset_name,
+      campaignId: item.campaign_id,
+      campaignName: item.campaign_name,
+      status: meta?.status ?? "ACTIVE",
+      spend,
+      impressions: parseInt(item.impressions ?? "0"),
+      clicks: parseInt(item.clicks ?? "0"),
+      ctr: parseFloat(item.ctr ?? "0"),
+      conversions,
+      roas: parseFloat(item.purchase_roas?.[0]?.value ?? "0"),
+      dailyBudget: meta?.daily_budget ? parseFloat(meta.daily_budget) / 100 : null,
+      lifetimeBudget: meta?.lifetime_budget ? parseFloat(meta.lifetime_budget) / 100 : null,
+      optimizationGoal: meta?.optimization_goal ?? "",
+      billingEvent: meta?.billing_event ?? "",
+    };
+  });
 }

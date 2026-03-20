@@ -13,8 +13,8 @@ import {
   Bar,
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
-import { SectionCard, LoadingSpinner } from "@/components/ui/index";
-import { formatNumber, formatCurrency, formatPercent, formatDateDisplay } from "@/lib/utils";
+import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
+import { formatNumber, formatCurrency, formatPercent, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import { DollarSign, MousePointer, Eye, TrendingUp } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { AiLandingPageAnalysis } from "@/components/ai/AiLandingPageAnalysis";
@@ -35,6 +35,10 @@ interface MetaOverview {
   avgCpm: number;
   totalConversions: number;
   avgRoas: number;
+  reach: number;
+  frequency: number;
+  outboundClicks: number;
+  landingPageViews: number;
 }
 
 interface Campaign {
@@ -72,10 +76,38 @@ interface MetaLandingPage {
   conversions: number;
 }
 
+interface MetaAdSet {
+  id: string;
+  name: string;
+  campaignId: string;
+  campaignName: string;
+  status: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  conversions: number;
+  roas: number;
+  dailyBudget: number | null;
+  lifetimeBudget: number | null;
+  optimizationGoal: string;
+  billingEvent: string;
+}
+
+function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "currency"): string | undefined {
+  if (prev == null) return undefined;
+  const d = curr - prev;
+  const sign = d >= 0 ? "+" : "\u2212";
+  return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
+}
+
 export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSectionProps) {
   const [overview, setOverview] = useState<MetaOverview | null>(null);
+  const [prevOverview, setPrevOverview] = useState<MetaOverview | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [prevCampaigns, setPrevCampaigns] = useState<Campaign[]>([]);
   const [campaignsEnriched, setCampaignsEnriched] = useState<CampaignEnriched[]>([]);
+  const [adSets, setAdSets] = useState<MetaAdSet[]>([]);
   const [daily, setDaily] = useState<DailyData[]>([]);
   const [landingPages, setLandingPages] = useState<MetaLandingPage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,13 +121,18 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
       setError(null);
       try {
         const base = `/api/meta?clientId=${encodeURIComponent(clientId)}&startDate=${startDate}&endDate=${endDate}`;
+        const prev = getPreviousPeriod(startDate, endDate);
+        const prevBase = `/api/meta?clientId=${encodeURIComponent(clientId)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
 
-        const [ovRes, campRes, enrichedRes, dailyRes, lpRes] = await Promise.all([
+        const [ovRes, campRes, enrichedRes, dailyRes, lpRes, prevOvRes, prevCampRes, adSetsRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=campaigns`, { signal: controller.signal }),
           fetch(`${base}&type=campaigns-enriched`, { signal: controller.signal }),
           fetch(`${base}&type=daily`, { signal: controller.signal }),
           fetch(`${base}&type=landing-pages`, { signal: controller.signal }),
+          fetch(`${prevBase}&type=overview`, { signal: controller.signal }),
+          fetch(`${prevBase}&type=campaigns`, { signal: controller.signal }),
+          fetch(`${base}&type=adsets`, { signal: controller.signal }),
         ]);
 
         if (!ovRes.ok) {
@@ -103,12 +140,15 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           throw new Error(err.error ?? "Failed to fetch Meta Ads data");
         }
 
-        const [ov, camp, enriched, d, lp] = await Promise.all([
+        const [ov, camp, enriched, d, lp, prevOv, prevCamp, adSetsData] = await Promise.all([
           ovRes.json(),
           campRes.json(),
           enrichedRes.ok ? enrichedRes.json() : Promise.resolve([]),
           dailyRes.json(),
           lpRes.ok ? lpRes.json() : Promise.resolve([]),
+          prevOvRes.ok ? prevOvRes.json() : Promise.resolve(null),
+          prevCampRes.ok ? prevCampRes.json() : Promise.resolve([]),
+          adSetsRes.ok ? adSetsRes.json() : Promise.resolve([]),
         ]);
 
         setOverview(ov);
@@ -116,6 +156,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
         setCampaignsEnriched(Array.isArray(enriched) ? enriched : []);
         setDaily(Array.isArray(d) ? d : []);
         setLandingPages(Array.isArray(lp) ? lp : []);
+        setPrevOverview(prevOv?.totalSpend != null ? prevOv : null);
+        setPrevCampaigns(Array.isArray(prevCamp) ? prevCamp : []);
+        setAdSets(Array.isArray(adSetsData) ? adSetsData : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load Meta Ads data");
@@ -180,133 +223,258 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
         </div>
       ) : !overview ? null : (
         <>
-      {/* Overview metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+      {/* Primary overview metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-5">
         <MetricCard
-          title="Total Spend"
+          title="Spend"
           value={formatCurrency(overview.totalSpend)}
-          subtitle="Period spend"
-          icon={<DollarSign className="h-5 w-5" />}
-          color="red"
+          change={prevOverview ? pctChange(overview.totalSpend, prevOverview.totalSpend) : undefined}
+          changeDiff={prevOverview ? diffStr(overview.totalSpend, prevOverview.totalSpend, "currency") : undefined}
         />
         <MetricCard
           title="Impressions"
           value={formatNumber(overview.totalImpressions)}
-          subtitle={`CPM: ${formatCurrency(overview.avgCpm)}`}
-          icon={<Eye className="h-5 w-5" />}
-          color="blue"
+          change={prevOverview ? pctChange(overview.totalImpressions, prevOverview.totalImpressions) : undefined}
+          changeDiff={prevOverview ? diffStr(overview.totalImpressions, prevOverview.totalImpressions, "count") : undefined}
         />
         <MetricCard
           title="Clicks"
           value={formatNumber(overview.totalClicks)}
-          subtitle={`CTR: ${formatPercent(overview.avgCtr)}`}
-          icon={<MousePointer className="h-5 w-5" />}
-          color="orange"
+          change={prevOverview ? pctChange(overview.totalClicks, prevOverview.totalClicks) : undefined}
+          changeDiff={prevOverview ? diffStr(overview.totalClicks, prevOverview.totalClicks, "count") : undefined}
+        />
+        <MetricCard
+          title="Conversions"
+          value={formatNumber(overview.totalConversions)}
+          change={prevOverview ? pctChange(overview.totalConversions, prevOverview.totalConversions) : undefined}
+          changeDiff={prevOverview ? diffStr(overview.totalConversions, prevOverview.totalConversions, "count") : undefined}
         />
         <MetricCard
           title="ROAS"
           value={`${overview.avgRoas.toFixed(2)}x`}
-          subtitle={`${overview.totalConversions} conversions`}
-          icon={<TrendingUp className="h-5 w-5" />}
-          color="green"
+          change={prevOverview ? pctChange(overview.avgRoas, prevOverview.avgRoas) : undefined}
+        />
+        <MetricCard
+          title="CPC"
+          value={formatCurrency(overview.avgCpc)}
+          change={prevOverview ? pctChange(prevOverview.avgCpc, overview.avgCpc) : undefined}
+          changeDiff={prevOverview ? diffStr(overview.avgCpc, prevOverview.avgCpc, "currency") : undefined}
         />
       </div>
 
+      {/* Secondary metrics */}
+      {(overview.reach > 0 || overview.outboundClicks > 0 || overview.landingPageViews > 0) && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+          <MetricCard
+            title="Reach"
+            value={formatNumber(overview.reach)}
+            change={prevOverview ? pctChange(overview.reach, prevOverview.reach) : undefined}
+            changeDiff={prevOverview ? diffStr(overview.reach, prevOverview.reach, "count") : undefined}
+          />
+          <MetricCard
+            title="Frequency"
+            value={overview.frequency.toFixed(2)}
+            change={prevOverview ? pctChange(overview.frequency, prevOverview.frequency) : undefined}
+          />
+          <MetricCard
+            title="Outbound Clicks"
+            value={formatNumber(overview.outboundClicks)}
+            change={prevOverview ? pctChange(overview.outboundClicks, prevOverview.outboundClicks) : undefined}
+            changeDiff={prevOverview ? diffStr(overview.outboundClicks, prevOverview.outboundClicks, "count") : undefined}
+          />
+          <MetricCard
+            title="Landing Page Views"
+            value={formatNumber(overview.landingPageViews)}
+            change={prevOverview ? pctChange(overview.landingPageViews, prevOverview.landingPageViews) : undefined}
+            changeDiff={prevOverview ? diffStr(overview.landingPageViews, prevOverview.landingPageViews, "count") : undefined}
+          />
+        </div>
+      )}
+
       {/* Spend chart */}
       {daily.length > 0 && (
-        <SectionCard title="Daily Spend" subtitle="Spend over time">
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={daily}>
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+          <h3 className="text-sm font-semibold text-slate-800 mb-5">Spend Over Time</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart data={daily} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
               <defs>
-                <linearGradient id="spendGrad" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="metaSpendGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                 </linearGradient>
+                <linearGradient id="metaClicksGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 10 }} />
-              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} />
+              <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis yAxisId="spend" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `£${v}`} width={50} />
+              <YAxis yAxisId="clicks" orientation="right" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
               <Tooltip
-                contentStyle={{
-                  background: "#ffffff",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "8px",
-                  color: "#0f172a",
-                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.08)",
+                contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }}
+                labelStyle={{ color: "#64748b" }}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter={(value: any, name: any) => {
+                  const num = typeof value === "number" ? value : Number(value ?? 0);
+                  if (name === "spend") return [formatCurrency(num), "Spend"];
+                  if (name === "clicks") return [formatNumber(num), "Clicks"];
+                  return [num, name];
                 }}
-                labelStyle={{ color: "#64748b", fontSize: "11px" }}
-                formatter={(v) => [formatCurrency(Number(v)), "Spend"]}
               />
-              <Area
-                type="monotone"
-                dataKey="spend"
-                stroke="#ef4444"
-                strokeWidth={2}
-                fill="url(#spendGrad)"
-              />
+              <Area yAxisId="spend" type="monotone" dataKey="spend" stroke="#ef4444" strokeWidth={2} fill="url(#metaSpendGrad)" dot={false} />
+              <Area yAxisId="clicks" type="monotone" dataKey="clicks" stroke="#6366f1" strokeWidth={2} fill="url(#metaClicksGrad)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
-        </SectionCard>
+        </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Clicks vs conversions */}
-        {daily.length > 0 && (
-          <SectionCard title="Clicks & Conversions" subtitle="Daily performance">
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={daily} barSize={8}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 10 }} />
-                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={{
-                    background: "#ffffff",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "8px",
-                    color: "#0f172a",
-                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.08)",
-                  }}
-                  labelStyle={{ color: "#64748b", fontSize: "11px" }}
-                />
-                <Bar dataKey="clicks" fill="#3b82f6" name="Clicks" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="conversions" fill="#10b981" name="Conversions" radius={[2, 2, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </SectionCard>
-        )}
+      {/* Clicks vs conversions chart */}
+      {daily.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+          <h3 className="text-sm font-semibold text-slate-800 mb-5">Clicks &amp; Conversions</h3>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={daily} barSize={8}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }}
+                labelStyle={{ color: "#64748b" }}
+              />
+              <Bar dataKey="clicks" fill="#3b82f6" name="Clicks" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="conversions" fill="#10b981" name="Conversions" radius={[2, 2, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
-        {/* Campaign table */}
-        {campaigns.length > 0 && (
-          <SectionCard title="Campaign Performance" subtitle="Active campaigns">
-            <div className="divide-y divide-white/[0.05]">
-              {campaigns.slice(0, 5).map((campaign) => (
-                <div
-                  key={campaign.id}
-                  className="flex items-center justify-between py-3.5 first:pt-0 last:pb-0"
-                >
-                  <div className="flex-1 min-w-0 mr-4">
-                    <p className="text-sm text-slate-800 font-medium truncate">
-                      {campaign.name}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {campaign.impressions.toLocaleString()} impressions ·{" "}
-                      {formatPercent(campaign.ctr)} CTR
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm text-slate-800 font-medium">
-                      {formatCurrency(campaign.spend)}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {campaign.roas.toFixed(1)}x ROAS
-                    </p>
-                  </div>
-                </div>
-              ))}
+      {/* Enriched campaign table */}
+      {(campaignsEnriched.length > 0 || campaigns.length > 0) && (() => {
+        const prevCampaignsMap = new Map(prevCampaigns.map((c) => [c.id, c]));
+        const displayCampaigns = campaignsEnriched.length > 0 ? campaignsEnriched : campaigns;
+        return (
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-800">Campaign Performance</h3>
             </div>
-          </SectionCard>
-        )}
-      </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                    <th className="text-left px-6 py-4 font-medium">Campaign</th>
+                    <th className="text-right px-4 py-4 font-medium">Spend</th>
+                    <th className="text-right px-4 py-4 font-medium">Clicks</th>
+                    <th className="text-right px-4 py-4 font-medium">Conv.</th>
+                    <th className="text-right px-4 py-4 font-medium">ROAS</th>
+                    <th className="text-right px-4 py-4 font-medium">Freq.</th>
+                    <th className="text-right px-6 py-4 font-medium">Budget</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {displayCampaigns.map((c) => {
+                    const prevC = prevCampaignsMap.get(c.id);
+                    const enriched = c as CampaignEnriched;
+                    return (
+                      <tr key={c.id} className="hover:bg-slate-50 transition">
+                        <td className="px-6 py-4 max-w-[180px]">
+                          <p className="text-slate-800 font-medium truncate">{c.name}</p>
+                          <p className="text-slate-400 text-[11px] mt-0.5">
+                            {enriched.objective || enriched.bidStrategy || c.status}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4 text-right text-slate-600">
+                          <div>{formatCurrency(c.spend)}</div>
+                          <Delta current={c.spend} previous={prevC?.spend} format="currency" />
+                        </td>
+                        <td className="px-4 py-4 text-right text-slate-600">
+                          <div>{formatNumber(c.clicks)}</div>
+                          <Delta current={c.clicks} previous={prevC?.clicks} format="count" />
+                        </td>
+                        <td className="px-4 py-4 text-right text-slate-600">
+                          <div>{formatNumber(c.conversions)}</div>
+                          <Delta current={c.conversions} previous={prevC?.conversions} format="count" />
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <span className={`font-semibold ${
+                            c.roas >= 2 ? "text-emerald-600" : c.roas >= 1 ? "text-amber-600" : "text-red-600"
+                          }`}>
+                            {c.roas.toFixed(2)}x
+                          </span>
+                          <Delta current={c.roas} previous={prevC?.roas} format="none" />
+                        </td>
+                        <td className="px-4 py-4 text-right text-slate-600">
+                          {typeof enriched.frequency === "number" ? enriched.frequency.toFixed(2) : "—"}
+                        </td>
+                        <td className="px-6 py-4 text-right text-slate-600">
+                          {enriched.dailyBudget != null
+                            ? formatCurrency(enriched.dailyBudget) + "/d"
+                            : enriched.lifetimeBudget != null
+                            ? formatCurrency(enriched.lifetimeBudget) + " ltm"
+                            : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Ad set breakdown */}
+      {adSets.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-800">Ad Set Performance</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Individual ad set breakdown</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-4 font-medium">Ad Set</th>
+                  <th className="text-left px-4 py-4 font-medium">Campaign</th>
+                  <th className="text-right px-4 py-4 font-medium">Spend</th>
+                  <th className="text-right px-4 py-4 font-medium">Clicks</th>
+                  <th className="text-right px-4 py-4 font-medium">Conv.</th>
+                  <th className="text-right px-4 py-4 font-medium">ROAS</th>
+                  <th className="text-right px-6 py-4 font-medium">Budget</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {adSets.map((s) => (
+                  <tr key={s.id} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-4 max-w-[160px]">
+                      <p className="text-slate-800 font-medium truncate">{s.name}</p>
+                      <p className="text-slate-400 text-[11px] mt-0.5">{s.optimizationGoal || "—"}</p>
+                    </td>
+                    <td className="px-4 py-4 text-slate-500 max-w-[140px] truncate">{s.campaignName}</td>
+                    <td className="px-4 py-4 text-right text-slate-600">{formatCurrency(s.spend)}</td>
+                    <td className="px-4 py-4 text-right text-slate-600">{formatNumber(s.clicks)}</td>
+                    <td className="px-4 py-4 text-right text-slate-600">{formatNumber(s.conversions)}</td>
+                    <td className="px-4 py-4 text-right">
+                      <span className={`font-semibold ${
+                        s.roas >= 2 ? "text-emerald-600" : s.roas >= 1 ? "text-amber-600" : "text-red-600"
+                      }`}>
+                        {s.roas.toFixed(2)}x
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right text-slate-600">
+                      {s.dailyBudget != null
+                        ? formatCurrency(s.dailyBudget) + "/d"
+                        : s.lifetimeBudget != null
+                        ? formatCurrency(s.lifetimeBudget) + " ltm"
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
         </>
       )}
 
@@ -323,9 +491,13 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
             avgCpm: overview.avgCpm,
             totalConversions: overview.totalConversions,
             avgRoas: overview.avgRoas,
+            reach: overview.reach,
+            frequency: overview.frequency,
+            outboundClicks: overview.outboundClicks,
+            landingPageViews: overview.landingPageViews,
             avgFrequency: campaignsEnriched.length > 0
               ? campaignsEnriched.reduce((s, c) => s + (c.frequency ?? 0), 0) / campaignsEnriched.length
-              : 0,
+              : overview.frequency,
           }}
           campaignData={campaignsEnriched.length ? campaignsEnriched as unknown as Record<string, unknown>[] : undefined}
           clientId={clientId}

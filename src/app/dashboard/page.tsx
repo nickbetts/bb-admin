@@ -18,6 +18,22 @@ export default async function DashboardPage() {
     include: { client: { select: { name: true, slug: true } } },
   });
 
+  const [metaCount, gadsCount, ga4Count, semrushCount, scCount] = await Promise.all([
+    prisma.client.count({ where: { metaAccountId: { not: null } } }),
+    prisma.client.count({ where: { googleAdsCustomerId: { not: null } } }),
+    prisma.client.count({ where: { ga4PropertyId: { not: null } } }),
+    prisma.client.count({ where: { semrushDomain: { not: null } } }),
+    prisma.client.count({ where: { searchConsoleSiteUrl: { not: null } } }),
+  ]);
+  const activeIntegrationLabels = [
+    metaCount > 0 ? "Meta" : null,
+    gadsCount > 0 ? "Google Ads" : null,
+    ga4Count > 0 ? "GA4" : null,
+    semrushCount > 0 ? "SemRush" : null,
+    scCount > 0 ? "Search Console" : null,
+  ].filter(Boolean) as string[];
+  const activeIntegrationCount = activeIntegrationLabels.length;
+
   const greeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";
@@ -62,8 +78,8 @@ export default async function DashboardPage() {
               <TrendingUp style={{ width: 20, height: 20, color: "#10b981" }} />
             </div>
           </div>
-          <p className="stat-card-value">4</p>
-          <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 6 }}>SemRush · GA4 · Meta · Google Ads</p>
+          <p className="stat-card-value">{activeIntegrationCount}</p>
+          <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 6 }}>{activeIntegrationLabels.join(" · ") || "None configured"}</p>
         </div>
       </div>
 

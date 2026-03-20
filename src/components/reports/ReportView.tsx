@@ -6,7 +6,9 @@ import { ArrowLeft, Download, Upload, Trash2, Edit2, Check, X, BarChart3 } from 
 import { SemrushSection } from "@/components/dashboard/SemrushSection";
 import { GA4Section } from "@/components/dashboard/GA4Section";
 import { MetaSection } from "@/components/dashboard/MetaSection";
-import { getDateRange } from "@/lib/utils";
+import { GoogleAdsSection } from "@/components/dashboard/GoogleAdsSection";
+import { SearchConsoleSection } from "@/components/dashboard/SearchConsoleSection";
+import { parsePeriodToDateRange } from "@/lib/utils";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
 interface Section {
@@ -32,6 +34,8 @@ interface Client {
   semrushDomain: string | null;
   ga4PropertyId: string | null;
   metaAccountId: string | null;
+  googleAdsCustomerId: string | null;
+  searchConsoleSiteUrl: string | null;
 }
 
 interface Report {
@@ -50,7 +54,7 @@ interface ReportViewProps {
 
 export function ReportView({ report: initialReport }: ReportViewProps) {
   const [report, setReport] = useState(initialReport);
-  const { startDate, endDate } = getDateRange("30d");
+  const { startDate, endDate } = parsePeriodToDateRange(report.period);
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [commentary, setCommentary] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
@@ -372,6 +376,22 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               <MetaSection
                 clientId={report.client.id}
                 clientName={report.client.name}
+                startDate={startDate}
+                endDate={endDate}
+              />
+            )}
+            {section.sectionType === "googleads" && report.client.googleAdsCustomerId && (
+              <GoogleAdsSection
+                customerId={report.client.googleAdsCustomerId}
+                clientId={report.client.id}
+                clientName={report.client.name}
+                startDate={startDate}
+                endDate={endDate}
+              />
+            )}
+            {section.sectionType === "searchconsole" && report.client.searchConsoleSiteUrl && (
+              <SearchConsoleSection
+                siteUrl={report.client.searchConsoleSiteUrl}
                 startDate={startDate}
                 endDate={endDate}
               />

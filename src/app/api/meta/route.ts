@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { getMetaAdsOverview, getMetaCampaigns, getMetaCampaignsEnriched, getMetaDailyData, getMetaLandingPages } from "@/lib/meta";
+import { getMetaAdsOverview, getMetaCampaigns, getMetaCampaignsEnriched, getMetaDailyData, getMetaLandingPages, getMetaAdSets } from "@/lib/meta";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +54,10 @@ export async function GET(request: NextRequest) {
       case "landing-pages":
         return NextResponse.json(
           await getMetaLandingPages(client.metaAccountId, accessToken, startDate, endDate)
+        );
+      case "adsets":
+        return NextResponse.json(
+          await getMetaAdSets(client.metaAccountId, accessToken, startDate, endDate)
         );
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
