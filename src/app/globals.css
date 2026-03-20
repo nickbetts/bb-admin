@@ -411,15 +411,13 @@ body {
 ============================================= */
 .tabs-bar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   border-bottom: 1px solid var(--border);
   margin-bottom: 44px;
-  gap: 16px;
-  overflow-x: auto;
+  gap: 0;
 }
 
-.tabs-nav { display: flex; }
+.tabs-nav { display: flex; overflow-x: auto; }
 
 .tab-btn {
   display: inline-flex;
@@ -459,9 +457,8 @@ body {
 .period-pills {
   display: flex;
   gap: 4px;
-  padding-bottom: 6px;
+  padding: 10px 0 12px;
   flex-shrink: 0;
-  margin-left: auto;
 }
 
 .period-pill {

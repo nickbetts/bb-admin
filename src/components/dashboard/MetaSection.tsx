@@ -501,13 +501,13 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
               <p className="text-xs text-slate-500 mt-0.5">Click campaigns to expand ad sets, then ad sets to see ad creatives</p>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+              <table className="w-full text-xs min-w-[700px]">
                 <thead>
                   <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
                     <th className="text-left px-6 py-4 font-medium min-w-[220px]">Name</th>
                     <th className="text-right px-4 py-4 font-medium">Spend</th>
                     <th className="text-right px-4 py-4 font-medium">Clicks</th>
-                    <th className="text-right px-4 py-4 font-medium">Conv.</th>
+                    <th className="text-right px-4 py-4 font-medium">{overview?.conversionLabel ?? "Conv."}</th>
                     <th className="text-right px-4 py-4 font-medium">ROAS</th>
                     <th className="text-right px-4 py-4 font-medium">Freq.</th>
                     <th className="text-right px-6 py-4 font-medium">Budget</th>

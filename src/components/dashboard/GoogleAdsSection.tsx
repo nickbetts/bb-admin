@@ -447,7 +447,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                 <h3 className="text-sm font-semibold text-slate-800">Campaign Performance</h3>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-xs min-w-[700px]">
                   <thead>
                     <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
                       <th className="text-left px-6 py-4 font-medium">Campaign</th>
@@ -517,7 +517,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                 <h3 className="text-sm font-semibold text-slate-800">Ad Group Performance</h3>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-xs min-w-[700px]">
                   <thead>
                     <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
                       <th className="text-left px-6 py-4 font-medium">Ad Group</th>
@@ -587,7 +587,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                 <p className="text-xs text-slate-500 mt-0.5">Top queries triggering your ads</p>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full text-xs min-w-[700px]">
                   <thead>
                     <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
                       <th className="text-left px-6 py-4 font-medium">Search Term</th>

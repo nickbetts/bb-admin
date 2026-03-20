@@ -254,7 +254,7 @@ export async function getMetaCampaigns(
   const params = new URLSearchParams({
     access_token: getAccessToken(accessToken),
     fields:
-      "campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,cpm,reach,conversions,purchase_roas",
+      "campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,cpm,reach,actions,action_values,conversions,purchase_roas",
     time_range: JSON.stringify({ since: startDate, until: endDate }),
     level: "campaign",
     limit: "20",
@@ -284,15 +284,13 @@ export async function getMetaCampaigns(
       cpc?: string;
       cpm?: string;
       reach?: string;
+      actions?: ActionRow[];
+      action_values?: ActionRow[];
       conversions?: { value: string }[];
       purchase_roas?: { value: string }[];
     }) => {
       const spend = parseFloat(item.spend ?? "0");
-      const conversions =
-        item.conversions?.reduce(
-          (sum, c) => sum + parseInt(c.value),
-          0
-        ) ?? 0;
+      const conv = resolveConversions(item.actions, item.action_values, item.conversions as { value: string }[] | undefined);
       return {
         id: item.campaign_id,
         name: item.campaign_name,
@@ -304,8 +302,8 @@ export async function getMetaCampaigns(
         cpc: parseFloat(item.cpc ?? "0"),
         cpm: parseFloat(item.cpm ?? "0"),
         reach: parseInt(item.reach ?? "0"),
-        conversions,
-        costPerConversion: conversions > 0 ? spend / conversions : 0,
+        conversions: conv.count,
+        costPerConversion: conv.count > 0 ? spend / conv.count : 0,
         roas: parseFloat(item.purchase_roas?.[0]?.value ?? "0"),
       };
     }
@@ -320,7 +318,7 @@ export async function getMetaDailyData(
 ): Promise<MetaAdsDailyData[]> {
   const params = new URLSearchParams({
     access_token: getAccessToken(accessToken),
-    fields: "spend,impressions,clicks,conversions",
+    fields: "spend,impressions,clicks,actions,action_values,conversions",
     time_range: JSON.stringify({ since: startDate, until: endDate }),
     time_increment: "1",
     level: "account",
@@ -345,18 +343,19 @@ export async function getMetaDailyData(
       spend?: string;
       impressions?: string;
       clicks?: string;
+      actions?: ActionRow[];
+      action_values?: ActionRow[];
       conversions?: { value: string }[];
-    }) => ({
-      date: item.date_start,
-      spend: parseFloat(item.spend ?? "0"),
-      impressions: parseInt(item.impressions ?? "0"),
-      clicks: parseInt(item.clicks ?? "0"),
-      conversions:
-        item.conversions?.reduce(
-          (sum, c) => sum + parseInt(c.value),
-          0
-        ) ?? 0,
-    })
+    }) => {
+      const conv = resolveConversions(item.actions, item.action_values, item.conversions as { value: string }[] | undefined);
+      return {
+        date: item.date_start,
+        spend: parseFloat(item.spend ?? "0"),
+        impressions: parseInt(item.impressions ?? "0"),
+        clicks: parseInt(item.clicks ?? "0"),
+        conversions: conv.count,
+      };
+    }
   );
 }
 
@@ -410,7 +409,7 @@ export async function getMetaCampaignsEnriched(
   const insightsParams = new URLSearchParams({
     access_token: getAccessToken(accessToken),
     fields:
-      "campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,conversions,purchase_roas",
+      "campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions,action_values,conversions,purchase_roas",
     time_range: JSON.stringify({ since: startDate, until: endDate }),
     level: "campaign",
     limit: "20",
@@ -439,14 +438,15 @@ export async function getMetaCampaignsEnriched(
     cpm?: string;
     reach?: string;
     frequency?: string;
+    actions?: ActionRow[];
+    action_values?: ActionRow[];
     conversions?: { value: string }[];
     purchase_roas?: { value: string }[];
   };
 
   return (insightsData.data ?? []).map((item: MetaInsightRow) => {
     const spend = parseFloat(item.spend ?? "0");
-    const conversions =
-      item.conversions?.reduce((sum, c) => sum + parseInt(c.value), 0) ?? 0;
+    const conv = resolveConversions(item.actions, item.action_values, item.conversions as { value: string }[] | undefined);
     const meta = campaignMeta.get(item.campaign_id);
     return {
       id: item.campaign_id,
@@ -459,8 +459,8 @@ export async function getMetaCampaignsEnriched(
       cpc: parseFloat(item.cpc ?? "0"),
       cpm: parseFloat(item.cpm ?? "0"),
       reach: parseInt(item.reach ?? "0"),
-      conversions,
-      costPerConversion: conversions > 0 ? spend / conversions : 0,
+      conversions: conv.count,
+      costPerConversion: conv.count > 0 ? spend / conv.count : 0,
       roas: parseFloat(item.purchase_roas?.[0]?.value ?? "0"),
       dailyBudget: meta?.dailyBudget ?? null,
       lifetimeBudget: meta?.lifetimeBudget ?? null,
@@ -665,7 +665,7 @@ export async function getMetaAdSets(
   const insightsParams = new URLSearchParams({
     access_token: token,
     fields:
-      "adset_id,adset_name,campaign_id,campaign_name,spend,impressions,clicks,ctr,conversions,purchase_roas",
+      "adset_id,adset_name,campaign_id,campaign_name,spend,impressions,clicks,ctr,actions,action_values,conversions,purchase_roas",
     time_range: JSON.stringify({ since: startDate, until: endDate }),
     level: "adset",
     limit: "50",
@@ -690,6 +690,8 @@ export async function getMetaAdSets(
     impressions?: string;
     clicks?: string;
     ctr?: string;
+    actions?: ActionRow[];
+    action_values?: ActionRow[];
     conversions?: { value: string }[];
     purchase_roas?: { value: string }[];
   };
@@ -698,8 +700,7 @@ export async function getMetaAdSets(
 
   return (insightsData.data ?? []).map((item: AdSetInsightRow) => {
     const spend = parseFloat(item.spend ?? "0");
-    const conversions =
-      item.conversions?.reduce((sum, c) => sum + parseInt(c.value), 0) ?? 0;
+    const conv = resolveConversions(item.actions, item.action_values, item.conversions as { value: string }[] | undefined);
     const meta = adSetMeta.get(item.adset_id);
     return {
       id: item.adset_id,
@@ -711,7 +712,7 @@ export async function getMetaAdSets(
       impressions: parseInt(item.impressions ?? "0"),
       clicks: parseInt(item.clicks ?? "0"),
       ctr: parseFloat(item.ctr ?? "0"),
-      conversions,
+      conversions: conv.count,
       roas: parseFloat(item.purchase_roas?.[0]?.value ?? "0"),
       dailyBudget: meta?.daily_budget ? parseFloat(meta.daily_budget) / 100 : null,
       lifetimeBudget: meta?.lifetime_budget ? parseFloat(meta.lifetime_budget) / 100 : null,
@@ -833,7 +834,7 @@ export async function getMetaAdCreatives(
   const insightsParams = new URLSearchParams({
     access_token: token,
     fields:
-      "ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,conversions,purchase_roas",
+      "ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,actions,action_values,conversions,purchase_roas",
     time_range: JSON.stringify({ since: startDate, until: endDate }),
     level: "ad",
     limit: "50",
@@ -861,6 +862,8 @@ export async function getMetaAdCreatives(
     clicks?: string;
     ctr?: string;
     cpc?: string;
+    actions?: ActionRow[];
+    action_values?: ActionRow[];
     conversions?: { value: string }[];
     purchase_roas?: { value: string }[];
   };
@@ -924,8 +927,7 @@ export async function getMetaAdCreatives(
         null;
 
       const spend = parseFloat(row.spend ?? "0");
-      const conversions =
-        row.conversions?.reduce((sum, c) => sum + parseInt(c.value), 0) ?? 0;
+      const conv = resolveConversions(row.actions, row.action_values, row.conversions as { value: string }[] | undefined);
 
       return {
         adId: row.ad_id,
@@ -946,9 +948,9 @@ export async function getMetaAdCreatives(
         clicks: parseInt(row.clicks ?? "0"),
         ctr: parseFloat(row.ctr ?? "0"),
         cpc: parseFloat(row.cpc ?? "0"),
-        conversions,
+        conversions: conv.count,
         roas: parseFloat(row.purchase_roas?.[0]?.value ?? "0"),
-        costPerConversion: conversions > 0 ? spend / conversions : 0,
+        costPerConversion: conv.count > 0 ? spend / conv.count : 0,
       };
     }
   );
