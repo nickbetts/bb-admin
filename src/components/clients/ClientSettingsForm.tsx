@@ -103,7 +103,14 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       .then((r) => r.json())
       .then((data) => {
         if (data.error) setMetaFetchError(data.error);
-        else setMetaAccounts(data);
+        else {
+          setMetaAccounts(data);
+          // Backfill account name if client has an ID but no name saved
+          if (form.metaAccountId && !form.metaAccountName) {
+            const match = (data as MetaAccount[]).find((a) => a.id === form.metaAccountId);
+            if (match) setForm((prev) => ({ ...prev, metaAccountName: match.name }));
+          }
+        }
       })
       .catch(() => setMetaFetchError("Failed to load Meta accounts"))
       .finally(() => setMetaLoading(false));

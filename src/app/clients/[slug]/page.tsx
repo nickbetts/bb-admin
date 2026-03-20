@@ -29,6 +29,26 @@ export default async function ClientPage({ params, searchParams }: Props) {
 
   if (!client) notFound();
 
+  // Backfill missing account names from APIs (runs once per client, then cached in DB)
+  const backfills: Promise<void>[] = [];
+  if (client.metaAccountId && !client.metaAccountName && process.env.META_ACCESS_TOKEN) {
+    backfills.push(
+      fetch(`https://graph.facebook.com/v19.0/act_${client.metaAccountId}?fields=name&access_token=${process.env.META_ACCESS_TOKEN}`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => {
+          if (data?.name) {
+            client.metaAccountName = data.name;
+            return prisma.client.update({ where: { id: client.id }, data: { metaAccountName: data.name } }).then(() => {});
+          }
+        })
+        .catch(() => {})
+    );
+  }
+  if (client.googleAdsCustomerId && !client.googleAdsAccountName) {
+    // Google Ads name backfill would go here if needed
+  }
+  if (backfills.length) await Promise.all(backfills);
+
   return (
     <div className="page">
       {/* Back link + header */}
