@@ -209,6 +209,22 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
   const prevCampaignsMap = new Map((prevData?.campaigns ?? []).map((c) => [c.id, c]));
   const prevAdGroupsMap = new Map((prevData?.adGroups ?? []).map((ag) => [ag.id, ag]));
 
+  // Weighted-average Search Impression Share across search campaigns
+  const weightedIS = (() => {
+    const enriched = data?.campaignsEnriched ?? [];
+    const searchCampaigns = enriched.filter(
+      (c) => c.searchImpressionShare != null && c.impressions > 0
+    );
+    if (!searchCampaigns.length) return null;
+    const totalImpressions = searchCampaigns.reduce((s, c) => s + c.impressions, 0);
+    if (totalImpressions === 0) return null;
+    const weightedSum = searchCampaigns.reduce(
+      (s, c) => s + c.searchImpressionShare! * c.impressions,
+      0
+    );
+    return weightedSum / totalImpressions;
+  })();
+
   return (
     <div className="space-y-8">
       {/* Section header */}
@@ -321,12 +337,19 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                   : 0
               )}
             />
+            {weightedIS != null && (
+              <MetricCard
+                title="Search Imp. Share"
+                value={formatPercent(weightedIS)}
+                subtitle="vs eligible impressions"
+              />
+            )}
           </div>
 
           {/* Daily spend & clicks chart */}
           {chartData.length > 0 && (
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-              <h3 className="text-sm font-semibold text-slate-800 mb-5">Spend & Clicks Over Time</h3>
+              <h3 className="text-sm font-semibold text-slate-800 mb-5">Spend, Clicks &amp; Conversions</h3>
               <ResponsiveContainer width="100%" height={280}>
                 <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                   <defs>
@@ -337,6 +360,10 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                     <linearGradient id="gadsGradClicks" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
                       <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gadsGradConversions" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -352,7 +379,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                     tick={{ fill: "#64748b", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v) => `$${v}`}
+                    tickFormatter={(v) => `£${v}`}
                     width={50}
                   />
                   <YAxis
@@ -374,8 +401,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     formatter={(value: any, name: any) => {
                       const num = typeof value === "number" ? value : Number(value ?? 0);
-                      if (name === "cost") return [`$${num.toFixed(2)}`, "Cost"];
+                      if (name === "cost") return [`£${num.toFixed(2)}`, "Cost"];
                       if (name === "clicks") return [formatNumber(num), "Clicks"];
+                      if (name === "conversions") return [formatNumber(num), "Conversions"];
                       return [num, name];
                     }}
                   />
@@ -395,6 +423,15 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                     stroke="#6366f1"
                     strokeWidth={2}
                     fill="url(#gadsGradClicks)"
+                    dot={false}
+                  />
+                  <Area
+                    yAxisId="clicks"
+                    type="monotone"
+                    dataKey="conversions"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    fill="url(#gadsGradConversions)"
                     dot={false}
                   />
                 </AreaChart>

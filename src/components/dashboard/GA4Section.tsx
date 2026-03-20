@@ -257,6 +257,35 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
         />
       </div>
 
+      {/* Engaged sessions secondary row (GA4 v2 engagement metrics) */}
+      {(overview.engagedSessions > 0 || overview.engagementRate > 0) && (
+        <div className="grid grid-cols-2 gap-5">
+          <MetricCard
+            title="Engaged Sessions"
+            value={formatNumber(overview.engagedSessions)}
+            subtitle="Sessions with 10s+ engagement"
+            change={prevOverview?.engagedSessions != null
+              ? pctChange(overview.engagedSessions, prevOverview.engagedSessions)
+              : undefined}
+            changeDiff={prevOverview?.engagedSessions != null
+              ? diffStr(overview.engagedSessions, prevOverview.engagedSessions, "count")
+              : undefined}
+            icon={<TrendingUp className="h-5 w-5" />}
+            color="green"
+          />
+          <MetricCard
+            title="Engagement Rate"
+            value={formatPercent(overview.engagementRate)}
+            subtitle="% sessions actively engaged"
+            change={prevOverview?.engagementRate != null
+              ? pctChange(overview.engagementRate, prevOverview.engagementRate)
+              : undefined}
+            icon={<TrendingUp className="h-5 w-5" />}
+            color="blue"
+          />
+        </div>
+      )}
+
       {/* Daily sessions chart */}
       {daily.length > 0 && (
         <SectionCard title="Sessions Over Time" subtitle="Daily sessions trend">

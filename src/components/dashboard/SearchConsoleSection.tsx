@@ -368,6 +368,59 @@ export function SearchConsoleSection({
         </SectionCard>
       </div>
 
+      {/* Position Movers — cross-reference current vs previous period queries */}
+      {(() => {
+        const movers = queries
+          .filter(q => {
+            const prev = prevQueriesMap.get(q.query);
+            return prev != null && q.impressions >= 10 && (prev.position - q.position) > 0;
+          })
+          .map(q => {
+            const prev = prevQueriesMap.get(q.query)!;
+            return { ...q, prevPosition: prev.position, gain: prev.position - q.position };
+          })
+          .sort((a, b) => b.gain - a.gain)
+          .slice(0, 10);
+
+        if (!movers.length) return null;
+        return (
+          <SectionCard title="Position Movers" subtitle="Queries with biggest rank improvements vs previous period">
+            <div className="overflow-x-auto">
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <th style={{ textAlign: "left", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Query</th>
+                    <th style={{ textAlign: "center", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Current</th>
+                    <th style={{ textAlign: "center", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Previous</th>
+                    <th style={{ textAlign: "center", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Gain</th>
+                    <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                    <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {movers.map((q, i) => (
+                    <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "10px 16px", color: "var(--text)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.query}</td>
+                      <td style={{ padding: "10px 16px", textAlign: "center" }}>
+                        <span className={positionBadgeClass(q.position)}>{q.position.toFixed(1)}</span>
+                      </td>
+                      <td style={{ padding: "10px 16px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>{q.prevPosition.toFixed(1)}</td>
+                      <td style={{ padding: "10px 16px", textAlign: "center" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 2, padding: "2px 8px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: "#ecfdf5", color: "#065f46" }}>
+                          ↑ +{q.gain.toFixed(1)}
+                        </span>
+                      </td>
+                      <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>{formatNumber(q.clicks)}</td>
+                      <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(q.impressions)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </SectionCard>
+        );
+      })()}
+
       {/* Device & Country breakdown */}
       {(devices.length > 0 || countries.length > 0) && (
         <div className="grid-2">

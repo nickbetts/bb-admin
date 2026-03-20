@@ -15,7 +15,7 @@ import {
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
 import { formatNumber, formatCurrency, formatPercent, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
-import { DollarSign, MousePointer, Eye, TrendingUp } from "lucide-react";
+import { DollarSign, MousePointer, Eye, TrendingUp, AlertTriangle } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { AiLandingPageAnalysis } from "@/components/ai/AiLandingPageAnalysis";
 
@@ -225,6 +225,24 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
         </div>
       ) : !overview ? null : (
         <>
+      {/* Ad fatigue warning */}
+      {campaignsEnriched.some(c => c.frequency > 3.5) && (() => {
+        const fatigueCampaigns = campaignsEnriched.filter(c => c.frequency > 3.5);
+        return (
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 16px", borderRadius: 12, background: "#fffbeb", border: "1px solid #fcd34d" }}>
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "#d97706" }} />
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#92400e", margin: 0 }}>
+                Ad fatigue risk: {fatigueCampaigns.length} campaign{fatigueCampaigns.length > 1 ? "s" : ""} with frequency &gt; 3.5×
+              </p>
+              <p style={{ fontSize: 12, color: "#b45309", margin: "2px 0 0" }}>
+                {fatigueCampaigns.map(c => `${c.name} (${c.frequency.toFixed(1)}×)`).join(" · ")}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Primary overview metrics */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-5">
         <MetricCard
@@ -306,25 +324,30 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
       )}
 
       {/* Spend chart */}
-      {daily.length > 0 && (
+      {daily.length > 0 && (() => {
+        const dailyWithCpm = daily.map(d => ({
+          ...d,
+          cpm: d.impressions > 0 ? (d.spend / d.impressions) * 1000 : 0,
+        }));
+        return (
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-          <h3 className="text-sm font-semibold text-slate-800 mb-5">Spend Over Time</h3>
+          <h3 className="text-sm font-semibold text-slate-800 mb-5">Spend &amp; CPM Over Time</h3>
           <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={daily} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+            <AreaChart data={dailyWithCpm} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="metaSpendGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                 </linearGradient>
-                <linearGradient id="metaClicksGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                <linearGradient id="metaCpmGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
               <YAxis yAxisId="spend" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `£${v}`} width={50} />
-              <YAxis yAxisId="clicks" orientation="right" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
+              <YAxis yAxisId="cpm" orientation="right" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `£${Number(v).toFixed(1)}`} width={48} />
               <Tooltip
                 contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }}
                 labelStyle={{ color: "#64748b" }}
@@ -332,16 +355,17 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
                 formatter={(value: any, name: any) => {
                   const num = typeof value === "number" ? value : Number(value ?? 0);
                   if (name === "spend") return [formatCurrency(num), "Spend"];
-                  if (name === "clicks") return [formatNumber(num), "Clicks"];
+                  if (name === "cpm") return [formatCurrency(num), "CPM"];
                   return [num, name];
                 }}
               />
               <Area yAxisId="spend" type="monotone" dataKey="spend" stroke="#ef4444" strokeWidth={2} fill="url(#metaSpendGrad)" dot={false} />
-              <Area yAxisId="clicks" type="monotone" dataKey="clicks" stroke="#6366f1" strokeWidth={2} fill="url(#metaClicksGrad)" dot={false} />
+              <Area yAxisId="cpm" type="monotone" dataKey="cpm" stroke="#f59e0b" strokeWidth={2} fill="url(#metaCpmGrad)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
-      )}
+        );
+      })()}
 
       {/* Clicks vs conversions chart */}
       {daily.length > 0 && (

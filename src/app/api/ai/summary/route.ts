@@ -299,8 +299,8 @@ const SECTION_CONFIGS: Record<
   },
   meta: {
     name: "Meta Ads",
-    higherIsBetter: ["totalClicks", "totalConversions", "avgRoas", "avgCtr"],
-    lowerIsBetter: ["totalSpend", "avgCpc", "avgCpm", "avgFrequency"],
+    higherIsBetter: ["totalClicks", "totalConversions", "avgRoas", "avgCtr", "totalConversionValue"],
+    lowerIsBetter: ["avgCpc", "avgCpm", "avgFrequency"],
     metricLabels: {
       totalSpend: "Total Spend",
       totalImpressions: "Impressions",
@@ -311,16 +311,17 @@ const SECTION_CONFIGS: Record<
       totalConversions: "Conversions",
       avgRoas: "ROAS",
       avgFrequency: "Avg Frequency",
+      totalConversionValue: "Conv. Value",
     },
   },
   seo: {
     name: "SEO (SemRush)",
-    higherIsBetter: ["organicTraffic", "organicKeywords"],
-    lowerIsBetter: ["organicCost"],
+    higherIsBetter: ["organicTraffic", "organicKeywords", "organicCost"],
+    lowerIsBetter: [],
     metricLabels: {
       organicTraffic: "Organic Traffic",
       organicKeywords: "Organic Keywords",
-      organicCost: "Traffic Cost",
+      organicCost: "Traffic Value",
       paidTraffic: "Paid Traffic",
       paidKeywords: "Paid Keywords",
     },

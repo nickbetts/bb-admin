@@ -67,6 +67,13 @@ interface Competitor {
   adKeywords: number;
 }
 
+interface Backlink {
+  sourceUrl: string;
+  targetUrl: string;
+  anchorText: string;
+  authority: number;
+}
+
 const POSITION_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
 
 function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "currency"): string | undefined {
@@ -82,6 +89,7 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [distribution, setDistribution] = useState<DistributionItem[]>([]);
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
+  const [backlinks, setBacklinks] = useState<Backlink[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -92,12 +100,13 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
       setLoading(true);
       setError(null);
       try {
-        const [overviewRes, keywordsRes, historyRes, distRes, competitorsRes] = await Promise.all([
+        const [overviewRes, keywordsRes, historyRes, distRes, competitorsRes, backlinksRes] = await Promise.all([
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=overview`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=keywords`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=history`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=distribution`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=competitors`, { signal: controller.signal }),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=backlinks`, { signal: controller.signal }),
         ]);
 
         if (!overviewRes.ok) {
@@ -105,12 +114,13 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
           throw new Error(err.error ?? "Failed to fetch SemRush data");
         }
 
-        const [ov, kw, hist, dist, comps] = await Promise.all([
+        const [ov, kw, hist, dist, comps, bls] = await Promise.all([
           overviewRes.json(),
           keywordsRes.json(),
           historyRes.json(),
           distRes.json(),
           competitorsRes.ok ? competitorsRes.json() : Promise.resolve([]),
+          backlinksRes.ok ? backlinksRes.json() : Promise.resolve([]),
         ]);
 
         setOverview(ov);
@@ -118,6 +128,7 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
         setHistory(Array.isArray(hist) ? hist : []);
         setDistribution(Array.isArray(dist) ? dist : []);
         setCompetitors(Array.isArray(comps) ? comps : []);
+        setBacklinks(Array.isArray(bls) ? bls : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load SemRush data");
@@ -184,6 +195,26 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
           color="green"
         />
       </div>
+
+      {/* Paid metrics secondary row */}
+      {(overview.paidTraffic > 0 || overview.paidKeywords > 0) && (
+        <div className="grid grid-cols-2 gap-5">
+          <MetricCard
+            title="Paid Traffic"
+            value={formatNumber(overview.paidTraffic)}
+            subtitle="Monthly paid visits"
+            icon={<TrendingUp className="h-5 w-5" />}
+            color="orange"
+          />
+          <MetricCard
+            title="Paid Keywords"
+            value={formatNumber(overview.paidKeywords)}
+            subtitle="Active paid keywords"
+            icon={<Search className="h-5 w-5" />}
+            color="orange"
+          />
+        </div>
+      )}
 
       {/* Traffic history chart */}
       {history.length > 0 && (
@@ -386,6 +417,104 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
                       </td>
                       <td className="py-2.5 px-3 text-right text-slate-600 text-xs">
                         {kw.trafficPercent.toFixed(1)}%
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Top Rank Improvers */}
+      {keywords.some(kw => kw.previousPosition > 0 && (kw.previousPosition - kw.position) > 0) && (
+        <SectionCard title="Top Rank Improvers" subtitle="Keywords with biggest position gains this month">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <th className="text-left py-2 pr-4 text-slate-400 font-medium text-xs">Keyword</th>
+                  <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Current</th>
+                  <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Previous</th>
+                  <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Gain</th>
+                  <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Volume</th>
+                  <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Traffic %</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {keywords
+                  .filter(kw => kw.previousPosition > 0 && (kw.previousPosition - kw.position) > 0)
+                  .sort((a, b) => (b.previousPosition - b.position) - (a.previousPosition - a.position))
+                  .slice(0, 10)
+                  .map((kw, i) => {
+                    const gain = kw.previousPosition - kw.position;
+                    return (
+                      <tr key={i} className="hover:bg-slate-50 transition">
+                        <td className="py-3 pr-4">
+                          <p className="text-slate-800 font-medium truncate max-w-[200px]">{kw.keyword}</p>
+                          <p className="text-xs text-slate-500 truncate max-w-[200px]">{kw.url}</p>
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold ${
+                            kw.position <= 3 ? "bg-emerald-50 text-emerald-700" :
+                            kw.position <= 10 ? "bg-blue-50 text-blue-700" :
+                            kw.position <= 20 ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"
+                          }`}>{kw.position}</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center text-slate-500 text-xs">{kw.previousPosition}</td>
+                        <td className="py-2.5 px-3 text-center">
+                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
+                            <ArrowUp className="h-3 w-3" />+{gain}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-slate-600 text-xs">{formatNumber(kw.searchVolume)}</td>
+                        <td className="py-2.5 px-3 text-right text-slate-600 text-xs">{kw.trafficPercent.toFixed(1)}%</td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Backlinks */}
+      {backlinks.length > 0 && (
+        <SectionCard title="Recent Backlinks" subtitle="Top referring domains by authority score">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <th className="text-left py-2 px-4 text-slate-400 font-medium text-xs">Source Domain</th>
+                  <th className="text-left py-2 px-3 text-slate-400 font-medium text-xs">Target URL</th>
+                  <th className="text-left py-2 px-3 text-slate-400 font-medium text-xs">Anchor Text</th>
+                  <th className="text-right py-2 px-4 text-slate-400 font-medium text-xs">Authority</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {backlinks.map((bl, i) => {
+                  let sourceDomain = bl.sourceUrl;
+                  try { sourceDomain = new URL(bl.sourceUrl).hostname; } catch {}
+                  let targetPath = bl.targetUrl;
+                  try { const u = new URL(bl.targetUrl); targetPath = u.pathname + u.search; } catch {}
+                  return (
+                    <tr key={i} className="hover:bg-slate-50 transition">
+                      <td className="py-3 px-4">
+                        <a href={bl.sourceUrl} target="_blank" rel="noopener noreferrer"
+                          className="font-medium text-slate-800 hover:text-indigo-600 transition truncate max-w-[180px] block">
+                          {sourceDomain}
+                        </a>
+                      </td>
+                      <td className="py-3 px-3 text-slate-500 text-xs truncate max-w-[160px]">{targetPath}</td>
+                      <td className="py-3 px-3 text-slate-500 text-xs truncate max-w-[140px]">
+                        {bl.anchorText || <span className="italic text-slate-400">No anchor</span>}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          bl.authority >= 60 ? "bg-emerald-50 text-emerald-700" :
+                          bl.authority >= 30 ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-600"
+                        }`}>{bl.authority}</span>
                       </td>
                     </tr>
                   );
