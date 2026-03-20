@@ -83,10 +83,14 @@ export interface MetaAdsAdSet {
 export interface MetaAdCreative {
   adId: string;
   adName: string;
+  adSetId: string;
+  adSetName: string;
+  campaignId: string;
   campaignName: string;
   status: string;
   thumbnailUrl: string | null;
   imageUrl: string | null;
+  videoUrl: string | null;
   mediaType: "IMAGE" | "VIDEO" | "CAROUSEL" | "UNKNOWN";
   headline: string | null;
   bodyText: string | null;
@@ -718,9 +722,9 @@ export async function getMetaAdSets(
 }
 
 /**
- * Fetch individual ad creatives with thumbnail/image URLs, media type,
- * headline/body text, and performance metrics. Returns up to 30 ads
- * sorted by spend descending.
+ * Fetch individual ad creatives with full-resolution image URLs, video source
+ * URLs, media type, headline/body text, ad set linkage, and performance metrics.
+ * Returns up to 30 ads sorted by spend descending.
  */
 export async function getMetaAdCreatives(
   accountId: string,
@@ -730,25 +734,30 @@ export async function getMetaAdCreatives(
 ): Promise<MetaAdCreative[]> {
   const token = getAccessToken(accessToken);
 
-  // Step 1: Fetch ads with creative object (thumbnail, image, object_story_spec)
+  // Step 1: Fetch ads with creative object — request effective_image_url for
+  // full-res, plus object_story_spec for headline/body/video detection.
+  // Also request adset_id so we can link creatives to ad sets.
   const adsParams = new URLSearchParams({
     access_token: token,
     fields:
-      "id,name,status,creative{id,thumbnail_url,image_url,object_story_spec}",
+      "id,name,status,adset_id,creative{id,effective_image_url,image_url,thumbnail_url,object_story_spec,video_id}",
     effective_status: '["ACTIVE","PAUSED"]',
     limit: "50",
   });
 
   type CreativeSpec = {
     id: string;
-    thumbnail_url?: string;
+    effective_image_url?: string;
     image_url?: string;
+    thumbnail_url?: string;
+    video_id?: string;
     object_story_spec?: {
       link_data?: {
         message?: string;
         name?: string;
         description?: string;
         picture?: string;
+        image_hash?: string;
         child_attachments?: unknown[];
       };
       video_data?: {
@@ -764,6 +773,7 @@ export async function getMetaAdCreatives(
     id: string;
     name: string;
     status?: string;
+    adset_id?: string;
     creative?: CreativeSpec;
   };
 
@@ -780,11 +790,50 @@ export async function getMetaAdCreatives(
 
   const adCreativeMap = new Map(adNodes.map((a) => [a.id, a]));
 
-  // Step 2: Fetch ad-level insights
+  // Step 2: Collect video IDs and fetch their source URLs for video previews
+  const videoIds = new Set<string>();
+  for (const ad of adNodes) {
+    const vid =
+      ad.creative?.video_id ??
+      ad.creative?.object_story_spec?.video_data?.video_id;
+    if (vid) videoIds.add(vid);
+  }
+
+  const videoSourceMap = new Map<string, { source: string; picture: string }>();
+  if (videoIds.size > 0) {
+    // Batch fetch video objects (source URL + picture thumbnail)
+    const ids = [...videoIds].slice(0, 30);
+    try {
+      const batchParams = new URLSearchParams({
+        access_token: token,
+        ids: ids.join(","),
+        fields: "id,source,picture",
+      });
+      const videoResp = await fetch(
+        `${META_API_BASE}/?${batchParams}`,
+        { cache: "no-store" }
+      );
+      if (videoResp.ok) {
+        const videoData = await videoResp.json();
+        for (const [id, obj] of Object.entries(videoData as Record<string, { source?: string; picture?: string }>)) {
+          if (obj.source || obj.picture) {
+            videoSourceMap.set(id, {
+              source: obj.source ?? "",
+              picture: obj.picture ?? "",
+            });
+          }
+        }
+      }
+    } catch {
+      // Non-fatal — videos will just show image thumbnail
+    }
+  }
+
+  // Step 3: Fetch ad-level insights including adset_id and adset_name
   const insightsParams = new URLSearchParams({
     access_token: token,
     fields:
-      "ad_id,ad_name,campaign_name,spend,impressions,clicks,ctr,cpc,conversions,purchase_roas",
+      "ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,conversions,purchase_roas",
     time_range: JSON.stringify({ since: startDate, until: endDate }),
     level: "ad",
     limit: "50",
@@ -803,6 +852,9 @@ export async function getMetaAdCreatives(
   type AdInsightRow = {
     ad_id: string;
     ad_name: string;
+    adset_id?: string;
+    adset_name?: string;
+    campaign_id?: string;
     campaign_name?: string;
     spend?: string;
     impressions?: string;
@@ -821,13 +873,20 @@ export async function getMetaAdCreatives(
       const creative = ad?.creative;
       const spec = creative?.object_story_spec;
 
+      // Resolve video ID from creative or spec
+      const videoId =
+        creative?.video_id ??
+        spec?.video_data?.video_id ??
+        null;
+
       // Determine media type
       let mediaType: MetaAdCreative["mediaType"] = "UNKNOWN";
       if (spec?.link_data?.child_attachments) {
         mediaType = "CAROUSEL";
-      } else if (spec?.video_data?.video_id) {
+      } else if (videoId) {
         mediaType = "VIDEO";
       } else if (
+        creative?.effective_image_url ||
         creative?.image_url ||
         spec?.link_data?.picture ||
         creative?.thumbnail_url
@@ -835,14 +894,24 @@ export async function getMetaAdCreatives(
         mediaType = "IMAGE";
       }
 
-      // Best available image URL
+      // Full-resolution image URL — prefer effective_image_url (full-res)
       const imageUrl =
+        creative?.effective_image_url ??
         creative?.image_url ??
         spec?.link_data?.picture ??
         spec?.video_data?.image_url ??
         null;
 
-      const thumbnailUrl = creative?.thumbnail_url ?? imageUrl;
+      // Video source URL
+      const videoInfo = videoId ? videoSourceMap.get(videoId) : null;
+      const videoUrl = videoInfo?.source ?? null;
+
+      // Thumbnail — for videos use the video picture, otherwise use the image
+      const thumbnailUrl =
+        videoInfo?.picture ??
+        imageUrl ??
+        creative?.thumbnail_url ??
+        null;
 
       // Headline & body
       const headline =
@@ -861,10 +930,14 @@ export async function getMetaAdCreatives(
       return {
         adId: row.ad_id,
         adName: row.ad_name,
+        adSetId: row.adset_id ?? ad?.adset_id ?? "",
+        adSetName: row.adset_name ?? "",
+        campaignId: row.campaign_id ?? "",
         campaignName: row.campaign_name ?? "",
         status: ad?.status ?? "ACTIVE",
         thumbnailUrl,
         imageUrl,
+        videoUrl,
         mediaType,
         headline,
         bodyText,

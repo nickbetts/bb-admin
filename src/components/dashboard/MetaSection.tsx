@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   AreaChart,
   Area,
@@ -15,7 +15,7 @@ import {
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
 import { formatNumber, formatCurrency, formatPercent, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
-import { DollarSign, MousePointer, Eye, TrendingUp, AlertTriangle } from "lucide-react";
+import { DollarSign, MousePointer, Eye, TrendingUp, AlertTriangle, ChevronRight, ChevronDown, Play, Image, Layers } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { AiLandingPageAnalysis } from "@/components/ai/AiLandingPageAnalysis";
 import { SuperSummary } from "@/components/ai/SuperSummary";
@@ -100,10 +100,14 @@ interface MetaAdSet {
 interface MetaAdCreative {
   adId: string;
   adName: string;
+  adSetId: string;
+  adSetName: string;
+  campaignId: string;
   campaignName: string;
   status: string;
   thumbnailUrl: string | null;
   imageUrl: string | null;
+  videoUrl: string | null;
   mediaType: "IMAGE" | "VIDEO" | "CAROUSEL" | "UNKNOWN";
   headline: string | null;
   bodyText: string | null;
@@ -124,25 +128,46 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-/** Build a text summary of ad creative performance for AI context */
-function buildCreativeSummary(creatives: MetaAdCreative[]): string {
-  const lines = creatives.slice(0, 15).map((c) => {
-    const parts = [`"${c.adName}" (${c.mediaType})`];
-    parts.push(`Spend: ${formatCurrency(c.spend)}`);
-    parts.push(`Clicks: ${c.clicks}`);
-    parts.push(`CTR: ${c.ctr.toFixed(2)}%`);
-    parts.push(`Conv: ${c.conversions}`);
-    parts.push(`ROAS: ${c.roas.toFixed(2)}x`);
-    if (c.costPerConversion > 0) parts.push(`CPA: ${formatCurrency(c.costPerConversion)}`);
-    if (c.headline) parts.push(`Headline: "${c.headline}"`);
-    return parts.join(", ");
-  });
+/** Build a hierarchical text summary of campaign → ad set → creative for AI context */
+function buildCreativeSummary(creatives: MetaAdCreative[], adSetsData: MetaAdSet[]): string {
+  // Group creatives by campaign → ad set
+  const campaignMap = new Map<string, { name: string; adSets: Map<string, { name: string; creatives: MetaAdCreative[] }> }>();
+  for (const c of creatives) {
+    const campKey = c.campaignId || "unknown";
+    if (!campaignMap.has(campKey)) campaignMap.set(campKey, { name: c.campaignName || "Unknown Campaign", adSets: new Map() });
+    const camp = campaignMap.get(campKey)!;
+    const asKey = c.adSetId || "unknown";
+    if (!camp.adSets.has(asKey)) camp.adSets.set(asKey, { name: c.adSetName || "Unknown Ad Set", creatives: [] });
+    camp.adSets.get(asKey)!.creatives.push(c);
+  }
 
+  const lines: string[] = [];
   const videoCount = creatives.filter((c) => c.mediaType === "VIDEO").length;
   const imageCount = creatives.filter((c) => c.mediaType === "IMAGE").length;
   const carouselCount = creatives.filter((c) => c.mediaType === "CAROUSEL").length;
+  lines.push(`Ad Creative Hierarchy (${creatives.length} ads: ${imageCount} image, ${videoCount} video, ${carouselCount} carousel):`);
 
-  return `\nAd Creative Performance (${creatives.length} ads: ${imageCount} image, ${videoCount} video, ${carouselCount} carousel):\n${lines.join("\n")}`;
+  for (const [, camp] of campaignMap) {
+    lines.push(`\nCampaign: "${camp.name}"`);
+    for (const [, adSet] of camp.adSets) {
+      const adSetMeta = adSetsData.find(s => s.name === adSet.name);
+      const asBudget = adSetMeta?.dailyBudget ? `${formatCurrency(adSetMeta.dailyBudget)}/d` : adSetMeta?.lifetimeBudget ? `${formatCurrency(adSetMeta.lifetimeBudget)} ltm` : "";
+      lines.push(`  Ad Set: "${adSet.name}"${asBudget ? ` [Budget: ${asBudget}]` : ""}`);
+      for (const c of adSet.creatives.slice(0, 10)) {
+        const parts = [`    Ad: "${c.adName}" (${c.mediaType})`];
+        parts.push(`Spend: ${formatCurrency(c.spend)}`);
+        parts.push(`Clicks: ${c.clicks}`);
+        parts.push(`CTR: ${c.ctr.toFixed(2)}%`);
+        parts.push(`Conv: ${c.conversions}`);
+        parts.push(`ROAS: ${c.roas.toFixed(2)}x`);
+        if (c.costPerConversion > 0) parts.push(`CPA: ${formatCurrency(c.costPerConversion)}`);
+        if (c.headline) parts.push(`Headline: "${c.headline}"`);
+        lines.push(parts.join(", "));
+      }
+    }
+  }
+
+  return "\n" + lines.join("\n");
 }
 
 export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSectionProps) {
@@ -157,6 +182,8 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
   const [landingPages, setLandingPages] = useState<MetaLandingPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
+  const [expandedAdSets, setExpandedAdSets] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const controller = new AbortController();
@@ -433,20 +460,51 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
         </div>
       )}
 
-      {/* Enriched campaign table */}
+      {/* Hierarchical Campaign → Ad Set → Creatives drill-down */}
       {(campaignsEnriched.length > 0 || campaigns.length > 0) && (() => {
         const prevCampaignsMap = new Map(prevCampaigns.map((c) => [c.id, c]));
         const displayCampaigns = campaignsEnriched.length > 0 ? campaignsEnriched : campaigns;
+        // Group ad sets & creatives by campaign
+        const adSetsByCampaign = new Map<string, MetaAdSet[]>();
+        for (const s of adSets) {
+          const arr = adSetsByCampaign.get(s.campaignId) ?? [];
+          arr.push(s);
+          adSetsByCampaign.set(s.campaignId, arr);
+        }
+        const creativesByAdSet = new Map<string, MetaAdCreative[]>();
+        for (const c of creatives) {
+          const key = c.adSetId || "unknown";
+          const arr = creativesByAdSet.get(key) ?? [];
+          arr.push(c);
+          creativesByAdSet.set(key, arr);
+        }
+
+        const toggleCampaign = (id: string) => {
+          setExpandedCampaigns((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+          });
+        };
+        const toggleAdSet = (id: string) => {
+          setExpandedAdSets((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+          });
+        };
+
         return (
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="px-6 py-5 border-b border-slate-100">
-              <h3 className="text-sm font-semibold text-slate-800">Campaign Performance</h3>
+              <h3 className="text-sm font-semibold text-slate-800">Campaign Breakdown</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Click campaigns to expand ad sets, then ad sets to see ad creatives</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                    <th className="text-left px-6 py-4 font-medium">Campaign</th>
+                    <th className="text-left px-6 py-4 font-medium min-w-[220px]">Name</th>
                     <th className="text-right px-4 py-4 font-medium">Spend</th>
                     <th className="text-right px-4 py-4 font-medium">Clicks</th>
                     <th className="text-right px-4 py-4 font-medium">Conv.</th>
@@ -455,49 +513,165 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
                     <th className="text-right px-6 py-4 font-medium">Budget</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {displayCampaigns.map((c) => {
-                    const prevC = prevCampaignsMap.get(c.id);
-                    const enriched = c as CampaignEnriched;
+                <tbody className="divide-y divide-slate-50">
+                  {displayCampaigns.map((camp) => {
+                    const prevC = prevCampaignsMap.get(camp.id);
+                    const enriched = camp as CampaignEnriched;
+                    const isExpanded = expandedCampaigns.has(camp.id);
+                    const campAdSets = adSetsByCampaign.get(camp.id) ?? [];
+                    const hasChildren = campAdSets.length > 0;
                     return (
-                      <tr key={c.id} className="hover:bg-slate-50 transition">
-                        <td className="px-6 py-4 max-w-[180px]">
-                          <p className="text-slate-800 font-medium truncate">{c.name}</p>
-                          <p className="text-slate-400 text-[11px] mt-0.5">
-                            {enriched.objective || enriched.bidStrategy || c.status}
-                          </p>
-                        </td>
-                        <td className="px-4 py-4 text-right text-slate-600">
-                          <div>{formatCurrency(c.spend)}</div>
-                          <Delta current={c.spend} previous={prevC?.spend} format="currency" />
-                        </td>
-                        <td className="px-4 py-4 text-right text-slate-600">
-                          <div>{formatNumber(c.clicks)}</div>
-                          <Delta current={c.clicks} previous={prevC?.clicks} format="count" />
-                        </td>
-                        <td className="px-4 py-4 text-right text-slate-600">
-                          <div>{formatNumber(c.conversions)}</div>
-                          <Delta current={c.conversions} previous={prevC?.conversions} format="count" />
-                        </td>
-                        <td className="px-4 py-4 text-right">
-                          <span className={`font-semibold ${
-                            c.roas >= 2 ? "text-emerald-600" : c.roas >= 1 ? "text-amber-600" : "text-red-600"
-                          }`}>
-                            {c.roas.toFixed(2)}x
-                          </span>
-                          <Delta current={c.roas} previous={prevC?.roas} format="none" />
-                        </td>
-                        <td className="px-4 py-4 text-right text-slate-600">
-                          {typeof enriched.frequency === "number" ? enriched.frequency.toFixed(2) : "—"}
-                        </td>
-                        <td className="px-6 py-4 text-right text-slate-600">
-                          {enriched.dailyBudget != null
-                            ? formatCurrency(enriched.dailyBudget) + "/d"
-                            : enriched.lifetimeBudget != null
-                            ? formatCurrency(enriched.lifetimeBudget) + " ltm"
-                            : "—"}
-                        </td>
-                      </tr>
+                      <React.Fragment key={camp.id}>
+                        {/* Campaign row */}
+                        <tr
+                          className={`transition cursor-pointer ${isExpanded ? "bg-slate-50" : "hover:bg-slate-50"}`}
+                          onClick={() => hasChildren && toggleCampaign(camp.id)}
+                        >
+                          <td className="px-6 py-4 max-w-[220px]">
+                            <div className="flex items-center gap-2">
+                              {hasChildren ? (
+                                isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                              ) : <span className="w-3.5 shrink-0" />}
+                              <div className="min-w-0">
+                                <p className="text-slate-800 font-semibold truncate">{camp.name}</p>
+                                <p className="text-slate-400 text-[11px] mt-0.5">
+                                  {enriched.objective || enriched.bidStrategy || camp.status}
+                                  {campAdSets.length > 0 && ` · ${campAdSets.length} ad set${campAdSets.length > 1 ? "s" : ""}`}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 text-right text-slate-600">
+                            <div>{formatCurrency(camp.spend)}</div>
+                            <Delta current={camp.spend} previous={prevC?.spend} format="currency" />
+                          </td>
+                          <td className="px-4 py-4 text-right text-slate-600">
+                            <div>{formatNumber(camp.clicks)}</div>
+                            <Delta current={camp.clicks} previous={prevC?.clicks} format="count" />
+                          </td>
+                          <td className="px-4 py-4 text-right text-slate-600">
+                            <div>{formatNumber(camp.conversions)}</div>
+                            <Delta current={camp.conversions} previous={prevC?.conversions} format="count" />
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <span className={`font-semibold ${camp.roas >= 2 ? "text-emerald-600" : camp.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>
+                              {camp.roas.toFixed(2)}x
+                            </span>
+                            <Delta current={camp.roas} previous={prevC?.roas} format="none" />
+                          </td>
+                          <td className="px-4 py-4 text-right text-slate-600">
+                            {typeof enriched.frequency === "number" ? enriched.frequency.toFixed(2) : "—"}
+                          </td>
+                          <td className="px-6 py-4 text-right text-slate-600">
+                            {enriched.dailyBudget != null
+                              ? formatCurrency(enriched.dailyBudget) + "/d"
+                              : enriched.lifetimeBudget != null
+                              ? formatCurrency(enriched.lifetimeBudget) + " ltm"
+                              : "—"}
+                          </td>
+                        </tr>
+                        {/* Expanded ad sets */}
+                        {isExpanded && campAdSets.map((adSet) => {
+                          const asExpanded = expandedAdSets.has(adSet.id);
+                          const asCreatives = creativesByAdSet.get(adSet.id) ?? [];
+                          const hasCreatives = asCreatives.length > 0;
+                          return (
+                            <React.Fragment key={adSet.id}>
+                              {/* Ad set row */}
+                              <tr
+                                className={`transition cursor-pointer ${asExpanded ? "bg-blue-50/40" : "hover:bg-slate-50"}`}
+                                onClick={() => hasCreatives && toggleAdSet(adSet.id)}
+                              >
+                                <td className="py-3 max-w-[220px]" style={{ paddingLeft: 48 }}>
+                                  <div className="flex items-center gap-2">
+                                    {hasCreatives ? (
+                                      asExpanded ? <ChevronDown className="h-3 w-3 text-blue-400 shrink-0" /> : <ChevronRight className="h-3 w-3 text-blue-400 shrink-0" />
+                                    ) : <span className="w-3 shrink-0" />}
+                                    <div className="min-w-0">
+                                      <p className="text-slate-700 font-medium truncate text-[11px]">
+                                        <Layers className="h-3 w-3 inline-block mr-1 text-blue-400 -mt-0.5" />
+                                        {adSet.name}
+                                      </p>
+                                      <p className="text-slate-400 text-[10px] mt-0.5">
+                                        {adSet.optimizationGoal || "—"}
+                                        {asCreatives.length > 0 && ` · ${asCreatives.length} ad${asCreatives.length > 1 ? "s" : ""}`}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-right text-slate-500 text-[11px]">{formatCurrency(adSet.spend)}</td>
+                                <td className="px-4 py-3 text-right text-slate-500 text-[11px]">{formatNumber(adSet.clicks)}</td>
+                                <td className="px-4 py-3 text-right text-slate-500 text-[11px]">{formatNumber(adSet.conversions)}</td>
+                                <td className="px-4 py-3 text-right">
+                                  <span className={`font-semibold text-[11px] ${adSet.roas >= 2 ? "text-emerald-600" : adSet.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>
+                                    {adSet.roas.toFixed(2)}x
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right text-slate-500 text-[11px]">—</td>
+                                <td className="px-6 py-3 text-right text-slate-500 text-[11px]">
+                                  {adSet.dailyBudget != null
+                                    ? formatCurrency(adSet.dailyBudget) + "/d"
+                                    : adSet.lifetimeBudget != null
+                                    ? formatCurrency(adSet.lifetimeBudget) + " ltm"
+                                    : "—"}
+                                </td>
+                              </tr>
+                              {/* Expanded creatives */}
+                              {asExpanded && asCreatives.map((cr) => (
+                                <tr key={cr.adId} className="hover:bg-violet-50/30 transition">
+                                  <td className="py-3 max-w-[260px]" style={{ paddingLeft: 72 }}>
+                                    <div className="flex items-center gap-3">
+                                      {/* Thumbnail */}
+                                      <div className="relative shrink-0 rounded-md overflow-hidden border border-slate-200" style={{ width: 56, height: 56, background: "#f8fafc" }}>
+                                        {(cr.imageUrl || cr.thumbnailUrl) ? (
+                                          // eslint-disable-next-line @next/next/no-img-element
+                                          <img
+                                            src={cr.imageUrl || cr.thumbnailUrl || ""}
+                                            alt={cr.adName}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        ) : (
+                                          <div className="flex items-center justify-center w-full h-full">
+                                            <Image className="h-4 w-4 text-slate-300" />
+                                          </div>
+                                        )}
+                                        {cr.mediaType === "VIDEO" && (
+                                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                            <Play className="h-4 w-4 text-white" fill="white" />
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-slate-700 font-medium truncate text-[11px]">{cr.adName}</p>
+                                        {cr.headline && <p className="text-slate-400 text-[10px] truncate mt-0.5">&ldquo;{cr.headline}&rdquo;</p>}
+                                        <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider"
+                                          style={{
+                                            background: cr.mediaType === "VIDEO" ? "#ede9fe" : cr.mediaType === "CAROUSEL" ? "#dbeafe" : "#f1f5f9",
+                                            color: cr.mediaType === "VIDEO" ? "#7c3aed" : cr.mediaType === "CAROUSEL" ? "#2563eb" : "#64748b",
+                                          }}>
+                                          {cr.mediaType === "UNKNOWN" ? "AD" : cr.mediaType}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px]">{formatCurrency(cr.spend)}</td>
+                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px]">{formatNumber(cr.clicks)}</td>
+                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px]">{formatNumber(cr.conversions)}</td>
+                                  <td className="px-4 py-3 text-right">
+                                    <span className={`font-semibold text-[11px] ${cr.roas >= 2 ? "text-emerald-600" : cr.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>
+                                      {cr.roas.toFixed(2)}x
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right text-slate-400 text-[11px]">—</td>
+                                  <td className="px-6 py-3 text-right text-slate-400 text-[11px]">
+                                    {formatPercent(cr.ctr)} CTR
+                                  </td>
+                                </tr>
+                              ))}
+                            </React.Fragment>
+                          );
+                        })}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
@@ -506,140 +680,6 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           </div>
         );
       })()}
-
-      {/* Ad set breakdown */}
-      {adSets.length > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-100">
-            <h3 className="text-sm font-semibold text-slate-800">Ad Set Performance</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Individual ad set breakdown</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-4 font-medium">Ad Set</th>
-                  <th className="text-left px-4 py-4 font-medium">Campaign</th>
-                  <th className="text-right px-4 py-4 font-medium">Spend</th>
-                  <th className="text-right px-4 py-4 font-medium">Clicks</th>
-                  <th className="text-right px-4 py-4 font-medium">Conv.</th>
-                  <th className="text-right px-4 py-4 font-medium">ROAS</th>
-                  <th className="text-right px-6 py-4 font-medium">Budget</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {adSets.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-4 max-w-[160px]">
-                      <p className="text-slate-800 font-medium truncate">{s.name}</p>
-                      <p className="text-slate-400 text-[11px] mt-0.5">{s.optimizationGoal || "—"}</p>
-                    </td>
-                    <td className="px-4 py-4 text-slate-500 max-w-[140px] truncate">{s.campaignName}</td>
-                    <td className="px-4 py-4 text-right text-slate-600">{formatCurrency(s.spend)}</td>
-                    <td className="px-4 py-4 text-right text-slate-600">{formatNumber(s.clicks)}</td>
-                    <td className="px-4 py-4 text-right text-slate-600">{formatNumber(s.conversions)}</td>
-                    <td className="px-4 py-4 text-right">
-                      <span className={`font-semibold ${
-                        s.roas >= 2 ? "text-emerald-600" : s.roas >= 1 ? "text-amber-600" : "text-red-600"
-                      }`}>
-                        {s.roas.toFixed(2)}x
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right text-slate-600">
-                      {s.dailyBudget != null
-                        ? formatCurrency(s.dailyBudget) + "/d"
-                        : s.lifetimeBudget != null
-                        ? formatCurrency(s.lifetimeBudget) + " ltm"
-                        : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Ad Creatives Gallery */}
-      {creatives.length > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-100">
-            <h3 className="text-sm font-semibold text-slate-800">Ad Creatives</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Performance breakdown by individual ad creative</p>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-              {creatives.map((c) => (
-                <div key={c.adId} className="rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
-                  {/* Creative thumbnail */}
-                  <div className="relative" style={{ background: "#f8fafc", minHeight: 160 }}>
-                    {c.thumbnailUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={c.thumbnailUrl}
-                        alt={c.adName}
-                        className="w-full object-cover"
-                        style={{ maxHeight: 200, minHeight: 160 }}
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center" style={{ height: 160 }}>
-                        <span className="text-slate-300 text-sm">No preview available</span>
-                      </div>
-                    )}
-                    {/* Media type badge */}
-                    <span style={{
-                      position: "absolute", top: 8, right: 8,
-                      padding: "3px 8px", borderRadius: 6,
-                      fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-                      background: c.mediaType === "VIDEO" ? "#7c3aed" : c.mediaType === "CAROUSEL" ? "#2563eb" : "#374151",
-                      color: "white", letterSpacing: "0.05em",
-                    }}>
-                      {c.mediaType === "UNKNOWN" ? "AD" : c.mediaType}
-                    </span>
-                  </div>
-                  {/* Creative info + metrics */}
-                  <div className="p-4">
-                    <p className="text-xs font-semibold text-slate-800 truncate" title={c.adName}>{c.adName}</p>
-                    <p className="text-[11px] text-slate-400 truncate mt-0.5">{c.campaignName}</p>
-                    {c.headline && (
-                      <p className="text-[11px] text-slate-500 mt-1.5 line-clamp-1" title={c.headline}>&ldquo;{c.headline}&rdquo;</p>
-                    )}
-                    {/* Metrics grid */}
-                    <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-slate-100">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">Spend</p>
-                        <p className="text-xs font-semibold text-slate-700">{formatCurrency(c.spend)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">Clicks</p>
-                        <p className="text-xs font-semibold text-slate-700">{formatNumber(c.clicks)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">CTR</p>
-                        <p className="text-xs font-semibold text-slate-700">{formatPercent(c.ctr)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">Conv.</p>
-                        <p className="text-xs font-semibold text-slate-700">{formatNumber(c.conversions)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">ROAS</p>
-                        <p className={`text-xs font-semibold ${c.roas >= 2 ? "text-emerald-600" : c.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>
-                          {c.roas.toFixed(2)}x
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">CPA</p>
-                        <p className="text-xs font-semibold text-slate-700">{c.costPerConversion > 0 ? formatCurrency(c.costPerConversion) : "—"}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
         </>
       )}
 
@@ -679,7 +719,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           landingPages={landingPages.length ? landingPages : undefined}
           clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
-          extraContext={creatives.length ? buildCreativeSummary(creatives) : undefined}
+          extraContext={creatives.length ? buildCreativeSummary(creatives, adSets) : undefined}
         />
       )}
 
@@ -708,7 +748,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           clientId={clientId}
           clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
-          extraContext={creatives.length ? buildCreativeSummary(creatives) : undefined}
+          extraContext={creatives.length ? buildCreativeSummary(creatives, adSets) : undefined}
         />
       )}
 
