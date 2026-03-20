@@ -735,9 +735,8 @@ export async function getMetaAdCreatives(
 ): Promise<MetaAdCreative[]> {
   const token = getAccessToken(accessToken);
 
-  // ── Step 1: Fetch ad-level insights first — this tells us which ads were
-  // active in the date range, so we can then fetch creative data for exactly
-  // those ad IDs (avoids mismatch with the generic /ads endpoint).
+  // ── Step 1: Fetch ad-level insights — tells us which ads had activity in the
+  // date range and gives us performance metrics.
   type AdInsightRow = {
     ad_id: string;
     ad_name: string;
@@ -778,13 +777,54 @@ export async function getMetaAdCreatives(
   const insightsData = await insightsResp.json();
   const insightRows: AdInsightRow[] = insightsData.data ?? [];
 
-  // ── Step 2: Batch-fetch creative data for the specific ad IDs from insights.
-  // Uses the multi-ID endpoint (/?ids=...) so we get creative info for exactly
-  // the ads that appeared in the period, regardless of current status.
-  type CreativeSpec = {
+  // ── Step 2: Batch-fetch ads to get creative IDs + ad status.
+  // The creative subobject on ads only returns a reference ID, so we need to
+  // fetch the actual creative objects separately (Step 3).
+  type AdNode = {
     id: string;
-    effective_image_url?: string;
+    name: string;
+    status?: string;
+    adset_id?: string;
+    creative?: { id: string };
+  };
+
+  const adIds = [...new Set(insightRows.map((r) => r.ad_id))];
+  const adNodeMap = new Map<string, AdNode>();
+  const creativeIdToAdId = new Map<string, string[]>(); // creative ID → ad IDs
+
+  for (let i = 0; i < adIds.length; i += 50) {
+    const chunk = adIds.slice(i, i + 50);
+    try {
+      const params = new URLSearchParams({
+        access_token: token,
+        ids: chunk.join(","),
+        fields: "id,name,status,adset_id,creative{id}",
+      });
+      const resp = await fetch(`${META_API_BASE}/?${params}`, { cache: "no-store" });
+      if (resp.ok) {
+        const data = await resp.json();
+        for (const [id, obj] of Object.entries(data as Record<string, AdNode>)) {
+          adNodeMap.set(id, obj);
+          const crId = obj.creative?.id;
+          if (crId) {
+            const existing = creativeIdToAdId.get(crId) ?? [];
+            existing.push(id);
+            creativeIdToAdId.set(crId, existing);
+          }
+        }
+      }
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  // ── Step 3: Fetch actual creative objects by their IDs.
+  // This gives us the FULL object_story_spec (link_data, video_data),
+  // asset_feed_spec (for dynamic/Advantage+ creatives), image_url, etc.
+  type CreativeObject = {
+    id: string;
     image_url?: string;
+    image_hash?: string;
     thumbnail_url?: string;
     video_id?: string;
     object_story_spec?: {
@@ -803,93 +843,129 @@ export async function getMetaAdCreatives(
         message?: string;
       };
     };
+    asset_feed_spec?: {
+      images?: { hash: string }[];
+      videos?: { video_id: string }[];
+      bodies?: { text: string }[];
+      titles?: { text: string }[];
+    };
   };
 
-  type AdNode = {
-    id: string;
-    name: string;
-    status?: string;
-    adset_id?: string;
-    creative?: CreativeSpec;
-  };
+  const creativeIds = [...creativeIdToAdId.keys()];
+  const creativeMap = new Map<string, CreativeObject>();
 
-  const adIds = [...new Set(insightRows.map((r) => r.ad_id))];
-  const adCreativeMap = new Map<string, AdNode>();
-
-  // Batch in chunks of 50 (API limit for multi-ID requests)
-  for (let i = 0; i < adIds.length; i += 50) {
-    const chunk = adIds.slice(i, i + 50);
+  for (let i = 0; i < creativeIds.length; i += 50) {
+    const chunk = creativeIds.slice(i, i + 50);
     try {
-      const batchParams = new URLSearchParams({
+      const params = new URLSearchParams({
         access_token: token,
         ids: chunk.join(","),
-        fields:
-          "id,name,status,adset_id,creative{id,effective_image_url,image_url,thumbnail_url,object_story_spec,video_id}",
+        fields: "id,image_url,image_hash,thumbnail_url,video_id,object_story_spec,asset_feed_spec",
       });
-      const resp = await fetch(`${META_API_BASE}/?${batchParams}`, {
-        cache: "no-store",
-      });
+      const resp = await fetch(`${META_API_BASE}/?${params}`, { cache: "no-store" });
       if (resp.ok) {
         const data = await resp.json();
-        for (const [id, obj] of Object.entries(data as Record<string, AdNode>)) {
-          adCreativeMap.set(id, obj as AdNode);
+        for (const [id, obj] of Object.entries(data as Record<string, CreativeObject>)) {
+          creativeMap.set(id, obj);
         }
       }
     } catch {
-      // Non-fatal — proceed with whatever creative data we have
+      // Non-fatal
     }
   }
 
-  // ── Step 3: Collect video IDs and fetch their source URLs for video previews
+  // ── Step 4: Resolve image hashes to full-res URLs via /adimages.
+  // Asset feed spec creatives (Advantage+/dynamic) store images as hashes,
+  // not URLs — we need to call the adimages endpoint to get actual image URLs.
+  const imageHashes = new Set<string>();
+  for (const cr of creativeMap.values()) {
+    if (cr.image_hash) imageHashes.add(cr.image_hash);
+    if (cr.asset_feed_spec?.images) {
+      for (const img of cr.asset_feed_spec.images) {
+        if (img.hash) imageHashes.add(img.hash);
+      }
+    }
+  }
+
+  const imageHashUrlMap = new Map<string, string>();
+  if (imageHashes.size > 0) {
+    const hashArr = [...imageHashes];
+    // Batch in chunks of 50
+    for (let i = 0; i < hashArr.length; i += 50) {
+      const chunk = hashArr.slice(i, i + 50);
+      try {
+        const params = new URLSearchParams({
+          access_token: token,
+          hashes: JSON.stringify(chunk),
+          fields: "hash,url",
+        });
+        const resp = await fetch(
+          `${META_API_BASE}/act_${accountId}/adimages?${params}`,
+          { cache: "no-store" }
+        );
+        if (resp.ok) {
+          const data = await resp.json();
+          for (const img of data.data ?? []) {
+            if (img.hash && img.url) imageHashUrlMap.set(img.hash, img.url);
+          }
+        }
+      } catch {
+        // Non-fatal
+      }
+    }
+  }
+
+  // ── Step 5: Collect video IDs and fetch source URLs for video previews.
   const videoIds = new Set<string>();
-  for (const [, ad] of adCreativeMap) {
-    const vid =
-      ad.creative?.video_id ??
-      ad.creative?.object_story_spec?.video_data?.video_id;
+  for (const cr of creativeMap.values()) {
+    const vid = cr.video_id ?? cr.object_story_spec?.video_data?.video_id;
     if (vid) videoIds.add(vid);
+    if (cr.asset_feed_spec?.videos) {
+      for (const v of cr.asset_feed_spec.videos) {
+        if (v.video_id) videoIds.add(v.video_id);
+      }
+    }
   }
 
   const videoSourceMap = new Map<string, { source: string; picture: string }>();
   if (videoIds.size > 0) {
     const ids = [...videoIds].slice(0, 50);
     try {
-      const batchParams = new URLSearchParams({
+      const params = new URLSearchParams({
         access_token: token,
         ids: ids.join(","),
         fields: "id,source,picture",
       });
-      const videoResp = await fetch(`${META_API_BASE}/?${batchParams}`, {
-        cache: "no-store",
-      });
-      if (videoResp.ok) {
-        const videoData = await videoResp.json();
+      const resp = await fetch(`${META_API_BASE}/?${params}`, { cache: "no-store" });
+      if (resp.ok) {
+        const data = await resp.json();
         for (const [id, obj] of Object.entries(
-          videoData as Record<string, { source?: string; picture?: string }>
+          data as Record<string, { source?: string; picture?: string }>
         )) {
           if (obj.source || obj.picture) {
-            videoSourceMap.set(id, {
-              source: obj.source ?? "",
-              picture: obj.picture ?? "",
-            });
+            videoSourceMap.set(id, { source: obj.source ?? "", picture: obj.picture ?? "" });
           }
         }
       }
     } catch {
-      // Non-fatal — videos will just show image thumbnail
+      // Non-fatal
     }
   }
 
-  // ── Step 4: Combine insights with creative data ─────────────────────────
+  // ── Step 6: Combine insights with creative data ─────────────────────────
   const results: MetaAdCreative[] = insightRows.map(
     (row: AdInsightRow) => {
-      const ad = adCreativeMap.get(row.ad_id);
-      const creative = ad?.creative;
+      const ad = adNodeMap.get(row.ad_id);
+      const crId = ad?.creative?.id;
+      const creative = crId ? creativeMap.get(crId) : undefined;
       const spec = creative?.object_story_spec;
+      const feed = creative?.asset_feed_spec;
 
-      // Resolve video ID from creative or spec
+      // Resolve video ID from creative or spec or asset feed
       const videoId =
         creative?.video_id ??
         spec?.video_data?.video_id ??
+        feed?.videos?.[0]?.video_id ??
         null;
 
       // Determine media type
@@ -899,20 +975,27 @@ export async function getMetaAdCreatives(
       } else if (videoId) {
         mediaType = "VIDEO";
       } else if (
-        creative?.effective_image_url ||
         creative?.image_url ||
+        creative?.image_hash ||
         spec?.link_data?.picture ||
-        creative?.thumbnail_url
+        creative?.thumbnail_url ||
+        feed?.images?.length
       ) {
         mediaType = "IMAGE";
       }
 
-      // Full-resolution image URL — prefer effective_image_url (full-res)
+      // Full-resolution image URL — try multiple sources:
+      // 1. Direct image_url on creative
+      // 2. link_data.picture from spec
+      // 3. video_data.image_url (poster frame)
+      // 4. Resolve image_hash via adimages API
+      // 5. Resolve first asset_feed_spec image hash
       const imageUrl =
-        creative?.effective_image_url ??
         creative?.image_url ??
         spec?.link_data?.picture ??
         spec?.video_data?.image_url ??
+        (creative?.image_hash ? imageHashUrlMap.get(creative.image_hash) : null) ??
+        (feed?.images?.[0]?.hash ? imageHashUrlMap.get(feed.images[0].hash) : null) ??
         null;
 
       // Video source URL
@@ -926,14 +1009,16 @@ export async function getMetaAdCreatives(
         creative?.thumbnail_url ??
         null;
 
-      // Headline & body
+      // Headline & body — check spec first, then asset feed spec
       const headline =
         spec?.link_data?.name ??
         spec?.video_data?.title ??
+        feed?.titles?.[0]?.text ??
         null;
       const bodyText =
         spec?.link_data?.message ??
         spec?.video_data?.message ??
+        feed?.bodies?.[0]?.text ??
         null;
 
       const spend = parseFloat(row.spend ?? "0");
