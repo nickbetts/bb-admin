@@ -44,6 +44,14 @@ export interface MetaAdsDailyData {
   conversions: number;
 }
 
+/** A unique landing page URL observed in Meta Ads during the period */
+export interface MetaAdsLandingPage {
+  url: string;
+  clicks: number;
+  impressions: number;
+  conversions: number;
+}
+
 const META_API_BASE = "https://graph.facebook.com/v19.0";
 
 function getAccessToken(clientToken?: string): string {
@@ -334,4 +342,151 @@ export async function getMetaCampaignsEnriched(
       objective: meta?.objective ?? "",
     };
   });
+}
+
+/**
+ * Fetch unique landing page URLs from Meta Ads by querying the ads endpoint
+ * for active ads and extracting their destination links from the creative.
+ * Returns a deduplicated list of up to 20 landing pages with aggregated
+ * click/impression/conversion totals from the insights API.
+ */
+export async function getMetaLandingPages(
+  accountId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<MetaAdsLandingPage[]> {
+  const token = getAccessToken(accessToken);
+
+  // Step 1: Fetch ads with creative link data
+  const adsParams = new URLSearchParams({
+    access_token: token,
+    fields: "id,creative{object_story_spec{link_data{link,call_to_action},video_data{call_to_action},template_data{link}}}",
+    effective_status: '["ACTIVE","PAUSED"]',
+    limit: "50",
+  });
+
+  type AdCreativeRow = {
+    id: string;
+    creative?: {
+      object_story_spec?: {
+        link_data?: { link?: string; call_to_action?: { value?: { link?: string } } };
+        video_data?: { call_to_action?: { value?: { link?: string } } };
+        template_data?: { link?: string };
+      };
+    };
+  };
+
+  let adRows: AdCreativeRow[] = [];
+  try {
+    const adsResp = await fetch(
+      `${META_API_BASE}/act_${accountId}/ads?${adsParams}`,
+      { cache: "no-store" }
+    );
+    if (adsResp.ok) {
+      const adsData = await adsResp.json();
+      adRows = adsData.data ?? [];
+    }
+  } catch {
+    // Non-fatal — proceed without URL data
+  }
+
+  // Extract unique URLs from ad creatives
+  const urlSet = new Set<string>();
+  for (const ad of adRows) {
+    const spec = ad.creative?.object_story_spec;
+    const candidates = [
+      spec?.link_data?.link,
+      spec?.link_data?.call_to_action?.value?.link,
+      spec?.video_data?.call_to_action?.value?.link,
+      spec?.template_data?.link,
+    ];
+    for (const candidate of candidates) {
+      if (candidate && candidate.startsWith("http")) {
+        // Normalise to just the URL without fragment
+        try {
+          const parsed = new URL(candidate);
+          parsed.hash = "";
+          urlSet.add(parsed.toString());
+        } catch {
+          urlSet.add(candidate);
+        }
+      }
+    }
+  }
+
+  if (urlSet.size === 0) return [];
+
+  // Step 2: Map each ad back to its URL for metrics aggregation
+  const adIdToUrl = new Map<string, string>();
+  for (const ad of adRows) {
+    const spec = ad.creative?.object_story_spec;
+    const candidates = [
+      spec?.link_data?.link,
+      spec?.link_data?.call_to_action?.value?.link,
+      spec?.video_data?.call_to_action?.value?.link,
+      spec?.template_data?.link,
+    ];
+    for (const candidate of candidates) {
+      if (candidate && candidate.startsWith("http")) {
+        try {
+          const parsed = new URL(candidate);
+          parsed.hash = "";
+          adIdToUrl.set(ad.id, parsed.toString());
+        } catch {
+          adIdToUrl.set(ad.id, candidate);
+        }
+        break;
+      }
+    }
+  }
+
+  // Step 3: Fetch ad-level insights to aggregate metrics per URL
+  const insightsParams = new URLSearchParams({
+    access_token: token,
+    fields: "ad_id,impressions,clicks,conversions",
+    time_range: JSON.stringify({ since: startDate, until: endDate }),
+    level: "ad",
+    limit: "100",
+  });
+
+  type AdInsightRow = {
+    ad_id: string;
+    impressions?: string;
+    clicks?: string;
+    conversions?: { value: string }[];
+  };
+
+  const urlMetrics = new Map<string, { clicks: number; impressions: number; conversions: number }>();
+
+  try {
+    const insightsResp = await fetch(
+      `${META_API_BASE}/act_${accountId}/insights?${insightsParams}`,
+      { cache: "no-store" }
+    );
+    if (insightsResp.ok) {
+      const insightsData = await insightsResp.json();
+      for (const row of (insightsData.data ?? []) as AdInsightRow[]) {
+        const url = adIdToUrl.get(row.ad_id);
+        if (!url) continue;
+        const existing = urlMetrics.get(url) ?? { clicks: 0, impressions: 0, conversions: 0 };
+        existing.clicks += parseInt(row.clicks ?? "0");
+        existing.impressions += parseInt(row.impressions ?? "0");
+        existing.conversions +=
+          row.conversions?.reduce((s, c) => s + parseInt(c.value), 0) ?? 0;
+        urlMetrics.set(url, existing);
+      }
+    }
+  } catch {
+    // Non-fatal — return URL list with zero metrics
+  }
+
+  // Build result sorted by clicks descending
+  return [...urlSet]
+    .map((url) => {
+      const m = urlMetrics.get(url) ?? { clicks: 0, impressions: 0, conversions: 0 };
+      return { url, ...m };
+    })
+    .sort((a, b) => b.clicks - a.clicks)
+    .slice(0, 20);
 }

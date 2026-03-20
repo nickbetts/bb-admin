@@ -17,6 +17,7 @@ import { SectionCard, LoadingSpinner } from "@/components/ui/index";
 import { formatNumber, formatCurrency, formatPercent, formatDateDisplay } from "@/lib/utils";
 import { DollarSign, MousePointer, Eye, TrendingUp } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { AiLandingPageAnalysis } from "@/components/ai/AiLandingPageAnalysis";
 
 interface MetaSectionProps {
   clientId: string;
@@ -64,11 +65,19 @@ interface DailyData {
   conversions: number;
 }
 
+interface MetaLandingPage {
+  url: string;
+  clicks: number;
+  impressions: number;
+  conversions: number;
+}
+
 export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSectionProps) {
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignsEnriched, setCampaignsEnriched] = useState<CampaignEnriched[]>([]);
   const [daily, setDaily] = useState<DailyData[]>([]);
+  const [landingPages, setLandingPages] = useState<MetaLandingPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,11 +90,12 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
       try {
         const base = `/api/meta?clientId=${encodeURIComponent(clientId)}&startDate=${startDate}&endDate=${endDate}`;
 
-        const [ovRes, campRes, enrichedRes, dailyRes] = await Promise.all([
+        const [ovRes, campRes, enrichedRes, dailyRes, lpRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=campaigns`, { signal: controller.signal }),
           fetch(`${base}&type=campaigns-enriched`, { signal: controller.signal }),
           fetch(`${base}&type=daily`, { signal: controller.signal }),
+          fetch(`${base}&type=landing-pages`, { signal: controller.signal }),
         ]);
 
         if (!ovRes.ok) {
@@ -93,17 +103,19 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           throw new Error(err.error ?? "Failed to fetch Meta Ads data");
         }
 
-        const [ov, camp, enriched, d] = await Promise.all([
+        const [ov, camp, enriched, d, lp] = await Promise.all([
           ovRes.json(),
           campRes.json(),
           enrichedRes.ok ? enrichedRes.json() : Promise.resolve([]),
           dailyRes.json(),
+          lpRes.ok ? lpRes.json() : Promise.resolve([]),
         ]);
 
         setOverview(ov);
         setCampaigns(Array.isArray(camp) ? camp : []);
         setCampaignsEnriched(Array.isArray(enriched) ? enriched : []);
         setDaily(Array.isArray(d) ? d : []);
+        setLandingPages(Array.isArray(lp) ? lp : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load Meta Ads data");
@@ -319,6 +331,15 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           clientId={clientId}
           clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+        />
+      )}
+
+      {/* Landing Page Analysis */}
+      {!loading && !error && landingPages.length > 0 && (
+        <AiLandingPageAnalysis
+          landingPages={landingPages}
+          clientName={clientName}
+          source="meta"
         />
       )}
     </div>
