@@ -13,6 +13,7 @@ interface Client {
   ga4PropertyId: string | null;
   ga4PropertyName: string | null;
   metaAccountId: string | null;
+  metaAccountName: string | null;
   metaAccessToken: string | null;
   googleAdsCustomerId: string | null;
   googleAdsAccountName: string | null;
@@ -82,6 +83,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
     ga4PropertyId: client.ga4PropertyId ?? "",
     ga4PropertyName: client.ga4PropertyName ?? "",
     metaAccountId: client.metaAccountId ?? "",
+    metaAccountName: client.metaAccountName ?? "",
     googleAdsCustomerId: client.googleAdsCustomerId ?? "",
     googleAdsAccountName: client.googleAdsAccountName ?? "",
     searchConsoleSiteUrl: client.searchConsoleSiteUrl ?? "",
@@ -307,7 +309,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                 )}
               </>
             ) : (
-              <select name="metaAccountId" value={form.metaAccountId} onChange={handleChange} className="form-input">
+              <select name="metaAccountId" value={form.metaAccountId} onChange={(e) => {
+                const acc = metaAccounts.find((a) => a.id === e.target.value);
+                setForm((prev) => ({ ...prev, metaAccountId: e.target.value, metaAccountName: acc?.name ?? "" }));
+              }} className="form-input">
                 <option value="">— Select an ad account —</option>
                 {metaAccounts.map((a) => (
                   <option key={a.id} value={a.id}>{a.name}</option>

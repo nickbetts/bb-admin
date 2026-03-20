@@ -86,7 +86,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
           {client.metaAccountId ? (
             <span className="badge badge-indigo" style={{ padding: "6px 14px", fontSize: 13 }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#6366f1", display: "inline-block" }} />
-              Meta Ads · {client.metaAccountId}
+              Meta Ads · {client.metaAccountName ?? client.metaAccountId}
             </span>
           ) : (
             <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }}>Meta Ads not configured</span>

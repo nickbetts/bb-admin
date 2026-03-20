@@ -46,6 +46,7 @@ model Client {
   ga4PropertyName       String?
   semrushDomain         String?
   metaAccountId         String?
+  metaAccountName       String?
   metaAccessToken       String?
   gaCredentials         String?
   googleAdsCustomerId   String?

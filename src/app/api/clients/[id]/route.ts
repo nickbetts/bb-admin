@@ -56,6 +56,7 @@ export async function PATCH(
         ga4PropertyId: data.ga4PropertyId,
         ga4PropertyName: data.ga4PropertyName,
         metaAccountId: data.metaAccountId,
+        metaAccountName: data.metaAccountName,
         metaAccessToken: data.metaAccessToken,
         logoUrl: data.logoUrl,
         googleAdsCustomerId: data.googleAdsCustomerId,

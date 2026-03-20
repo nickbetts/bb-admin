@@ -54,18 +54,20 @@ export function MetricCard({
       <p className="metric-value">{value}</p>
       {(subtitle || change !== undefined) && (
         <div className="metric-footer">
-          {change !== undefined && (
-            <span className={cn("metric-badge", isPositive ? "up" : "down")}>
-              {isPositive ? "+" : ""}{change.toFixed(1)}%
-            </span>
-          )}
-          {changeDiff !== undefined && change !== undefined && (
-            <span style={{ fontSize: 12, fontWeight: 600, color: isPositive ? "#065f46" : "#991b1b" }}>
-              {changeDiff}
-            </span>
-          )}
+          <div className="metric-footer-row">
+            {change !== undefined && (
+              <span className={cn("metric-badge", isPositive ? "up" : "down")}>
+                {isPositive ? "+" : ""}{change.toFixed(1)}%
+              </span>
+            )}
+            {changeDiff !== undefined && change !== undefined && (
+              <span style={{ fontSize: 11, fontWeight: 600, color: isPositive ? "#065f46" : "#991b1b" }}>
+                {changeDiff}
+              </span>
+            )}
+          </div>
           {(changeLabel || subtitle) && (
-            <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+            <span style={{ fontSize: 11, color: "var(--text-3)" }}>
               {change !== undefined && changeLabel ? changeLabel : subtitle}
             </span>
           )}
