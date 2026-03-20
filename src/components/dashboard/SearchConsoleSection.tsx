@@ -522,6 +522,17 @@ export function SearchConsoleSection({
             position: prevOverview.position,
           } : undefined}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+          extraContext={queries.length > 0 ? [
+            "Top search queries:",
+            ...queries.slice(0, 10).map((q) => {
+              const prev = prevQueriesMap.get(q.query);
+              const posChange = prev != null ? (prev.position - q.position) : null;
+              const posStr = posChange != null
+                ? (posChange > 0.5 ? ` (↑${posChange.toFixed(1)} pos)` : posChange < -0.5 ? ` (↓${Math.abs(posChange).toFixed(1)} pos)` : "")
+                : "";
+              return `  • "${q.query}" — pos ${q.position.toFixed(1)}${posStr}, ${q.clicks} clicks, ${(q.ctr * 100).toFixed(1)}% CTR`;
+            }),
+          ].join("\n") : undefined}
         />
       )}
     </div>

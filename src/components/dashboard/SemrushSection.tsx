@@ -588,6 +588,14 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
             paidKeywords: overview.paidKeywords,
           }}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+          extraContext={keywords.length > 0 ? [
+            "Top organic keywords:",
+            ...keywords.slice(0, 10).map((kw) => {
+              const delta = kw.previousPosition > 0 ? kw.previousPosition - kw.position : null;
+              const deltaStr = delta != null ? (delta > 0 ? ` (↑${delta})` : delta < 0 ? ` (↓${Math.abs(delta)})` : " (=)") : "";
+              return `  • "${kw.keyword}" — pos ${kw.position}${deltaStr}, vol ${kw.searchVolume.toLocaleString()}, ${kw.trafficPercent.toFixed(1)}% traffic`;
+            }),
+          ].join("\n") : undefined}
         />
       )}
     </div>

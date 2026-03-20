@@ -82,7 +82,8 @@ function detectAnomalies(
   previousMetrics: Record<string, number> | null | undefined,
   higherIsBetter: string[],
   lowerIsBetter: string[],
-  metricLabels: Record<string, string>
+  metricLabels: Record<string, string>,
+  anomalyThresholds?: Record<string, { concerning?: number; notable?: number }>
 ): Anomaly[] {
   if (!previousMetrics) return [];
   const anomalies: Anomaly[] = [];
@@ -105,8 +106,10 @@ function detectAnomalies(
     const severity: "high" | "medium" | "low" =
       absChange >= 50 ? "high" : absChange >= 25 ? "medium" : "low";
 
-    const isConcerning = !isGood && absChange >= 15;
-    const isNotable = isGood && absChange >= 30;
+    const concerningThreshold = anomalyThresholds?.[key]?.concerning ?? 15;
+    const notableThreshold = anomalyThresholds?.[key]?.notable ?? 30;
+    const isConcerning = !isGood && absChange >= concerningThreshold;
+    const isNotable = isGood && absChange >= notableThreshold;
     if (!isConcerning && !isNotable) continue;
 
     const label = metricLabels[key] ?? key;
@@ -198,6 +201,24 @@ function detectGoogleAdsCampaignAnomalies(
         context: c.name,
       });
     }
+
+    // Quality score below 5 is structurally poor — flag regardless of period change
+    if (
+      c.absoluteTopImpressionPct != null &&
+      (c as GoogleAdsCampaignContext & { avgQualityScore?: number }).avgQualityScore != null &&
+      ((c as GoogleAdsCampaignContext & { avgQualityScore?: number }).avgQualityScore ?? 10) < 5 &&
+      c.impressions > 50
+    ) {
+      const qs = (c as GoogleAdsCampaignContext & { avgQualityScore?: number }).avgQualityScore!;
+      anomalies.push({
+        metric: "Low Quality Score",
+        value: `${qs.toFixed(1)}/10`,
+        severity: qs < 3 ? "high" : "medium",
+        direction: "down",
+        description: `"${c.name}" average quality score of ${qs.toFixed(1)}/10 — review ad relevance, expected CTR, and landing page experience`,
+        context: c.name,
+      });
+    }
   }
 
   return anomalies;
@@ -259,12 +280,15 @@ const SECTION_CONFIGS: Record<
     higherIsBetter: string[];
     lowerIsBetter: string[];
     metricLabels: Record<string, string>;
+    anomalyThresholds?: Record<string, { concerning?: number; notable?: number }>;
   }
 > = {
   ga4: {
     name: "Web Analytics (GA4)",
+    // bounceRate uses a higher anomaly threshold (20%) — small natural variation is normal
     higherIsBetter: ["sessions", "users", "newUsers", "pageviews", "avgSessionDuration", "conversionRate", "engagedSessions", "engagementRate"],
     lowerIsBetter: ["bounceRate"],
+    anomalyThresholds: { bounceRate: { concerning: 20, notable: 30 } },
     metricLabels: {
       sessions: "Sessions",
       users: "Active Users",
@@ -279,7 +303,8 @@ const SECTION_CONFIGS: Record<
   },
   googleads: {
     name: "Google Ads",
-    higherIsBetter: ["clicks", "conversions", "conversionValue", "roas", "ctr", "searchImpressionShare", "qualityScore"],
+    // impressions in higherIsBetter so a significant drop gets flagged
+    higherIsBetter: ["clicks", "impressions", "conversions", "conversionValue", "roas", "ctr", "searchImpressionShare", "qualityScore"],
     lowerIsBetter: ["cpc", "cpa", "searchBudgetLostIS", "searchRankLostIS"],
     metricLabels: {
       clicks: "Clicks",
@@ -299,7 +324,7 @@ const SECTION_CONFIGS: Record<
   },
   meta: {
     name: "Meta Ads",
-    higherIsBetter: ["totalClicks", "totalConversions", "avgRoas", "avgCtr", "totalConversionValue"],
+    higherIsBetter: ["totalClicks", "totalConversions", "avgRoas", "avgCtr", "totalConversionValue", "reach", "outboundClicks", "landingPageViews"],
     lowerIsBetter: ["avgCpc", "avgCpm", "avgFrequency"],
     metricLabels: {
       totalSpend: "Total Spend",
@@ -312,11 +337,15 @@ const SECTION_CONFIGS: Record<
       avgRoas: "ROAS",
       avgFrequency: "Avg Frequency",
       totalConversionValue: "Conv. Value",
+      reach: "Reach",
+      outboundClicks: "Outbound Clicks",
+      landingPageViews: "Landing Page Views",
+      frequency: "Frequency",
     },
   },
   seo: {
     name: "SEO (SemRush)",
-    higherIsBetter: ["organicTraffic", "organicKeywords", "organicCost"],
+    higherIsBetter: ["organicTraffic", "organicKeywords", "organicCost", "paidTraffic", "paidKeywords"],
     lowerIsBetter: [],
     metricLabels: {
       organicTraffic: "Organic Traffic",
@@ -473,6 +502,7 @@ export async function POST(request: NextRequest) {
       campaignData?: CampaignContext[];
       landingPages?: LandingPageContext[];
       historicalSnapshots?: HistoricalSnapshot[];
+      extraContext?: string;
     };
 
     const {
@@ -484,6 +514,7 @@ export async function POST(request: NextRequest) {
       campaignData,
       landingPages,
       historicalSnapshots,
+      extraContext,
     } = body;
 
     const apiKeySetting = await prisma.appSetting.findUnique({
@@ -512,7 +543,8 @@ export async function POST(request: NextRequest) {
       previousMetrics,
       config.higherIsBetter,
       config.lowerIsBetter,
-      config.metricLabels
+      config.metricLabels,
+      config.anomalyThresholds,
     );
 
     // Campaign-level structural anomalies (impression share, frequency, ROAS)
@@ -588,6 +620,7 @@ Keep summaries punchy: aim for clarity over length.`;
       campaignText,
       landingPageText,
       historicalText,
+      extraContext ?? "",
     ].filter(Boolean);
 
     const userPrompt = `Analyse the following ${config.name} data and provide a comprehensive performance review.

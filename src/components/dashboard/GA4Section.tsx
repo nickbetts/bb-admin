@@ -519,6 +519,12 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
             engagementRate: prevOverview.engagementRate ?? 0,
           } : undefined}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+          extraContext={sources.length > 0 ? [
+            "Top traffic sources this period:",
+            ...sources.slice(0, 6).map((s) =>
+              `  • ${s.source} / ${s.medium} — ${s.sessions.toLocaleString()} sessions, ${s.users.toLocaleString()} users`
+            ),
+          ].join("\n") : undefined}
         />
       )}
         </>

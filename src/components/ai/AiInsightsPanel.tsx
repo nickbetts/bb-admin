@@ -37,6 +37,8 @@ interface AiInsightsPanelProps {
   compact?: boolean;
   /** Called with the AI-generated text so the parent can use it (e.g. for report commentary) */
   onInsightsGenerated?: (text: string) => void;
+  /** Additional structured context to include in the AI prompt (e.g. keyword list, query breakdown) */
+  extraContext?: string;
 }
 
 const severityStyles: Record<string, { bg: string; border: string; badge: string; text: string; dot: string }> = {
@@ -105,6 +107,7 @@ export function AiInsightsPanel({
   clientId,
   compact = false,
   onInsightsGenerated,
+  extraContext,
 }: AiInsightsPanelProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AiInsightsResult | null>(null);
@@ -142,6 +145,7 @@ export function AiInsightsPanel({
           campaignData,
           landingPages,
           historicalSnapshots: historicalSnapshots.length >= 2 ? historicalSnapshots : undefined,
+          extraContext: extraContext ?? undefined,
         }),
       });
 
