@@ -109,7 +109,7 @@ function ScorePill({ score }: { score: number }) {
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${scoreBg(score)}`}>
       <span className={`text-sm font-bold ${scoreColor(score)}`}>{score}</span>
-      <span className="opacity-70">— {scoreLabel(score)}</span>
+      <span className="opacity-70">{scoreLabel(score)}</span>
     </span>
   );
 }
@@ -229,7 +229,7 @@ export default function PageAnalyserPage() {
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Landing Page Analyser</h1>
             <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
-              CRO · SEO · Mobile · Forms · SemRush competitive data — all in one AI-powered report
+              CRO · SEO · Mobile · Forms · SemRush competitive data, all in one AI-powered report
             </p>
           </div>
         </div>
@@ -497,7 +497,7 @@ export default function PageAnalyserPage() {
                     { label: "H1 tags", value: result.pageSignals.h1Tags?.join(" | ") || "None found" },
                     { label: "Canonical URL", value: result.pageSignals.canonicalUrl ?? "Not set" },
                     { label: "Viewport", value: result.pageSignals.isResponsiveViewport ? "✓ Responsive" : result.pageSignals.hasViewportMeta ? "Partial" : "✗ Missing" },
-                    { label: "No-index", value: result.pageSignals.hasNoIndex ? "⚠ Yes — excluded from search" : "✓ No" },
+                    { label: "No-index", value: result.pageSignals.hasNoIndex ? "⚠ Yes, excluded from search" : "✓ No" },
                     { label: "Structured data", value: result.pageSignals.hasStructuredData ? "✓ Present" : "✗ Not detected" },
                     { label: "Forms", value: result.pageSignals.formCount != null ? `${result.pageSignals.formCount} form(s)` : "—" },
                   ].map(({ label, value }) => (
@@ -515,7 +515,7 @@ export default function PageAnalyserPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "var(--r)" }}>
               <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
               <p style={{ fontSize: 13, color: "#92400e" }}>
-                <strong>Page fetch note:</strong> {result.pageSignals.fetchError} — AI analysis was based on SemRush data and URL context only.
+                <strong>Page fetch note:</strong> {result.pageSignals.fetchError}. AI analysis was based on SemRush data and URL context only.
               </p>
             </div>
           )}

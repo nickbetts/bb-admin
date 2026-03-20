@@ -71,6 +71,10 @@ export interface MetaAdsAdSet {
   impressions: number;
   clicks: number;
   ctr: number;
+  cpc: number;
+  cpm: number;
+  reach: number;
+  frequency: number;
   conversions: number;
   roas: number;
   dailyBudget: number | null;
@@ -100,6 +104,8 @@ export interface MetaAdCreative {
   clicks: number;
   ctr: number;
   cpc: number;
+  cpm: number;
+  frequency: number;
   conversions: number;
   roas: number;
   costPerConversion: number;
@@ -666,7 +672,7 @@ export async function getMetaAdSets(
   const insightsParams = new URLSearchParams({
     access_token: token,
     fields:
-      "adset_id,adset_name,campaign_id,campaign_name,spend,impressions,clicks,ctr,actions,action_values,conversions,purchase_roas",
+      "adset_id,adset_name,campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions,action_values,conversions,purchase_roas",
     time_range: JSON.stringify({ since: startDate, until: endDate }),
     level: "adset",
     limit: "50",
@@ -691,6 +697,10 @@ export async function getMetaAdSets(
     impressions?: string;
     clicks?: string;
     ctr?: string;
+    cpc?: string;
+    cpm?: string;
+    reach?: string;
+    frequency?: string;
     actions?: ActionRow[];
     action_values?: ActionRow[];
     conversions?: { value: string }[];
@@ -713,6 +723,10 @@ export async function getMetaAdSets(
       impressions: parseInt(item.impressions ?? "0"),
       clicks: parseInt(item.clicks ?? "0"),
       ctr: parseFloat(item.ctr ?? "0"),
+      cpc: parseFloat(item.cpc ?? "0"),
+      cpm: parseFloat(item.cpm ?? "0"),
+      reach: parseInt(item.reach ?? "0"),
+      frequency: parseFloat(item.frequency ?? "0"),
       conversions: conv.count,
       roas: parseFloat(item.purchase_roas?.[0]?.value ?? "0"),
       dailyBudget: meta?.daily_budget ? parseFloat(meta.daily_budget) / 100 : null,
@@ -750,6 +764,8 @@ export async function getMetaAdCreatives(
     clicks?: string;
     ctr?: string;
     cpc?: string;
+    cpm?: string;
+    frequency?: string;
     actions?: ActionRow[];
     action_values?: ActionRow[];
     conversions?: { value: string }[];
@@ -759,7 +775,7 @@ export async function getMetaAdCreatives(
   const insightsParams = new URLSearchParams({
     access_token: token,
     fields:
-      "ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,spend,impressions,clicks,ctr,cpc,actions,action_values,conversions,purchase_roas",
+      "ad_id,ad_name,adset_id,adset_name,campaign_id,campaign_name,spend,impressions,clicks,frequency,ctr,cpc,cpm,actions,action_values,conversions,purchase_roas",
     time_range: JSON.stringify({ since: startDate, until: endDate }),
     level: "ad",
     limit: "100",
@@ -1048,6 +1064,8 @@ export async function getMetaAdCreatives(
         clicks: parseInt(row.clicks ?? "0"),
         ctr: parseFloat(row.ctr ?? "0"),
         cpc: parseFloat(row.cpc ?? "0"),
+        cpm: parseFloat(row.cpm ?? "0"),
+        frequency: parseFloat(row.frequency ?? "0"),
         conversions: conv.count,
         roas: parseFloat(row.purchase_roas?.[0]?.value ?? "0"),
         costPerConversion: conv.count > 0 ? spend / conv.count : 0,
@@ -1055,6 +1073,6 @@ export async function getMetaAdCreatives(
     }
   );
 
-  // Sort by spend descending and limit to 30
-  return results.sort((a, b) => b.spend - a.spend).slice(0, 30);
+  // Sort by spend descending and limit to 50
+  return results.sort((a, b) => b.spend - a.spend).slice(0, 50);
 }

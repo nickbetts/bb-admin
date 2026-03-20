@@ -417,7 +417,10 @@ function buildCampaignSummaryText(
       const freq = c.frequency != null ? `freq: ${c.frequency.toFixed(1)}x` : "";
       const obj = c.objective ? `obj: ${c.objective.replace(/_/g, " ").toLowerCase()}` : "";
       const bid = c.bidStrategy ? `bid: ${c.bidStrategy.replace(/_/g, " ").toLowerCase()}` : "";
-      const meta = [budget, freq, obj, bid].filter(Boolean).join(", ");
+      const ctr = c.ctr != null ? `CTR: ${c.ctr.toFixed(2)}%` : "";
+      const cpa = c.conversions > 0 ? `CPA: £${(c.spend / c.conversions).toFixed(2)}` : "";
+      const impr = c.impressions ? `impr: ${c.impressions.toLocaleString()}` : "";
+      const meta = [budget, freq, obj, bid, impr, ctr, cpa].filter(Boolean).join(", ");
       return `  • ${c.name} [${c.status ?? ""}]: spend £${c.spend.toFixed(2)}, ROAS ${c.roas.toFixed(2)}x, ${c.conversions} conversions${meta ? ` (${meta})` : ""}`;
     });
     return `Campaign breakdown:\n${rows.join("\n")}`;
@@ -654,7 +657,7 @@ Respond in JSON format:
         { role: "user", content: userPrompt },
       ],
       response_format: { type: "json_object" },
-      max_tokens: 1800,
+      max_tokens: 3000,
       temperature: 0.35,
     });
 

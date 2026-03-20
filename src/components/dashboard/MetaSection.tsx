@@ -52,6 +52,8 @@ interface Campaign {
   impressions: number;
   clicks: number;
   ctr: number;
+  cpc: number;
+  cpm: number;
   conversions: number;
   roas: number;
 }
@@ -89,6 +91,10 @@ interface MetaAdSet {
   impressions: number;
   clicks: number;
   ctr: number;
+  cpc: number;
+  cpm: number;
+  reach: number;
+  frequency: number;
   conversions: number;
   roas: number;
   dailyBudget: number | null;
@@ -117,6 +123,8 @@ interface MetaAdCreative {
   clicks: number;
   ctr: number;
   cpc: number;
+  cpm: number;
+  frequency: number;
   conversions: number;
   roas: number;
   costPerConversion: number;
@@ -150,18 +158,25 @@ function buildCreativeSummary(creatives: MetaAdCreative[], adSetsData: MetaAdSet
 
   for (const [, camp] of campaignMap) {
     lines.push(`\nCampaign: "${camp.name}"`);
-    for (const [, adSet] of camp.adSets) {
-      const adSetMeta = adSetsData.find(s => s.name === adSet.name);
+    for (const [asKey, adSet] of camp.adSets) {
+      const adSetMeta = adSetsData.find(s => s.id === asKey || s.name === adSet.name);
       const asBudget = adSetMeta?.dailyBudget ? `${formatCurrency(adSetMeta.dailyBudget)}/d` : adSetMeta?.lifetimeBudget ? `${formatCurrency(adSetMeta.lifetimeBudget)} ltm` : "";
-      lines.push(`  Ad Set: "${adSet.name}"${asBudget ? ` [Budget: ${asBudget}]` : ""}`);
-      for (const c of adSet.creatives.slice(0, 10)) {
-        const parts = [`    Ad: "${c.adName}" (${c.mediaType})`];
+      const asFreq = adSetMeta?.frequency && adSetMeta.frequency > 0 ? ` Freq: ${adSetMeta.frequency.toFixed(1)}x` : "";
+      const asCtr = adSetMeta ? ` CTR: ${adSetMeta.ctr.toFixed(2)}%` : "";
+      const asCpc = adSetMeta ? ` CPC: ${formatCurrency(adSetMeta.cpc)}` : "";
+      lines.push(`  Ad Set: "${adSet.name}"${asBudget ? ` [Budget: ${asBudget}]` : ""}${asFreq}${asCtr}${asCpc}`);
+      for (const c of adSet.creatives) {
+        const parts = [`    Ad: "${c.adName}" [${c.mediaType}] [${c.status}]`];
         parts.push(`Spend: ${formatCurrency(c.spend)}`);
+        parts.push(`Impr: ${formatNumber(c.impressions)}`);
         parts.push(`Clicks: ${c.clicks}`);
         parts.push(`CTR: ${c.ctr.toFixed(2)}%`);
+        parts.push(`CPC: ${formatCurrency(c.cpc)}`);
+        parts.push(`CPM: ${formatCurrency(c.cpm)}`);
+        if (c.frequency > 0) parts.push(`Freq: ${c.frequency.toFixed(1)}x`);
         parts.push(`Conv: ${c.conversions}`);
+        if (c.conversions > 0) parts.push(`CPA: ${formatCurrency(c.costPerConversion)}`);
         parts.push(`ROAS: ${c.roas.toFixed(2)}x`);
-        if (c.costPerConversion > 0) parts.push(`CPA: ${formatCurrency(c.costPerConversion)}`);
         if (c.headline) parts.push(`Headline: "${c.headline}"`);
         if (c.bodyText) parts.push(`Body: "${c.bodyText}"`);
         lines.push(parts.join(", "));
@@ -498,22 +513,27 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
         };
 
         return (
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm" style={{ overflow: "visible" }}>
             <div className="px-6 py-5 border-b border-slate-100">
               <h3 className="text-sm font-semibold text-slate-800">Campaign Breakdown</h3>
               <p className="text-xs text-slate-500 mt-0.5">Click campaigns to expand ad sets, then ad sets to see ad creatives</p>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs min-w-[700px]">
+            <div style={{ overflowX: "auto", overflowY: "visible", borderRadius: "0 0 16px 16px" }}>
+              <table className="w-full text-xs" style={{ minWidth: 1080 }}>
                 <thead>
                   <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                    <th className="text-left px-6 py-4 font-medium min-w-[220px]">Name</th>
-                    <th className="text-right px-4 py-4 font-medium">Spend</th>
-                    <th className="text-right px-4 py-4 font-medium">Clicks</th>
-                    <th className="text-right px-4 py-4 font-medium">{overview?.conversionLabel ?? "Conv."}</th>
-                    <th className="text-right px-4 py-4 font-medium">ROAS</th>
-                    <th className="text-right px-4 py-4 font-medium">Freq.</th>
-                    <th className="text-right px-6 py-4 font-medium">Budget</th>
+                    <th className="text-left px-6 py-4 font-medium" style={{ minWidth: 240 }}>Name</th>
+                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">Spend</th>
+                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">Impressions</th>
+                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">Clicks</th>
+                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">CTR</th>
+                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">CPC</th>
+                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">CPM</th>
+                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">{overview?.conversionLabel ?? "Conv."}</th>
+                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">CPA</th>
+                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">ROAS</th>
+                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">Freq.</th>
+                    <th className="text-right px-6 py-4 font-medium whitespace-nowrap">Budget</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -530,7 +550,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
                           className={`transition cursor-pointer ${isExpanded ? "bg-slate-50" : "hover:bg-slate-50"}`}
                           onClick={() => hasChildren && toggleCampaign(camp.id)}
                         >
-                          <td className="px-6 py-4 max-w-[220px]">
+                          <td className="px-6 py-4" style={{ minWidth: 240 }}>
                             <div className="flex items-center gap-2">
                               {hasChildren ? (
                                 isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -544,28 +564,44 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600">
+                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
                             <div>{formatCurrency(camp.spend)}</div>
                             <Delta current={camp.spend} previous={prevC?.spend} format="currency" />
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600">
+                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                            <div>{formatNumber(camp.impressions)}</div>
+                            <Delta current={camp.impressions} previous={prevC?.impressions} format="count" />
+                          </td>
+                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
                             <div>{formatNumber(camp.clicks)}</div>
                             <Delta current={camp.clicks} previous={prevC?.clicks} format="count" />
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600">
+                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                            {camp.ctr.toFixed(2)}%
+                          </td>
+                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                            {formatCurrency(camp.cpc)}
+                          </td>
+                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                            {formatCurrency(camp.cpm)}
+                          </td>
+                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
                             <div>{formatNumber(camp.conversions)}</div>
                             <Delta current={camp.conversions} previous={prevC?.conversions} format="count" />
                           </td>
-                          <td className="px-4 py-4 text-right">
+                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                            {camp.conversions > 0 ? formatCurrency(camp.spend / camp.conversions) : "—"}
+                          </td>
+                          <td className="px-4 py-4 text-right whitespace-nowrap">
                             <span className={`font-semibold ${camp.roas >= 2 ? "text-emerald-600" : camp.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>
                               {camp.roas.toFixed(2)}x
                             </span>
                             <Delta current={camp.roas} previous={prevC?.roas} format="none" />
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600">
+                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
                             {typeof enriched.frequency === "number" ? enriched.frequency.toFixed(2) : "—"}
                           </td>
-                          <td className="px-6 py-4 text-right text-slate-600">
+                          <td className="px-6 py-4 text-right text-slate-600 whitespace-nowrap">
                             {enriched.dailyBudget != null
                               ? formatCurrency(enriched.dailyBudget) + "/d"
                               : enriched.lifetimeBudget != null
@@ -585,7 +621,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
                                 className={`transition cursor-pointer ${asExpanded ? "bg-blue-50/40" : "hover:bg-slate-50"}`}
                                 onClick={() => hasCreatives && toggleAdSet(adSet.id)}
                               >
-                                <td className="py-3 max-w-[220px]" style={{ paddingLeft: 48 }}>
+                                <td className="py-3" style={{ paddingLeft: 48 }}>
                                   <div className="flex items-center gap-2">
                                     {hasCreatives ? (
                                       asExpanded ? <ChevronDown className="h-3 w-3 text-blue-400 shrink-0" /> : <ChevronRight className="h-3 w-3 text-blue-400 shrink-0" />
@@ -596,22 +632,31 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
                                         {adSet.name}
                                       </p>
                                       <p className="text-slate-400 text-[10px] mt-0.5">
-                                        {adSet.optimizationGoal || "—"}
+                                        {adSet.optimizationGoal || adSet.status}
                                         {asCreatives.length > 0 && ` · ${asCreatives.length} ad${asCreatives.length > 1 ? "s" : ""}`}
                                       </p>
                                     </div>
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 text-right text-slate-500 text-[11px]">{formatCurrency(adSet.spend)}</td>
-                                <td className="px-4 py-3 text-right text-slate-500 text-[11px]">{formatNumber(adSet.clicks)}</td>
-                                <td className="px-4 py-3 text-right text-slate-500 text-[11px]">{formatNumber(adSet.conversions)}</td>
-                                <td className="px-4 py-3 text-right">
+                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(adSet.spend)}</td>
+                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(adSet.impressions)}</td>
+                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(adSet.clicks)}</td>
+                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{adSet.ctr.toFixed(2)}%</td>
+                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(adSet.cpc)}</td>
+                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(adSet.cpm)}</td>
+                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(adSet.conversions)}</td>
+                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
+                                  {adSet.conversions > 0 ? formatCurrency(adSet.spend / adSet.conversions) : "—"}
+                                </td>
+                                <td className="px-4 py-3 text-right whitespace-nowrap">
                                   <span className={`font-semibold text-[11px] ${adSet.roas >= 2 ? "text-emerald-600" : adSet.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>
                                     {adSet.roas.toFixed(2)}x
                                   </span>
                                 </td>
-                                <td className="px-4 py-3 text-right text-slate-500 text-[11px]">—</td>
-                                <td className="px-6 py-3 text-right text-slate-500 text-[11px]">
+                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
+                                  {adSet.frequency > 0 ? adSet.frequency.toFixed(2) : "—"}
+                                </td>
+                                <td className="px-6 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
                                   {adSet.dailyBudget != null
                                     ? formatCurrency(adSet.dailyBudget) + "/d"
                                     : adSet.lifetimeBudget != null
@@ -622,7 +667,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
                               {/* Expanded creatives */}
                               {asExpanded && asCreatives.map((cr) => (
                                 <tr key={cr.adId} className="hover:bg-violet-50/30 transition">
-                                  <td className="py-3 max-w-[260px]" style={{ paddingLeft: 72 }}>
+                                  <td className="py-3" style={{ paddingLeft: 72 }}>
                                     <div className="flex items-center gap-3">
                                       {/* Thumbnail — click to open lightbox */}
                                       <button
@@ -676,17 +721,26 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
                                       </div>
                                     </div>
                                   </td>
-                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px]">{formatCurrency(cr.spend)}</td>
-                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px]">{formatNumber(cr.clicks)}</td>
-                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px]">{formatNumber(cr.conversions)}</td>
-                                  <td className="px-4 py-3 text-right">
+                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(cr.spend)}</td>
+                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(cr.impressions)}</td>
+                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(cr.clicks)}</td>
+                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{cr.ctr.toFixed(2)}%</td>
+                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(cr.cpc)}</td>
+                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(cr.cpm)}</td>
+                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(cr.conversions)}</td>
+                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
+                                    {cr.conversions > 0 ? formatCurrency(cr.costPerConversion) : "—"}
+                                  </td>
+                                  <td className="px-4 py-3 text-right whitespace-nowrap">
                                     <span className={`font-semibold text-[11px] ${cr.roas >= 2 ? "text-emerald-600" : cr.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>
                                       {cr.roas.toFixed(2)}x
                                     </span>
                                   </td>
-                                  <td className="px-4 py-3 text-right text-slate-400 text-[11px]">—</td>
-                                  <td className="px-6 py-3 text-right text-slate-400 text-[11px]">
-                                    {formatPercent(cr.ctr)} CTR
+                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
+                                    {cr.frequency > 0 ? cr.frequency.toFixed(2) : "—"}
+                                  </td>
+                                  <td className="px-6 py-3 text-right text-slate-400 text-[11px] whitespace-nowrap">
+                                    {cr.status}
                                   </td>
                                 </tr>
                               ))}

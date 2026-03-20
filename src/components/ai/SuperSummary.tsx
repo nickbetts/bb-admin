@@ -188,9 +188,6 @@ export function SuperSummary({
           </div>
           <div>
             <p className="card-title">Full Journey Analysis</p>
-            <p className="card-subtitle">
-              Performance + landing page experience — the complete picture
-            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -310,7 +307,7 @@ export function SuperSummary({
             }}
           >
             Combines performance metrics, campaign data, and landing page analysis into one
-            comprehensive view — from ad click to conversion.
+            comprehensive view from ad click to conversion.
           </p>
         </div>
       )}

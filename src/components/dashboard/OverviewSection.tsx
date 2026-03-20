@@ -858,7 +858,7 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
               Cross-Channel Overview
             </p>
             <p style={{ fontSize: 13, color: "var(--text-3)", maxWidth: 420, margin: "0 auto" }}>
-              Get a complete picture of how all marketing channels work together — budget efficiency,
+              Get a complete picture of how all marketing channels work together: budget efficiency,
               channel synergy, funnel performance, and prioritised actions.
             </p>
           </div>

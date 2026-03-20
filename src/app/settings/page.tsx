@@ -17,7 +17,7 @@ interface Connection {
 }
 
 const OAUTH_ERRORS: Record<string, string> = {
-  oauth_state_mismatch: "OAuth state mismatch — please try again.",
+  oauth_state_mismatch: "OAuth state mismatch. Please try again.",
   token_exchange_failed: "Failed to exchange authorisation code. Check your OAuth credentials.",
   no_refresh_token:
     "Google did not return a refresh token. Please revoke access in your Google account and try again.",
@@ -265,7 +265,7 @@ function SettingsInner() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
                 </svg>
                 <span style={{ fontSize: 13, fontWeight: 600, color: "#92400e" }}>
-                  Getting a &ldquo;This app is blocked&rdquo; error? — two possible fixes
+                  Getting a &ldquo;This app is blocked&rdquo; error? Two possible fixes
                 </span>
               </div>
               <svg
@@ -282,7 +282,7 @@ function SettingsInner() {
                 {/* Cause 1: Testing mode */}
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: "#78350f", marginBottom: 6 }}>
-                    Fix 1 — Any Google account (most common cause)
+                    Fix 1: Any Google account (most common cause)
                   </p>
                   <p style={{ fontSize: 13, color: "#78350f", marginBottom: 8 }}>
                     The OAuth app is in <strong>Testing mode</strong>, which blocks all accounts that haven&apos;t been explicitly added as test users. To fix, add the Google account email as a test user in Google Cloud Console:
@@ -320,7 +320,7 @@ function SettingsInner() {
                 {/* Cause 2: Workspace org */}
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: "#78350f", marginBottom: 6 }}>
-                    Fix 2 — Google Workspace accounts only (e.g. <code style={{ fontFamily: "monospace", fontSize: 11, background: "#fef3c7", padding: "1px 5px", borderRadius: 4 }}>name@company.com</code>)
+                    Fix 2: Google Workspace accounts only (e.g. <code style={{ fontFamily: "monospace", fontSize: 11, background: "#fef3c7", padding: "1px 5px", borderRadius: 4 }}>name@company.com</code>)
                   </p>
                   <p style={{ fontSize: 13, color: "#78350f", marginBottom: 8 }}>
                     Workspace admins can block third-party OAuth apps for their org. The admin needs to trust this app:
@@ -461,7 +461,7 @@ function SettingsInner() {
           </div>
           {openaiKey && (
             <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>
-              ✓ API key configured — AI insights are enabled across all client dashboards.
+              ✓ API key configured. AI insights are enabled across all client dashboards.
             </p>
           )}
         </div>
@@ -491,7 +491,7 @@ function SettingsInner() {
                 className="form-input"
                 style={{ marginBottom: 12 }}
               >
-                <option value="">— Select an account —</option>
+                <option value="">Select an account</option>
                 {managerAccounts.length > 0 && (
                   <optgroup label="Manager accounts (MCC)">
                     {managerAccounts.map((a) => (

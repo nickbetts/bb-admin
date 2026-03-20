@@ -262,7 +262,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-5 space-y-2">
             <p className="text-sm font-semibold text-amber-700">Google Ads OAuth token expired</p>
             <p className="text-sm text-slate-600">
-              The refresh token has expired or been revoked — this typically happens when the Google Cloud OAuth app is in <strong>Testing</strong> mode (tokens expire after 7 days).
+              The refresh token has expired or been revoked; this typically happens when the Google Cloud OAuth app is in <strong>Testing</strong> mode (tokens expire after 7 days).
             </p>
             <ol className="text-sm text-slate-500 list-decimal list-inside space-y-1">
               <li>Run <span className="font-mono text-amber-700">node scripts/get-gads-refresh-token.mjs</span> to generate a new token</li>

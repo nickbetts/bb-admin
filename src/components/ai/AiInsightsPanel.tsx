@@ -196,7 +196,6 @@ export function AiInsightsPanel({
           </div>
           <div>
             <p className="card-title">AI Insights</p>
-            <p className="card-subtitle">Powered by GPT-4o mini</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

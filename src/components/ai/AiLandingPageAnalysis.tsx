@@ -73,7 +73,7 @@ function ScoreBadge({ score }: { score: number }) {
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${scoreBg(score)}`}
     >
       <span className={scoreColor(score)}>{score}</span>
-      <span className={`${scoreColor(score)} opacity-70`}>— {scoreLabel(score)}</span>
+      <span className={`${scoreColor(score)} opacity-70`}>{scoreLabel(score)}</span>
     </span>
   );
 }
@@ -312,7 +312,7 @@ export function AiLandingPageAnalysis({
           </div>
           <div>
             <p className="card-title">Landing Page Analysis</p>
-            <p className="card-subtitle">CRO · SEO · Mobile · Forms — {urls.length} page{urls.length !== 1 ? "s" : ""}</p>
+            <p className="card-subtitle">CRO · SEO · Mobile · Forms · {urls.length} page{urls.length !== 1 ? "s" : ""}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
