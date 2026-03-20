@@ -186,6 +186,13 @@ and conversion outcome.
 Your analysis is structured as a narrative: what's happening with traffic generation, what's happening when users arrive, and whether the full funnel is working as a cohesive system.
 You identify WHERE in the journey problems exist (traffic quality? landing page? conversion path?) and explain causality, not just symptoms.
 
+When ad creative data is provided, deliver DETAILED creative-level analysis as part of the full journey:
+- Name specific ads and assess their individual performance — recommend which to pause/kill (high spend + poor ROAS, high CPA, low CTR) and which to scale.
+- Evaluate whether image or video ads are performing better and recommend the right mix going forward.
+- Assess headline and body copy quality — are they compelling, well-aligned with the landing page, and driving action? Suggest improvements where copy is weak.
+- Flag creative fatigue at the ad level (high frequency + declining CTR or rising CPA) and recommend refresh strategies.
+- For winning creatives, explain what makes them effective (strong hook, clear CTA, emotional resonance, social proof, etc.) so success can be replicated.
+
 Be specific with numbers, campaign names, page URLs, and metric values. Use British English.
 Prioritise commercial impact — which issues, if fixed, would deliver the most revenue or efficiency gain?`;
 
@@ -204,7 +211,7 @@ Analyse the FULL JOURNEY — traffic generation → click → landing page → c
   "journeyAssessment": "<2-3 sentences specifically about the traffic-to-landing-page-to-conversion pathway. Are the right users landing on the right pages? Is the page experience helping or hurting?>",
   "wins": ["<specific win with data>", "<win>", "<win>"],
   "issues": ["<specific issue with root-cause reasoning>", "<issue>"],
-  "actions": ["<prioritised action with expected impact>", "<action>", "<action>"],
+  "actions": ["<prioritised action with expected impact — include specific creative recommendations: which ads to kill/pause, which to scale, image vs video mix, copy improvements>", "<action>", "<action>"],
   "healthScore": <0-100 overall channel health score>,
   "pageScores": [{"url": "<url>", "score": <0-100>, "oneLineSummary": "<one sentence about this page>"}]
 }

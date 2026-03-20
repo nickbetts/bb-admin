@@ -742,8 +742,8 @@ export async function getMetaAdCreatives(
     access_token: token,
     fields:
       "id,name,status,adset_id,creative{id,effective_image_url,image_url,thumbnail_url,object_story_spec,video_id}",
-    effective_status: '["ACTIVE","PAUSED"]',
-    limit: "50",
+    effective_status: '["ACTIVE","PAUSED","ARCHIVED","DELETED","DISAPPROVED","PENDING_REVIEW","PREAPPROVED","WITH_ISSUES"]',
+    limit: "100",
   });
 
   type CreativeSpec = {

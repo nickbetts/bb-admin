@@ -15,7 +15,7 @@ import {
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
 import { formatNumber, formatCurrency, formatPercent, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
-import { DollarSign, MousePointer, Eye, TrendingUp, AlertTriangle, ChevronRight, ChevronDown, Play, Image, Layers } from "lucide-react";
+import { DollarSign, MousePointer, Eye, TrendingUp, AlertTriangle, ChevronRight, ChevronDown, Play, Image, Layers, X } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { AiLandingPageAnalysis } from "@/components/ai/AiLandingPageAnalysis";
 import { SuperSummary } from "@/components/ai/SuperSummary";
@@ -162,6 +162,7 @@ function buildCreativeSummary(creatives: MetaAdCreative[], adSetsData: MetaAdSet
         parts.push(`ROAS: ${c.roas.toFixed(2)}x`);
         if (c.costPerConversion > 0) parts.push(`CPA: ${formatCurrency(c.costPerConversion)}`);
         if (c.headline) parts.push(`Headline: "${c.headline}"`);
+        if (c.bodyText) parts.push(`Body: "${c.bodyText}"`);
         lines.push(parts.join(", "));
       }
     }
@@ -184,6 +185,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
   const [error, setError] = useState<string | null>(null);
   const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
   const [expandedAdSets, setExpandedAdSets] = useState<Set<string>>(new Set());
+  const [lightbox, setLightbox] = useState<{ type: "image" | "video"; src: string; title: string } | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -621,8 +623,25 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
                                 <tr key={cr.adId} className="hover:bg-violet-50/30 transition">
                                   <td className="py-3 max-w-[260px]" style={{ paddingLeft: 72 }}>
                                     <div className="flex items-center gap-3">
-                                      {/* Thumbnail */}
-                                      <div className="relative shrink-0 rounded-md overflow-hidden border border-slate-200" style={{ width: 56, height: 56, background: "#f8fafc" }}>
+                                      {/* Thumbnail — click to open lightbox */}
+                                      <button
+                                        type="button"
+                                        className="relative shrink-0 rounded-md overflow-hidden border border-slate-200 cursor-pointer hover:ring-2 hover:ring-indigo-300 transition-all"
+                                        style={{ width: 56, height: 56, background: "#f8fafc" }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const mediaSrc = cr.mediaType === "VIDEO" && cr.videoUrl
+                                            ? cr.videoUrl
+                                            : cr.imageUrl || cr.thumbnailUrl;
+                                          if (mediaSrc) {
+                                            setLightbox({
+                                              type: cr.mediaType === "VIDEO" && cr.videoUrl ? "video" : "image",
+                                              src: mediaSrc,
+                                              title: cr.adName,
+                                            });
+                                          }
+                                        }}
+                                      >
                                         {(cr.imageUrl || cr.thumbnailUrl) ? (
                                           // eslint-disable-next-line @next/next/no-img-element
                                           <img
@@ -640,7 +659,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
                                             <Play className="h-4 w-4 text-white" fill="white" />
                                           </div>
                                         )}
-                                      </div>
+                                      </button>
                                       <div className="min-w-0">
                                         <p className="text-slate-700 font-medium truncate text-[11px]">{cr.adName}</p>
                                         {cr.headline && <p className="text-slate-400 text-[10px] truncate mt-0.5">&ldquo;{cr.headline}&rdquo;</p>}
@@ -759,6 +778,51 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           clientName={clientName}
           source="meta"
         />
+      )}
+
+      {/* Lightbox overlay */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setLightbox(null)}
+          onKeyDown={(e) => { if (e.key === "Escape") setLightbox(null); }}
+          role="dialog"
+          aria-modal="true"
+          aria-label={lightbox.title}
+          tabIndex={-1}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 text-white hover:text-slate-300 z-10"
+            onClick={(e) => { e.stopPropagation(); setLightbox(null); }}
+            aria-label="Close lightbox"
+          >
+            <X className="h-8 w-8" />
+          </button>
+
+          <div className="relative max-w-[90vw] max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+            {lightbox.type === "video" ? (
+              <video
+                controls
+                autoPlay
+                className="max-w-[90vw] max-h-[85vh] rounded-lg shadow-2xl"
+                src={lightbox.src}
+              >
+                <track kind="captions" />
+              </video>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={lightbox.src}
+                alt={lightbox.title}
+                className="max-w-[90vw] max-h-[85vh] rounded-lg shadow-2xl object-contain"
+              />
+            )}
+            <p className="text-center text-white/80 text-sm mt-3 truncate max-w-[90vw]">
+              {lightbox.title}
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );

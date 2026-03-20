@@ -604,6 +604,13 @@ You write incisive, data-driven performance summaries for client reports. Your a
 Be specific with numbers. Use British English. Prioritise insights that drive decisions.
 Where anomalies exist, explain likely causes and concrete remediation steps.
 For paid media (Google Ads, Meta Ads), factor in bid strategies, budget constraints, impression share, quality scores, campaign-level performance, and ad fatigue.
+When ad creative data is provided (Meta Ads), deliver GRANULAR creative-level analysis:
+- Evaluate each individual ad's performance (CTR, ROAS, CPA, conversions) and explicitly recommend which ads to PAUSE or KILL (e.g. high spend + low ROAS, high CPA, low CTR).
+- Assess headline and body copy quality — are they compelling, clear, and aligned with the offer? Suggest specific copy improvements.
+- Compare image vs video ad performance — which format is delivering better results? Recommend whether to create more images or more video content.
+- Identify creative fatigue (frequency > 3 combined with declining CTR or rising CPA) at the individual ad level.
+- For winning ads, explain WHY they work (strong hook, clear CTA, emotional appeal, social proof, etc.).
+- Be specific: name the ads, quote their metrics, and state whether to keep, pause, iterate, or kill each one.
 For landing pages, flag pages with high traffic but no conversions as a priority issue, and comment on URL structure/relevance.
 Look for cross-metric patterns: e.g. stable clicks + falling conversions points to a landing page or tracking issue; rising CPCs + falling impression share suggests competitive pressure.
 Distinguish between symptoms and root causes. Prioritise the 1-2 issues that will have the biggest commercial impact.
@@ -631,6 +638,7 @@ Please provide:
 1. A 3-4 sentence executive summary covering overall performance, standout wins, and key concerns
 2. 4-6 key insights (specific, data-backed observations — reference campaign names, impression share figures, budget utilisation, quality scores, frequency, landing page CVR where relevant)
 3. 3-4 prioritised, actionable recommendations (with specific suggested changes — e.g. bid adjustments, budget reallocation, creative refresh, landing page improvements, quality score fixes)
+4. If ad creative data is provided, include specific creative recommendations: which ads to kill/pause (name them with reasons), which to scale, whether to invest in more image or video content, and any headline/copy improvements needed
 
 Respond in JSON format:
 {
@@ -646,7 +654,7 @@ Respond in JSON format:
         { role: "user", content: userPrompt },
       ],
       response_format: { type: "json_object" },
-      max_tokens: 1200,
+      max_tokens: 1800,
       temperature: 0.35,
     });
 
