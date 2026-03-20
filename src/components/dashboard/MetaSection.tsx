@@ -316,19 +316,83 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
         </div>
       ) : !overview ? null : (
         <>
-      {/* Ad fatigue warning */}
-      {campaignsEnriched.some(c => c.frequency > 3.5) && (() => {
-        const fatigueCampaigns = campaignsEnriched.filter(c => c.frequency > 3.5);
+      {/* Performance alerts — campaigns, ad sets, creatives */}
+      {(() => {
+        type Alert = { severity: "high" | "medium"; label: string; level: "Campaign" | "Ad Set" | "Creative"; detail: string };
+        const alerts: Alert[] = [];
+
+        // ── Campaign-level ──────────────────────────────────────────────────
+        for (const c of campaignsEnriched) {
+          if (c.frequency >= 7)
+            alerts.push({ severity: "high", level: "Campaign", label: c.name, detail: `Frequency ${c.frequency.toFixed(1)}× — severe ad fatigue` });
+          else if (c.frequency > 3.5)
+            alerts.push({ severity: "medium", level: "Campaign", label: c.name, detail: `Frequency ${c.frequency.toFixed(1)}× — fatigue risk` });
+          if (c.roas > 0 && c.roas < 1.0 && c.spend > 50)
+            alerts.push({ severity: "high", level: "Campaign", label: c.name, detail: `ROAS ${c.roas.toFixed(2)}× — spend exceeding revenue` });
+          else if (c.roas > 0 && c.roas < 1.5 && c.spend > 100)
+            alerts.push({ severity: "medium", level: "Campaign", label: c.name, detail: `ROAS ${c.roas.toFixed(2)}× — below target threshold` });
+          if (c.ctr != null && c.ctr < 0.5 && c.impressions > 5000)
+            alerts.push({ severity: "medium", level: "Campaign", label: c.name, detail: `CTR ${c.ctr.toFixed(2)}% — low click-through rate` });
+        }
+
+        // ── Ad set-level ────────────────────────────────────────────────────
+        for (const s of adSets) {
+          if (s.frequency > 3.5)
+            alerts.push({ severity: s.frequency >= 6 ? "high" : "medium", level: "Ad Set", label: s.name, detail: `Frequency ${s.frequency.toFixed(1)}×` });
+          if (s.roas > 0 && s.roas < 1.0 && s.spend > 30)
+            alerts.push({ severity: "high", level: "Ad Set", label: s.name, detail: `ROAS ${s.roas.toFixed(2)}× — unprofitable` });
+          if (s.conversions === 0 && s.spend > 50)
+            alerts.push({ severity: "medium", level: "Ad Set", label: s.name, detail: `£${s.spend.toFixed(0)} spend, 0 conversions` });
+        }
+
+        // ── Creative-level ──────────────────────────────────────────────────
+        for (const cr of creatives) {
+          if (cr.roas > 0 && cr.roas < 1.0 && cr.spend > 20)
+            alerts.push({ severity: "high", level: "Creative", label: cr.adName, detail: `ROAS ${cr.roas.toFixed(2)}× — £${cr.spend.toFixed(0)} spent` });
+          if (cr.frequency > 5)
+            alerts.push({ severity: cr.frequency >= 8 ? "high" : "medium", level: "Creative", label: cr.adName, detail: `Frequency ${cr.frequency.toFixed(1)}×` });
+          if (cr.conversions === 0 && cr.spend > 30 && cr.impressions > 1000)
+            alerts.push({ severity: "medium", level: "Creative", label: cr.adName, detail: `£${cr.spend.toFixed(0)} spend, 0 conversions` });
+        }
+
+        if (alerts.length === 0) return null;
+
+        const highAlerts = alerts.filter(a => a.severity === "high");
+        const medAlerts  = alerts.filter(a => a.severity === "medium");
+
+        const levelColour: Record<string, string> = {
+          Campaign: "#7c3aed",
+          "Ad Set": "#2563eb",
+          Creative: "#0f766e",
+        };
+
         return (
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 16px", borderRadius: 12, background: "#fffbeb", border: "1px solid #fcd34d" }}>
-            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "#d97706" }} />
-            <div>
-              <p style={{ fontSize: 13, fontWeight: 600, color: "#92400e", margin: 0 }}>
-                Ad fatigue risk: {fatigueCampaigns.length} campaign{fatigueCampaigns.length > 1 ? "s" : ""} with frequency &gt; 3.5×
+          <div style={{ borderRadius: 12, border: `1px solid ${highAlerts.length ? "#fca5a5" : "#fcd34d"}`, background: highAlerts.length ? "#fff1f2" : "#fffbeb", overflow: "hidden" }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", borderBottom: `1px solid ${highAlerts.length ? "#fca5a5" : "#fcd34d"}` }}>
+              <AlertTriangle className="h-4 w-4 shrink-0" style={{ color: highAlerts.length ? "#dc2626" : "#d97706" }} />
+              <p style={{ fontSize: 13, fontWeight: 600, color: highAlerts.length ? "#991b1b" : "#92400e", margin: 0 }}>
+                {highAlerts.length} high-priority · {medAlerts.length} medium-priority issue{alerts.length !== 1 ? "s" : ""} detected
               </p>
-              <p style={{ fontSize: 12, color: "#b45309", margin: "2px 0 0" }}>
-                {fatigueCampaigns.map(c => `${c.name} (${c.frequency.toFixed(1)}×)`).join(" · ")}
-              </p>
+            </div>
+            {/* Alert rows */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {alerts.map((a, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "7px 16px", borderBottom: i < alerts.length - 1 ? `1px solid ${highAlerts.length ? "#fee2e2" : "#fef3c7"}` : "none" }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff", background: a.severity === "high" ? "#dc2626" : "#d97706", borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>
+                    {a.severity}
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: levelColour[a.level], flexShrink: 0 }}>
+                    {a.level}
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 220 }}>
+                    {a.label}
+                  </span>
+                  <span style={{ fontSize: 12, color: "#64748b" }}>
+                    {a.detail}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         );
