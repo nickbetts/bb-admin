@@ -94,7 +94,7 @@ export async function getMetaAdsOverview(
   const params = new URLSearchParams({
     access_token: getAccessToken(accessToken),
     fields:
-      "spend,impressions,clicks,outbound_clicks,landing_page_views,ctr,cpc,cpm,reach,frequency,conversions,purchase_roas",
+      "spend,impressions,clicks,outbound_clicks,ctr,cpc,cpm,reach,frequency,actions,conversions,purchase_roas",
     time_range: JSON.stringify({ since: startDate, until: endDate }),
     level: "account",
   });
@@ -147,7 +147,10 @@ export async function getMetaAdsOverview(
     outboundClicks: Array.isArray(insight.outbound_clicks)
       ? insight.outbound_clicks.reduce((sum: number, o: { value: string }) => sum + parseInt(o.value), 0)
       : 0,
-    landingPageViews: parseInt(insight.landing_page_views ?? "0"),
+    landingPageViews: (insight.actions as { action_type: string; value: string }[] | undefined)
+      ?.find((a) => a.action_type === "landing_page_view")?.value
+      ? parseInt((insight.actions as { action_type: string; value: string }[]).find((a) => a.action_type === "landing_page_view")!.value)
+      : 0,
   };
 }
 
