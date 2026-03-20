@@ -291,7 +291,20 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             ) : metaFetchError ? (
               <>
                 <input type="text" name="metaAccountId" value={form.metaAccountId} onChange={handleChange} placeholder="123456789" className="form-input" />
-                <p className="text-xs text-red-600 mt-1">{metaFetchError}</p>
+                {metaFetchError.toLowerCase().includes("developer registration") || metaFetchError.toLowerCase().includes("api access deactivated") ? (
+                  <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                    <p className="font-semibold mb-1">Meta developer registration required</p>
+                    <p className="mb-2">The Facebook user account linked to your access token needs to complete developer verification before the API can be used.</p>
+                    <ol className="list-decimal list-inside space-y-1 text-amber-700">
+                      <li>Go to <a href="https://developers.facebook.com" target="_blank" rel="noreferrer" className="underline font-medium">developers.facebook.com</a></li>
+                      <li>Sign in with the account that generated the <code className="font-mono bg-amber-100 px-1 rounded">META_ACCESS_TOKEN</code></li>
+                      <li>Complete the developer registration / identity verification steps</li>
+                      <li>Regenerate your access token, update the environment variable, and redeploy</li>
+                    </ol>
+                  </div>
+                ) : (
+                  <p className="text-xs text-red-600 mt-1">{metaFetchError}</p>
+                )}
               </>
             ) : (
               <select name="metaAccountId" value={form.metaAccountId} onChange={handleChange} className="form-input">

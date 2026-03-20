@@ -32,8 +32,14 @@ export async function GET() {
     );
 
     if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Meta API error: ${err}`);
+      let message = "Meta API error";
+      try {
+        const errData = await response.json();
+        message = errData.error?.message ?? message;
+      } catch {
+        message = await response.text();
+      }
+      throw new Error(message);
     }
 
     const data = await response.json();
