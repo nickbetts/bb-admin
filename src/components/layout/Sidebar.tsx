@@ -14,6 +14,7 @@ import {
   Menu,
   BarChart3,
   ScanSearch,
+  ShieldCheck,
 } from "lucide-react";
 
 interface NavItem {
@@ -54,7 +55,7 @@ const toolsNavItems: NavItem[] = [
 ];
 
 interface SidebarProps {
-  user: { name?: string | null; email: string };
+  user: { name?: string | null; email: string; role?: string };
 }
 
 export function Sidebar({ user }: SidebarProps) {
@@ -143,6 +144,27 @@ export function Sidebar({ user }: SidebarProps) {
             </Link>
           );
         })}
+        {user.role === "admin" && (
+          <>
+            {!collapsed && <p className="sidebar-nav-label" style={{ marginTop: 12 }}>Admin</p>}
+            {(() => {
+              const isActive = pathname === "/admin" || pathname.startsWith("/admin/");
+              return (
+                <Link
+                  href="/admin"
+                  title={collapsed ? "Admin" : undefined}
+                  className={cn("nav-item", isActive && "active", collapsed && "justify-center")}
+                  style={collapsed ? { justifyContent: "center" } : undefined}
+                >
+                  <span className="nav-item-icon" style={{ display: "flex", width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                    <ShieldCheck className="h-4 w-4" />
+                  </span>
+                  {!collapsed && <span>Users</span>}
+                </Link>
+              );
+            })()}
+          </>
+        )}
       </nav>
 
       {/* Footer */}

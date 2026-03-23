@@ -26,6 +26,7 @@ interface Client {
 interface ClientDashboardProps {
   client: Client;
   period: string;
+  userRole?: string;
 }
 
 const periods = [
@@ -46,7 +47,7 @@ function getDefaultTab(_client: Client): Tab {
   return "overview";
 }
 
-export function ClientDashboard({ client, period: initialPeriod }: ClientDashboardProps) {
+export function ClientDashboard({ client, period: initialPeriod, userRole }: ClientDashboardProps) {
   const [period, setPeriod] = useState(initialPeriod);
   const [activeTab, setActiveTab] = useState<Tab>(() => getDefaultTab(client));
 
@@ -64,7 +65,7 @@ export function ClientDashboard({ client, period: initialPeriod }: ClientDashboa
   }, [period, customStart, customEnd]);
 
   const tabs: { id: Tab; label: string; available: boolean }[] = [
-    { id: "signals", label: "Signals", available: true },
+    { id: "signals", label: "Signals", available: userRole === "admin" },
     { id: "overview", label: "Overview", available: true },
     { id: "seo", label: "SEO / SemRush", available: !!client.semrushDomain },
     { id: "web", label: "Web Analytics (GA4)", available: !!client.ga4PropertyId },

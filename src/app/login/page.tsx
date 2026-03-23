@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BarChart3, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -20,7 +21,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ email, password }),
       });
 
       if (res.ok) {
@@ -64,10 +65,25 @@ export default function LoginPage() {
             Welcome back
           </h2>
           <p className="text-sm text-slate-500 text-center mb-8">
-            Enter the password to access your client dashboards
+            Sign in to your account to access the client dashboards
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Email address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@i3media.co.uk"
+                required
+                autoComplete="email"
+                className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition text-sm shadow-sm"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
                 Password
@@ -79,6 +95,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
+                  autoComplete="current-password"
                   className="w-full px-4 py-3 pr-11 rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition text-sm shadow-sm"
                 />
                 <button

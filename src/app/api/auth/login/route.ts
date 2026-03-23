@@ -1,61 +1,78 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/prisma";
 
 const APP_PASSWORD = process.env.APP_PASSWORD ?? "i3ganggang";
 const SESSION_SECRET = process.env.SESSION_SECRET ?? "i3media-session-secret";
 const SESSION_DAYS = 7;
 
-function createSessionToken(): string {
+/** New format: `expiresAt|userId|nonce|signature` */
+function createSessionToken(userId: string): string {
+  const expiresAt = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000;
+  const nonce = randomBytes(16).toString("hex");
+  const payload = `${expiresAt}|${userId}|${nonce}`;
+  const signature = createHmac("sha256", SESSION_SECRET).update(payload).digest("hex");
+  return `${payload}|${signature}`;
+}
+
+/** Legacy format (backward compat): `expiresAt|nonce|signature` */
+function createLegacySessionToken(): string {
   const expiresAt = Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000;
   const nonce = randomBytes(16).toString("hex");
   const payload = `${expiresAt}|${nonce}`;
-  const signature = createHmac("sha256", SESSION_SECRET)
-    .update(payload)
-    .digest("hex");
+  const signature = createHmac("sha256", SESSION_SECRET).update(payload).digest("hex");
   return `${payload}|${signature}`;
+}
+
+function setCookieAndReturn(token: string): NextResponse {
+  const response = NextResponse.json({ success: true });
+  response.cookies.set("session_token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * SESSION_DAYS,
+    path: "/",
+  });
+  return response;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { password } = await request.json();
+    const body = await request.json();
+    const { email, password } = body as { email?: string; password?: string };
 
     if (!password) {
-      return NextResponse.json(
-        { error: "Password is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Password is required" }, { status: 400 });
     }
 
+    // ── DB user look-up (email + bcrypt) ──────────────────────────────────────
+    if (email) {
+      const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
+      if (user) {
+        const valid = await bcrypt.compare(password, user.password);
+        if (!valid) {
+          return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+        }
+        return setCookieAndReturn(createSessionToken(user.id));
+      }
+    }
+
+    // ── Fallback: legacy single-password mode (APP_PASSWORD env var) ──────────
     let passwordMatch = false;
     try {
       const a = Buffer.from(password);
       const b = Buffer.from(APP_PASSWORD);
-      passwordMatch =
-        a.length === b.length && timingSafeEqual(a, b);
+      passwordMatch = a.length === b.length && timingSafeEqual(a, b);
     } catch {
       passwordMatch = false;
     }
 
     if (!passwordMatch) {
-      return NextResponse.json(
-        { error: "Invalid password" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
 
-    const token = createSessionToken();
-
-    const response = NextResponse.json({ success: true });
-
-    response.cookies.set("session_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * SESSION_DAYS,
-      path: "/",
-    });
-
-    return response;
+    return setCookieAndReturn(createLegacySessionToken());
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json({ error: "Login failed" }, { status: 500 });
