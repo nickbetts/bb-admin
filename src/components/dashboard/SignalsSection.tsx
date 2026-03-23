@@ -463,16 +463,15 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
 
       setSignals(allSignals);
 
-      // Fire-and-forget: fetch AI-generated recommendations for all computed signals
-      const computedForAI = allSignals.filter(s => s.source === "computed");
-      if (computedForAI.length) {
+      // Fire-and-forget: fetch AI-generated recommendations for ALL signals
+      if (allSignals.length) {
         fetch("/api/ai/summary", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             sectionType: "alert_recommendations",
             campaignPlatform: "mixed",
-            alerts: computedForAI.map(s => ({
+            alerts: allSignals.map(s => ({
               severity: s.severity,
               level: s.level ?? "",
               label: `[${s.platform}] ${s.label ?? s.metric}`,
@@ -487,17 +486,12 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
           .then(json => {
             if (!json?.recommendations?.length) return;
             setSignals(prev => {
-              const updated = prev.map(s => ({ ...s }));
-              let idx = 0;
-              for (const s of updated) {
-                if (s.source === "computed") {
-                  if (json.recommendations[idx]) {
-                    s.recommendation = json.recommendations[idx];
-                    s.aiRec = true;
-                  }
-                  idx++;
+              const updated = prev.map((s, i) => {
+                if (json.recommendations[i]) {
+                  return { ...s, recommendation: json.recommendations[i], aiRec: true };
                 }
-              }
+                return { ...s };
+              });
               return updated;
             });
           })
