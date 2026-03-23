@@ -54,7 +54,15 @@ export async function POST(request: NextRequest) {
         if (!valid) {
           return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
         }
-        return setCookieAndReturn(createSessionToken(user.id));
+        const token = createSessionToken(user.id);
+        const response = setCookieAndReturn(token);
+        if (user.mustChangePassword) {
+          return NextResponse.json(
+            { success: true, mustChangePassword: true },
+            { headers: response.headers }
+          );
+        }
+        return response;
       }
     }
 

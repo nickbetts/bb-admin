@@ -9,6 +9,7 @@ export interface SessionUser {
   email: string;
   name: string;
   role: string;
+  mustChangePassword: boolean;
 }
 
 // Used as fallback for legacy (3-part) session tokens
@@ -17,6 +18,7 @@ const LEGACY_ADMIN_USER: SessionUser = {
   email: "admin@i3media.co.uk",
   name: "i3media Admin",
   role: "admin",
+  mustChangePassword: false,
 };
 
 type Session = { user: SessionUser };
@@ -78,7 +80,7 @@ export async function getSession(): Promise<Session | null> {
     try {
       const user = await prisma.user.findUnique({
         where: { id: result.userId },
-        select: { id: true, email: true, name: true, role: true },
+        select: { id: true, email: true, name: true, role: true, mustChangePassword: true },
       });
       if (!user) return null;
       return { user: { ...user, name: user.name ?? user.email } };

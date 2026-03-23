@@ -17,7 +17,7 @@ export async function GET() {
   }
 
   const users = await prisma.user.findMany({
-    select: { id: true, email: true, name: true, role: true, createdAt: true },
+    select: { id: true, email: true, name: true, role: true, mustChangePassword: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   });
 
@@ -56,8 +56,9 @@ export async function POST(request: NextRequest) {
       name: name.trim(),
       password: hash,
       role: role === "admin" ? "admin" : "user",
+      mustChangePassword: true,
     },
-    select: { id: true, email: true, name: true, role: true, createdAt: true },
+    select: { id: true, email: true, name: true, role: true, mustChangePassword: true, createdAt: true },
   });
 
   return NextResponse.json(user, { status: 201 });

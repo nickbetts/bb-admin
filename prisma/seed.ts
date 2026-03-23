@@ -24,6 +24,22 @@ async function main() {
 
   console.log("✅ Created admin user:", admin.email);
 
+  // Primary admin account
+  const nickHashedPassword = await bcrypt.hash("Guneti250!", 12);
+  const nick = await prisma.user.upsert({
+    where: { email: "nick@i3media.net" },
+    update: { password: nickHashedPassword, role: "admin", mustChangePassword: false },
+    create: {
+      email: "nick@i3media.net",
+      name: "Nick Betts",
+      password: nickHashedPassword,
+      role: "admin",
+      mustChangePassword: false,
+    },
+  });
+
+  console.log("✅ Created/updated admin user:", nick.email);
+
   // Create sample clients
   const client1 = await prisma.client.upsert({
     where: { slug: "demo-client" },

@@ -8,6 +8,7 @@ interface AdminUser {
   email: string;
   name: string;
   role: string;
+  mustChangePassword: boolean;
   createdAt: string;
 }
 
@@ -329,6 +330,11 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
                       {user.name}
                       {user.id === currentUserId && (
                         <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 6 }}>(you)</span>
+                      )}
+                      {user.mustChangePassword && (
+                        <span style={{ fontSize: 10, fontWeight: 600, marginLeft: 8, padding: "2px 7px", borderRadius: 9999, background: "rgb(234 179 8 / 0.15)", color: "#a16207" }}>
+                          must change password
+                        </span>
                       )}
                     </td>
                     <td style={{ padding: "14px 20px", fontSize: 13, color: "var(--text-2)" }}>

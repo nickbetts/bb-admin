@@ -26,15 +26,18 @@ export async function PATCH(
     password?: string;
   };
 
-  const data: Record<string, string> = {};
+  const data: Record<string, string | boolean> = {};
   if (body.name) data.name = body.name.trim();
   if (body.role === "admin" || body.role === "user") data.role = body.role;
-  if (body.password) data.password = await bcrypt.hash(body.password, 12);
+  if (body.password) {
+    data.password = await bcrypt.hash(body.password, 12);
+    data.mustChangePassword = true;
+  }
 
   const user = await prisma.user.update({
     where: { id },
     data,
-    select: { id: true, email: true, name: true, role: true, createdAt: true },
+    select: { id: true, email: true, name: true, role: true, mustChangePassword: true, createdAt: true },
   });
 
   return NextResponse.json(user);

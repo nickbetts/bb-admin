@@ -11,6 +11,9 @@ export default async function DashboardLayout({
   if (!session) {
     redirect("/login");
   }
+  if (session.user.mustChangePassword) {
+    redirect("/change-password");
+  }
 
   return (
     <div className="app-shell">

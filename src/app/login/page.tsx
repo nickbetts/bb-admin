@@ -25,7 +25,12 @@ export default function LoginPage() {
       });
 
       if (res.ok) {
-        router.push("/dashboard");
+        const data = await res.json();
+        if (data.mustChangePassword) {
+          router.push("/change-password");
+        } else {
+          router.push("/dashboard");
+        }
       } else {
         const data = await res.json();
         setError(data.error ?? "Login failed");
