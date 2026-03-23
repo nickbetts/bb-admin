@@ -92,6 +92,16 @@ interface GoogleAdsData {
   searchTerms: GoogleAdsSearchTerm[];
   landingPages: GoogleAdsLandingPage[];
   avgQualityScore: number | null;
+  audienceCriteria?: Array<{
+    campaignId: string;
+    campaignName: string;
+    adGroupId: string;
+    adGroupName: string;
+    criterionType: string;
+    displayName: string;
+    negative: boolean;
+    bidModifier: number | null;
+  }>;
 }
 
 interface Props {
@@ -100,6 +110,7 @@ interface Props {
   clientName?: string;
   startDate: string;
   endDate: string;
+  crossPlatformContext?: string;
 }
 
 function micros(v: number) {
@@ -131,7 +142,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
 
 type GAdsAlert = { severity: "high" | "medium"; label: string; level: string; detail: string; recommendation: string };
 
-export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate }: Props) {
+export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext }: Props) {
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
   const [prevOverview, setPrevOverview] = useState<GoogleAdsOverview | null>(null);
@@ -173,6 +184,39 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       if (c.searchImpressionShare != null && c.searchImpressionShare < 0.30 && c.impressions > 100 && (c.channelType === "SEARCH" || !c.channelType)) {
         const pct = Math.round(c.searchImpressionShare * 100);
         alerts.push({ severity: pct < 15 ? "high" : "medium", level: "Campaign", label: c.name, detail: `Only ${pct}% search impression share — significant room to capture more traffic`, recommendation: "Increase budget or consolidate campaigns to improve Quality Scores. Prioritise highest-converting search terms to maximise impression share." });
+      }
+
+      // ── Audience signals ────────────────────────────────────────────────
+      const criteria = data?.audienceCriteria ?? [];
+      const campCriteria = criteria.filter((cr) => cr.campaignId === c.id);
+
+      const hasRemarketing = campCriteria.some(
+        (cr) => cr.criterionType === "USER_LIST" && !cr.negative
+      );
+      if (!hasRemarketing && (c.channelType === "SEARCH" || c.channelType === "SHOPPING" || !c.channelType)) {
+        alerts.push({
+          severity: "medium",
+          level: "Campaign",
+          label: c.name,
+          detail: "No remarketing or customer match lists applied to this campaign",
+          recommendation: "Add RLSA (Remarketing Lists for Search Ads) or Customer Match audiences. Even in observation mode, bid modifiers for warm audiences typically improve conversion rates and ROAS.",
+        });
+      }
+
+      const audienceCriteria = campCriteria.filter(
+        (cr) => (cr.criterionType === "AUDIENCE" || cr.criterionType === "USER_INTEREST") && !cr.negative
+      );
+      if (
+        audienceCriteria.length > 0 &&
+        audienceCriteria.every((cr) => cr.bidModifier === null || cr.bidModifier === 1.0)
+      ) {
+        alerts.push({
+          severity: "medium",
+          level: "Campaign",
+          label: c.name,
+          detail: "All audiences are in observation mode with no bid adjustments",
+          recommendation: "Review audience performance and apply positive bid modifiers (+20–50%) to segments with strong conversion rates, or switch high-performing audiences to Targeting mode.",
+        });
       }
     }
     return alerts;
@@ -776,6 +820,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           landingPages={data.landingPages?.length ? data.landingPages : undefined}
           clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+          crossPlatformContext={crossPlatformContext}
         />
       )}
 
@@ -813,6 +858,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           clientId={clientId}
           clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+          crossPlatformContext={crossPlatformContext}
         />
       )}
 

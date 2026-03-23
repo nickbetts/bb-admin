@@ -1076,3 +1076,107 @@ export async function getMetaAdCreatives(
   // Sort by spend descending and limit to 50
   return results.sort((a, b) => b.spend - a.spend).slice(0, 50);
 }
+
+// ── Audience / targeting data ──────────────────────────────────────────────
+
+export interface MetaAdsAdSetAudience {
+  adSetId: string;
+  adSetName: string;
+  campaignId: string;
+  status: string;
+  ageMin: number | null;
+  ageMax: number | null;
+  /** 1 = male, 2 = female; empty array means all genders */
+  genders: number[];
+  /** Comma-joined list of targeted countries/cities/regions */
+  geoSummary: string;
+  interests: string[];
+  behaviors: string[];
+  customAudiences: Array<{ id: string; name: string; subtype?: string }>;
+  excludedAudiences: Array<{ id: string; name: string }>;
+  hasDetailedTargeting: boolean;
+}
+
+export async function getMetaAdSetAudiences(
+  accountId: string,
+  accessToken: string
+): Promise<MetaAdsAdSetAudience[]> {
+  const token = getAccessToken(accessToken);
+
+  type TargetingSpec = {
+    age_min?: number;
+    age_max?: number;
+    genders?: number[];
+    geo_locations?: {
+      countries?: string[];
+      cities?: Array<{ name: string }>;
+      regions?: Array<{ name: string }>;
+    };
+    interests?: Array<{ id: string; name: string }>;
+    behaviors?: Array<{ id: string; name: string }>;
+    custom_audiences?: Array<{ id: string; name: string; subtype?: string }>;
+    excluded_custom_audiences?: Array<{ id: string; name: string }>;
+    flexible_spec?: Array<{
+      interests?: Array<{ id: string; name: string }>;
+      behaviors?: Array<{ id: string; name: string }>;
+    }>;
+  };
+
+  type AdSetNode = {
+    id: string;
+    name: string;
+    campaign_id: string;
+    status?: string;
+    targeting?: TargetingSpec;
+  };
+
+  const params = new URLSearchParams({
+    access_token: token,
+    fields: "id,name,campaign_id,status,targeting",
+    limit: "50",
+  });
+
+  try {
+    const resp = await fetch(
+      `${META_API_BASE}/act_${accountId}/adsets?${params}`,
+      { cache: "no-store" }
+    );
+    if (!resp.ok) return [];
+    const data = await resp.json();
+
+    return ((data.data ?? []) as AdSetNode[]).map((s) => {
+      const t = s.targeting ?? {};
+      const geo = t.geo_locations ?? {};
+      const geoParts = [
+        ...(geo.countries ?? []),
+        ...(geo.cities ?? []).map((c) => c.name),
+        ...(geo.regions ?? []).map((r) => r.name),
+      ];
+      const interests = [
+        ...(t.interests ?? []).map((i) => i.name),
+        ...(t.flexible_spec ?? []).flatMap((f) => (f.interests ?? []).map((i) => i.name)),
+      ];
+      const behaviors = [
+        ...(t.behaviors ?? []).map((b) => b.name),
+        ...(t.flexible_spec ?? []).flatMap((f) => (f.behaviors ?? []).map((b) => b.name)),
+      ];
+      return {
+        adSetId: s.id,
+        adSetName: s.name,
+        campaignId: s.campaign_id,
+        status: s.status ?? "ACTIVE",
+        ageMin: t.age_min ?? null,
+        ageMax: t.age_max ?? null,
+        genders: t.genders ?? [],
+        geoSummary: geoParts.join(", "),
+        interests,
+        behaviors,
+        customAudiences: t.custom_audiences ?? [],
+        excludedAudiences: t.excluded_custom_audiences ?? [],
+        hasDetailedTargeting: interests.length > 0 || behaviors.length > 0,
+      };
+    });
+  } catch {
+    return [];
+  }
+}

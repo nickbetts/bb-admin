@@ -25,6 +25,7 @@ interface MetaSectionProps {
   clientName?: string;
   startDate: string;
   endDate: string;
+  crossPlatformContext?: string;
 }
 
 interface MetaOverview {
@@ -187,15 +188,32 @@ function buildCreativeSummary(creatives: MetaAdCreative[], adSetsData: MetaAdSet
   return "\n" + lines.join("\n");
 }
 
+interface AdSetAudience {
+  adSetId: string;
+  adSetName: string;
+  campaignId: string;
+  status: string;
+  ageMin: number | null;
+  ageMax: number | null;
+  genders: number[];
+  geoSummary: string;
+  interests: string[];
+  behaviors: string[];
+  customAudiences: Array<{ id: string; name: string }>;
+  excludedAudiences: Array<{ id: string; name: string }>;
+  hasDetailedTargeting: boolean;
+}
+
 type MetaAlert = { severity: "high" | "medium"; label: string; level: "Campaign" | "Ad Set" | "Creative"; detail: string; recommendation: string };
 
-export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSectionProps) {
+export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext }: MetaSectionProps) {
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<MetaOverview | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [prevCampaigns, setPrevCampaigns] = useState<Campaign[]>([]);
   const [campaignsEnriched, setCampaignsEnriched] = useState<CampaignEnriched[]>([]);
   const [adSets, setAdSets] = useState<MetaAdSet[]>([]);
+  const [adSetAudiences, setAdSetAudiences] = useState<AdSetAudience[]>([]);
   const [creatives, setCreatives] = useState<MetaAdCreative[]>([]);
   const [daily, setDaily] = useState<DailyData[]>([]);
   const [landingPages, setLandingPages] = useState<MetaLandingPage[]>([]);
@@ -241,8 +259,65 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
       if (cr.conversions === 0 && cr.spend > 30 && cr.impressions > 1000)
         alerts.push({ severity: "medium", level: "Creative", label: cr.adName, detail: `£${cr.spend.toFixed(0)} spend, 0 conversions`, recommendation: "Pause and test new variations — try different formats (video vs. image), headlines, or calls-to-action." });
     }
+    // ── Audience / targeting signals ──────────────────────────────────────
+    for (const aud of adSetAudiences) {
+      if (aud.status !== "ACTIVE") continue;
+      // Find enriched ad set to check spend
+      const matched = adSets.find((s) => s.id === aud.adSetId);
+      const spend = matched?.spend ?? 0;
+      // Find the parent campaign objective
+      const parentCampaign = campaignsEnriched.find((c) => c.id === aud.campaignId);
+      const objective = parentCampaign?.objective?.toUpperCase() ?? "";
+      const isConversionCampaign = objective.includes("CONVER") || objective.includes("PURCHASE") || objective.includes("SALES");
+
+      if (
+        isConversionCampaign &&
+        aud.customAudiences.length === 0 &&
+        spend > 20
+      ) {
+        alerts.push({
+          severity: "medium",
+          level: "Ad Set",
+          label: aud.adSetName,
+          detail: "Conversion campaign running with no custom audience — missing retargeting",
+          recommendation: "Add a website custom audience or customer list to retarget warm prospects. Retargeting typically delivers significantly higher ROAS than cold audience conversion campaigns.",
+        });
+      }
+
+      if (
+        aud.customAudiences.length > 0 &&
+        aud.excludedAudiences.length === 0 &&
+        spend > 50 &&
+        (matched?.conversions ?? 0) > 0
+      ) {
+        alerts.push({
+          severity: "medium",
+          level: "Ad Set",
+          label: aud.adSetName,
+          detail: "No excluded custom audiences — existing converters may be served ads repeatedly",
+          recommendation: "Exclude recent purchasers and high-value customer lists to avoid wasting budget on audiences unlikely to convert again and to improve overall ROAS.",
+        });
+      }
+
+      const isFullyBroad =
+        (aud.ageMin === null || aud.ageMin <= 18) &&
+        (aud.ageMax === null || aud.ageMax >= 65) &&
+        aud.genders.length === 0 &&
+        !aud.hasDetailedTargeting &&
+        aud.customAudiences.length === 0;
+
+      if (isFullyBroad && spend > 30) {
+        alerts.push({
+          severity: "medium",
+          level: "Ad Set",
+          label: aud.adSetName,
+          detail: "Fully broad targeting (18–65+, all genders, no interests, no audiences)",
+          recommendation: "Consider adding interest, behaviour, or custom audience layers. Fully broad targeting can work with Advantage+ but may waste budget without directional signals.",
+        });
+      }
+    }
     return alerts;
-  }, [campaignsEnriched, adSets, creatives]);
+  }, [campaignsEnriched, adSets, creatives, adSetAudiences]);
 
   // Fetch AI-generated recommendations for each alert
   useEffect(() => {
@@ -278,7 +353,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
         const prev = getPreviousPeriod(startDate, endDate);
         const prevBase = `/api/meta?clientId=${encodeURIComponent(clientId)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
 
-        const [ovRes, campRes, enrichedRes, dailyRes, lpRes, prevOvRes, prevCampRes, adSetsRes, creativesRes] = await Promise.all([
+        const [ovRes, campRes, enrichedRes, dailyRes, lpRes, prevOvRes, prevCampRes, adSetsRes, creativesRes, audiencesRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=campaigns`, { signal: controller.signal }),
           fetch(`${base}&type=campaigns-enriched`, { signal: controller.signal }),
@@ -288,6 +363,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           fetch(`${prevBase}&type=campaigns`, { signal: controller.signal }),
           fetch(`${base}&type=adsets`, { signal: controller.signal }),
           fetch(`${base}&type=creatives`, { signal: controller.signal }),
+          fetch(`${base}&type=audiences`, { signal: controller.signal }),
         ]);
 
         if (!ovRes.ok) {
@@ -295,7 +371,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           throw new Error(err.error ?? "Failed to fetch Meta Ads data");
         }
 
-        const [ov, camp, enriched, d, lp, prevOv, prevCamp, adSetsData, creativesData] = await Promise.all([
+        const [ov, camp, enriched, d, lp, prevOv, prevCamp, adSetsData, creativesData, audiencesData] = await Promise.all([
           ovRes.json(),
           campRes.json(),
           enrichedRes.ok ? enrichedRes.json() : Promise.resolve([]),
@@ -305,6 +381,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           prevCampRes.ok ? prevCampRes.json() : Promise.resolve([]),
           adSetsRes.ok ? adSetsRes.json() : Promise.resolve([]),
           creativesRes.ok ? creativesRes.json() : Promise.resolve([]),
+          audiencesRes.ok ? audiencesRes.json() : Promise.resolve([]),
         ]);
 
         setOverview(ov);
@@ -316,6 +393,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
         setPrevCampaigns(Array.isArray(prevCamp) ? prevCamp : []);
         setAdSets(Array.isArray(adSetsData) ? adSetsData : []);
         setCreatives(Array.isArray(creativesData) ? creativesData : []);
+        setAdSetAudiences(Array.isArray(audiencesData) ? audiencesData : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load Meta Ads data");
@@ -899,6 +977,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
           extraContext={creatives.length ? buildCreativeSummary(creatives, adSets) : undefined}
+          crossPlatformContext={crossPlatformContext}
         />
       )}
 
@@ -928,6 +1007,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
           extraContext={creatives.length ? buildCreativeSummary(creatives, adSets) : undefined}
+          crossPlatformContext={crossPlatformContext}
         />
       )}
 

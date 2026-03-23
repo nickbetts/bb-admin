@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -17,7 +17,7 @@ import {
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
 import { formatNumber, formatDateDisplay, pctChange } from "@/lib/utils";
-import { MousePointer, Eye, TrendingUp, Search } from "lucide-react";
+import { MousePointer, Eye, TrendingUp, Search, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 
@@ -25,6 +25,8 @@ interface SearchConsoleSectionProps {
   siteUrl: string;
   startDate: string;
   endDate: string;
+  googleAdsCustomerId?: string | null;
+  crossPlatformContext?: string;
 }
 
 interface GSCOverview {
@@ -79,6 +81,8 @@ const DEVICE_COLORS: Record<string, string> = {
 };
 const DEVICE_FALLBACK_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b"];
 
+type GSCAlert = { severity: "high" | "medium"; label: string; detail: string; recommendation: string };
+
 function positionBadgeClass(pos: number): string {
   if (pos <= 3) return "badge badge-green";
   if (pos <= 10) return "badge badge-blue";
@@ -90,6 +94,8 @@ export function SearchConsoleSection({
   siteUrl,
   startDate,
   endDate,
+  googleAdsCustomerId,
+  crossPlatformContext,
 }: SearchConsoleSectionProps) {
   const [overview, setOverview] = useState<GSCOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GSCOverview | null>(null);
@@ -102,6 +108,8 @@ export function SearchConsoleSection({
   const [countries, setCountries] = useState<GSCCountry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
+  const [alertAiLoading, setAlertAiLoading] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -145,6 +153,110 @@ export function SearchConsoleSection({
     return () => controller.abort();
   }, [siteUrl, startDate, endDate]);
 
+  // Compute anomaly alerts from GSC data
+  const gscAlerts = useMemo<GSCAlert[]>(() => {
+    if (!overview || !prevOverview) return [];
+    const alerts: GSCAlert[] = [];
+    const hasPrev = prevOverview.clicks > 0 || prevOverview.impressions > 0;
+    if (!hasPrev) return [];
+
+    const clicksPct = pctChange(overview.clicks, prevOverview.clicks) ?? 0;
+    if (clicksPct <= -25)
+      alerts.push({ severity: "high", label: "Organic Clicks", detail: `Clicks dropped ${Math.abs(clicksPct).toFixed(0)}% vs previous period (${formatNumber(prevOverview.clicks)} \u2192 ${formatNumber(overview.clicks)})`, recommendation: "Investigate ranking changes and check Google Search Console for manual actions or indexing issues. Review top queries for position drops." });
+    else if (clicksPct <= -15)
+      alerts.push({ severity: "medium", label: "Organic Clicks", detail: `Clicks declined ${Math.abs(clicksPct).toFixed(0)}% vs previous period`, recommendation: "Compare top queries period-over-period and identify keywords losing positions. Check for SERP feature changes or new competitors." });
+
+    const impressionsPct = pctChange(overview.impressions, prevOverview.impressions) ?? 0;
+    if (impressionsPct <= -30)
+      alerts.push({ severity: "high", label: "Impressions", detail: `Impressions dropped ${Math.abs(impressionsPct).toFixed(0)}% (${formatNumber(prevOverview.impressions)} \u2192 ${formatNumber(overview.impressions)})`, recommendation: "Check for indexing issues, sitemap errors, or algorithmic penalties. Review Google Search Console coverage report for deindexed pages." });
+    else if (impressionsPct <= -15)
+      alerts.push({ severity: "medium", label: "Impressions", detail: `Impressions declined ${Math.abs(impressionsPct).toFixed(0)}% vs previous period`, recommendation: "Review keyword rankings for position drops and check for seasonal patterns. Audit recently modified or removed pages." });
+
+    const ctrDiff = (overview.ctr - prevOverview.ctr) * 100;
+    if (ctrDiff <= -2)
+      alerts.push({ severity: "medium", label: "CTR", detail: `CTR dropped ${Math.abs(ctrDiff).toFixed(1)}pp (${(prevOverview.ctr * 100).toFixed(2)}% \u2192 ${(overview.ctr * 100).toFixed(2)}%)`, recommendation: "Review meta titles and descriptions for top pages. Check if SERP features (featured snippets, PAA) are reducing click-through on key queries." });
+
+    const positionDiff = overview.position - prevOverview.position;
+    if (positionDiff >= 3)
+      alerts.push({ severity: "high", label: "Avg Position", detail: `Average position worsened by ${positionDiff.toFixed(1)} places (${prevOverview.position.toFixed(1)} \u2192 ${overview.position.toFixed(1)})`, recommendation: "Identify the pages and queries losing rankings. Prioritise content refresh, internal linking improvements, and backlink acquisition for affected pages." });
+    else if (positionDiff >= 1.5)
+      alerts.push({ severity: "medium", label: "Avg Position", detail: `Average position slipped by ${positionDiff.toFixed(1)} places`, recommendation: "Review top-ranked pages for content freshness and relevance. Check competitor activity for new content targeting the same queries." });
+
+    // Check for top queries losing significant clicks
+    const topQueriesDropped = queries.slice(0, 20).filter(q => {
+      const prev = prevQueriesMap.get(q.query);
+      if (!prev || prev.clicks < 5) return false;
+      return (pctChange(q.clicks, prev.clicks) ?? 0) <= -40;
+    });
+    if (topQueriesDropped.length >= 3)
+      alerts.push({ severity: "high", label: "Query Drops", detail: `${topQueriesDropped.length} top queries lost 40%+ clicks vs previous period`, recommendation: "Review the declining queries for ranking and SERP changes. Refresh content, improve internal linking, and check for cannibalisation." });
+    else if (topQueriesDropped.length >= 1)
+      alerts.push({ severity: "medium", label: "Query Drops", detail: `${topQueriesDropped.length} top quer${topQueriesDropped.length === 1 ? "y" : "ies"} lost 40%+ clicks`, recommendation: "Investigate the declining queries \u2014 check if pages dropped in rankings or if SERP layout changes reduced click-through." });
+
+    return alerts;
+  }, [overview, prevOverview, queries, prevQueriesMap]);
+
+  // Fetch AI-generated recommendations for each alert
+  useEffect(() => {
+    setAlertAiRecs([]);
+    if (!gscAlerts.length) return;
+    setAlertAiLoading(true);
+    fetch("/api/ai/summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sectionType: "alert_recommendations",
+        campaignPlatform: "gsc",
+        alerts: gscAlerts.map(a => ({ severity: a.severity, label: a.label, detail: a.detail })),
+        dateRange: `${startDate} to ${endDate}`,
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(json => { if (json?.recommendations?.length) setAlertAiRecs(json.recommendations); })
+      .catch(() => {})
+      .finally(() => setAlertAiLoading(false));
+  }, [gscAlerts, startDate, endDate]);
+
+  // ─── Keyword Cannibalisation (Organic vs Paid overlap) ────────────────────
+  interface CannibalPair {
+    query: string;
+    organicPosition: number;
+    organicClicks: number;
+    organicImpressions: number;
+    paidClicks: number;
+    paidSpend: number;
+    paidConversions: number;
+    risk: "high" | "medium" | "low";
+  }
+  interface OverlapSummary {
+    total: number;
+    highRisk: number;
+    mediumRisk: number;
+    lowRisk: number;
+    potentialSavings: number;
+  }
+
+  const [keywordOverlaps, setKeywordOverlaps] = useState<CannibalPair[]>([]);
+  const [overlapSummary, setOverlapSummary] = useState<OverlapSummary | null>(null);
+  const [overlapLoading, setOverlapLoading] = useState(false);
+  const [overlapExpanded, setOverlapExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!googleAdsCustomerId || !siteUrl) return;
+    setOverlapLoading(true);
+    const params = new URLSearchParams({ siteUrl, customerId: googleAdsCustomerId, startDate, endDate });
+    fetch(`/api/cross/keyword-overlap?${params}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(json => {
+        if (json) {
+          setKeywordOverlaps(json.overlaps ?? []);
+          setOverlapSummary(json.summary ?? null);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setOverlapLoading(false));
+  }, [googleAdsCustomerId, siteUrl, startDate, endDate]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -180,6 +292,44 @@ export function SearchConsoleSection({
 
   return (
     <div className="space-y-6">
+      {/* Performance alerts */}
+      {gscAlerts.length > 0 && (() => {
+        const highAlerts = gscAlerts.filter(a => a.severity === "high");
+        const medAlerts  = gscAlerts.filter(a => a.severity === "medium");
+        return (
+          <div style={{ borderRadius: 12, border: `1px solid ${highAlerts.length ? "#fca5a5" : "#fcd34d"}`, background: highAlerts.length ? "#fff1f2" : "#fffbeb", overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", borderBottom: `1px solid ${highAlerts.length ? "#fca5a5" : "#fcd34d"}` }}>
+              <AlertTriangle className="h-4 w-4 shrink-0" style={{ color: highAlerts.length ? "#dc2626" : "#d97706" }} />
+              <p style={{ fontSize: 13, fontWeight: 600, color: highAlerts.length ? "#991b1b" : "#92400e", margin: 0 }}>
+                {highAlerts.length} high-priority \u00b7 {medAlerts.length} medium-priority issue{gscAlerts.length !== 1 ? "s" : ""} detected
+              </p>
+              {alertAiLoading && (
+                <span style={{ marginLeft: "auto", fontSize: 10, color: "#0f766e", fontStyle: "italic", flexShrink: 0 }}>Generating AI recommendations\u2026</span>
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {gscAlerts.map((a, i) => (
+                <div key={i} style={{ padding: "8px 16px", borderBottom: i < gscAlerts.length - 1 ? `1px solid ${highAlerts.length ? "#fee2e2" : "#fef3c7"}` : "none" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff", background: a.severity === "high" ? "#dc2626" : "#d97706", borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>
+                      {a.severity}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: "#1e293b" }}>{a.label}</span>
+                    <span style={{ fontSize: 12, color: "#64748b" }}>{a.detail}</span>
+                  </div>
+                  <p style={{ fontSize: 11, color: "#0f766e", margin: "3px 0 0 0", lineHeight: 1.5 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", background: alertAiRecs[i] ? "#d1fae5" : "#f0fdf4", color: alertAiRecs[i] ? "#065f46" : "#0f766e", borderRadius: 4, padding: "1px 5px", marginRight: 6 }}>
+                      {alertAiRecs[i] ? "AI" : "Action"}
+                    </span>
+                    {alertAiRecs[i] ?? a.recommendation}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Overview metrics */}
       <div className="grid-4">
         <MetricCard
@@ -506,6 +656,101 @@ export function SearchConsoleSection({
         </div>
       )}
 
+      {/* ─── Organic vs Paid Keyword Overlap ──────────────────────────────────── */}
+      {googleAdsCustomerId && (overlapLoading || keywordOverlaps.length > 0) && (
+        <SectionCard
+          title="Organic vs Paid Keyword Overlap"
+          subtitle={overlapSummary ? `${overlapSummary.total} overlapping keyword${overlapSummary.total !== 1 ? "s" : ""} detected` : "Analysing overlap…"}
+        >
+          {overlapLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <LoadingSpinner size="sm" />
+            </div>
+          ) : (
+            <div>
+              {/* Summary badges */}
+              {overlapSummary && (
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                  {overlapSummary.highRisk > 0 && (
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#fff", background: "#dc2626", borderRadius: 6, padding: "3px 10px" }}>
+                      {overlapSummary.highRisk} High Risk
+                    </span>
+                  )}
+                  {overlapSummary.mediumRisk > 0 && (
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#fff", background: "#d97706", borderRadius: 6, padding: "3px 10px" }}>
+                      {overlapSummary.mediumRisk} Medium
+                    </span>
+                  )}
+                  {overlapSummary.lowRisk > 0 && (
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#fff", background: "#6b7280", borderRadius: 6, padding: "3px 10px" }}>
+                      {overlapSummary.lowRisk} Low
+                    </span>
+                  )}
+                  {overlapSummary.potentialSavings > 0 && (
+                    <span style={{ fontSize: 11, fontWeight: 500, color: "#065f46", background: "#d1fae5", borderRadius: 6, padding: "3px 10px" }}>
+                      Potential savings: ${overlapSummary.potentialSavings.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Info box */}
+              <div style={{ fontSize: 11, color: "#64748b", background: "#f8fafc", borderRadius: 8, padding: "8px 12px", marginBottom: 12, lineHeight: 1.5 }}>
+                Keywords where you rank organically <strong>and</strong> pay for ads. High-risk = position ≤3 with active spend (you&apos;re paying for clicks you might get organically).
+              </div>
+
+              {/* Collapsible table */}
+              <button
+                onClick={() => setOverlapExpanded(!overlapExpanded)}
+                style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 500, color: "#6366f1", background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: overlapExpanded ? 8 : 0 }}
+              >
+                {overlapExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                {overlapExpanded ? "Hide details" : `Show ${keywordOverlaps.length} keyword${keywordOverlaps.length !== 1 ? "s" : ""}`}
+              </button>
+
+              {overlapExpanded && (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>Keyword</th>
+                        <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Org. Pos</th>
+                        <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Org. Clicks</th>
+                        <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Paid Clicks</th>
+                        <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Paid Spend</th>
+                        <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Paid Conv.</th>
+                        <th style={{ padding: "8px 12px", textAlign: "center", fontWeight: 600, color: "var(--text-2)" }}>Risk</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {keywordOverlaps.map((kw, i) => (
+                        <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}>
+                          <td style={{ padding: "8px 12px", color: "var(--text-1)", fontWeight: 500 }}>{kw.query}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>{kw.organicPosition.toFixed(1)}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(kw.organicClicks)}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(kw.paidClicks)}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>${kw.paidSpend.toFixed(2)}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>{kw.paidConversions.toFixed(0)}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "center" }}>
+                            <span style={{
+                              fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff",
+                              background: kw.risk === "high" ? "#dc2626" : kw.risk === "medium" ? "#d97706" : "#6b7280",
+                              borderRadius: 4, padding: "1px 6px"
+                            }}>
+                              {kw.risk}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </SectionCard>
+      )}
+
       {/* Super Summary */}
       {!loading && !error && overview && (
         <SuperSummary
@@ -534,6 +779,7 @@ export function SearchConsoleSection({
               return `  \u2022 "${q.query}" \u2014 pos ${q.position.toFixed(1)}${posStr}, ${q.clicks} clicks, ${(q.ctr * 100).toFixed(1)}% CTR`;
             }),
           ].join("\n") : undefined}
+          crossPlatformContext={crossPlatformContext}
         />
       )}
 
@@ -565,6 +811,7 @@ export function SearchConsoleSection({
               return `  • "${q.query}" — pos ${q.position.toFixed(1)}${posStr}, ${q.clicks} clicks, ${(q.ctr * 100).toFixed(1)}% CTR`;
             }),
           ].join("\n") : undefined}
+          crossPlatformContext={crossPlatformContext}
         />
       )}
     </div>

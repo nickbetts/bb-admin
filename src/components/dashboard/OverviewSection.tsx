@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { LoadingSpinner } from "@/components/ui/index";
 import {
@@ -10,6 +10,7 @@ import {
   formatDateDisplay,
   getPreviousPeriod,
   pctChange,
+  computeHealthScore,
 } from "@/lib/utils";
 import {
   DollarSign,
@@ -118,6 +119,8 @@ interface CampaignHighlight {
   roas: number;
 }
 
+type CrossAlert = { severity: "high" | "medium"; platform: string; label: string; detail: string };
+
 interface OverviewNarrativeResult {
   narrative: string;
   channelScores: Record<string, number>;
@@ -211,6 +214,9 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
   const [aiResult, setAiResult] = useState<OverviewNarrativeResult | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiExpanded, setAiExpanded] = useState(true);
+
+  // Keyword overlap state
+  const [keywordOverlapSummary, setKeywordOverlapSummary] = useState<{ total: number; highRisk: number; potentialSavings: number } | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -430,6 +436,156 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
   const hasPaidData = !!(data.googleads || data.meta);
   const hasPrevPaid = !!(prevData.googleads || prevData.meta);
 
+  // ─── Cross-platform alerts ────────────────────────────────────────────
+
+  const crossAlerts = useMemo<CrossAlert[]>(() => {
+    const alerts: CrossAlert[] = [];
+
+    // Google Ads alerts
+    if (data.googleads && prevData.googleads) {
+      const g = data.googleads, pg = prevData.googleads;
+      const spendPct = (pctChange(micros(g.costMicros), micros(pg.costMicros)) ?? 0);
+      const convPct = (pctChange(g.conversions, pg.conversions) ?? 0);
+      if (convPct <= -25)
+        alerts.push({ severity: "high", platform: "Google Ads", label: "Conversions", detail: `Conversions dropped ${Math.abs(convPct).toFixed(0)}% vs previous period` });
+      else if (convPct <= -15)
+        alerts.push({ severity: "medium", platform: "Google Ads", label: "Conversions", detail: `Conversions declined ${Math.abs(convPct).toFixed(0)}%` });
+      if (spendPct >= 20 && convPct <= 0)
+        alerts.push({ severity: "medium", platform: "Google Ads", label: "Spend Efficiency", detail: `Spend up ${spendPct.toFixed(0)}% but conversions flat or down` });
+      const roas = g.costMicros > 0 ? g.conversionsValue / micros(g.costMicros) : 0;
+      if (roas > 0 && roas < 1.0 && micros(g.costMicros) > 100)
+        alerts.push({ severity: "high", platform: "Google Ads", label: "ROAS", detail: `Blended ROAS ${roas.toFixed(2)}× — spend exceeding revenue` });
+    }
+
+    // Meta alerts
+    if (data.meta && prevData.meta) {
+      const m = data.meta, pm = prevData.meta;
+      const spendPct = (pctChange(m.totalSpend, pm.totalSpend) ?? 0);
+      const convPct = (pctChange(m.totalConversions, pm.totalConversions) ?? 0);
+      if (convPct <= -25)
+        alerts.push({ severity: "high", platform: "Meta", label: "Conversions", detail: `Conversions dropped ${Math.abs(convPct).toFixed(0)}% vs previous period` });
+      else if (convPct <= -15)
+        alerts.push({ severity: "medium", platform: "Meta", label: "Conversions", detail: `Conversions declined ${Math.abs(convPct).toFixed(0)}%` });
+      if (spendPct >= 20 && convPct <= 0)
+        alerts.push({ severity: "medium", platform: "Meta", label: "Spend Efficiency", detail: `Spend up ${spendPct.toFixed(0)}% but conversions flat or down` });
+      if (m.avgRoas > 0 && m.avgRoas < 1.0 && m.totalSpend > 100)
+        alerts.push({ severity: "high", platform: "Meta", label: "ROAS", detail: `ROAS ${m.avgRoas.toFixed(2)}× — spend exceeding revenue` });
+    }
+
+    // GA4 alerts
+    if (data.ga4 && prevData.ga4) {
+      const g = data.ga4, pg = prevData.ga4;
+      const sessPct = (pctChange(g.sessions, pg.sessions) ?? 0);
+      if (sessPct <= -20)
+        alerts.push({ severity: "high", platform: "GA4", label: "Sessions", detail: `Sessions dropped ${Math.abs(sessPct).toFixed(0)}% vs previous period` });
+      else if (sessPct <= -10)
+        alerts.push({ severity: "medium", platform: "GA4", label: "Sessions", detail: `Sessions declined ${Math.abs(sessPct).toFixed(0)}%` });
+      const bounceDiff = g.bounceRate - pg.bounceRate;
+      if (bounceDiff >= 15)
+        alerts.push({ severity: "high", platform: "GA4", label: "Bounce Rate", detail: `Bounce rate up ${bounceDiff.toFixed(1)}pp` });
+      const convPctGA4 = (pctChange(g.conversionRate, pg.conversionRate) ?? 0);
+      if (convPctGA4 <= -25)
+        alerts.push({ severity: "high", platform: "GA4", label: "Conversion Rate", detail: `Conversion rate dropped ${Math.abs(convPctGA4).toFixed(0)}%` });
+    }
+
+    // Search Console alerts
+    if (data.searchconsole && prevData.searchconsole) {
+      const s = data.searchconsole, ps = prevData.searchconsole;
+      const clicksPct = (pctChange(s.clicks, ps.clicks) ?? 0);
+      if (clicksPct <= -25)
+        alerts.push({ severity: "high", platform: "Search Console", label: "Organic Clicks", detail: `Clicks dropped ${Math.abs(clicksPct).toFixed(0)}%` });
+      else if (clicksPct <= -15)
+        alerts.push({ severity: "medium", platform: "Search Console", label: "Organic Clicks", detail: `Clicks declined ${Math.abs(clicksPct).toFixed(0)}%` });
+      const posDiff = s.position - ps.position;
+      if (posDiff >= 3)
+        alerts.push({ severity: "high", platform: "Search Console", label: "Avg Position", detail: `Position worsened by ${posDiff.toFixed(1)} places` });
+      else if (posDiff >= 1.5)
+        alerts.push({ severity: "medium", platform: "Search Console", label: "Avg Position", detail: `Position slipped ${posDiff.toFixed(1)} places` });
+    }
+
+    // Sort: high first, then medium
+    return alerts.sort((a, b) => (a.severity === "high" ? 0 : 1) - (b.severity === "high" ? 0 : 1));
+  }, [data, prevData]);
+
+  // ─── Funnel stages ────────────────────────────────────────────────────
+
+  const funnelStages = useMemo(() => {
+    const paidImpressions = (data.googleads?.impressions ?? 0) + (data.meta?.totalImpressions ?? 0);
+    const organicImpressions = data.searchconsole?.impressions ?? 0;
+    const totalReach = paidImpressions + organicImpressions;
+
+    const paidClicks = totalPaidClicks;
+    const organicClicks = data.searchconsole?.clicks ?? 0;
+    const totalClicks = paidClicks + organicClicks;
+
+    const sessions = data.ga4?.sessions ?? 0;
+    const conversions = totalConversions + (data.ga4 && data.ga4.conversionRate > 0 && totalConversions === 0 ? Math.round(sessions * data.ga4.conversionRate / 100) : 0);
+    const revenue = totalRevenue;
+
+    // Previous
+    const prevPaidImpressions = (prevData.googleads?.impressions ?? 0) + (prevData.meta?.totalImpressions ?? 0);
+    const prevOrganicImpressions = prevData.searchconsole?.impressions ?? 0;
+    const prevTotalReach = prevPaidImpressions + prevOrganicImpressions;
+
+    const prevOrganicClicks = prevData.searchconsole?.clicks ?? 0;
+    const prevTotalClicks = prevTotalPaidClicks + prevOrganicClicks;
+
+    const prevSessions = prevData.ga4?.sessions ?? 0;
+    const prevConversions = prevTotalConversions + (prevData.ga4 && prevData.ga4.conversionRate > 0 && prevTotalConversions === 0 ? Math.round(prevSessions * prevData.ga4.conversionRate / 100) : 0);
+
+    return [
+      { label: "Reach", value: totalReach, prev: prevTotalReach, fmt: "count" as const },
+      { label: "Clicks", value: totalClicks, prev: prevTotalClicks, fmt: "count" as const, rate: totalReach > 0 ? (totalClicks / totalReach) * 100 : 0 },
+      { label: "Sessions", value: sessions, prev: prevSessions, fmt: "count" as const, rate: totalClicks > 0 ? (sessions / totalClicks) * 100 : 0 },
+      { label: "Conversions", value: conversions, prev: prevConversions, fmt: "count" as const, rate: sessions > 0 ? (conversions / sessions) * 100 : 0 },
+      { label: "Revenue", value: revenue, prev: prevTotalRevenue, fmt: "currency" as const, rate: conversions > 0 ? revenue / conversions : 0 },
+    ];
+  }, [data, prevData, totalPaidClicks, prevTotalPaidClicks, totalConversions, prevTotalConversions, totalRevenue, prevTotalRevenue]);
+
+  // ─── Channel efficiency rows ──────────────────────────────────────────
+
+  const channelRows = useMemo(() => {
+    const rows: { platform: string; platformKey: string; investment: number; traffic: number; conversions: number; revenue: number; efficiency: number; prevEfficiency: number | null; healthScore: number }[] = [];
+
+    if (data.googleads) {
+      const g = data.googleads;
+      const spend = micros(g.costMicros);
+      const roas = spend > 0 ? g.conversionsValue / spend : 0;
+      const prevG = prevData.googleads;
+      const prevRoas = prevG && micros(prevG.costMicros) > 0 ? prevG.conversionsValue / micros(prevG.costMicros) : null;
+      const alerts = crossAlerts.filter(a => a.platform === "Google Ads");
+      rows.push({ platform: "Google Ads", platformKey: "googleads", investment: spend, traffic: g.clicks, conversions: g.conversions, revenue: g.conversionsValue, efficiency: roas, prevEfficiency: prevRoas, healthScore: computeHealthScore(alerts) });
+    }
+
+    if (data.meta) {
+      const m = data.meta;
+      const roas = m.avgRoas;
+      const prevM = prevData.meta;
+      const prevRoas = prevM ? prevM.avgRoas : null;
+      const alerts = crossAlerts.filter(a => a.platform === "Meta");
+      rows.push({ platform: "Meta Ads", platformKey: "meta", investment: m.totalSpend, traffic: m.totalClicks, conversions: m.totalConversions, revenue: m.totalConversionValue, efficiency: roas, prevEfficiency: prevRoas, healthScore: computeHealthScore(alerts) });
+    }
+
+    if (data.ga4) {
+      const g = data.ga4;
+      const alerts = crossAlerts.filter(a => a.platform === "GA4");
+      rows.push({ platform: "Web Analytics", platformKey: "ga4", investment: 0, traffic: g.sessions, conversions: Math.round(g.sessions * g.conversionRate / 100), revenue: 0, efficiency: g.conversionRate, prevEfficiency: prevData.ga4 ? prevData.ga4.conversionRate : null, healthScore: computeHealthScore(alerts) });
+    }
+
+    if (data.seo) {
+      const s = data.seo;
+      rows.push({ platform: "SEO (Organic)", platformKey: "seo", investment: s.organicCost, traffic: s.organicTraffic, conversions: 0, revenue: 0, efficiency: 0, prevEfficiency: null, healthScore: 100 });
+    }
+
+    if (data.searchconsole) {
+      const sc = data.searchconsole;
+      const alerts = crossAlerts.filter(a => a.platform === "Search Console");
+      rows.push({ platform: "Search Console", platformKey: "searchconsole", investment: 0, traffic: sc.clicks, conversions: 0, revenue: 0, efficiency: sc.ctr * 100, prevEfficiency: prevData.searchconsole ? prevData.searchconsole.ctr * 100 : null, healthScore: computeHealthScore(alerts) });
+    }
+
+    return rows;
+  }, [data, prevData, crossAlerts]);
+
   // ─── AI generation ─────────────────────────────────────────────────────────
 
   async function generateNarrative() {
@@ -482,6 +638,16 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
             blendedCpa: prevBlendedCpa, totalPaidClicks: prevTotalPaidClicks,
           } : undefined,
           campaignHighlights: campaigns.length ? campaigns : undefined,
+          computedAlerts: crossAlerts.length ? crossAlerts : undefined,
+          channelMetrics: channelRows.length ? channelRows.map(r => ({
+            platform: r.platform,
+            spend: r.investment,
+            conversions: r.conversions,
+            revenue: r.revenue,
+            efficiency: r.efficiency,
+            healthScore: r.healthScore,
+            trend: r.prevEfficiency != null ? (pctChange(r.efficiency, r.prevEfficiency) ?? 0) : 0,
+          })) : undefined,
         }),
       });
       const json = await res.json();
@@ -497,6 +663,18 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
       setAiLoading(false);
     }
   }
+
+  // Keyword overlap fetch (organic vs paid)
+  useEffect(() => {
+    if (!client.searchConsoleSiteUrl || !client.googleAdsCustomerId) return;
+    const params = new URLSearchParams({ siteUrl: client.searchConsoleSiteUrl, customerId: client.googleAdsCustomerId, startDate, endDate });
+    fetch(`/api/cross/keyword-overlap?${params}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(json => {
+        if (json?.summary) setKeywordOverlapSummary({ total: json.summary.total, highRisk: json.summary.highRisk, potentialSavings: json.summary.potentialSavings });
+      })
+      .catch(() => {});
+  }, [client.searchConsoleSiteUrl, client.googleAdsCustomerId, startDate, endDate]);
 
   // ─── Active platforms list ─────────────────────────────────────────────────
 
@@ -572,6 +750,152 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
           </span>
         ))}
       </div>
+
+      {/* ── Full Funnel Board ───────────────────────────────────────────── */}
+      {funnelStages.some(s => s.value > 0) && (
+        <>
+          <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", marginBottom: -16 }}>
+            Full-Funnel Performance
+          </p>
+          <div style={{ display: "flex", gap: 0, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)" }}>
+            {funnelStages.map((stage, i) => {
+              const change = stage.prev > 0 ? pctChange(stage.value, stage.prev) : undefined;
+              const maxVal = Math.max(...funnelStages.map(s => s.value));
+              const barHeight = maxVal > 0 ? Math.max(20, (stage.value / maxVal) * 100) : 20;
+              return (
+                <div key={stage.label} style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 12px 12px", background: i % 2 === 0 ? "var(--card-bg)" : "var(--bg-subtle)", borderRight: i < funnelStages.length - 1 ? "1px solid var(--border)" : "none", position: "relative" }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", marginBottom: 8, textAlign: "center" }}>
+                    {stage.label}
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-end" }}>
+                    <div style={{ width: "70%", height: barHeight, borderRadius: 6, background: `linear-gradient(180deg, #6366f1 0%, #8b5cf6 100%)`, opacity: 0.15 + (barHeight / 100) * 0.85, transition: "height 0.4s ease" }} />
+                    <p style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>
+                      {stage.fmt === "currency" ? formatCurrency(stage.value) : formatNumber(stage.value)}
+                    </p>
+                    {change != null && (
+                      <span style={{ fontSize: 10, fontWeight: 600, color: change >= 0 ? "#10b981" : "#ef4444" }}>
+                        {change >= 0 ? "+" : ""}{change.toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
+                  {/* Conversion rate connector */}
+                  {i > 0 && stage.rate != null && (
+                    <div style={{ position: "absolute", top: 6, left: -1, transform: "translateX(-50%)", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6, padding: "1px 6px", fontSize: 9, fontWeight: 700, color: "#15803d", whiteSpace: "nowrap", zIndex: 2 }}>
+                      {stage.label === "Revenue" ? formatCurrency(stage.rate) : `${stage.rate.toFixed(1)}%`}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* ── Cross-Platform Alerts ─────────────────────────────────────────── */}
+      {crossAlerts.length > 0 && (() => {
+        const highAlerts = crossAlerts.filter(a => a.severity === "high");
+        const medAlerts = crossAlerts.filter(a => a.severity === "medium");
+        const platformColors: Record<string, string> = { "Google Ads": "#4285f4", "Meta": "#1877f2", "GA4": "#f59e0b", "Search Console": "#6366f1", "SEO": "#10b981" };
+        return (
+          <div style={{ borderRadius: 12, border: `1px solid ${highAlerts.length ? "#fca5a5" : "#fcd34d"}`, background: highAlerts.length ? "#fff1f2" : "#fffbeb", overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", borderBottom: `1px solid ${highAlerts.length ? "#fca5a5" : "#fcd34d"}` }}>
+              <AlertTriangle className="h-4 w-4 shrink-0" style={{ color: highAlerts.length ? "#dc2626" : "#d97706" }} />
+              <p style={{ fontSize: 13, fontWeight: 600, color: highAlerts.length ? "#991b1b" : "#92400e", margin: 0 }}>
+                {highAlerts.length} high-priority · {medAlerts.length} medium-priority cross-platform issue{crossAlerts.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {crossAlerts.map((a, i) => (
+                <div key={i} style={{ padding: "7px 16px", borderBottom: i < crossAlerts.length - 1 ? `1px solid ${highAlerts.length ? "#fee2e2" : "#fef3c7"}` : "none" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff", background: a.severity === "high" ? "#dc2626" : "#d97706", borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>
+                      {a.severity}
+                    </span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: platformColors[a.platform] ?? "#6366f1", background: `${platformColors[a.platform] ?? "#6366f1"}15`, borderRadius: 4, padding: "1px 6px", flexShrink: 0 }}>
+                      {a.platform}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: "#1e293b" }}>{a.label}</span>
+                    <span style={{ fontSize: 12, color: "#64748b" }}>{a.detail}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Channel Efficiency Matrix ─────────────────────────────────────── */}
+      {channelRows.length > 0 && (
+        <>
+          <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", marginBottom: -16 }}>
+            Channel Efficiency Matrix
+          </p>
+          <div style={{ borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: "var(--bg-subtle)", borderBottom: "1px solid var(--border)" }}>
+                  {["Platform", "Investment", "Traffic", "Conversions", "Revenue", "Efficiency", "vs Prev", "Health"].map(h => (
+                    <th key={h} style={{ padding: "10px 12px", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", textAlign: h === "Platform" ? "left" : "right" }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {channelRows.map((row) => {
+                  const effChange = row.prevEfficiency != null ? pctChange(row.efficiency, row.prevEfficiency) : undefined;
+                  const config = CHANNEL_CONFIG[row.platformKey];
+                  return (
+                    <tr key={row.platformKey} style={{ borderBottom: "1px solid var(--border)" }}>
+                      <td style={{ padding: "10px 12px", fontWeight: 600, color: "var(--text)" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: 4, background: config?.gradient ?? "#6366f1", flexShrink: 0 }} />
+                          {row.platform}
+                        </div>
+                      </td>
+                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>{row.investment > 0 ? formatCurrency(row.investment) : "—"}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(row.traffic)}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>{row.conversions > 0 ? formatNumber(row.conversions) : "—"}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>{row.revenue > 0 ? formatCurrency(row.revenue) : "—"}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 600, color: "var(--text)" }}>
+                        {row.platformKey === "googleads" || row.platformKey === "meta" ? `${row.efficiency.toFixed(2)}×` : row.platformKey === "ga4" || row.platformKey === "searchconsole" ? `${row.efficiency.toFixed(1)}%` : row.investment > 0 ? formatCurrency(row.investment) : "—"}
+                      </td>
+                      <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                        {effChange != null ? (
+                          <span style={{ fontSize: 11, fontWeight: 600, color: effChange >= 0 ? "#10b981" : "#ef4444" }}>
+                            {effChange >= 0 ? "+" : ""}{effChange.toFixed(1)}%
+                          </span>
+                        ) : <span style={{ color: "var(--text-3)" }}>—</span>}
+                      </td>
+                      <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: scoreColor(row.healthScore), background: `${scoreColor(row.healthScore)}15`, borderRadius: 4, padding: "2px 6px" }}>
+                          {row.healthScore}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* ── Keyword Cannibalisation Summary ───────────────────────────────── */}
+      {keywordOverlapSummary && keywordOverlapSummary.total > 0 && (
+        <div style={{ borderRadius: 12, border: "1px solid var(--border)", padding: "14px 18px", background: keywordOverlapSummary.highRisk > 0 ? "#fff7ed" : "#f0fdf4" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <Search className="h-4 w-4" style={{ color: keywordOverlapSummary.highRisk > 0 ? "#d97706" : "#10b981" }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Organic vs Paid Keyword Overlap</span>
+          </div>
+          <p style={{ fontSize: 12, color: "var(--text-2)", margin: 0, lineHeight: 1.6 }}>
+            <strong>{keywordOverlapSummary.total}</strong> keyword{keywordOverlapSummary.total !== 1 ? "s" : ""} appear in both organic results and paid campaigns.
+            {keywordOverlapSummary.highRisk > 0 && <> <strong style={{ color: "#dc2626" }}>{keywordOverlapSummary.highRisk}</strong> are high-risk (ranking top 3 with active spend).</>}
+            {keywordOverlapSummary.potentialSavings > 0 && <> Potential savings: <strong style={{ color: "#065f46" }}>${keywordOverlapSummary.potentialSavings.toFixed(2)}</strong>.</>}
+            {" "}See the Search Console section for full details.
+          </p>
+        </div>
+      )}
 
       {/* ── Paid Performance Metrics ──────────────────────────────────────── */}
       {hasPaidData && (

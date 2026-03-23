@@ -26,6 +26,8 @@ export interface GA4TrafficSource {
   medium: string;
   sessions: number;
   users: number;
+  bounceRate: number;
+  conversions: number;
 }
 
 export interface GA4DailyData {
@@ -156,7 +158,7 @@ export async function getGA4TrafficSources(
   const body = {
     dateRanges: [{ startDate, endDate }],
     dimensions: [{ name: "sessionSource" }, { name: "sessionMedium" }],
-    metrics: [{ name: "sessions" }, { name: "activeUsers" }],
+    metrics: [{ name: "sessions" }, { name: "activeUsers" }, { name: "bounceRate" }, { name: "conversions" }],
     orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
     limit: 10,
   };
@@ -181,6 +183,8 @@ export async function getGA4TrafficSources(
       medium: row.dimensionValues[1]?.value ?? "",
       sessions: parseInt(row.metricValues[0]?.value ?? "0"),
       users: parseInt(row.metricValues[1]?.value ?? "0"),
+      bounceRate: parseFloat(row.metricValues[2]?.value ?? "0"),
+      conversions: parseInt(row.metricValues[3]?.value ?? "0"),
     })
   );
 }

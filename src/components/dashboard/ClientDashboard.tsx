@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { SemrushSection } from "./SemrushSection";
 import { GA4Section } from "./GA4Section";
 import { MetaSection } from "./MetaSection";
@@ -8,7 +8,8 @@ import { GoogleAdsSection } from "./GoogleAdsSection";
 import { SearchConsoleSection } from "./SearchConsoleSection";
 import { OverviewSection } from "./OverviewSection";
 import { SignalsSection } from "./SignalsSection";
-import { getDateRange } from "@/lib/utils";
+import { getDateRange, buildCrossContextString } from "@/lib/utils";
+import type { PlatformSummary } from "@/lib/utils";
 import { Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +64,94 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
     if (period === "custom") return { startDate: customStart, endDate: customEnd };
     return getDateRange(period);
   }, [period, customStart, customEnd]);
+
+  // ─── Cross-platform context (lightweight overview fetch for AI enrichment) ──
+  const [crossCtx, setCrossCtx] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const summaries: PlatformSummary[] = [];
+    const fetches: Promise<void>[] = [];
+
+    if (client.googleAdsCustomerId) {
+      fetches.push(
+        fetch(`/api/google-ads?customerId=${encodeURIComponent(client.googleAdsCustomerId)}&startDate=${startDate}&endDate=${endDate}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(json => {
+            if (json?.overview) {
+              const o = json.overview;
+              summaries.push({ platform: "Google Ads", metrics: { spend: `£${(o.costMicros / 1e6).toFixed(0)}`, clicks: o.clicks, conversions: o.conversions, ROAS: o.conversionsValue > 0 && o.costMicros > 0 ? `${(o.conversionsValue / (o.costMicros / 1e6)).toFixed(2)}×` : "N/A" } });
+            }
+          })
+          .catch(() => {})
+      );
+    }
+    if (client.metaAccountId) {
+      fetches.push(
+        fetch(`/api/meta?accountId=${encodeURIComponent(client.metaAccountId)}&startDate=${startDate}&endDate=${endDate}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(json => {
+            if (json?.overview) {
+              const o = json.overview;
+              summaries.push({ platform: "Meta Ads", metrics: { spend: `£${o.totalSpend?.toFixed(0) ?? 0}`, clicks: o.totalClicks ?? 0, conversions: o.totalConversions ?? 0, ROAS: `${(o.avgRoas ?? 0).toFixed(2)}×` } });
+            }
+          })
+          .catch(() => {})
+      );
+    }
+    if (client.ga4PropertyId) {
+      fetches.push(
+        fetch(`/api/ga4?propertyId=${encodeURIComponent(client.ga4PropertyId)}&startDate=${startDate}&endDate=${endDate}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(json => {
+            if (json) {
+              summaries.push({ platform: "GA4", metrics: { sessions: json.sessions ?? 0, users: json.users ?? 0, bounceRate: `${(json.bounceRate ?? 0).toFixed(1)}%`, conversionRate: `${(json.conversionRate ?? 0).toFixed(2)}%` } });
+            }
+          })
+          .catch(() => {})
+      );
+    }
+    if (client.searchConsoleSiteUrl) {
+      fetches.push(
+        fetch(`/api/search-console?siteUrl=${encodeURIComponent(client.searchConsoleSiteUrl)}&startDate=${startDate}&endDate=${endDate}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(json => {
+            if (json) {
+              summaries.push({ platform: "Search Console", metrics: { clicks: json.clicks ?? 0, impressions: json.impressions ?? 0, CTR: `${((json.ctr ?? 0) * 100).toFixed(2)}%`, avgPosition: (json.position ?? 0).toFixed(1) } });
+            }
+          })
+          .catch(() => {})
+      );
+    }
+    if (client.semrushDomain) {
+      fetches.push(
+        fetch(`/api/semrush?domain=${encodeURIComponent(client.semrushDomain)}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(json => {
+            if (json?.overview) {
+              const o = json.overview;
+              summaries.push({ platform: "SEMrush", metrics: { organicTraffic: o.organicTraffic ?? 0, organicKeywords: o.organicKeywords ?? 0, organicCost: `£${(o.organicCost ?? 0).toFixed(0)}` } });
+            }
+          })
+          .catch(() => {})
+      );
+    }
+
+    Promise.all(fetches).then(() => {
+      if (summaries.length < 2) { setCrossCtx({}); return; }
+      const ctx: Record<string, string> = {};
+      for (const s of summaries) {
+        ctx[s.platform] = buildCrossContextString(summaries, s.platform);
+      }
+      // Also build one keyed by section type identifiers used in the components
+      const keyMap: Record<string, string> = { "Google Ads": "googleads", "Meta Ads": "meta", "GA4": "ga4", "Search Console": "searchconsole", "SEMrush": "semrush" };
+      const result: Record<string, string> = {};
+      for (const [platName, ctx_str] of Object.entries(ctx)) {
+        const key = keyMap[platName];
+        if (key) result[key] = ctx_str;
+      }
+      setCrossCtx(result);
+    });
+  }, [client, startDate, endDate]);
 
   const tabs: { id: Tab; label: string; available: boolean }[] = [
     { id: "signals", label: "Signals", available: userRole === "admin" },
@@ -138,7 +227,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
       )}
 
       {activeTab === "seo" && client.semrushDomain ? (
-        <SemrushSection domain={client.semrushDomain} startDate={startDate} endDate={endDate} />
+        <SemrushSection domain={client.semrushDomain} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.semrush} />
       ) : activeTab === "seo" ? (
         <NotConfigured
           name="SEO / SemRush"
@@ -148,7 +237,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
       ) : null}
 
       {activeTab === "web" && client.ga4PropertyId ? (
-        <GA4Section propertyId={client.ga4PropertyId} startDate={startDate} endDate={endDate} />
+        <GA4Section propertyId={client.ga4PropertyId} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.ga4} />
       ) : activeTab === "web" ? (
         <NotConfigured
           name="Web Analytics (GA4)"
@@ -158,7 +247,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
       ) : null}
 
       {activeTab === "paid" && client.metaAccountId ? (
-        <MetaSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} />
+        <MetaSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.meta} />
       ) : activeTab === "paid" ? (
         <NotConfigured
           name="Paid Social (Meta)"
@@ -168,7 +257,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
       ) : null}
 
       {activeTab === "googleads" && client.googleAdsCustomerId ? (
-        <GoogleAdsSection customerId={client.googleAdsCustomerId} clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} />
+        <GoogleAdsSection customerId={client.googleAdsCustomerId} clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.googleads} />
       ) : activeTab === "googleads" ? (
         <NotConfigured
           name="Paid Search (Google Ads)"
@@ -178,7 +267,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
       ) : null}
 
       {activeTab === "searchconsole" && client.searchConsoleSiteUrl ? (
-        <SearchConsoleSection siteUrl={client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} />
+        <SearchConsoleSection siteUrl={client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} googleAdsCustomerId={client.googleAdsCustomerId} crossPlatformContext={crossCtx.searchconsole} />
       ) : activeTab === "searchconsole" ? (
         <NotConfigured
           name="Search Console"

@@ -39,6 +39,8 @@ interface AiInsightsPanelProps {
   onInsightsGenerated?: (text: string) => void;
   /** Additional structured context to include in the AI prompt (e.g. keyword list, query breakdown) */
   extraContext?: string;
+  /** Cross-platform context from other channels for enriched analysis */
+  crossPlatformContext?: string;
 }
 
 const severityStyles: Record<string, { bg: string; border: string; badge: string; text: string; dot: string }> = {
@@ -108,6 +110,7 @@ export function AiInsightsPanel({
   compact = false,
   onInsightsGenerated,
   extraContext,
+  crossPlatformContext,
 }: AiInsightsPanelProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AiInsightsResult | null>(null);
@@ -146,6 +149,7 @@ export function AiInsightsPanel({
           landingPages,
           historicalSnapshots: historicalSnapshots.length >= 2 ? historicalSnapshots : undefined,
           extraContext: extraContext ?? undefined,
+          crossPlatformContext: crossPlatformContext ?? undefined,
         }),
       });
 

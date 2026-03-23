@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -19,7 +19,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard } from "@/components/ui/index";
 import { LoadingSpinner } from "@/components/ui/index";
 import { formatNumber, formatCurrency, formatDateDisplay, pctChange } from "@/lib/utils";
-import { TrendingUp, Search, ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { TrendingUp, Search, ArrowUp, ArrowDown, Minus, AlertTriangle } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 
@@ -27,6 +27,7 @@ interface SemrushSectionProps {
   domain: string;
   startDate: string;
   endDate: string;
+  crossPlatformContext?: string;
 }
 
 interface Overview {
@@ -75,6 +76,8 @@ interface Backlink {
   authority: number;
 }
 
+type SemrushAlert = { severity: "high" | "medium"; label: string; detail: string; recommendation: string };
+
 const POSITION_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
 
 function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "currency"): string | undefined {
@@ -84,7 +87,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function SemrushSection({ domain, startDate, endDate }: SemrushSectionProps) {
+export function SemrushSection({ domain, startDate, endDate, crossPlatformContext }: SemrushSectionProps) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -93,6 +96,8 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
   const [backlinks, setBacklinks] = useState<Backlink[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
+  const [alertAiLoading, setAlertAiLoading] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -141,6 +146,67 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
     return () => controller.abort();
   }, [domain, startDate, endDate]);
 
+  // Compute anomaly alerts from SEMrush data
+  const semrushAlerts = useMemo<SemrushAlert[]>(() => {
+    const alerts: SemrushAlert[] = [];
+    if (history.length < 2) return alerts;
+    const curr = history[history.length - 1];
+    const prev = history[history.length - 2];
+
+    const trafficPct = pctChange(curr.organicTraffic, prev.organicTraffic);
+    if (trafficPct <= -25)
+      alerts.push({ severity: "high", label: "Organic Traffic", detail: `Organic traffic dropped ${Math.abs(trafficPct).toFixed(0)}% month-over-month (${formatNumber(prev.organicTraffic)} \u2192 ${formatNumber(curr.organicTraffic)})`, recommendation: "Investigate for algorithm updates, lost backlinks, or deindexed pages. Review Search Console for coverage issues and check rankings for top pages." });
+    else if (trafficPct <= -10)
+      alerts.push({ severity: "medium", label: "Organic Traffic", detail: `Organic traffic declined ${Math.abs(trafficPct).toFixed(0)}% month-over-month`, recommendation: "Monitor for a continued trend. Review keyword rankings and top pages for position changes. Check for seasonal traffic patterns." });
+
+    const keywordPct = pctChange(curr.organicKeywords, prev.organicKeywords);
+    if (keywordPct <= -20)
+      alerts.push({ severity: "high", label: "Ranking Keywords", detail: `Ranking keywords dropped ${Math.abs(keywordPct).toFixed(0)}% (${formatNumber(prev.organicKeywords)} \u2192 ${formatNumber(curr.organicKeywords)})`, recommendation: "Check for site-wide issues \u2014 technical SEO problems, major content removal, or domain-level penalties. Audit indexation status." });
+    else if (keywordPct <= -10)
+      alerts.push({ severity: "medium", label: "Ranking Keywords", detail: `Ranking keywords declined ${Math.abs(keywordPct).toFixed(0)}% month-over-month`, recommendation: "Review recently dropped keywords and the pages they targeted. Check for content freshness issues or increased competitor activity." });
+
+    // Keywords losing page 1 positions
+    const losingPage1 = keywords.filter(k => k.position > 10 && k.previousPosition > 0 && k.previousPosition <= 10);
+    if (losingPage1.length >= 5)
+      alerts.push({ severity: "high", label: "Page 1 Losses", detail: `${losingPage1.length} keywords dropped off page 1 this period`, recommendation: "Prioritise content refresh and internal linking for these pages. Consider acquiring backlinks to restore authority for high-volume terms." });
+    else if (losingPage1.length >= 2)
+      alerts.push({ severity: "medium", label: "Page 1 Losses", detail: `${losingPage1.length} keyword${losingPage1.length === 1 ? "" : "s"} dropped off page 1`, recommendation: "Review the affected keywords and update content to match current search intent. Strengthen internal linking to these pages." });
+
+    // Competitors outpacing organic traffic
+    if (overview && competitors.length > 0) {
+      const outpacing = competitors.filter(c => c.organicTraffic > overview.organicTraffic * 1.5 && c.commonKeywords > 50);
+      if (outpacing.length >= 2)
+        alerts.push({ severity: "medium", label: "Competitor Gap", detail: `${outpacing.length} competitors have 50%+ more organic traffic with significant keyword overlap`, recommendation: "Conduct a gap analysis on the top competitors. Identify high-value keywords they rank for that you don\u2019t, and create targeted content to close the gap." });
+    }
+
+    // High organic cost but low traffic (wasted potential)
+    if (overview && overview.organicCost > 5000 && overview.organicTraffic < 1000)
+      alerts.push({ severity: "medium", label: "High Organic Value", detail: `Organic keyword portfolio valued at ${formatCurrency(overview.organicCost)} but only ${formatNumber(overview.organicTraffic)} monthly visits`, recommendation: "The keyword portfolio has high CPC value. Focus on improving rankings for high-CPC keywords already in positions 5\u201320 to capture more of this traffic value." });
+
+    return alerts;
+  }, [history, keywords, overview, competitors]);
+
+  // Fetch AI-generated recommendations for each alert
+  useEffect(() => {
+    setAlertAiRecs([]);
+    if (!semrushAlerts.length) return;
+    setAlertAiLoading(true);
+    fetch("/api/ai/summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sectionType: "alert_recommendations",
+        campaignPlatform: "semrush",
+        alerts: semrushAlerts.map(a => ({ severity: a.severity, label: a.label, detail: a.detail })),
+        dateRange: `${startDate} to ${endDate}`,
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(json => { if (json?.recommendations?.length) setAlertAiRecs(json.recommendations); })
+      .catch(() => {})
+      .finally(() => setAlertAiLoading(false));
+  }, [semrushAlerts, startDate, endDate]);
+
   return (
     <div className="space-y-8">
       {/* Section header */}
@@ -166,6 +232,44 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
         </div>
       ) : !overview ? null : (
         <>
+      {/* Performance alerts */}
+      {semrushAlerts.length > 0 && (() => {
+        const highAlerts = semrushAlerts.filter(a => a.severity === "high");
+        const medAlerts  = semrushAlerts.filter(a => a.severity === "medium");
+        return (
+          <div style={{ borderRadius: 12, border: `1px solid ${highAlerts.length ? "#fca5a5" : "#fcd34d"}`, background: highAlerts.length ? "#fff1f2" : "#fffbeb", overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", borderBottom: `1px solid ${highAlerts.length ? "#fca5a5" : "#fcd34d"}` }}>
+              <AlertTriangle className="h-4 w-4 shrink-0" style={{ color: highAlerts.length ? "#dc2626" : "#d97706" }} />
+              <p style={{ fontSize: 13, fontWeight: 600, color: highAlerts.length ? "#991b1b" : "#92400e", margin: 0 }}>
+                {highAlerts.length} high-priority \u00b7 {medAlerts.length} medium-priority issue{semrushAlerts.length !== 1 ? "s" : ""} detected
+              </p>
+              {alertAiLoading && (
+                <span style={{ marginLeft: "auto", fontSize: 10, color: "#0f766e", fontStyle: "italic", flexShrink: 0 }}>Generating AI recommendations\u2026</span>
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {semrushAlerts.map((a, i) => (
+                <div key={i} style={{ padding: "8px 16px", borderBottom: i < semrushAlerts.length - 1 ? `1px solid ${highAlerts.length ? "#fee2e2" : "#fef3c7"}` : "none" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff", background: a.severity === "high" ? "#dc2626" : "#d97706", borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>
+                      {a.severity}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: "#1e293b" }}>{a.label}</span>
+                    <span style={{ fontSize: 12, color: "#64748b" }}>{a.detail}</span>
+                  </div>
+                  <p style={{ fontSize: 11, color: "#0f766e", margin: "3px 0 0 0", lineHeight: 1.5 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", background: alertAiRecs[i] ? "#d1fae5" : "#f0fdf4", color: alertAiRecs[i] ? "#065f46" : "#0f766e", borderRadius: 4, padding: "1px 5px", marginRight: 6 }}>
+                      {alertAiRecs[i] ? "AI" : "Action"}
+                    </span>
+                    {alertAiRecs[i] ?? a.recommendation}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Overview metrics */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
         <MetricCard
@@ -597,6 +701,7 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
               return `  \u2022 "${kw.keyword}" \u2014 pos ${kw.position}${deltaStr}, vol ${kw.searchVolume.toLocaleString()}, ${kw.trafficPercent.toFixed(1)}% traffic`;
             }),
           ].join("\n") : undefined}
+          crossPlatformContext={crossPlatformContext}
         />
       )}
 
@@ -620,6 +725,7 @@ export function SemrushSection({ domain, startDate, endDate }: SemrushSectionPro
               return `  • "${kw.keyword}" — pos ${kw.position}${deltaStr}, vol ${kw.searchVolume.toLocaleString()}, ${kw.trafficPercent.toFixed(1)}% traffic`;
             }),
           ].join("\n") : undefined}
+          crossPlatformContext={crossPlatformContext}
         />
       )}
     </div>

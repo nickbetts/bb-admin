@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -17,7 +17,7 @@ import {
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
 import { formatNumber, formatCurrency, formatPercent, formatDuration, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
-import { Users, UserPlus, Eye, MousePointer, Clock, TrendingUp } from "lucide-react";
+import { Users, UserPlus, Eye, MousePointer, Clock, TrendingUp, AlertTriangle } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 
@@ -25,6 +25,7 @@ interface GA4SectionProps {
   propertyId: string;
   startDate: string;
   endDate: string;
+  crossPlatformContext?: string;
 }
 
 interface GA4Overview {
@@ -51,6 +52,8 @@ interface TrafficSource {
   medium: string;
   sessions: number;
   users: number;
+  bounceRate: number;
+  conversions: number;
 }
 
 interface TopPage {
@@ -73,6 +76,8 @@ interface GA4Device {
   users: number;
 }
 
+type GA4Alert = { severity: "high" | "medium"; label: string; detail: string; recommendation: string };
+
 const SOURCE_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#84cc16"];
 const DEVICE_COLORS: Record<string, string> = {
   mobile: "#6366f1",
@@ -87,7 +92,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) {
+export function GA4Section({ propertyId, startDate, endDate, crossPlatformContext }: GA4SectionProps) {
   const [overview, setOverview] = useState<GA4Overview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GA4Overview | null>(null);
   const [daily, setDaily] = useState<DailyData[]>([]);
@@ -98,6 +103,89 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
   const [deviceSplit, setDeviceSplit] = useState<GA4Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
+  const [alertAiLoading, setAlertAiLoading] = useState(false);
+
+  // Compute anomaly alerts from GA4 data
+  const gaAlerts = useMemo<GA4Alert[]>(() => {
+    if (!overview || !prevOverview) return [];
+    const alerts: GA4Alert[] = [];
+    const sessPct = pctChange(overview.sessions, prevOverview.sessions);
+    if (sessPct <= -20)
+      alerts.push({ severity: "high", label: "Sessions", detail: `Sessions dropped ${Math.abs(sessPct).toFixed(0)}% vs previous period (${formatNumber(prevOverview.sessions)} → ${formatNumber(overview.sessions)})`, recommendation: "Investigate traffic source changes — check for lost referrals, campaign pauses, or SEO ranking drops. Review GA4 acquisition report for the source of the decline." });
+    else if (sessPct <= -10)
+      alerts.push({ severity: "medium", label: "Sessions", detail: `Sessions declined ${Math.abs(sessPct).toFixed(0)}% vs previous period`, recommendation: "Monitor closely and compare traffic sources period-over-period. Check for seasonal patterns or recent campaign changes." });
+
+    const bounceDiff = overview.bounceRate - prevOverview.bounceRate;
+    if (bounceDiff >= 20)
+      alerts.push({ severity: "high", label: "Bounce Rate", detail: `Bounce rate up ${bounceDiff.toFixed(1)}pp (${prevOverview.bounceRate.toFixed(1)}% → ${overview.bounceRate.toFixed(1)}%)`, recommendation: "Check for landing page issues, slow load times, or broken experiences. Review the top landing pages for UX problems or content relevance." });
+    else if (bounceDiff >= 10)
+      alerts.push({ severity: "medium", label: "Bounce Rate", detail: `Bounce rate increased ${bounceDiff.toFixed(1)}pp vs previous period`, recommendation: "Audit top landing pages for relevance and load speed. Ensure ad/search intent matches page content." });
+
+    const convPct = pctChange(overview.conversionRate, prevOverview.conversionRate);
+    if (convPct <= -30)
+      alerts.push({ severity: "high", label: "Conversion Rate", detail: `Conversion rate dropped ${Math.abs(convPct).toFixed(0)}% (${prevOverview.conversionRate.toFixed(2)}% → ${overview.conversionRate.toFixed(2)}%)`, recommendation: "Review conversion tracking setup, check for broken forms or checkout flows, and audit landing page changes made during this period." });
+    else if (convPct <= -15)
+      alerts.push({ severity: "medium", label: "Conversion Rate", detail: `Conversion rate declined ${Math.abs(convPct).toFixed(0)}% vs previous period`, recommendation: "Compare conversion paths and check if traffic quality has shifted. Review any landing page or offering changes." });
+
+    const engPct = pctChange(overview.engagementRate, prevOverview.engagementRate);
+    if (engPct <= -25)
+      alerts.push({ severity: "medium", label: "Engagement Rate", detail: `Engagement rate dropped ${Math.abs(engPct).toFixed(0)}% (${prevOverview.engagementRate.toFixed(1)}% → ${overview.engagementRate.toFixed(1)}%)`, recommendation: "Investigate content quality and audience relevance. Check if new traffic sources are bringing lower-quality visitors." });
+
+    const newUserPct = pctChange(overview.newUsers, prevOverview.newUsers);
+    if (newUserPct <= -30)
+      alerts.push({ severity: "medium", label: "New Users", detail: `New users dropped ${Math.abs(newUserPct).toFixed(0)}% (${formatNumber(prevOverview.newUsers)} → ${formatNumber(overview.newUsers)})`, recommendation: "Check acquisition channels — review SEO rankings, ad campaigns, and referral traffic for declines in new visitor sources." });
+
+    const durPct = pctChange(overview.avgSessionDuration, prevOverview.avgSessionDuration);
+    if (durPct <= -30)
+      alerts.push({ severity: "medium", label: "Session Duration", detail: `Avg session duration dropped ${Math.abs(durPct).toFixed(0)}% vs previous period`, recommendation: "Review content engagement and page depth. Check if high-bounce traffic sources are diluting session quality." });
+
+    if (overview.sessions > 200 && overview.conversionRate === 0 && prevOverview.conversionRate > 0)
+      alerts.push({ severity: "medium", label: "Zero Conversions", detail: `${formatNumber(overview.sessions)} sessions with 0 conversions (previously ${prevOverview.conversionRate.toFixed(2)}%)`, recommendation: "Verify conversion tracking is firing correctly. Check GA4 event configuration, tag manager triggers, and key event definitions." });
+
+    // Paid session quality alerts
+    const paidSources = sources.filter(s => s.medium === "cpc" || s.medium === "ppc" || s.medium === "paid" || s.medium === "paidsocial");
+    const organicSources = sources.filter(s => s.medium === "organic");
+    if (paidSources.length > 0) {
+      const avgPaidBounce = paidSources.reduce((sum, s) => sum + s.bounceRate * s.sessions, 0) / Math.max(1, paidSources.reduce((sum, s) => sum + s.sessions, 0));
+      if (avgPaidBounce > 0.70)
+        alerts.push({ severity: "high", label: "Paid Traffic Quality", detail: `Paid traffic bounce rate is ${(avgPaidBounce * 100).toFixed(0)}% — over 70% of paid sessions leave immediately`, recommendation: "Review ad targeting, keyword match types, and landing page relevance. High bounce rates on paid traffic indicate wasted ad spend." });
+      else if (avgPaidBounce > 0.55)
+        alerts.push({ severity: "medium", label: "Paid Traffic Quality", detail: `Paid traffic bounce rate is ${(avgPaidBounce * 100).toFixed(0)}% — elevated vs typical benchmarks`, recommendation: "Audit ad copy and landing page alignment. Consider tightening audience targeting and adding negative keywords." });
+
+      const paidSessions = paidSources.reduce((sum, s) => sum + s.sessions, 0);
+      const paidConversions = paidSources.reduce((sum, s) => sum + s.conversions, 0);
+      const paidCVR = paidSessions > 0 ? paidConversions / paidSessions : 0;
+      const orgSessions = organicSources.reduce((sum, s) => sum + s.sessions, 0);
+      const orgConversions = organicSources.reduce((sum, s) => sum + s.conversions, 0);
+      const orgCVR = orgSessions > 0 ? orgConversions / orgSessions : 0;
+      if (orgCVR > 0 && paidCVR > 0 && orgCVR > paidCVR * 3)
+        alerts.push({ severity: "medium", label: "Paid vs Organic CVR", detail: `Organic CVR (${(orgCVR * 100).toFixed(1)}%) is ${(orgCVR / paidCVR).toFixed(1)}× higher than paid CVR (${(paidCVR * 100).toFixed(1)}%)`, recommendation: "Paid traffic is converting at a much lower rate than organic. Review ad targeting quality, landing page experience for paid visitors, and consider reallocating budget to higher-converting campaigns." });
+    }
+
+    return alerts;
+  }, [overview, prevOverview, sources]);
+
+  // Fetch AI-generated recommendations for each alert
+  useEffect(() => {
+    setAlertAiRecs([]);
+    if (!gaAlerts.length) return;
+    setAlertAiLoading(true);
+    fetch("/api/ai/summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sectionType: "alert_recommendations",
+        campaignPlatform: "ga4",
+        alerts: gaAlerts.map(a => ({ severity: a.severity, label: a.label, detail: a.detail })),
+        dateRange: `${startDate} to ${endDate}`,
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(json => { if (json?.recommendations?.length) setAlertAiRecs(json.recommendations); })
+      .catch(() => {})
+      .finally(() => setAlertAiLoading(false));
+  }, [gaAlerts, startDate, endDate]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -196,6 +284,44 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
         </div>
       ) : !overview ? null : (
         <>
+      {/* Performance alerts */}
+      {gaAlerts.length > 0 && (() => {
+        const highAlerts = gaAlerts.filter(a => a.severity === "high");
+        const medAlerts  = gaAlerts.filter(a => a.severity === "medium");
+        return (
+          <div style={{ borderRadius: 12, border: `1px solid ${highAlerts.length ? "#fca5a5" : "#fcd34d"}`, background: highAlerts.length ? "#fff1f2" : "#fffbeb", overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", borderBottom: `1px solid ${highAlerts.length ? "#fca5a5" : "#fcd34d"}` }}>
+              <AlertTriangle className="h-4 w-4 shrink-0" style={{ color: highAlerts.length ? "#dc2626" : "#d97706" }} />
+              <p style={{ fontSize: 13, fontWeight: 600, color: highAlerts.length ? "#991b1b" : "#92400e", margin: 0 }}>
+                {highAlerts.length} high-priority · {medAlerts.length} medium-priority issue{gaAlerts.length !== 1 ? "s" : ""} detected
+              </p>
+              {alertAiLoading && (
+                <span style={{ marginLeft: "auto", fontSize: 10, color: "#0f766e", fontStyle: "italic", flexShrink: 0 }}>Generating AI recommendations…</span>
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {gaAlerts.map((a, i) => (
+                <div key={i} style={{ padding: "8px 16px", borderBottom: i < gaAlerts.length - 1 ? `1px solid ${highAlerts.length ? "#fee2e2" : "#fef3c7"}` : "none" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff", background: a.severity === "high" ? "#dc2626" : "#d97706", borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>
+                      {a.severity}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: "#1e293b" }}>{a.label}</span>
+                    <span style={{ fontSize: 12, color: "#64748b" }}>{a.detail}</span>
+                  </div>
+                  <p style={{ fontSize: 11, color: "#0f766e", margin: "3px 0 0 0", lineHeight: 1.5 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", background: alertAiRecs[i] ? "#d1fae5" : "#f0fdf4", color: alertAiRecs[i] ? "#065f46" : "#0f766e", borderRadius: 4, padding: "1px 5px", marginRight: 6 }}>
+                      {alertAiRecs[i] ? "AI" : "Action"}
+                    </span>
+                    {alertAiRecs[i] ?? a.recommendation}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Overview metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
         <MetricCard
@@ -523,9 +649,10 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
           extraContext={sources.length > 0 ? [
             "Top traffic sources this period:",
             ...sources.slice(0, 6).map((s) =>
-              `  \u2022 ${s.source} / ${s.medium} \u2014 ${s.sessions.toLocaleString()} sessions, ${s.users.toLocaleString()} users`
+              `  \u2022 ${s.source} / ${s.medium} \u2014 ${s.sessions.toLocaleString()} sessions, ${s.users.toLocaleString()} users, ${(s.bounceRate * 100).toFixed(0)}% bounce, ${s.conversions} conversions`
             ),
           ].join("\n") : undefined}
+          crossPlatformContext={crossPlatformContext}
         />
       )}
 
@@ -559,9 +686,10 @@ export function GA4Section({ propertyId, startDate, endDate }: GA4SectionProps) 
           extraContext={sources.length > 0 ? [
             "Top traffic sources this period:",
             ...sources.slice(0, 6).map((s) =>
-              `  • ${s.source} / ${s.medium} — ${s.sessions.toLocaleString()} sessions, ${s.users.toLocaleString()} users`
+              `  • ${s.source} / ${s.medium} — ${s.sessions.toLocaleString()} sessions, ${s.users.toLocaleString()} users, ${(s.bounceRate * 100).toFixed(0)}% bounce, ${s.conversions} conversions`
             ),
           ].join("\n") : undefined}
+          crossPlatformContext={crossPlatformContext}
         />
       )}
         </>

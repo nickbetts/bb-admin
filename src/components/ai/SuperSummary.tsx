@@ -37,6 +37,7 @@ interface SuperSummaryProps {
   campaignData?: Record<string, unknown>[];
   landingPages?: { url: string; clicks: number; impressions?: number; conversions?: number }[];
   extraContext?: string;
+  crossPlatformContext?: string;
 }
 
 // ─── Score helpers ─────────────────────────────────────────────────────────────
@@ -129,6 +130,7 @@ export function SuperSummary({
   campaignData,
   landingPages,
   extraContext,
+  crossPlatformContext,
 }: SuperSummaryProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SuperSummaryResult | null>(null);
@@ -151,6 +153,7 @@ export function SuperSummary({
           campaignData,
           landingPages,
           extraContext,
+          crossPlatformContext,
         }),
       });
       const data = await res.json();

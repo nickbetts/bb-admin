@@ -506,6 +506,7 @@ export async function POST(request: NextRequest) {
       landingPages?: LandingPageContext[];
       historicalSnapshots?: HistoricalSnapshot[];
       extraContext?: string;
+      crossPlatformContext?: string;
     };
 
     const {
@@ -518,6 +519,7 @@ export async function POST(request: NextRequest) {
       landingPages,
       historicalSnapshots,
       extraContext,
+      crossPlatformContext,
     } = body;
 
     // ─── Alert-level AI recommendations ───────────────────────────────────────
@@ -691,6 +693,7 @@ Keep summaries punchy: aim for clarity over length.`;
       landingPageText,
       historicalText,
       extraContext ?? "",
+      crossPlatformContext ? `\nCROSS-PLATFORM CONTEXT (from other channels — use to inform deeper analysis):\n${crossPlatformContext}` : "",
     ].filter(Boolean);
 
     const userPrompt = `Analyse the following ${config.name} data and provide a comprehensive performance review.

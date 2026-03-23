@@ -497,6 +497,66 @@ export async function getGoogleAdsAvgQualityScore(
   }
 }
 
+// ── Audience / targeting criteria ─────────────────────────────────────────
+
+export interface GoogleAdsAudienceCriterion {
+  campaignId: string;
+  campaignName: string;
+  adGroupId: string;
+  adGroupName: string;
+  /** USER_LIST | USER_INTEREST | AUDIENCE | GENDER | AGE_RANGE | PARENTAL_STATUS */
+  criterionType: string;
+  displayName: string;
+  negative: boolean;
+  bidModifier: number | null;
+}
+
+export async function getGoogleAdsAudienceCriteria(
+  customerId: string
+): Promise<GoogleAdsAudienceCriterion[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      campaign.id,
+      campaign.name,
+      ad_group.id,
+      ad_group.name,
+      ad_group_criterion.criterion_id,
+      ad_group_criterion.type,
+      ad_group_criterion.display_name,
+      ad_group_criterion.negative,
+      ad_group_criterion.bid_modifier,
+      ad_group_criterion.status
+    FROM ad_group_criterion
+    WHERE ad_group_criterion.type IN ('USER_LIST', 'USER_INTEREST', 'AUDIENCE', 'GENDER', 'AGE_RANGE', 'PARENTAL_STATUS')
+      AND ad_group_criterion.status != 'REMOVED'
+      AND ad_group.status != 'REMOVED'
+      AND campaign.status != 'REMOVED'
+    LIMIT 500
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    return (data.results ?? []).map((row: GadsRow) => ({
+      campaignId: String(row.campaign?.id ?? ""),
+      campaignName: String(row.campaign?.name ?? ""),
+      adGroupId: String(row.adGroup?.id ?? ""),
+      adGroupName: String(row.adGroup?.name ?? ""),
+      criterionType: String(row.adGroupCriterion?.type ?? ""),
+      displayName: String(row.adGroupCriterion?.displayName ?? ""),
+      negative: Boolean(row.adGroupCriterion?.negative ?? false),
+      bidModifier:
+        row.adGroupCriterion?.bidModifier != null
+          ? Number(row.adGroupCriterion.bidModifier)
+          : null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function getGoogleAdsAccounts(): Promise<GoogleAdsAccount[]> {
   const mccId = await getMccId();
   if (!mccId) {

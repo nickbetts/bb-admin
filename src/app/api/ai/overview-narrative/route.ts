@@ -88,6 +88,21 @@ interface OverviewNarrativeRequest {
     conversions: number;
     roas: number;
   }[];
+  computedAlerts?: {
+    severity: string;
+    platform: string;
+    label: string;
+    detail: string;
+  }[];
+  channelMetrics?: {
+    platform: string;
+    spend: number;
+    conversions: number;
+    revenue: number;
+    efficiency: number;
+    healthScore: number;
+    trend: number;
+  }[];
 }
 
 interface OverviewNarrativeResponse {
@@ -114,6 +129,8 @@ export async function POST(request: NextRequest) {
       aggregated,
       previousAggregated,
       campaignHighlights,
+      computedAlerts,
+      channelMetrics,
     } = body;
 
     if (!platforms || !aggregated) {
@@ -203,6 +220,24 @@ export async function POST(request: NextRequest) {
         ).join("\n");
     }
 
+    // ── Computed alerts context ──────────────────────────────────────────────
+    let alertsText = "";
+    if (computedAlerts?.length) {
+      alertsText = "\n\nDETECTED ANOMALIES (rules engine — your analysis MUST address these):\n" +
+        computedAlerts.map((a, i) =>
+          `  ${i + 1}. [${a.severity.toUpperCase()}] [${a.platform}] ${a.label}: ${a.detail}`
+        ).join("\n");
+    }
+
+    // ── Channel efficiency metrics ───────────────────────────────────────────
+    let channelMetricsText = "";
+    if (channelMetrics?.length) {
+      channelMetricsText = "\n\nCHANNEL EFFICIENCY MATRIX:\n" +
+        channelMetrics.map(m =>
+          `  ${m.platform}: Spend £${m.spend.toLocaleString(undefined, { minimumFractionDigits: 2 })}, Conversions ${m.conversions}, Revenue £${m.revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}, Efficiency ${m.efficiency.toFixed(2)}, Health ${m.healthScore}/100, Trend ${m.trend >= 0 ? "+" : ""}${m.trend.toFixed(1)}%`
+        ).join("\n");
+    }
+
     // ── AI call ──────────────────────────────────────────────────────────────
     const openai = new OpenAI({ apiKey });
 
@@ -229,7 +264,7 @@ CHANNEL-BY-CHANNEL DATA:
 ${sections.join("\n\n")}
 
 ${aggText}
-${campaignText}
+${campaignText}${alertsText}${channelMetricsText}
 
 Produce a JSON object:
 {

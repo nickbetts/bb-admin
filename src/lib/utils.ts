@@ -81,6 +81,16 @@ export function pctChange(current: number, previous: number): number | undefined
   return ((current - previous) / previous) * 100;
 }
 
+/** Compute a 0–100 health score from an array of alerts. */
+export function computeHealthScore(alerts: { severity: "high" | "medium" | "low" }[]): number {
+  let score = 100;
+  for (const a of alerts) {
+    if (a.severity === "high") score -= 15;
+    else if (a.severity === "medium") score -= 8;
+  }
+  return Math.max(0, score);
+}
+
 /** Parse a named reporting period (e.g. "March 2025", "Q1 2025") into ISO date strings. */
 export function parsePeriodToDateRange(period: string): { startDate: string; endDate: string } {
   const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -117,4 +127,27 @@ export function parsePeriodToDateRange(period: string): { startDate: string; end
 
   // Fallback to last 30 days
   return getDateRange("30d");
+}
+
+// ─── Cross-platform context builder ────────────────────────────────────────────
+// Builds a text summary of *other* platform metrics to inject into per-section AI calls,
+// so that each platform's AI analysis can reference the broader marketing context.
+
+export interface PlatformSummary {
+  platform: string;
+  metrics: Record<string, string | number>;
+}
+
+export function buildCrossContextString(
+  summaries: PlatformSummary[],
+  currentPlatform: string
+): string {
+  const others = summaries.filter(s => s.platform !== currentPlatform);
+  if (others.length === 0) return "";
+  return others.map(s => {
+    const metricsStr = Object.entries(s.metrics)
+      .map(([k, v]) => `${k}: ${typeof v === "number" ? v.toLocaleString() : v}`)
+      .join(", ");
+    return `• ${s.platform}: ${metricsStr}`;
+  }).join("\n");
 }

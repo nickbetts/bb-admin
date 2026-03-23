@@ -21,6 +21,8 @@ interface SuperSummaryRequest {
   landingPages?: { url: string; clicks: number; impressions?: number; conversions?: number }[];
   /** Extra keyword/query/source context from the dashboard section */
   extraContext?: string;
+  /** Cross-platform context from other channels */
+  crossPlatformContext?: string;
 }
 
 interface SuperSummaryResponse {
@@ -93,6 +95,7 @@ export async function POST(request: NextRequest) {
       campaignData,
       landingPages,
       extraContext,
+      crossPlatformContext,
     } = body;
 
     if (!sectionType || !metrics) {
@@ -204,6 +207,7 @@ ${prevText ? `Previous period: ${prevText}` : "No previous period data available
 ${campaignSummary}
 ${pageAnalysisContext}
 ${extraContext ? `\nAdditional context:\n${extraContext}` : ""}
+${crossPlatformContext ? `\nCROSS-PLATFORM CONTEXT (from other channels — use to enrich your analysis):\n${crossPlatformContext}` : ""}
 
 Analyse the FULL JOURNEY — traffic generation → click → landing page → conversion — and return a JSON object:
 {
