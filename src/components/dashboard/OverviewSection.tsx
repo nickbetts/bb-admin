@@ -845,6 +845,7 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
                 {channelRows.map((row) => {
                   const effChange = row.prevEfficiency != null ? pctChange(row.efficiency, row.prevEfficiency) : undefined;
                   const config = CHANNEL_CONFIG[row.platformKey];
+                  const displayHealth = aiResult?.channelScores?.[row.platformKey] ?? row.healthScore;
                   return (
                     <tr key={row.platformKey} style={{ borderBottom: "1px solid var(--border)" }}>
                       <td style={{ padding: "10px 12px", fontWeight: 600, color: "var(--text)" }}>
@@ -868,8 +869,8 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
                         ) : <span style={{ color: "var(--text-3)" }}>—</span>}
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: scoreColor(row.healthScore), background: `${scoreColor(row.healthScore)}15`, borderRadius: 4, padding: "2px 6px" }}>
-                          {row.healthScore}
+                        <span style={{ fontSize: 11, fontWeight: 700, color: scoreColor(displayHealth), background: `${scoreColor(displayHealth)}15`, borderRadius: 4, padding: "2px 6px" }}>
+                          {displayHealth}
                         </span>
                       </td>
                     </tr>
