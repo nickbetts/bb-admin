@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -187,6 +187,8 @@ function buildCreativeSummary(creatives: MetaAdCreative[], adSetsData: MetaAdSet
   return "\n" + lines.join("\n");
 }
 
+type MetaAlert = { severity: "high" | "medium"; label: string; level: "Campaign" | "Ad Set" | "Creative"; detail: string; recommendation: string };
+
 export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSectionProps) {
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<MetaOverview | null>(null);
@@ -202,6 +204,68 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
   const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
   const [expandedAdSets, setExpandedAdSets] = useState<Set<string>>(new Set());
   const [lightbox, setLightbox] = useState<{ type: "image" | "video"; src: string; videoId?: string | null; title: string } | null>(null);
+  const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
+  const [alertAiLoading, setAlertAiLoading] = useState(false);
+
+  // Compute anomaly alerts from current data
+  const metaAlerts = useMemo<MetaAlert[]>(() => {
+    const alerts: MetaAlert[] = [];
+    for (const c of campaignsEnriched) {
+      if (c.status !== "ACTIVE") continue;
+      if (c.frequency >= 7)
+        alerts.push({ severity: "high", level: "Campaign", label: c.name, detail: `Frequency ${c.frequency.toFixed(1)}× — severe ad fatigue`, recommendation: "Pause or refresh creatives immediately. Rest the campaign 3–5 days or rotate in new ad variations to reset audience fatigue." });
+      else if (c.frequency > 3.5)
+        alerts.push({ severity: "medium", level: "Campaign", label: c.name, detail: `Frequency ${c.frequency.toFixed(1)}× — fatigue risk`, recommendation: "Introduce creative variations or expand audience size. Rotating ad sets can reduce frequency without pausing delivery." });
+      if (c.roas > 0 && c.roas < 1.0 && c.spend > 50)
+        alerts.push({ severity: "high", level: "Campaign", label: c.name, detail: `ROAS ${c.roas.toFixed(2)}× — spend exceeding revenue`, recommendation: "Pause or cut budget and reallocate spend to stronger campaigns. Review audience targeting and landing page alignment." });
+      else if (c.roas > 0 && c.roas < 1.5 && c.spend > 100)
+        alerts.push({ severity: "medium", level: "Campaign", label: c.name, detail: `ROAS ${c.roas.toFixed(2)}× — below target threshold`, recommendation: "Reduce daily budget 20–30% and shift spend to better-performing campaigns. Review audience and creative mix." });
+      if (c.ctr != null && c.ctr < 0.5 && c.impressions > 5000)
+        alerts.push({ severity: "medium", level: "Campaign", label: c.name, detail: `CTR ${c.ctr.toFixed(2)}% — low click-through rate`, recommendation: "Test new ad copy, headlines, and creative formats. Ensure messaging matches the target audience's intent." });
+    }
+    for (const s of adSets) {
+      if (s.status !== "ACTIVE") continue;
+      if (s.frequency > 3.5)
+        alerts.push({ severity: s.frequency >= 6 ? "high" : "medium", level: "Ad Set", label: s.name, detail: `Frequency ${s.frequency.toFixed(1)}×`, recommendation: "Expand audience or introduce creative variations. Excluding recent converters and widening the audience will dilute frequency." });
+      if (s.roas > 0 && s.roas < 1.0 && s.spend > 30)
+        alerts.push({ severity: "high", level: "Ad Set", label: s.name, detail: `ROAS ${s.roas.toFixed(2)}× — unprofitable`, recommendation: "Pause this ad set and reallocate budget to better-performing ad sets. Review audience, placements, and bid settings." });
+      if (s.conversions === 0 && s.spend > 50)
+        alerts.push({ severity: "medium", level: "Ad Set", label: s.name, detail: `£${s.spend.toFixed(0)} spend, 0 conversions`, recommendation: "Pause this ad set. Review landing page experience, audience relevance, and the optimisation event setup in Events Manager." });
+    }
+    for (const cr of creatives) {
+      if (cr.status !== "ACTIVE") continue;
+      if (cr.roas > 0 && cr.roas < 1.0 && cr.spend > 20)
+        alerts.push({ severity: "high", level: "Creative", label: cr.adName, detail: `ROAS ${cr.roas.toFixed(2)}× — £${cr.spend.toFixed(0)} spent`, recommendation: "Pause this creative and reallocate budget to top-performers. A/B test a new format or message against a better-performing variation." });
+      if (cr.frequency > 5)
+        alerts.push({ severity: cr.frequency >= 8 ? "high" : "medium", level: "Creative", label: cr.adName, detail: `Frequency ${cr.frequency.toFixed(1)}×`, recommendation: "Retire or refresh this creative. Introduce new variants with different visuals or messaging to counter audience fatigue." });
+      if (cr.conversions === 0 && cr.spend > 30 && cr.impressions > 1000)
+        alerts.push({ severity: "medium", level: "Creative", label: cr.adName, detail: `£${cr.spend.toFixed(0)} spend, 0 conversions`, recommendation: "Pause and test new variations — try different formats (video vs. image), headlines, or calls-to-action." });
+    }
+    return alerts;
+  }, [campaignsEnriched, adSets, creatives]);
+
+  // Fetch AI-generated recommendations for each alert
+  useEffect(() => {
+    setAlertAiRecs([]);
+    if (!metaAlerts.length) return;
+    setAlertAiLoading(true);
+    fetch("/api/ai/summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sectionType: "alert_recommendations",
+        campaignPlatform: "meta",
+        alerts: metaAlerts.map(a => ({ severity: a.severity, level: a.level, label: a.label, detail: a.detail })),
+        campaignData: campaignsEnriched,
+        clientName,
+        dateRange: `${startDate} to ${endDate}`,
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(json => { if (json?.recommendations?.length) setAlertAiRecs(json.recommendations); })
+      .catch(() => {})
+      .finally(() => setAlertAiLoading(false));
+  }, [metaAlerts, clientId, startDate, endDate]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -317,48 +381,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
       ) : !overview ? null : (
         <>
       {/* Performance alerts — campaigns, ad sets, creatives */}
-      {(() => {
-        type Alert = { severity: "high" | "medium"; label: string; level: "Campaign" | "Ad Set" | "Creative"; detail: string };
-        const alerts: Alert[] = [];
-
-        // ── Campaign-level ──────────────────────────────────────────────────
-        for (const c of campaignsEnriched) {
-          if (c.frequency >= 7)
-            alerts.push({ severity: "high", level: "Campaign", label: c.name, detail: `Frequency ${c.frequency.toFixed(1)}× — severe ad fatigue` });
-          else if (c.frequency > 3.5)
-            alerts.push({ severity: "medium", level: "Campaign", label: c.name, detail: `Frequency ${c.frequency.toFixed(1)}× — fatigue risk` });
-          if (c.roas > 0 && c.roas < 1.0 && c.spend > 50)
-            alerts.push({ severity: "high", level: "Campaign", label: c.name, detail: `ROAS ${c.roas.toFixed(2)}× — spend exceeding revenue` });
-          else if (c.roas > 0 && c.roas < 1.5 && c.spend > 100)
-            alerts.push({ severity: "medium", level: "Campaign", label: c.name, detail: `ROAS ${c.roas.toFixed(2)}× — below target threshold` });
-          if (c.ctr != null && c.ctr < 0.5 && c.impressions > 5000)
-            alerts.push({ severity: "medium", level: "Campaign", label: c.name, detail: `CTR ${c.ctr.toFixed(2)}% — low click-through rate` });
-        }
-
-        // ── Ad set-level ────────────────────────────────────────────────────
-        for (const s of adSets) {
-          if (s.frequency > 3.5)
-            alerts.push({ severity: s.frequency >= 6 ? "high" : "medium", level: "Ad Set", label: s.name, detail: `Frequency ${s.frequency.toFixed(1)}×` });
-          if (s.roas > 0 && s.roas < 1.0 && s.spend > 30)
-            alerts.push({ severity: "high", level: "Ad Set", label: s.name, detail: `ROAS ${s.roas.toFixed(2)}× — unprofitable` });
-          if (s.conversions === 0 && s.spend > 50)
-            alerts.push({ severity: "medium", level: "Ad Set", label: s.name, detail: `£${s.spend.toFixed(0)} spend, 0 conversions` });
-        }
-
-        // ── Creative-level ──────────────────────────────────────────────────
-        for (const cr of creatives) {
-          if (cr.roas > 0 && cr.roas < 1.0 && cr.spend > 20)
-            alerts.push({ severity: "high", level: "Creative", label: cr.adName, detail: `ROAS ${cr.roas.toFixed(2)}× — £${cr.spend.toFixed(0)} spent` });
-          if (cr.frequency > 5)
-            alerts.push({ severity: cr.frequency >= 8 ? "high" : "medium", level: "Creative", label: cr.adName, detail: `Frequency ${cr.frequency.toFixed(1)}×` });
-          if (cr.conversions === 0 && cr.spend > 30 && cr.impressions > 1000)
-            alerts.push({ severity: "medium", level: "Creative", label: cr.adName, detail: `£${cr.spend.toFixed(0)} spend, 0 conversions` });
-        }
-
-        if (alerts.length === 0) return null;
-
-        const highAlerts = alerts.filter(a => a.severity === "high");
-        const medAlerts  = alerts.filter(a => a.severity === "medium");
+      {metaAlerts.length > 0 && (() => {
+        const highAlerts = metaAlerts.filter(a => a.severity === "high");
+        const medAlerts  = metaAlerts.filter(a => a.severity === "medium");
 
         const levelColour: Record<string, string> = {
           Campaign: "#7c3aed",
@@ -372,25 +397,36 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", borderBottom: `1px solid ${highAlerts.length ? "#fca5a5" : "#fcd34d"}` }}>
               <AlertTriangle className="h-4 w-4 shrink-0" style={{ color: highAlerts.length ? "#dc2626" : "#d97706" }} />
               <p style={{ fontSize: 13, fontWeight: 600, color: highAlerts.length ? "#991b1b" : "#92400e", margin: 0 }}>
-                {highAlerts.length} high-priority · {medAlerts.length} medium-priority issue{alerts.length !== 1 ? "s" : ""} detected
+                {highAlerts.length} high-priority · {medAlerts.length} medium-priority issue{metaAlerts.length !== 1 ? "s" : ""} detected
               </p>
+              {alertAiLoading && (
+                <span style={{ marginLeft: "auto", fontSize: 10, color: "#0f766e", fontStyle: "italic", flexShrink: 0 }}>Generating AI recommendations…</span>
+              )}
             </div>
             {/* Alert rows */}
             <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-              {alerts.map((a, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "7px 16px", borderBottom: i < alerts.length - 1 ? `1px solid ${highAlerts.length ? "#fee2e2" : "#fef3c7"}` : "none" }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff", background: a.severity === "high" ? "#dc2626" : "#d97706", borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>
-                    {a.severity}
-                  </span>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: levelColour[a.level], flexShrink: 0 }}>
-                    {a.level}
-                  </span>
-                  <span style={{ fontSize: 12, fontWeight: 500, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 220 }}>
-                    {a.label}
-                  </span>
-                  <span style={{ fontSize: 12, color: "#64748b" }}>
-                    {a.detail}
-                  </span>
+              {metaAlerts.map((a, i) => (
+                <div key={i} style={{ padding: "8px 16px", borderBottom: i < metaAlerts.length - 1 ? `1px solid ${highAlerts.length ? "#fee2e2" : "#fef3c7"}` : "none" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff", background: a.severity === "high" ? "#dc2626" : "#d97706", borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>
+                      {a.severity}
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: levelColour[a.level], flexShrink: 0 }}>
+                      {a.level}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: "#1e293b" }}>
+                      {a.label}
+                    </span>
+                    <span style={{ fontSize: 12, color: "#64748b" }}>
+                      {a.detail}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 11, color: "#0f766e", margin: "3px 0 0 0", lineHeight: 1.5 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", background: alertAiRecs[i] ? "#d1fae5" : "#f0fdf4", color: alertAiRecs[i] ? "#065f46" : "#0f766e", borderRadius: 4, padding: "1px 5px", marginRight: 6 }}>
+                      {alertAiRecs[i] ? "AI" : "Action"}
+                    </span>
+                    {alertAiRecs[i] ?? a.recommendation}
+                  </p>
                 </div>
               ))}
             </div>
@@ -398,6 +434,8 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
         );
       })()}
 
+      {/* Metric cards — primary + secondary, uniform 20px gap throughout */}
+      <div className="space-y-5">
       {/* Primary overview metrics */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-5">
         <MetricCard
@@ -477,6 +515,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate }: MetaSe
           />
         </div>
       )}
+      </div>{/* end metric cards wrapper */}
 
       {/* Spend chart */}
       {daily.length > 0 && (() => {

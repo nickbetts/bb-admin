@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { Delta } from "@/components/ui/index";
 import { formatCurrency, formatNumber, formatPercent, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
@@ -13,6 +13,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { AlertTriangle } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { AiLandingPageAnalysis } from "@/components/ai/AiLandingPageAnalysis";
 import { SuperSummary } from "@/components/ai/SuperSummary";
@@ -128,6 +129,8 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
+type GAdsAlert = { severity: "high" | "medium"; label: string; level: string; detail: string; recommendation: string };
+
 export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate }: Props) {
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
@@ -135,6 +138,68 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const abortRef = useRef<AbortController | null>(null);
+  const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
+  const [alertAiLoading, setAlertAiLoading] = useState(false);
+
+  // Compute anomaly alerts from current campaign data
+  const gadsAlerts = useMemo<GAdsAlert[]>(() => {
+    const alerts: GAdsAlert[] = [];
+    for (const c of (data?.campaignsEnriched ?? [])) {
+      if (c.status !== "ENABLED") continue;
+      const costGbp = micros(c.costMicros);
+      const campaignRoas = roas(c.conversionsValue, c.costMicros);
+
+      if (c.searchBudgetLostImpressionShare != null && c.searchBudgetLostImpressionShare > 0.30) {
+        const pct = Math.round(c.searchBudgetLostImpressionShare * 100);
+        alerts.push({ severity: "high", level: "Campaign", label: c.name, detail: `Losing ${pct}% of eligible impressions due to budget — consider increasing daily budget`, recommendation: "Increase daily budget or narrow targeting to high-converting keywords/locations to recapture lost impression share." });
+      } else if (c.searchBudgetLostImpressionShare != null && c.searchBudgetLostImpressionShare > 0.10) {
+        const pct = Math.round(c.searchBudgetLostImpressionShare * 100);
+        alerts.push({ severity: "medium", level: "Campaign", label: c.name, detail: `Losing ${pct}% of eligible impressions due to budget constraints`, recommendation: "Consider increasing budget or restricting delivery to peak conversion windows. Review dayparting and bid scheduling settings." });
+      }
+
+      if (c.searchRankLostImpressionShare != null && c.searchRankLostImpressionShare > 0.40) {
+        const pct = Math.round(c.searchRankLostImpressionShare * 100);
+        alerts.push({ severity: "high", level: "Campaign", label: c.name, detail: `Losing ${pct}% of eligible impressions due to low ad rank — review bids and quality score`, recommendation: "Raise bids on key terms and improve Quality Score by aligning keyword-to-ad-copy relevance and strengthening landing page experience." });
+      } else if (c.searchRankLostImpressionShare != null && c.searchRankLostImpressionShare > 0.15) {
+        const pct = Math.round(c.searchRankLostImpressionShare * 100);
+        alerts.push({ severity: "medium", level: "Campaign", label: c.name, detail: `Losing ${pct}% of eligible impressions due to low ad rank`, recommendation: "Review keyword bids and Quality Scores. Tighten ad group themes to improve relevance and reduce rank-driven impression share loss." });
+      }
+
+      if (campaignRoas > 0 && campaignRoas < 1.0 && costGbp > 50)
+        alerts.push({ severity: "high", level: "Campaign", label: c.name, detail: `ROAS ${campaignRoas.toFixed(2)}× — spend exceeding revenue`, recommendation: "Pause or restructure this campaign. Add negative keywords, review match types, and verify conversion tracking accuracy before reactivating." });
+      else if (campaignRoas > 0 && campaignRoas < 1.5 && costGbp > 100)
+        alerts.push({ severity: "medium", level: "Campaign", label: c.name, detail: `ROAS ${campaignRoas.toFixed(2)}× — below target threshold`, recommendation: "Tighten targeting to intent-rich queries. Consider switching to Target ROAS bidding once the campaign has 30+ conversions/month." });
+
+      if (c.searchImpressionShare != null && c.searchImpressionShare < 0.30 && c.impressions > 100 && (c.channelType === "SEARCH" || !c.channelType)) {
+        const pct = Math.round(c.searchImpressionShare * 100);
+        alerts.push({ severity: pct < 15 ? "high" : "medium", level: "Campaign", label: c.name, detail: `Only ${pct}% search impression share — significant room to capture more traffic`, recommendation: "Increase budget or consolidate campaigns to improve Quality Scores. Prioritise highest-converting search terms to maximise impression share." });
+      }
+    }
+    return alerts;
+  }, [data]);
+
+  // Fetch AI-generated recommendations for each alert
+  useEffect(() => {
+    setAlertAiRecs([]);
+    if (!gadsAlerts.length) return;
+    setAlertAiLoading(true);
+    fetch("/api/ai/summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sectionType: "alert_recommendations",
+        campaignPlatform: "googleads",
+        alerts: gadsAlerts.map(a => ({ severity: a.severity, level: a.level, label: a.label, detail: a.detail })),
+        campaignData: data?.campaignsEnriched ?? [],
+        clientName,
+        dateRange: `${startDate} to ${endDate}`,
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(json => { if (json?.recommendations?.length) setAlertAiRecs(json.recommendations); })
+      .catch(() => {})
+      .finally(() => setAlertAiLoading(false));
+  }, [gadsAlerts, clientId, startDate, endDate]);
 
   useEffect(() => {
     if (abortRef.current) abortRef.current.abort();
@@ -278,6 +343,54 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
         )
       ) : !data ? null : (
         <>
+          {/* Performance alerts — campaigns */}
+          {gadsAlerts.length > 0 && (() => {
+            const highAlerts = gadsAlerts.filter(a => a.severity === "high");
+            const medAlerts  = gadsAlerts.filter(a => a.severity === "medium");
+            const levelColour: Record<string, string> = { Campaign: "#2563eb" };
+            return (
+              <div style={{ borderRadius: 12, border: `1px solid ${highAlerts.length ? "#fca5a5" : "#fcd34d"}`, background: highAlerts.length ? "#fff1f2" : "#fffbeb", overflow: "hidden" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", borderBottom: `1px solid ${highAlerts.length ? "#fca5a5" : "#fcd34d"}` }}>
+                  <AlertTriangle className="h-4 w-4 shrink-0" style={{ color: highAlerts.length ? "#dc2626" : "#d97706" }} />
+                  <p style={{ fontSize: 13, fontWeight: 600, color: highAlerts.length ? "#991b1b" : "#92400e", margin: 0 }}>
+                    {highAlerts.length} high-priority · {medAlerts.length} medium-priority issue{gadsAlerts.length !== 1 ? "s" : ""} detected
+                  </p>
+                  {alertAiLoading && (
+                    <span style={{ marginLeft: "auto", fontSize: 10, color: "#0f766e", fontStyle: "italic", flexShrink: 0 }}>Generating AI recommendations…</span>
+                  )}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                  {gadsAlerts.map((a, i) => (
+                    <div key={i} style={{ padding: "8px 16px", borderBottom: i < gadsAlerts.length - 1 ? `1px solid ${highAlerts.length ? "#fee2e2" : "#fef3c7"}` : "none" }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff", background: a.severity === "high" ? "#dc2626" : "#d97706", borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>
+                          {a.severity}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: levelColour[a.level] ?? "#2563eb", flexShrink: 0 }}>
+                          {a.level}
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 500, color: "#1e293b" }}>
+                          {a.label}
+                        </span>
+                        <span style={{ fontSize: 12, color: "#64748b" }}>
+                          {a.detail}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: 11, color: "#0f766e", margin: "3px 0 0 0", lineHeight: 1.5 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", background: alertAiRecs[i] ? "#d1fae5" : "#f0fdf4", color: alertAiRecs[i] ? "#065f46" : "#0f766e", borderRadius: 4, padding: "1px 5px", marginRight: 6 }}>
+                          {alertAiRecs[i] ? "AI" : "Action"}
+                        </span>
+                        {alertAiRecs[i] ?? a.recommendation}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Metric cards — primary + secondary, uniform 20px gap throughout */}
+          <div className="space-y-5">
           {/* Overview metric cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-5">
             <MetricCard
@@ -346,6 +459,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
               />
             )}
           </div>
+          </div>{/* end metric cards wrapper */}
 
           {/* Daily spend & clicks chart */}
           {chartData.length > 0 && (

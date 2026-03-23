@@ -520,6 +520,66 @@ export async function POST(request: NextRequest) {
       extraContext,
     } = body;
 
+    // ─── Alert-level AI recommendations ───────────────────────────────────────
+    // Lightweight call: takes the computed alerts array and returns one specific,
+    // quantified recommendation per alert. Used by MetaSection + GoogleAdsSection.
+    if (sectionType === "alert_recommendations") {
+      const alerts = (body as unknown as {
+        alerts?: Array<{ severity: string; level?: string; label?: string; metric?: string; detail: string; platform?: string }>;
+        campaignPlatform?: string;
+      }).alerts ?? [];
+      const campaignPlatform = (body as unknown as { campaignPlatform?: string }).campaignPlatform ?? "meta";
+
+      if (!alerts.length) return NextResponse.json({ recommendations: [] });
+
+      const apiKeySetting2 = await prisma.appSetting.findUnique({ where: { key: "openaiApiKey" } });
+      const apiKey2 = apiKeySetting2?.value ?? process.env.OPENAI_API_KEY;
+      if (!apiKey2) return NextResponse.json({ recommendations: alerts.map(() => "") });
+
+      const campaignCtxText = campaignData?.length
+        ? buildCampaignSummaryText(campaignPlatform, campaignData)
+        : "";
+
+      const alertList = alerts
+        .map((a, i) =>
+          `${i + 1}. [${(a.severity ?? "").toUpperCase()}]${a.level ? ` [${a.level}]` : ""} "${a.label ?? ""}" — ${a.detail}`
+        )
+        .join("\n");
+
+      const recPrompt = `You are a senior paid media strategist at a UK performance marketing agency.
+
+Client: ${clientName ?? "client"} | Period: ${dateRange ?? "selected period"}
+
+For each numbered alert below, write ONE specific, data-driven recommendation (1–2 sentences max).
+Use the actual numbers in the alert and the campaign context. Be concrete — include specific budget amounts, percentage adjustments, timelines, or actions where possible.
+Do NOT use generic phrases like "consider reviewing" or "monitor closely". Make every recommendation actionable and numbered.
+
+Alerts:
+${alertList}
+
+${campaignCtxText}
+
+Return JSON: { "recommendations": ["rec for alert 1", "rec for alert 2", ...] }
+One string per alert, in the same order. British English.`;
+
+      const openai2 = new OpenAI({ apiKey: apiKey2 });
+      const comp2 = await openai2.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "You are a senior digital marketing strategist. Provide specific, quantified, actionable recommendations. No vague generalities. British English." },
+          { role: "user", content: recPrompt },
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 1200,
+        temperature: 0.3,
+      });
+
+      let recs: { recommendations?: string[] } = {};
+      try { recs = JSON.parse(comp2.choices[0]?.message?.content ?? "{}"); } catch { /* */ }
+      return NextResponse.json({ recommendations: recs.recommendations ?? alerts.map(() => "") });
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
     const apiKeySetting = await prisma.appSetting.findUnique({
       where: { key: "openaiApiKey" },
     });

@@ -30,6 +30,8 @@ interface Signal {
   label?: string;
   detail: string;
   direction?: "up" | "down";
+  recommendation?: string;
+  aiRec?: boolean;
 }
 
 // ─── Styling maps ──────────────────────────────────────────────────────────────
@@ -83,7 +85,7 @@ function SignalCard({ signal, isLast }: { signal: Signal; isLast: boolean }) {
             {signal.metric}
           </span>
           {signal.label && (
-            <span style={{ fontSize: 11, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 260 }}>
+            <span style={{ fontSize: 11, color: "var(--text-3)" }}>
               — {signal.label}
             </span>
           )}
@@ -91,6 +93,14 @@ function SignalCard({ signal, isLast }: { signal: Signal; isLast: boolean }) {
         <p style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.55, margin: 0 }}>
           {signal.detail}
         </p>
+        {signal.recommendation && (
+          <p style={{ fontSize: 11, color: "#0f766e", margin: "3px 0 0 0", lineHeight: 1.5 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", background: signal.aiRec ? "#d1fae5" : "#f0fdf4", color: signal.aiRec ? "#065f46" : "#0f766e", borderRadius: 4, padding: "1px 5px", marginRight: 6 }}>
+              {signal.aiRec ? "AI" : "Action"}
+            </span>
+            {signal.recommendation}
+          </p>
+        )}
       </div>
 
       {/* Source badge */}
@@ -167,51 +177,54 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
       // ── Meta ──
       if (metaData) {
         const [campaignsEnriched, adSets, creatives] = metaData as [
-          Array<{ name: string; frequency: number; roas: number; spend: number; ctr: number; impressions: number }> | null,
-          Array<{ name: string; frequency: number; roas: number; spend: number; conversions: number }> | null,
-          Array<{ adName: string; roas: number; spend: number; frequency: number; conversions: number; impressions: number }> | null,
+          Array<{ name: string; status?: string; frequency: number; roas: number; spend: number; ctr: number; impressions: number }> | null,
+          Array<{ name: string; status?: string; frequency: number; roas: number; spend: number; conversions: number }> | null,
+          Array<{ adName: string; status?: string; roas: number; spend: number; frequency: number; conversions: number; impressions: number }> | null,
           unknown,
         ];
 
         // Campaign-level
         if (campaignsEnriched?.length) {
           for (const c of campaignsEnriched) {
+            if (c.status && c.status !== "ACTIVE") continue;
             if (c.frequency >= 7)
-              allSignals.push({ platform: "Meta", source: "computed", severity: "high", level: "Campaign", metric: "Ad Fatigue", label: c.name, detail: `Frequency ${c.frequency.toFixed(1)}× — severe ad fatigue`, direction: "down" });
+              allSignals.push({ platform: "Meta", source: "computed", severity: "high", level: "Campaign", metric: "Ad Fatigue", label: c.name, detail: `Frequency ${c.frequency.toFixed(1)}× — severe ad fatigue`, direction: "down", recommendation: "Pause or refresh creatives immediately. Rest the campaign 3–5 days or rotate in new ad variations to reset audience fatigue." });
             else if (c.frequency > 3.5)
-              allSignals.push({ platform: "Meta", source: "computed", severity: "medium", level: "Campaign", metric: "Ad Fatigue", label: c.name, detail: `Frequency ${c.frequency.toFixed(1)}× — fatigue risk`, direction: "down" });
+              allSignals.push({ platform: "Meta", source: "computed", severity: "medium", level: "Campaign", metric: "Ad Fatigue", label: c.name, detail: `Frequency ${c.frequency.toFixed(1)}× — fatigue risk`, direction: "down", recommendation: "Introduce creative variations or expand audience size. Rotating ad sets can reduce frequency without pausing delivery." });
 
             if (c.roas > 0 && c.roas < 1.0 && c.spend > 50)
-              allSignals.push({ platform: "Meta", source: "computed", severity: "high", level: "Campaign", metric: "ROAS", label: c.name, detail: `ROAS ${c.roas.toFixed(2)}× — spend exceeding revenue`, direction: "down" });
+              allSignals.push({ platform: "Meta", source: "computed", severity: "high", level: "Campaign", metric: "ROAS", label: c.name, detail: `ROAS ${c.roas.toFixed(2)}× — spend exceeding revenue`, direction: "down", recommendation: "Pause or cut budget and reallocate spend to stronger campaigns. Review audience targeting and landing page alignment." });
             else if (c.roas > 0 && c.roas < 1.5 && c.spend > 100)
-              allSignals.push({ platform: "Meta", source: "computed", severity: "medium", level: "Campaign", metric: "ROAS", label: c.name, detail: `ROAS ${c.roas.toFixed(2)}× — below target threshold`, direction: "down" });
+              allSignals.push({ platform: "Meta", source: "computed", severity: "medium", level: "Campaign", metric: "ROAS", label: c.name, detail: `ROAS ${c.roas.toFixed(2)}× — below target threshold`, direction: "down", recommendation: "Reduce daily budget 20–30% and shift spend to better-performing campaigns. Review audience and creative mix." });
 
             if (c.ctr != null && c.ctr < 0.5 && c.impressions > 5000)
-              allSignals.push({ platform: "Meta", source: "computed", severity: "medium", level: "Campaign", metric: "CTR", label: c.name, detail: `CTR ${c.ctr.toFixed(2)}% — low click-through rate`, direction: "down" });
+              allSignals.push({ platform: "Meta", source: "computed", severity: "medium", level: "Campaign", metric: "CTR", label: c.name, detail: `CTR ${c.ctr.toFixed(2)}% — low click-through rate`, direction: "down", recommendation: "Test new ad copy, headlines, and creative formats. Ensure messaging matches the target audience's intent." });
           }
         }
 
         // Ad set-level
         if (adSets?.length) {
           for (const s of adSets) {
+            if (s.status && s.status !== "ACTIVE") continue;
             if (s.frequency > 3.5)
-              allSignals.push({ platform: "Meta", source: "computed", severity: s.frequency >= 6 ? "high" : "medium", level: "Ad Set", metric: "Ad Fatigue", label: s.name, detail: `Frequency ${s.frequency.toFixed(1)}×`, direction: "down" });
+              allSignals.push({ platform: "Meta", source: "computed", severity: s.frequency >= 6 ? "high" : "medium", level: "Ad Set", metric: "Ad Fatigue", label: s.name, detail: `Frequency ${s.frequency.toFixed(1)}×`, direction: "down", recommendation: "Expand audience or introduce creative variations. Excluding recent converters and widening the audience will dilute frequency." });
             if (s.roas > 0 && s.roas < 1.0 && s.spend > 30)
-              allSignals.push({ platform: "Meta", source: "computed", severity: "high", level: "Ad Set", metric: "ROAS", label: s.name, detail: `ROAS ${s.roas.toFixed(2)}× — unprofitable`, direction: "down" });
+              allSignals.push({ platform: "Meta", source: "computed", severity: "high", level: "Ad Set", metric: "ROAS", label: s.name, detail: `ROAS ${s.roas.toFixed(2)}× — unprofitable`, direction: "down", recommendation: "Pause this ad set and reallocate budget to better-performing ad sets. Review audience, placements, and bid settings." });
             if (s.conversions === 0 && s.spend > 50)
-              allSignals.push({ platform: "Meta", source: "computed", severity: "medium", level: "Ad Set", metric: "Conversions", label: s.name, detail: `£${s.spend.toFixed(0)} spend, 0 conversions`, direction: "down" });
+              allSignals.push({ platform: "Meta", source: "computed", severity: "medium", level: "Ad Set", metric: "Conversions", label: s.name, detail: `£${s.spend.toFixed(0)} spend, 0 conversions`, direction: "down", recommendation: "Pause this ad set. Review landing page experience, audience relevance, and the optimisation event setup in Events Manager." });
           }
         }
 
         // Creative-level
         if (creatives?.length) {
           for (const cr of creatives) {
+            if (cr.status && cr.status !== "ACTIVE") continue;
             if (cr.roas > 0 && cr.roas < 1.0 && cr.spend > 20)
-              allSignals.push({ platform: "Meta", source: "computed", severity: "high", level: "Creative", metric: "ROAS", label: cr.adName, detail: `ROAS ${cr.roas.toFixed(2)}× — £${cr.spend.toFixed(0)} spent`, direction: "down" });
+              allSignals.push({ platform: "Meta", source: "computed", severity: "high", level: "Creative", metric: "ROAS", label: cr.adName, detail: `ROAS ${cr.roas.toFixed(2)}× — £${cr.spend.toFixed(0)} spent`, direction: "down", recommendation: "Pause this creative and reallocate budget to top-performers. A/B test a new format or message against a better-performing variation." });
             if (cr.frequency > 5)
-              allSignals.push({ platform: "Meta", source: "computed", severity: cr.frequency >= 8 ? "high" : "medium", level: "Creative", metric: "Ad Fatigue", label: cr.adName, detail: `Frequency ${cr.frequency.toFixed(1)}×`, direction: "down" });
+              allSignals.push({ platform: "Meta", source: "computed", severity: cr.frequency >= 8 ? "high" : "medium", level: "Creative", metric: "Ad Fatigue", label: cr.adName, detail: `Frequency ${cr.frequency.toFixed(1)}×`, direction: "down", recommendation: "Retire or refresh this creative. Introduce new variants with different visuals or messaging to counter audience fatigue." });
             if (cr.conversions === 0 && cr.spend > 30 && cr.impressions > 1000)
-              allSignals.push({ platform: "Meta", source: "computed", severity: "medium", level: "Creative", metric: "Conversions", label: cr.adName, detail: `£${cr.spend.toFixed(0)} spend, 0 conversions`, direction: "down" });
+              allSignals.push({ platform: "Meta", source: "computed", severity: "medium", level: "Creative", metric: "Conversions", label: cr.adName, detail: `£${cr.spend.toFixed(0)} spend, 0 conversions`, direction: "down", recommendation: "Pause and test new variations — try different formats (video vs. image), headlines, or calls-to-action." });
           }
         }
       }
@@ -220,25 +233,27 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
       if (gadsData?.campaignsEnriched?.length) {
         for (const c of gadsData.campaignsEnriched as Array<{
           name: string;
+          status?: string;
           channelType?: string;
           impressions: number;
           searchBudgetLostImpressionShare?: number | null;
           searchRankLostImpressionShare?: number | null;
           searchImpressionShare?: number | null;
         }>) {
+          if (c.status && c.status !== "ENABLED") continue;
           if (c.searchBudgetLostImpressionShare != null && c.searchBudgetLostImpressionShare > 0.10) {
             const pct = Math.round(c.searchBudgetLostImpressionShare * 100);
-            allSignals.push({ platform: "Google Ads", source: "computed", severity: pct >= 30 ? "high" : "medium", level: "Campaign", metric: "Impression Share Lost (Budget)", label: c.name, detail: `Losing ${pct}% of eligible impressions due to budget constraints`, direction: "down" });
+            allSignals.push({ platform: "Google Ads", source: "computed", severity: pct >= 30 ? "high" : "medium", level: "Campaign", metric: "Impression Share Lost (Budget)", label: c.name, detail: `Losing ${pct}% of eligible impressions due to budget constraints`, direction: "down", recommendation: pct >= 30 ? "Increase daily budget or narrow targeting to high-converting keywords/locations to recapture lost impression share." : "Consider increasing budget or restricting delivery to peak conversion windows. Review dayparting settings." });
           }
 
           if (c.searchRankLostImpressionShare != null && c.searchRankLostImpressionShare > 0.15) {
             const pct = Math.round(c.searchRankLostImpressionShare * 100);
-            allSignals.push({ platform: "Google Ads", source: "computed", severity: pct >= 40 ? "high" : "medium", level: "Campaign", metric: "Impression Share Lost (Rank)", label: c.name, detail: `Losing ${pct}% of eligible impressions due to low ad rank`, direction: "down" });
+            allSignals.push({ platform: "Google Ads", source: "computed", severity: pct >= 40 ? "high" : "medium", level: "Campaign", metric: "Impression Share Lost (Rank)", label: c.name, detail: `Losing ${pct}% of eligible impressions due to low ad rank`, direction: "down", recommendation: pct >= 40 ? "Raise bids on key terms and improve Quality Score by aligning keyword-to-ad-copy relevance and strengthening landing page experience." : "Review keyword bids and Quality Scores. Tighten ad group themes to improve relevance and reduce rank-driven losses." });
           }
 
           if (c.searchImpressionShare != null && c.searchImpressionShare < 0.30 && c.impressions > 100 && (c.channelType === "SEARCH" || !c.channelType)) {
             const pct = Math.round(c.searchImpressionShare * 100);
-            allSignals.push({ platform: "Google Ads", source: "computed", severity: pct < 15 ? "high" : "medium", level: "Campaign", metric: "Search Impression Share", label: c.name, detail: `Only ${pct}% search impression share — significant room to capture more`, direction: "down" });
+            allSignals.push({ platform: "Google Ads", source: "computed", severity: pct < 15 ? "high" : "medium", level: "Campaign", metric: "Search Impression Share", label: c.name, detail: `Only ${pct}% search impression share — significant room to capture more`, direction: "down", recommendation: "Increase budget or consolidate campaigns to improve Quality Scores. Prioritise highest-converting search terms to maximise impression share." });
           }
 
           // Auction pressure combo: budget-constrained + low IS together
@@ -249,7 +264,7 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
           ) {
             const budgetPct = Math.round(c.searchBudgetLostImpressionShare * 100);
             const isPct = Math.round(c.searchImpressionShare * 100);
-            allSignals.push({ platform: "Google Ads", source: "computed", severity: "high", level: "Campaign", metric: "Auction Competitiveness", label: c.name, detail: `Budget-constrained (${budgetPct}% IS lost to budget) with only ${isPct}% impression share — increasing budget could significantly boost reach`, direction: "down" });
+            allSignals.push({ platform: "Google Ads", source: "computed", severity: "high", level: "Campaign", metric: "Auction Competitiveness", label: c.name, detail: `Budget-constrained (${budgetPct}% IS lost to budget) with only ${isPct}% impression share — increasing budget could significantly boost reach`, direction: "down", recommendation: "Increase daily budget as a priority action — budget is the binding constraint here. A budget increase will have outsized impression share impact compared to bid adjustments alone." });
           }
         }
       }
@@ -262,21 +277,21 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
         if (prev.clicks > 0) {
           const clicksChange = ((curr.clicks - prev.clicks) / prev.clicks) * 100;
           if (clicksChange < -20)
-            allSignals.push({ platform: "Search Console", source: "computed", severity: "high", metric: "Organic Clicks", detail: `Clicks dropped ${Math.abs(clicksChange).toFixed(1)}% vs previous period (${prev.clicks.toLocaleString()} → ${curr.clicks.toLocaleString()})`, direction: "down" });
+            allSignals.push({ platform: "Search Console", source: "computed", severity: "high", metric: "Organic Clicks", detail: `Clicks dropped ${Math.abs(clicksChange).toFixed(1)}% vs previous period (${prev.clicks.toLocaleString()} → ${curr.clicks.toLocaleString()})`, direction: "down", recommendation: "Investigate recent algorithm updates and check for manual actions or penalties in Search Console. Audit top landing pages for content quality, thin content, and crawlability." });
           else if (clicksChange < -10)
-            allSignals.push({ platform: "Search Console", source: "computed", severity: "medium", metric: "Organic Clicks", detail: `Clicks dropped ${Math.abs(clicksChange).toFixed(1)}% vs previous period (${prev.clicks.toLocaleString()} → ${curr.clicks.toLocaleString()})`, direction: "down" });
+            allSignals.push({ platform: "Search Console", source: "computed", severity: "medium", metric: "Organic Clicks", detail: `Clicks dropped ${Math.abs(clicksChange).toFixed(1)}% vs previous period (${prev.clicks.toLocaleString()} → ${curr.clicks.toLocaleString()})`, direction: "down", recommendation: "Review declining queries and pages in Search Console. Check for recent site changes, redirects, or content updates that may have impacted rankings." });
         }
 
         if (prev.position > 0 && curr.position > prev.position) {
           const posChange = curr.position - prev.position;
           if (posChange > 3)
-            allSignals.push({ platform: "Search Console", source: "computed", severity: posChange > 5 ? "high" : "medium", metric: "Avg Position", detail: `Average position worsened by ${posChange.toFixed(1)} positions (${prev.position.toFixed(1)} → ${curr.position.toFixed(1)})`, direction: "down" });
+            allSignals.push({ platform: "Search Console", source: "computed", severity: posChange > 5 ? "high" : "medium", metric: "Avg Position", detail: `Average position worsened by ${posChange.toFixed(1)} positions (${prev.position.toFixed(1)} → ${curr.position.toFixed(1)})`, direction: "down", recommendation: "Audit on-page SEO for top ranking pages — review title tags, meta descriptions, content depth, and internal linking. Check Core Web Vitals and page speed." });
         }
 
         if (prev.ctr > 0) {
           const ctrChange = ((curr.ctr - prev.ctr) / prev.ctr) * 100;
           if (ctrChange < -25)
-            allSignals.push({ platform: "Search Console", source: "computed", severity: "medium", metric: "Search CTR", detail: `CTR dropped ${Math.abs(ctrChange).toFixed(1)}% vs previous period (${(prev.ctr * 100).toFixed(2)}% → ${(curr.ctr * 100).toFixed(2)}%)`, direction: "down" });
+            allSignals.push({ platform: "Search Console", source: "computed", severity: "medium", metric: "Search CTR", detail: `CTR dropped ${Math.abs(ctrChange).toFixed(1)}% vs previous period (${(prev.ctr * 100).toFixed(2)}% → ${(curr.ctr * 100).toFixed(2)}%)`, direction: "down", recommendation: "Update title tags and meta descriptions for top-ranking pages. Test different SERP copy to improve click-through rates and better match search intent." });
         }
       }
 
@@ -288,21 +303,21 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
         if (prev.sessions > 0) {
           const sessChange = ((curr.sessions - prev.sessions) / prev.sessions) * 100;
           if (sessChange < -20)
-            allSignals.push({ platform: "GA4", source: "computed", severity: "high", metric: "Sessions", detail: `Sessions dropped ${Math.abs(sessChange).toFixed(1)}% vs previous period (${prev.sessions.toLocaleString()} → ${curr.sessions.toLocaleString()})`, direction: "down" });
+            allSignals.push({ platform: "GA4", source: "computed", severity: "high", metric: "Sessions", detail: `Sessions dropped ${Math.abs(sessChange).toFixed(1)}% vs previous period (${prev.sessions.toLocaleString()} → ${curr.sessions.toLocaleString()})`, direction: "down", recommendation: "Cross-reference traffic sources in Search Console and ad platforms to identify which channel dropped. Check for tracking breaks, consent banner changes, or a major source going dark." });
           else if (sessChange < -10)
-            allSignals.push({ platform: "GA4", source: "computed", severity: "medium", metric: "Sessions", detail: `Sessions dropped ${Math.abs(sessChange).toFixed(1)}% vs previous period (${prev.sessions.toLocaleString()} → ${curr.sessions.toLocaleString()})`, direction: "down" });
+            allSignals.push({ platform: "GA4", source: "computed", severity: "medium", metric: "Sessions", detail: `Sessions dropped ${Math.abs(sessChange).toFixed(1)}% vs previous period (${prev.sessions.toLocaleString()} → ${curr.sessions.toLocaleString()})`, direction: "down", recommendation: "Review top traffic sources for the period. Check for UTM tracking gaps, organic position changes, campaign pauses, or seasonality effects." });
         }
 
         if (prev.bounceRate > 0) {
           const bounceChange = curr.bounceRate - prev.bounceRate;
           if (bounceChange > 15)
-            allSignals.push({ platform: "GA4", source: "computed", severity: bounceChange > 25 ? "high" : "medium", metric: "Bounce Rate", detail: `Bounce rate increased ${bounceChange.toFixed(1)}pp (${prev.bounceRate.toFixed(1)}% → ${curr.bounceRate.toFixed(1)}%)`, direction: "up" });
+            allSignals.push({ platform: "GA4", source: "computed", severity: bounceChange > 25 ? "high" : "medium", metric: "Bounce Rate", detail: `Bounce rate increased ${bounceChange.toFixed(1)}pp (${prev.bounceRate.toFixed(1)}% → ${curr.bounceRate.toFixed(1)}%)`, direction: "up", recommendation: "Audit landing pages for load speed, mobile experience, and content-to-intent match. Check for recent page changes, broken elements, or misleading ad/SEO copy driving mismatched traffic." });
         }
 
         if (prev.conversionRate > 0) {
           const cvrChange = ((curr.conversionRate - prev.conversionRate) / prev.conversionRate) * 100;
           if (cvrChange < -25)
-            allSignals.push({ platform: "GA4", source: "computed", severity: "high", metric: "Conversion Rate", detail: `Conversion rate dropped ${Math.abs(cvrChange).toFixed(1)}% vs previous period (${prev.conversionRate.toFixed(2)}% → ${curr.conversionRate.toFixed(2)}%)`, direction: "down" });
+            allSignals.push({ platform: "GA4", source: "computed", severity: "high", metric: "Conversion Rate", detail: `Conversion rate dropped ${Math.abs(cvrChange).toFixed(1)}% vs previous period (${prev.conversionRate.toFixed(2)}% → ${curr.conversionRate.toFixed(2)}%)`, direction: "down", recommendation: "Audit the full conversion funnel — check for broken forms, failed payment steps, or GA4 tracking issues. Compare exit pages and drop-off points in the funnel report." });
         }
       }
 
@@ -447,6 +462,48 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
       });
 
       setSignals(allSignals);
+
+      // Fire-and-forget: fetch AI-generated recommendations for all computed signals
+      const computedForAI = allSignals.filter(s => s.source === "computed");
+      if (computedForAI.length) {
+        fetch("/api/ai/summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sectionType: "alert_recommendations",
+            campaignPlatform: "mixed",
+            alerts: computedForAI.map(s => ({
+              severity: s.severity,
+              level: s.level ?? "",
+              label: `[${s.platform}] ${s.label ?? s.metric}`,
+              metric: s.metric,
+              detail: s.detail,
+            })),
+            clientName: client.name,
+            dateRange: `${startDate} to ${endDate}`,
+          }),
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(json => {
+            if (!json?.recommendations?.length) return;
+            setSignals(prev => {
+              const updated = prev.map(s => ({ ...s }));
+              let idx = 0;
+              for (const s of updated) {
+                if (s.source === "computed") {
+                  if (json.recommendations[idx]) {
+                    s.recommendation = json.recommendations[idx];
+                    s.aiRec = true;
+                  }
+                  idx++;
+                }
+              }
+              return updated;
+            });
+          })
+          .catch(() => {});
+      }
+
       setLastRefreshed(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load signals");
