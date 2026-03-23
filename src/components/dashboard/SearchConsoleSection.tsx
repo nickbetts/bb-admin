@@ -27,6 +27,7 @@ interface SearchConsoleSectionProps {
   endDate: string;
   googleAdsCustomerId?: string | null;
   crossPlatformContext?: string;
+  visibleBlocks?: string[];
 }
 
 interface GSCOverview {
@@ -96,7 +97,9 @@ export function SearchConsoleSection({
   endDate,
   googleAdsCustomerId,
   crossPlatformContext,
+  visibleBlocks,
 }: SearchConsoleSectionProps) {
+  const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<GSCOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GSCOverview | null>(null);
   const [queries, setQueries] = useState<GSCQuery[]>([]);
@@ -331,6 +334,7 @@ export function SearchConsoleSection({
       })()}
 
       {/* Overview metrics */}
+      {show("kpis") && (
       <div className="grid-4">
         <MetricCard
           title="Total Clicks"
@@ -365,8 +369,10 @@ export function SearchConsoleSection({
           color="orange"
         />
       </div>
+      )}
 
       {/* Clicks & Impressions chart */}
+      {show("chart") && (
       <SectionCard title="Clicks & Impressions" subtitle="Search performance over time">
         {chartData.length === 0 ? (
           <p className="text-sm text-slate-400 py-8 text-center">No data for this period</p>
@@ -413,9 +419,12 @@ export function SearchConsoleSection({
           </ResponsiveContainer>
         )}
       </SectionCard>
+      )}
 
+      {(show("top_queries") || show("top_pages")) && (
       <div className="grid-2">
         {/* Top Queries */}
+        {show("top_queries") && (
         <SectionCard title="Top Queries" subtitle="Ranked by clicks">
           {queries.length === 0 ? (
             <p className="text-sm text-slate-400 py-6 text-center">No query data</p>
@@ -461,8 +470,10 @@ export function SearchConsoleSection({
             </div>
           )}
         </SectionCard>
+        )}
 
         {/* Top Pages */}
+        {show("top_pages") && (
         <SectionCard title="Top Pages" subtitle="Ranked by clicks">
           {pages.length === 0 ? (
             <p className="text-sm text-slate-400 py-6 text-center">No page data</p>
@@ -517,10 +528,12 @@ export function SearchConsoleSection({
             </div>
           )}
         </SectionCard>
+        )}
       </div>
+      )}
 
       {/* Position Movers — cross-reference current vs previous period queries */}
-      {(() => {
+      {show("position_movers") && (() => {
         const movers = queries
           .filter(q => {
             const prev = prevQueriesMap.get(q.query);
@@ -573,8 +586,10 @@ export function SearchConsoleSection({
       })()}
 
       {/* Device & Country breakdown */}
-      {(devices.length > 0 || countries.length > 0) && (
+      {(show("devices") || show("countries")) && (devices.length > 0 || countries.length > 0) && (
         <div className="grid-2">
+          {show("devices") && (
+          <>
           {/* Device split donut */}
           {deviceChartData.length > 0 && (
             <SectionCard title="Clicks by Device" subtitle="Device type breakdown">
@@ -617,9 +632,11 @@ export function SearchConsoleSection({
               </div>
             </SectionCard>
           )}
+          </>
+          )}
 
           {/* Top countries table */}
-          {countries.length > 0 && (
+          {show("countries") && countries.length > 0 && (
             <SectionCard title="Top Countries" subtitle="Ranked by clicks">
               <div className="overflow-x-auto">
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -657,7 +674,7 @@ export function SearchConsoleSection({
       )}
 
       {/* ─── Organic vs Paid Keyword Overlap ──────────────────────────────────── */}
-      {googleAdsCustomerId && (overlapLoading || keywordOverlaps.length > 0) && (
+      {show("cannibalisation") && googleAdsCustomerId && (overlapLoading || keywordOverlaps.length > 0) && (
         <SectionCard
           title="Organic vs Paid Keyword Overlap"
           subtitle={overlapSummary ? `${overlapSummary.total} overlapping keyword${overlapSummary.total !== 1 ? "s" : ""} detected` : "Analysing overlap…"}

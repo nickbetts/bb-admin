@@ -26,6 +26,7 @@ interface GA4SectionProps {
   startDate: string;
   endDate: string;
   crossPlatformContext?: string;
+  visibleBlocks?: string[];
 }
 
 interface GA4Overview {
@@ -92,7 +93,8 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function GA4Section({ propertyId, startDate, endDate, crossPlatformContext }: GA4SectionProps) {
+export function GA4Section({ propertyId, startDate, endDate, crossPlatformContext, visibleBlocks }: GA4SectionProps) {
+  const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<GA4Overview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GA4Overview | null>(null);
   const [daily, setDaily] = useState<DailyData[]>([]);
@@ -323,6 +325,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
       })()}
 
       {/* Overview metrics */}
+      {show("kpis") && (
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
         <MetricCard
           title="Sessions"
@@ -383,9 +386,10 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
           color="purple"
         />
       </div>
+      )}
 
       {/* Engaged sessions secondary row (GA4 v2 engagement metrics) */}
-      {(overview.engagedSessions > 0 || overview.engagementRate > 0) && (
+      {show("secondary_kpis") && (overview.engagedSessions > 0 || overview.engagementRate > 0) && (
         <div className="grid grid-cols-2 gap-5">
           <MetricCard
             title="Engaged Sessions"
@@ -414,7 +418,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
       )}
 
       {/* Daily sessions chart */}
-      {daily.length > 0 && (
+      {show("chart") && daily.length > 0 && (
         <SectionCard title="Sessions Over Time" subtitle="Daily sessions trend">
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={daily}>
@@ -462,9 +466,10 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
         </SectionCard>
       )}
 
+      {(show("traffic_sources") || show("top_pages")) && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Traffic sources pie */}
-        {sources.length > 0 && (
+        {show("traffic_sources") && sources.length > 0 && (
           <SectionCard title="Traffic Sources" subtitle="Top acquisition channels">
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
@@ -508,7 +513,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
         )}
 
         {/* Top pages table */}
-        {pages.length > 0 && (
+        {show("top_pages") && pages.length > 0 && (
           <SectionCard title="Top Pages" subtitle="By sessions">
             <div className="divide-y divide-slate-100">
               {pages.slice(0, 6).map((page, i) => (
@@ -533,12 +538,13 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
           </SectionCard>
         )}
       </div>
+      )}
 
       {/* Device & Geography breakdown */}
-      {(deviceChartData.length > 0 || geography.length > 0) && (
+      {(show("devices") || show("countries")) && (deviceChartData.length > 0 || geography.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Device split donut */}
-          {deviceChartData.length > 0 && (
+          {show("devices") && deviceChartData.length > 0 && (
             <SectionCard title="Sessions by Device" subtitle="Device category breakdown">
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
@@ -588,7 +594,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
           )}
 
           {/* Top countries by sessions */}
-          {geography.length > 0 && (
+          {show("countries") && geography.length > 0 && (
             <SectionCard title="Top Countries" subtitle="By sessions">
               <div className="divide-y divide-slate-100">
                 {geography.slice(0, 8).map((c, i) => {

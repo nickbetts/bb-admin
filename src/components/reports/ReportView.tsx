@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, Upload, Trash2, Edit2, Check, X, BarChart3 } from "lucide-react";
+import { ArrowLeft, Download, Upload, Trash2, Edit2, Check, X, Settings2, Eye, EyeOff } from "lucide-react";
 import { SemrushSection } from "@/components/dashboard/SemrushSection";
 import { GA4Section } from "@/components/dashboard/GA4Section";
 import { MetaSection } from "@/components/dashboard/MetaSection";
@@ -10,6 +10,7 @@ import { GoogleAdsSection } from "@/components/dashboard/GoogleAdsSection";
 import { SearchConsoleSection } from "@/components/dashboard/SearchConsoleSection";
 import { parsePeriodToDateRange } from "@/lib/utils";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { SECTION_BLOCKS } from "@/lib/report-blocks";
 
 interface Section {
   id: string;
@@ -17,6 +18,8 @@ interface Section {
   title: string;
   commentary: string | null;
   orderIndex: number;
+  enabled?: boolean;
+  cardConfig?: string | null;
 }
 
 interface Screenshot {
@@ -53,9 +56,17 @@ interface ReportViewProps {
 }
 
 export function ReportView({ report: initialReport }: ReportViewProps) {
-  const [report, setReport] = useState(initialReport);
+  const [report, setReport] = useState<Report>({
+    ...initialReport,
+    sections: initialReport.sections.map((s) => ({
+      ...s,
+      enabled: s.enabled !== false,
+      cardConfig: s.cardConfig ?? null,
+    })),
+  });
   const { startDate, endDate } = parsePeriodToDateRange(report.period);
   const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [configuringSection, setConfiguringSection] = useState<string | null>(null);
   const [commentary, setCommentary] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -64,12 +75,55 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const reportRef = useRef<HTMLDivElement>(null);
   const captionInputRef = useRef<string>("");
 
+  const getVisibleBlocks = (section: Section): string[] | undefined => {
+    if (!section.cardConfig) return undefined;
+    try {
+      const parsed = JSON.parse(section.cardConfig) as { visibleBlocks?: string[] };
+      return parsed.visibleBlocks && parsed.visibleBlocks.length > 0 ? parsed.visibleBlocks : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const handleToggleSectionEnabled = async (sectionId: string) => {
+    const section = report.sections.find((s) => s.id === sectionId);
+    if (!section) return;
+    const newEnabled = !section.enabled;
+    setReport((prev) => ({
+      ...prev,
+      sections: prev.sections.map((s) => s.id === sectionId ? { ...s, enabled: newEnabled } : s),
+    }));
+    await fetch(`/api/reports/${report.id}/sections`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sectionId, enabled: newEnabled }),
+    });
+  };
+
+  const handleToggleBlock = async (sectionId: string, blockId: string) => {
+    const section = report.sections.find((s) => s.id === sectionId);
+    if (!section) return;
+    let currentBlocks = getVisibleBlocks(section);
+    const allBlocks = SECTION_BLOCKS[section.sectionType]?.map((b) => b.id) ?? [];
+    if (!currentBlocks) currentBlocks = [...allBlocks];
+    const newBlocks = currentBlocks.includes(blockId)
+      ? currentBlocks.filter((b) => b !== blockId)
+      : [...currentBlocks, blockId];
+    const newCardConfig = newBlocks.length === allBlocks.length ? null : JSON.stringify({ visibleBlocks: newBlocks });
+    setReport((prev) => ({
+      ...prev,
+      sections: prev.sections.map((s) => s.id === sectionId ? { ...s, cardConfig: newCardConfig } : s),
+    }));
+    await fetch(`/api/reports/${report.id}/sections`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sectionId, cardConfig: newCardConfig }),
+    });
+  };
+
   const handleEditSection = (section: Section) => {
     setEditingSection(section.id);
-    setCommentary((prev) => ({
-      ...prev,
-      [section.id]: section.commentary ?? "",
-    }));
+    setCommentary((prev) => ({ ...prev, [section.id]: section.commentary ?? "" }));
   };
 
   const handleSaveSection = async (sectionId: string) => {
@@ -78,19 +132,13 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       const res = await fetch(`/api/reports/${report.id}/sections`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sectionId,
-          commentary: commentary[sectionId],
-        }),
+        body: JSON.stringify({ sectionId, commentary: commentary[sectionId] }),
       });
-
       if (res.ok) {
         const updated = await res.json();
         setReport((prev) => ({
           ...prev,
-          sections: prev.sections.map((s) =>
-            s.id === sectionId ? { ...s, commentary: updated.commentary } : s
-          ),
+          sections: prev.sections.map((s) => s.id === sectionId ? { ...s, commentary: updated.commentary } : s),
         }));
         setEditingSection(null);
       }
@@ -105,18 +153,10 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("caption", captionInputRef.current);
-
-      const res = await fetch(`/api/reports/${report.id}/screenshots`, {
-        method: "POST",
-        body: formData,
-      });
-
+      const res = await fetch(`/api/reports/${report.id}/screenshots`, { method: "POST", body: formData });
       if (res.ok) {
         const screenshot = await res.json();
-        setReport((prev) => ({
-          ...prev,
-          screenshots: [...prev.screenshots, screenshot],
-        }));
+        setReport((prev) => ({ ...prev, screenshots: [...prev.screenshots, screenshot] }));
       }
     } finally {
       setUploading(false);
@@ -125,16 +165,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   };
 
   const handleDeleteScreenshot = async (screenshotId: string) => {
-    const res = await fetch(
-      `/api/reports/${report.id}/screenshots?screenshotId=${screenshotId}`,
-      { method: "DELETE" }
-    );
-
+    const res = await fetch(`/api/reports/${report.id}/screenshots?screenshotId=${screenshotId}`, { method: "DELETE" });
     if (res.ok) {
-      setReport((prev) => ({
-        ...prev,
-        screenshots: prev.screenshots.filter((s) => s.id !== screenshotId),
-      }));
+      setReport((prev) => ({ ...prev, screenshots: prev.screenshots.filter((s) => s.id !== screenshotId) }));
     }
   };
 
@@ -143,22 +176,14 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     try {
       const { jsPDF } = await import("jspdf");
       const { default: html2canvas } = await import("html2canvas");
-
       if (!reportRef.current) return;
-
       const canvas = await html2canvas(reportRef.current, {
-        backgroundColor: "#0a0a0f",
-        scale: 1.5,
+        backgroundColor: "#ffffff",
+        scale: 2,
         useCORS: true,
         logging: false,
       });
-
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const imgWidth = canvas.width;
@@ -166,28 +191,19 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       const ratio = pdfWidth / imgWidth;
       const totalPdfHeight = imgHeight * ratio;
       const pageCount = Math.ceil(totalPdfHeight / pdfHeight);
-
       for (let page = 0; page < pageCount; page++) {
         if (page > 0) pdf.addPage();
-
         const srcY = (page * pdfHeight) / ratio;
         const srcHeight = Math.min(pdfHeight / ratio, imgHeight - srcY);
-
         const pageCanvas = document.createElement("canvas");
         pageCanvas.width = imgWidth;
         pageCanvas.height = srcHeight;
         const ctx = pageCanvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(canvas, 0, srcY, imgWidth, srcHeight, 0, 0, imgWidth, srcHeight);
-        }
-
-        const imgData = pageCanvas.toDataURL("image/jpeg", 0.9);
+        if (ctx) ctx.drawImage(canvas, 0, srcY, imgWidth, srcHeight, 0, 0, imgWidth, srcHeight);
+        const imgData = pageCanvas.toDataURL("image/jpeg", 0.95);
         pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, srcHeight * ratio);
       }
-
-      pdf.save(
-        `${report.client.name}-${report.period}-report.pdf`.toLowerCase().replace(/\s+/g, "-")
-      );
+      pdf.save(`${report.client.name}-${report.period}-report.pdf`.toLowerCase().replace(/\s+/g, "-"));
     } catch (err) {
       console.error("PDF export error:", err);
       alert("PDF export failed. Please try again.");
@@ -196,23 +212,21 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     }
   }, [report.client.name, report.period]);
 
+  const enabledSections = report.sections.filter((s) => s.enabled !== false);
+  const disabledSections = report.sections.filter((s) => s.enabled === false);
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Top bar */}
-      <div className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b border-slate-200 px-8 py-4">
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-slate-200 px-6 py-3 print:hidden">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link
-              href={`/clients/${report.client.slug}`}
-              className="text-slate-400 hover:text-slate-700 transition"
-            >
+            <Link href={`/clients/${report.client.slug}`} className="text-slate-400 hover:text-slate-700 transition">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
               <h1 className="text-sm font-semibold text-slate-900">{report.title}</h1>
-              <p className="text-xs text-slate-500">
-                {report.client.name} · {report.period}
-              </p>
+              <p className="text-xs text-slate-500">{report.client.name} · {report.period}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -222,7 +236,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs hover:bg-slate-50 transition disabled:opacity-50"
             >
               <Upload className="h-3.5 w-3.5" />
-              {uploading ? "Uploading..." : "Upload Screenshot"}
+              {uploading ? "Uploading..." : "Screenshot"}
             </button>
             <input
               ref={fileInputRef}
@@ -254,168 +268,208 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       {/* Report content */}
       <div className="max-w-5xl mx-auto p-6" ref={reportRef}>
         {/* Report header */}
-        <div className="mb-8 p-8 rounded-2xl bg-gradient-to-br from-indigo-50 via-white to-violet-50 border border-indigo-100">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                  <BarChart3 className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-xs text-indigo-600 font-semibold uppercase tracking-wider">
-                    i3media
-                  </p>
-                  <p className="text-xs text-slate-500">Digital Performance Report</p>
-                </div>
+        <div className="mb-8 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+          <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-8 py-7">
+            <div className="flex items-start justify-between">
+              <div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/primary-logo.svg" alt="i3media" className="h-9 mb-5 brightness-0 invert" />
+                <h1 className="text-2xl font-bold text-white mb-1">{report.title}</h1>
+                <p className="text-indigo-200 text-sm">Digital Performance Report · {report.period}</p>
               </div>
-              <h1 className="text-3xl font-bold text-slate-900 mb-1">{report.title}</h1>
-              <p className="text-slate-500">
-                {report.client.name} · {report.period}
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center text-2xl font-bold text-indigo-700 border border-indigo-200">
-                {report.client.name.charAt(0).toUpperCase()}
+              <div className="text-right">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/20 text-white text-2xl font-bold border border-white/30">
+                  {report.client.name.charAt(0).toUpperCase()}
+                </div>
+                <p className="text-white font-semibold mt-2 text-sm">{report.client.name}</p>
+                <p className="text-indigo-200 text-xs">{report.period}</p>
               </div>
-              <p className="text-xs text-slate-500 mt-2">{report.client.name}</p>
             </div>
+          </div>
+          <div className="bg-white px-8 py-3 flex items-center justify-between border-t border-slate-100">
+            <p className="text-xs text-slate-500">
+              Prepared by i3media · {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+            </p>
+            <p className="text-xs text-slate-400">
+              {enabledSections.length} section{enabledSections.length !== 1 ? "s" : ""}
+              {report.screenshots.length > 0 && ` · ${report.screenshots.length} screenshot${report.screenshots.length !== 1 ? "s" : ""}`}
+            </p>
           </div>
         </div>
 
-        {/* Sections */}
-        {report.sections.map((section) => (
-          <div key={section.id} className="mb-8">
-            {/* Section header with commentary */}
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-4">
-              <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
-                <h2 className="text-sm font-semibold text-slate-800">{section.title}</h2>
-                <button
-                  onClick={() =>
-                    editingSection === section.id
-                      ? setEditingSection(null)
-                      : handleEditSection(section)
-                  }
-                  className="flex items-center gap-1 text-xs text-slate-400 hover:text-indigo-600 transition"
-                >
-                  <Edit2 className="h-3.5 w-3.5" />
-                  {editingSection === section.id ? "Cancel" : "Add commentary"}
-                </button>
-              </div>
+        {/* Hidden sections notice */}
+        {disabledSections.length > 0 && (
+          <div className="mb-6 p-3 rounded-xl border border-amber-200 bg-amber-50 text-xs text-amber-700 flex items-center gap-2 print:hidden">
+            <EyeOff className="h-4 w-4 flex-shrink-0" />
+            <span>
+              {disabledSections.length} section{disabledSections.length !== 1 ? "s are" : " is"} hidden:{" "}
+              {disabledSections.map((s) => s.title).join(", ")}
+            </span>
+          </div>
+        )}
 
-              <div className="px-5 py-4">
-                {editingSection === section.id ? (
-                  <div className="space-y-2">
-                    <textarea
-                      value={commentary[section.id] ?? ""}
-                      onChange={(e) =>
-                        setCommentary((prev) => ({
-                          ...prev,
-                          [section.id]: e.target.value,
-                        }))
-                      }
-                      placeholder="Add your commentary and insights for this section..."
-                      rows={4}
-                      className="w-full px-4 py-3 rounded-lg bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition text-sm resize-none shadow-sm"
-                    />
-                    <div className="flex items-center gap-2 flex-wrap">
+        {/* Sections */}
+        {enabledSections.map((section) => {
+          const visibleBlocks = getVisibleBlocks(section);
+          const availableBlocks = SECTION_BLOCKS[section.sectionType] ?? [];
+          const isConfiguring = configuringSection === section.id;
+
+          return (
+            <div key={section.id} className="mb-10">
+              {/* Section header */}
+              <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden mb-4">
+                <div className="flex items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-100">
+                  <h2 className="text-sm font-semibold text-slate-800">{section.title}</h2>
+                  <div className="flex items-center gap-1 print:hidden">
+                    {availableBlocks.length > 0 && (
                       <button
-                        onClick={() => handleSaveSection(section.id)}
-                        disabled={saving === section.id}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium transition disabled:opacity-50"
+                        onClick={() => setConfiguringSection(isConfiguring ? null : section.id)}
+                        className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition ${isConfiguring ? "bg-indigo-100 text-indigo-700" : "text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"}`}
                       >
-                        <Check className="h-3.5 w-3.5" />
-                        {saving === section.id ? "Saving..." : "Save"}
+                        <Settings2 className="h-3.5 w-3.5" />
+                        Configure
                       </button>
-                      <button
-                        onClick={() => setEditingSection(null)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs hover:bg-slate-50 transition"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                        Cancel
-                      </button>
-                      <AiInsightsPanel
-                        sectionType={section.sectionType === "paid_social" ? "meta" : section.sectionType}
-                        metrics={{}}
-                        clientName={report.client.name}
-                        dateRange={`${startDate} – ${endDate}`}
-                        compact
-                        onInsightsGenerated={(text) =>
-                          setCommentary((prev) => ({
-                            ...prev,
-                            [section.id]: text,
-                          }))
-                        }
-                      />
+                    )}
+                    <button
+                      onClick={() => handleToggleSectionEnabled(section.id)}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition"
+                      title="Hide section from report"
+                    >
+                      <EyeOff className="h-3.5 w-3.5" />
+                      Hide
+                    </button>
+                    <button
+                      onClick={() => editingSection === section.id ? setEditingSection(null) : handleEditSection(section)}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                      {editingSection === section.id ? "Cancel" : "Commentary"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Block configuration panel */}
+                {isConfiguring && availableBlocks.length > 0 && (
+                  <div className="px-5 py-3 bg-indigo-50/50 border-b border-indigo-100 print:hidden">
+                    <p className="text-xs font-medium text-indigo-700 mb-2">Show / hide data blocks:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {availableBlocks.map((block) => {
+                        const isVisible = !visibleBlocks || visibleBlocks.includes(block.id);
+                        return (
+                          <button
+                            key={block.id}
+                            onClick={() => handleToggleBlock(section.id, block.id)}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition ${
+                              isVisible
+                                ? "bg-indigo-600 text-white border-indigo-600"
+                                : "bg-white text-slate-500 border-slate-200 hover:border-indigo-300"
+                            }`}
+                          >
+                            {isVisible ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                            {block.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
-                ) : section.commentary ? (
-                  <div className="bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-3">
-                    <p className="text-xs text-indigo-600 font-medium mb-1">
-                      Commentary
-                    </p>
-                    <p className="text-sm text-slate-700 whitespace-pre-wrap">
-                      {section.commentary}
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-500 italic">
-                    No commentary added yet. Click &quot;Add commentary&quot; to add insights.
-                  </p>
                 )}
-              </div>
-            </div>
 
-            {/* Section data */}
-            {section.sectionType === "seo" && report.client.semrushDomain && (
-              <SemrushSection domain={report.client.semrushDomain} startDate={startDate} endDate={endDate} />
-            )}
-            {section.sectionType === "web" && report.client.ga4PropertyId && (
-              <GA4Section propertyId={report.client.ga4PropertyId} startDate={startDate} endDate={endDate} />
-            )}
-            {section.sectionType === "paid_social" && report.client.metaAccountId && (
-              <MetaSection
-                clientId={report.client.id}
-                clientName={report.client.name}
-                startDate={startDate}
-                endDate={endDate}
-              />
-            )}
-            {section.sectionType === "googleads" && report.client.googleAdsCustomerId && (
-              <GoogleAdsSection
-                customerId={report.client.googleAdsCustomerId}
-                clientId={report.client.id}
-                clientName={report.client.name}
-                startDate={startDate}
-                endDate={endDate}
-              />
-            )}
-            {section.sectionType === "searchconsole" && report.client.searchConsoleSiteUrl && (
-              <SearchConsoleSection
-                siteUrl={report.client.searchConsoleSiteUrl}
-                startDate={startDate}
-                endDate={endDate}
-              />
-            )}
+                {/* Commentary */}
+                <div className="px-5 py-4">
+                  {editingSection === section.id ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={commentary[section.id] ?? ""}
+                        onChange={(e) => setCommentary((prev) => ({ ...prev, [section.id]: e.target.value }))}
+                        placeholder="Add your commentary and insights for this section..."
+                        rows={4}
+                        className="w-full px-4 py-3 rounded-lg bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition text-sm resize-none shadow-sm"
+                      />
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => handleSaveSection(section.id)}
+                          disabled={saving === section.id}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium transition disabled:opacity-50"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          {saving === section.id ? "Saving..." : "Save"}
+                        </button>
+                        <button
+                          onClick={() => setEditingSection(null)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 text-xs hover:bg-slate-50 transition"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          Cancel
+                        </button>
+                        <AiInsightsPanel
+                          sectionType={section.sectionType === "paid_social" ? "meta" : section.sectionType}
+                          metrics={{}}
+                          clientName={report.client.name}
+                          dateRange={`${startDate} – ${endDate}`}
+                          compact
+                          onInsightsGenerated={(text) => setCommentary((prev) => ({ ...prev, [section.id]: text }))}
+                        />
+                      </div>
+                    </div>
+                  ) : section.commentary ? (
+                    <div className="bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-100 rounded-lg px-4 py-3">
+                      <p className="text-xs text-indigo-600 font-semibold mb-1">📝 Commentary</p>
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{section.commentary}</p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">No commentary added yet. Click &quot;Commentary&quot; to add insights.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Section data */}
+              {section.sectionType === "seo" && report.client.semrushDomain && (
+                <SemrushSection domain={report.client.semrushDomain} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} />
+              )}
+              {section.sectionType === "web" && report.client.ga4PropertyId && (
+                <GA4Section propertyId={report.client.ga4PropertyId} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} />
+              )}
+              {section.sectionType === "paid_social" && report.client.metaAccountId && (
+                <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} />
+              )}
+              {section.sectionType === "googleads" && report.client.googleAdsCustomerId && (
+                <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} />
+              )}
+              {section.sectionType === "searchconsole" && report.client.searchConsoleSiteUrl && (
+                <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} />
+              )}
+            </div>
+          );
+        })}
+
+        {/* Re-enable hidden sections */}
+        {disabledSections.length > 0 && (
+          <div className="mb-8 print:hidden">
+            <p className="text-xs font-medium text-slate-500 mb-2">Hidden sections:</p>
+            <div className="flex flex-wrap gap-2">
+              {disabledSections.map((section) => (
+                <button
+                  key={section.id}
+                  onClick={() => handleToggleSectionEnabled(section.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-slate-300 text-slate-500 text-xs hover:border-indigo-400 hover:text-indigo-600 transition"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  Show {section.title}
+                </button>
+              ))}
+            </div>
           </div>
-        ))}
+        )}
 
         {/* Screenshots */}
         {report.screenshots.length > 0 && (
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-slate-800">Additional Screenshots</h2>
-            </div>
+            <h2 className="text-sm font-semibold text-slate-800 mb-4">Additional Screenshots</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {report.screenshots.map((screenshot) => (
-                <div
-                  key={screenshot.id}
-                  className="relative group rounded-xl border border-slate-200 overflow-hidden bg-white"
-                >
-                  <img
-                    src={screenshot.url}
-                    alt={screenshot.caption ?? screenshot.filename}
-                    className="w-full object-cover"
-                  />
+                <div key={screenshot.id} className="relative group rounded-xl border border-slate-200 overflow-hidden bg-white shadow-sm">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={screenshot.url} alt={screenshot.caption ?? screenshot.filename} className="w-full object-cover" />
                   {screenshot.caption && (
                     <div className="px-4 py-2 bg-slate-50 border-t border-slate-100">
                       <p className="text-xs text-slate-500">{screenshot.caption}</p>
@@ -423,7 +477,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   )}
                   <button
                     onClick={() => handleDeleteScreenshot(screenshot.id)}
-                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition"
+                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition print:hidden"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -435,22 +489,10 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
         {/* Footer */}
         <div className="mt-12 pt-6 border-t border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <BarChart3 className="h-3.5 w-3.5 text-white" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-900">i3media</p>
-              <p className="text-[10px] text-slate-500">Digital Marketing Agency</p>
-            </div>
-          </div>
-          <p className="text-xs text-slate-500">
-            {report.title} · {report.period} ·{" "}
-            {new Date().toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/primary-logo.svg" alt="i3media" className="h-7" />
+          <p className="text-xs text-slate-400">
+            {report.title} · {report.period} · {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
           </p>
         </div>
       </div>

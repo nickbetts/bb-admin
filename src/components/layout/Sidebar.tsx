@@ -15,6 +15,7 @@ import {
   BarChart3,
   ScanSearch,
   ShieldCheck,
+  LayoutTemplate,
 } from "lucide-react";
 
 interface NavItem {
@@ -38,6 +39,11 @@ const navItems: NavItem[] = [
     href: "/reports",
     label: "Reports",
     icon: <FileText className="h-4 w-4" />,
+  },
+  {
+    href: "/reports/templates",
+    label: "Templates",
+    icon: <LayoutTemplate className="h-4 w-4" />,
   },
   {
     href: "/settings",

@@ -111,6 +111,7 @@ interface Props {
   startDate: string;
   endDate: string;
   crossPlatformContext?: string;
+  visibleBlocks?: string[];
 }
 
 function micros(v: number) {
@@ -142,7 +143,8 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
 
 type GAdsAlert = { severity: "high" | "medium"; label: string; level: string; detail: string; recommendation: string };
 
-export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext }: Props) {
+export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks }: Props) {
+  const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
   const [prevOverview, setPrevOverview] = useState<GoogleAdsOverview | null>(null);
@@ -434,6 +436,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           })()}
 
           {/* Metric cards — primary + secondary, uniform 20px gap throughout */}
+          {show("kpis") && (
           <div className="space-y-5">
           {/* Overview metric cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-5">
@@ -503,10 +506,11 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
               />
             )}
           </div>
-          </div>{/* end metric cards wrapper */}
+          </div>
+          )}
 
           {/* Daily spend & clicks chart */}
-          {chartData.length > 0 && (
+          {show("chart") && chartData.length > 0 && (
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
               <h3 className="text-sm font-semibold text-slate-800 mb-5">Spend, Clicks &amp; Conversions</h3>
               <ResponsiveContainer width="100%" height={280}>
@@ -599,7 +603,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           )}
 
           {/* Campaign breakdown */}
-          {data.campaigns.length > 0 && (
+          {show("campaigns") && data.campaigns.length > 0 && (
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
               <div className="px-6 py-5 border-b border-slate-100">
                 <h3 className="text-sm font-semibold text-slate-800">Campaign Performance</h3>
@@ -669,7 +673,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           )}
 
           {/* Ad group breakdown */}
-          {data.adGroups.length > 0 && (
+          {show("ad_groups") && data.adGroups.length > 0 && (
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
               <div className="px-6 py-5 border-b border-slate-100">
                 <h3 className="text-sm font-semibold text-slate-800">Ad Group Performance</h3>
