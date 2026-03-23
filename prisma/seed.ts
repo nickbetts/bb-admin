@@ -24,11 +24,11 @@ async function main() {
 
   console.log("✅ Created admin user:", admin.email);
 
-  // Primary admin account
+  // Primary admin account — update role only if already exists (don't reset password)
   const nickHashedPassword = await bcrypt.hash("Guneti250!", 12);
   const nick = await prisma.user.upsert({
     where: { email: "nick@i3media.net" },
-    update: { password: nickHashedPassword, role: "admin", mustChangePassword: false },
+    update: { role: "admin" },
     create: {
       email: "nick@i3media.net",
       name: "Nick Betts",
