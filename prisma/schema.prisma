@@ -97,6 +97,16 @@ model Screenshot {
   report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
 }
 
+model ReportTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  sections    String   // JSON: SectionConfig[]
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model GoogleConnection {
   id           String   @id @default(cuid())
   label        String

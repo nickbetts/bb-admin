@@ -13,15 +13,21 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const { sectionId, commentary } = await request.json();
+    const data = await request.json();
+    const { sectionId, commentary, enabled, cardConfig } = data;
 
     if (!sectionId) {
       return NextResponse.json({ error: "sectionId is required" }, { status: 400 });
     }
 
+    const updateData: { commentary?: string; enabled?: boolean; cardConfig?: string | null } = {};
+    if (commentary !== undefined) updateData.commentary = commentary;
+    if (enabled !== undefined) updateData.enabled = enabled;
+    if (cardConfig !== undefined) updateData.cardConfig = cardConfig;
+
     const section = await prisma.reportSection.update({
       where: { id: sectionId, reportId: id },
-      data: { commentary },
+      data: updateData,
     });
 
     return NextResponse.json(section);

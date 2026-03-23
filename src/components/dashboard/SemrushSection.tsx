@@ -28,6 +28,7 @@ interface SemrushSectionProps {
   startDate: string;
   endDate: string;
   crossPlatformContext?: string;
+  visibleBlocks?: string[];
 }
 
 interface Overview {
@@ -87,7 +88,8 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function SemrushSection({ domain, startDate, endDate, crossPlatformContext }: SemrushSectionProps) {
+export function SemrushSection({ domain, startDate, endDate, crossPlatformContext, visibleBlocks }: SemrushSectionProps) {
+  const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -271,6 +273,7 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
       })()}
 
       {/* Overview metrics */}
+      {show("kpis") && (
       <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
         <MetricCard
           title="Organic Traffic"
@@ -300,9 +303,10 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
           color="green"
         />
       </div>
+      )}
 
       {/* Paid metrics secondary row */}
-      {(overview.paidTraffic > 0 || overview.paidKeywords > 0) && (
+      {show("secondary_kpis") && (overview.paidTraffic > 0 || overview.paidKeywords > 0) && (
         <div className="grid grid-cols-2 gap-5">
           <MetricCard
             title="Paid Traffic"
@@ -322,7 +326,7 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
       )}
 
       {/* Traffic history chart */}
-      {history.length > 0 && (
+      {show("ranking_distribution") && history.length > 0 && (
         <SectionCard
           title="Organic Traffic Trend"
           subtitle={`${domain} — last 12 months`}
@@ -365,9 +369,10 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
         </SectionCard>
       )}
 
+      {(show("ranking_distribution") || show("top_keywords")) && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Position distribution */}
-        {distribution.length > 0 && (
+        {show("ranking_distribution") && distribution.length > 0 && (
           <SectionCard
             title="Keyword Position Distribution"
             subtitle="SERP positions"
@@ -444,9 +449,10 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
           </SectionCard>
         )}
       </div>
+      )}
 
       {/* Top keywords table */}
-      {keywords.length > 0 && (
+      {show("top_keywords") && keywords.length > 0 && (
         <SectionCard
           title="Top Organic Keywords"
           subtitle="By traffic percentage"
@@ -533,7 +539,7 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
       )}
 
       {/* Top Rank Improvers */}
-      {keywords.some(kw => kw.previousPosition > 0 && (kw.previousPosition - kw.position) > 0) && (
+      {show("rank_improvers") && keywords.some(kw => kw.previousPosition > 0 && (kw.previousPosition - kw.position) > 0) && (
         <SectionCard title="Top Rank Improvers" subtitle="Keywords with biggest position gains this month">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -585,7 +591,7 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
       )}
 
       {/* Backlinks */}
-      {backlinks.length > 0 && (
+      {show("backlinks") && backlinks.length > 0 && (
         <SectionCard title="Recent Backlinks" subtitle="Top referring domains by authority score">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -631,7 +637,7 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
       )}
 
       {/* Competitor landscape */}
-      {competitors.length > 0 && (
+      {show("competitors") && competitors.length > 0 && (
         <SectionCard title="Competitor Landscape" subtitle={`Top organic competitors for ${domain}`}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

@@ -26,6 +26,7 @@ interface MetaSectionProps {
   startDate: string;
   endDate: string;
   crossPlatformContext?: string;
+  visibleBlocks?: string[];
 }
 
 interface MetaOverview {
@@ -206,7 +207,8 @@ interface AdSetAudience {
 
 type MetaAlert = { severity: "high" | "medium"; label: string; level: "Campaign" | "Ad Set" | "Creative"; detail: string; recommendation: string };
 
-export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext }: MetaSectionProps) {
+export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks }: MetaSectionProps) {
+  const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<MetaOverview | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -513,6 +515,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
       })()}
 
       {/* Metric cards — primary + secondary, uniform 20px gap throughout */}
+      {show("kpis") && (
       <div className="space-y-5">
       {/* Primary overview metrics */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-5">
@@ -593,10 +596,11 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
           />
         </div>
       )}
-      </div>{/* end metric cards wrapper */}
+      </div>
+      )}
 
       {/* Spend chart */}
-      {daily.length > 0 && (() => {
+      {show("chart") && daily.length > 0 && (() => {
         const dailyWithCpm = daily.map(d => ({
           ...d,
           cpm: d.impressions > 0 ? (d.spend / d.impressions) * 1000 : 0,
@@ -660,7 +664,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
       )}
 
       {/* Hierarchical Campaign → Ad Set → Creatives drill-down */}
-      {(campaignsEnriched.length > 0 || campaigns.length > 0) && (() => {
+      {show("campaigns") && (campaignsEnriched.length > 0 || campaigns.length > 0) && (() => {
         const prevCampaignsMap = new Map(prevCampaigns.map((c) => [c.id, c]));
         const displayCampaigns = campaignsEnriched.length > 0 ? campaignsEnriched : campaigns;
         // Group ad sets & creatives by campaign

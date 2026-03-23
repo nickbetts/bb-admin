@@ -36,13 +36,45 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json();
-    const { clientId, title, period } = data;
+    const { clientId, title, period, templateId, sections: customSections } = data;
 
     if (!clientId || !title || !period) {
       return NextResponse.json(
         { error: "clientId, title, and period are required" },
         { status: 400 }
       );
+    }
+
+    type SectionCreate = { sectionType: string; title: string; orderIndex: number; enabled: boolean; cardConfig: string | null };
+    let sectionsToCreate: SectionCreate[] = [];
+
+    if (templateId) {
+      const template = await prisma.reportTemplate.findUnique({ where: { id: templateId } });
+      if (template) {
+        const parsed = JSON.parse(template.sections) as { sectionType: string; title: string; orderIndex?: number; enabled?: boolean; cardConfig?: string }[];
+        sectionsToCreate = parsed.map((s, i) => ({
+          sectionType: s.sectionType,
+          title: s.title,
+          orderIndex: s.orderIndex ?? i,
+          enabled: s.enabled !== false,
+          cardConfig: s.cardConfig ?? null,
+        }));
+      }
+    } else if (Array.isArray(customSections) && customSections.length > 0) {
+      sectionsToCreate = (customSections as { sectionType: string; title: string; orderIndex?: number; enabled?: boolean; cardConfig?: string }[]).map((s, i) => ({
+        sectionType: s.sectionType,
+        title: s.title,
+        orderIndex: s.orderIndex ?? i,
+        enabled: s.enabled !== false,
+        cardConfig: s.cardConfig ?? null,
+      }));
+    } else {
+      sectionsToCreate = [
+        { sectionType: "overview", title: "Overview & Commentary", orderIndex: 0, enabled: true, cardConfig: null },
+        { sectionType: "seo", title: "SEO Performance", orderIndex: 1, enabled: true, cardConfig: null },
+        { sectionType: "web", title: "Website Analytics", orderIndex: 2, enabled: true, cardConfig: null },
+        { sectionType: "paid_social", title: "Paid Social Performance", orderIndex: 3, enabled: true, cardConfig: null },
+      ];
     }
 
     const report = await prisma.report.create({
@@ -52,12 +84,7 @@ export async function POST(request: NextRequest) {
         period,
         status: "draft",
         sections: {
-          create: [
-            { sectionType: "overview", title: "Overview & Commentary", orderIndex: 0 },
-            { sectionType: "seo", title: "SEO Performance", orderIndex: 1 },
-            { sectionType: "web", title: "Website Analytics", orderIndex: 2 },
-            { sectionType: "paid_social", title: "Paid Social Performance", orderIndex: 3 },
-          ],
+          create: sectionsToCreate,
         },
       },
       include: {
