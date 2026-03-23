@@ -154,15 +154,15 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
     const prev = history[history.length - 2];
 
     const trafficPct = pctChange(curr.organicTraffic, prev.organicTraffic);
-    if (trafficPct <= -25)
+    if (trafficPct != null && trafficPct <= -25)
       alerts.push({ severity: "high", label: "Organic Traffic", detail: `Organic traffic dropped ${Math.abs(trafficPct).toFixed(0)}% month-over-month (${formatNumber(prev.organicTraffic)} \u2192 ${formatNumber(curr.organicTraffic)})`, recommendation: "Investigate for algorithm updates, lost backlinks, or deindexed pages. Review Search Console for coverage issues and check rankings for top pages." });
-    else if (trafficPct <= -10)
+    else if (trafficPct != null && trafficPct <= -10)
       alerts.push({ severity: "medium", label: "Organic Traffic", detail: `Organic traffic declined ${Math.abs(trafficPct).toFixed(0)}% month-over-month`, recommendation: "Monitor for a continued trend. Review keyword rankings and top pages for position changes. Check for seasonal traffic patterns." });
 
     const keywordPct = pctChange(curr.organicKeywords, prev.organicKeywords);
-    if (keywordPct <= -20)
+    if (keywordPct != null && keywordPct <= -20)
       alerts.push({ severity: "high", label: "Ranking Keywords", detail: `Ranking keywords dropped ${Math.abs(keywordPct).toFixed(0)}% (${formatNumber(prev.organicKeywords)} \u2192 ${formatNumber(curr.organicKeywords)})`, recommendation: "Check for site-wide issues \u2014 technical SEO problems, major content removal, or domain-level penalties. Audit indexation status." });
-    else if (keywordPct <= -10)
+    else if (keywordPct != null && keywordPct <= -10)
       alerts.push({ severity: "medium", label: "Ranking Keywords", detail: `Ranking keywords declined ${Math.abs(keywordPct).toFixed(0)}% month-over-month`, recommendation: "Review recently dropped keywords and the pages they targeted. Check for content freshness issues or increased competitor activity." });
 
     // Keywords losing page 1 positions
