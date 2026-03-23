@@ -51,14 +51,18 @@ export async function POST(request: NextRequest) {
     if (templateId) {
       const template = await prisma.reportTemplate.findUnique({ where: { id: templateId } });
       if (template) {
-        const parsed = JSON.parse(template.sections) as { sectionType: string; title: string; orderIndex?: number; enabled?: boolean; cardConfig?: string }[];
-        sectionsToCreate = parsed.map((s, i) => ({
-          sectionType: s.sectionType,
-          title: s.title,
-          orderIndex: s.orderIndex ?? i,
-          enabled: s.enabled !== false,
-          cardConfig: s.cardConfig ?? null,
-        }));
+        try {
+          const parsed = JSON.parse(template.sections) as { sectionType: string; title: string; orderIndex?: number; enabled?: boolean; cardConfig?: string }[];
+          sectionsToCreate = parsed.map((s, i) => ({
+            sectionType: s.sectionType,
+            title: s.title,
+            orderIndex: s.orderIndex ?? i,
+            enabled: s.enabled !== false,
+            cardConfig: s.cardConfig ?? null,
+          }));
+        } catch {
+          console.error("Invalid template sections JSON for template:", templateId);
+        }
       }
     } else if (Array.isArray(customSections) && customSections.length > 0) {
       sectionsToCreate = (customSections as { sectionType: string; title: string; orderIndex?: number; enabled?: boolean; cardConfig?: string }[]).map((s, i) => ({
