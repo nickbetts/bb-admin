@@ -111,9 +111,9 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
     if (!overview || !prevOverview) return [];
     const alerts: GA4Alert[] = [];
     const sessPct = pctChange(overview.sessions, prevOverview.sessions);
-    if (sessPct <= -20)
+    if (sessPct != null && sessPct <= -20)
       alerts.push({ severity: "high", label: "Sessions", detail: `Sessions dropped ${Math.abs(sessPct).toFixed(0)}% vs previous period (${formatNumber(prevOverview.sessions)} → ${formatNumber(overview.sessions)})`, recommendation: "Investigate traffic source changes — check for lost referrals, campaign pauses, or SEO ranking drops. Review GA4 acquisition report for the source of the decline." });
-    else if (sessPct <= -10)
+    else if (sessPct != null && sessPct <= -10)
       alerts.push({ severity: "medium", label: "Sessions", detail: `Sessions declined ${Math.abs(sessPct).toFixed(0)}% vs previous period`, recommendation: "Monitor closely and compare traffic sources period-over-period. Check for seasonal patterns or recent campaign changes." });
 
     const bounceDiff = overview.bounceRate - prevOverview.bounceRate;
@@ -123,21 +123,21 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
       alerts.push({ severity: "medium", label: "Bounce Rate", detail: `Bounce rate increased ${bounceDiff.toFixed(1)}pp vs previous period`, recommendation: "Audit top landing pages for relevance and load speed. Ensure ad/search intent matches page content." });
 
     const convPct = pctChange(overview.conversionRate, prevOverview.conversionRate);
-    if (convPct <= -30)
+    if (convPct != null && convPct <= -30)
       alerts.push({ severity: "high", label: "Conversion Rate", detail: `Conversion rate dropped ${Math.abs(convPct).toFixed(0)}% (${prevOverview.conversionRate.toFixed(2)}% → ${overview.conversionRate.toFixed(2)}%)`, recommendation: "Review conversion tracking setup, check for broken forms or checkout flows, and audit landing page changes made during this period." });
-    else if (convPct <= -15)
+    else if (convPct != null && convPct <= -15)
       alerts.push({ severity: "medium", label: "Conversion Rate", detail: `Conversion rate declined ${Math.abs(convPct).toFixed(0)}% vs previous period`, recommendation: "Compare conversion paths and check if traffic quality has shifted. Review any landing page or offering changes." });
 
     const engPct = pctChange(overview.engagementRate, prevOverview.engagementRate);
-    if (engPct <= -25)
+    if (engPct != null && engPct <= -25)
       alerts.push({ severity: "medium", label: "Engagement Rate", detail: `Engagement rate dropped ${Math.abs(engPct).toFixed(0)}% (${prevOverview.engagementRate.toFixed(1)}% → ${overview.engagementRate.toFixed(1)}%)`, recommendation: "Investigate content quality and audience relevance. Check if new traffic sources are bringing lower-quality visitors." });
 
     const newUserPct = pctChange(overview.newUsers, prevOverview.newUsers);
-    if (newUserPct <= -30)
+    if (newUserPct != null && newUserPct <= -30)
       alerts.push({ severity: "medium", label: "New Users", detail: `New users dropped ${Math.abs(newUserPct).toFixed(0)}% (${formatNumber(prevOverview.newUsers)} → ${formatNumber(overview.newUsers)})`, recommendation: "Check acquisition channels — review SEO rankings, ad campaigns, and referral traffic for declines in new visitor sources." });
 
     const durPct = pctChange(overview.avgSessionDuration, prevOverview.avgSessionDuration);
-    if (durPct <= -30)
+    if (durPct != null && durPct <= -30)
       alerts.push({ severity: "medium", label: "Session Duration", detail: `Avg session duration dropped ${Math.abs(durPct).toFixed(0)}% vs previous period`, recommendation: "Review content engagement and page depth. Check if high-bounce traffic sources are diluting session quality." });
 
     if (overview.sessions > 200 && overview.conversionRate === 0 && prevOverview.conversionRate > 0)
