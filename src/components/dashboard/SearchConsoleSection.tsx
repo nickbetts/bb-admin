@@ -301,7 +301,7 @@ export function SearchConsoleSection({
   const totalDeviceClicks = devices.reduce((s, d) => s + d.clicks, 0);
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-8">
       {/* Performance alerts */}
       {!hideAlerts && gscAlerts.length > 0 && (() => {
         const highAlerts = gscAlerts.filter(a => a.severity === "high");
@@ -600,14 +600,14 @@ export function SearchConsoleSection({
           {/* Device split donut */}
           {deviceChartData.length > 0 && (
             <SectionCard title="Clicks by Device" subtitle="Device type breakdown">
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
                   <Pie
                     data={deviceChartData}
                     cx="50%"
                     cy="50%"
                     innerRadius={55}
-                    outerRadius={88}
+                    outerRadius={80}
                     paddingAngle={3}
                     dataKey="value"
                   >
@@ -621,11 +621,6 @@ export function SearchConsoleSection({
                   <Tooltip
                     contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
                     formatter={(v) => [formatNumber(Number(v)), "Clicks"]}
-                  />
-                  <Legend
-                    formatter={(value: string) => (
-                      <span style={{ color: "#94a3b8", fontSize: 11 }}>{value}</span>
-                    )}
                   />
                 </PieChart>
               </ResponsiveContainer>
