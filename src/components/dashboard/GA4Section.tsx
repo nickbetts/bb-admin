@@ -27,6 +27,7 @@ interface GA4SectionProps {
   endDate: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hideAlerts?: boolean;
 }
 
 interface GA4Overview {
@@ -93,7 +94,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function GA4Section({ propertyId, startDate, endDate, crossPlatformContext, visibleBlocks }: GA4SectionProps) {
+export function GA4Section({ propertyId, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts }: GA4SectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<GA4Overview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GA4Overview | null>(null);
@@ -287,7 +288,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
       ) : !overview ? null : (
         <>
       {/* Performance alerts */}
-      {gaAlerts.length > 0 && (() => {
+      {!hideAlerts && gaAlerts.length > 0 && (() => {
         const highAlerts = gaAlerts.filter(a => a.severity === "high");
         const medAlerts  = gaAlerts.filter(a => a.severity === "medium");
         return (

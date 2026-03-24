@@ -29,6 +29,7 @@ interface SemrushSectionProps {
   endDate: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hideAlerts?: boolean;
 }
 
 interface Overview {
@@ -88,7 +89,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function SemrushSection({ domain, startDate, endDate, crossPlatformContext, visibleBlocks }: SemrushSectionProps) {
+export function SemrushSection({ domain, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts }: SemrushSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
@@ -235,7 +236,7 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
       ) : !overview ? null : (
         <>
       {/* Performance alerts */}
-      {semrushAlerts.length > 0 && (() => {
+      {!hideAlerts && semrushAlerts.length > 0 && (() => {
         const highAlerts = semrushAlerts.filter(a => a.severity === "high");
         const medAlerts  = semrushAlerts.filter(a => a.severity === "medium");
         return (

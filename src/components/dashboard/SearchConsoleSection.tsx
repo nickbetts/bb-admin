@@ -28,6 +28,7 @@ interface SearchConsoleSectionProps {
   googleAdsCustomerId?: string | null;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hideAlerts?: boolean;
 }
 
 interface GSCOverview {
@@ -98,6 +99,7 @@ export function SearchConsoleSection({
   googleAdsCustomerId,
   crossPlatformContext,
   visibleBlocks,
+  hideAlerts,
 }: SearchConsoleSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<GSCOverview | null>(null);
@@ -296,7 +298,7 @@ export function SearchConsoleSection({
   return (
     <div className="space-y-6">
       {/* Performance alerts */}
-      {gscAlerts.length > 0 && (() => {
+      {!hideAlerts && gscAlerts.length > 0 && (() => {
         const highAlerts = gscAlerts.filter(a => a.severity === "high");
         const medAlerts  = gscAlerts.filter(a => a.severity === "medium");
         return (

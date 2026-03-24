@@ -112,6 +112,7 @@ interface Props {
   endDate: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hideAlerts?: boolean;
 }
 
 function micros(v: number) {
@@ -143,7 +144,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
 
 type GAdsAlert = { severity: "high" | "medium"; label: string; level: string; detail: string; recommendation: string };
 
-export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks }: Props) {
+export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts }: Props) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
@@ -390,7 +391,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       ) : !data ? null : (
         <>
           {/* Performance alerts — campaigns */}
-          {gadsAlerts.length > 0 && (() => {
+          {!hideAlerts && gadsAlerts.length > 0 && (() => {
             const highAlerts = gadsAlerts.filter(a => a.severity === "high");
             const medAlerts  = gadsAlerts.filter(a => a.severity === "medium");
             const levelColour: Record<string, string> = { Campaign: "#2563eb" };

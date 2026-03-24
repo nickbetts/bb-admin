@@ -27,6 +27,7 @@ interface MetaSectionProps {
   endDate: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
+  hideAlerts?: boolean;
 }
 
 interface MetaOverview {
@@ -207,7 +208,7 @@ interface AdSetAudience {
 
 type MetaAlert = { severity: "high" | "medium"; label: string; level: "Campaign" | "Ad Set" | "Creative"; detail: string; recommendation: string };
 
-export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks }: MetaSectionProps) {
+export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts }: MetaSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<MetaOverview | null>(null);
@@ -461,7 +462,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
       ) : !overview ? null : (
         <>
       {/* Performance alerts — campaigns, ad sets, creatives */}
-      {metaAlerts.length > 0 && (() => {
+      {!hideAlerts && metaAlerts.length > 0 && (() => {
         const highAlerts = metaAlerts.filter(a => a.severity === "high");
         const medAlerts  = metaAlerts.filter(a => a.severity === "medium");
 
