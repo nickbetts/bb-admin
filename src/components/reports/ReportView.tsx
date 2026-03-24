@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, Upload, Trash2, Edit2, Check, X, Eye, EyeOff, ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search, MessageSquare, LayoutGrid } from "lucide-react";
+import { ArrowLeft, Download, Upload, Trash2, Edit2, Check, X, Eye, EyeOff, ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search, MessageSquare, LayoutGrid, Sparkles } from "lucide-react";
 import { SemrushSection } from "@/components/dashboard/SemrushSection";
 import { GA4Section } from "@/components/dashboard/GA4Section";
 import { MetaSection } from "@/components/dashboard/MetaSection";
@@ -70,6 +70,10 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [saving, setSaving] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [aiLength, setAiLength] = useState<"short" | "medium" | "long">("medium");
+  const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive">("professional");
+  const [aiGenerating, setAiGenerating] = useState<string | null>(null);
+  const [sectionMetrics, setSectionMetrics] = useState<Record<string, Record<string, number>>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const reportRef = useRef<HTMLDivElement>(null);
   const captionInputRef = useRef<string>("");
@@ -123,6 +127,32 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const handleEditSection = (section: Section) => {
     setEditingSection(section.id);
     setCommentary((prev) => ({ ...prev, [section.id]: section.commentary ?? "" }));
+  };
+
+  const handleGenerateAiCommentary = async (sectionId: string, sectionType: string) => {
+    const metrics = sectionMetrics[sectionId];
+    if (!metrics) return;
+    setAiGenerating(sectionId);
+    try {
+      const res = await fetch("/api/ai/report-commentary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sectionType,
+          metrics,
+          clientName: report.client.name,
+          dateRange: report.period,
+          length: aiLength,
+          tone: aiTone,
+        }),
+      });
+      if (res.ok) {
+        const { commentary: generated } = await res.json();
+        if (generated) setCommentary((prev) => ({ ...prev, [sectionId]: generated }));
+      }
+    } finally {
+      setAiGenerating(null);
+    }
   };
 
   const handleSaveSection = async (sectionId: string) => {
@@ -290,19 +320,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   <h1 style={{ fontSize: 26, fontWeight: 700, color: "#fff", letterSpacing: "-0.4px", lineHeight: 1.2, marginBottom: 6 }}>
                     {report.title}
                   </h1>
-                  <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>Digital Performance Report · {report.period}</p>
-                </div>
-                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{
-                    width: 56, height: 56, borderRadius: "var(--r-lg)",
-                    background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)",
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 22, fontWeight: 700, color: "#fff",
-                  }}>
-                    {report.client.name.charAt(0).toUpperCase()}
-                  </div>
-                  <p style={{ color: "#fff", fontWeight: 600, fontSize: 14, marginTop: 10 }}>{report.client.name}</p>
-                  <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, marginTop: 2 }}>{report.period}</p>
+                  <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>Digital Performance Report · {report.period} · {report.client.name}</p>
                 </div>
               </div>
             </div>
@@ -326,10 +344,10 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             const meta = SECTION_META[section.sectionType] ?? { icon: <LayoutGrid size={14} />, badge: "badge-slate" };
 
             return (
-              <div key={section.id} style={{ marginBottom: 40 }}>
+              <div key={section.id} style={{ marginBottom: 56 }}>
 
                 {/* Section card — commentary + controls */}
-                <div className="card" style={{ marginBottom: 20 }}>
+                <div className="card" style={{ marginBottom: 28 }}>
                   <div className="card-header">
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span className={`badge ${meta.badge}`} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -368,6 +386,40 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                           onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
                           onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
                         />
+                        {/* AI commentary controls */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          <select
+                            value={aiTone}
+                            onChange={(e) => setAiTone(e.target.value as typeof aiTone)}
+                            className="btn btn-secondary btn-sm"
+                            style={{ cursor: "pointer", paddingRight: 8 }}
+                          >
+                            <option value="professional">Professional</option>
+                            <option value="friendly">Friendly</option>
+                            <option value="technical">Technical</option>
+                            <option value="executive">Executive</option>
+                          </select>
+                          <select
+                            value={aiLength}
+                            onChange={(e) => setAiLength(e.target.value as typeof aiLength)}
+                            className="btn btn-secondary btn-sm"
+                            style={{ cursor: "pointer", paddingRight: 8 }}
+                          >
+                            <option value="short">Short</option>
+                            <option value="medium">Medium</option>
+                            <option value="long">Long</option>
+                          </select>
+                          <button
+                            onClick={() => handleGenerateAiCommentary(section.id, section.sectionType)}
+                            disabled={aiGenerating === section.id || !sectionMetrics[section.id]}
+                            className="btn btn-secondary btn-sm"
+                            style={{ gap: 6 }}
+                            title={!sectionMetrics[section.id] ? "Section data not yet loaded" : "Generate AI commentary"}
+                          >
+                            <Sparkles size={13} />
+                            {aiGenerating === section.id ? "Generating…" : "Generate with AI"}
+                          </button>
+                        </div>
                         <div style={{ display: "flex", gap: 8 }}>
                           <button onClick={() => handleSaveSection(section.id)} disabled={saving === section.id} className="btn btn-primary btn-sm">
                             <Check size={13} />
@@ -399,19 +451,19 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
                 {/* Section data */}
                 {section.sectionType === "seo" && report.client.semrushDomain && (
-                  <SemrushSection domain={report.client.semrushDomain} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts />
+                  <SemrushSection domain={report.client.semrushDomain} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
                 )}
                 {section.sectionType === "web" && report.client.ga4PropertyId && (
-                  <GA4Section propertyId={report.client.ga4PropertyId} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts />
+                  <GA4Section propertyId={report.client.ga4PropertyId} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
                 )}
                 {section.sectionType === "paid_social" && report.client.metaAccountId && (
-                  <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts />
+                  <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
                 )}
                 {section.sectionType === "googleads" && report.client.googleAdsCustomerId && (
-                  <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts />
+                  <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
                 )}
                 {section.sectionType === "searchconsole" && report.client.searchConsoleSiteUrl && (
-                  <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts />
+                  <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
                 )}
               </div>
             );
@@ -465,6 +517,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
         <aside className="print:hidden" style={{
           width: 264, flexShrink: 0,
           position: "sticky", top: 60, height: "calc(100vh - 60px)",
+          alignSelf: "flex-start",
           background: "var(--surface)", borderLeft: "1px solid var(--border)",
           display: "flex", flexDirection: "column", overflowY: "auto",
         }}>

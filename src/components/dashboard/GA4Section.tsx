@@ -28,6 +28,8 @@ interface GA4SectionProps {
   crossPlatformContext?: string;
   visibleBlocks?: string[];
   hideAlerts?: boolean;
+  hideAi?: boolean;
+  onMetricsReady?: (metrics: Record<string, number>) => void;
 }
 
 interface GA4Overview {
@@ -94,7 +96,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function GA4Section({ propertyId, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts }: GA4SectionProps) {
+export function GA4Section({ propertyId, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady }: GA4SectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<GA4Overview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GA4Overview | null>(null);
@@ -230,6 +232,12 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
         ]);
 
         setOverview(ov);
+        if (ov) onMetricsReady?.({
+          sessions: ov.sessions, users: ov.users, newUsers: ov.newUsers,
+          pageviews: ov.pageviews, bounceRate: ov.bounceRate,
+          avgSessionDuration: ov.avgSessionDuration, conversionRate: ov.conversionRate,
+          engagedSessions: ov.engagedSessions ?? 0, engagementRate: ov.engagementRate ?? 0,
+        });
         setDaily(Array.isArray(d) ? d : []);
         setSources(Array.isArray(s) ? s : []);
         setPages(Array.isArray(p) ? p : []);
@@ -627,7 +635,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
       )}
 
       {/* Super Summary */}
-      {!loading && !error && overview && (
+      {!hideAi && !loading && !error && overview && (
         <SuperSummary
           sectionType="ga4"
           metrics={{
@@ -664,7 +672,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
       )}
 
       {/* AI Insights */}
-      {!loading && !error && overview && (
+      {!hideAi && !loading && !error && overview && (
         <AiInsightsPanel
           sectionType="ga4"
           metrics={{

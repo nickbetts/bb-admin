@@ -29,6 +29,8 @@ interface SearchConsoleSectionProps {
   crossPlatformContext?: string;
   visibleBlocks?: string[];
   hideAlerts?: boolean;
+  hideAi?: boolean;
+  onMetricsReady?: (metrics: Record<string, number>) => void;
 }
 
 interface GSCOverview {
@@ -100,6 +102,8 @@ export function SearchConsoleSection({
   crossPlatformContext,
   visibleBlocks,
   hideAlerts,
+  hideAi,
+  onMetricsReady,
 }: SearchConsoleSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<GSCOverview | null>(null);
@@ -138,6 +142,7 @@ export function SearchConsoleSection({
         const { overview: ov, queries: q, pages: p, daily: d, devices: devs, countries: ctrs, prevOverview: prevOv, prevQueries: prevQ, prevPages: prevP } = await bulkRes.json();
 
         setOverview(ov);
+        if (ov) onMetricsReady?.({ clicks: ov.clicks, impressions: ov.impressions, ctr: ov.ctr, position: ov.position });
         setQueries(Array.isArray(q) ? q : []);
         setPages(Array.isArray(p) ? p : []);
         setDaily(Array.isArray(d) ? d : []);
@@ -771,7 +776,7 @@ export function SearchConsoleSection({
       )}
 
       {/* Super Summary */}
-      {!loading && !error && overview && (
+      {!hideAi && !loading && !error && overview && (
         <SuperSummary
           sectionType="searchconsole"
           metrics={{
@@ -803,7 +808,7 @@ export function SearchConsoleSection({
       )}
 
       {/* AI Insights */}
-      {!loading && !error && overview && (
+      {!hideAi && !loading && !error && overview && (
         <AiInsightsPanel
           sectionType="searchconsole"
           metrics={{

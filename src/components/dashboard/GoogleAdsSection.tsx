@@ -113,6 +113,8 @@ interface Props {
   crossPlatformContext?: string;
   visibleBlocks?: string[];
   hideAlerts?: boolean;
+  hideAi?: boolean;
+  onMetricsReady?: (metrics: Record<string, number>) => void;
 }
 
 function micros(v: number) {
@@ -144,7 +146,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
 
 type GAdsAlert = { severity: "high" | "medium"; label: string; level: string; detail: string; recommendation: string };
 
-export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts }: Props) {
+export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady }: Props) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
@@ -270,7 +272,19 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           fetch(`/api/google-ads?${prevParams}`, { signal: controller.signal, cache: "no-store" }).then((r) => r.json()),
         ]);
         if (json.error) setError(json.error);
-        else setData(json);
+        else {
+          setData(json);
+          if (json?.overview) onMetricsReady?.({
+            clicks: json.overview.clicks,
+            impressions: json.overview.impressions,
+            cost: json.overview.costMicros / 1_000_000,
+            conversions: json.overview.conversions,
+            conversionValue: json.overview.conversionsValue,
+            ctr: json.overview.impressions > 0 ? json.overview.clicks / json.overview.impressions : 0,
+            roas: json.overview.costMicros > 0 ? json.overview.conversionsValue / (json.overview.costMicros / 1_000_000) : 0,
+            cpa: json.overview.conversions > 0 ? (json.overview.costMicros / 1_000_000) / json.overview.conversions : 0,
+          });
+        }
         if (!prevJson?.error && prevJson?.overview) {
           setPrevOverview(prevJson.overview);
           setPrevData(prevJson);
@@ -793,7 +807,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* Super Summary */}
-      {!loading && !error && data?.overview && (
+      {!hideAi && !loading && !error && data?.overview && (
         <SuperSummary
           sectionType="googleads"
           metrics={{
@@ -830,7 +844,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* AI Insights */}
-      {!loading && !error && data?.overview && (
+      {!hideAi && !loading && !error && data?.overview && (
         <AiInsightsPanel
           sectionType="googleads"
           metrics={{
@@ -868,7 +882,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* Landing Page Analysis */}
-      {!loading && !error && data?.landingPages?.length ? (
+      {!hideAi && !loading && !error && data?.landingPages?.length ? (
         <AiLandingPageAnalysis
           landingPages={data.landingPages}
           clientName={clientName}

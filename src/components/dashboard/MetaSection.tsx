@@ -28,6 +28,8 @@ interface MetaSectionProps {
   crossPlatformContext?: string;
   visibleBlocks?: string[];
   hideAlerts?: boolean;
+  hideAi?: boolean;
+  onMetricsReady?: (metrics: Record<string, number>) => void;
 }
 
 interface MetaOverview {
@@ -208,7 +210,7 @@ interface AdSetAudience {
 
 type MetaAlert = { severity: "high" | "medium"; label: string; level: "Campaign" | "Ad Set" | "Creative"; detail: string; recommendation: string };
 
-export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts }: MetaSectionProps) {
+export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady }: MetaSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<MetaOverview | null>(null);
@@ -388,6 +390,12 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
         ]);
 
         setOverview(ov);
+        if (ov) onMetricsReady?.({
+          totalSpend: ov.totalSpend, totalImpressions: ov.totalImpressions,
+          totalClicks: ov.totalClicks, avgCtr: ov.avgCtr, avgCpc: ov.avgCpc,
+          avgCpm: ov.avgCpm, totalConversions: ov.totalConversions,
+          avgRoas: ov.avgRoas, reach: ov.reach, frequency: ov.frequency,
+        });
         setCampaigns(Array.isArray(camp) ? camp : []);
         setCampaignsEnriched(Array.isArray(enriched) ? enriched : []);
         setDaily(Array.isArray(d) ? d : []);
@@ -946,7 +954,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
       )}
 
       {/* Super Summary */}
-      {!loading && !error && overview && (
+      {!hideAi && !loading && !error && overview && (
         <SuperSummary
           sectionType="meta"
           metrics={{
@@ -987,7 +995,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
       )}
 
       {/* AI Insights */}
-      {!loading && !error && overview && (
+      {!hideAi && !loading && !error && overview && (
         <AiInsightsPanel
           sectionType="meta"
           metrics={{
@@ -1017,7 +1025,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
       )}
 
       {/* Landing Page Analysis */}
-      {!loading && !error && landingPages.length > 0 && (
+      {!hideAi && !loading && !error && landingPages.length > 0 && (
         <AiLandingPageAnalysis
           landingPages={landingPages}
           clientName={clientName}

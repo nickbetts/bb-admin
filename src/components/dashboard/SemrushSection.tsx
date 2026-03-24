@@ -30,6 +30,8 @@ interface SemrushSectionProps {
   crossPlatformContext?: string;
   visibleBlocks?: string[];
   hideAlerts?: boolean;
+  hideAi?: boolean;
+  onMetricsReady?: (metrics: Record<string, number>) => void;
 }
 
 interface Overview {
@@ -89,7 +91,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function SemrushSection({ domain, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts }: SemrushSectionProps) {
+export function SemrushSection({ domain, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady }: SemrushSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
@@ -133,6 +135,10 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
         ]);
 
         setOverview(ov);
+        if (ov) onMetricsReady?.({
+          organicTraffic: ov.organicTraffic, organicKeywords: ov.organicKeywords,
+          organicCost: ov.organicCost, paidTraffic: ov.paidTraffic, paidKeywords: ov.paidKeywords,
+        });
         setKeywords(Array.isArray(kw) ? kw : []);
         setHistory(Array.isArray(hist) ? hist : []);
         setDistribution(Array.isArray(dist) ? dist : []);
@@ -689,7 +695,7 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
       )}
 
       {/* Super Summary */}
-      {!loading && !error && overview && (
+      {!hideAi && !loading && !error && overview && (
         <SuperSummary
           sectionType="seo"
           metrics={{
@@ -713,7 +719,7 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
       )}
 
       {/* AI Insights */}
-      {!loading && !error && overview && (
+      {!hideAi && !loading && !error && overview && (
         <AiInsightsPanel
           sectionType="seo"
           metrics={{
