@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { MetricCard } from "@/components/ui/MetricCard";
-import { Delta } from "@/components/ui/index";
+import { SectionCard, Delta } from "@/components/ui/index";
 import { formatCurrency, formatNumber, formatPercent, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import {
   AreaChart,
@@ -526,8 +526,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
 
           {/* Daily spend & clicks chart */}
           {show("chart") && chartData.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-              <h3 className="text-sm font-semibold text-slate-800 mb-5">Spend, Clicks &amp; Conversions</h3>
+            <SectionCard title="Spend, Clicks & Conversions">
               <ResponsiveContainer width="100%" height={280}>
                 <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                   <defs>
@@ -614,7 +613,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                   />
                 </AreaChart>
               </ResponsiveContainer>
-            </div>
+            </SectionCard>
           )}
 
           {/* Campaign breakdown */}

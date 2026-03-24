@@ -302,6 +302,16 @@ export function SearchConsoleSection({
 
   return (
     <div className="flex flex-col gap-8">
+      {/* Section header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Search Console</h2>
+          <p className="text-sm text-slate-500 mt-0.5">Organic search performance via Google Search Console</p>
+        </div>
+        <span className="text-sm text-slate-400">
+          {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
+        </span>
+      </div>
       {/* Performance alerts */}
       {!hideAlerts && gscAlerts.length > 0 && (() => {
         const highAlerts = gscAlerts.filter(a => a.severity === "high");

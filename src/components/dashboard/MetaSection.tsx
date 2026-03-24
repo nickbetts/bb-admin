@@ -615,8 +615,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
           cpm: d.impressions > 0 ? (d.spend / d.impressions) * 1000 : 0,
         }));
         return (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-          <h3 className="text-sm font-semibold text-slate-800 mb-5">Spend &amp; CPM Over Time</h3>
+        <SectionCard title="Spend & CPM Over Time">
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={dailyWithCpm} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
               <defs>
@@ -648,14 +647,13 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
               <Area yAxisId="cpm" type="monotone" dataKey="cpm" stroke="#f59e0b" strokeWidth={2} fill="url(#metaCpmGrad)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </SectionCard>
         );
       })()}
 
       {/* Clicks vs conversions chart */}
       {daily.length > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-          <h3 className="text-sm font-semibold text-slate-800 mb-5">Clicks &amp; Conversions</h3>
+        <SectionCard title="Clicks & Conversions">
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={daily} barSize={8}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -669,7 +667,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
               <Bar dataKey="conversions" fill="#10b981" name="Conversions" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </SectionCard>
       )}
 
       {/* Hierarchical Campaign → Ad Set → Creatives drill-down */}
