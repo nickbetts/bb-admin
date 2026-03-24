@@ -30,6 +30,7 @@ interface MetaSectionProps {
   hideAlerts?: boolean;
   hideAi?: boolean;
   onMetricsReady?: (metrics: Record<string, number>) => void;
+  afterHeader?: React.ReactNode;
 }
 
 interface MetaOverview {
@@ -210,7 +211,7 @@ interface AdSetAudience {
 
 type MetaAlert = { severity: "high" | "medium"; label: string; level: "Campaign" | "Ad Set" | "Creative"; detail: string; recommendation: string };
 
-export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady }: MetaSectionProps) {
+export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady, afterHeader }: MetaSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<MetaOverview | null>(null);
@@ -454,6 +455,8 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
           {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
         </span>
       </div>
+
+      {afterHeader}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">

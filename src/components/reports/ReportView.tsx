@@ -343,127 +343,126 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             const visibleBlocks = getVisibleBlocks(section);
             const meta = SECTION_META[section.sectionType] ?? { icon: <LayoutGrid size={14} />, badge: "badge-slate" };
 
-            return (
-              <div key={section.id} style={{ marginBottom: 56 }}>
-
-                {/* Section card — commentary + controls */}
-                <div className="card" style={{ marginBottom: 28 }}>
-                  <div className="card-header">
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span className={`badge ${meta.badge}`} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                        {meta.icon}
-                        {section.title}
-                      </span>
-                    </div>
-                    <div className="print:hidden" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <button
-                        onClick={() => editingSection === section.id ? setEditingSection(null) : handleEditSection(section)}
-                        className="btn btn-secondary btn-sm"
-                        style={{ gap: 6 }}
-                      >
-                        <MessageSquare size={13} />
-                        {editingSection === section.id ? "Cancel" : "Commentary"}
-                      </button>
-                    </div>
+            const commentaryCard = (
+              <div className="card">
+                <div className="card-header">
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span className={`badge ${meta.badge}`} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      {meta.icon}
+                      {section.title}
+                    </span>
                   </div>
-
-                  <div className="card-body" style={{ padding: "20px 28px" }}>
-                    {editingSection === section.id ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        <textarea
-                          value={commentary[section.id] ?? ""}
-                          onChange={(e) => setCommentary((prev) => ({ ...prev, [section.id]: e.target.value }))}
-                          placeholder="Add your commentary and insights for this section…"
-                          rows={4}
-                          style={{
-                            width: "100%", padding: "12px 16px",
-                            borderRadius: "var(--r)", border: "1px solid var(--border)",
-                            background: "var(--surface)", color: "var(--text)",
-                            fontSize: 14, lineHeight: 1.6, resize: "vertical",
-                            outline: "none", transition: "border-color 0.15s",
-                            fontFamily: "inherit",
-                          }}
-                          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
-                          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
-                        />
-                        {/* AI commentary controls */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                          <select
-                            value={aiTone}
-                            onChange={(e) => setAiTone(e.target.value as typeof aiTone)}
-                            className="btn btn-secondary btn-sm"
-                            style={{ cursor: "pointer", paddingRight: 8 }}
-                          >
-                            <option value="professional">Professional</option>
-                            <option value="friendly">Friendly</option>
-                            <option value="technical">Technical</option>
-                            <option value="executive">Executive</option>
-                          </select>
-                          <select
-                            value={aiLength}
-                            onChange={(e) => setAiLength(e.target.value as typeof aiLength)}
-                            className="btn btn-secondary btn-sm"
-                            style={{ cursor: "pointer", paddingRight: 8 }}
-                          >
-                            <option value="short">Short</option>
-                            <option value="medium">Medium</option>
-                            <option value="long">Long</option>
-                          </select>
-                          <button
-                            onClick={() => handleGenerateAiCommentary(section.id, section.sectionType)}
-                            disabled={aiGenerating === section.id || !sectionMetrics[section.id]}
-                            className="btn btn-secondary btn-sm"
-                            style={{ gap: 6 }}
-                            title={!sectionMetrics[section.id] ? "Section data not yet loaded" : "Generate AI commentary"}
-                          >
-                            <Sparkles size={13} />
-                            {aiGenerating === section.id ? "Generating…" : "Generate with AI"}
-                          </button>
-                        </div>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <button onClick={() => handleSaveSection(section.id)} disabled={saving === section.id} className="btn btn-primary btn-sm">
-                            <Check size={13} />
-                            {saving === section.id ? "Saving…" : "Save"}
-                          </button>
-                          <button onClick={() => setEditingSection(null)} className="btn btn-secondary btn-sm">
-                            <X size={13} />
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : section.commentary ? (
-                      <div style={{
-                        background: "var(--accent-bg)", border: "1px solid #c7d2fe",
-                        borderRadius: "var(--r)", padding: "14px 18px",
-                      }}>
-                        <p style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
-                          Commentary
-                        </p>
-                        <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{section.commentary}</p>
-                      </div>
-                    ) : (
-                      <p style={{ fontSize: 13, color: "var(--text-4)", fontStyle: "italic" }}>
-                        No commentary added yet — click &quot;Commentary&quot; to add insights.
-                      </p>
-                    )}
+                  <div className="print:hidden" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <button
+                      onClick={() => editingSection === section.id ? setEditingSection(null) : handleEditSection(section)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ gap: 6 }}
+                    >
+                      <MessageSquare size={13} />
+                      {editingSection === section.id ? "Cancel" : "Commentary"}
+                    </button>
                   </div>
                 </div>
 
-                {/* Section data */}
+                <div className="card-body" style={{ padding: "20px 28px" }}>
+                  {editingSection === section.id ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <textarea
+                        value={commentary[section.id] ?? ""}
+                        onChange={(e) => setCommentary((prev) => ({ ...prev, [section.id]: e.target.value }))}
+                        placeholder="Add your commentary and insights for this section…"
+                        rows={4}
+                        style={{
+                          width: "100%", padding: "12px 16px",
+                          borderRadius: "var(--r)", border: "1px solid var(--border)",
+                          background: "var(--surface)", color: "var(--text)",
+                          fontSize: 14, lineHeight: 1.6, resize: "vertical",
+                          outline: "none", transition: "border-color 0.15s",
+                          fontFamily: "inherit",
+                        }}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+                      />
+                      {/* AI commentary controls */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <select
+                          value={aiTone}
+                          onChange={(e) => setAiTone(e.target.value as typeof aiTone)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ cursor: "pointer", paddingRight: 8 }}
+                        >
+                          <option value="professional">Professional</option>
+                          <option value="friendly">Friendly</option>
+                          <option value="technical">Technical</option>
+                          <option value="executive">Executive</option>
+                        </select>
+                        <select
+                          value={aiLength}
+                          onChange={(e) => setAiLength(e.target.value as typeof aiLength)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ cursor: "pointer", paddingRight: 8 }}
+                        >
+                          <option value="short">Short</option>
+                          <option value="medium">Medium</option>
+                          <option value="long">Long</option>
+                        </select>
+                        <button
+                          onClick={() => handleGenerateAiCommentary(section.id, section.sectionType)}
+                          disabled={aiGenerating === section.id || !sectionMetrics[section.id]}
+                          className="btn btn-secondary btn-sm"
+                          style={{ gap: 6 }}
+                          title={!sectionMetrics[section.id] ? "Section data not yet loaded" : "Generate AI commentary"}
+                        >
+                          <Sparkles size={13} />
+                          {aiGenerating === section.id ? "Generating…" : "Generate with AI"}
+                        </button>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => handleSaveSection(section.id)} disabled={saving === section.id} className="btn btn-primary btn-sm">
+                          <Check size={13} />
+                          {saving === section.id ? "Saving…" : "Save"}
+                        </button>
+                        <button onClick={() => setEditingSection(null)} className="btn btn-secondary btn-sm">
+                          <X size={13} />
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : section.commentary ? (
+                    <div style={{
+                      background: "var(--accent-bg)", border: "1px solid #c7d2fe",
+                      borderRadius: "var(--r)", padding: "14px 18px",
+                    }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                        Commentary
+                      </p>
+                      <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{section.commentary}</p>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 13, color: "var(--text-4)", fontStyle: "italic" }}>
+                      No commentary added yet — click &quot;Commentary&quot; to add insights.
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+
+            return (
+              <div key={section.id} style={{ marginBottom: 56 }}>
                 {section.sectionType === "seo" && report.client.semrushDomain && (
-                  <SemrushSection domain={report.client.semrushDomain} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                  <SemrushSection domain={report.client.semrushDomain} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
                 )}
                 {section.sectionType === "web" && report.client.ga4PropertyId && (
-                  <GA4Section propertyId={report.client.ga4PropertyId} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                  <GA4Section propertyId={report.client.ga4PropertyId} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
                 )}
                 {section.sectionType === "paid_social" && report.client.metaAccountId && (
-                  <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                  <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
                 )}
                 {section.sectionType === "googleads" && report.client.googleAdsCustomerId && (
-                  <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                  <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
                 )}
                 {section.sectionType === "searchconsole" && report.client.searchConsoleSiteUrl && (
-                  <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                  <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
                 )}
               </div>
             );

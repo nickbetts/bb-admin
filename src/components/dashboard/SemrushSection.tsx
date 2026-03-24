@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, type ReactNode } from "react";
 import {
   AreaChart,
   Area,
@@ -32,6 +32,7 @@ interface SemrushSectionProps {
   hideAlerts?: boolean;
   hideAi?: boolean;
   onMetricsReady?: (metrics: Record<string, number>) => void;
+  afterHeader?: ReactNode;
 }
 
 interface Overview {
@@ -91,7 +92,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function SemrushSection({ domain, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady }: SemrushSectionProps) {
+export function SemrushSection({ domain, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady, afterHeader }: SemrushSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
@@ -226,6 +227,8 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
         </div>
         <span className="text-sm text-slate-400">{formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</span>
       </div>
+
+      {afterHeader}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">

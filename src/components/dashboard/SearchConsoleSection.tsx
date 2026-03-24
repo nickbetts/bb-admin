@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, type ReactNode } from "react";
 import {
   AreaChart,
   Area,
@@ -31,6 +31,7 @@ interface SearchConsoleSectionProps {
   hideAlerts?: boolean;
   hideAi?: boolean;
   onMetricsReady?: (metrics: Record<string, number>) => void;
+  afterHeader?: ReactNode;
 }
 
 interface GSCOverview {
@@ -104,6 +105,7 @@ export function SearchConsoleSection({
   hideAlerts,
   hideAi,
   onMetricsReady,
+  afterHeader,
 }: SearchConsoleSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<GSCOverview | null>(null);
@@ -312,6 +314,9 @@ export function SearchConsoleSection({
           {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
         </span>
       </div>
+
+      {afterHeader}
+
       {/* Performance alerts */}
       {!hideAlerts && gscAlerts.length > 0 && (() => {
         const highAlerts = gscAlerts.filter(a => a.severity === "high");

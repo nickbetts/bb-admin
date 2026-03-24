@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, Delta } from "@/components/ui/index";
 import { formatCurrency, formatNumber, formatPercent, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
@@ -115,6 +115,7 @@ interface Props {
   hideAlerts?: boolean;
   hideAi?: boolean;
   onMetricsReady?: (metrics: Record<string, number>) => void;
+  afterHeader?: ReactNode;
 }
 
 function micros(v: number) {
@@ -146,7 +147,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
 
 type GAdsAlert = { severity: "high" | "medium"; label: string; level: string; detail: string; recommendation: string };
 
-export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady }: Props) {
+export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady, afterHeader }: Props) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
@@ -364,6 +365,8 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
         </span>
       </div>
+
+      {afterHeader}
 
       {loading ? (
         <div className="flex items-center justify-center py-20 text-slate-500 text-sm gap-2">

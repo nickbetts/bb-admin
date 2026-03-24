@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, type ReactNode } from "react";
 import {
   AreaChart,
   Area,
@@ -30,6 +30,7 @@ interface GA4SectionProps {
   hideAlerts?: boolean;
   hideAi?: boolean;
   onMetricsReady?: (metrics: Record<string, number>) => void;
+  afterHeader?: ReactNode;
 }
 
 interface GA4Overview {
@@ -96,7 +97,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function GA4Section({ propertyId, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady }: GA4SectionProps) {
+export function GA4Section({ propertyId, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady, afterHeader }: GA4SectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<GA4Overview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GA4Overview | null>(null);
@@ -280,6 +281,8 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
           {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
         </span>
       </div>
+
+      {afterHeader}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
