@@ -269,7 +269,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
   }));
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-8">
       {/* Section header */}
       <div className="flex items-center justify-between">
         <div>
@@ -555,14 +555,14 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
           {/* Device split donut */}
           {show("devices") && deviceChartData.length > 0 && (
             <SectionCard title="Sessions by Device" subtitle="Device category breakdown">
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
                   <Pie
                     data={deviceChartData}
                     cx="50%"
                     cy="50%"
                     innerRadius={55}
-                    outerRadius={88}
+                    outerRadius={80}
                     paddingAngle={3}
                     dataKey="value"
                   >
@@ -581,11 +581,6 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
                       color: "#0f172a",
                     }}
                     formatter={(v) => [formatNumber(Number(v)), "Sessions"]}
-                  />
-                  <Legend
-                    formatter={(value: string) => (
-                      <span style={{ color: "#94a3b8", fontSize: 11 }}>{value}</span>
-                    )}
                   />
                 </PieChart>
               </ResponsiveContainer>

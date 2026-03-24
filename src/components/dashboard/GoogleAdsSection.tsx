@@ -353,7 +353,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
   })();
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-8">
       {/* Section header */}
       <div className="flex items-center justify-between">
         <div>

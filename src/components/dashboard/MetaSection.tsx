@@ -443,7 +443,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
   }, [clientId, overview, campaignsEnriched, campaigns, startDate, endDate]);
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-8">
       {/* Section header */}
       <div className="flex items-center justify-between">
         <div>
