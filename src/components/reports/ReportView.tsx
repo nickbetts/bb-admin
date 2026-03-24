@@ -559,7 +559,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     </div>
   );
 }
-    <div className="min-h-screen bg-slate-50">
       {/* Top bar */}
       <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-slate-200 px-6 py-3 print:hidden">
         <div className="flex items-center justify-between">
