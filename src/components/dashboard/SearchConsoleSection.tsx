@@ -301,7 +301,7 @@ export function SearchConsoleSection({
   const totalDeviceClicks = devices.reduce((s, d) => s + d.clicks, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Performance alerts */}
       {!hideAlerts && gscAlerts.length > 0 && (() => {
         const highAlerts = gscAlerts.filter(a => a.severity === "high");
