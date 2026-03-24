@@ -525,8 +525,8 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
 
       {/* Metric cards — primary + secondary, uniform 20px gap throughout */}
       {show("kpis") && (
-      <div className="space-y-6">
-      {/* Primary overview metrics */}
+      <div className="flex flex-col gap-6">
+      {/* Primary overview metrics */}}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-5">
         <MetricCard
           title="Spend"
