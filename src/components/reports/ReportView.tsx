@@ -2,13 +2,14 @@
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, Upload, Trash2, Check, X, Eye, EyeOff, ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search, MessageSquare, LayoutGrid, FileText, Image } from "lucide-react";
+import { ArrowLeft, Download, Upload, Trash2, Check, X, Eye, EyeOff, ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search, MessageSquare, LayoutGrid, FileText, Image, ShoppingCart } from "lucide-react";
 import { SemrushSection } from "@/components/dashboard/SemrushSection";
 import { GA4Section } from "@/components/dashboard/GA4Section";
 import { MetaSection } from "@/components/dashboard/MetaSection";
 import { GoogleAdsSection } from "@/components/dashboard/GoogleAdsSection";
 import { SearchConsoleSection } from "@/components/dashboard/SearchConsoleSection";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { EcommerceSection } from "@/components/dashboard/EcommerceSection";
 import { TextSection } from "@/components/reports/TextSection";
 import { ScreenshotsSection } from "@/components/reports/ScreenshotsSection";
 import { parsePeriodToDateRange } from "@/lib/utils";
@@ -39,10 +40,13 @@ interface Client {
   website: string | null;
   logoUrl: string | null;
   semrushDomain: string | null;
+  semrushProjectId?: number | null;
   ga4PropertyId: string | null;
   metaAccountId: string | null;
   googleAdsCustomerId: string | null;
   searchConsoleSiteUrl: string | null;
+  woocommerceUrl?: string | null;
+  shopifyStoreDomain?: string | null;
 }
 
 interface Report {
@@ -235,6 +239,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     text_content_done:           { icon: <FileText size={14} />, badge: "badge-slate" },
     text_technical_update:       { icon: <FileText size={14} />, badge: "badge-slate" },
     text_ppc_update:             { icon: <FileText size={14} />, badge: "badge-slate" },
+    ecommerce:                   { icon: <ShoppingCart size={14} />, badge: "badge-emerald" },
   };
 
   return (
@@ -499,22 +504,45 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               );
             }
 
+            const unconfiguredNotice = (msg: string) => (
+              <div className="card" style={{ marginTop: 16 }}>
+                <div style={{ padding: "20px 28px", textAlign: "center" }}>
+                  <p style={{ fontSize: 13, color: "var(--text-4)", fontStyle: "italic" }}>{msg}</p>
+                </div>
+              </div>
+            );
+
             return (
               <div key={section.id} style={{ marginBottom: 56 }}>
-                {section.sectionType === "seo" && report.client.semrushDomain && (
-                  <SemrushSection domain={report.client.semrushDomain} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                {section.sectionType === "seo" && (
+                  report.client.semrushDomain
+                    ? <SemrushSection domain={report.client.semrushDomain} projectId={report.client.semrushProjectId} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                    : <>{commentaryCard}{unconfiguredNotice("No SEMrush domain connected — configure it in client settings to enable SEO data.")}</>
                 )}
-                {section.sectionType === "web" && report.client.ga4PropertyId && (
-                  <GA4Section propertyId={report.client.ga4PropertyId} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                {section.sectionType === "web" && (
+                  report.client.ga4PropertyId
+                    ? <GA4Section propertyId={report.client.ga4PropertyId} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                    : <>{commentaryCard}{unconfiguredNotice("No GA4 property connected — configure it in client settings to enable web analytics.")}</>
                 )}
-                {section.sectionType === "paid_social" && report.client.metaAccountId && (
-                  <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                {section.sectionType === "paid_social" && (
+                  report.client.metaAccountId
+                    ? <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                    : <>{commentaryCard}{unconfiguredNotice("No Meta ad account connected — configure it in client settings to enable paid social data.")}</>
                 )}
-                {section.sectionType === "googleads" && report.client.googleAdsCustomerId && (
-                  <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                {section.sectionType === "googleads" && (
+                  report.client.googleAdsCustomerId
+                    ? <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                    : <>{commentaryCard}{unconfiguredNotice("No Google Ads account connected — configure it in client settings to enable ads data.")}</>
                 )}
-                {section.sectionType === "searchconsole" && report.client.searchConsoleSiteUrl && (
-                  <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                {section.sectionType === "searchconsole" && (
+                  report.client.searchConsoleSiteUrl
+                    ? <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                    : <>{commentaryCard}{unconfiguredNotice("No Search Console property connected — configure it in client settings to enable search data.")}</>
+                )}
+                {section.sectionType === "ecommerce" && (
+                  (report.client.woocommerceUrl || report.client.shopifyStoreDomain)
+                    ? <>{commentaryCard}<EcommerceSection clientId={report.client.id} platform={report.client.shopifyStoreDomain ? "shopify" : "woocommerce"} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} /></>
+                    : <>{commentaryCard}{unconfiguredNotice("No WooCommerce or Shopify store connected — configure it in client settings to enable e-commerce data.")}</>
                 )}
               </div>
             );

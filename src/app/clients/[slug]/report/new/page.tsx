@@ -40,6 +40,7 @@ const DATA_SECTION_TYPES = [
   { sectionType: "paid_social", title: "Paid Social Performance" },
   { sectionType: "googleads", title: "Google Ads Performance" },
   { sectionType: "searchconsole", title: "Search Console" },
+  { sectionType: "ecommerce", title: "E-Commerce Performance" },
 ];
 
 const ALL_SECTION_TYPES = [...CONTENT_SECTION_TYPES, ...DATA_SECTION_TYPES];
