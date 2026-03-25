@@ -679,3 +679,47 @@ body {
 
 @media (max-width: 1024px) { .grid-3 { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px)  { .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+
+/* =============================================
+   PRINT / PDF EXPORT
+============================================= */
+@media print {
+  /* Ensure colors and backgrounds print */
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Reset app shell so content fills the page */
+  .app-shell {
+    display: block !important;
+    height: auto !important;
+  }
+
+  /* Hide app navigation sidebar */
+  .sidebar {
+    display: none !important;
+  }
+
+  /* Let main content area flow naturally */
+  .app-main {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* White page background */
+  body, html {
+    background: white !important;
+  }
+
+  /* Avoid breaking cards across pages */
+  .card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Remove box shadows for cleaner print */
+  .card, .metric-card, .stat-card {
+    box-shadow: none !important;
+  }
+}

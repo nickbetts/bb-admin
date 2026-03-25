@@ -78,7 +78,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [commentary, setCommentary] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [exportingPdf, setExportingPdf] = useState(false);
   const [aiLength, setAiLength] = useState<"short" | "medium" | "long">("medium");
   const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive">("professional");
   const [aiFormat, setAiFormat] = useState<"prose" | "bullets" | "both">("prose");
@@ -183,46 +182,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     }
   };
 
-  const handleExportPdf = useCallback(async () => {
-    setExportingPdf(true);
-    try {
-      const { jsPDF } = await import("jspdf");
-      const { default: html2canvas } = await import("html2canvas");
-      if (!reportRef.current) return;
-      const canvas = await html2canvas(reportRef.current, {
-        backgroundColor: "#ffffff",
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = pdfWidth / imgWidth;
-      const totalPdfHeight = imgHeight * ratio;
-      const pageCount = Math.ceil(totalPdfHeight / pdfHeight);
-      for (let page = 0; page < pageCount; page++) {
-        if (page > 0) pdf.addPage();
-        const srcY = (page * pdfHeight) / ratio;
-        const srcHeight = Math.min(pdfHeight / ratio, imgHeight - srcY);
-        const pageCanvas = document.createElement("canvas");
-        pageCanvas.width = imgWidth;
-        pageCanvas.height = srcHeight;
-        const ctx = pageCanvas.getContext("2d");
-        if (ctx) ctx.drawImage(canvas, 0, srcY, imgWidth, srcHeight, 0, 0, imgWidth, srcHeight);
-        const imgData = pageCanvas.toDataURL("image/jpeg", 0.95);
-        pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, srcHeight * ratio);
-      }
-      pdf.save(`${report.client.name}-${report.period}-report.pdf`.toLowerCase().replace(/\s+/g, "-"));
-    } catch (err) {
-      console.error("PDF export error:", err);
-      alert("PDF export failed. Please try again.");
-    } finally {
-      setExportingPdf(false);
-    }
-  }, [report.client.name, report.period]);
+  const handleExportPdf = useCallback(() => {
+    window.print();
+  }, []);
 
   const enabledSections = report.sections.filter((s) => s.enabled !== false);
 
@@ -284,9 +246,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               e.target.value = "";
             }
           }} />
-          <button onClick={handleExportPdf} disabled={exportingPdf} className="btn btn-primary btn-sm">
+          <button onClick={handleExportPdf} className="btn btn-primary btn-sm">
             <Download size={13} />
-            {exportingPdf ? "Generating…" : "Export PDF"}
+            Save as PDF
           </button>
         </div>
       </div>
