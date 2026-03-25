@@ -465,6 +465,15 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               </div>
             );
 
+            // Overview section — commentary only, no data feed
+            if (section.sectionType === "overview") {
+              return (
+                <div key={section.id} style={{ marginBottom: 56 }}>
+                  {commentaryCard}
+                </div>
+              );
+            }
+
             // Text-only sections render a simple editable text block
             if (isTextSection(section.sectionType)) {
               if (section.sectionType === "text_screenshots") {
