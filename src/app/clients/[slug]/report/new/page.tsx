@@ -24,14 +24,25 @@ function generatePeriods(): string[] {
 
 const PERIODS = generatePeriods();
 
-const ALL_SECTION_TYPES = [
+const CONTENT_SECTION_TYPES = [
   { sectionType: "overview", title: "Overview & Commentary" },
+  { sectionType: "text_notable_achievements", title: "Notable Achievements" },
+  { sectionType: "text_work_complete", title: "Work Complete" },
+  { sectionType: "text_content_done", title: "Content Done" },
+  { sectionType: "text_technical_update", title: "Technical Update" },
+  { sectionType: "text_ppc_update", title: "PPC Update" },
+  { sectionType: "text_screenshots", title: "Screenshots" },
+];
+
+const DATA_SECTION_TYPES = [
   { sectionType: "seo", title: "SEO Performance" },
   { sectionType: "web", title: "Website Analytics" },
   { sectionType: "paid_social", title: "Paid Social Performance" },
   { sectionType: "googleads", title: "Google Ads Performance" },
   { sectionType: "searchconsole", title: "Search Console" },
 ];
+
+const ALL_SECTION_TYPES = [...CONTENT_SECTION_TYPES, ...DATA_SECTION_TYPES];
 
 interface Template {
   id: string;
@@ -191,16 +202,35 @@ export default function NewReportPage({ params }: { params: Promise<{ slug: stri
           {selectedTemplateId === "custom" && (
             <div className="mt-4 pt-4 border-t border-slate-100">
               <p className="text-xs font-medium text-slate-600 mb-2">Select sections to include:</p>
-              <div className="space-y-1">
-                {ALL_SECTION_TYPES.map((s) => {
-                  const checked = !!customSections.find((cs) => cs.sectionType === s.sectionType);
-                  return (
-                    <label key={s.sectionType} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer">
-                      <input type="checkbox" checked={checked} onChange={() => toggleCustomSection(s.sectionType)} className="rounded accent-indigo-600" />
-                      <span className="text-sm text-slate-700">{s.title}</span>
-                    </label>
-                  );
-                })}
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide px-2 mb-1">Content</p>
+                  <div className="space-y-0.5">
+                    {CONTENT_SECTION_TYPES.map((s) => {
+                      const checked = !!customSections.find((cs) => cs.sectionType === s.sectionType);
+                      return (
+                        <label key={s.sectionType} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer">
+                          <input type="checkbox" checked={checked} onChange={() => toggleCustomSection(s.sectionType)} className="rounded accent-indigo-600" />
+                          <span className="text-sm text-slate-700">{s.title}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide px-2 mb-1">Data</p>
+                  <div className="space-y-0.5">
+                    {DATA_SECTION_TYPES.map((s) => {
+                      const checked = !!customSections.find((cs) => cs.sectionType === s.sectionType);
+                      return (
+                        <label key={s.sectionType} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer">
+                          <input type="checkbox" checked={checked} onChange={() => toggleCustomSection(s.sectionType)} className="rounded accent-indigo-600" />
+                          <span className="text-sm text-slate-700">{s.title}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           )}

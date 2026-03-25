@@ -17,7 +17,7 @@ import {
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
 import { formatNumber, formatCurrency, formatPercent, formatDuration, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
-import { Users, UserPlus, Eye, MousePointer, Clock, TrendingUp, AlertTriangle } from "lucide-react";
+import { Users, UserPlus, Eye, MousePointer, Clock, TrendingUp, AlertTriangle, Leaf, BarChart2 } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 
@@ -81,6 +81,33 @@ interface GA4Device {
   users: number;
 }
 
+interface GA4NewVsReturning {
+  newUsers: number;
+  returningUsers: number;
+}
+
+interface GA4Demographic {
+  range?: string;
+  gender?: string;
+  users: number;
+}
+
+interface GA4Demographics {
+  ageGroups: GA4Demographic[];
+  genderSplit: GA4Demographic[];
+}
+
+interface GA4ConversionEvent {
+  eventName: string;
+  conversions: number;
+}
+
+interface GA4ConversionByChannel {
+  channel: string;
+  conversions: number;
+  sessions: number;
+}
+
 type GA4Alert = { severity: "high" | "medium"; label: string; detail: string; recommendation: string };
 
 const SOURCE_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#84cc16"];
@@ -101,12 +128,19 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<GA4Overview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GA4Overview | null>(null);
+  const [yoyOverview, setYoyOverview] = useState<GA4Overview | null>(null);
+  const [organicOverview, setOrganicOverview] = useState<GA4Overview | null>(null);
+  const [organicMode, setOrganicMode] = useState(false);
   const [daily, setDaily] = useState<DailyData[]>([]);
   const [sources, setSources] = useState<TrafficSource[]>([]);
   const [pages, setPages] = useState<TopPage[]>([]);
   const [prevPages, setPrevPages] = useState<TopPage[]>([]);
   const [geography, setGeography] = useState<GA4Country[]>([]);
   const [deviceSplit, setDeviceSplit] = useState<GA4Device[]>([]);
+  const [newVsReturning, setNewVsReturning] = useState<GA4NewVsReturning | null>(null);
+  const [demographics, setDemographics] = useState<GA4Demographics | null>(null);
+  const [conversionEvents, setConversionEvents] = useState<GA4ConversionEvent[]>([]);
+  const [conversionsByChannel, setConversionsByChannel] = useState<GA4ConversionByChannel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
@@ -201,11 +235,17 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
       setError(null);
       setPrevOverview(null);
       setPrevPages([]);
+      setYoyOverview(null);
+      setOrganicOverview(null);
       try {
         const base = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${startDate}&endDate=${endDate}`;
         const prev = getPreviousPeriod(startDate, endDate);
         const prevBase = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
-        const [ovRes, dailyRes, srcRes, pagesRes, prevOvRes, prevPagesRes, geoRes, devRes] = await Promise.all([
+        // Year-ago: shift start/end dates back by 1 year
+        const yoyStart = new Date(startDate); yoyStart.setFullYear(yoyStart.getFullYear() - 1);
+        const yoyEnd = new Date(endDate); yoyEnd.setFullYear(yoyEnd.getFullYear() - 1);
+        const yoyBase = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${yoyStart.toISOString().split("T")[0]}&endDate=${yoyEnd.toISOString().split("T")[0]}`;
+        const [ovRes, dailyRes, srcRes, pagesRes, prevOvRes, prevPagesRes, geoRes, devRes, organicRes, yoyRes, nvrRes, demoRes, cvEvRes, cvChRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=daily`, { signal: controller.signal }),
           fetch(`${base}&type=sources`, { signal: controller.signal }),
@@ -214,6 +254,12 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
           fetch(`${prevBase}&type=pages`, { signal: controller.signal }),
           fetch(`${base}&type=geography`, { signal: controller.signal }),
           fetch(`${base}&type=devices`, { signal: controller.signal }),
+          fetch(`${base}&type=organic-overview`, { signal: controller.signal }),
+          fetch(`${yoyBase}&type=overview`, { signal: controller.signal }),
+          fetch(`${base}&type=new-vs-returning`, { signal: controller.signal }),
+          fetch(`${base}&type=demographics`, { signal: controller.signal }),
+          fetch(`${base}&type=conversion-events`, { signal: controller.signal }),
+          fetch(`${base}&type=conversions-by-channel`, { signal: controller.signal }),
         ]);
 
         if (!ovRes.ok) {
@@ -221,7 +267,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
           throw new Error(err.error ?? "Failed to fetch GA4 data");
         }
 
-        const [ov, d, s, p, prevOv, prevP, geo, devs] = await Promise.all([
+        const [ov, d, s, p, prevOv, prevP, geo, devs, organic, yoy, nvr, demo, cvEv, cvCh] = await Promise.all([
           ovRes.json(),
           dailyRes.json(),
           srcRes.json(),
@@ -230,6 +276,12 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
           prevPagesRes.ok ? prevPagesRes.json() : Promise.resolve([]),
           geoRes.ok ? geoRes.json() : Promise.resolve([]),
           devRes.ok ? devRes.json() : Promise.resolve([]),
+          organicRes.ok ? organicRes.json() : Promise.resolve(null),
+          yoyRes.ok ? yoyRes.json() : Promise.resolve(null),
+          nvrRes.ok ? nvrRes.json() : Promise.resolve(null),
+          demoRes.ok ? demoRes.json() : Promise.resolve(null),
+          cvEvRes.ok ? cvEvRes.json() : Promise.resolve([]),
+          cvChRes.ok ? cvChRes.json() : Promise.resolve([]),
         ]);
 
         setOverview(ov);
@@ -246,6 +298,12 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
         setPrevPages(Array.isArray(prevP) ? prevP : []);
         setGeography(Array.isArray(geo) ? geo : []);
         setDeviceSplit(Array.isArray(devs) ? devs : []);
+        setOrganicOverview(organic);
+        setYoyOverview(yoy);
+        setNewVsReturning(nvr);
+        setDemographics(demo);
+        setConversionEvents(Array.isArray(cvEv) ? cvEv : []);
+        setConversionsByChannel(Array.isArray(cvCh) ? cvCh : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load GA4 data");
@@ -268,6 +326,9 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
     value: d.sessions,
     device: d.device,
   }));
+  // Use organic or all-traffic depending on toggle
+  const displayOverview = organicMode && organicOverview ? organicOverview : overview;
+  const displayPrev = organicMode ? null : prevOverview; // no prev for organic mode (simplicity)
 
   return (
     <div className="flex flex-col gap-8">
@@ -401,27 +462,27 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
       )}
 
       {/* Engaged sessions secondary row (GA4 v2 engagement metrics) */}
-      {show("secondary_kpis") && (overview.engagedSessions > 0 || overview.engagementRate > 0) && (
+      {show("secondary_kpis") && displayOverview && (displayOverview.engagedSessions > 0 || displayOverview.engagementRate > 0) && (
         <div className="grid grid-cols-2 gap-5">
           <MetricCard
             title="Engaged Sessions"
-            value={formatNumber(overview.engagedSessions)}
+            value={formatNumber(displayOverview.engagedSessions)}
             subtitle="Sessions with 10s+ engagement"
-            change={prevOverview?.engagedSessions != null
-              ? pctChange(overview.engagedSessions, prevOverview.engagedSessions)
+            change={displayPrev?.engagedSessions != null
+              ? pctChange(displayOverview.engagedSessions, displayPrev.engagedSessions)
               : undefined}
-            changeDiff={prevOverview?.engagedSessions != null
-              ? diffStr(overview.engagedSessions, prevOverview.engagedSessions, "count")
+            changeDiff={displayPrev?.engagedSessions != null
+              ? diffStr(displayOverview.engagedSessions, displayPrev.engagedSessions, "count")
               : undefined}
             icon={<TrendingUp className="h-5 w-5" />}
             color="green"
           />
           <MetricCard
             title="Engagement Rate"
-            value={formatPercent(overview.engagementRate)}
+            value={formatPercent(displayOverview.engagementRate)}
             subtitle="% sessions actively engaged"
-            change={prevOverview?.engagementRate != null
-              ? pctChange(overview.engagementRate, prevOverview.engagementRate)
+            change={displayPrev?.engagementRate != null
+              ? pctChange(displayOverview.engagementRate, displayPrev.engagementRate)
               : undefined}
             icon={<TrendingUp className="h-5 w-5" />}
             color="blue"
@@ -631,7 +692,118 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
           )}
         </div>
       )}
+      {/* New vs Returning */}
+      {show("new_vs_returning") && newVsReturning && (newVsReturning.newUsers + newVsReturning.returningUsers) > 0 && (() => {
+        const total = newVsReturning.newUsers + newVsReturning.returningUsers;
+        const newPct = Math.round((newVsReturning.newUsers / total) * 100);
+        const retPct = 100 - newPct;
+        return (
+          <SectionCard title="New vs Returning Visitors" subtitle="User loyalty split">
+            <div style={{ display: "flex", gap: 12, alignItems: "center", padding: "8px 0" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
+                  <span style={{ color: "#6366f1", fontWeight: 600 }}>New — {newPct}%</span>
+                  <span style={{ color: "#10b981", fontWeight: 600 }}>Returning — {retPct}%</span>
+                </div>
+                <div style={{ height: 12, borderRadius: 6, overflow: "hidden", background: "#e2e8f0", display: "flex" }}>
+                  <div style={{ width: `${newPct}%`, background: "#6366f1" }} />
+                  <div style={{ width: `${retPct}%`, background: "#10b981" }} />
+                </div>
+                <div style={{ display: "flex", gap: 20, marginTop: 8 }}>
+                  <div>
+                    <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0 }}>New Users</p>
+                    <p style={{ fontSize: 20, fontWeight: 700, color: "#6366f1", margin: 0 }}>{formatNumber(newVsReturning.newUsers)}</p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0 }}>Returning</p>
+                    <p style={{ fontSize: 20, fontWeight: 700, color: "#10b981", margin: 0 }}>{formatNumber(newVsReturning.returningUsers)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+        );
+      })()}
 
+      {/* Demographics */}
+      {show("demographics") && demographics && (demographics.ageGroups.length > 0 || demographics.genderSplit.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {demographics.ageGroups.length > 0 && (
+            <SectionCard title="Age Groups" subtitle="User age distribution">
+              <div className="divide-y divide-slate-100">
+                {demographics.ageGroups.map((a, i) => {
+                  const max = demographics.ageGroups[0]?.users ?? 1;
+                  return (
+                    <div key={i} className="flex items-center gap-3 py-2.5">
+                      <span style={{ fontSize: 12, color: "var(--text-3)", minWidth: 56 }}>{a.range}</span>
+                      <div style={{ flex: 1, height: 8, background: "var(--surface-2)", borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ width: `${Math.round((a.users / max) * 100)}%`, height: "100%", background: "#6366f1", borderRadius: 4 }} />
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 600, minWidth: 40, textAlign: "right" }}>{formatNumber(a.users)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </SectionCard>
+          )}
+          {demographics.genderSplit.length > 0 && (() => {
+            const total = demographics.genderSplit.reduce((s, g) => s + g.users, 0);
+            return (
+              <SectionCard title="Gender Split" subtitle="User gender distribution">
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {demographics.genderSplit.map((g, i) => (
+                    <div key={i}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                        <span style={{ textTransform: "capitalize", fontWeight: 500 }}>{g.gender}</span>
+                        <span style={{ color: "var(--text-3)" }}>{total > 0 ? Math.round((g.users / total) * 100) : 0}% · {formatNumber(g.users)}</span>
+                      </div>
+                      <div style={{ height: 8, background: "var(--surface-2)", borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ width: `${total > 0 ? Math.round((g.users / total) * 100) : 0}%`, height: "100%", background: i === 0 ? "#3b82f6" : "#ec4899", borderRadius: 4 }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Conversion Events */}
+      {show("conversion_events") && conversionEvents.length > 0 && (
+        <SectionCard title="Conversion Events" subtitle="Key events tracked this period">
+          <div className="divide-y divide-slate-100">
+            {conversionEvents.map((ev, i) => (
+              <div key={i} className="flex items-center justify-between py-2.5">
+                <span style={{ fontSize: 13, color: "var(--text)", fontFamily: "monospace" }}>{ev.eventName}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#6366f1" }}>{formatNumber(ev.conversions)}</span>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Conversions by Channel */}
+      {show("conversions_by_channel") && conversionsByChannel.length > 0 && (() => {
+        const maxConv = conversionsByChannel[0]?.conversions ?? 1;
+        return (
+          <SectionCard title="Conversions by Channel" subtitle="Which channels drive goals">
+            <div className="divide-y divide-slate-100">
+              {conversionsByChannel.map((ch, i) => (
+                <div key={i} className="py-2.5">
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                    <span>{ch.channel}</span>
+                    <span style={{ fontWeight: 700, color: "#6366f1" }}>{ch.conversions} conv · {ch.sessions > 0 ? ((ch.conversions / ch.sessions) * 100).toFixed(2) : "0.00"}% CVR</span>
+                  </div>
+                  <div style={{ height: 6, background: "var(--surface-2)", borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ width: `${Math.round((ch.conversions / maxConv) * 100)}%`, height: "100%", background: "#6366f1" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        );
+      })()}
       {/* Super Summary */}
       {!hideAi && !loading && !error && overview && (
         <SuperSummary

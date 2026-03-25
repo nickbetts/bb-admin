@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Loader2 } from "lucide-react";
+import { Save, Loader2, Upload, X } from "lucide-react";
+import Image from "next/image";
 
 interface Client {
   id: string;
   name: string;
   slug: string;
   website: string | null;
+  logoUrl: string | null;
   semrushDomain: string | null;
+  semrushProjectId: number | null;
   ga4PropertyId: string | null;
   ga4PropertyName: string | null;
   metaAccountId: string | null;
@@ -19,6 +22,11 @@ interface Client {
   googleAdsAccountName: string | null;
   searchConsoleSiteUrl: string | null;
   aiReportInstructions: string | null;
+  woocommerceUrl: string | null;
+  woocommerceKey: string | null;
+  woocommerceSecret: string | null;
+  shopifyStoreDomain: string | null;
+  shopifyAccessToken: string | null;
 }
 
 interface ClientSettingsFormProps {
@@ -61,6 +69,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [logoUrl, setLogoUrl] = useState<string | null>(client.logoUrl ?? null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState("");
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const [ga4Properties, setGa4Properties] = useState<GA4Property[]>([]);
   const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
@@ -81,6 +93,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
   const [form, setForm] = useState({
     name: client.name,
     semrushDomain: client.semrushDomain ?? "",
+    semrushProjectId: client.semrushProjectId ?? null as number | null,
     ga4PropertyId: client.ga4PropertyId ?? "",
     ga4PropertyName: client.ga4PropertyName ?? "",
     metaAccountId: client.metaAccountId ?? "",
@@ -89,6 +102,11 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
     googleAdsAccountName: client.googleAdsAccountName ?? "",
     searchConsoleSiteUrl: client.searchConsoleSiteUrl ?? "",
     aiReportInstructions: client.aiReportInstructions ?? "",
+    woocommerceUrl: client.woocommerceUrl ?? "",
+    woocommerceKey: client.woocommerceKey ?? "",
+    woocommerceSecret: client.woocommerceSecret ?? "",
+    shopifyStoreDomain: client.shopifyStoreDomain ?? "",
+    shopifyAccessToken: client.shopifyAccessToken ?? "",
   });
 
   useEffect(() => {
@@ -181,6 +199,23 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
     }
   }
 
+  async function handleLogoUpload(file: File) {
+    setLogoUploading(true);
+    setLogoError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/clients/${client.id}/logo`, { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) { setLogoError(data.error ?? "Upload failed"); return; }
+      setLogoUrl(data.logoUrl);
+    } catch {
+      setLogoError("Network error uploading logo");
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* Basic Info */}
@@ -188,7 +223,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
         <div className="card-header">
           <h2 className="card-title">Basic Information</h2>
         </div>
-        <div className="card-body">
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <label className="form-label">Client Name</label>
             <input
@@ -198,6 +233,38 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
               onChange={handleChange}
               className="form-input"
             />
+          </div>
+          {/* Logo upload */}
+          <div>
+            <label className="form-label">Client Logo</label>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              {logoUrl ? (
+                <div style={{ position: "relative", width: 80, height: 48, borderRadius: 8, border: "1px solid var(--border)", overflow: "hidden", background: "var(--surface-2)" }}>
+                  <Image src={logoUrl} alt="Logo" fill style={{ objectFit: "contain", padding: 4 }} unoptimized />
+                  <button
+                    type="button"
+                    onClick={() => setLogoUrl(null)}
+                    style={{ position: "absolute", top: 2, right: 2, background: "#dc2626", border: "none", borderRadius: 4, padding: "1px 3px", cursor: "pointer", lineHeight: 1 }}
+                  >
+                    <X size={10} color="#fff" />
+                  </button>
+                </div>
+              ) : (
+                <div style={{ width: 80, height: 48, borderRadius: 8, border: "1px dashed var(--border)", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-2)", color: "var(--text-4)", fontSize: 11 }}>No logo</div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <input ref={logoInputRef} type="file" accept="image/*" style={{ display: "none" }}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); }}
+                />
+                <button type="button" onClick={() => logoInputRef.current?.click()} disabled={logoUploading}
+                  className="btn btn-secondary btn-sm" style={{ gap: 6 }}>
+                  {logoUploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                  {logoUploading ? "Uploading…" : "Upload Logo"}
+                </button>
+                {logoError && <p className="text-xs" style={{ color: "#dc2626" }}>{logoError}</p>}
+                <p className="text-xs" style={{ color: "var(--text-4)" }}>PNG, JPG or SVG — max 5MB</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -224,7 +291,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                 <p className="text-xs text-red-600 mt-1">{semrushFetchError}</p>
               </>
             ) : (
-              <select name="semrushDomain" value={form.semrushDomain} onChange={handleChange} className="form-input">
+              <select name="semrushDomain" value={form.semrushDomain} onChange={(e) => {
+                const selected = semrushProjects.find(p => p.domain === e.target.value);
+                setForm(prev => ({ ...prev, semrushDomain: e.target.value, semrushProjectId: selected?.projectId ?? null }));
+              }} className="form-input">
                 <option value="">— Select a project —</option>
                 {semrushProjects.map((p) => (
                   <option key={p.projectId} value={p.domain}>{p.projectName} — {p.domain}</option>
@@ -463,6 +533,52 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <p className="text-xs text-slate-500 mt-1.5">
               These instructions are injected into the AI prompt when generating report commentary for this client. Leave blank to use default behaviour.
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* WooCommerce */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-xs font-bold text-purple-700">WC</span>
+            <h2 className="card-title">WooCommerce</h2>
+          </div>
+        </div>
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label className="form-label">Store URL</label>
+            <input type="url" name="woocommerceUrl" value={form.woocommerceUrl} onChange={handleChange} placeholder="https://yourstore.com" className="form-input" />
+            <p className="text-xs text-slate-500 mt-1">The WooCommerce store root URL (no trailing slash)</p>
+          </div>
+          <div>
+            <label className="form-label">Consumer Key</label>
+            <input type="text" name="woocommerceKey" value={form.woocommerceKey} onChange={handleChange} placeholder="ck_…" className="form-input" autoComplete="off" />
+          </div>
+          <div>
+            <label className="form-label">Consumer Secret</label>
+            <input type="password" name="woocommerceSecret" value={form.woocommerceSecret} onChange={handleChange} placeholder="cs_…" className="form-input" autoComplete="off" />
+          </div>
+        </div>
+      </div>
+
+      {/* Shopify */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-700">SH</span>
+            <h2 className="card-title">Shopify</h2>
+          </div>
+        </div>
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label className="form-label">Store Domain</label>
+            <input type="text" name="shopifyStoreDomain" value={form.shopifyStoreDomain} onChange={handleChange} placeholder="yourstore.myshopify.com" className="form-input" />
+          </div>
+          <div>
+            <label className="form-label">Access Token</label>
+            <input type="password" name="shopifyAccessToken" value={form.shopifyAccessToken} onChange={handleChange} placeholder="shpat_…" className="form-input" autoComplete="off" />
+            <p className="text-xs text-slate-500 mt-1">Create a private app in Shopify Admin → Apps → Develop apps.</p>
           </div>
         </div>
       </div>

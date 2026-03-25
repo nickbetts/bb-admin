@@ -256,3 +256,51 @@ export async function getBacklinks(
     return [];
   }
 }
+
+export interface SemrushTrackedKeyword {
+  keyword: string;
+  position: number;
+  previousPosition: number | null;
+  searchVolume: number;
+  url: string;
+  landingPage: string;
+}
+
+export async function getSemrushTrackedKeywords(
+  projectId: number,
+  database: string = "uk"
+): Promise<SemrushTrackedKeyword[]> {
+  const apiKey = getApiKey();
+  const params = new URLSearchParams({
+    key: apiKey,
+    action: "report",
+    type: "tracking_positions_list",
+    project_id: projectId.toString(),
+    db: database,
+    export_columns: "Kw,Pos,Pp,Nq,Ur,Pu",
+    display_limit: "100",
+  });
+
+  try {
+    const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+    const lines = (response.data as string).trim().split("\n");
+
+    if (lines.length < 2) return [];
+
+    return lines.slice(1).map((line: string) => {
+      const [keyword, position, previousPosition, searchVolume, url, landingPage] = line.split(";");
+      const pos = parseInt(position);
+      const prevPos = parseInt(previousPosition);
+      return {
+        keyword: keyword || "",
+        position: isNaN(pos) ? 0 : pos,
+        previousPosition: isNaN(prevPos) ? null : prevPos,
+        searchVolume: parseInt(searchVolume) || 0,
+        url: url || "",
+        landingPage: landingPage || "",
+      };
+    });
+  } catch {
+    return [];
+  }
+}

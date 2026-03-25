@@ -7,6 +7,11 @@ import {
   getGA4TopPages,
   getGA4Geography,
   getGA4Devices,
+  getGA4OrganicOverview,
+  getGA4NewVsReturning,
+  getGA4Demographics,
+  getGA4ConversionEvents,
+  getGA4ConversionsByChannel,
 } from "@/lib/ga4";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +43,8 @@ export async function GET(request: NextRequest) {
     switch (type) {
       case "overview":
         return NextResponse.json(await getGA4Overview(propertyId, startDate, endDate));
+      case "organic-overview":
+        return NextResponse.json(await getGA4OrganicOverview(propertyId, startDate, endDate));
       case "daily":
         return NextResponse.json(await getGA4DailyData(propertyId, startDate, endDate));
       case "sources":
@@ -48,6 +55,14 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(await getGA4Geography(propertyId, startDate, endDate));
       case "devices":
         return NextResponse.json(await getGA4Devices(propertyId, startDate, endDate));
+      case "new-vs-returning":
+        return NextResponse.json(await getGA4NewVsReturning(propertyId, startDate, endDate));
+      case "demographics":
+        return NextResponse.json(await getGA4Demographics(propertyId, startDate, endDate));
+      case "conversion-events":
+        return NextResponse.json(await getGA4ConversionEvents(propertyId, startDate, endDate));
+      case "conversions-by-channel":
+        return NextResponse.json(await getGA4ConversionsByChannel(propertyId, startDate, endDate));
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }

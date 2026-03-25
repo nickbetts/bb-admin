@@ -53,6 +53,7 @@ export async function PATCH(
         name: data.name,
         website: data.website,
         semrushDomain: data.semrushDomain,
+        semrushProjectId: data.semrushProjectId != null ? Number(data.semrushProjectId) : null,
         ga4PropertyId: data.ga4PropertyId,
         ga4PropertyName: data.ga4PropertyName,
         metaAccountId: data.metaAccountId,
@@ -63,6 +64,11 @@ export async function PATCH(
         googleAdsAccountName: data.googleAdsAccountName,
         searchConsoleSiteUrl: data.searchConsoleSiteUrl,
         aiReportInstructions: data.aiReportInstructions,
+        woocommerceUrl: data.woocommerceUrl || null,
+        woocommerceKey: data.woocommerceKey || null,
+        woocommerceSecret: data.woocommerceSecret || null,
+        shopifyStoreDomain: data.shopifyStoreDomain || null,
+        shopifyAccessToken: data.shopifyAccessToken || null,
       },
     });
 

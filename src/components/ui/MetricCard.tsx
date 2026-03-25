@@ -9,6 +9,7 @@ interface MetricCardProps {
   change?: number;
   changeDiff?: string;
   changeLabel?: string;
+  yoyChange?: number;
   icon?: React.ReactNode;
   className?: string;
   color?: "purple" | "blue" | "green" | "orange" | "red";
@@ -37,11 +38,13 @@ export function MetricCard({
   change,
   changeDiff,
   changeLabel,
+  yoyChange,
   icon,
   className,
   color = "purple",
 }: MetricCardProps) {
   const isPositive = change !== undefined && change >= 0;
+  const isYoyPositive = yoyChange !== undefined && yoyChange >= 0;
 
   return (
     <div className={cn("metric-card", className)}>
@@ -52,7 +55,7 @@ export function MetricCard({
         )}
       </div>
       <p className="metric-value">{value}</p>
-      {(subtitle || change !== undefined) && (
+      {(subtitle || change !== undefined || yoyChange !== undefined) && (
         <div className="metric-footer">
           <div className="metric-footer-row">
             {change !== undefined && (
@@ -63,6 +66,11 @@ export function MetricCard({
             {changeDiff !== undefined && change !== undefined && (
               <span style={{ fontSize: 11, fontWeight: 600, color: isPositive ? "#065f46" : "#991b1b" }}>
                 {changeDiff}
+              </span>
+            )}
+            {yoyChange !== undefined && (
+              <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 5px", borderRadius: 4, background: isYoyPositive ? "#dbeafe" : "#fee2e2", color: isYoyPositive ? "#1d4ed8" : "#dc2626", marginLeft: 2 }}>
+                YoY {isYoyPositive ? "+" : ""}{yoyChange.toFixed(1)}%
               </span>
             )}
           </div>

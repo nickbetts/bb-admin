@@ -7,6 +7,7 @@ import {
   getKeywordPositionDistribution,
   getCompetitors,
   getBacklinks,
+  getSemrushTrackedKeywords,
 } from "@/lib/semrush";
 
 export const dynamic = "force-dynamic";
@@ -22,8 +23,9 @@ export async function GET(request: NextRequest) {
     const domain = searchParams.get("domain");
     const type = searchParams.get("type") ?? "overview";
     const database = searchParams.get("database") ?? "uk";
+    const projectId = searchParams.get("projectId");
 
-    if (!domain) {
+    if (!domain && type !== "project-keywords") {
       return NextResponse.json({ error: "domain is required" }, { status: 400 });
     }
 
@@ -36,17 +38,23 @@ export async function GET(request: NextRequest) {
 
     switch (type) {
       case "overview":
-        return NextResponse.json(await getDomainOverview(domain, database));
+        return NextResponse.json(await getDomainOverview(domain!, database));
       case "keywords":
-        return NextResponse.json(await getTopOrganicKeywords(domain, database, 20));
+        return NextResponse.json(await getTopOrganicKeywords(domain!, database, 20));
       case "history":
-        return NextResponse.json(await getDomainRankHistory(domain, database));
+        return NextResponse.json(await getDomainRankHistory(domain!, database));
       case "distribution":
-        return NextResponse.json(await getKeywordPositionDistribution(domain, database));
+        return NextResponse.json(await getKeywordPositionDistribution(domain!, database));
       case "competitors":
-        return NextResponse.json(await getCompetitors(domain, database, 10));
+        return NextResponse.json(await getCompetitors(domain!, database, 10));
       case "backlinks":
-        return NextResponse.json(await getBacklinks(domain, 10));
+        return NextResponse.json(await getBacklinks(domain!, 10));
+      case "project-keywords": {
+        if (!projectId) {
+          return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+        }
+        return NextResponse.json(await getSemrushTrackedKeywords(parseInt(projectId), database));
+      }
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }

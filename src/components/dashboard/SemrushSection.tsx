@@ -25,6 +25,7 @@ import { SuperSummary } from "@/components/ai/SuperSummary";
 
 interface SemrushSectionProps {
   domain: string;
+  projectId?: number | null;
   startDate: string;
   endDate: string;
   crossPlatformContext?: string;
@@ -33,6 +34,15 @@ interface SemrushSectionProps {
   hideAi?: boolean;
   onMetricsReady?: (metrics: Record<string, number>) => void;
   afterHeader?: ReactNode;
+}
+
+interface TrackedKeyword {
+  keyword: string;
+  position: number;
+  previousPosition: number | null;
+  searchVolume: number;
+  url: string;
+  landingPage: string;
 }
 
 interface Overview {
@@ -92,14 +102,16 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function SemrushSection({ domain, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady, afterHeader }: SemrushSectionProps) {
+export function SemrushSection({ domain, projectId, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady, afterHeader }: SemrushSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [distribution, setDistribution] = useState<DistributionItem[]>([]);
+  const [trackedKeywords, setTrackedKeywords] = useState<TrackedKeyword[]>([]);
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [backlinks, setBacklinks] = useState<Backlink[]>([]);
+  const [domainAuthority, setDomainAuthority] = useState<{ domainAuthority: number; pageAuthority: number; spamScore: number; rootDomainsLinking: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
@@ -112,14 +124,18 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
       setLoading(true);
       setError(null);
       try {
-        const [overviewRes, keywordsRes, historyRes, distRes, competitorsRes, backlinksRes] = await Promise.all([
+        const fetchList: Promise<Response>[] = [
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=overview`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=keywords`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=history`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=distribution`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=competitors`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=backlinks`, { signal: controller.signal }),
-        ]);
+        ];
+        if (projectId) {
+          fetchList.push(fetch(`/api/semrush?type=project-keywords&projectId=${projectId}`, { signal: controller.signal }));
+        }
+        const [overviewRes, keywordsRes, historyRes, distRes, competitorsRes, backlinksRes, trackedRes] = await Promise.all(fetchList);
 
         if (!overviewRes.ok) {
           const err = await overviewRes.json();
@@ -145,6 +161,21 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
         setDistribution(Array.isArray(dist) ? dist : []);
         setCompetitors(Array.isArray(comps) ? comps : []);
         setBacklinks(Array.isArray(bls) ? bls : []);
+        if (trackedRes?.ok) {
+          const tracked = await trackedRes.json();
+          setTrackedKeywords(Array.isArray(tracked) ? tracked : []);
+        }
+
+        // Domain Authority (config-gated — silently skip if not available)
+        try {
+          const daRes = await fetch(`/api/seo/domain-authority?domain=${encodeURIComponent(domain)}`, { signal: controller.signal });
+          if (daRes.ok) {
+            const da = await daRes.json();
+            setDomainAuthority(da);
+          }
+        } catch {
+          // DA not configured — skip
+        }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load SemRush data");
@@ -154,7 +185,7 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
     }
     fetchData();
     return () => controller.abort();
-  }, [domain, startDate, endDate]);
+  }, [domain, projectId, startDate, endDate]);
 
   // Compute anomaly alerts from SEMrush data
   const semrushAlerts = useMemo<SemrushAlert[]>(() => {
@@ -313,6 +344,36 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
           color="green"
         />
       </div>
+      )}
+
+      {/* Domain Authority (config-gated — only shows if Moz key is set) */}
+      {show("kpis") && domainAuthority && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+          <MetricCard
+            title="Domain Authority"
+            value={domainAuthority.domainAuthority}
+            subtitle="Moz DA score (0–100)"
+            color="purple"
+          />
+          <MetricCard
+            title="Page Authority"
+            value={domainAuthority.pageAuthority}
+            subtitle="Moz PA score (0–100)"
+            color="blue"
+          />
+          <MetricCard
+            title="Linking Root Domains"
+            value={formatNumber(domainAuthority.rootDomainsLinking)}
+            subtitle="Unique domains linking"
+            color="green"
+          />
+          <MetricCard
+            title="Spam Score"
+            value={`${domainAuthority.spamScore}%`}
+            subtitle="Higher = riskier"
+            color={domainAuthority.spamScore > 30 ? "red" : "orange"}
+          />
+        </div>
       )}
 
       {/* Paid metrics secondary row */}
@@ -591,6 +652,70 @@ export function SemrushSection({ domain, startDate, endDate, crossPlatformContex
                         </td>
                         <td className="py-2.5 px-3 text-right text-slate-600 text-xs">{formatNumber(kw.searchVolume)}</td>
                         <td className="py-2.5 px-3 text-right text-slate-600 text-xs">{kw.trafficPercent.toFixed(1)}%</td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Tracked Keywords (Position Tracking) */}
+      {show("tracked_keywords") && trackedKeywords.length > 0 && (
+        <SectionCard title="Tracked Keyword Positions" subtitle="Positions from your SEMrush Position Tracking campaign">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <th className="text-left py-2 pr-4 text-slate-400 font-medium text-xs">Keyword</th>
+                  <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Position</th>
+                  <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Prev</th>
+                  <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Change</th>
+                  <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Volume</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {trackedKeywords
+                  .sort((a, b) => {
+                    if (a.position === 0) return 1;
+                    if (b.position === 0) return -1;
+                    return a.position - b.position;
+                  })
+                  .slice(0, 50)
+                  .map((kw, i) => {
+                    const change = kw.previousPosition != null && kw.previousPosition > 0 && kw.position > 0
+                      ? kw.previousPosition - kw.position : null;
+                    return (
+                      <tr key={i} className="hover:bg-slate-50 transition">
+                        <td className="py-3 pr-4">
+                          <p className="text-slate-800 font-medium truncate max-w-[220px]">{kw.keyword}</p>
+                          {kw.landingPage && <p className="text-xs text-slate-400 truncate max-w-[220px]">{kw.landingPage}</p>}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          {kw.position > 0 ? (
+                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold ${
+                              kw.position <= 3 ? "bg-emerald-50 text-emerald-700" :
+                              kw.position <= 10 ? "bg-blue-50 text-blue-700" :
+                              kw.position <= 20 ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"
+                            }`}>{kw.position}</span>
+                          ) : <span className="text-slate-400 text-xs">—</span>}
+                        </td>
+                        <td className="py-2.5 px-3 text-center text-slate-500 text-xs">
+                          {kw.previousPosition ?? "—"}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          {change != null && (
+                            <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                              change > 0 ? "bg-emerald-50 text-emerald-700" :
+                              change < 0 ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-500"
+                            }`}>
+                              {change > 0 ? <ArrowUp className="h-3 w-3" /> : change < 0 ? <ArrowDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                              {change > 0 ? `+${change}` : change < 0 ? `${change}` : "="}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-slate-600 text-xs">{formatNumber(kw.searchVolume)}</td>
                       </tr>
                     );
                   })}

@@ -8,6 +8,7 @@ import { GoogleAdsSection } from "./GoogleAdsSection";
 import { SearchConsoleSection } from "./SearchConsoleSection";
 import { OverviewSection } from "./OverviewSection";
 import { SignalsSection } from "./SignalsSection";
+import { EcommerceSection } from "./EcommerceSection";
 import { getDateRange, buildCrossContextString } from "@/lib/utils";
 import type { PlatformSummary } from "@/lib/utils";
 import { Calendar } from "lucide-react";
@@ -18,10 +19,13 @@ interface Client {
   name: string;
   slug: string;
   semrushDomain: string | null;
+  semrushProjectId?: number | null;
   ga4PropertyId: string | null;
   metaAccountId: string | null;
   googleAdsCustomerId: string | null;
   searchConsoleSiteUrl: string | null;
+  woocommerceUrl?: string | null;
+  shopifyStoreDomain?: string | null;
 }
 
 interface ClientDashboardProps {
@@ -38,7 +42,7 @@ const periods = [
   { value: "custom", label: "Custom" },
 ];
 
-type Tab = "signals" | "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole";
+type Tab = "signals" | "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole" | "ecommerce";
 
 function toDateInputValue(d: Date) {
   return d.toISOString().split("T")[0];
@@ -161,6 +165,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
     { id: "searchconsole", label: "Search Console", available: !!client.searchConsoleSiteUrl },
     { id: "paid", label: "Paid Social (Meta)", available: !!client.metaAccountId },
     { id: "googleads", label: "Paid Search (Google Ads)", available: !!client.googleAdsCustomerId },
+    { id: "ecommerce", label: "E-Commerce", available: !!(client.woocommerceUrl || client.shopifyStoreDomain) },
   ];
 
   return (
@@ -227,7 +232,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
       )}
 
       {activeTab === "seo" && client.semrushDomain ? (
-        <SemrushSection domain={client.semrushDomain} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.semrush} />
+        <SemrushSection domain={client.semrushDomain} projectId={client.semrushProjectId} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.semrush} />
       ) : activeTab === "seo" ? (
         <NotConfigured
           name="SEO / SemRush"
@@ -272,6 +277,21 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
         <NotConfigured
           name="Search Console"
           description="Add a Search Console site URL in client settings to see clicks, impressions, CTR and keyword rankings"
+          settingsHref={`/clients/${client.slug}/settings`}
+        />
+      ) : null}
+
+      {activeTab === "ecommerce" && (client.woocommerceUrl || client.shopifyStoreDomain) ? (
+        <EcommerceSection
+          clientId={client.id}
+          platform={client.shopifyStoreDomain ? "shopify" : "woocommerce"}
+          startDate={startDate}
+          endDate={endDate}
+        />
+      ) : activeTab === "ecommerce" ? (
+        <NotConfigured
+          name="E-Commerce"
+          description="Add WooCommerce or Shopify credentials in client settings to see order and revenue data"
           settingsHref={`/clients/${client.slug}/settings`}
         />
       ) : null}
