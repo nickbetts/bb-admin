@@ -668,10 +668,17 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
       )}
 
       {/* Tracked Keywords (Position Tracking) */}
-      {show("tracked_keywords") && trackedKeywords.length > 0 && (
+      {show("tracked_keywords") && (
         <SectionCard title="Tracked Keyword Positions" subtitle="Positions from your SEMrush Position Tracking campaign">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          {trackedKeywords.length === 0 ? (
+            <p style={{ fontSize: 13, color: "var(--text-4)", fontStyle: "italic", padding: "12px 0" }}>
+              {projectId
+                ? "No tracked keyword data returned yet — SEMrush may still be processing your project."
+                : "No SEMrush project linked — add a project ID in client settings to enable position tracking."}
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
                   <th className="text-left py-2 pr-4 text-slate-400 font-medium text-xs">Keyword</th>
@@ -727,7 +734,8 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
                   })}
               </tbody>
             </table>
-          </div>
+            </div>
+          )}
         </SectionCard>
       )}
 
