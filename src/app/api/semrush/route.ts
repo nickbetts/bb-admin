@@ -9,6 +9,7 @@ import {
   getCompetitors,
   getBacklinks,
   getSemrushTrackedKeywords,
+  getSemrushAIVisibility,
 } from "@/lib/semrush";
 
 export const dynamic = "force-dynamic";
@@ -52,6 +53,12 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(await getCompetitors(domain!, database, 10));
       case "backlinks":
         return NextResponse.json(await getBacklinks(domain!, 10));
+      case "ai-visibility": {
+        if (!projectId) {
+          return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+        }
+        return NextResponse.json(await getSemrushAIVisibility(parseInt(projectId), database));
+      }
       case "project-keywords": {
         if (!projectId) {
           return NextResponse.json({ error: "projectId is required" }, { status: 400 });

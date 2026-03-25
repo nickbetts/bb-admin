@@ -42,6 +42,7 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "rank_improvers", label: "Rank Improvers" },
     { id: "tracked_keywords", label: "Tracked Keyword Positions" },
     { id: "backlinks", label: "Recent Backlinks" },
+    { id: "ai_visibility", label: "AI Search Visibility" },
     { id: "competitors", label: "Competitor Landscape" },
   ],
   web: [

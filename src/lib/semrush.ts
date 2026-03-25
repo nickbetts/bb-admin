@@ -343,3 +343,81 @@ export async function getSemrushTrackedKeywords(
     return [];
   }
 }
+
+// AI Visibility — Google AI Overviews presence from position tracking
+// Ai column values: 0 = no AI Overview, 1 = AI Overview exists but brand not cited, 2 = brand IS cited
+export interface SemrushAIKeyword {
+  keyword: string;
+  position: number;
+  searchVolume: number;
+  hasAIOverview: boolean;
+  brandInAIOverview: boolean;
+}
+
+export interface SemrushAIVisibility {
+  totalTracked: number;
+  aiOverviewKeywords: number;
+  brandCitations: number;
+  aiVisibilityScore: number; // brandCitations / totalTracked * 100
+  keywords: SemrushAIKeyword[];
+}
+
+export async function getSemrushAIVisibility(
+  projectId: number,
+  database: string = "uk"
+): Promise<SemrushAIVisibility> {
+  const apiKey = getApiKey();
+  const empty: SemrushAIVisibility = {
+    totalTracked: 0,
+    aiOverviewKeywords: 0,
+    brandCitations: 0,
+    aiVisibilityScore: 0,
+    keywords: [],
+  };
+
+  const params = new URLSearchParams({
+    key: apiKey,
+    action: "report",
+    type: "tracking_positions_list",
+    project_id: projectId.toString(),
+    db: database,
+    export_columns: "Kw,Pos,Pp,Nq,Ur,Pu,Ai",
+    display_limit: "200",
+  });
+
+  const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+  const lines = (response.data as string).trim().split("\n");
+
+  if (lines[0]?.startsWith("ERROR")) {
+    const msg = lines[0];
+    // If the Ai column isn't available on this plan, the API returns an error about unknown columns.
+    // Return empty rather than throwing so the UI shows a "not available" state.
+    if (msg.includes("UNKNOWN COLUMN") || msg.includes("WRONG KEY") || msg.includes("30 ::")) {
+      return empty;
+    }
+    throw new Error(`SEMrush AI visibility: ${msg}`);
+  }
+
+  if (lines.length < 2) return empty;
+
+  const keywords: SemrushAIKeyword[] = lines.slice(1).map((line: string) => {
+    const parts = line.split(";");
+    // columns: Kw, Pos, Pp, Nq, Ur, Pu, Ai
+    const aiVal = parseInt(parts[6] ?? "0") || 0;
+    return {
+      keyword: parts[0] || "",
+      position: parseInt(parts[1]) || 0,
+      searchVolume: parseInt(parts[3]) || 0,
+      hasAIOverview: aiVal >= 1,
+      brandInAIOverview: aiVal >= 2,
+    };
+  });
+
+  const totalTracked = keywords.length;
+  const aiOverviewKeywords = keywords.filter((k) => k.hasAIOverview).length;
+  const brandCitations = keywords.filter((k) => k.brandInAIOverview).length;
+  const aiVisibilityScore = totalTracked > 0 ? (brandCitations / totalTracked) * 100 : 0;
+
+  return { totalTracked, aiOverviewKeywords, brandCitations, aiVisibilityScore, keywords };
+}
+

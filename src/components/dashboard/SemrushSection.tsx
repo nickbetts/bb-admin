@@ -91,6 +91,22 @@ interface Backlink {
   authority: number;
 }
 
+interface AIKeyword {
+  keyword: string;
+  position: number;
+  searchVolume: number;
+  hasAIOverview: boolean;
+  brandInAIOverview: boolean;
+}
+
+interface AIVisibility {
+  totalTracked: number;
+  aiOverviewKeywords: number;
+  brandCitations: number;
+  aiVisibilityScore: number;
+  keywords: AIKeyword[];
+}
+
 type SemrushAlert = { severity: "high" | "medium"; label: string; detail: string; recommendation: string };
 
 const POSITION_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
@@ -113,6 +129,7 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [backlinks, setBacklinks] = useState<Backlink[]>([]);
   const [backlinkError, setBacklinkError] = useState<string | null>(null);
+  const [aiVisibility, setAiVisibility] = useState<AIVisibility | null>(null);
   const [domainAuthority, setDomainAuthority] = useState<{ domainAuthority: number; pageAuthority: number; spamScore: number; rootDomainsLinking: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,8 +154,9 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
         ];
         if (projectId) {
           fetchList.push(fetch(`/api/semrush?type=project-keywords&projectId=${projectId}`, { signal: controller.signal }));
+          fetchList.push(fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=ai-visibility&projectId=${projectId}`, { signal: controller.signal }));
         }
-        const [overviewRes, keywordsRes, rankMoversRes, historyRes, distRes, competitorsRes, backlinksRes, trackedRes] = await Promise.all(fetchList);
+        const [overviewRes, keywordsRes, rankMoversRes, historyRes, distRes, competitorsRes, backlinksRes, trackedRes, aiVisRes] = await Promise.all(fetchList);
 
         if (!overviewRes.ok) {
           const err = await overviewRes.json();
@@ -169,6 +187,10 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
         if (trackedRes?.ok) {
           const tracked = await trackedRes.json();
           setTrackedKeywords(Array.isArray(tracked) ? tracked : []);
+        }
+        if (aiVisRes?.ok) {
+          const aiv = await aiVisRes.json();
+          if (aiv && typeof aiv.totalTracked === "number") setAiVisibility(aiv);
         }
 
         // Domain Authority (config-gated — silently skip if not available)
@@ -784,6 +806,91 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
                 })}
               </tbody>
             </table>
+          )}
+        </SectionCard>
+      )}
+
+      {/* AI Search Visibility */}
+      {show("ai_visibility") && (
+        <SectionCard title="AI Search Visibility" subtitle="How often your brand appears in Google AI Overviews for tracked keywords">
+          {!projectId ? (
+            <p style={{ fontSize: 13, color: "var(--text-4)", fontStyle: "italic", padding: "12px 0" }}>
+              No SEMrush project linked — add a project ID in client settings to enable AI visibility tracking.
+            </p>
+          ) : !aiVisibility || aiVisibility.totalTracked === 0 ? (
+            <p style={{ fontSize: 13, color: "var(--text-4)", fontStyle: "italic", padding: "12px 0" }}>
+              No AI visibility data returned yet. This requires a SEMrush Position Tracking project with AI Overview data enabled.
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                <div className="rounded-xl bg-slate-50 p-4 text-center">
+                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-1">AI Visibility Score</p>
+                  <p className="text-2xl font-bold text-indigo-600">{aiVisibility.aiVisibilityScore.toFixed(1)}%</p>
+                  <p className="text-xs text-slate-400 mt-0.5">of tracked keywords</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-4 text-center">
+                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-1">Brand Citations</p>
+                  <p className="text-2xl font-bold text-emerald-600">{aiVisibility.brandCitations}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">in AI Overviews</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-4 text-center">
+                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-1">AI Overview Keywords</p>
+                  <p className="text-2xl font-bold text-blue-600">{aiVisibility.aiOverviewKeywords}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">trigger AI Overviews</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-4 text-center">
+                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-1">Total Tracked</p>
+                  <p className="text-2xl font-bold text-slate-700">{aiVisibility.totalTracked}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">keywords monitored</p>
+                </div>
+              </div>
+              {aiVisibility.keywords.some((k) => k.hasAIOverview) && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Keywords with AI Overview presence</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-100 bg-slate-50">
+                          <th className="text-left py-2 px-4 text-slate-400 font-medium text-xs">Keyword</th>
+                          <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Rank</th>
+                          <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Volume</th>
+                          <th className="text-center py-2 px-4 text-slate-400 font-medium text-xs">AI Overview</th>
+                          <th className="text-center py-2 px-4 text-slate-400 font-medium text-xs">Brand Cited</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {aiVisibility.keywords
+                          .filter((k) => k.hasAIOverview)
+                          .sort((a, b) => (b.brandInAIOverview ? 1 : 0) - (a.brandInAIOverview ? 1 : 0) || a.position - b.position)
+                          .map((kw, i) => (
+                            <tr key={i} className="hover:bg-slate-50 transition">
+                              <td className="py-2.5 px-4 text-slate-800 font-medium max-w-[200px] truncate">{kw.keyword}</td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold ${
+                                  kw.position <= 3 ? "bg-emerald-50 text-emerald-700" :
+                                  kw.position <= 10 ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-600"
+                                }`}>{kw.position || "—"}</span>
+                              </td>
+                              <td className="py-2.5 px-3 text-right text-slate-600 text-xs">{formatNumber(kw.searchVolume)}</td>
+                              <td className="py-2.5 px-4 text-center">
+                                <span className="inline-block w-2 h-2 rounded-full bg-blue-400" title="AI Overview present" />
+                              </td>
+                              <td className="py-2.5 px-4 text-center">
+                                {kw.brandInAIOverview ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">✓ Cited</span>
+                                ) : (
+                                  <span className="text-slate-300 text-xs">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </SectionCard>
       )}
