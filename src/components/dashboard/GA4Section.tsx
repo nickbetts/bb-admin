@@ -108,6 +108,12 @@ interface GA4ConversionByChannel {
   sessions: number;
 }
 
+interface GA4AIReferral {
+  source: string;
+  sessions: number;
+  users: number;
+}
+
 type GA4Alert = { severity: "high" | "medium"; label: string; detail: string; recommendation: string };
 
 const SOURCE_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#84cc16"];
@@ -141,6 +147,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
   const [demographics, setDemographics] = useState<GA4Demographics | null>(null);
   const [conversionEvents, setConversionEvents] = useState<GA4ConversionEvent[]>([]);
   const [conversionsByChannel, setConversionsByChannel] = useState<GA4ConversionByChannel[]>([]);
+  const [aiReferrals, setAiReferrals] = useState<GA4AIReferral[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
@@ -245,7 +252,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
         const yoyStart = new Date(startDate); yoyStart.setFullYear(yoyStart.getFullYear() - 1);
         const yoyEnd = new Date(endDate); yoyEnd.setFullYear(yoyEnd.getFullYear() - 1);
         const yoyBase = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${yoyStart.toISOString().split("T")[0]}&endDate=${yoyEnd.toISOString().split("T")[0]}`;
-        const [ovRes, dailyRes, srcRes, pagesRes, prevOvRes, prevPagesRes, geoRes, devRes, organicRes, yoyRes, nvrRes, demoRes, cvEvRes, cvChRes] = await Promise.all([
+        const [ovRes, dailyRes, srcRes, pagesRes, prevOvRes, prevPagesRes, geoRes, devRes, organicRes, yoyRes, nvrRes, demoRes, cvEvRes, cvChRes, aiRefRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=daily`, { signal: controller.signal }),
           fetch(`${base}&type=sources`, { signal: controller.signal }),
@@ -260,6 +267,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
           fetch(`${base}&type=demographics`, { signal: controller.signal }),
           fetch(`${base}&type=conversion-events`, { signal: controller.signal }),
           fetch(`${base}&type=conversions-by-channel`, { signal: controller.signal }),
+          fetch(`${base}&type=ai-referrals`, { signal: controller.signal }),
         ]);
 
         if (!ovRes.ok) {
@@ -267,7 +275,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
           throw new Error(err.error ?? "Failed to fetch GA4 data");
         }
 
-        const [ov, d, s, p, prevOv, prevP, geo, devs, organic, yoy, nvr, demo, cvEv, cvCh] = await Promise.all([
+        const [ov, d, s, p, prevOv, prevP, geo, devs, organic, yoy, nvr, demo, cvEv, cvCh, aiRef] = await Promise.all([
           ovRes.json(),
           dailyRes.json(),
           srcRes.json(),
@@ -282,6 +290,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
           demoRes.ok ? demoRes.json() : Promise.resolve(null),
           cvEvRes.ok ? cvEvRes.json() : Promise.resolve([]),
           cvChRes.ok ? cvChRes.json() : Promise.resolve([]),
+          aiRefRes.ok ? aiRefRes.json() : Promise.resolve([]),
         ]);
 
         setOverview(ov);
@@ -304,6 +313,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
         setDemographics(demo);
         setConversionEvents(Array.isArray(cvEv) ? cvEv : []);
         setConversionsByChannel(Array.isArray(cvCh) ? cvCh : []);
+        setAiReferrals(Array.isArray(aiRef) ? aiRef : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load GA4 data");
@@ -804,6 +814,28 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
           </SectionCard>
         );
       })()}
+
+      {/* AI Search Referrals */}
+      {show("ai_referrals") && (
+        <SectionCard title="AI Search Referrals" subtitle="Sessions from ChatGPT, Claude, Perplexity and other AI tools">
+          {aiReferrals.length === 0 ? (
+            <p className="text-sm text-slate-400 py-2">No AI referral traffic detected in this period.</p>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {aiReferrals.map((ref, i) => (
+                <div key={i} className="py-2.5 flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-800">{ref.source}</span>
+                  <div className="flex items-center gap-4 text-sm text-slate-600">
+                    <span><span className="font-semibold text-indigo-600">{formatNumber(ref.sessions)}</span> sessions</span>
+                    <span><span className="font-semibold">{formatNumber(ref.users)}</span> users</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      )}
+
       {/* Super Summary */}
       {!hideAi && !loading && !error && overview && (
         <SuperSummary

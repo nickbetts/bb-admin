@@ -578,3 +578,58 @@ export async function getGA4ConversionsByChannel(
     }))
     .filter((e: GA4ConversionByChannel) => e.conversions > 0);
 }
+
+// AI referral sources
+export interface GA4AIReferral {
+  source: string;
+  sessions: number;
+  users: number;
+}
+
+const AI_SOURCE_REGEXP =
+  "chatgpt\\.com|chat\\.openai\\.com|claude\\.ai|perplexity\\.ai|gemini\\.google\\.com|copilot\\.microsoft\\.com|phind\\.com|you\\.com|poe\\.com|grok\\.x\\.com|bing\\.com";
+
+export async function getGA4AIReferrals(
+  propertyId: string,
+  startDate: string = "30daysAgo",
+  endDate: string = "today"
+): Promise<GA4AIReferral[]> {
+  const headers = await buildGa4Headers();
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+
+  const body = {
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: "sessionSource" }],
+    metrics: [{ name: "sessions" }, { name: "activeUsers" }],
+    dimensionFilter: {
+      filter: {
+        fieldName: "sessionSource",
+        stringFilter: {
+          matchType: "FULL_REGEXP",
+          value: AI_SOURCE_REGEXP,
+          caseSensitive: false,
+        },
+      },
+    },
+    orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+    limit: 20,
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  return (data.rows ?? []).map(
+    (row: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }) => ({
+      source: row.dimensionValues[0]?.value ?? "",
+      sessions: parseInt(row.metricValues[0]?.value ?? "0"),
+      users: parseInt(row.metricValues[1]?.value ?? "0"),
+    })
+  );
+}

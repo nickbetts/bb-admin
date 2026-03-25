@@ -112,6 +112,7 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
   const [trackedKeywords, setTrackedKeywords] = useState<TrackedKeyword[]>([]);
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [backlinks, setBacklinks] = useState<Backlink[]>([]);
+  const [backlinkError, setBacklinkError] = useState<string | null>(null);
   const [domainAuthority, setDomainAuthority] = useState<{ domainAuthority: number; pageAuthority: number; spamScore: number; rootDomainsLinking: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -151,7 +152,7 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
           historyRes.json(),
           distRes.json(),
           competitorsRes.ok ? competitorsRes.json() : Promise.resolve([]),
-          backlinksRes.ok ? backlinksRes.json() : Promise.resolve([]),
+          backlinksRes.ok ? backlinksRes.json() : backlinksRes.json().then(e => { setBacklinkError(e.error ?? "Failed to load backlinks"); return []; }).catch(() => []),
         ]);
 
         setOverview(ov);
@@ -740,9 +741,11 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
       )}
 
       {/* Backlinks */}
-      {show("backlinks") && backlinks.length > 0 && (
+      {show("backlinks") && (backlinkError || backlinks.length > 0) && (
         <SectionCard title="Recent Backlinks" subtitle="Top referring domains by authority score">
-          <div className="overflow-x-auto">
+          {backlinkError ? (
+            <p className="text-sm text-red-600 py-2">{backlinkError}</p>
+          ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
@@ -781,7 +784,7 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
                 })}
               </tbody>
             </table>
-          </div>
+          )}
         </SectionCard>
       )}
 

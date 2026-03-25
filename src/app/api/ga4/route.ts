@@ -12,6 +12,7 @@ import {
   getGA4Demographics,
   getGA4ConversionEvents,
   getGA4ConversionsByChannel,
+  getGA4AIReferrals,
 } from "@/lib/ga4";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +64,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(await getGA4ConversionEvents(propertyId, startDate, endDate));
       case "conversions-by-channel":
         return NextResponse.json(await getGA4ConversionsByChannel(propertyId, startDate, endDate));
+      case "ai-referrals":
+        return NextResponse.json(await getGA4AIReferrals(propertyId, startDate, endDate));
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }

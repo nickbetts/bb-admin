@@ -139,7 +139,19 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       .then((r) => r.json())
       .then((data) => {
         if (data.error) setSemrushFetchError(data.error);
-        else setSemrushProjects(data);
+        else {
+          setSemrushProjects(data);
+          // Auto-populate projectId if domain already set but projectId not yet saved
+          setForm((prev) => {
+            if (prev.semrushDomain && !prev.semrushProjectId) {
+              const match = (data as { projectId: number; domain: string }[]).find(
+                (p) => p.domain === prev.semrushDomain
+              );
+              if (match) return { ...prev, semrushProjectId: match.projectId };
+            }
+            return prev;
+          });
+        }
       })
       .catch(() => setSemrushFetchError("Failed to load SEMrush projects"))
       .finally(() => setSemrushLoading(false));

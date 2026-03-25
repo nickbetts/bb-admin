@@ -57,6 +57,7 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "demographics", label: "Demographics" },
     { id: "conversion_events", label: "Conversion Events" },
     { id: "conversions_by_channel", label: "Conversions by Channel" },
+    { id: "ai_referrals", label: "AI Search Referrals" },
   ],
   paid_social: [
     { id: "kpis", label: "Key Metrics" },

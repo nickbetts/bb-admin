@@ -274,26 +274,26 @@ export async function getBacklinks(
     display_limit: limit.toString(),
   });
 
-  try {
-    const response = await axios.get(
-      `${SEMRUSH_ANALYTICS_URL}/?${params.toString()}`
-    );
-    const lines = response.data.trim().split("\n");
+  const response = await axios.get(
+    `${SEMRUSH_ANALYTICS_URL}/?${params.toString()}`
+  );
+  const lines = (response.data as string).trim().split("\n");
 
-    if (lines.length < 2) return [];
-
-    return lines.slice(1).map((line: string) => {
-      const [sourceUrl, targetUrl, anchorText, authority] = line.split("\t");
-      return {
-        sourceUrl: sourceUrl || "",
-        targetUrl: targetUrl || "",
-        anchorText: anchorText || "",
-        authority: parseInt(authority) || 0,
-      };
-    });
-  } catch {
-    return [];
+  if (lines[0]?.startsWith("ERROR")) {
+    throw new Error(`SEMrush backlinks error: ${lines[0]}`);
   }
+
+  if (lines.length < 2) return [];
+
+  return lines.slice(1).map((line: string) => {
+    const [sourceUrl, targetUrl, anchorText, authority] = line.split("\t");
+    return {
+      sourceUrl: sourceUrl || "",
+      targetUrl: targetUrl || "",
+      anchorText: anchorText || "",
+      authority: parseInt(authority) || 0,
+    };
+  });
 }
 
 export interface SemrushTrackedKeyword {
