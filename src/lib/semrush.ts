@@ -120,6 +120,45 @@ export async function getTopOrganicKeywords(
   });
 }
 
+export async function getRankMovers(
+  domain: string,
+  database: string = "uk",
+  limit: number = 200
+): Promise<SemrushKeywordData[]> {
+  const apiKey = getApiKey();
+  const params = new URLSearchParams({
+    type: "domain_organic",
+    key: apiKey,
+    export_columns: "Ph,Po,Pp,Nq,Cp,Ur,Tr",
+    domain,
+    database,
+    display_limit: limit.toString(),
+    display_sort: "tr_desc",
+  });
+
+  const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+  const lines = response.data.trim().split("\n");
+
+  if (lines.length < 2) return [];
+
+  return lines.slice(1)
+    .map((line: string) => {
+      const [keyword, position, previousPosition, searchVolume, cpc, url, trafficPercent] = line.split(";");
+      return {
+        keyword: keyword || "",
+        position: parseInt(position) || 0,
+        previousPosition: parseInt(previousPosition) || 0,
+        searchVolume: parseInt(searchVolume) || 0,
+        cpc: parseFloat(cpc) || 0,
+        url: url || "",
+        trafficPercent: parseFloat(trafficPercent) || 0,
+      };
+    })
+    .filter((kw: SemrushKeywordData) => kw.previousPosition > 0 && (kw.previousPosition - kw.position) > 0)
+    .sort((a: SemrushKeywordData, b: SemrushKeywordData) => (b.previousPosition - b.position) - (a.previousPosition - a.position))
+    .slice(0, 20);
+}
+
 export async function getDomainRankHistory(
   domain: string,
   database: string = "uk"

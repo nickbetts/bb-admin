@@ -106,6 +106,7 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
+  const [rankMovers, setRankMovers] = useState<Keyword[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [distribution, setDistribution] = useState<DistributionItem[]>([]);
   const [trackedKeywords, setTrackedKeywords] = useState<TrackedKeyword[]>([]);
@@ -127,6 +128,7 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
         const fetchList: Promise<Response>[] = [
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=overview`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=keywords`, { signal: controller.signal }),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=rank_movers`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=history`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=distribution`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=competitors`, { signal: controller.signal }),
@@ -135,16 +137,17 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
         if (projectId) {
           fetchList.push(fetch(`/api/semrush?type=project-keywords&projectId=${projectId}`, { signal: controller.signal }));
         }
-        const [overviewRes, keywordsRes, historyRes, distRes, competitorsRes, backlinksRes, trackedRes] = await Promise.all(fetchList);
+        const [overviewRes, keywordsRes, rankMoversRes, historyRes, distRes, competitorsRes, backlinksRes, trackedRes] = await Promise.all(fetchList);
 
         if (!overviewRes.ok) {
           const err = await overviewRes.json();
           throw new Error(err.error ?? "Failed to fetch SemRush data");
         }
 
-        const [ov, kw, hist, dist, comps, bls] = await Promise.all([
+        const [ov, kw, movers, hist, dist, comps, bls] = await Promise.all([
           overviewRes.json(),
           keywordsRes.json(),
+          rankMoversRes.ok ? rankMoversRes.json() : Promise.resolve([]),
           historyRes.json(),
           distRes.json(),
           competitorsRes.ok ? competitorsRes.json() : Promise.resolve([]),
@@ -157,6 +160,7 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
           organicCost: ov.organicCost, paidTraffic: ov.paidTraffic, paidKeywords: ov.paidKeywords,
         });
         setKeywords(Array.isArray(kw) ? kw : []);
+        setRankMovers(Array.isArray(movers) ? movers : []);
         setHistory(Array.isArray(hist) ? hist : []);
         setDistribution(Array.isArray(dist) ? dist : []);
         setCompetitors(Array.isArray(comps) ? comps : []);
@@ -610,26 +614,27 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
       )}
 
       {/* Top Rank Improvers */}
-      {show("rank_improvers") && keywords.some(kw => kw.previousPosition > 0 && (kw.previousPosition - kw.position) > 0) && (
+      {show("rank_improvers") && (
         <SectionCard title="Top Rank Improvers" subtitle="Keywords with biggest position gains this month">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="text-left py-2 pr-4 text-slate-400 font-medium text-xs">Keyword</th>
-                  <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Current</th>
-                  <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Previous</th>
-                  <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Gain</th>
-                  <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Volume</th>
-                  <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Traffic %</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {keywords
-                  .filter(kw => kw.previousPosition > 0 && (kw.previousPosition - kw.position) > 0)
-                  .sort((a, b) => (b.previousPosition - b.position) - (a.previousPosition - a.position))
-                  .slice(0, 10)
-                  .map((kw, i) => {
+          {rankMovers.length === 0 ? (
+            <p style={{ fontSize: 13, color: "var(--text-4)", fontStyle: "italic", padding: "12px 0" }}>
+              No position improvements detected this period — SEMrush may not yet have comparison data for this domain.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50">
+                    <th className="text-left py-2 pr-4 text-slate-400 font-medium text-xs">Keyword</th>
+                    <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Current</th>
+                    <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Previous</th>
+                    <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Gain</th>
+                    <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Volume</th>
+                    <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Traffic %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {rankMovers.map((kw, i) => {
                     const gain = kw.previousPosition - kw.position;
                     return (
                       <tr key={i} className="hover:bg-slate-50 transition">
@@ -655,9 +660,10 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
                       </tr>
                     );
                   })}
-              </tbody>
-            </table>
-          </div>
+                </tbody>
+              </table>
+            </div>
+          )}
         </SectionCard>
       )}
 

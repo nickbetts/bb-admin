@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import {
   getDomainOverview,
   getTopOrganicKeywords,
+  getRankMovers,
   getDomainRankHistory,
   getKeywordPositionDistribution,
   getCompetitors,
@@ -41,6 +42,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(await getDomainOverview(domain!, database));
       case "keywords":
         return NextResponse.json(await getTopOrganicKeywords(domain!, database, 20));
+      case "rank_movers":
+        return NextResponse.json(await getRankMovers(domain!, database));
       case "history":
         return NextResponse.json(await getDomainRankHistory(domain!, database));
       case "distribution":
