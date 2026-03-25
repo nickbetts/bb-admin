@@ -78,6 +78,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [commentary, setCommentary] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [aiLength, setAiLength] = useState<"short" | "medium" | "long">("medium");
   const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive">("professional");
   const [aiFormat, setAiFormat] = useState<"prose" | "bullets" | "both">("prose");
@@ -182,9 +183,69 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     }
   };
 
-  const handleExportPdf = useCallback(() => {
-    window.print();
-  }, []);
+  const handleExportPdf = useCallback(async () => {
+    if (!reportRef.current) return;
+    setExportingPdf(true);
+    try {
+      const { default: html2canvas } = await import("html2canvas");
+      // Handle jsPDF v3 (named export) and v4 (default export) module formats
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const jspdfMod = await import("jspdf") as any;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const JsPDF = (jspdfMod.jsPDF ?? jspdfMod.default) as any;
+
+      // Adaptive scale: maintain quality but stay within browser canvas limits
+      // (Safari caps canvas at ~4096px on iOS, Chrome at 32767px)
+      const naturalH = reportRef.current.scrollHeight;
+      const naturalW = reportRef.current.scrollWidth;
+      const scale = Math.max(1, Math.min(2, 16000 / Math.max(naturalH, naturalW)));
+
+      const canvas = await html2canvas(reportRef.current, {
+        backgroundColor: "#ffffff",
+        scale,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        // Strip interactive UI elements — they shouldn't appear in the PDF
+        ignoreElements: (el) => {
+          if (["BUTTON", "SELECT", "INPUT", "TEXTAREA"].includes(el.tagName)) return true;
+          const cls = el.getAttribute("class") ?? "";
+          return cls.includes("print:hidden");
+        },
+      });
+
+      const pdf = new JsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pdfW = pdf.internal.pageSize.getWidth();
+      const pdfH = pdf.internal.pageSize.getHeight();
+      const imgW = canvas.width;
+      const imgH = canvas.height;
+      const ratio = pdfW / imgW;
+      const pageCount = Math.ceil((imgH * ratio) / pdfH);
+
+      for (let i = 0; i < pageCount; i++) {
+        if (i > 0) pdf.addPage();
+        const srcY = (i * pdfH) / ratio;
+        const srcH = Math.min(pdfH / ratio, imgH - srcY);
+        const pg = document.createElement("canvas");
+        pg.width = imgW;
+        pg.height = Math.ceil(srcH);
+        const ctx = pg.getContext("2d");
+        if (ctx) ctx.drawImage(canvas, 0, Math.floor(srcY), imgW, pg.height, 0, 0, imgW, pg.height);
+        pdf.addImage(pg.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, pdfW, pg.height * ratio);
+      }
+
+      pdf.save(
+        `${report.client.name}-${report.period}-report.pdf`
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+      );
+    } catch (err) {
+      console.error("PDF export error:", err);
+      alert(`PDF export failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setExportingPdf(false);
+    }
+  }, [report.client.name, report.period]);
 
   const enabledSections = report.sections.filter((s) => s.enabled !== false);
 
@@ -246,9 +307,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               e.target.value = "";
             }
           }} />
-          <button onClick={handleExportPdf} className="btn btn-primary btn-sm">
+          <button onClick={handleExportPdf} disabled={exportingPdf} className="btn btn-primary btn-sm">
             <Download size={13} />
-            Save as PDF
+            {exportingPdf ? "Generating…" : "Export PDF"}
           </button>
         </div>
       </div>
