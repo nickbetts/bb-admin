@@ -397,9 +397,10 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                         </select>
                       </div>
 
-                      {/* AI Insights Panel — same as dashboard tabs */}
+                      {/* AI generate button */}
                       {sectionMetrics[section.id] ? (
                         <AiInsightsPanel
+                          compact
                           sectionType={section.sectionType === "web" ? "ga4" : section.sectionType === "paid_social" ? "meta" : section.sectionType}
                           metrics={sectionMetrics[section.id]}
                           clientName={report.client.name}
