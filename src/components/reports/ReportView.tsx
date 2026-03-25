@@ -2,20 +2,24 @@
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, Upload, Trash2, Edit2, Check, X, Eye, EyeOff, ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search, MessageSquare, LayoutGrid, Sparkles } from "lucide-react";
+import { ArrowLeft, Download, Upload, Trash2, Check, X, Eye, EyeOff, ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search, MessageSquare, LayoutGrid, FileText, Image } from "lucide-react";
 import { SemrushSection } from "@/components/dashboard/SemrushSection";
 import { GA4Section } from "@/components/dashboard/GA4Section";
 import { MetaSection } from "@/components/dashboard/MetaSection";
 import { GoogleAdsSection } from "@/components/dashboard/GoogleAdsSection";
 import { SearchConsoleSection } from "@/components/dashboard/SearchConsoleSection";
+import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { TextSection } from "@/components/reports/TextSection";
+import { ScreenshotsSection } from "@/components/reports/ScreenshotsSection";
 import { parsePeriodToDateRange } from "@/lib/utils";
-import { SECTION_BLOCKS } from "@/lib/report-blocks";
+import { SECTION_BLOCKS, isTextSection, TEXT_SECTION_LABELS, type TextSectionType } from "@/lib/report-blocks";
 
 interface Section {
   id: string;
   sectionType: string;
   title: string;
   commentary: string | null;
+  contentText?: string | null;
   orderIndex: number;
   enabled?: boolean;
   cardConfig?: string | null;
@@ -33,6 +37,7 @@ interface Client {
   name: string;
   slug: string;
   website: string | null;
+  logoUrl: string | null;
   semrushDomain: string | null;
   ga4PropertyId: string | null;
   metaAccountId: string | null;
@@ -72,7 +77,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [aiLength, setAiLength] = useState<"short" | "medium" | "long">("medium");
   const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive">("professional");
-  const [aiGenerating, setAiGenerating] = useState<string | null>(null);
+  const [aiFormat, setAiFormat] = useState<"prose" | "bullets" | "both">("prose");
   const [sectionMetrics, setSectionMetrics] = useState<Record<string, Record<string, number>>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const reportRef = useRef<HTMLDivElement>(null);
@@ -127,32 +132,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const handleEditSection = (section: Section) => {
     setEditingSection(section.id);
     setCommentary((prev) => ({ ...prev, [section.id]: section.commentary ?? "" }));
-  };
-
-  const handleGenerateAiCommentary = async (sectionId: string, sectionType: string) => {
-    const metrics = sectionMetrics[sectionId];
-    if (!metrics) return;
-    setAiGenerating(sectionId);
-    try {
-      const res = await fetch("/api/ai/report-commentary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sectionType,
-          metrics,
-          clientName: report.client.name,
-          dateRange: report.period,
-          length: aiLength,
-          tone: aiTone,
-        }),
-      });
-      if (res.ok) {
-        const { commentary: generated } = await res.json();
-        if (generated) setCommentary((prev) => ({ ...prev, [sectionId]: generated }));
-      }
-    } finally {
-      setAiGenerating(null);
-    }
   };
 
   const handleSaveSection = async (sectionId: string) => {
@@ -244,12 +223,18 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const enabledSections = report.sections.filter((s) => s.enabled !== false);
 
   const SECTION_META: Record<string, { icon: React.ReactNode; badge: string }> = {
-    overview:     { icon: <LayoutGrid size={14} />, badge: "badge-slate" },
-    seo:          { icon: <TrendingUp size={14} />, badge: "badge-indigo" },
-    web:          { icon: <Globe size={14} />, badge: "badge-blue" },
-    paid_social:  { icon: <BarChart2 size={14} />, badge: "badge-orange" },
-    googleads:    { icon: <Search size={14} />, badge: "badge-green" },
-    searchconsole:{ icon: <Search size={14} />, badge: "badge-purple" },
+    overview:                    { icon: <LayoutGrid size={14} />, badge: "badge-slate" },
+    seo:                         { icon: <TrendingUp size={14} />, badge: "badge-indigo" },
+    web:                         { icon: <Globe size={14} />, badge: "badge-blue" },
+    paid_social:                 { icon: <BarChart2 size={14} />, badge: "badge-orange" },
+    googleads:                   { icon: <Search size={14} />, badge: "badge-green" },
+    searchconsole:               { icon: <Search size={14} />, badge: "badge-purple" },
+    text_notable_achievements:   { icon: <FileText size={14} />, badge: "badge-slate" },
+    text_screenshots:            { icon: <Image size={14} />, badge: "badge-slate" },
+    text_work_complete:          { icon: <FileText size={14} />, badge: "badge-slate" },
+    text_content_done:           { icon: <FileText size={14} />, badge: "badge-slate" },
+    text_technical_update:       { icon: <FileText size={14} />, badge: "badge-slate" },
+    text_ppc_update:             { icon: <FileText size={14} />, badge: "badge-slate" },
   };
 
   return (
@@ -314,7 +299,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               padding: "36px 40px",
             }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-                <div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/primary-logo.svg" alt="i3media" style={{ height: 36, marginBottom: 24 }} />
                   <h1 style={{ fontSize: 26, fontWeight: 700, color: "#fff", letterSpacing: "-0.4px", lineHeight: 1.2, marginBottom: 6 }}>
@@ -322,6 +307,16 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   </h1>
                   <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>Digital Performance Report · {report.period} · {report.client.name}</p>
                 </div>
+                {report.client.logoUrl && (
+                  <div style={{ flexShrink: 0, marginLeft: 24 }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={report.client.logoUrl}
+                      alt={report.client.name}
+                      style={{ height: 48, maxWidth: 140, objectFit: "contain", background: "rgba(255,255,255,0.15)", borderRadius: "var(--r-sm)", padding: "6px 10px" }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
             <div style={{
@@ -366,24 +361,8 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
                 <div className="card-body" style={{ padding: "20px 28px" }}>
                   {editingSection === section.id ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                      <textarea
-                        value={commentary[section.id] ?? ""}
-                        onChange={(e) => setCommentary((prev) => ({ ...prev, [section.id]: e.target.value }))}
-                        placeholder="Add your commentary and insights for this section…"
-                        rows={4}
-                        style={{
-                          width: "100%", padding: "12px 16px",
-                          borderRadius: "var(--r)", border: "1px solid var(--border)",
-                          background: "var(--surface)", color: "var(--text)",
-                          fontSize: 14, lineHeight: 1.6, resize: "vertical",
-                          outline: "none", transition: "border-color 0.15s",
-                          fontFamily: "inherit",
-                        }}
-                        onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
-                        onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
-                      />
-                      {/* AI commentary controls */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      {/* Tone + length controls */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <select
                           value={aiTone}
@@ -406,17 +385,56 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                           <option value="medium">Medium</option>
                           <option value="long">Long</option>
                         </select>
-                        <button
-                          onClick={() => handleGenerateAiCommentary(section.id, section.sectionType)}
-                          disabled={aiGenerating === section.id || !sectionMetrics[section.id]}
+                        <select
+                          value={aiFormat}
+                          onChange={(e) => setAiFormat(e.target.value as typeof aiFormat)}
                           className="btn btn-secondary btn-sm"
-                          style={{ gap: 6 }}
-                          title={!sectionMetrics[section.id] ? "Section data not yet loaded" : "Generate AI commentary"}
+                          style={{ cursor: "pointer", paddingRight: 8 }}
                         >
-                          <Sparkles size={13} />
-                          {aiGenerating === section.id ? "Generating…" : "Generate with AI"}
-                        </button>
+                          <option value="prose">Prose</option>
+                          <option value="bullets">Bullet Points</option>
+                          <option value="both">Both</option>
+                        </select>
                       </div>
+
+                      {/* AI Insights Panel — same as dashboard tabs */}
+                      {sectionMetrics[section.id] ? (
+                        <AiInsightsPanel
+                          sectionType={section.sectionType === "web" ? "ga4" : section.sectionType === "paid_social" ? "meta" : section.sectionType}
+                          metrics={sectionMetrics[section.id]}
+                          clientName={report.client.name}
+                          clientId={report.client.id}
+                          dateRange={report.period}
+                          tone={aiTone}
+                          length={aiLength}
+                          format={aiFormat}
+                          onInsightsGenerated={(text) =>
+                            setCommentary((prev) => ({ ...prev, [section.id]: text }))
+                          }
+                        />
+                      ) : (
+                        <p style={{ fontSize: 13, color: "var(--text-4)", fontStyle: "italic" }}>
+                          Waiting for section data to load…
+                        </p>
+                      )}
+
+                      {/* Editable commentary textarea */}
+                      <textarea
+                        value={commentary[section.id] ?? ""}
+                        onChange={(e) => setCommentary((prev) => ({ ...prev, [section.id]: e.target.value }))}
+                        placeholder="AI insights will appear here — you can edit before saving…"
+                        rows={5}
+                        style={{
+                          width: "100%", padding: "12px 16px",
+                          borderRadius: "var(--r)", border: "1px solid var(--border)",
+                          background: "var(--surface)", color: "var(--text)",
+                          fontSize: 14, lineHeight: 1.6, resize: "vertical",
+                          outline: "none", transition: "border-color 0.15s",
+                          fontFamily: "inherit",
+                        }}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+                      />
                       <div style={{ display: "flex", gap: 8 }}>
                         <button onClick={() => handleSaveSection(section.id)} disabled={saving === section.id} className="btn btn-primary btn-sm">
                           <Check size={13} />
@@ -446,6 +464,30 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 </div>
               </div>
             );
+
+            // Text-only sections render a simple editable text block
+            if (isTextSection(section.sectionType)) {
+              if (section.sectionType === "text_screenshots") {
+                return (
+                  <ScreenshotsSection
+                    key={section.id}
+                    screenshots={report.screenshots}
+                    title={TEXT_SECTION_LABELS[section.sectionType as TextSectionType] ?? section.title}
+                    onDelete={handleDeleteScreenshot}
+                  />
+                );
+              }
+              return (
+                <TextSection
+                  key={section.id}
+                  sectionId={section.id}
+                  reportId={report.id}
+                  sectionType={section.sectionType}
+                  title={section.title}
+                  contentText={section.contentText ?? null}
+                />
+              );
+            }
 
             return (
               <div key={section.id} style={{ marginBottom: 56 }}>

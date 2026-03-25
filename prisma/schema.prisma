@@ -38,11 +38,11 @@ model AppSetting {
 }
 
 model Client {
-  id                  String    @id @default(cuid())
-  name                String
-  slug                String    @unique
-  website             String?
-  logoUrl             String?
+  id                    String    @id @default(cuid())
+  name                  String
+  slug                  String    @unique
+  website               String?
+  logoUrl               String?
   ga4PropertyId         String?
   ga4PropertyName       String?
   semrushDomain         String?
@@ -53,10 +53,11 @@ model Client {
   googleAdsCustomerId   String?
   googleAdsAccountName  String?
   searchConsoleSiteUrl  String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  reports             Report[]
-  snapshots           MetricSnapshot[]
+  aiReportInstructions  String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  reports               Report[]
+  snapshots             MetricSnapshot[]
 }
 
 model Report {
@@ -78,6 +79,7 @@ model ReportSection {
   sectionType String
   title       String
   commentary  String?
+  contentText String?
   orderIndex  Int      @default(0)
   enabled     Boolean  @default(true)
   cardConfig  String?

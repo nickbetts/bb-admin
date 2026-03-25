@@ -522,6 +522,9 @@ export async function POST(request: NextRequest) {
       crossPlatformContext,
     } = body;
 
+    const tone = (body as unknown as { tone?: string }).tone;
+    const length = (body as unknown as { length?: string }).length;
+
     // ─── Alert-level AI recommendations ───────────────────────────────────────
     // Lightweight call: takes the computed alerts array and returns one specific,
     // quantified recommendation per alert. Used by MetaSection + GoogleAdsSection.
@@ -664,8 +667,23 @@ One string per alert, in the same order. British English.`;
         ? buildHistoricalTrendText(historicalSnapshots, config.metricLabels)
         : "";
 
+    const TONE_INSTRUCTIONS: Record<string, string> = {
+      professional: "Use formal, professional business language suitable for a client report.",
+      friendly: "Use approachable, conversational language — warm but still informative.",
+      technical: "Be data-focused with precise metric references, percentages, and specific figures throughout.",
+      executive: "Provide a high-level strategic summary focused on business outcomes and strategic direction rather than granular metrics.",
+    };
+    const LENGTH_INSTRUCTIONS: Record<string, string> = {
+      short: "Be concise — keep the summary to 2-3 sentences and limit insights/recommendations to the top 2-3 most important.",
+      medium: "Use moderate detail — 3-4 sentence summary, 4-5 insights, 3-4 recommendations.",
+      long: "Be thorough — provide a detailed summary and comprehensive insights and recommendations.",
+    };
+
+    const toneInstruction = tone ? TONE_INSTRUCTIONS[tone] : null;
+    const lengthInstruction = length ? LENGTH_INSTRUCTIONS[length] : null;
+
     const systemPrompt = `You are a senior digital marketing analyst at i3media, a UK performance marketing agency.
-You write incisive, data-driven performance summaries for client reports. Your audience is experienced clients who want frank, actionable analysis — not vague reassurances.
+${toneInstruction ? toneInstruction + "\n" : ""}${lengthInstruction ? lengthInstruction + "\n" : ""}You write incisive, data-driven performance summaries for client reports. Your audience is experienced clients who want frank, actionable analysis — not vague reassurances.
 Be specific with numbers. Use British English. Prioritise insights that drive decisions.
 Where anomalies exist, explain likely causes and concrete remediation steps.
 For paid media (Google Ads, Meta Ads), factor in bid strategies, budget constraints, impression share, quality scores, campaign-level performance, and ad fatigue.

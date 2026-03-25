@@ -41,6 +41,12 @@ interface AiInsightsPanelProps {
   extraContext?: string;
   /** Cross-platform context from other channels for enriched analysis */
   crossPlatformContext?: string;
+  /** Writing tone for the AI output (professional / friendly / technical / executive) */
+  tone?: "professional" | "friendly" | "technical" | "executive";
+  /** Length of the AI output (short / medium / long) */
+  length?: "short" | "medium" | "long";
+  /** Format of the AI output (prose / bullets / both) */
+  format?: "prose" | "bullets" | "both";
 }
 
 const severityStyles: Record<string, { bg: string; border: string; badge: string; text: string; dot: string }> = {
@@ -111,6 +117,9 @@ export function AiInsightsPanel({
   onInsightsGenerated,
   extraContext,
   crossPlatformContext,
+  tone,
+  length,
+  format,
 }: AiInsightsPanelProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AiInsightsResult | null>(null);
@@ -150,6 +159,9 @@ export function AiInsightsPanel({
           historicalSnapshots: historicalSnapshots.length >= 2 ? historicalSnapshots : undefined,
           extraContext: extraContext ?? undefined,
           crossPlatformContext: crossPlatformContext ?? undefined,
+          tone: tone ?? undefined,
+          length: length ?? undefined,
+          format: format ?? undefined,
         }),
       });
 

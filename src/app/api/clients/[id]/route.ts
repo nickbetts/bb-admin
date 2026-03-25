@@ -62,6 +62,7 @@ export async function PATCH(
         googleAdsCustomerId: data.googleAdsCustomerId,
         googleAdsAccountName: data.googleAdsAccountName,
         searchConsoleSiteUrl: data.searchConsoleSiteUrl,
+        aiReportInstructions: data.aiReportInstructions,
       },
     });
 

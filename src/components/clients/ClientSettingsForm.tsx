@@ -18,6 +18,7 @@ interface Client {
   googleAdsCustomerId: string | null;
   googleAdsAccountName: string | null;
   searchConsoleSiteUrl: string | null;
+  aiReportInstructions: string | null;
 }
 
 interface ClientSettingsFormProps {
@@ -87,6 +88,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
     googleAdsCustomerId: client.googleAdsCustomerId ?? "",
     googleAdsAccountName: client.googleAdsAccountName ?? "",
     searchConsoleSiteUrl: client.searchConsoleSiteUrl ?? "",
+    aiReportInstructions: client.aiReportInstructions ?? "",
   });
 
   useEffect(() => {
@@ -144,7 +146,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
   }, []);
 
   function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
@@ -434,6 +436,33 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                 <p className="text-xs text-slate-500 mt-1.5">Not in the list? Paste the site URL directly above.</p>
               </>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* AI Report Instructions */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-xs font-bold text-violet-700">AI</span>
+            <h2 className="card-title">AI Report Instructions</h2>
+          </div>
+        </div>
+        <div className="card-body">
+          <div>
+            <label className="form-label">Custom instructions for report commentary</label>
+            <textarea
+              name="aiReportInstructions"
+              value={form.aiReportInstructions}
+              onChange={(e) => setForm((prev) => ({ ...prev, aiReportInstructions: e.target.value }))}
+              rows={4}
+              placeholder="e.g. Always mention our brand values. Focus on lead generation goals. Avoid mentioning competitor comparisons. Always reference the client's industry sector."
+              className="form-input"
+              style={{ resize: "vertical", fontFamily: "inherit", lineHeight: 1.6 }}
+            />
+            <p className="text-xs text-slate-500 mt-1.5">
+              These instructions are injected into the AI prompt when generating report commentary for this client. Leave blank to use default behaviour.
+            </p>
           </div>
         </div>
       </div>

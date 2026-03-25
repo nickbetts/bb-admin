@@ -6,9 +6,13 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatNumber(num: number): string {
-  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-  return Math.round(num).toLocaleString();
+  if (num >= 1_000_000) return new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 }).format(num / 1_000_000) + "M";
+  if (num >= 1_000) return new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 }).format(num / 1_000) + "K";
+  return new Intl.NumberFormat("en-GB", { maximumFractionDigits: 0 }).format(Math.round(num));
+}
+
+export function formatLargeNumber(num: number): string {
+  return new Intl.NumberFormat("en-GB").format(Math.round(num));
 }
 
 export function formatCurrency(amount: number, currency: string = "GBP"): string {
@@ -18,6 +22,12 @@ export function formatCurrency(amount: number, currency: string = "GBP"): string
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(amount);
+}
+
+/** Format a date as DD/MM/YYYY (British locale) */
+export function formatDate(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 export function formatPercent(value: number): string {

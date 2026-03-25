@@ -17,8 +17,14 @@ const SECTION_LABELS: Record<string, string> = {
 
 const LENGTH_INSTRUCTIONS: Record<string, string> = {
   short: "Write 2-3 concise sentences. Be direct and highlight only the single most important insight.",
-  medium: "Write 1-2 focused paragraphs (4-6 sentences total). Cover the key highlights and one or two recommendations.",
-  long: "Write 2-3 detailed paragraphs (8-12 sentences total). Cover overall performance, notable trends with specific metrics, and actionable recommendations.",
+  medium: "Write 1-2 focused paragraphs (4-6 sentences total). Cover the key highlights.",
+  long: "Write 2-3 detailed paragraphs (8-12 sentences total). Cover overall performance and notable trends with specific metrics.",
+};
+
+const FORMAT_INSTRUCTIONS: Record<string, string> = {
+  prose: "Write as plain prose paragraphs. No bullet points, no lists.",
+  bullets: "Write as concise bullet points (each starting with '• '). No introductory paragraph — go straight to the bullets.",
+  both: "Write a short introductory sentence, then follow with bullet points (each starting with '• ').",
 };
 
 const TONE_INSTRUCTIONS: Record<string, string> = {
@@ -74,15 +80,17 @@ function formatMetrics(metrics: Record<string, number>): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { sectionType, metrics, previousMetrics, clientName, dateRange, length = "medium", tone = "professional" } =
+    const { sectionType, metrics, previousMetrics, clientName, clientId, dateRange, length = "medium", tone = "professional", format = "prose" } =
       await req.json() as {
         sectionType: string;
         metrics: Record<string, number>;
         previousMetrics?: Record<string, number>;
         clientName?: string;
+        clientId?: string;
         dateRange?: string;
         length?: "short" | "medium" | "long";
         tone?: "professional" | "friendly" | "technical" | "executive";
+        format?: "prose" | "bullets" | "both";
       };
 
     if (!sectionType || !metrics || typeof metrics !== "object") {
@@ -97,21 +105,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "OpenAI API key not configured. Add it in Settings." }, { status: 500 });
     }
 
+    // Fetch client-specific AI instructions if clientId provided
+    let clientAiInstructions = "";
+    if (clientId) {
+      const client = await prisma.client.findUnique({ where: { id: clientId }, select: { aiReportInstructions: true } });
+      if (client?.aiReportInstructions) {
+        clientAiInstructions = client.aiReportInstructions;
+      }
+    }
+
     const openai = new OpenAI({ apiKey });
     const sectionLabel = SECTION_LABELS[sectionType] ?? sectionType;
     const lengthInstruction = LENGTH_INSTRUCTIONS[length] ?? LENGTH_INSTRUCTIONS.medium;
     const toneInstruction = TONE_INSTRUCTIONS[tone] ?? TONE_INSTRUCTIONS.professional;
+    const formatInstruction = FORMAT_INSTRUCTIONS[format] ?? FORMAT_INSTRUCTIONS.prose;
 
     const currentMetricsText = formatMetrics(metrics);
     const previousMetricsText = previousMetrics ? formatMetrics(previousMetrics) : null;
 
-    const systemPrompt = `You are an expert digital marketing analyst writing a performance report commentary section.
+    const systemPrompt = `You are an expert digital marketing analyst writing a client-facing performance report commentary section.
 ${toneInstruction}
 ${lengthInstruction}
-Write ONLY the commentary text — no headers, no bullet points, no labels. Plain prose only.
-Do not start with "This section" or "In this section". Start with a substantive observation.`;
+${formatInstruction}
+This is a CLIENT-FACING report. Be entirely positive and celebratory. Focus only on achievements, strong performance, and wins.
+Do NOT use the word "however". Do NOT include suggestions, recommendations, areas for improvement, or anything that could be perceived as negative criticism.
+Do not start with "This section" or "In this section". Start with a substantive observation.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
 
-    const userPrompt = `Write a ${tone} ${length} commentary for the ${sectionLabel} section of a digital marketing report.
+    const userPrompt = `Write a ${tone} ${length} ${format === "bullets" ? "bullet-point" : "prose"} commentary for the ${sectionLabel} section of a digital marketing report.
 
 Client: ${clientName ?? "the client"}
 Period: ${dateRange ?? "the reporting period"}
@@ -119,7 +139,7 @@ Period: ${dateRange ?? "the reporting period"}
 Current period metrics:
 ${currentMetricsText}
 ${previousMetricsText ? `\nPrevious period metrics:\n${previousMetricsText}\n` : ""}
-Focus on what the numbers mean for the business, highlight what's working or needs attention, and if the length allows, suggest next steps.`;
+Focus on what the numbers mean for the business and highlight what's working well.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
