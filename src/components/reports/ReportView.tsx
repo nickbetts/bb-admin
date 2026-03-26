@@ -187,33 +187,27 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     if (!reportRef.current) return;
     setExportingPdf(true);
     try {
-      const { default: html2canvas } = await import("html2canvas");
-      // Handle jsPDF v3 (named export) and v4 (default export) module formats
+      // html-to-image handles modern CSS Color Level 4 (lab, oklch) that html2canvas cannot parse.
+      const { toCanvas } = await import("html-to-image");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const jspdfMod = await import("jspdf") as any;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const JsPDF = (jspdfMod.jsPDF ?? jspdfMod.default) as any;
 
-      // Adaptive scale: maintain quality but stay within browser canvas limits
-      // (Safari caps canvas at ~4096px on iOS, Chrome at 32767px)
-      const naturalH = reportRef.current.scrollHeight;
-      const naturalW = reportRef.current.scrollWidth;
-      const scale = Math.max(1, Math.min(2, 16000 / Math.max(naturalH, naturalW)));
-
-      const canvas = await html2canvas(reportRef.current, {
+      const canvas = await toCanvas(reportRef.current, {
         backgroundColor: "#ffffff",
-        scale,
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
-        // Strip interactive UI elements — they shouldn't appear in the PDF
-        ignoreElements: (el) => {
-          if (["BUTTON", "SELECT", "INPUT", "TEXTAREA"].includes(el.tagName)) return true;
-          const cls = el.getAttribute("class") ?? "";
-          return cls.includes("print:hidden");
+        pixelRatio: Math.max(1, Math.min(2, 16000 / Math.max(reportRef.current.scrollHeight, reportRef.current.scrollWidth))),
+        skipFonts: false,
+        filter: (node) => {
+          if (node instanceof HTMLElement) {
+            if (["BUTTON", "SELECT", "INPUT", "TEXTAREA"].includes(node.tagName)) return false;
+            if (node.getAttribute("class")?.includes("print:hidden")) return false;
+          }
+          return true;
         },
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const pdf = new JsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pdfW = pdf.internal.pageSize.getWidth();
       const pdfH = pdf.internal.pageSize.getHeight();
