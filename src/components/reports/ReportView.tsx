@@ -187,17 +187,63 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     if (!reportRef.current) return;
     setExportingPdf(true);
     try {
-      // html-to-image handles modern CSS Color Level 4 (lab, oklch) that html2canvas cannot parse.
       const { toCanvas } = await import("html-to-image");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const jspdfMod = await import("jspdf") as any;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const JsPDF = (jspdfMod.jsPDF ?? jspdfMod.default) as any;
 
-      const canvas = await toCanvas(reportRef.current, {
+      const container = reportRef.current;
+
+      // A4 proportions — compute how tall one PDF page is in CSS pixels at the container's current width
+      const A4_RATIO = 297 / 210; // height/width
+      const pageHeightPx = container.scrollWidth * A4_RATIO;
+
+      // Walk offsetParent chain to get an element's top relative to the capture container
+      const getOffsetTop = (el: HTMLElement): number => {
+        let top = 0;
+        let node: HTMLElement | null = el;
+        while (node && node !== container) {
+          top += node.offsetTop;
+          node = node.offsetParent as HTMLElement | null;
+        }
+        return top;
+      };
+
+      // Collect cards and tables that must not be split across pages, ordered top → bottom.
+      // Reading positions BEFORE spacer insertion gives the natural order.
+      const noBreakEls = Array.from(
+        container.querySelectorAll<HTMLElement>(".card, .metric-card, table")
+      ).sort((a, b) => getOffsetTop(a) - getOffsetTop(b));
+
+      // Insert whitespace spacers to push elements that would be cut to the next page.
+      // Because we process top→bottom, getOffsetTop() for each element already reflects
+      // previously inserted spacers (the browser updates offsetTop live).
+      const spacers: HTMLElement[] = [];
+      for (const el of noBreakEls) {
+        const elTop = getOffsetTop(el);
+        const elH = el.offsetHeight;
+        if (elH >= pageHeightPx) continue; // taller than a full page — can't help, skip
+        const pageStart = Math.floor(elTop / pageHeightPx);
+        const pageEnd = Math.floor((elTop + elH - 1) / pageHeightPx);
+        if (pageStart !== pageEnd) {
+          // Push element to the next page by inserting a spacer above it
+          const spacerH = (pageStart + 1) * pageHeightPx - elTop;
+          const spacer = document.createElement("div");
+          spacer.style.cssText = `height:${spacerH}px;display:block;flex-shrink:0;pointer-events:none`;
+          el.parentNode?.insertBefore(spacer, el);
+          spacers.push(spacer);
+        }
+      }
+
+      // Let the browser finish laying out the spacers before we capture
+      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+
+      // Capture at 3× pixel ratio — gives ~400 DPI equivalent on A4, sharp enough for print
+      const PIXEL_RATIO = 3;
+      const canvas = await toCanvas(container, {
         backgroundColor: "#ffffff",
-        pixelRatio: Math.max(1, Math.min(2, 16000 / Math.max(reportRef.current.scrollHeight, reportRef.current.scrollWidth))),
-        skipFonts: false,
+        pixelRatio: PIXEL_RATIO,
         filter: (node) => {
           if (node instanceof HTMLElement) {
             if (["BUTTON", "SELECT", "INPUT", "TEXTAREA"].includes(node.tagName)) return false;
@@ -206,6 +252,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           return true;
         },
       });
+
+      // Remove spacers — restore DOM to original state
+      spacers.forEach((s) => s.remove());
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const pdf = new JsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -225,7 +274,8 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
         pg.height = Math.ceil(srcH);
         const ctx = pg.getContext("2d");
         if (ctx) ctx.drawImage(canvas, 0, Math.floor(srcY), imgW, pg.height, 0, 0, imgW, pg.height);
-        pdf.addImage(pg.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, pdfW, pg.height * ratio);
+        // JPEG at 0.97 — high quality, minimal compression artefacts
+        pdf.addImage(pg.toDataURL("image/jpeg", 0.97), "JPEG", 0, 0, pdfW, pg.height * ratio);
       }
 
       pdf.save(
