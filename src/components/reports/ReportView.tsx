@@ -272,14 +272,25 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       });
 
       // ── 4. Measure element positions relative to container ────────────────
-      // Re-scroll to top in case the capture internally scrolled (safety).
+      // Scroll BOTH window and the app-main overflow container to top so that
+      // offsetTop measurements are stable and match what the canvas captured.
       window.scrollTo({ top: 0, behavior: "instant" });
+      const appMainEl = document.querySelector<HTMLElement>(".app-main");
+      if (appMainEl) appMainEl.scrollTop = 0;
       await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
-      const containerRect = container.getBoundingClientRect();
-      // Canvas y = (el.getBoundingClientRect().top - containerRect.top) * PIXEL_RATIO
-      const getCanvasTop = (el: HTMLElement): number =>
-        (el.getBoundingClientRect().top - containerRect.top) * PIXEL_RATIO;
+      // Use offsetTop chain for scroll-independent layout position measurement.
+      // More reliable than getBoundingClientRect() which shifts with scroll position.
+      const getOffsetFromContainer = (el: HTMLElement): number => {
+        let top = 0;
+        let curr: HTMLElement | null = el;
+        while (curr && curr !== container) {
+          top += curr.offsetTop;
+          curr = curr.offsetParent as HTMLElement | null;
+        }
+        return top;
+      };
+      const getCanvasTop = (el: HTMLElement): number => getOffsetFromContainer(el) * PIXEL_RATIO;
 
       // Elements that must not be split — skip if taller than 90% of a page
       const imgW = canvas.width;
@@ -295,32 +306,54 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
       type Range = { top: number; bottom: number };
       const avoidRanges: Range[] = Array.from(
-        container.querySelectorAll<HTMLElement>(".card, .metric-card, table")
+        container.querySelectorAll<HTMLElement>(
+          ".card, .metric-card, table, .recharts-responsive-container, [data-pdf-avoid]"
+        )
       ).flatMap((el) => {
         const top = getCanvasTop(el);
-        const h = el.getBoundingClientRect().height * PIXEL_RATIO;
+        const h = el.offsetHeight * PIXEL_RATIO;
         if (h < 10 || h > pageH_canvas * 0.92) return []; // too small or too tall to help
         return [{ top, bottom: top + h }];
       });
 
+      // Sort by top for predictable traversal (find() then returns topmost straddler first)
+      avoidRanges.sort((a, b) => a.top - b.top);
+
       // ── 5. Build smart page cut points ────────────────────────────────────
-      // For each natural cut point, if an element would be sliced, move the cut
-      // to just before that element (keeping at least 25% of a page on this page).
-      const MIN_PAGE_H = pageH_canvas * 0.25;
+      // For each natural cut point, iteratively adjust to avoid slicing through elements:
+      //   - If an element straddles the cut AND there's enough content above, cut before it.
+      //   - If there's not enough content above, push the cut to after the element
+      //     and re-check (another element might now straddle the new position).
+      const MIN_PAGE_FILL = pageH_canvas * 0.25;
       const cuts: number[] = [0];
       let lastCut = 0;
       while (lastCut < imgH) {
         let nextCut = lastCut + pageH_canvas;
         if (nextCut >= imgH) { cuts.push(imgH); break; }
-        // Find first element that straddles nextCut
-        const overlap = avoidRanges.find(
-          (r) => r.top > lastCut && r.top < nextCut && r.bottom > nextCut
-        );
-        if (overlap) {
-          const candidate = overlap.top;
-          nextCut = (candidate - lastCut >= MIN_PAGE_H) ? candidate : Math.min(overlap.bottom, lastCut + pageH_canvas);
-          if (nextCut <= lastCut) nextCut = lastCut + pageH_canvas; // safety
+
+        // Iteratively resolve overlaps (cap at 20 iterations for safety)
+        let iters = 0;
+        while (iters++ < 20) {
+          // Find the topmost element that straddles nextCut
+          // Use >= lastCut (not >) so elements starting exactly at the last cut are checked
+          const straddling = avoidRanges.find(
+            (r) => r.top >= lastCut && r.top < nextCut && r.bottom > nextCut
+          );
+          if (!straddling) break; // no element straddles this cut point — done
+
+          const spaceBefore = straddling.top - lastCut;
+          if (spaceBefore >= MIN_PAGE_FILL) {
+            // Enough content on this page — cut before the element
+            nextCut = straddling.top;
+            break; // Cutting before is optimal; no need to look further
+          } else {
+            // Too little content above — push cut to after the element and re-check
+            // (another element might straddle the new position)
+            nextCut = straddling.bottom;
+          }
         }
+
+        if (nextCut <= lastCut) nextCut = lastCut + pageH_canvas; // safety fallback
         cuts.push(Math.round(nextCut));
         lastCut = Math.round(nextCut);
       }
@@ -554,7 +587,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             const meta = SECTION_META[section.sectionType] ?? { icon: <LayoutGrid size={14} />, badge: "badge-slate" };
 
             const commentaryCard = (
-              <div className="card">
+              <div className="card" data-pdf-avoid="true">
                 <div className="card-header">
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span className={`badge ${meta.badge}`} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
