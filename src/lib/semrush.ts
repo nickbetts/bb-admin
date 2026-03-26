@@ -265,35 +265,44 @@ export async function getBacklinks(
   limit: number = 10
 ): Promise<SemrushBacklink[]> {
   const apiKey = getApiKey();
-  const params = new URLSearchParams({
-    type: "backlinks",
-    key: apiKey,
-    target: domain,
-    target_type: "root_domain",
-    export_columns: "source_url,target_url,anchor,source_ascore",
-    display_limit: limit.toString(),
-  });
+  // Build query string manually — URLSearchParams encodes commas as %2C which the
+  // SEMrush Analytics v1 API rejects with HTTP 400 for export_columns values.
+  const qs = [
+    `type=backlinks`,
+    `key=${encodeURIComponent(apiKey)}`,
+    `target=${encodeURIComponent(domain)}`,
+    `target_type=root_domain`,
+    `export_columns=source_url,target_url,anchor,source_ascore`,
+    `display_limit=${limit}`,
+  ].join("&");
 
-  const response = await axios.get(
-    `${SEMRUSH_ANALYTICS_URL}/?${params.toString()}`
-  );
-  const lines = (response.data as string).trim().split("\n");
+  try {
+    const response = await axios.get(`${SEMRUSH_ANALYTICS_URL}/?${qs}`);
+    const lines = (response.data as string).trim().split("\n");
 
-  if (lines[0]?.startsWith("ERROR")) {
-    throw new Error(`SEMrush backlinks error: ${lines[0]}`);
+    if (lines[0]?.startsWith("ERROR")) {
+      throw new Error(`SEMrush backlinks error: ${lines[0]}`);
+    }
+
+    if (lines.length < 2) return [];
+
+    return lines.slice(1).map((line: string) => {
+      const [sourceUrl, targetUrl, anchorText, authority] = line.split("\t");
+      return {
+        sourceUrl: sourceUrl || "",
+        targetUrl: targetUrl || "",
+        anchorText: anchorText || "",
+        authority: parseInt(authority) || 0,
+      };
+    });
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response) {
+      throw new Error(
+        `SEMrush backlinks (${err.response.status}): ${typeof err.response.data === "string" ? err.response.data.slice(0, 200) : JSON.stringify(err.response.data)}`
+      );
+    }
+    throw err;
   }
-
-  if (lines.length < 2) return [];
-
-  return lines.slice(1).map((line: string) => {
-    const [sourceUrl, targetUrl, anchorText, authority] = line.split("\t");
-    return {
-      sourceUrl: sourceUrl || "",
-      targetUrl: targetUrl || "",
-      anchorText: anchorText || "",
-      authority: parseInt(authority) || 0,
-    };
-  });
 }
 
 export interface SemrushTrackedKeyword {
