@@ -110,9 +110,9 @@ Return ONLY a JSON object with this exact structure (no markdown, no explanation
 }
 
 Rules:
-- Generate 8-14 ad groups
-- Total keywords across all groups: 200-250
-- Each group should have 15-25 keywords with a consistent intent/theme
+- Generate 10-16 ad groups
+- Total keywords across all groups: 400-600
+- Each group should have 30-45 keywords with a consistent intent/theme
 - Ad group names should be concise and descriptive (e.g. "Plumber London", "Emergency Plumbing", "Boiler Repair")
 - Use the crawled website data to understand the business and tailor keywords
 - Mix broad head terms and specific long-tail keywords in each group

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Search, Loader2, TrendingUp, TrendingDown, ChevronRight, ChevronLeft, ChevronDown, ChevronUp,
   Plus, Trash2, Download, BarChart2, Target, DollarSign, Zap, Check, AlertTriangle,
-  Globe, Layers, Activity, MousePointer, Eye, Users,
+  Globe, Layers, Activity, MousePointer, Eye, Users, BookmarkPlus, FolderOpen, Pencil, X,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -33,6 +33,25 @@ interface KeywordIdea {
   lowTopOfPageBidMicros: number;
   highTopOfPageBidMicros: number;
   monthlySearchVolumes: MonthlyVolume[];
+}
+
+interface SavedResearchSummary {
+  id: string;
+  title: string;
+  website: string;
+  location: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SavedResearchFull extends SavedResearchSummary {
+  brief: string;
+  adGroups: AdGroup[];
+  selectedKws: string[];
+  ideas: KeywordIdea[];
+  maxCpc: string;
+  monthlyBudget: string;
+  conversionRate: string;
 }
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -272,6 +291,99 @@ export default function KeywordPlannerPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [groupedView, setGroupedView] = useState(true);
 
+  // Saved researches
+  const [savedResearches, setSavedResearches] = useState<SavedResearchSummary[]>([]);
+  const [currentResearchId, setCurrentResearchId] = useState<string | null>(null);
+  const [researchTitle, setResearchTitle] = useState("");
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [savingResearch, setSavingResearch] = useState(false);
+  const [showSavePanel, setShowSavePanel] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  const loadSavedList = useCallback(async () => {
+    try {
+      const res = await fetch("/api/tools/keyword-planner/saved");
+      if (res.ok) {
+        const data = await res.json();
+        setSavedResearches(data.researches ?? []);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { loadSavedList(); }, [loadSavedList]);
+
+  async function handleSaveResearch() {
+    if (!researchTitle.trim()) return;
+    setSavingResearch(true);
+    try {
+      const payload = {
+        title: researchTitle.trim(),
+        website, brief, location,
+        adGroups,
+        selectedKws: [...selectedKws],
+        ideas,
+        maxCpc, monthlyBudget, conversionRate,
+      };
+      if (currentResearchId) {
+        await fetch(`/api/tools/keyword-planner/saved/${currentResearchId}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        const res = await fetch("/api/tools/keyword-planner/saved", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        setCurrentResearchId(data.research?.id ?? null);
+      }
+      await loadSavedList();
+      setShowSavePanel(false);
+    } catch { /* ignore */ }
+    finally { setSavingResearch(false); }
+  }
+
+  async function handleLoadResearch(id: string) {
+    try {
+      const res = await fetch(`/api/tools/keyword-planner/saved/${id}`);
+      if (!res.ok) return;
+      const { research }: { research: SavedResearchFull } = await res.json();
+      setWebsite(research.website);
+      setBrief(research.brief);
+      setLocation(research.location);
+      setAdGroups(research.adGroups);
+      setSelectedKws(new Set(research.selectedKws));
+      setRationale("");
+      setIdeas(research.ideas);
+      setMaxCpc(research.maxCpc);
+      setMonthlyBudget(research.monthlyBudget);
+      setConversionRate(research.conversionRate);
+      setCpcAutoFilled(false);
+      setCrAutoFilled(false);
+      setCurrentResearchId(research.id);
+      setResearchTitle(research.title);
+      setStep(3);
+    } catch { /* ignore */ }
+  }
+
+  async function handleDeleteResearch(id: string) {
+    await fetch(`/api/tools/keyword-planner/saved/${id}`, { method: "DELETE" });
+    if (currentResearchId === id) setCurrentResearchId(null);
+    await loadSavedList();
+  }
+
+  async function handleRenameResearch(id: string, newTitle: string) {
+    if (!newTitle.trim()) return;
+    await fetch(`/api/tools/keyword-planner/saved/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: newTitle.trim() }),
+    });
+    if (currentResearchId === id) setResearchTitle(newTitle.trim());
+    setRenamingId(null);
+    await loadSavedList();
+  }
+
   // ── Suggest ──────────────────────────────────────────────────────────────────
   async function handleSuggest() {
     if (!website.trim() || !brief.trim()) return;
@@ -351,6 +463,12 @@ export default function KeywordPlannerPage() {
           }
         })
         .catch(() => {}); // silently fail — default stays
+
+      // Auto-set title for save panel
+      const host = (() => { try { return new URL(website.trim()).hostname.replace(/^www\./, ""); } catch { return website.trim(); } })();
+      const dateStr = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+      setResearchTitle(`${host} – ${dateStr}`);
+      setCurrentResearchId(null);
 
       setStep(3);
     } catch (err) {
@@ -485,6 +603,68 @@ export default function KeywordPlannerPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Saved Researches panel ── */}
+      {savedResearches.length > 0 && (
+        <div className="card" style={{ marginBottom: 28 }}>
+          <div className="card-header" style={{ cursor: "pointer", userSelect: "none" }}
+            onClick={() => {}}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <FolderOpen style={{ width: 15, height: 15, color: "var(--accent)" }} />
+              <p className="card-title" style={{ fontSize: 14 }}>Saved Researches</p>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", background: "var(--border-subtle)", borderRadius: 10, padding: "1px 7px" }}>{savedResearches.length}</span>
+            </div>
+          </div>
+          <div className="card-body" style={{ paddingTop: 0 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {savedResearches.map((r) => (
+                <div key={r.id} style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "10px 14px", borderRadius: "var(--r)",
+                  background: currentResearchId === r.id ? "var(--accent-bg)" : "var(--bg)",
+                  border: `1px solid ${currentResearchId === r.id ? "var(--accent)" : "var(--border-subtle)"}`,
+                  transition: "all 0.15s",
+                }}>
+                  {renamingId === r.id ? (
+                    <form style={{ flex: 1, display: "flex", gap: 8 }}
+                      onSubmit={(e) => { e.preventDefault(); handleRenameResearch(r.id, renameValue); }}>
+                      <input autoFocus value={renameValue} onChange={(e) => setRenameValue(e.target.value)}
+                        style={{ ...inputStyle, padding: "4px 10px", fontSize: 13, flex: 1 }}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
+                      <button type="submit" className="btn btn-primary btn-sm" style={{ padding: "4px 12px" }}>Save</button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRenamingId(null)}>
+                        <X style={{ width: 13, height: 13 }} />
+                      </button>
+                    </form>
+                  ) : (
+                    <>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</p>
+                        <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 2 }}>
+                          {r.website} &middot; {new Date(r.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                      </div>
+                      <button className="btn btn-ghost btn-sm" style={{ gap: 5, flexShrink: 0 }}
+                        onClick={() => handleLoadResearch(r.id)}>
+                        Load
+                      </button>
+                      <button className="btn btn-ghost btn-sm" style={{ padding: "4px 8px", flexShrink: 0 }}
+                        title="Rename" onClick={() => { setRenamingId(r.id); setRenameValue(r.title); }}>
+                        <Pencil style={{ width: 13, height: 13 }} />
+                      </button>
+                      <button className="btn btn-ghost btn-sm" style={{ padding: "4px 8px", flexShrink: 0, color: "#ef4444" }}
+                        title="Delete" onClick={() => handleDeleteResearch(r.id)}>
+                        <Trash2 style={{ width: 13, height: 13 }} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Step indicator */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 32 }}>
@@ -696,6 +876,29 @@ export default function KeywordPlannerPage() {
                     <Download style={{ width: 14, height: 14 }} /> Export CSV
                   </button>
                 </>
+              )}
+
+              {/* Save research */}
+              {showSavePanel ? (
+                <form style={{ display: "flex", alignItems: "center", gap: 6 }}
+                  onSubmit={(e) => { e.preventDefault(); handleSaveResearch(); }}>
+                  <input autoFocus value={researchTitle} onChange={(e) => setResearchTitle(e.target.value)}
+                    placeholder="Research title…"
+                    style={{ ...inputStyle, padding: "5px 10px", fontSize: 13, width: 220 }}
+                    onFocus={(ev) => (ev.currentTarget.style.borderColor = "var(--accent)")}
+                    onBlur={(ev) => (ev.currentTarget.style.borderColor = "var(--border)")} />
+                  <button type="submit" className="btn btn-primary btn-sm" disabled={savingResearch || !researchTitle.trim()}>
+                    {savingResearch ? <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" /> : (currentResearchId ? "Update" : "Save")}
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowSavePanel(false)}>
+                    <X style={{ width: 13, height: 13 }} />
+                  </button>
+                </form>
+              ) : (
+                <button className="btn btn-ghost btn-sm" style={{ gap: 5 }} onClick={() => setShowSavePanel(true)}>
+                  <BookmarkPlus style={{ width: 14, height: 14 }} />
+                  {currentResearchId ? "Update" : "Save"}
+                </button>
               )}
             </div>
           </div>

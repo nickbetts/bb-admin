@@ -143,3 +143,20 @@ model MetricSnapshot {
 
   @@unique([clientId, sectionType, periodStart, periodEnd])
 }
+
+model KeywordPlannerResearch {
+  id             String   @id @default(cuid())
+  userId         String
+  title          String
+  website        String
+  brief          String
+  location       String   @default("2826")
+  adGroups       String   // JSON: AdGroup[]
+  selectedKws    String   // JSON: string[]
+  ideas          String   // JSON: KeywordIdea[]
+  maxCpc         String   @default("")
+  monthlyBudget  String   @default("")
+  conversionRate String   @default("3")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
