@@ -430,3 +430,84 @@ export async function getSemrushAIVisibility(
   return { totalTracked, aiOverviewKeywords, brandCitations, aiVisibilityScore, keywords };
 }
 
+// ── Keyword volume metrics (used by AI Keyword Planner) ─────────────────────
+
+export interface KeywordVolumeResult {
+  text: string;
+  avgMonthlySearches: number;
+  competition: string;
+  competitionIndex: number;
+  lowTopOfPageBidMicros: number;
+  highTopOfPageBidMicros: number;
+  monthlySearchVolumes: { year: number; month: string; searches: number }[];
+}
+
+const MONTH_NAMES = [
+  "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+  "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER",
+];
+
+export async function getKeywordVolumeMetrics(
+  keywords: string[],
+  database = "uk",
+  concurrency = 20
+): Promise<KeywordVolumeResult[]> {
+  const apiKey = getApiKey();
+  const results: KeywordVolumeResult[] = [];
+
+  for (let i = 0; i < keywords.length; i += concurrency) {
+    const batch = keywords.slice(i, i + concurrency);
+    const batchResults = await Promise.all(
+      batch.map(async (kw): Promise<KeywordVolumeResult | null> => {
+        try {
+          const params = new URLSearchParams({
+            type: "phrase_this",
+            key: apiKey,
+            phrase: kw,
+            database,
+            export_columns: "Ph,Nq,Cp,Co,Td",
+          });
+          const res = await axios.get<string>(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+          const lines = (res.data as string).trim().split("\n");
+          if (lines.length < 2 || lines[0].startsWith("ERROR")) return null;
+
+          const vals = lines[1].split(";");
+          const nq = parseInt(vals[1], 10) || 0;
+          if (nq === 0) return null;
+
+          const cp = parseFloat(vals[2]) || 0;
+          const co = parseFloat(vals[3]) || 0;
+          const tdRaw = vals[4] ?? "";
+          const tdValues = tdRaw.split(",").map((v) => parseInt(v, 10) || 0);
+
+          // SEMrush trend data is Jan–Dec of the most recently completed calendar year
+          const now = new Date();
+          const trendYear = now.getMonth() > 0 ? now.getFullYear() - 1 : now.getFullYear() - 2;
+          const monthlySearchVolumes = MONTH_NAMES.map((month, idx) => ({
+            year: trendYear,
+            month,
+            searches: tdValues[idx] ?? 0,
+          }));
+
+          const competition = co < 0.33 ? "LOW" : co < 0.67 ? "MEDIUM" : "HIGH";
+
+          return {
+            text: kw,
+            avgMonthlySearches: nq,
+            competition,
+            competitionIndex: Math.round(co * 100),
+            lowTopOfPageBidMicros: Math.round(cp * 0.7 * 1_000_000),
+            highTopOfPageBidMicros: Math.round(cp * 1_000_000),
+            monthlySearchVolumes,
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+    results.push(...(batchResults.filter(Boolean) as KeywordVolumeResult[]));
+  }
+
+  return results;
+}
+

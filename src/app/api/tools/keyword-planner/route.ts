@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { generateKeywordIdeas, getGoogleAdsAccounts } from "@/lib/google-ads";
+import { getKeywordVolumeMetrics } from "@/lib/semrush";
 import { fetchPageSignals } from "@/lib/landing-page-analyzer";
 import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
@@ -32,49 +32,18 @@ interface ResearchBody {
 
 type RequestBody = SuggestBody | ResearchBody;
 
-// ── Batch Google Ads calls (API allows max 10 seed keywords per request) ─────────
+// ── Google Ads location ID → SEMrush database code ──────────────────────────
 
-import type { KeywordIdeaMetric } from "@/lib/google-ads";
-
-async function fetchKeywordDataBatched(
-  customerId: string,
-  allKeywords: string[],
-  url: string,
-  locationIds: string[],
-  languageCode: string
-): Promise<KeywordIdeaMetric[]> {
-  const BATCH_SIZE = 10;
-  const CONCURRENCY = 4;
-
-  // Build batches of 10 seed keywords
-  const batches: string[][] = [];
-  for (let i = 0; i < allKeywords.length; i += BATCH_SIZE) {
-    batches.push(allKeywords.slice(i, i + BATCH_SIZE));
-  }
-
-  // Fetch in concurrent groups of CONCURRENCY
-  const allResults: KeywordIdeaMetric[] = [];
-  for (let i = 0; i < batches.length; i += CONCURRENCY) {
-    const group = batches.slice(i, i + CONCURRENCY);
-    const results = await Promise.all(
-      group.map((batch) =>
-        generateKeywordIdeas(customerId, batch, url, locationIds, languageCode, 100).catch(() => [] as KeywordIdeaMetric[])
-      )
-    );
-    allResults.push(...results.flat());
-  }
-
-  // Deduplicate by text — keep highest volume if duplicate
-  const map = new Map<string, KeywordIdeaMetric>();
-  for (const idea of allResults) {
-    const key = idea.text.toLowerCase().trim();
-    const existing = map.get(key);
-    if (!existing || idea.avgMonthlySearches > existing.avgMonthlySearches) {
-      map.set(key, idea);
-    }
-  }
-  return Array.from(map.values());
-}
+const LOCATION_TO_SEMRUSH_DB: Record<string, string> = {
+  "2826": "uk",
+  "2840": "us",
+  "2036": "au",
+  "2124": "ca",
+  "2276": "de",
+  "2250": "fr",
+  "2724": "es",
+  "2380": "it",
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -180,7 +149,7 @@ Rules:
     // ── action: research ───────────────────────────────────────────────────────
     if (body.action === "research") {
       const resBody = body as ResearchBody;
-      const { website, customerId, location, language } = resBody;
+      const { website, location } = resBody;
 
       // Build flat keyword list + group map from adGroups (or legacy keywords)
       const kwGroupMap = new Map<string, string>(); // lowercased keyword text → group name
@@ -206,43 +175,23 @@ Rules:
         return NextResponse.json({ error: "No keywords provided." }, { status: 400 });
       }
 
-      // Resolve Google Ads customer account
-      let resolvedCustomerId = customerId ?? "";
-      if (!resolvedCustomerId) {
-        const accounts = await getGoogleAdsAccounts();
-        const nonManager = accounts.find((a) => !a.isManager);
-        if (!nonManager) {
-          return NextResponse.json(
-            { error: "No Google Ads account found. Connect one in Settings." },
-            { status: 400 }
-          );
-        }
-        resolvedCustomerId = nonManager.id;
-      }
+      // Map location ID to SEMrush database
+      const database = LOCATION_TO_SEMRUSH_DB[location ?? "2826"] ?? "uk";
 
-      const locationIds = location ? [location] : ["2826"];
-      const languageCode = language ?? "languageConstants/1000";
+      // Fetch keyword volume data via SEMrush
+      const rawIdeas = await getKeywordVolumeMetrics(allKeywords, database);
 
-      // Fetch keyword data in batches of 10 (Google Ads API limit)
-      const rawIdeas = await fetchKeywordDataBatched(
-        resolvedCustomerId,
-        allKeywords,
-        website ?? "",
-        locationIds,
-        languageCode
-      );
-
-      // Filter to keywords with volume > 0 AND that match our original keyword list
+      // Filter to keywords that match our original keyword list (volume filter already applied inside)
       const originalKeySet = new Set(allKeywords.map((k) => k.toLowerCase().trim()));
 
       const ideas = rawIdeas
-        .filter((idea) => idea.avgMonthlySearches > 0 && originalKeySet.has(idea.text.toLowerCase().trim()))
+        .filter((idea) => originalKeySet.has(idea.text.toLowerCase().trim()))
         .map((idea) => ({
           ...idea,
           adGroup: kwGroupMap.get(idea.text.toLowerCase().trim()) ?? "Other",
         }));
 
-      return NextResponse.json({ ideas, customerId: resolvedCustomerId });
+      return NextResponse.json({ ideas });
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
