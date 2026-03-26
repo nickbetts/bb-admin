@@ -234,19 +234,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     if (!reportRef.current) return;
     setExportingPdf(true);
 
-    // Track injected spacers so we can always clean up, even on error
-    const insertedSpacers: HTMLElement[] = [];
-    let savedContainerPosition = "";
+    const container = reportRef.current;
 
     try {
-      const { toCanvas } = await import("html-to-image");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const jspdfMod = await import("jspdf") as any;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const JsPDF = (jspdfMod.jsPDF ?? jspdfMod.default) as any;
-
-      const container = reportRef.current;
-
       // ── 1. Wait for loading spinners ──────────────────────────────────────
       const deadline = Date.now() + 30_000;
       while (container.querySelectorAll(".animate-spin").length > 0 && Date.now() < deadline) {
@@ -254,148 +244,70 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       }
       await new Promise((r) => setTimeout(r, 1200));
 
-      // ── 2. Scroll EVERYTHING to top before any measurement or rendering ───
-      // Must happen here — the old code did this AFTER capturing the canvas,
-      // meaning coordinate measurements were taken against a scrolled viewport.
+      // ── 2. Scroll to top ──────────────────────────────────────────────────
       window.scrollTo({ top: 0, behavior: "instant" });
       const appMainEl = document.querySelector<HTMLElement>(".app-main");
       if (appMainEl) appMainEl.scrollTop = 0;
       await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
-      // ── 3. PDF geometry ───────────────────────────────────────────────────
-      const PIXEL_RATIO = 3;
+      // ── 3. Hide non-printable elements before capture ─────────────────────
+      // The .pdf-exporting class (defined in globals.css) hides buttons, inputs,
+      // and print:hidden elements from the canvas without removing them from the DOM.
+      container.classList.add("pdf-exporting");
+      // Flush styles before html2pdf clones the DOM
+      void container.offsetHeight;
+
+      // ── 4. html2pdf.js — page-break avoidance is built-in ─────────────────
+      // The `pagebreak.avoid` list tells html2pdf to insert a forced page break
+      // before any matching element that would otherwise straddle a page boundary.
+      // html2canvas (already a dep) is used for rendering — html2pdf handles the
+      // page-split logic internally so we don't need any custom coordinate arithmetic.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pdf = new JsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pdfW = pdf.internal.pageSize.getWidth() as number;   // 210 mm
-      const pdfH = pdf.internal.pageSize.getHeight() as number;  // 297 mm
+      const html2pdfMod = await import("html2pdf.js") as any;
+      const html2pdf = (html2pdfMod.default ?? html2pdfMod) as (el?: HTMLElement) => {
+        set(opts: Record<string, unknown>): unknown;
+        from(el: HTMLElement): { save(): Promise<void> };
+      };
 
-      // CSS pixel height of one A4 page at the container's current rendered width.
-      // Stable throughout DOM mutations below because spacers only grow scrollHeight
-      // downward — they never change scrollWidth.
-      const pdfPageH_css = (pdfH / pdfW) * container.scrollWidth;
+      const filename = `${report.client.name}-${report.period}-report.pdf`
+        .toLowerCase()
+        .replace(/\s+/g, "-");
 
-      // ── 4. Inject DOM spacers before any element that straddles a page break
-      //
-      // WHY we use spacers instead of post-canvas cut-point arithmetic:
-      //
-      //   a) reportRef div has no `position` style — it is position:static and
-      //      therefore is NOT an offsetParent. The old offsetTop-chain traversal
-      //      never stopped at `container`; it walked all the way up to document.body,
-      //      accumulating offsets from the document root → every measured position
-      //      was wrong by hundreds of pixels.
-      //
-      //   b) The old "push nextCut to straddling.bottom" could produce a page slice
-      //      up to ~117% of A4 height (spaceBefore<25% + element at 92%) which then
-      //      got compressed when fitted to one A4 page → squished / cut-off content.
-      //
-      // With spacers we push elements down in the live DOM before rendering so that
-      // no element ever straddles a page boundary. Page cuts then become trivial
-      // uniform multiples of pageH_canvas — zero coordinate arithmetic needed.
-
-      savedContainerPosition = container.style.position;
-      // Give the container position:relative so getBoundingClientRect() measurements
-      // below are reliable (doesn't affect layout — no offset is applied).
-      container.style.position = "relative";
-      void container.offsetHeight; // force synchronous reflow
-
-      // Snapshot the container's top-left once. Adding children makes it taller but
-      // does not move its top edge, so this stays valid for the whole loop.
-      const containerBCR = container.getBoundingClientRect();
-
-      // Collect elements that should not be split. Skip those taller than 90% pg.
-      const avoidEls = Array.from(
-        container.querySelectorAll<HTMLElement>(
-          ".card, .metric-card, table, [data-pdf-avoid]"
-        )
-      ).filter((el) => el.offsetHeight > 20 && el.offsetHeight < pdfPageH_css * 0.9);
-
-      // Sort top-to-bottom. getBoundingClientRect() triggers a reflow — intentional.
-      avoidEls.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
-
-      for (const el of avoidEls) {
-        // Re-measure after each spacer insertion — previous spacers shift elements down.
-        // getBoundingClientRect() forces a synchronous reflow so values are current.
-        const elTop      = el.getBoundingClientRect().top - containerBCR.top;
-        const elBottom   = elTop + el.offsetHeight;
-        const pageBreakAt = (Math.floor(elTop / pdfPageH_css) + 1) * pdfPageH_css;
-
-        if (elTop < pageBreakAt && elBottom > pageBreakAt) {
-          // Element straddles the next page break — insert a spacer above it that
-          // fills the remaining gap on this page, pushing the element to the next page.
-          const spacerH = Math.ceil(pageBreakAt - elTop);
-          const spacer  = document.createElement("div");
-          spacer.style.cssText = [
-            `height:${spacerH}px`,
-            `min-height:${spacerH}px`,
-            "display:block",
-            "background:white",
-            "flex-shrink:0",
-            "width:100%",
-          ].join(";");
-          spacer.setAttribute("data-pdf-spacer", "true");
-          el.parentNode?.insertBefore(spacer, el);
-          insertedSpacers.push(spacer);
-        }
-      }
-
-      // ── 5. Capture canvas — spacers are now in the live DOM ──────────────
-      const canvas = await toCanvas(container, {
-        backgroundColor: "#ffffff",
-        pixelRatio: PIXEL_RATIO,
-        filter: (node) => {
-          if (node instanceof HTMLElement) {
-            if (["BUTTON", "SELECT", "INPUT", "TEXTAREA"].includes(node.tagName)) return false;
-            if (node.getAttribute("class")?.includes("print:hidden")) return false;
-          }
-          return true;
-        },
-      });
-
-      // ── 6. Remove spacers + restore container position ────────────────────
-      for (const spacer of insertedSpacers) spacer.remove();
-      insertedSpacers.length = 0;
-      container.style.position = savedContainerPosition;
-
-      // ── 7. Slice canvas into uniform A4 pages ────────────────────────────
-      // Spacers guaranteed that no element crosses a page boundary, so every cut
-      // at a multiple of pageH_canvas is guaranteed to fall in white space.
-      const imgW = canvas.width;
-      const imgH = canvas.height;
-      const canvasPerMM  = imgW / pdfW;
-      const pageH_canvas = pdfH * canvasPerMM;
-
-      let srcY = 0, pageIdx = 0;
-      while (srcY < imgH) {
-        if (pageIdx > 0) pdf.addPage();
-        const srcH = Math.min(pageH_canvas, imgH - srcY);
-        const pg = document.createElement("canvas");
-        pg.width = imgW;
-        pg.height = Math.round(pageH_canvas);
-        const ctx = pg.getContext("2d");
-        if (ctx) {
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, pg.width, pg.height);
-          ctx.drawImage(canvas, 0, srcY, imgW, srcH, 0, 0, imgW, srcH);
-        }
-        pdf.addImage(pg.toDataURL("image/jpeg", 0.97), "JPEG", 0, 0, pdfW, pdfH);
-        srcY = Math.round(srcY + pageH_canvas);
-        pageIdx++;
-      }
-
-      pdf.save(
-        `${report.client.name}-${report.period}-report.pdf`
-          .toLowerCase()
-          .replace(/\s+/g, "-")
-      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (html2pdf() as any)
+        .set({
+          margin: 0,
+          filename,
+          image: { type: "jpeg", quality: 0.97 },
+          html2canvas: {
+            scale: 3,
+            useCORS: true,
+            backgroundColor: "#ffffff",
+            logging: false,
+            // Ignore elements inside .pdf-exporting that should not appear in PDF
+            ignoreElements: (el: HTMLElement) =>
+              el.tagName === "BUTTON" ||
+              el.tagName === "SELECT" ||
+              el.tagName === "INPUT" ||
+              el.tagName === "TEXTAREA" ||
+              (el.getAttribute("class") ?? "").includes("print:hidden"),
+          },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          pagebreak: {
+            // 'css'    — respects `page-break-inside: avoid` in globals.css
+            // 'legacy' — scans elements and inserts breaks before straddlers
+            mode: ["css", "legacy"],
+            avoid: [".card", ".metric-card", "table", "[data-pdf-avoid]"],
+          },
+        })
+        .from(container)
+        .save();
     } catch (err) {
       console.error("PDF export error:", err);
-      // Always clean up so the report view isn't left in a broken state
-      for (const spacer of insertedSpacers) spacer.remove();
-      if (reportRef.current && savedContainerPosition !== undefined) {
-        reportRef.current.style.position = savedContainerPosition;
-      }
       alert(`PDF export failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
+      // Always restore the container — even if an error was thrown mid-export
+      container.classList.remove("pdf-exporting");
       setExportingPdf(false);
     }
   }, [report.client.name, report.period]);
