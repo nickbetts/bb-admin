@@ -1,6 +1,10 @@
 const GOOGLE_ADS_API_VERSION = "v20";
+// KeywordPlanIdeaService was removed from v19+ — pin it to v18 which is the
+// last version that supports the generateKeywordIdeas REST endpoint.
+const KEYWORD_IDEAS_API_VERSION = "v18";
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const ADS_BASE_URL = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
+const KEYWORD_IDEAS_BASE_URL = `https://googleads.googleapis.com/${KEYWORD_IDEAS_API_VERSION}`;
 
 async function getMccId(): Promise<string | null> {
   // Prefer env var, fall back to DB setting
@@ -808,7 +812,7 @@ export async function generateKeywordIdeas(
   }
 
   const res = await fetch(
-    `${ADS_BASE_URL}/customers/${cid}/keywordPlanIdeas:generateKeywordIdeas`,
+    `${KEYWORD_IDEAS_BASE_URL}/customers/${cid}/keywordPlanIdeas:generateKeywordIdeas`,
     {
       method: "POST",
       headers: buildHeaders(token, mccId),
