@@ -67,16 +67,20 @@ model Client {
 }
 
 model Report {
-  id          String          @id @default(cuid())
-  clientId    String
-  title       String
-  period      String
-  status      String          @default("draft")
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  client      Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  sections    ReportSection[]
-  screenshots Screenshot[]
+  id               String          @id @default(cuid())
+  clientId         String
+  title            String
+  period           String
+  status           String          @default("draft")
+  customStartDate  String?
+  customEndDate    String?
+  compareStartDate String?
+  compareEndDate   String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  client           Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  sections         ReportSection[]
+  screenshots      Screenshot[]
 }
 
 model ReportSection {

@@ -52,6 +52,10 @@ export async function PATCH(
         title: data.title,
         period: data.period,
         status: data.status,
+        customStartDate: data.customStartDate ?? undefined,
+        customEndDate: data.customEndDate ?? undefined,
+        compareStartDate: data.compareStartDate ?? undefined,
+        compareEndDate: data.compareEndDate ?? undefined,
       },
     });
 

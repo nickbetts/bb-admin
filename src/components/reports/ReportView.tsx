@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, Upload, Trash2, Check, X, Eye, EyeOff, ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search, MessageSquare, LayoutGrid, FileText, Image, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Download, Upload, Trash2, Check, X, Eye, EyeOff, ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search, MessageSquare, LayoutGrid, FileText, Image, ShoppingCart, CalendarRange } from "lucide-react";
 import { SemrushSection } from "@/components/dashboard/SemrushSection";
 import { GA4Section } from "@/components/dashboard/GA4Section";
 import { MetaSection } from "@/components/dashboard/MetaSection";
@@ -54,6 +54,10 @@ interface Report {
   title: string;
   period: string;
   status: string;
+  customStartDate?: string | null;
+  customEndDate?: string | null;
+  compareStartDate?: string | null;
+  compareEndDate?: string | null;
   client: Client;
   sections: Section[];
   screenshots: Screenshot[];
@@ -72,7 +76,50 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       cardConfig: s.cardConfig ?? null,
     })),
   });
-  const { startDate, endDate } = parsePeriodToDateRange(report.period);
+  // Use custom dates if set, otherwise derive from the period string.
+  const derived = parsePeriodToDateRange(report.period);
+  const startDate = report.customStartDate || derived.startDate;
+  const endDate   = report.customEndDate   || derived.endDate;
+  const compareStartDate = report.compareStartDate || null;
+  const compareEndDate   = report.compareEndDate   || null;
+
+  // Date picker state
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [dpStart, setDpStart] = useState(startDate);
+  const [dpEnd, setDpEnd] = useState(endDate);
+  const [dpCompareStart, setDpCompareStart] = useState(compareStartDate ?? "");
+  const [dpCompareEnd, setDpCompareEnd] = useState(compareEndDate ?? "");
+  const [savingDates, setSavingDates] = useState(false);
+
+  const handleSaveDates = async () => {
+    setSavingDates(true);
+    try {
+      const res = await fetch(`/api/reports/${report.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customStartDate: dpStart || null,
+          customEndDate: dpEnd || null,
+          compareStartDate: dpCompareStart || null,
+          compareEndDate: dpCompareEnd || null,
+        }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setReport((prev) => ({
+          ...prev,
+          customStartDate: updated.customStartDate,
+          customEndDate: updated.customEndDate,
+          compareStartDate: updated.compareStartDate,
+          compareEndDate: updated.compareEndDate,
+        }));
+        setDatePickerOpen(false);
+      }
+    } finally {
+      setSavingDates(false);
+    }
+  };
+
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [commentary, setCommentary] = useState<Record<string, string>>({});
@@ -352,7 +399,84 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{report.client.name} · {report.period}</p>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
+          {/* Date range picker */}
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => { setDatePickerOpen((o) => !o); setDpStart(startDate); setDpEnd(endDate); setDpCompareStart(compareStartDate ?? ""); setDpCompareEnd(compareEndDate ?? ""); }}
+              className="btn btn-secondary btn-sm"
+              title="Set custom date range"
+              style={{ gap: 5 }}
+            >
+              <CalendarRange size={13} />
+              {report.customStartDate ? `${report.customStartDate} – ${report.customEndDate}` : "Date Range"}
+            </button>
+            {datePickerOpen && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 50,
+                background: "var(--surface)", border: "1px solid var(--border)",
+                borderRadius: "var(--r)", boxShadow: "var(--shadow-lg)",
+                padding: "20px 20px 16px", minWidth: 320,
+              }}>
+                <p style={{ fontWeight: 600, fontSize: 13, color: "var(--text)", marginBottom: 14 }}>Custom Date Range</p>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Start date</span>
+                    <input type="date" value={dpStart} onChange={(e) => setDpStart(e.target.value)}
+                      style={{ padding: "6px 10px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13 }} />
+                  </label>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>End date</span>
+                    <input type="date" value={dpEnd} onChange={(e) => setDpEnd(e.target.value)}
+                      style={{ padding: "6px 10px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13 }} />
+                  </label>
+                </div>
+
+                <p style={{ fontWeight: 600, fontSize: 13, color: "var(--text)", marginBottom: 4 }}>Comparison Period <span style={{ fontWeight: 400, color: "var(--text-4)", fontSize: 12 }}>(optional)</span></p>
+                <p style={{ fontSize: 12, color: "var(--text-4)", marginBottom: 12 }}>Leave blank to use previous period automatically.</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Compare from</span>
+                    <input type="date" value={dpCompareStart} onChange={(e) => setDpCompareStart(e.target.value)}
+                      style={{ padding: "6px 10px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13 }} />
+                  </label>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Compare to</span>
+                    <input type="date" value={dpCompareEnd} onChange={(e) => setDpCompareEnd(e.target.value)}
+                      style={{ padding: "6px 10px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 13 }} />
+                  </label>
+                </div>
+
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={handleSaveDates} disabled={savingDates} className="btn btn-primary btn-sm">
+                    <Check size={13} />
+                    {savingDates ? "Saving…" : "Apply"}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setSavingDates(true);
+                      try {
+                        await fetch(`/api/reports/${report.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ customStartDate: null, customEndDate: null, compareStartDate: null, compareEndDate: null }),
+                        });
+                        setReport((prev) => ({ ...prev, customStartDate: null, customEndDate: null, compareStartDate: null, compareEndDate: null }));
+                        setDatePickerOpen(false);
+                      } finally { setSavingDates(false); }
+                    }}
+                    disabled={savingDates || (!report.customStartDate && !report.compareStartDate)}
+                    className="btn btn-secondary btn-sm"
+                  >
+                    Reset to period
+                  </button>
+                  <button onClick={() => setDatePickerOpen(false)} className="btn btn-secondary btn-sm"><X size={13} /></button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
@@ -607,7 +731,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 )}
                 {section.sectionType === "web" && (
                   report.client.ga4PropertyId
-                    ? <GA4Section propertyId={report.client.ga4PropertyId} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                    ? <GA4Section propertyId={report.client.ga4PropertyId} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
                     : <>{commentaryCard}{unconfiguredNotice("No GA4 property connected — configure it in client settings to enable web analytics.")}</>
                 )}
                 {section.sectionType === "paid_social" && (

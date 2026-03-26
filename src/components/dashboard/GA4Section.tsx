@@ -25,6 +25,8 @@ interface GA4SectionProps {
   propertyId: string;
   startDate: string;
   endDate: string;
+  compareStartDate?: string;
+  compareEndDate?: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
   hideAlerts?: boolean;
@@ -130,7 +132,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function GA4Section({ propertyId, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady, afterHeader }: GA4SectionProps) {
+export function GA4Section({ propertyId, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady, afterHeader }: GA4SectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<GA4Overview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GA4Overview | null>(null);
@@ -246,7 +248,10 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
       setOrganicOverview(null);
       try {
         const base = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${startDate}&endDate=${endDate}`;
-        const prev = getPreviousPeriod(startDate, endDate);
+        // Use custom comparison period if provided, otherwise compute previous period automatically
+        const prev = (compareStartDate && compareEndDate)
+          ? { startDate: compareStartDate, endDate: compareEndDate }
+          : getPreviousPeriod(startDate, endDate);
         const prevBase = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
         // Year-ago: shift start/end dates back by 1 year
         const yoyStart = new Date(startDate); yoyStart.setFullYear(yoyStart.getFullYear() - 1);
@@ -323,7 +328,7 @@ export function GA4Section({ propertyId, startDate, endDate, crossPlatformContex
     }
     fetchData();
     return () => controller.abort();
-  }, [propertyId, startDate, endDate]);
+  }, [propertyId, startDate, endDate, compareStartDate, compareEndDate]);
 
   const sourceChartData = sources.slice(0, 6).map((s) => ({
     name: `${s.source} / ${s.medium}`,
