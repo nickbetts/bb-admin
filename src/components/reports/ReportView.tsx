@@ -195,52 +195,23 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
       const container = reportRef.current;
 
-      // A4 proportions — compute how tall one PDF page is in CSS pixels at the container's current width
-      const A4_RATIO = 297 / 210; // height/width
-      const pageHeightPx = container.scrollWidth * A4_RATIO;
-
-      // Walk offsetParent chain to get an element's top relative to the capture container
-      const getOffsetTop = (el: HTMLElement): number => {
-        let top = 0;
-        let node: HTMLElement | null = el;
-        while (node && node !== container) {
-          top += node.offsetTop;
-          node = node.offsetParent as HTMLElement | null;
-        }
-        return top;
-      };
-
-      // Collect cards and tables that must not be split across pages, ordered top → bottom.
-      // Reading positions BEFORE spacer insertion gives the natural order.
-      const noBreakEls = Array.from(
-        container.querySelectorAll<HTMLElement>(".card, .metric-card, table")
-      ).sort((a, b) => getOffsetTop(a) - getOffsetTop(b));
-
-      // Insert whitespace spacers to push elements that would be cut to the next page.
-      // Because we process top→bottom, getOffsetTop() for each element already reflects
-      // previously inserted spacers (the browser updates offsetTop live).
-      const spacers: HTMLElement[] = [];
-      for (const el of noBreakEls) {
-        const elTop = getOffsetTop(el);
-        const elH = el.offsetHeight;
-        if (elH >= pageHeightPx) continue; // taller than a full page — can't help, skip
-        const pageStart = Math.floor(elTop / pageHeightPx);
-        const pageEnd = Math.floor((elTop + elH - 1) / pageHeightPx);
-        if (pageStart !== pageEnd) {
-          // Push element to the next page by inserting a spacer above it
-          const spacerH = (pageStart + 1) * pageHeightPx - elTop;
-          const spacer = document.createElement("div");
-          spacer.style.cssText = `height:${spacerH}px;display:block;flex-shrink:0;pointer-events:none`;
-          el.parentNode?.insertBefore(spacer, el);
-          spacers.push(spacer);
-        }
+      // ── 1. Wait for all loading spinners to clear ────────────────────────
+      // Section components render <div class="animate-spin ..."> while fetching data.
+      // We poll until they're all gone (max 30 s) so the PDF captures real content.
+      const deadline = Date.now() + 30_000;
+      while (container.querySelectorAll(".animate-spin").length > 0 && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 500));
       }
+      // Extra settle time for charts/animations to finish rendering after data arrives
+      await new Promise((r) => setTimeout(r, 1200));
 
-      // Let the browser finish laying out the spacers before we capture
+      // ── 2. Scroll to top so getBoundingClientRect is stable ───────────────
+      window.scrollTo({ top: 0, behavior: "instant" });
       await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
-      // Capture at 3× pixel ratio — gives ~400 DPI equivalent on A4, sharp enough for print
       const PIXEL_RATIO = 3;
+
+      // ── 3. Capture full canvas ────────────────────────────────────────────
       const canvas = await toCanvas(container, {
         backgroundColor: "#ffffff",
         pixelRatio: PIXEL_RATIO,
@@ -253,29 +224,76 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
         },
       });
 
-      // Remove spacers — restore DOM to original state
-      spacers.forEach((s) => s.remove());
+      // ── 4. Measure element positions relative to container ────────────────
+      // Re-scroll to top in case the capture internally scrolled (safety).
+      window.scrollTo({ top: 0, behavior: "instant" });
+      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+
+      const containerRect = container.getBoundingClientRect();
+      // Canvas y = (el.getBoundingClientRect().top - containerRect.top) * PIXEL_RATIO
+      const getCanvasTop = (el: HTMLElement): number =>
+        (el.getBoundingClientRect().top - containerRect.top) * PIXEL_RATIO;
+
+      // Elements that must not be split — skip if taller than 90% of a page
+      const imgW = canvas.width;
+      const imgH = canvas.height;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const pdf = new JsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pdfW = pdf.internal.pageSize.getWidth();
-      const pdfH = pdf.internal.pageSize.getHeight();
-      const imgW = canvas.width;
-      const imgH = canvas.height;
-      const ratio = pdfW / imgW;
-      const pageCount = Math.ceil((imgH * ratio) / pdfH);
+      const pdfW = pdf.internal.pageSize.getWidth() as number;
+      const pdfH = pdf.internal.pageSize.getHeight() as number;
+      // Canvas pixels per PDF mm
+      const canvasPerMM = imgW / pdfW;
+      const pageH_canvas = pdfH * canvasPerMM; // full A4 page height in canvas px
 
-      for (let i = 0; i < pageCount; i++) {
+      type Range = { top: number; bottom: number };
+      const avoidRanges: Range[] = Array.from(
+        container.querySelectorAll<HTMLElement>(".card, .metric-card, table")
+      ).flatMap((el) => {
+        const top = getCanvasTop(el);
+        const h = el.getBoundingClientRect().height * PIXEL_RATIO;
+        if (h < 10 || h > pageH_canvas * 0.92) return []; // too small or too tall to help
+        return [{ top, bottom: top + h }];
+      });
+
+      // ── 5. Build smart page cut points ────────────────────────────────────
+      // For each natural cut point, if an element would be sliced, move the cut
+      // to just before that element (keeping at least 25% of a page on this page).
+      const MIN_PAGE_H = pageH_canvas * 0.25;
+      const cuts: number[] = [0];
+      let lastCut = 0;
+      while (lastCut < imgH) {
+        let nextCut = lastCut + pageH_canvas;
+        if (nextCut >= imgH) { cuts.push(imgH); break; }
+        // Find first element that straddles nextCut
+        const overlap = avoidRanges.find(
+          (r) => r.top > lastCut && r.top < nextCut && r.bottom > nextCut
+        );
+        if (overlap) {
+          const candidate = overlap.top;
+          nextCut = (candidate - lastCut >= MIN_PAGE_H) ? candidate : Math.min(overlap.bottom, lastCut + pageH_canvas);
+          if (nextCut <= lastCut) nextCut = lastCut + pageH_canvas; // safety
+        }
+        cuts.push(Math.round(nextCut));
+        lastCut = Math.round(nextCut);
+      }
+
+      // ── 6. Build PDF pages ────────────────────────────────────────────────
+      for (let i = 0; i < cuts.length - 1; i++) {
         if (i > 0) pdf.addPage();
-        const srcY = (i * pdfH) / ratio;
-        const srcH = Math.min(pdfH / ratio, imgH - srcY);
+        const srcY = cuts[i];
+        const srcH = cuts[i + 1] - srcY;
+        // Each page canvas is exactly A4-proportioned; white-fill any short final page
         const pg = document.createElement("canvas");
         pg.width = imgW;
-        pg.height = Math.ceil(srcH);
+        pg.height = Math.round(pageH_canvas);
         const ctx = pg.getContext("2d");
-        if (ctx) ctx.drawImage(canvas, 0, Math.floor(srcY), imgW, pg.height, 0, 0, imgW, pg.height);
-        // JPEG at 0.97 — high quality, minimal compression artefacts
-        pdf.addImage(pg.toDataURL("image/jpeg", 0.97), "JPEG", 0, 0, pdfW, pg.height * ratio);
+        if (ctx) {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, pg.width, pg.height);
+          ctx.drawImage(canvas, 0, srcY, imgW, srcH, 0, 0, imgW, srcH);
+        }
+        pdf.addImage(pg.toDataURL("image/jpeg", 0.97), "JPEG", 0, 0, pdfW, pdfH);
       }
 
       pdf.save(
@@ -292,6 +310,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   }, [report.client.name, report.period]);
 
   const enabledSections = report.sections.filter((s) => s.enabled !== false);
+
 
   const SECTION_META: Record<string, { icon: React.ReactNode; badge: string }> = {
     overview:                    { icon: <LayoutGrid size={14} />, badge: "badge-slate" },
