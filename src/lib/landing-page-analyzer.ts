@@ -221,3 +221,187 @@ function attrVal(attrs: string, name: string): string | null {
 function stripTags(str: string): string {
   return str.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 }
+
+// ── Multi-page site crawler for keyword context ───────────────────────────────
+
+/**
+ * Path segments that indicate important commercial/informational pages.
+ * Matching any of these will prioritise the link for crawling.
+ */
+const IMPORTANT_SEGMENTS = [
+  "service", "services",
+  "product", "products",
+  "solution", "solutions",
+  "offering", "offerings",
+  "capability", "capabilities",
+  "package", "packages",
+  "plan", "plans",
+  "pricing", "price", "prices",
+  "about", "about-us",
+  "what-we-do",
+  "contact", "contact-us",
+  "industry", "industries",
+  "use-case", "use-cases",
+  "feature", "features",
+];
+
+/**
+ * Path segments that indicate low-value content for keyword research.
+ * Links matching any of these will be excluded.
+ */
+const SKIP_SEGMENTS = [
+  "blog", "blogs",
+  "news", "press",
+  "article", "articles",
+  "post", "posts",
+  "tag", "tags",
+  "category", "categories",
+  "author", "authors",
+  "event", "events",
+  "podcast", "webinar",
+  "video", "videos",
+  "case-study", "case-studies", // useful but often thin; skip for now
+  "glossary", "dictionary",
+  "faq",
+  "legal", "privacy", "terms", "cookie", "gdpr",
+  "sitemap", "robots",
+  "login", "register", "signup", "sign-up", "account",
+  "cart", "checkout", "basket",
+  "cdn-cgi", "wp-admin", "wp-content", "wp-json",
+];
+
+/**
+ * Discover important internal links from homepage HTML, return absolute URLs.
+ * Prefers nav/header links; falls back to all links. Skips external, anchors,
+ * media files, and low-value page patterns (blog, news, tags etc.).
+ */
+function discoverImportantPages(html: string, baseUrl: string, max = 6): string[] {
+  const origin = new URL(baseUrl).origin;
+
+  // Try to narrow down to nav elements first; fall back to full HTML
+  const navMatch = html.match(/<(?:nav|header)[^>]*>[\s\S]*?<\/(?:nav|header)>/gi);
+  const searchHtml = navMatch ? navMatch.join("\n") : html;
+
+  // Extract all <a href="..."> values
+  const hrefs = [...searchHtml.matchAll(/<a\s[^>]*href=["']([^"'#?][^"']*?)["']/gi)].map((m) => m[1]);
+
+  const seen = new Set<string>();
+  const important: string[] = [];
+  const other: string[] = [];
+
+  for (const href of hrefs) {
+    try {
+      const abs = href.startsWith("http") ? href : new URL(href, baseUrl).href;
+      // Must be same origin
+      if (!abs.startsWith(origin)) continue;
+      // Skip media/non-HTML files
+      if (/\.(jpg|jpeg|png|gif|svg|webp|pdf|zip|mp4|mp3|css|js)(\?|$)/i.test(abs)) continue;
+      // Normalise: strip trailing slash and query string for dedup
+      const norm = abs.split("?")[0].replace(/\/$/, "");
+      if (norm === origin || norm === baseUrl.replace(/\/$/, "")) continue; // homepage itself
+      if (seen.has(norm)) continue;
+      seen.add(norm);
+
+      const pathLower = new URL(abs).pathname.toLowerCase();
+      const segments = pathLower.split("/").filter(Boolean);
+
+      // Check skip list — any segment match disqualifies
+      if (segments.some((s) => SKIP_SEGMENTS.some((skip) => s === skip || s.startsWith(skip + "-")))) continue;
+
+      // Prioritise important segments
+      if (segments.some((s) => IMPORTANT_SEGMENTS.some((imp) => s === imp || s.startsWith(imp + "-") || s.endsWith("-" + imp)))) {
+        important.push(abs);
+      } else if (segments.length <= 2) {
+        // Short paths (1-2 levels) are likely top-level pages — include as fallback
+        other.push(abs);
+      }
+    } catch {
+      // Ignore malformed URLs
+    }
+  }
+
+  // Return important pages first, pad with other top-level pages up to max
+  return [...important, ...other].slice(0, max);
+}
+
+export interface SiteCrawlContext {
+  /** Combined context lines ready to join with \n and pass to AI */
+  contextLines: string[];
+  /** Pages that were successfully crawled */
+  pagesCrawled: string[];
+  /** Homepage fetch error, if any */
+  homepageError?: string;
+}
+
+/**
+ * Crawl a website's homepage + up to `maxPages` important sub-pages.
+ * Returns aggregated context suitable for AI keyword generation.
+ *
+ * Important pages: service, product, solution, pricing, about, contact, etc.
+ * Skipped pages: blog, news, tag, category, legal, login, etc.
+ */
+export async function crawlSiteForKeywordContext(
+  website: string,
+  maxPages = 6
+): Promise<SiteCrawlContext> {
+  // 1. Fetch homepage
+  const homepage = await fetchPageSignals(website);
+  const pagesCrawled: string[] = [];
+  const contextLines: string[] = [];
+
+  if (homepage.fetchError) {
+    return { contextLines, pagesCrawled, homepageError: homepage.fetchError };
+  }
+
+  // 2. Build context from homepage
+  if (homepage.title) contextLines.push(`Homepage title: ${homepage.title}`);
+  if (homepage.metaDescription) contextLines.push(`Homepage meta description: ${homepage.metaDescription}`);
+  if (homepage.ogDescription) contextLines.push(`Homepage OG description: ${homepage.ogDescription}`);
+  if (homepage.h1Tags.length) contextLines.push(`Homepage H1: ${homepage.h1Tags.join(" | ")}`);
+  if (homepage.ctaTexts.length) contextLines.push(`Homepage CTAs: ${homepage.ctaTexts.slice(0, 6).join(" | ")}`);
+  pagesCrawled.push(website);
+
+  // 3. Discover important sub-pages from homepage HTML
+  let homepageHtml = "";
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8_000);
+    const res = await fetch(website, {
+      signal: controller.signal,
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; KeywordBot/1.0)", Accept: "text/html" },
+      redirect: "follow",
+    });
+    clearTimeout(timer);
+    if (res.ok) homepageHtml = await res.text();
+  } catch {
+    // Best-effort; proceed with just homepage signals
+  }
+
+  if (!homepageHtml) {
+    return { contextLines, pagesCrawled };
+  }
+
+  const subPageUrls = discoverImportantPages(homepageHtml, website, maxPages);
+
+  // 4. Crawl sub-pages concurrently
+  const subSignals = await Promise.all(subPageUrls.map((url) => fetchPageSignals(url)));
+
+  for (let i = 0; i < subSignals.length; i++) {
+    const sig = subSignals[i];
+    if (sig.fetchError || !sig.title) continue;
+
+    const pagePath = new URL(subPageUrls[i]).pathname;
+    const lines: string[] = [];
+    if (sig.title) lines.push(`Title: ${sig.title}`);
+    if (sig.metaDescription) lines.push(`Description: ${sig.metaDescription}`);
+    if (sig.h1Tags.length) lines.push(`H1: ${sig.h1Tags.join(" | ")}`);
+    if (sig.ctaTexts.length) lines.push(`CTAs: ${sig.ctaTexts.slice(0, 4).join(" | ")}`);
+
+    if (lines.length) {
+      contextLines.push(`\nPage: ${pagePath}\n${lines.join("\n")}`);
+      pagesCrawled.push(subPageUrls[i]);
+    }
+  }
+
+  return { contextLines, pagesCrawled };
+}

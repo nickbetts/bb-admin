@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getKeywordVolumeMetrics } from "@/lib/semrush";
-import { fetchPageSignals } from "@/lib/landing-page-analyzer";
+import { crawlSiteForKeywordContext } from "@/lib/landing-page-analyzer";
 import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
 
@@ -67,24 +67,20 @@ export async function POST(request: NextRequest) {
 
       const openai = new OpenAI({ apiKey });
 
-      const pageSignals = await fetchPageSignals(website);
-      const pageContext: string[] = [];
-      if (!pageSignals.fetchError) {
-        if (pageSignals.title) pageContext.push(`Page title: ${pageSignals.title}`);
-        if (pageSignals.metaDescription) pageContext.push(`Meta description: ${pageSignals.metaDescription}`);
-        if (pageSignals.ogDescription) pageContext.push(`OG description: ${pageSignals.ogDescription}`);
-        if (pageSignals.h1Tags.length) pageContext.push(`H1 headings: ${pageSignals.h1Tags.join(" | ")}`);
-        if (pageSignals.ctaTexts.length) pageContext.push(`CTA copy: ${pageSignals.ctaTexts.slice(0, 8).join(" | ")}`);
-      }
+      const siteCrawl = await crawlSiteForKeywordContext(website);
+      const pageContext = siteCrawl.contextLines;
 
       const userContent = [
         `Website URL: ${website}`,
+        siteCrawl.pagesCrawled.length > 1
+          ? `Pages crawled: ${siteCrawl.pagesCrawled.join(", ")}`
+          : "",
         pageContext.length
           ? `Website content (crawled):\n${pageContext.join("\n")}`
           : `(Website could not be crawled \u2014 use URL context only)`,
         ``,
         `Client brief: ${brief}`,
-      ].join("\n");
+      ].filter(Boolean).join("\n");
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
