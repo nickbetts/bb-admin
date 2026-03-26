@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { generateKeywordIdeas, getGoogleAdsAccounts } from "@/lib/google-ads";
+import { fetchPageSignals } from "@/lib/landing-page-analyzer";
 import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
 
@@ -56,13 +57,33 @@ export async function POST(request: NextRequest) {
 
       const openai = new OpenAI({ apiKey });
 
+      // Crawl the website to extract real page signals
+      const pageSignals = await fetchPageSignals(website);
+      const pageContext: string[] = [];
+      if (!pageSignals.fetchError) {
+        if (pageSignals.title) pageContext.push(`Page title: ${pageSignals.title}`);
+        if (pageSignals.metaDescription) pageContext.push(`Meta description: ${pageSignals.metaDescription}`);
+        if (pageSignals.ogDescription) pageContext.push(`OG description: ${pageSignals.ogDescription}`);
+        if (pageSignals.h1Tags.length) pageContext.push(`H1 headings: ${pageSignals.h1Tags.join(" | ")}`);
+        if (pageSignals.ctaTexts.length) pageContext.push(`CTA copy: ${pageSignals.ctaTexts.slice(0, 8).join(" | ")}`);
+      }
+
+      const userContent = [
+        `Website URL: ${website}`,
+        pageContext.length
+          ? `Website content (crawled):\n${pageContext.join("\n")}`
+          : `(Website could not be crawled — use URL context only)`,
+        ``,
+        `Client brief: ${brief}`,
+      ].join("\n");
+
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         temperature: 0.4,
         messages: [
           {
             role: "system",
-            content: `You are an expert Google Ads keyword strategist. Given a website URL and a brief description of a new sales lead or campaign, generate a list of high-intent search keywords suitable for a Google Ads campaign.
+            content: `You are an expert Google Ads keyword strategist. Given a website URL, crawled website content, and a brief description of a campaign, generate a comprehensive list of high-intent search keywords suitable for a Google Ads campaign.
 
 Return ONLY a JSON object with this exact structure (no markdown, no explanation):
 {
@@ -71,16 +92,20 @@ Return ONLY a JSON object with this exact structure (no markdown, no explanation
 }
 
 Rules:
-- Generate 25-35 keywords
+- Generate 50-80 keywords
+- Use the crawled website data (title, headings, CTAs) to understand exactly what the business offers
 - Mix broad head terms and specific long-tail keywords
 - Include commercial intent phrases (buy, hire, service, cost, near me, UK etc.)
+- Include problem/pain-point queries the target audience might search
+- Include service-specific and industry-specific variants
+- Include location-modified variants where relevant
 - Include competitor/comparison terms where relevant
 - No brand-specific terms unless explicitly in the brief
-- Keep keywords concise (2-5 words each)`,
+- Keep keywords concise (2-6 words each)`,
           },
           {
             role: "user",
-            content: `Website: ${website}\n\nClient brief: ${brief}`,
+            content: userContent,
           },
         ],
       });
