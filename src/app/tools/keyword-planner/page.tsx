@@ -5,6 +5,7 @@ import {
   Search, Loader2, TrendingUp, TrendingDown, ChevronRight, ChevronLeft, ChevronDown, ChevronUp,
   Plus, Trash2, Download, BarChart2, Target, DollarSign, Zap, Check, AlertTriangle,
   Globe, Layers, Activity, MousePointer, Eye, Users, BookmarkPlus, FolderOpen, Pencil, X,
+  FileText,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -366,6 +367,24 @@ export default function KeywordPlannerPage() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
+  // Proposal generation
+  const [showProposalModal, setShowProposalModal] = useState(false);
+  const [generatingProposal, setGeneratingProposal] = useState(false);
+  const [proposalError, setProposalError] = useState("");
+  const [proposalClientName, setProposalClientName] = useState("");
+  const [proposalServices, setProposalServices] = useState([
+    { name: "Web Design & Development", price: "£5,000", description: "Custom website design and build" },
+    { name: "SEO & Content Strategy", price: "£2,500/month", description: "Organic search optimisation" },
+    { name: "PPC Management", price: "£1,500/month", description: "Google & Bing paid advertising" },
+    { name: "Social Media Marketing", price: "£1,000/month", description: "Paid and organic social media" },
+  ]);
+  const [proposalTimeline, setProposalTimeline] = useState([
+    { title: "Research & Strategy", duration: "Week 1–2", description: "Audit, keyword research, competitor analysis and strategy definition" },
+    { title: "Website Launch", duration: "Week 3–6", description: "Design, development, content migration and testing" },
+    { title: "Campaign Launch", duration: "Week 7–8", description: "SEO optimisation, PPC setup, content creation and social media launch" },
+    { title: "Ongoing Optimisation", duration: "Month 3+", description: "Monthly reporting, A/B testing and continuous performance improvement" },
+  ]);
+
   const loadSavedList = useCallback(async () => {
     try {
       const res = await fetch("/api/tools/keyword-planner/saved");
@@ -449,6 +468,54 @@ export default function KeywordPlannerPage() {
     if (currentResearchId === id) setResearchTitle(newTitle.trim());
     setRenamingId(null);
     await loadSavedList();
+  }
+
+  // ── Generate Proposal ─────────────────────────────────────────────────────
+  async function handleGenerateProposal() {
+    if (!proposalClientName.trim()) return;
+    setGeneratingProposal(true);
+    setProposalError("");
+    try {
+      const payload: Record<string, unknown> = {
+        clientName: proposalClientName.trim(),
+        services: proposalServices,
+        timeline: proposalTimeline,
+      };
+      if (currentResearchId) {
+        payload.researchId = currentResearchId;
+      } else {
+        payload.inlineData = {
+          website: website.trim(),
+          brief: brief.trim(),
+          adGroups,
+          ideas,
+          maxCpc,
+          monthlyBudget,
+          conversionRate,
+        };
+      }
+      const res = await fetch("/api/tools/keyword-planner/generate-proposal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json() as { html?: string; filename?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Request failed");
+      if (typeof data.html !== "string" || !data.html) throw new Error("Invalid response from server");
+      // Trigger download
+      const blob = new Blob([data.html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = typeof data.filename === "string" ? data.filename : "proposal.html";
+      a.click();
+      URL.revokeObjectURL(url);
+      setShowProposalModal(false);
+    } catch (err) {
+      setProposalError(err instanceof Error ? err.message : "Failed to generate proposal");
+    } finally {
+      setGeneratingProposal(false);
+    }
   }
 
   // ── Suggest ──────────────────────────────────────────────────────────────────
@@ -980,6 +1047,9 @@ export default function KeywordPlannerPage() {
                   {currentResearchId ? "Update" : "Save"}
                 </button>
               )}
+              <button className="btn btn-primary btn-sm" style={{ gap: 5 }} onClick={() => { setShowProposalModal(true); setProposalError(""); }}>
+                <FileText style={{ width: 14, height: 14 }} /> Generate Proposal
+              </button>
             </div>
           </div>
 
@@ -1350,6 +1420,163 @@ export default function KeywordPlannerPage() {
           <button className="btn btn-ghost btn-sm" style={{ marginTop: 16 }} onClick={() => setStep(2)}>
             <ChevronLeft style={{ width: 15, height: 15 }} /> Back to keywords
           </button>
+        </div>
+      )}
+
+      {/* ── Proposal Generation Modal ── */}
+      {showProposalModal && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 24,
+        }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowProposalModal(false); }}>
+          <div style={{
+            background: "var(--surface)", borderRadius: "var(--r-lg)", boxShadow: "0 20px 60px -12px rgba(0,0,0,0.3)",
+            width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto",
+          }}>
+            {/* Modal header */}
+            <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg,#6366f1,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <FileText style={{ width: 16, height: 16, color: "white" }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>Generate Client Proposal</p>
+                  <p style={{ fontSize: 12, color: "var(--text-3)" }}>AI-generated proposal using your keyword research data</p>
+                </div>
+              </div>
+              <button className="btn btn-ghost btn-sm" style={{ padding: 6 }} onClick={() => setShowProposalModal(false)}>
+                <X style={{ width: 16, height: 16 }} />
+              </button>
+            </div>
+
+            <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Client name */}
+              <div>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>Client Name *</label>
+                <input
+                  type="text"
+                  style={inputStyle}
+                  placeholder="e.g. Acme Corporation"
+                  value={proposalClientName}
+                  onChange={(e) => setProposalClientName(e.target.value)}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+                  autoFocus
+                />
+              </div>
+
+              {/* Services */}
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Services & Pricing</label>
+                  <button className="btn btn-ghost btn-sm" style={{ gap: 4, fontSize: 12 }}
+                    onClick={() => setProposalServices((prev) => [...prev, { name: "", price: "", description: "" }])}>
+                    <Plus style={{ width: 13, height: 13 }} /> Add Service
+                  </button>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {proposalServices.map((svc, i) => (
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, alignItems: "center" }}>
+                      <input
+                        type="text"
+                        style={{ ...inputStyle, fontSize: 13, padding: "8px 12px" }}
+                        placeholder="Service name"
+                        value={svc.name}
+                        onChange={(e) => setProposalServices((prev) => prev.map((s, idx) => idx === i ? { ...s, name: e.target.value } : s))}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+                      />
+                      <input
+                        type="text"
+                        style={{ ...inputStyle, fontSize: 13, padding: "8px 12px" }}
+                        placeholder="Price e.g. £2,500/month"
+                        value={svc.price}
+                        onChange={(e) => setProposalServices((prev) => prev.map((s, idx) => idx === i ? { ...s, price: e.target.value } : s))}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+                      />
+                      <button className="btn btn-ghost btn-sm" style={{ padding: 6, color: "#ef4444", flexShrink: 0 }}
+                        onClick={() => setProposalServices((prev) => prev.filter((_, idx) => idx !== i))}>
+                        <Trash2 style={{ width: 13, height: 13 }} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Project Timeline</label>
+                  <button className="btn btn-ghost btn-sm" style={{ gap: 4, fontSize: 12 }}
+                    onClick={() => setProposalTimeline((prev) => [...prev, { title: "", duration: "", description: "" }])}>
+                    <Plus style={{ width: 13, height: 13 }} /> Add Phase
+                  </button>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {proposalTimeline.map((phase, i) => (
+                    <div key={i} style={{ background: "var(--bg)", border: "1px solid var(--border-subtle)", borderRadius: "var(--r)", padding: "12px 14px" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, marginBottom: 8 }}>
+                        <input
+                          type="text"
+                          style={{ ...inputStyle, fontSize: 13, padding: "7px 12px" }}
+                          placeholder="Phase title"
+                          value={phase.title}
+                          onChange={(e) => setProposalTimeline((prev) => prev.map((p, idx) => idx === i ? { ...p, title: e.target.value } : p))}
+                          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                          onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+                        />
+                        <input
+                          type="text"
+                          style={{ ...inputStyle, fontSize: 13, padding: "7px 12px" }}
+                          placeholder="Duration e.g. Week 1–2"
+                          value={phase.duration}
+                          onChange={(e) => setProposalTimeline((prev) => prev.map((p, idx) => idx === i ? { ...p, duration: e.target.value } : p))}
+                          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                          onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+                        />
+                        <button className="btn btn-ghost btn-sm" style={{ padding: 6, color: "#ef4444", flexShrink: 0 }}
+                          onClick={() => setProposalTimeline((prev) => prev.filter((_, idx) => idx !== i))}>
+                          <Trash2 style={{ width: 13, height: 13 }} />
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        style={{ ...inputStyle, fontSize: 13, padding: "7px 12px" }}
+                        placeholder="Phase description"
+                        value={phase.description}
+                        onChange={(e) => setProposalTimeline((prev) => prev.map((p, idx) => idx === i ? { ...p, description: e.target.value } : p))}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {proposalError && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "var(--r)", fontSize: 13, color: "#991b1b" }}>
+                  <AlertTriangle style={{ width: 15, height: 15, flexShrink: 0, marginTop: 1 }} />{proposalError}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div style={{ display: "flex", gap: 10, paddingTop: 4 }}>
+                <button className="btn btn-ghost" style={{ flex: 1, justifyContent: "center" }} onClick={() => setShowProposalModal(false)} disabled={generatingProposal}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" style={{ flex: 2, justifyContent: "center", height: 44 }}
+                  onClick={handleGenerateProposal}
+                  disabled={generatingProposal || !proposalClientName.trim()}>
+                  {generatingProposal
+                    ? <><Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> Generating Proposal…</>
+                    : <><FileText style={{ width: 16, height: 16 }} /> Generate & Download Proposal</>}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
