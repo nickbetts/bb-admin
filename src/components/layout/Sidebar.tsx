@@ -16,6 +16,7 @@ import {
   ScanSearch,
   ShieldCheck,
   LayoutTemplate,
+  TrendingUp,
 } from "lucide-react";
 
 interface NavItem {
@@ -57,6 +58,11 @@ const toolsNavItems: NavItem[] = [
     href: "/tools/page-analyser",
     label: "Page Analyser",
     icon: <ScanSearch className="h-4 w-4" />,
+  },
+  {
+    href: "/tools/keyword-planner",
+    label: "Keyword Planner",
+    icon: <TrendingUp className="h-4 w-4" />,
   },
 ];
 

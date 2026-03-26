@@ -758,3 +758,99 @@ export async function listAccessibleCustomers(): Promise<{ id: string; name: str
   const token = await getAccessToken();
   return listAccessibleCustomersWithToken(token);
 }
+
+// ── Keyword Planner ────────────────────────────────────────────────────────────
+
+export interface KeywordIdeaMetric {
+  text: string;
+  avgMonthlySearches: number;
+  /** LOW | MEDIUM | HIGH | UNSPECIFIED */
+  competition: string;
+  /** 0–100 */
+  competitionIndex: number;
+  lowTopOfPageBidMicros: number;
+  highTopOfPageBidMicros: number;
+  monthlySearchVolumes: { year: number; month: string; searches: number }[];
+}
+
+/**
+ * Calls Google Ads KeywordPlanIdeas:generateKeywordIdeas for the given seed keywords / URL.
+ * Returns up to `pageSize` keyword ideas with historical metrics.
+ */
+export async function generateKeywordIdeas(
+  customerId: string,
+  keywords: string[],
+  url: string,
+  locationIds: string[] = ["2826"],       // 2826 = United Kingdom
+  languageCode: string = "languageConstants/1000", // 1000 = English
+  pageSize = 50
+): Promise<KeywordIdeaMetric[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const cid = customerId.replace(/-/g, "");
+
+  const body: Record<string, unknown> = {
+    pageSize,
+    geoTargetConstants: locationIds.map((id) => `geoTargetConstants/${id}`),
+    language: languageCode,
+    keywordPlanNetwork: "GOOGLE_SEARCH",
+    historicalMetricsOptions: { includeAverageCpc: true },
+  };
+
+  if (keywords.length > 0 && url) {
+    body.keywordAndUrlSeed = { url, keywords };
+  } else if (keywords.length > 0) {
+    body.keywordSeed = { keywords };
+  } else if (url) {
+    body.urlSeed = { url };
+  } else {
+    throw new Error("Provide at least one keyword or a URL");
+  }
+
+  const res = await fetch(
+    `${ADS_BASE_URL}/customers/${cid}/keywordPlanIdeas:generateKeywordIdeas`,
+    {
+      method: "POST",
+      headers: buildHeaders(token, mccId),
+      body: JSON.stringify(body),
+      cache: "no-store",
+    }
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Keyword Planner API error (${res.status}): ${text}`);
+  }
+
+  const data = await res.json() as { results?: unknown[] };
+
+  type RawResult = {
+    text?: string;
+    keywordIdeaMetrics?: {
+      avgMonthlySearches?: number;
+      competition?: string;
+      competitionIndex?: number;
+      lowTopOfPageBidMicros?: number;
+      highTopOfPageBidMicros?: number;
+      monthlySearchVolumes?: { year?: number; month?: string; monthlySearches?: number }[];
+    };
+  };
+
+  return (data.results ?? []).map((r) => {
+    const row = r as RawResult;
+    const m = row.keywordIdeaMetrics ?? {};
+    return {
+      text: String(row.text ?? ""),
+      avgMonthlySearches: Number(m.avgMonthlySearches ?? 0),
+      competition: String(m.competition ?? "UNSPECIFIED"),
+      competitionIndex: Number(m.competitionIndex ?? 0),
+      lowTopOfPageBidMicros: Number(m.lowTopOfPageBidMicros ?? 0),
+      highTopOfPageBidMicros: Number(m.highTopOfPageBidMicros ?? 0),
+      monthlySearchVolumes: (m.monthlySearchVolumes ?? []).map((v) => ({
+        year: Number(v.year ?? 0),
+        month: String(v.month ?? ""),
+        searches: Number(v.monthlySearches ?? 0),
+      })),
+    };
+  });
+}
