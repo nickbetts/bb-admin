@@ -113,15 +113,81 @@ function competitionLabel(level: string): string {
   }
 }
 
-// CTR estimates by competition level (Google's own forecaster uses similar heuristics)
-const CTR_BY_COMPETITION: Record<string, number> = { LOW: 0.08, MEDIUM: 0.05, HIGH: 0.03, UNSPECIFIED: 0.04 };
+// ─── Forecast algorithm ───────────────────────────────────────────────────────
+//
+// Methodology (matching Google Keyword Planner's approach):
+//
+// 1. Impression Share is determined by how competitive your max CPC is vs the
+//    market CPC for each keyword (bid competitiveness ratio).
+//
+// 2. Expected CTR depends on estimated ad position, which correlates with IS.
+//    Base CTRs are calibrated to industry averages (WordStream/Google benchmarks
+//    for Google Search, ~3.2% median). Position multiplier shifts this up/down.
+//
+// 3. Actual CPC uses Google's second-price auction discount: on average you pay
+//    ~82% of your max CPC (or the market CPC if lower than your max).
+//
+// 4. Budget constraint: if the uncapped monthly spend across all keywords exceeds
+//    the monthly budget, all traffic is scaled proportionally.
+//
+// ─────────────────────────────────────────────────────────────────────────────
 
-function estimateForecast(idea: KeywordIdea, cpcMicros: number) {
-  const ctr = CTR_BY_COMPETITION[idea.competition] ?? 0.04;
-  const impressions = Math.round(idea.avgMonthlySearches * 0.7);
-  const clicks = Math.round(impressions * ctr);
-  const effectiveCpc = cpcMicros || idea.highTopOfPageBidMicros || 1_000_000;
-  return { clicks, impressions, costPounds: (clicks * effectiveCpc) / 1_000_000 };
+/** Base CTR benchmarks by competition level (calibrated to Google Search averages) */
+const BASE_CTR_BY_COMPETITION: Record<string, number> = {
+  LOW:         0.042,  // Low-competition → easier to land in positions 1–2
+  MEDIUM:      0.030,  // Average competitive keyword
+  HIGH:        0.020,  // Highly competitive → harder to maintain top positions
+  UNSPECIFIED: 0.028,
+};
+
+/**
+ * Estimates impression share (0–1) based on how your max CPC compares to the
+ * market CPC for a keyword. Higher bid → more auction wins → higher IS.
+ * Thresholds approximate Google's bid-to-IS curve.
+ */
+function impressionShareEstimate(maxCpcPounds: number, marketCpcPounds: number): number {
+  if (marketCpcPounds <= 0) return 0.44;
+  const ratio = maxCpcPounds / marketCpcPounds;
+  if (ratio >= 1.60) return 0.66;   // significantly outbidding competitors
+  if (ratio >= 1.15) return 0.56;   // comfortably above market
+  if (ratio >= 0.88) return 0.44;   // at/near market rate
+  if (ratio >= 0.66) return 0.30;   // below market
+  if (ratio >= 0.45) return 0.16;   // well below market
+  return 0.07;                       // far below, minimal presence
+}
+
+/**
+ * CTR position multiplier: higher impression share → better average ad position
+ * → higher CTR. Based on Google's average CTR by position data.
+ */
+function positionCtrMultiplier(impressionShare: number): number {
+  if (impressionShare >= 0.58) return 1.40;  // ~positions 1–2
+  if (impressionShare >= 0.42) return 1.10;  // ~positions 2–3
+  if (impressionShare >= 0.26) return 0.82;  // ~positions 3–4
+  return 0.50;                               //  below-top positions
+}
+
+/**
+ * Estimates per-keyword monthly metrics using bid-aware impression share and
+ * position-adjusted CTR. Applies Google's second-price auction discount (~18%).
+ */
+function estimateForecast(idea: KeywordIdea, maxCpcMicros: number) {
+  const maxCpcPounds  = maxCpcMicros / 1_000_000;
+  const marketCpc     = (idea.highTopOfPageBidMicros || 1_000_000) / 1_000_000;
+  const effectiveMax  = maxCpcPounds > 0 ? maxCpcPounds : marketCpc;
+
+  const isEst         = impressionShareEstimate(effectiveMax, marketCpc);
+  const baseCtr       = BASE_CTR_BY_COMPETITION[idea.competition] ?? 0.028;
+  const ctr           = baseCtr * positionCtrMultiplier(isEst);
+
+  const impressions   = Math.round(idea.avgMonthlySearches * isEst);
+  const clicks        = Math.round(impressions * ctr);
+
+  // Second-price auction: actual CPC ≈ min(maxCpc, marketCpc) × 0.82
+  const actualCpc     = Math.min(effectiveMax, marketCpc) * 0.82;
+  const costPounds    = clicks * actualCpc;
+
+  return { clicks, impressions, costPounds };
 }
 
 /**
@@ -157,9 +223,8 @@ interface ForecastMetrics {
 }
 
 /**
- * Estimates campaign metrics for a given monthly budget.
- * Uses bid-aware distribution: keywords with lower CPC consume less per click,
- * so more clicks are achievable at a given budget.
+ * Estimates campaign metrics for a given monthly budget using the same
+ * bid-aware, position-adjusted, auction-discounted model as estimateForecast().
  */
 function buildForecastAtBudget(
   ideas: KeywordIdea[],
@@ -171,44 +236,43 @@ function buildForecastAtBudget(
     return { clicks: 0, impressions: 0, conversions: 0, cost: 0, avgCpa: 0, ctr: 0, avgCpc: 0 };
   }
 
-  // Per-keyword uncapped values
-  interface KwForecast {
-    impressions: number;
-    clicks: number;
-    effectiveCpc: number; // pounds
-  }
+  interface KwForecast { impressions: number; clicks: number; actualCpc: number }
+
   const perKw: KwForecast[] = ideas.map((idea) => {
-    const ctr = CTR_BY_COMPETITION[idea.competition] ?? 0.04;
-    const impressions = Math.round(idea.avgMonthlySearches * 0.7);
-    const clicks = Math.round(impressions * ctr);
-    // Use the high bid as the effective CPC, capped by maxCpc if provided
-    const highCpc = (idea.highTopOfPageBidMicros || 1_000_000) / 1_000_000;
-    const effectiveCpc = maxCpcPounds > 0 ? Math.min(highCpc, maxCpcPounds) : highCpc;
-    return { impressions, clicks, effectiveCpc };
+    const marketCpc    = (idea.highTopOfPageBidMicros || 1_000_000) / 1_000_000;
+    const effectiveMax = maxCpcPounds > 0 ? maxCpcPounds : marketCpc;
+
+    const isEst        = impressionShareEstimate(effectiveMax, marketCpc);
+    const baseCtr      = BASE_CTR_BY_COMPETITION[idea.competition] ?? 0.028;
+    const ctr          = baseCtr * positionCtrMultiplier(isEst);
+
+    const impressions  = Math.round(idea.avgMonthlySearches * isEst);
+    const clicks       = Math.round(impressions * ctr);
+    const actualCpc    = Math.min(effectiveMax, marketCpc) * 0.82;
+
+    return { impressions, clicks, actualCpc };
   });
 
-  const totalUncappedCost = perKw.reduce((s, k) => s + k.clicks * k.effectiveCpc, 0);
-  const totalUncappedClicks = perKw.reduce((s, k) => s + k.clicks, 0);
+  const totalUncappedCost       = perKw.reduce((s, k) => s + k.clicks * k.actualCpc, 0);
+  const totalUncappedClicks     = perKw.reduce((s, k) => s + k.clicks, 0);
   const totalUncappedImpressions = perKw.reduce((s, k) => s + k.impressions, 0);
 
   let clicks: number, impressions: number, cost: number;
   if (totalUncappedCost <= budgetPounds || totalUncappedCost === 0) {
-    // Budget covers all traffic
-    clicks = totalUncappedClicks;
+    clicks      = totalUncappedClicks;
     impressions = totalUncappedImpressions;
-    cost = totalUncappedCost;
+    cost        = totalUncappedCost;
   } else {
-    // Scale proportionally by budget
     const scale = budgetPounds / totalUncappedCost;
-    clicks = Math.round(totalUncappedClicks * scale);
+    clicks      = Math.round(totalUncappedClicks * scale);
     impressions = Math.round(totalUncappedImpressions * scale);
-    cost = budgetPounds;
+    cost        = budgetPounds;
   }
 
-  const conversions = cost > 0 ? Math.round((clicks * convRatePct) / 100) : 0;
-  const avgCpa = conversions > 0 ? cost / conversions : 0;
-  const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
-  const avgCpc = clicks > 0 ? cost / clicks : 0;
+  const conversions = clicks > 0 ? Math.round((clicks * convRatePct) / 100) : 0;
+  const avgCpa      = conversions > 0 ? cost / conversions : 0;
+  const ctr         = impressions > 0 ? (clicks / impressions) * 100 : 0;
+  const avgCpc      = clicks > 0 ? cost / clicks : 0;
 
   return { clicks, impressions, conversions, cost, avgCpa, ctr, avgCpc };
 }
@@ -284,6 +348,7 @@ export default function KeywordPlannerPage() {
   const [activeTab, setActiveTab] = useState<"keywords" | "forecaster">("keywords");
   const [maxCpc, setMaxCpc] = useState("");
   const [monthlyBudget, setMonthlyBudget] = useState("");
+  const [dailyBudget, setDailyBudget] = useState("");
   const [conversionRate, setConversionRate] = useState("3");
   const [cpcAutoFilled, setCpcAutoFilled] = useState(false);
   const [crAutoFilled, setCrAutoFilled] = useState(false);
@@ -358,6 +423,8 @@ export default function KeywordPlannerPage() {
       setIdeas(research.ideas);
       setMaxCpc(research.maxCpc);
       setMonthlyBudget(research.monthlyBudget);
+      const mb = parseFloat(research.monthlyBudget);
+      setDailyBudget(!isNaN(mb) && research.monthlyBudget ? (mb / 30.44).toFixed(2) : "");
       setConversionRate(research.conversionRate);
       setCpcAutoFilled(false);
       setCrAutoFilled(false);
@@ -554,6 +621,7 @@ export default function KeywordPlannerPage() {
     .map(([label, volume]) => ({ label, volume }));
 
   // ── Forecaster derived data ───────────────────────────────────────────
+  const DAYS_PER_MONTH = 30.44;
   const budgetPounds = monthlyBudget ? parseFloat(monthlyBudget) : 0;
   const convRatePct = conversionRate ? parseFloat(conversionRate) : 3;
   const maxCpcPounds = maxCpc ? parseFloat(maxCpc) : 0;
@@ -561,6 +629,18 @@ export default function KeywordPlannerPage() {
   const forecastCurveData = budgetPounds > 0
     ? buildForecastCurve(ideas, budgetPounds, maxCpcPounds, convRatePct)
     : [];
+
+  function handleMonthlyBudgetChange(value: string) {
+    setMonthlyBudget(value);
+    const n = parseFloat(value);
+    setDailyBudget(isNaN(n) || value === "" ? "" : (n / DAYS_PER_MONTH).toFixed(2));
+  }
+
+  function handleDailyBudgetChange(value: string) {
+    setDailyBudget(value);
+    const n = parseFloat(value);
+    setMonthlyBudget(isNaN(n) || value === "" ? "" : (n * DAYS_PER_MONTH).toFixed(0));
+  }
 
   function handleSort(field: string) {
     const f = field as keyof KeywordIdea;
@@ -1116,20 +1196,34 @@ export default function KeywordPlannerPage() {
                   </div>
                 </div>
                 <div className="card-body" style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-                  {/* Monthly Budget */}
-                  <div style={{ flex: "1 1 180px", minWidth: 160 }}>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Monthly Budget (\xa3)</label>
+                  {/* Daily Budget */}
+                  <div style={{ flex: "1 1 160px", minWidth: 140 }}>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Daily Budget (\xa3)</label>
                     <input type="number" min="0" step="0.01"
+                      style={{ ...inputStyle, fontSize: 14 }}
+                      placeholder="e.g. 16.43"
+                      value={dailyBudget}
+                      onChange={(e) => handleDailyBudgetChange(e.target.value)}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
+                    <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 5 }}>Updates monthly automatically</p>
+                  </div>
+                  {/* Monthly Budget */}
+                  <div style={{ flex: "1 1 160px", minWidth: 140 }}>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Monthly Budget (\xa3)</label>
+                    <input type="number" min="0" step="1"
                       style={{ ...inputStyle, fontSize: 14 }}
                       placeholder="e.g. 500"
                       value={monthlyBudget}
-                      onChange={(e) => setMonthlyBudget(e.target.value)}
+                      onChange={(e) => handleMonthlyBudgetChange(e.target.value)}
                       onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
                       onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
-                    <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 5 }}>Total ad spend per month</p>
+                    <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 5 }}>
+                      {dailyBudget ? `\xa3${dailyBudget}/day \xd7 30.44 days` : "Updates daily automatically"}
+                    </p>
                   </div>
                   {/* Max CPC */}
-                  <div style={{ flex: "1 1 180px", minWidth: 160 }}>
+                  <div style={{ flex: "1 1 160px", minWidth: 140 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                       <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Max CPC (\xa3)</label>
                       {cpcAutoFilled && (
@@ -1148,7 +1242,7 @@ export default function KeywordPlannerPage() {
                     </p>
                   </div>
                   {/* Conversion Rate */}
-                  <div style={{ flex: "1 1 180px", minWidth: 160 }}>
+                  <div style={{ flex: "1 1 160px", minWidth: 140 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                       <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Conversion Rate (%)</label>
                       {crAutoFilled && (
