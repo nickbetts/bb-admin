@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { Plus, Trash2 } from "lucide-react";
 
 interface Account {
   id: string;
@@ -57,6 +58,22 @@ function SettingsInner() {
   const [openaiKeySaved, setOpenaiKeySaved] = useState(false);
   const [openaiKeyError, setOpenaiKeyError] = useState<string | null>(null);
 
+  // Task benchmarks state
+  const DEFAULT_BENCHMARKS = [
+    { task: "Blog Post (1,000 words)", hours: 3 },
+    { task: "Landing Page Copywriting", hours: 4 },
+    { task: "Social Media Post", hours: 0.5 },
+    { task: "Email Newsletter", hours: 2 },
+    { task: "PPC Campaign Setup", hours: 8 },
+    { task: "On-page SEO Optimisation", hours: 2 },
+    { task: "Monthly Reporting", hours: 2 },
+    { task: "Google Ads Monthly Management", hours: 4 },
+    { task: "Technical SEO Audit", hours: 5 },
+  ];
+  const [benchmarks, setBenchmarks] = useState<Array<{ task: string; hours: number }>>(DEFAULT_BENCHMARKS);
+  const [benchmarksSaving, setBenchmarksSaving] = useState(false);
+  const [benchmarksSaved, setBenchmarksSaved] = useState(false);
+
   // Banner from OAuth redirect
   const oauthErrorKey = searchParams.get("error");
   const oauthConnected = searchParams.get("connected");
@@ -110,6 +127,13 @@ function SettingsInner() {
       const storedKey = settings.openaiApiKey ?? "";
       setOpenaiKey(storedKey);
       setOpenaiKeyInput(storedKey ? "sk-…redacted" : "");
+      // Load task benchmarks
+      if (settings.taskBenchmarks) {
+        try {
+          const stored = JSON.parse(settings.taskBenchmarks) as Array<{ task: string; hours: number }>;
+          if (Array.isArray(stored) && stored.length > 0) setBenchmarks(stored);
+        } catch { /* keep defaults */ }
+      }
     } catch (err) {
       setMccError(err instanceof Error ? err.message : "Failed to load");
     } finally {
@@ -180,6 +204,23 @@ function SettingsInner() {
       // Silently handle
     } finally {
       setRemoving(null);
+    }
+  }
+
+  async function handleBenchmarksSave() {
+    setBenchmarksSaving(true);
+    setBenchmarksSaved(false);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskBenchmarks: JSON.stringify(benchmarks.filter((b) => b.task.trim())) }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setBenchmarksSaved(true);
+      setTimeout(() => setBenchmarksSaved(false), 3000);
+    } catch { /* ignore */ } finally {
+      setBenchmarksSaving(false);
     }
   }
 
@@ -464,6 +505,71 @@ function SettingsInner() {
               ✓ API key configured. AI insights are enabled across all client dashboards.
             </p>
           )}
+        </div>
+      </div>
+
+      {/* Task Benchmarks */}
+      <div className="card">
+        <div className="card-header">
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", width: "100%" }}>
+            <div>
+              <h2 className="card-title">Task Time Benchmarks</h2>
+              <p className="card-subtitle">
+                Define how long common tasks take. Used by AI when generating proposal timelines to suggest realistic deliverables based on contracted hours.
+              </p>
+            </div>
+            <button
+              className="btn btn-secondary btn-sm"
+              style={{ gap: 5, flexShrink: 0, marginLeft: 16 }}
+              onClick={() => setBenchmarks((prev) => [...prev, { task: "", hours: 1 }])}
+            >
+              <Plus size={13} /> Add Task
+            </button>
+          </div>
+        </div>
+        <div className="card-body">
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {benchmarks.map((b, i) => (
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, alignItems: "center" }}>
+                <input
+                  type="text"
+                  className="form-input"
+                  style={{ fontSize: 13 }}
+                  placeholder="Task name (e.g. Blog Post)"
+                  value={b.task}
+                  onChange={(e) => setBenchmarks((prev) => prev.map((r, idx) => idx === i ? { ...r, task: e.target.value } : r))}
+                />
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.25"
+                    className="form-input"
+                    style={{ fontSize: 13, width: 90, textAlign: "right" }}
+                    value={b.hours || ""}
+                    onChange={(e) => setBenchmarks((prev) => prev.map((r, idx) => idx === i ? { ...r, hours: parseFloat(e.target.value) || 0 } : r))}
+                  />
+                  <span style={{ fontSize: 12, color: "var(--text-3)", whiteSpace: "nowrap" }}>hours</span>
+                </div>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ padding: 6, color: "#ef4444" }}
+                  onClick={() => setBenchmarks((prev) => prev.filter((_, idx) => idx !== i))}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <button
+              onClick={handleBenchmarksSave}
+              disabled={benchmarksSaving}
+              className="btn btn-primary"
+            >
+              {benchmarksSaving ? "Saving…" : benchmarksSaved ? "Saved ✓" : "Save Benchmarks"}
+            </button>
+          </div>
         </div>
       </div>
 

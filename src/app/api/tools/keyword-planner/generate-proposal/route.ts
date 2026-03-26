@@ -467,15 +467,24 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Get OpenAI API key ──────────────────────────────────────────────────
-    const apiKeySetting = await prisma.appSetting.findUnique({
-      where: { key: "openaiApiKey" },
-    });
+    const [apiKeySetting, taskBenchmarksSetting] = await Promise.all([
+      prisma.appSetting.findUnique({ where: { key: "openaiApiKey" } }),
+      prisma.appSetting.findUnique({ where: { key: "taskBenchmarks" } }),
+    ]);
     const apiKey = apiKeySetting?.value ?? process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
         { error: "OpenAI API key not configured. Add it in Settings." },
         { status: 400 }
       );
+    }
+
+    // ── Load task benchmarks ────────────────────────────────────────────────
+    let taskBenchmarks: Array<{ task: string; hours: number }> = [];
+    if (taskBenchmarksSetting?.value) {
+      try {
+        taskBenchmarks = JSON.parse(taskBenchmarksSetting.value) as Array<{ task: string; hours: number }>;
+      } catch { /* ignore malformed JSON */ }
     }
 
     const openai = new OpenAI({ apiKey });
@@ -495,6 +504,23 @@ export async function POST(request: NextRequest) {
       estimatedClicks,
       estimatedConversions,
     };
+
+    // ── Build prompt context for hours/benchmarks ───────────────────────────
+    const servicesWithHours = (services ?? []) as Array<Service & { hoursPerMonth?: number }>;
+    const contractedHoursContext = servicesWithHours.some((s) => s.hoursPerMonth)
+      ? `\nContracted Monthly Hours per Service:\n${servicesWithHours
+          .filter((s) => s.hoursPerMonth)
+          .map((s) => `- ${s.name}: ${s.hoursPerMonth}h/month`)
+          .join("\n")}`
+      : "";
+
+    const benchmarksContext = taskBenchmarks.length > 0
+      ? `\nTask Time Benchmarks (hours per deliverable):\n${taskBenchmarks
+          .map((b) => `- ${b.task}: ${b.hours}h`)
+          .join("\n")}`
+      : "";
+
+    const hasHoursContext = contractedHoursContext || benchmarksContext;
 
     // ── Call OpenAI ─────────────────────────────────────────────────────────
     const topGroupSummary = [...new Set(ideas.map((i) => i.adGroup))]
@@ -519,7 +545,10 @@ Keyword Research Summary:
 - Average CPC: £${maxCpcVal.toFixed(2)}
 - Estimated Monthly Budget: £${budgetVal.toFixed(0)}
 - Estimated Conversion Rate: ${convRateVal}%
-
+${contractedHoursContext}${benchmarksContext}
+${hasHoursContext ? `
+IMPORTANT: Use the contracted hours and task benchmarks above to generate a REALISTIC timeline. Calculate how many deliverables can be completed each month given the contracted hours. For example, if the client has 10h/month for SEO & Content and a blog post takes 3h, that's roughly 3 blog posts per month. Make these calculations explicit in the timeline phase descriptions.
+` : ""}
 Generate a comprehensive proposal in JSON with this exact structure:
 
 {
@@ -601,9 +630,25 @@ Use specific, actionable insights from the keyword data. Write in British Englis
       stats,
     });
 
-    const filename = `${clientName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "client"}-proposal.html`;
+    const slugName = clientName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "client";
+    const filename = `${slugName}-proposal.html`;
 
-    return NextResponse.json({ html, filename });
+    // ── Save proposal to database ───────────────────────────────────────────
+    const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    const savedProposal = await prisma.proposal.create({
+      data: {
+        userId: session.user.id,
+        clientName,
+        website,
+        title: `${clientName} — Proposal (${today})`,
+        html,
+        servicesJson: JSON.stringify(services ?? []),
+        timelineJson: JSON.stringify(timeline ?? []),
+        researchId: researchId ?? null,
+      },
+    });
+
+    return NextResponse.json({ html, filename, proposalId: savedProposal.id });
   } catch (err) {
     console.error("generate-proposal error", err);
     return NextResponse.json(

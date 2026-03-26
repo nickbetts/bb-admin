@@ -60,6 +60,7 @@ model Client {
   woocommerceSecret     String?
   shopifyStoreDomain    String?
   shopifyAccessToken    String?
+  contractedHours       String?   // JSON: Array<{service: string, hoursPerMonth: number}>
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   reports               Report[]
@@ -159,4 +160,20 @@ model KeywordPlannerResearch {
   conversionRate String   @default("3")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  proposals      Proposal[]
+}
+
+model Proposal {
+  id           String                  @id @default(cuid())
+  userId       String
+  clientName   String
+  website      String                  @default("")
+  title        String
+  html         String                  // Full generated HTML
+  servicesJson String                  @default("[]") // JSON: Service[]
+  timelineJson String                  @default("[]") // JSON: TimelinePhase[]
+  researchId   String?
+  research     KeywordPlannerResearch? @relation(fields: [researchId], references: [id], onDelete: SetNull)
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
 }

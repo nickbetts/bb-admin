@@ -69,6 +69,7 @@ export async function PATCH(
         woocommerceSecret: data.woocommerceSecret || null,
         shopifyStoreDomain: data.shopifyStoreDomain || null,
         shopifyAccessToken: data.shopifyAccessToken || null,
+        contractedHours: data.contractedHours !== undefined ? data.contractedHours : undefined,
       },
     });
 

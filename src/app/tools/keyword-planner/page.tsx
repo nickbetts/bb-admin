@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   Search, Loader2, TrendingUp, TrendingDown, ChevronRight, ChevronLeft, ChevronDown, ChevronUp,
   Plus, Trash2, Download, BarChart2, Target, DollarSign, Zap, Check, AlertTriangle,
@@ -53,6 +54,13 @@ interface SavedResearchFull extends SavedResearchSummary {
   maxCpc: string;
   monthlyBudget: string;
   conversionRate: string;
+}
+
+interface ProposalService {
+  name: string;
+  price: string;
+  description: string;
+  hoursPerMonth: number;
 }
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -372,11 +380,12 @@ export default function KeywordPlannerPage() {
   const [generatingProposal, setGeneratingProposal] = useState(false);
   const [proposalError, setProposalError] = useState("");
   const [proposalClientName, setProposalClientName] = useState("");
-  const [proposalServices, setProposalServices] = useState([
-    { name: "Web Design & Development", price: "£5,000", description: "Custom website design and build" },
-    { name: "SEO & Content Strategy", price: "£2,500/month", description: "Organic search optimisation" },
-    { name: "PPC Management", price: "£1,500/month", description: "Google & Bing paid advertising" },
-    { name: "Social Media Marketing", price: "£1,000/month", description: "Paid and organic social media" },
+  const [generatedProposalId, setGeneratedProposalId] = useState<string | null>(null);
+  const [proposalServices, setProposalServices] = useState<ProposalService[]>([
+    { name: "Web Design & Development", price: "£5,000", description: "Custom website design and build", hoursPerMonth: 0 },
+    { name: "SEO & Content Strategy", price: "£2,500/month", description: "Organic search optimisation", hoursPerMonth: 10 },
+    { name: "PPC Management", price: "£1,500/month", description: "Google & Bing paid advertising", hoursPerMonth: 5 },
+    { name: "Social Media Marketing", price: "£1,000/month", description: "Paid and organic social media", hoursPerMonth: 4 },
   ]);
   const [proposalTimeline, setProposalTimeline] = useState([
     { title: "Research & Strategy", duration: "Week 1–2", description: "Audit, keyword research, competitor analysis and strategy definition" },
@@ -499,7 +508,7 @@ export default function KeywordPlannerPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json() as { html?: string; filename?: string; error?: string };
+      const data = await res.json() as { html?: string; filename?: string; error?: string; proposalId?: string };
       if (!res.ok) throw new Error(data.error ?? "Request failed");
       if (typeof data.html !== "string" || !data.html) throw new Error("Invalid response from server");
       // Trigger download
@@ -510,7 +519,8 @@ export default function KeywordPlannerPage() {
       a.download = typeof data.filename === "string" ? data.filename : "proposal.html";
       a.click();
       URL.revokeObjectURL(url);
-      setShowProposalModal(false);
+      // Store proposalId so user can navigate to the saved proposal
+      if (data.proposalId) setGeneratedProposalId(data.proposalId);
     } catch (err) {
       setProposalError(err instanceof Error ? err.message : "Failed to generate proposal");
     } finally {
@@ -1047,7 +1057,7 @@ export default function KeywordPlannerPage() {
                   {currentResearchId ? "Update" : "Save"}
                 </button>
               )}
-              <button className="btn btn-primary btn-sm" style={{ gap: 5 }} onClick={() => { setShowProposalModal(true); setProposalError(""); }}>
+              <button className="btn btn-primary btn-sm" style={{ gap: 5 }} onClick={() => { setShowProposalModal(true); setProposalError(""); setGeneratedProposalId(null); }}>
                 <FileText style={{ width: 14, height: 14 }} /> Generate Proposal
               </button>
             </div>
@@ -1470,15 +1480,18 @@ export default function KeywordPlannerPage() {
               {/* Services */}
               <div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Services & Pricing</label>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Services & Pricing</label>
+                    <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 2 }}>Hours/month feeds the AI for realistic timeline generation</p>
+                  </div>
                   <button className="btn btn-ghost btn-sm" style={{ gap: 4, fontSize: 12 }}
-                    onClick={() => setProposalServices((prev) => [...prev, { name: "", price: "", description: "" }])}>
+                    onClick={() => setProposalServices((prev) => [...prev, { name: "", price: "", description: "", hoursPerMonth: 0 }])}>
                     <Plus style={{ width: 13, height: 13 }} /> Add Service
                   </button>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {proposalServices.map((svc, i) => (
-                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, alignItems: "center" }}>
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 100px 80px auto", gap: 8, alignItems: "center" }}>
                       <input
                         type="text"
                         style={{ ...inputStyle, fontSize: 13, padding: "8px 12px" }}
@@ -1490,13 +1503,28 @@ export default function KeywordPlannerPage() {
                       />
                       <input
                         type="text"
-                        style={{ ...inputStyle, fontSize: 13, padding: "8px 12px" }}
-                        placeholder="Price e.g. £2,500/month"
+                        style={{ ...inputStyle, fontSize: 13, padding: "8px 10px" }}
+                        placeholder="£2,500/mo"
                         value={svc.price}
                         onChange={(e) => setProposalServices((prev) => prev.map((s, idx) => idx === i ? { ...s, price: e.target.value } : s))}
                         onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
                         onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
                       />
+                      <div style={{ position: "relative" }}>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          style={{ ...inputStyle, fontSize: 13, padding: "8px 28px 8px 10px", width: "100%", textAlign: "right" }}
+                          placeholder="0"
+                          title="Hours per month allocated"
+                          value={svc.hoursPerMonth || ""}
+                          onChange={(e) => setProposalServices((prev) => prev.map((s, idx) => idx === i ? { ...s, hoursPerMonth: parseFloat(e.target.value) || 0 } : s))}
+                          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                          onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
+                        />
+                        <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "var(--text-4)", pointerEvents: "none" }}>h/mo</span>
+                      </div>
                       <button className="btn btn-ghost btn-sm" style={{ padding: 6, color: "#ef4444", flexShrink: 0 }}
                         onClick={() => setProposalServices((prev) => prev.filter((_, idx) => idx !== i))}>
                         <Trash2 style={{ width: 13, height: 13 }} />
@@ -1562,16 +1590,29 @@ export default function KeywordPlannerPage() {
                 </div>
               )}
 
+              {generatedProposalId && !generatingProposal && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "var(--r)", fontSize: 13, color: "#15803d" }}>
+                  <Check style={{ width: 15, height: 15, flexShrink: 0 }} />
+                  <span style={{ flex: 1 }}>Proposal downloaded and saved!</span>
+                  <Link href={`/tools/proposals/${generatedProposalId}`} className="btn btn-primary btn-sm" style={{ gap: 5 }}
+                    onClick={() => setShowProposalModal(false)}>
+                    <Eye style={{ width: 12, height: 12 }} /> View Proposal
+                  </Link>
+                </div>
+              )}
+
               {/* Actions */}
               <div style={{ display: "flex", gap: 10, paddingTop: 4 }}>
-                <button className="btn btn-ghost" style={{ flex: 1, justifyContent: "center" }} onClick={() => setShowProposalModal(false)} disabled={generatingProposal}>
-                  Cancel
+                <button className="btn btn-ghost" style={{ flex: 1, justifyContent: "center" }} onClick={() => { setShowProposalModal(false); setGeneratedProposalId(null); }} disabled={generatingProposal}>
+                  {generatedProposalId ? "Close" : "Cancel"}
                 </button>
                 <button className="btn btn-primary" style={{ flex: 2, justifyContent: "center", height: 44 }}
                   onClick={handleGenerateProposal}
                   disabled={generatingProposal || !proposalClientName.trim()}>
                   {generatingProposal
                     ? <><Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> Generating Proposal…</>
+                    : generatedProposalId
+                    ? <><FileText style={{ width: 16, height: 16 }} /> Regenerate Proposal</>
                     : <><FileText style={{ width: 16, height: 16 }} /> Generate & Download Proposal</>}
                 </button>
               </div>
