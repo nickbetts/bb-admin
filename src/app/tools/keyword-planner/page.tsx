@@ -266,6 +266,8 @@ export default function KeywordPlannerPage() {
   const [maxCpc, setMaxCpc] = useState("");
   const [monthlyBudget, setMonthlyBudget] = useState("");
   const [conversionRate, setConversionRate] = useState("3");
+  const [cpcAutoFilled, setCpcAutoFilled] = useState(false);
+  const [crAutoFilled, setCrAutoFilled] = useState(false);
   const [sortField, setSortField] = useState<keyof KeywordIdea>("avgMonthlySearches");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [groupedView, setGroupedView] = useState(true);
@@ -312,7 +314,44 @@ export default function KeywordPlannerPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Request failed");
-      setIdeas(data.ideas ?? []);
+
+      const fetchedIdeas: KeywordIdea[] = data.ideas ?? [];
+      setIdeas(fetchedIdeas);
+
+      // ── Auto-fill Max CPC: volume-weighted average of highTopOfPageBidMicros ──
+      const validBids = fetchedIdeas.filter((k) => k.highTopOfPageBidMicros > 0);
+      if (validBids.length > 0) {
+        const totalVol = validBids.reduce((s, k) => s + k.avgMonthlySearches, 0);
+        const weightedMicros = validBids.reduce(
+          (s, k) => s + k.highTopOfPageBidMicros * k.avgMonthlySearches,
+          0
+        );
+        const smartCpc = totalVol > 0 ? (weightedMicros / totalVol / 1_000_000).toFixed(2) : "";
+        if (smartCpc) {
+          setMaxCpc(smartCpc);
+          setCpcAutoFilled(true);
+        }
+      }
+
+      // ── Auto-fill Conversion Rate via AI (non-blocking background call) ──────
+      const topKws = [...fetchedIdeas]
+        .sort((a, b) => b.avgMonthlySearches - a.avgMonthlySearches)
+        .slice(0, 15)
+        .map((k) => k.text);
+      fetch("/api/tools/keyword-planner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "smart-defaults", website: website.trim(), brief, keywords: topKws }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (typeof d.conversionRate === "number") {
+            setConversionRate(String(d.conversionRate));
+            setCrAutoFilled(true);
+          }
+        })
+        .catch(() => {}); // silently fail — default stays
+
       setStep(3);
     } catch (err) {
       setResearchError(err instanceof Error ? err.message : "Unknown error");
@@ -643,9 +682,12 @@ export default function KeywordPlannerPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)", whiteSpace: "nowrap" }}>Max CPC (\xa3)</label>
                     <input type="number" min="0" step="0.01" style={{ ...inputStyle, width: 100, fontSize: 13 }} placeholder="1.50" value={maxCpc}
-                      onChange={(e) => setMaxCpc(e.target.value)}
+                      onChange={(e) => { setMaxCpc(e.target.value); setCpcAutoFilled(false); }}
                       onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
                       onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
+                    {cpcAutoFilled && (
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: "#10b981", background: "#d1fae5", border: "1px solid #6ee7b7", borderRadius: 4, padding: "2px 6px", whiteSpace: "nowrap" }}>AUTO</span>
+                    )}
                   </div>
                   <button className="btn btn-ghost btn-sm" onClick={() => setGroupedView((v) => !v)} style={{ gap: 6 }}>
                     <Layers style={{ width: 14, height: 14 }} />{groupedView ? "Flat view" : "Group by ad group"}
@@ -871,31 +913,56 @@ export default function KeywordPlannerPage() {
                   </div>
                 </div>
                 <div className="card-body" style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-                  {[{
-                    label: "Monthly Budget (\xa3)", placeholder: "e.g. 500",
-                    value: monthlyBudget, onChange: setMonthlyBudget,
-                    hint: "Total ad spend per month",
-                  }, {
-                    label: "Max CPC (\xa3)", placeholder: "e.g. 1.50",
-                    value: maxCpc, onChange: setMaxCpc,
-                    hint: "Leave blank to use keyword bid estimates",
-                  }, {
-                    label: "Conversion Rate (%)", placeholder: "e.g. 3",
-                    value: conversionRate, onChange: setConversionRate,
-                    hint: "Estimated % of clicks that convert",
-                  }].map((field) => (
-                    <div key={field.label} style={{ flex: "1 1 180px", minWidth: 160 }}>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>{field.label}</label>
-                      <input type="number" min="0" step="0.01"
-                        style={{ ...inputStyle, fontSize: 14 }}
-                        placeholder={field.placeholder}
-                        value={field.value}
-                        onChange={(e) => field.onChange(e.target.value)}
-                        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
-                        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
-                      <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 5 }}>{field.hint}</p>
+                  {/* Monthly Budget */}
+                  <div style={{ flex: "1 1 180px", minWidth: 160 }}>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Monthly Budget (\xa3)</label>
+                    <input type="number" min="0" step="0.01"
+                      style={{ ...inputStyle, fontSize: 14 }}
+                      placeholder="e.g. 500"
+                      value={monthlyBudget}
+                      onChange={(e) => setMonthlyBudget(e.target.value)}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
+                    <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 5 }}>Total ad spend per month</p>
+                  </div>
+                  {/* Max CPC */}
+                  <div style={{ flex: "1 1 180px", minWidth: 160 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Max CPC (\xa3)</label>
+                      {cpcAutoFilled && (
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: "#10b981", background: "#d1fae5", border: "1px solid #6ee7b7", borderRadius: 4, padding: "1px 6px" }}>AUTO</span>
+                      )}
                     </div>
-                  ))}
+                    <input type="number" min="0" step="0.01"
+                      style={{ ...inputStyle, fontSize: 14 }}
+                      placeholder="e.g. 1.50"
+                      value={maxCpc}
+                      onChange={(e) => { setMaxCpc(e.target.value); setCpcAutoFilled(false); }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
+                    <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 5 }}>
+                      {cpcAutoFilled ? "Volume-weighted bid estimate from keyword data" : "Leave blank to use keyword bid estimates"}
+                    </p>
+                  </div>
+                  {/* Conversion Rate */}
+                  <div style={{ flex: "1 1 180px", minWidth: 160 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Conversion Rate (%)</label>
+                      {crAutoFilled && (
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: "#6366f1", background: "#ede9fe", border: "1px solid #c4b5fd", borderRadius: 4, padding: "1px 6px" }}>AI</span>
+                      )}
+                    </div>
+                    <input type="number" min="0" step="0.01"
+                      style={{ ...inputStyle, fontSize: 14 }}
+                      placeholder="e.g. 3"
+                      value={conversionRate}
+                      onChange={(e) => { setConversionRate(e.target.value); setCrAutoFilled(false); }}
+                      onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                      onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
+                    <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 5 }}>
+                      {crAutoFilled ? "AI estimate based on business type and keywords" : "Estimated % of clicks that convert"}
+                    </p>
+                  </div>
                 </div>
               </div>
 

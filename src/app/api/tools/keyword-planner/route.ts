@@ -30,7 +30,14 @@ interface ResearchBody {
   language?: string;
 }
 
-type RequestBody = SuggestBody | ResearchBody;
+interface SmartDefaultsBody {
+  action: "smart-defaults";
+  website: string;
+  brief: string;
+  keywords: string[];
+}
+
+type RequestBody = SuggestBody | ResearchBody | SmartDefaultsBody;
 
 // ── Google Ads location ID → SEMrush database code ──────────────────────────
 
@@ -188,6 +195,71 @@ Rules:
         }));
 
       return NextResponse.json({ ideas });
+    }
+
+    // ── action: smart-defaults ─────────────────────────────────────────────────
+    if (body.action === "smart-defaults") {
+      const { website, brief, keywords } = body as SmartDefaultsBody;
+
+      const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "openaiApiKey" } });
+      const apiKey = apiKeySetting?.value ?? process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        return NextResponse.json({ conversionRate: 2.5 });
+      }
+
+      const openai = new OpenAI({ apiKey });
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.2,
+        messages: [
+          {
+            role: "system",
+            content: `You are a PPC conversion rate expert. Given a website URL, business description, and sample Google Ads keywords, estimate a realistic conversion rate (%) for a Google Ads campaign.
+
+Industry benchmarks:
+- Local services (plumber, electrician, locksmith): 4–8%
+- E-commerce (products, retail): 1.5–3%
+- B2B / SaaS / software: 2–4%
+- Finance, insurance, legal: 3–6%
+- Healthcare / dental / optician: 3–5%
+- Education / training: 2–4%
+- Travel / hospitality: 2–4%
+- Automotive: 2–4%
+- Real estate: 1.5–3%
+
+Consider whether the intent is informational, commercial, or transactional.
+Reply with a JSON object ONLY — no markdown, no explanation outside the JSON.
+Example: { "conversionRate": 4.5, "reasoning": "Local plumbing services convert strongly on emergency intent keywords." }`,
+          },
+          {
+            role: "user",
+            content: [
+              `Website: ${website}`,
+              brief ? `Business description: ${brief}` : "",
+              keywords.length ? `Top keywords: ${keywords.slice(0, 15).join(", ")}` : "",
+            ].filter(Boolean).join("\n"),
+          },
+        ],
+      });
+
+      const raw = completion.choices[0]?.message?.content ?? "{}";
+      let result: { conversionRate?: number; reasoning?: string } = {};
+      try {
+        result = JSON.parse(raw);
+      } catch {
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (match) try { result = JSON.parse(match[0]); } catch { /* ignore */ }
+      }
+
+      const cr =
+        typeof result.conversionRate === "number" &&
+        result.conversionRate > 0 &&
+        result.conversionRate <= 100
+          ? result.conversionRate
+          : 2.5;
+
+      return NextResponse.json({ conversionRate: Number(cr.toFixed(1)) });
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
