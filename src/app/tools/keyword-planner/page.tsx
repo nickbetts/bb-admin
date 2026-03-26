@@ -16,6 +16,7 @@ import {
   Zap,
   Check,
   AlertTriangle,
+  Globe,
 } from "lucide-react";
 import {
   LineChart,
@@ -24,11 +25,10 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────────────────
 
 interface MonthlyVolume {
   year: number;
@@ -57,7 +57,7 @@ const MONTH_ABBR: Record<string, string> = {
   SEPTEMBER: "Sep", OCTOBER: "Oct", NOVEMBER: "Nov", DECEMBER: "Dec",
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────────────────────
 
 function microsToPounds(micros: number): string {
   if (!micros) return "—";
@@ -70,89 +70,59 @@ function fmtNum(n: number): string {
   return String(n);
 }
 
-function competitionColor(level: string): string {
+function competitionBadgeStyle(level: string): React.CSSProperties {
   switch (level) {
-    case "LOW": return "text-emerald-600 bg-emerald-50 border-emerald-200";
-    case "MEDIUM": return "text-amber-600 bg-amber-50 border-amber-200";
-    case "HIGH": return "text-red-600 bg-red-50 border-red-200";
-    default: return "text-slate-500 bg-slate-50 border-slate-200";
+    case "LOW":    return { background: "#d1fae5", color: "#065f46" };
+    case "MEDIUM": return { background: "#fef3c7", color: "#92400e" };
+    case "HIGH":   return { background: "#fee2e2", color: "#991b1b" };
+    default:       return { background: "var(--border-subtle)", color: "var(--text-3)" };
   }
 }
 
 function competitionLabel(level: string): string {
   switch (level) {
     case "LOW": return "Low";
-    case "MEDIUM": return "Med";
+    case "MEDIUM": return "Medium";
     case "HIGH": return "High";
     default: return "—";
   }
 }
 
-/** Estimate monthly clicks/impressions/cost given keyword idea + max CPC */
 function estimateForecast(idea: KeywordIdea, cpcMicros: number) {
   const ctrByCompetition: Record<string, number> = {
-    LOW: 0.08,
-    MEDIUM: 0.05,
-    HIGH: 0.03,
-    UNSPECIFIED: 0.04,
+    LOW: 0.08, MEDIUM: 0.05, HIGH: 0.03, UNSPECIFIED: 0.04,
   };
   const ctr = ctrByCompetition[idea.competition] ?? 0.04;
-  const impressions = Math.round(idea.avgMonthlySearches * 0.7); // ~70% impression share possible
+  const impressions = Math.round(idea.avgMonthlySearches * 0.7);
   const clicks = Math.round(impressions * ctr);
   const effectiveCpcMicros = cpcMicros || idea.highTopOfPageBidMicros || 1_000_000;
-  const costMicros = clicks * effectiveCpcMicros;
-  return { clicks, impressions, costPounds: costMicros / 1_000_000 };
+  return { clicks, impressions, costPounds: (clicks * effectiveCpcMicros) / 1_000_000 };
 }
 
-/** Build a 12-month sparkline from monthly volumes sorted by date */
-function buildSparklineData(volumes: MonthlyVolume[]) {
-  return [...volumes]
-    .sort((a, b) => {
-      if (a.year !== b.year) return a.year - b.year;
-      return (MONTH_ORDER[a.month] ?? 0) - (MONTH_ORDER[b.month] ?? 0);
-    })
-    .slice(-12)
-    .map((v) => ({ label: `${MONTH_ABBR[v.month] ?? v.month} ${v.year}`, searches: v.searches }));
-}
-
-/** Export results as CSV download */
 function exportToCsv(ideas: KeywordIdea[], cpcMicros: number) {
   const headers = [
-    "Keyword",
-    "Avg Monthly Searches",
-    "Competition",
-    "Competition Index",
-    "Low Top-of-Page Bid (£)",
-    "High Top-of-Page Bid (£)",
-    "Est. Monthly Impressions",
-    "Est. Monthly Clicks",
-    "Est. Monthly Cost (£)",
+    "Keyword", "Avg Monthly Searches", "Competition", "Competition Index",
+    "Low Top-of-Page Bid (£)", "High Top-of-Page Bid (£)",
+    "Est. Monthly Impressions", "Est. Monthly Clicks", "Est. Monthly Cost (£)",
   ];
   const rows = ideas.map((idea) => {
     const { impressions, clicks, costPounds } = estimateForecast(idea, cpcMicros);
     return [
-      `"${idea.text}"`,
-      idea.avgMonthlySearches,
-      idea.competition,
-      idea.competitionIndex,
+      `"${idea.text}"`, idea.avgMonthlySearches, idea.competition, idea.competitionIndex,
       (idea.lowTopOfPageBidMicros / 1_000_000).toFixed(2),
       (idea.highTopOfPageBidMicros / 1_000_000).toFixed(2),
-      impressions,
-      clicks,
-      costPounds.toFixed(2),
+      impressions, clicks, costPounds.toFixed(2),
     ].join(",");
   });
   const csv = [headers.join(","), ...rows].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "keyword-planner-export.csv";
-  link.click();
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "keyword-planner-export.csv";
+  a.click();
   URL.revokeObjectURL(url);
 }
-
-// ─── Location options ─────────────────────────────────────────────────────────
 
 const LOCATIONS = [
   { id: "2826", label: "United Kingdom" },
@@ -165,34 +135,35 @@ const LOCATIONS = [
   { id: "2380", label: "Italy" },
 ];
 
-// ─── Main component ───────────────────────────────────────────────────────────
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 14px",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--r)",
+  fontSize: 14,
+  color: "var(--text)",
+  background: "var(--surface)",
+  outline: "none",
+  fontFamily: "inherit",
+};
 
 export default function KeywordPlannerPage() {
-  // Step state: 1 = input, 2 = review keywords, 3 = results
   const [step, setStep] = useState<1 | 2 | 3>(1);
-
-  // Step 1 form
   const [website, setWebsite] = useState("");
   const [brief, setBrief] = useState("");
   const [location, setLocation] = useState("2826");
   const [suggesting, setSuggesting] = useState(false);
   const [suggestError, setSuggestError] = useState("");
   const [rationale, setRationale] = useState("");
-
-  // Step 2 keyword list
   const [keywords, setKeywords] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [newKw, setNewKw] = useState("");
   const [researching, setResearching] = useState(false);
   const [researchError, setResearchError] = useState("");
-
-  // Step 3 results
   const [ideas, setIdeas] = useState<KeywordIdea[]>([]);
   const [maxCpc, setMaxCpc] = useState("");
   const [sortField, setSortField] = useState<keyof KeywordIdea>("avgMonthlySearches");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-
-  // ── Step 1: Suggest keywords via AI ────────────────────────────────────────
 
   async function handleSuggest() {
     if (!website.trim() || !brief.trim()) return;
@@ -202,12 +173,7 @@ export default function KeywordPlannerPage() {
       const res = await fetch("/api/tools/keyword-planner", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "suggest",
-          website: website.trim(),
-          brief: brief.trim(),
-          location,
-        }),
+        body: JSON.stringify({ action: "suggest", website: website.trim(), brief: brief.trim(), location }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Request failed");
@@ -223,8 +189,6 @@ export default function KeywordPlannerPage() {
     }
   }
 
-  // ── Step 2: Run Google Ads research ────────────────────────────────────────
-
   async function handleResearch() {
     const activeKeywords = keywords.filter((_, i) => selected.has(i));
     if (!activeKeywords.length) return;
@@ -234,12 +198,7 @@ export default function KeywordPlannerPage() {
       const res = await fetch("/api/tools/keyword-planner", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "research",
-          keywords: activeKeywords,
-          website: website.trim(),
-          location,
-        }),
+        body: JSON.stringify({ action: "research", keywords: activeKeywords, website: website.trim(), location }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Request failed");
@@ -252,14 +211,8 @@ export default function KeywordPlannerPage() {
     }
   }
 
-  // ── Keyword list helpers ───────────────────────────────────────────────────
-
   const toggleAll = useCallback(() => {
-    if (selected.size === keywords.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(keywords.map((_, i) => i)));
-    }
+    setSelected(selected.size === keywords.length ? new Set() : new Set(keywords.map((_, i) => i)));
   }, [selected, keywords]);
 
   function addKeyword() {
@@ -273,61 +226,34 @@ export default function KeywordPlannerPage() {
 
   function removeKeyword(idx: number) {
     const newKws = keywords.filter((_, i) => i !== idx);
-    const newSelected = new Set<number>();
+    const newSel = new Set<number>();
     keywords.forEach((_, i) => {
-      if (i !== idx && selected.has(i)) {
-        const newIdx = i > idx ? i - 1 : i;
-        newSelected.add(newIdx);
-      }
+      if (i !== idx && selected.has(i)) newSel.add(i > idx ? i - 1 : i);
     });
     setKeywords(newKws);
-    setSelected(newSelected);
+    setSelected(newSel);
   }
-
-  // ── Sort helpers ───────────────────────────────────────────────────────────
 
   function handleSort(field: string) {
     const f = field as keyof KeywordIdea;
-    if (sortField === f) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortField(f);
-      setSortDir("desc");
-    }
+    if (sortField === f) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortField(f); setSortDir("desc"); }
   }
 
   const sortedIdeas = [...ideas].sort((a, b) => {
     const av = a[sortField] as number | string;
     const bv = b[sortField] as number | string;
-    const cmp = typeof av === "number" && typeof bv === "number"
-      ? av - bv
-      : String(av).localeCompare(String(bv));
+    const cmp = typeof av === "number" && typeof bv === "number" ? av - bv : String(av).localeCompare(String(bv));
     return sortDir === "asc" ? cmp : -cmp;
   });
 
-  // ── Derived stats ──────────────────────────────────────────────────────────
-
   const cpcMicros = maxCpc ? Math.round(parseFloat(maxCpc) * 1_000_000) : 0;
+  const totalSearches = ideas.reduce((s, i) => s + i.avgMonthlySearches, 0);
+  const avgCompIndex = ideas.length ? Math.round(ideas.reduce((s, i) => s + i.competitionIndex, 0) / ideas.length) : 0;
+  const avgCpc = ideas.length ? ideas.reduce((s, i) => s + (i.lowTopOfPageBidMicros + i.highTopOfPageBidMicros) / 2, 0) / ideas.length / 1_000_000 : 0;
+  const totalClicks = ideas.reduce((s, i) => s + estimateForecast(i, cpcMicros).clicks, 0);
+  const totalCost = ideas.reduce((s, i) => s + estimateForecast(i, cpcMicros).costPounds, 0);
 
-  const totalMonthlySearches = ideas.reduce((s, i) => s + i.avgMonthlySearches, 0);
-  const avgCompetitionIndex = ideas.length
-    ? Math.round(ideas.reduce((s, i) => s + i.competitionIndex, 0) / ideas.length)
-    : 0;
-  const avgCpc = ideas.length
-    ? ideas.reduce((s, i) => s + (i.lowTopOfPageBidMicros + i.highTopOfPageBidMicros) / 2, 0) /
-      ideas.length /
-      1_000_000
-    : 0;
-  const totalEstClicks = ideas.reduce(
-    (s, i) => s + estimateForecast(i, cpcMicros).clicks,
-    0
-  );
-  const totalEstCost = ideas.reduce(
-    (s, i) => s + estimateForecast(i, cpcMicros).costPounds,
-    0
-  );
-
-  // Build aggregate monthly trend for the chart
   const trendMap: Record<string, number> = {};
   for (const idea of ideas) {
     for (const v of idea.monthlySearchVolumes) {
@@ -337,466 +263,258 @@ export default function KeywordPlannerPage() {
   }
   const trendData = Object.entries(trendMap)
     .sort(([a], [b]) => {
-      const [am, ay] = a.split(" ");
-      const [bm, by] = b.split(" ");
-      const aYear = parseInt(ay), bYear = parseInt(by);
-      if (aYear !== bYear) return aYear - bYear;
-      const aMonthNum = Object.values(MONTH_ABBR).indexOf(am) + 1;
-      const bMonthNum = Object.values(MONTH_ABBR).indexOf(bm) + 1;
-      return aMonthNum - bMonthNum;
+      const [am, ay] = a.split(" "), [bm, by] = b.split(" ");
+      const dy = parseInt(ay) - parseInt(by);
+      if (dy !== 0) return dy;
+      return (MONTH_ORDER[Object.keys(MONTH_ABBR).find(k => MONTH_ABBR[k] === am) ?? ""] ?? 0) -
+             (MONTH_ORDER[Object.keys(MONTH_ABBR).find(k => MONTH_ABBR[k] === bm) ?? ""] ?? 0);
     })
     .slice(-13)
     .map(([label, volume]) => ({ label, volume }));
 
-  // ─────────────────────────────────────────────────────────────────────────────
-
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-100">
-          <TrendingUp className="h-5 w-5 text-indigo-600" />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Keyword Planner</h1>
-          <p className="text-sm text-slate-500">
-            AI-powered keyword research using Google Ads data
-          </p>
+    <div style={{ padding: "40px 48px", maxWidth: 1100, margin: "0 auto" }}>
+
+      {/* Page header */}
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, #6366f1, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <TrendingUp style={{ width: 20, height: 20, color: "white" }} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Keyword Planner</h1>
+            <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>AI-powered keyword research using live Google Ads data</p>
+          </div>
         </div>
       </div>
 
       {/* Step indicator */}
-      <div className="flex items-center gap-2">
-        {[
-          { num: 1, label: "Brief" },
-          { num: 2, label: "Keywords" },
-          { num: 3, label: "Results" },
-        ].map(({ num, label }, i, arr) => (
-          <div key={num} className="flex items-center gap-2">
-            <div
-              className={`flex items-center justify-center w-7 h-7 rounded-full text-sm font-semibold border-2 transition-colors ${
-                step === num
-                  ? "border-indigo-600 bg-indigo-600 text-white"
-                  : step > num
-                  ? "border-indigo-600 bg-indigo-50 text-indigo-600"
-                  : "border-slate-200 bg-white text-slate-400"
-              }`}
-            >
-              {step > num ? <Check className="h-3.5 w-3.5" /> : num}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 32 }}>
+        {([{ num: 1, label: "Brief" }, { num: 2, label: "Keywords" }, { num: 3, label: "Results" }] as { num: 1|2|3; label: string }[]).map(({ num, label }, i, arr) => (
+          <div key={num} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              width: 28, height: 28, borderRadius: "50%", fontSize: 12, fontWeight: 700,
+              border: `2px solid ${step >= num ? "var(--accent)" : "var(--border)"}`,
+              background: step === num ? "var(--accent)" : step > num ? "var(--accent-bg)" : "var(--surface)",
+              color: step === num ? "white" : step > num ? "var(--accent)" : "var(--text-3)",
+              transition: "all 0.2s", flexShrink: 0,
+            }}>
+              {step > num ? <Check style={{ width: 12, height: 12 }} /> : num}
             </div>
-            <span
-              className={`text-sm font-medium ${
-                step >= num ? "text-slate-700" : "text-slate-400"
-              }`}
-            >
-              {label}
-            </span>
-            {i < arr.length - 1 && (
-              <ChevronRight className="h-4 w-4 text-slate-300 ml-1" />
-            )}
+            <span style={{ fontSize: 13, fontWeight: 500, color: step >= num ? "var(--text)" : "var(--text-3)" }}>{label}</span>
+            {i < arr.length - 1 && <ChevronRight style={{ width: 14, height: 14, color: "var(--text-4)", marginLeft: 4 }} />}
           </div>
         ))}
       </div>
 
-      {/* ── Step 1: Input ─────────────────────────────────────────────────────── */}
+      {/* Step 1 */}
       {step === 1 && (
-        <div className="card max-w-2xl">
-          <div className="p-6 space-y-5">
+        <div className="card" style={{ maxWidth: 680 }}>
+          <div className="card-header">
             <div>
-              <h2 className="text-base font-semibold text-slate-800 mb-1">
-                Campaign Brief
-              </h2>
-              <p className="text-sm text-slate-500">
-                Describe the lead and their business — our AI will generate targeted keyword ideas.
-              </p>
+              <p className="card-title">Campaign Brief</p>
+              <p className="card-subtitle">Describe the lead and their business — AI will generate targeted keyword ideas</p>
             </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Client website
-                </label>
-                <input
-                  type="url"
-                  className="input w-full"
-                  placeholder="https://example.com"
-                  value={website}
+          </div>
+          <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>Client website</label>
+              <div style={{ position: "relative" }}>
+                <Globe style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: "var(--text-3)", pointerEvents: "none" }} />
+                <input type="url" style={{ ...inputStyle, paddingLeft: 36 }} placeholder="https://example.com" value={website}
                   onChange={(e) => setWebsite(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSuggest()}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Target location
-                </label>
-                <select
-                  className="input w-full"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                >
-                  {LOCATIONS.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Campaign brief
-                </label>
-                <textarea
-                  className="input w-full resize-none"
-                  rows={5}
-                  placeholder="Describe what the client does, their target audience, products/services, and any specific campaign goals or competitor context..."
-                  value={brief}
-                  onChange={(e) => setBrief(e.target.value)}
-                />
+                  onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
               </div>
             </div>
-
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>Target location</label>
+              <select style={inputStyle} value={location} onChange={(e) => setLocation(e.target.value)}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}>
+                {LOCATIONS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>Campaign brief</label>
+              <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 120, lineHeight: 1.6 }}
+                placeholder="Describe what the client does, their target audience, products/services, and any campaign goals or competitor context…"
+                value={brief} onChange={(e) => setBrief(e.target.value)}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+                onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
+            </div>
             {suggestError && (
-              <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                {suggestError}
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "var(--r)", fontSize: 13, color: "#991b1b" }}>
+                <AlertTriangle style={{ width: 15, height: 15, flexShrink: 0, marginTop: 1 }} />{suggestError}
               </div>
             )}
-
-            <button
-              className="btn btn-primary w-full justify-center gap-2"
-              onClick={handleSuggest}
-              disabled={!website.trim() || !brief.trim() || suggesting}
-            >
-              {suggesting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating keyword ideas…
-                </>
-              ) : (
-                <>
-                  <Zap className="h-4 w-4" />
-                  Generate Keywords with AI
-                </>
-              )}
+            <button className="btn btn-primary" style={{ justifyContent: "center", height: 44 }} onClick={handleSuggest} disabled={!website.trim() || !brief.trim() || suggesting}>
+              {suggesting
+                ? <><Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> Generating keyword ideas…</>
+                : <><Zap style={{ width: 16, height: 16 }} /> Generate Keywords with AI</>}
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Step 2: Review keywords ───────────────────────────────────────────── */}
+      {/* Step 2 */}
       {step === 2 && (
-        <div className="space-y-4 max-w-2xl">
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 680 }}>
           {rationale && (
-            <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl text-sm text-indigo-800">
-              <p className="font-medium mb-1">AI Strategy Note</p>
-              <p className="text-indigo-700">{rationale}</p>
+            <div style={{ padding: "16px 20px", background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r-lg)", fontSize: 13 }}>
+              <p style={{ fontWeight: 600, color: "var(--accent-text)", marginBottom: 4 }}>AI Strategy Note</p>
+              <p style={{ color: "#4338ca", lineHeight: 1.6 }}>{rationale}</p>
             </div>
           )}
-
           <div className="card">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="card-header">
               <div>
-                <h2 className="text-base font-semibold text-slate-800">
-                  Review Keywords
-                </h2>
-                <p className="text-sm text-slate-500">
-                  {selected.size} of {keywords.length} selected
-                </p>
+                <p className="card-title">Review Keywords</p>
+                <p className="card-subtitle">{selected.size} of {keywords.length} selected for research</p>
               </div>
-              <button
-                className="btn btn-ghost btn-sm text-xs"
-                onClick={toggleAll}
-              >
+              <button className="btn btn-ghost btn-sm" onClick={toggleAll} style={{ fontSize: 12 }}>
                 {selected.size === keywords.length ? "Deselect all" : "Select all"}
               </button>
             </div>
-
-            <div className="divide-y divide-slate-50 max-h-[400px] overflow-y-auto">
+            <div style={{ maxHeight: 380, overflowY: "auto" }}>
               {keywords.map((kw, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors group"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected.has(i)}
-                    onChange={() => {
-                      setSelected((prev) => {
-                        const next = new Set(prev);
-                        next.has(i) ? next.delete(i) : next.add(i);
-                        return next;
-                      });
-                    }}
-                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span className="flex-1 text-sm text-slate-700">{kw}</span>
-                  <button
-                    onClick={() => removeKeyword(i)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 28px", borderBottom: "1px solid var(--border-subtle)", background: selected.has(i) ? "transparent" : "var(--bg)" }}>
+                  <input type="checkbox" checked={selected.has(i)}
+                    onChange={() => { setSelected((prev) => { const next = new Set(prev); next.has(i) ? next.delete(i) : next.add(i); return next; }); }}
+                    style={{ accentColor: "var(--accent)", width: 15, height: 15, cursor: "pointer", flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 13, color: "var(--text)" }}>{kw}</span>
+                  <button onClick={() => removeKeyword(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: 4, borderRadius: "var(--r-sm)", display: "flex", alignItems: "center" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "#ef4444")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-3)")}>
+                    <Trash2 style={{ width: 14, height: 14 }} />
                   </button>
                 </div>
               ))}
             </div>
-
-            <div className="p-4 border-t border-slate-100">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  className="input flex-1 text-sm"
-                  placeholder="Add keyword…"
-                  value={newKw}
-                  onChange={(e) => setNewKw(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && addKeyword()}
-                />
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={addKeyword}
-                  disabled={!newKw.trim()}
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
+            <div style={{ padding: "16px 28px", borderTop: "1px solid var(--border-subtle)", display: "flex", gap: 8 }}>
+              <input type="text" style={{ ...inputStyle, fontSize: 13 }} placeholder="Add a keyword…" value={newKw}
+                onChange={(e) => setNewKw(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addKeyword()}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")} onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
+              <button className="btn btn-secondary btn-sm" onClick={addKeyword} disabled={!newKw.trim()} style={{ flexShrink: 0 }}>
+                <Plus style={{ width: 15, height: 15 }} />
+              </button>
             </div>
           </div>
-
           {researchError && (
-            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-              {researchError}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "var(--r)", fontSize: 13, color: "#991b1b" }}>
+              <AlertTriangle style={{ width: 15, height: 15, flexShrink: 0, marginTop: 1 }} />{researchError}
             </div>
           )}
-
-          <div className="flex gap-3">
-            <button
-              className="btn btn-ghost gap-2"
-              onClick={() => setStep(1)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Back
-            </button>
-            <button
-              className="btn btn-primary flex-1 justify-center gap-2"
-              onClick={handleResearch}
-              disabled={researching || selected.size === 0}
-            >
-              {researching ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Fetching data…
-                </>
-              ) : (
-                <>
-                  <Search className="h-4 w-4" />
-                  Run Keyword Research ({selected.size} keywords)
-                </>
-              )}
+          <div style={{ display: "flex", gap: 12 }}>
+            <button className="btn btn-ghost" onClick={() => setStep(1)}><ChevronLeft style={{ width: 16, height: 16 }} /> Back</button>
+            <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center", height: 44 }} onClick={handleResearch} disabled={researching || selected.size === 0}>
+              {researching
+                ? <><Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> Fetching Google Ads data…</>
+                : <><Search style={{ width: 16, height: 16 }} /> Run Keyword Research ({selected.size} keywords)</>}
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Step 3: Results ───────────────────────────────────────────────────── */}
+      {/* Step 3 */}
       {step === 3 && ideas.length > 0 && (
-        <div className="space-y-6">
-          {/* Top bar */}
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <button
-              className="btn btn-ghost gap-2 text-sm"
-              onClick={() => setStep(2)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Edit Keywords
-            </button>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-slate-600">Max CPC (£)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="input w-28 text-sm"
-                  placeholder="e.g. 1.50"
-                  value={maxCpc}
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => setStep(2)}><ChevronLeft style={{ width: 15, height: 15 }} /> Edit Keywords</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)", whiteSpace: "nowrap" }}>Max CPC (£)</label>
+                <input type="number" min="0" step="0.01" style={{ ...inputStyle, width: 100, fontSize: 13 }} placeholder="1.50" value={maxCpc}
                   onChange={(e) => setMaxCpc(e.target.value)}
-                />
+                  onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")} onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
               </div>
-              <button
-                className="btn btn-ghost btn-sm gap-1.5 text-sm"
-                onClick={() => exportToCsv(sortedIdeas, cpcMicros)}
-              >
-                <Download className="h-4 w-4" />
-                Export CSV
+              <button className="btn btn-secondary btn-sm" onClick={() => exportToCsv(sortedIdeas, cpcMicros)}>
+                <Download style={{ width: 14, height: 14 }} /> Export CSV
               </button>
             </div>
           </div>
 
-          {/* Summary cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <SummaryCard
-              icon={<BarChart2 className="h-4 w-4 text-indigo-500" />}
-              label="Total Monthly Searches"
-              value={fmtNum(totalMonthlySearches)}
-              sub={`${ideas.length} keywords`}
-            />
-            <SummaryCard
-              icon={<Target className="h-4 w-4 text-amber-500" />}
-              label="Avg Competition Index"
-              value={String(avgCompetitionIndex)}
-              sub="0–100 scale"
-            />
-            <SummaryCard
-              icon={<DollarSign className="h-4 w-4 text-emerald-500" />}
-              label="Avg CPC"
-              value={`£${avgCpc.toFixed(2)}`}
-              sub="avg of bid range"
-            />
-            <SummaryCard
-              icon={<Zap className="h-4 w-4 text-sky-500" />}
-              label="Est. Monthly Clicks"
-              value={fmtNum(totalEstClicks)}
-              sub={`~£${totalEstCost.toFixed(0)}/mo`}
-            />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+            {[
+              { icon: <BarChart2 style={{ width: 16, height: 16, color: "var(--accent)" }} />, label: "Total Monthly Searches", value: fmtNum(totalSearches), sub: `across ${ideas.length} keywords` },
+              { icon: <Target style={{ width: 16, height: 16, color: "#f59e0b" }} />, label: "Avg Competition", value: String(avgCompIndex), sub: "0–100 index" },
+              { icon: <DollarSign style={{ width: 16, height: 16, color: "#10b981" }} />, label: "Avg CPC", value: `£${avgCpc.toFixed(2)}`, sub: "mid-range bid estimate" },
+              { icon: <Zap style={{ width: 16, height: 16, color: "#0ea5e9" }} />, label: "Est. Monthly Clicks", value: fmtNum(totalClicks), sub: cpcMicros ? `~£${totalCost.toFixed(0)}/mo` : "enter Max CPC to estimate" },
+            ].map((m) => (
+              <div key={m.label} className="metric-card">
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>{m.icon}<span className="metric-label">{m.label}</span></div>
+                <p className="metric-value" style={{ fontSize: 22 }}>{m.value}</p>
+                <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6 }}>{m.sub}</p>
+              </div>
+            ))}
           </div>
 
-          {/* Trend chart */}
           {trendData.length > 0 && (
-            <div className="card p-5">
-              <h3 className="text-sm font-semibold text-slate-700 mb-4">
-                Aggregate Search Volume Trend
-              </h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fontSize: 11, fill: "#94a3b8" }}
-                    tickLine={false}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: "#94a3b8" }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={fmtNum}
-                  />
-                  <Tooltip
-                    formatter={(v: unknown) => [fmtNum(Number(v ?? 0)), "Searches"]}
-                    contentStyle={{
-                      fontSize: 12,
-                      borderRadius: 8,
-                      border: "1px solid #e2e8f0",
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Line
-                    type="monotone"
-                    dataKey="volume"
-                    name="Monthly Searches"
-                    stroke="#6366f1"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+            <div className="card">
+              <div className="card-header">
+                <div>
+                  <p className="card-title">Aggregate Search Volume Trend</p>
+                  <p className="card-subtitle">Combined monthly searches across all keywords</p>
+                </div>
+              </div>
+              <div className="card-body">
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={{ stroke: "#e2e8f0" }} interval="preserveStartEnd" />
+                    <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickFormatter={fmtNum} />
+                    <Tooltip formatter={(v: unknown) => [fmtNum(Number(v ?? 0)), "Searches"]} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0", boxShadow: "0 4px 8px -2px rgb(0 0 0/0.08)" }} />
+                    <Line type="monotone" dataKey="volume" name="Monthly Searches" stroke="#6366f1" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#6366f1" }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           )}
 
-          {/* Keywords table */}
-          <div className="card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+          <div className="card">
+            <div className="card-header">
+              <div>
+                <p className="card-title">Keyword Data</p>
+                <p className="card-subtitle">{sortedIdeas.length} keywords — click column headers to sort</p>
+              </div>
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100">
-                    <SortTh
-                      field="text"
-                      label="Keyword"
-                      current={sortField}
-                      dir={sortDir}
-                      onSort={handleSort}
-                      className="pl-5 pr-4 text-left"
-                    />
-                    <SortTh
-                      field="avgMonthlySearches"
-                      label="Avg Monthly"
-                      current={sortField}
-                      dir={sortDir}
-                      onSort={handleSort}
-                    />
-                    <SortTh
-                      field="competition"
-                      label="Competition"
-                      current={sortField}
-                      dir={sortDir}
-                      onSort={handleSort}
-                    />
-                    <SortTh
-                      field="competitionIndex"
-                      label="Comp. Index"
-                      current={sortField}
-                      dir={sortDir}
-                      onSort={handleSort}
-                    />
-                    <SortTh
-                      field="lowTopOfPageBidMicros"
-                      label="Low Bid"
-                      current={sortField}
-                      dir={sortDir}
-                      onSort={handleSort}
-                    />
-                    <SortTh
-                      field="highTopOfPageBidMicros"
-                      label="High Bid"
-                      current={sortField}
-                      dir={sortDir}
-                      onSort={handleSort}
-                    />
-                    <th className="px-4 py-3 text-right font-medium text-slate-500 text-xs uppercase tracking-wider whitespace-nowrap">
-                      Est. Clicks/mo
-                    </th>
-                    <th className="px-4 py-3 pr-5 text-right font-medium text-slate-500 text-xs uppercase tracking-wider whitespace-nowrap">
-                      Est. Cost/mo
-                    </th>
+                  <tr style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--bg)" }}>
+                    {[
+                      { field: "text", label: "Keyword", align: "left" as const },
+                      { field: "avgMonthlySearches", label: "Avg Monthly", align: "right" as const },
+                      { field: "competition", label: "Competition", align: "center" as const },
+                      { field: "competitionIndex", label: "Comp. Index", align: "right" as const },
+                      { field: "lowTopOfPageBidMicros", label: "Low Bid", align: "right" as const },
+                      { field: "highTopOfPageBidMicros", label: "High Bid", align: "right" as const },
+                    ].map(({ field, label, align }) => (
+                      <th key={field} style={{ padding: "12px 20px", textAlign: align, fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: sortField === field ? "var(--accent)" : "var(--text-3)", cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }} onClick={() => handleSort(field)}>
+                        {label} <span style={{ opacity: 0.6 }}>{sortField === field ? (sortDir === "desc" ? "↓" : "↑") : "↕"}</span>
+                      </th>
+                    ))}
+                    <th style={{ padding: "12px 20px", textAlign: "right", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", whiteSpace: "nowrap" }}>Est. Clicks</th>
+                    <th style={{ padding: "12px 20px", textAlign: "right", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", whiteSpace: "nowrap" }}>Est. Cost/mo</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody>
                   {sortedIdeas.map((idea, i) => {
                     const { clicks, costPounds } = estimateForecast(idea, cpcMicros);
                     return (
-                      <tr key={i} className="hover:bg-slate-50 transition-colors">
-                        <td className="pl-5 pr-4 py-3 text-slate-800 font-medium max-w-[260px]">
-                          {idea.text}
+                      <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)", transition: "background 0.1s" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+                        <td style={{ padding: "11px 20px", color: "var(--text)", fontWeight: 500, maxWidth: 280 }}>{idea.text}</td>
+                        <td style={{ padding: "11px 20px", textAlign: "right", color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>{fmtNum(idea.avgMonthlySearches)}</td>
+                        <td style={{ padding: "11px 20px", textAlign: "center" }}>
+                          <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 99, fontSize: 11, fontWeight: 600, ...competitionBadgeStyle(idea.competition) }}>{competitionLabel(idea.competition)}</span>
                         </td>
-                        <td className="px-4 py-3 text-center text-slate-700 font-tabular">
-                          {fmtNum(idea.avgMonthlySearches)}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold border ${competitionColor(
-                              idea.competition
-                            )}`}
-                          >
-                            {competitionLabel(idea.competition)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center text-slate-600 font-tabular">
-                          {idea.competitionIndex || "—"}
-                        </td>
-                        <td className="px-4 py-3 text-center text-slate-600 font-tabular">
-                          {microsToPounds(idea.lowTopOfPageBidMicros)}
-                        </td>
-                        <td className="px-4 py-3 text-center text-slate-600 font-tabular">
-                          {microsToPounds(idea.highTopOfPageBidMicros)}
-                        </td>
-                        <td className="px-4 py-3 text-right text-slate-700 font-tabular">
-                          {fmtNum(clicks)}
-                        </td>
-                        <td className="px-4 py-3 pr-5 text-right text-slate-700 font-tabular">
-                          {cpcMicros ? `£${costPounds.toFixed(2)}` : "—"}
-                        </td>
+                        <td style={{ padding: "11px 20px", textAlign: "right", color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>{idea.competitionIndex || "—"}</td>
+                        <td style={{ padding: "11px 20px", textAlign: "right", color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>{microsToPounds(idea.lowTopOfPageBidMicros)}</td>
+                        <td style={{ padding: "11px 20px", textAlign: "right", color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>{microsToPounds(idea.highTopOfPageBidMicros)}</td>
+                        <td style={{ padding: "11px 20px", textAlign: "right", color: "var(--text-2)", fontVariantNumeric: "tabular-nums" }}>{fmtNum(clicks)}</td>
+                        <td style={{ padding: "11px 20px", textAlign: "right", color: cpcMicros ? "var(--text-2)" : "var(--text-4)", fontVariantNumeric: "tabular-nums" }}>{cpcMicros ? `£${costPounds.toFixed(2)}` : "—"}</td>
                       </tr>
                     );
                   })}
@@ -808,75 +526,14 @@ export default function KeywordPlannerPage() {
       )}
 
       {step === 3 && ideas.length === 0 && (
-        <div className="card p-12 text-center">
-          <Search className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500 text-sm">No keyword data returned for these terms.</p>
-          <button className="btn btn-ghost btn-sm mt-4 gap-2" onClick={() => setStep(2)}>
-            <ChevronLeft className="h-4 w-4" />
-            Try different keywords
+        <div className="card" style={{ padding: 60, textAlign: "center" }}>
+          <Search style={{ width: 40, height: 40, color: "var(--text-4)", margin: "0 auto 16px" }} />
+          <p style={{ fontSize: 14, color: "var(--text-3)" }}>No keyword data returned for these terms.</p>
+          <button className="btn btn-ghost btn-sm" style={{ marginTop: 16 }} onClick={() => setStep(2)}>
+            <ChevronLeft style={{ width: 15, height: 15 }} /> Try different keywords
           </button>
         </div>
       )}
     </div>
-  );
-}
-
-// ─── Sub-components ────────────────────────────────────────────────────────────
-
-function SummaryCard({
-  icon,
-  label,
-  value,
-  sub,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sub: string;
-}) {
-  return (
-    <div className="card p-4">
-      <div className="flex items-center gap-2 mb-2">
-        {icon}
-        <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-          {label}
-        </span>
-      </div>
-      <p className="text-2xl font-bold text-slate-800">{value}</p>
-      <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
-    </div>
-  );
-}
-
-function SortTh({
-  field,
-  label,
-  current,
-  dir,
-  onSort,
-  className = "px-4",
-}: {
-  field: string;
-  label: string;
-  current: string;
-  dir: "asc" | "desc";
-  onSort: (f: string) => void;
-  className?: string;
-}) {
-  const active = current === field;
-  return (
-    <th
-      className={`${className} py-3 text-center font-medium text-slate-500 text-xs uppercase tracking-wider whitespace-nowrap cursor-pointer select-none hover:text-slate-700 transition-colors`}
-      onClick={() => onSort(field)}
-    >
-      <span className="inline-flex items-center gap-1 justify-center">
-        {label}
-        {active ? (
-          <span className="text-indigo-500">{dir === "desc" ? "↓" : "↑"}</span>
-        ) : (
-          <span className="text-slate-300">↕</span>
-        )}
-      </span>
-    </th>
   );
 }
