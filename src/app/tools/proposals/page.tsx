@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { FileText, Plus, Trash2, ExternalLink, Clock, Eye } from "lucide-react";
+import { FileText, Plus, Trash2, ExternalLink, Clock, Eye, Share2 } from "lucide-react";
 
 interface ProposalSummary {
   id: string;
   title: string;
   clientName: string;
   website: string;
+  shareToken: string | null;
   researchId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -99,6 +100,17 @@ export default function ProposalsPage() {
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  {p.shareToken && (
+                    <Link
+                      href={`/share/proposal/${p.shareToken}`}
+                      target="_blank"
+                      className="btn btn-ghost btn-sm"
+                      style={{ gap: 4, color: "#16a34a", fontSize: 11 }}
+                      title="Open client link"
+                    >
+                      <Share2 style={{ width: 11, height: 11 }} /> Shared
+                    </Link>
+                  )}
                   <Link href={`/tools/proposals/${p.id}`} className="btn btn-ghost btn-sm" style={{ gap: 5 }}>
                     <Eye style={{ width: 13, height: 13 }} /> View
                   </Link>

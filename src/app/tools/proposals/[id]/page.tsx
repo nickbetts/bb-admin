@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Download, Pencil, Check, X, Trash2, Loader2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Download, Pencil, Check, X, Trash2, Loader2, RefreshCw, Share2, Copy, Eye, EyeOff } from "lucide-react";
 
 interface ProposalFull {
   id: string;
@@ -11,6 +11,7 @@ interface ProposalFull {
   clientName: string;
   website: string;
   html: string;
+  shareToken: string | null;
   researchId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -32,8 +33,11 @@ export default function ProposalViewPage({ params }: Props) {
   const [savingTitle, setSavingTitle] = useState(false);
 
   const [deleting, setDeleting] = useState(false);
-
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+
+  // Share state
+  const [sharingBusy, setSharingBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -71,6 +75,32 @@ export default function ProposalViewPage({ params }: Props) {
         setEditingTitle(false);
       }
     } finally { setSavingTitle(false); }
+  }
+
+  async function handleToggleShare() {
+    if (!proposal) return;
+    setSharingBusy(true);
+    try {
+      const action = proposal.shareToken ? "revoke" : "enable";
+      const res = await fetch(`/api/tools/proposals/${id}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { shareToken: string | null };
+        setProposal((prev) => prev ? { ...prev, shareToken: data.shareToken } : prev);
+      }
+    } finally { setSharingBusy(false); }
+  }
+
+  function handleCopyShareLink() {
+    if (!proposal?.shareToken) return;
+    const link = `${window.location.origin}/share/proposal/${proposal.shareToken}`;
+    navigator.clipboard.writeText(link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
   }
 
   function handleDownload() {
@@ -156,6 +186,37 @@ export default function ProposalViewPage({ params }: Props) {
 
         <div style={{ flex: 1 }} />
 
+        {/* Share button */}
+        {proposal.shareToken ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 11, color: "var(--text-4)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              Shared
+            </span>
+            <button className="btn btn-primary btn-sm" style={{ gap: 5 }} onClick={handleCopyShareLink}>
+              {copied ? <Check style={{ width: 12, height: 12 }} /> : <Copy style={{ width: 12, height: 12 }} />}
+              {copied ? "Copied!" : "Copy Link"}
+            </button>
+            <Link
+              href={`/share/proposal/${proposal.shareToken}`}
+              target="_blank"
+              className="btn btn-ghost btn-sm"
+              style={{ gap: 5 }}
+            >
+              <Eye style={{ width: 12, height: 12 }} /> Preview
+            </Link>
+            <button className="btn btn-ghost btn-sm" style={{ gap: 5, color: "#64748b" }} disabled={sharingBusy} onClick={handleToggleShare} title="Revoke share link">
+              {sharingBusy ? <Loader2 style={{ width: 12, height: 12 }} className="animate-spin" /> : <EyeOff style={{ width: 12, height: 12 }} />}
+            </button>
+          </div>
+        ) : (
+          <button className="btn btn-secondary btn-sm" style={{ gap: 5 }} disabled={sharingBusy} onClick={handleToggleShare}>
+            {sharingBusy ? <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" /> : <Share2 style={{ width: 13, height: 13 }} />}
+            Share with Client
+          </button>
+        )}
+
+        <div style={{ width: 1, height: 20, background: "var(--border-subtle)" }} />
+
         {/* Actions */}
         {proposal.researchId && (
           <Link href="/tools/keyword-planner" className="btn btn-ghost btn-sm" style={{ gap: 5 }}>
@@ -175,6 +236,26 @@ export default function ProposalViewPage({ params }: Props) {
           Delete
         </button>
       </div>
+
+      {/* Share info banner */}
+      {proposal.shareToken && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10, padding: "8px 20px",
+          background: "#f0fdf4", borderBottom: "1px solid #bbf7d0", flexShrink: 0, flexWrap: "wrap",
+        }}>
+          <Share2 style={{ width: 13, height: 13, color: "#16a34a", flexShrink: 0 }} />
+          <span style={{ fontSize: 12, color: "#15803d", flex: 1, minWidth: 0 }}>
+            Client link:{" "}
+            <span style={{ fontFamily: "monospace", fontSize: 11, color: "#166534", wordBreak: "break-all" }}>
+              {typeof window !== "undefined" ? `${window.location.origin}/share/proposal/${proposal.shareToken}` : ""}
+            </span>
+          </span>
+          <button className="btn btn-ghost btn-sm" style={{ gap: 4, fontSize: 11 }} onClick={handleCopyShareLink}>
+            {copied ? <Check style={{ width: 11, height: 11 }} /> : <Copy style={{ width: 11, height: 11 }} />}
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+      )}
 
       {/* Proposal iframe preview */}
       {blobUrl && (

@@ -17,6 +17,7 @@ export async function GET() {
       title: true,
       clientName: true,
       website: true,
+      shareToken: true,
       researchId: true,
       createdAt: true,
       updatedAt: true,

@@ -635,6 +635,23 @@ Use specific, actionable insights from the keyword data. Write in British Englis
 
     // ── Save proposal to database ───────────────────────────────────────────
     const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
+    // Build structured data for the interactive viewer
+    const proposalDataJson = JSON.stringify({
+      clientName,
+      website,
+      brief,
+      proposalData,
+      stats,
+      services: services ?? [],
+      timeline: timeline ?? [],
+      ppc: { maxCpc: maxCpcVal, monthlyBudget: budgetVal, conversionRate: convRateVal },
+      topKeywords: [...ideas]
+        .sort((a, b) => b.avgMonthlySearches - a.avgMonthlySearches)
+        .slice(0, 30),
+      adGroups,
+    });
+
     const savedProposal = await prisma.proposal.create({
       data: {
         userId: session.user.id,
@@ -644,6 +661,7 @@ Use specific, actionable insights from the keyword data. Write in British Englis
         html,
         servicesJson: JSON.stringify(services ?? []),
         timelineJson: JSON.stringify(timeline ?? []),
+        proposalDataJson,
         researchId: researchId ?? null,
       },
     });
