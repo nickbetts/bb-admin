@@ -16,7 +16,7 @@ import {
   ScanSearch,
   ShieldCheck,
   LayoutTemplate,
-  TrendingUp,
+  Sparkles,
   Tag,
 } from "lucide-react";
 
@@ -62,8 +62,8 @@ const toolsNavItems: NavItem[] = [
   },
   {
     href: "/tools/keyword-planner",
-    label: "Keyword Planner",
-    icon: <TrendingUp className="h-4 w-4" />,
+    label: "Proposal Generator",
+    icon: <Sparkles className="h-4 w-4" />,
   },
   {
     href: "/tools/proposals",

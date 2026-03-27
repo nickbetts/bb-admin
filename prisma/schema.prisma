@@ -158,10 +158,11 @@ model KeywordPlannerResearch {
   maxCpc          String   @default("")
   monthlyBudget   String   @default("")
   conversionRate  String   @default("3")
-  websiteContext  String?  // Crawled website content for AI context
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  proposals       Proposal[]
+  websiteContext   String?  // Crawled website content for AI context
+  proposedServices String   @default("[]") // JSON: string[] — pre-agreed service names
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  proposals        Proposal[]
 }
 
 model Proposal {

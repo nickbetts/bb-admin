@@ -22,6 +22,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       adGroups: JSON.parse(research.adGroups),
       selectedKws: JSON.parse(research.selectedKws),
       ideas: JSON.parse(research.ideas),
+      proposedServices: JSON.parse(research.proposedServices ?? "[]"),
     },
   });
 }
@@ -38,7 +39,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   const body = await request.json();
-  const { title, website, brief, location, adGroups, selectedKws, ideas, maxCpc, monthlyBudget, conversionRate, websiteContext } = body;
+  const { title, website, brief, location, adGroups, selectedKws, ideas, maxCpc, monthlyBudget, conversionRate, websiteContext, proposedServices } = body;
 
   const research = await prisma.keywordPlannerResearch.update({
     where: { id },
@@ -54,6 +55,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       ...(monthlyBudget !== undefined && { monthlyBudget }),
       ...(conversionRate !== undefined && { conversionRate }),
       ...(websiteContext !== undefined && { websiteContext }),
+      ...(proposedServices !== undefined && { proposedServices: JSON.stringify(proposedServices) }),
     },
   });
 

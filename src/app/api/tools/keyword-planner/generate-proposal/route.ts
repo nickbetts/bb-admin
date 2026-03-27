@@ -586,9 +586,10 @@ export async function POST(request: NextRequest) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { researchId, clientName } = body as {
+    const { researchId, clientName, proposedServices } = body as {
       researchId?: string;
       clientName: string;
+      proposedServices?: string[];
       // Inline data (when research hasn't been saved yet)
       inlineData?: {
         website: string;
@@ -672,7 +673,8 @@ export async function POST(request: NextRequest) {
     // ── Compute brief type from brief text ─────────────────────────────────
     const briefLower = brief.toLowerCase();
     const hasSeoInBrief = /\b(seo|content\s+marketing|organic|blog)\b/.test(briefLower);
-    const computedBriefType: "PAID_ONLY" | "FULL_SERVICE" = hasSeoInBrief ? "FULL_SERVICE" : "PAID_ONLY";
+    const hasSeoInServices = (proposedServices ?? []).some(s => /\b(seo|content|organic|growth)\b/i.test(s));
+    const computedBriefType: "PAID_ONLY" | "FULL_SERVICE" = hasSeoInServices || hasSeoInBrief ? "FULL_SERVICE" : "PAID_ONLY";
 
     // ── Compute stats ───────────────────────────────────────────────────────
     const totalSearchVolume = ideas.reduce((s, i) => s + i.avgMonthlySearches, 0);
@@ -763,6 +765,36 @@ export async function POST(request: NextRequest) {
       } catch { /* ignore malformed pricing JSON */ }
     }
 
+    // ── Build selected services context ──────────────────────────────────────
+    let selectedServicesContext = "";
+    if (proposedServices && proposedServices.length > 0 && pricingStrategySetting?.value) {
+      try {
+        const ps2 = JSON.parse(pricingStrategySetting.value) as {
+          singleServices?: Array<{ name: string; monthlyFee: string }>;
+          focusPackages?: Array<{ name: string; monthlyFee: string }>;
+          retainerPackages?: Array<{ name: string; priceRange: string }>;
+          otherServices?: Array<{ name: string; monthlyFee: string }>;
+        };
+        const priceMap = new Map<string, string>();
+        ps2.singleServices?.forEach(s => priceMap.set(s.name, `${s.monthlyFee}/mo`));
+        ps2.focusPackages?.forEach(p => priceMap.set(p.name, `${p.monthlyFee}/mo`));
+        ps2.retainerPackages?.forEach(p => priceMap.set(p.name, `${p.priceRange}/mo`));
+        ps2.otherServices?.forEach(s => priceMap.set(s.name, s.monthlyFee));
+        const serviceLines = proposedServices.map(name => {
+          const price = priceMap.get(name);
+          return price ? `- ${name}: ${price}` : `- ${name}`;
+        });
+        selectedServicesContext = `\nPre-agreed services (the "services" array MUST contain exactly these — use their exact names and prices, no additions or removals):\n${serviceLines.join("\n")}\n`;
+      } catch { /* ignore */ }
+    }
+
+    const servicesNameInstruction = selectedServicesContext
+      ? "EXACT name copied from the pre-agreed services list above (do not paraphrase or rename)"
+      : "The most appropriate service or package name from the agency pricing reference above — name it as it appears in the pricing (e.g. 'SEO Focus', 'Growth Core', 'Google PPC')";
+    const servicesPriceInstruction = selectedServicesContext
+      ? "EXACT price copied from the pre-agreed services list above"
+      : "The price for this service/package exactly as listed in the pricing reference";
+
     // ── Call OpenAI ─────────────────────────────────────────────────────────
     const topGroupSummary = [...new Set(ideas.map((i) => i.adGroup))]
       .slice(0, 8)
@@ -791,7 +823,7 @@ Keyword Research:
 - Estimated Monthly Budget: £${budgetVal.toFixed(0)}
 - Estimated Conversion Rate: ${convRateVal}%
 ${benchmarksContext}
-${hasHoursContext ? `IMPORTANT: Use the task benchmarks above to inform realistic timelines and deliverable throughput.\n` : ""}${pricingContext}
+${hasHoursContext ? `IMPORTANT: Use the task benchmarks above to inform realistic timelines and deliverable throughput.\n` : ""}${pricingContext}${selectedServicesContext}
 --- GENERATE PROPOSAL JSON ---
 
 {
@@ -858,8 +890,8 @@ ${hasHoursContext ? `IMPORTANT: Use the task benchmarks above to inform realisti
   ],
   "services": [
     {
-      "name": "The most appropriate service or package name from the agency pricing reference above — name it as it appears in the pricing (e.g. 'SEO Focus', 'Growth Core', 'Google PPC')",
-      "price": "The price for this service/package exactly as listed in the pricing reference",
+      "name": "${servicesNameInstruction}",
+      "price": "${servicesPriceInstruction}",
       "description": "One concise sentence on what this specific service will deliver for ${clientName}"
     }
   ],
@@ -880,6 +912,7 @@ ${hasHoursContext ? `IMPORTANT: Use the task benchmarks above to inform realisti
 3. HONEST POSITIVES: Back every positive with specific evidence. Do NOT invent.
 4. EARNED GAPS: Only list gaps the proposed services genuinely close. Do not inflate the gap list.
 5. USE THE CONTEXT: If websiteContext includes a CAMPAIGN STRATEGY ANALYSIS section, use those insights throughout — especially for positives, gaps, and clusters.
+6. PRE-AGREED SERVICES: If pre-agreed services are listed above, the "services" array MUST contain exactly those services — use exact names and prices. Output one object per service, in the same order.
 
 Write in British English throughout.`;
 
@@ -900,6 +933,8 @@ Write in British English throughout.`;
     const proposalData = JSON.parse(
       completion.choices[0].message.content ?? "{}"
     ) as ProposalData;
+    const services = proposalData.services ?? [];
+    const timeline = proposalData.timeline ?? [];
 
     // ── Generate HTML ───────────────────────────────────────────────────────
     const html = generateProposalHTML({

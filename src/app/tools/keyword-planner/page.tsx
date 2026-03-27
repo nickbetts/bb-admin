@@ -55,6 +55,15 @@ interface SavedResearchFull extends SavedResearchSummary {
   monthlyBudget: string;
   conversionRate: string;
   websiteContext?: string;
+  proposedServices?: string[];
+}
+
+interface PricingStrategy {
+  notes?: string;
+  singleServices?: Array<{ name: string; monthlyFee: string; notes?: string }>;
+  focusPackages?: Array<{ name: string; monthlyFee: string; hoursPerMonth: number; includes: string[] }>;
+  retainerPackages?: Array<{ name: string; priceRange: string; description: string; includes: string[]; quarterlyAccelerator: string[] }>;
+  otherServices?: Array<{ name: string; monthlyFee: string; notes?: string }>;
 }
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -408,6 +417,10 @@ export default function KeywordPlannerPage() {
   const [proposalClientName, setProposalClientName] = useState("");
   const [generatedProposalId, setGeneratedProposalId] = useState<string | null>(null);
 
+  // Services selection
+  const [pricingStrategy, setPricingStrategy] = useState<PricingStrategy | null>(null);
+  const [proposedServices, setProposedServices] = useState<string[]>([]);
+
   const loadSavedList = useCallback(async () => {
     try {
       const res = await fetch("/api/tools/keyword-planner/saved");
@@ -419,6 +432,21 @@ export default function KeywordPlannerPage() {
   }, []);
 
   useEffect(() => { loadSavedList(); }, [loadSavedList]);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then(r => r.json())
+      .then((d: Record<string, string>) => {
+        if (d.pricingStrategy) {
+          try { setPricingStrategy(JSON.parse(d.pricingStrategy) as PricingStrategy); } catch { /* ignore */ }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  function toggleService(name: string) {
+    setProposedServices(prev => prev.includes(name) ? prev.filter(s => s !== name) : [...prev, name]);
+  }
 
   async function handleSaveResearch() {
     if (!researchTitle.trim()) return;
@@ -432,6 +460,7 @@ export default function KeywordPlannerPage() {
         ideas,
         maxCpc, monthlyBudget, conversionRate,
         websiteContext,
+        proposedServices,
       };
       if (currentResearchId) {
         await fetch(`/api/tools/keyword-planner/saved/${currentResearchId}`, {
@@ -472,6 +501,7 @@ export default function KeywordPlannerPage() {
       setCpcAutoFilled(false);
       setCrAutoFilled(false);
       setWebsiteContext(research.websiteContext ?? "");
+      setProposedServices(research.proposedServices ?? []);
       setCurrentResearchId(research.id);
       setResearchTitle(research.title);
       setStep(3);
@@ -503,6 +533,7 @@ export default function KeywordPlannerPage() {
     try {
       const payload: Record<string, unknown> = {
         clientName: proposalClientName.trim(),
+        proposedServices,
       };
       if (currentResearchId) {
         payload.researchId = currentResearchId;
@@ -760,11 +791,11 @@ export default function KeywordPlannerPage() {
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, #6366f1, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <TrendingUp style={{ width: 20, height: 20, color: "white" }} />
+            <FileText style={{ width: 20, height: 20, color: "white" }} />
           </div>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Keyword Planner</h1>
-            <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>AI-powered keyword research with ad group structure, using live Google Ads data</p>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Proposal Generator</h1>
+            <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>AI-powered proposal generation with keyword research, pricing strategy, and competitor analysis</p>
           </div>
         </div>
       </div>
@@ -887,6 +918,80 @@ export default function KeywordPlannerPage() {
                 onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
                 onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
             </div>
+
+            {/* Services to Propose */}
+            <div>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 4 }}>Services to propose</label>
+              <p style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 12 }}>Select the services to recommend — the AI will use these exact packages in the proposal.</p>
+              {!pricingStrategy ? (
+                <p style={{ fontSize: 13, color: "var(--text-3)" }}>
+                  No pricing configured. <Link href="/tools/pricing" style={{ color: "var(--accent)", textDecoration: "underline" }}>Set up pricing →</Link>
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {((pricingStrategy.focusPackages?.length ?? 0) > 0 || (pricingStrategy.retainerPackages?.length ?? 0) > 0) && (
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Packages</p>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        {[
+                          ...(pricingStrategy.focusPackages ?? []).map(p => ({ name: p.name, price: `${p.monthlyFee}/mo` })),
+                          ...(pricingStrategy.retainerPackages ?? []).map(p => ({ name: p.name, price: `${p.priceRange}/mo` })),
+                        ].map(pkg => {
+                          const selected = proposedServices.includes(pkg.name);
+                          return (
+                            <button key={pkg.name} type="button" onClick={() => toggleService(pkg.name)}
+                              style={{ padding: "10px 14px", borderRadius: "var(--r)", border: `1.5px solid ${selected ? "var(--accent)" : "var(--border)"}`, background: selected ? "var(--accent-bg)" : "var(--surface)", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <div style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, border: `1.5px solid ${selected ? "var(--accent)" : "var(--border)"}`, background: selected ? "var(--accent)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  {selected && <Check style={{ width: 10, height: 10, color: "white" }} />}
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{pkg.name}</p>
+                                  <p style={{ fontSize: 11, color: selected ? "var(--accent-text)" : "var(--text-3)" }}>{pkg.price}</p>
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {(pricingStrategy.singleServices?.length ?? 0) > 0 && (
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Single-Channel Services</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {pricingStrategy.singleServices!.map(s => {
+                          const selected = proposedServices.includes(s.name);
+                          return (
+                            <button key={s.name} type="button" onClick={() => toggleService(s.name)}
+                              style={{ padding: "5px 12px", borderRadius: 99, border: `1.5px solid ${selected ? "var(--accent)" : "var(--border)"}`, background: selected ? "var(--accent-bg)" : "var(--surface)", fontSize: 12, fontWeight: 500, color: selected ? "var(--accent-text)" : "var(--text-2)", cursor: "pointer", transition: "all 0.15s" }}>
+                              {s.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {(pricingStrategy.otherServices?.length ?? 0) > 0 && (
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Other Services</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {pricingStrategy.otherServices!.map(s => {
+                          const selected = proposedServices.includes(s.name);
+                          return (
+                            <button key={s.name} type="button" onClick={() => toggleService(s.name)}
+                              style={{ padding: "5px 12px", borderRadius: 99, border: `1.5px solid ${selected ? "var(--accent)" : "var(--border)"}`, background: selected ? "var(--accent-bg)" : "var(--surface)", fontSize: 12, fontWeight: 500, color: selected ? "var(--accent-text)" : "var(--text-2)", cursor: "pointer", transition: "all 0.15s" }}>
+                              {s.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {suggestError && (
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "var(--r)", fontSize: 13, color: "#991b1b" }}>
                 <AlertTriangle style={{ width: 15, height: 15, flexShrink: 0, marginTop: 1 }} />{suggestError}
