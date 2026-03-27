@@ -30,6 +30,119 @@ function extractSocialProfiles(html: string): string[] {
   return profiles.slice(0, 10);
 }
 
+// ─── Server-side cleanup: strip placeholder "not found" values ────────────────
+// The AI sometimes writes "not found in research data" as a value instead of
+// omitting the field. This pass removes those lines and any orphaned parent keys.
+
+function sanitizeNotFound(text: string): string {
+  const NOT_FOUND = /not found(?: in research data)?|insert if applicable/i;
+
+  const lines = text.split("\n");
+
+  // Pass 1: remove lines whose value is a "not found" placeholder
+  const pass1 = lines.filter((line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("#") || trimmed === "") return true; // keep comments/blanks
+    // List items: "  - not found..."
+    if (/^-\s/.test(trimmed) && NOT_FOUND.test(trimmed)) return false;
+    // Key-value: "field_name: not found..."
+    const colonIdx = trimmed.indexOf(":");
+    if (colonIdx > 0) {
+      const val = trimmed.slice(colonIdx + 1).trim();
+      if (NOT_FOUND.test(val)) return false;
+    }
+    return true;
+  });
+
+  // Pass 2: remove orphaned YAML parent keys that now have no children
+  const result: string[] = [];
+  for (let i = 0; i < pass1.length; i++) {
+    const line = pass1[i];
+    const trimmed = line.trim();
+    if (trimmed.startsWith("#") || trimmed === "") {
+      result.push(line);
+      continue;
+    }
+    // A dangling parent is a line like "key:" with nothing after the colon
+    const isDangling = /^(\s*)[\w_]+\s*:\s*$/.test(line);
+    if (isDangling) {
+      const thisIndent = line.search(/\S/);
+      let hasChildren = false;
+      for (let j = i + 1; j < pass1.length; j++) {
+        const next = pass1[j];
+        if (next.trim() === "" || next.trim().startsWith("#")) continue;
+        if (next.search(/\S/) > thisIndent) { hasChildren = true; break; }
+        break;
+      }
+      if (!hasChildren) continue; // drop the orphaned parent
+    }
+    result.push(line);
+  }
+
+  return result.join("\n");
+}
+
+// ─── Fetch publicly accessible auxiliary data (sitemap, robots.txt) ────────────
+// These endpoints typically work even when the homepage is Cloudflare-blocked.
+// They give us real internal URLs and crawl priority signals.
+
+async function fetchAuxiliaryData(baseUrl: string): Promise<string> {
+  const parts: string[] = [];
+  const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+  const tryFetch = async (url: string, label: string, maxBytes = 60_000): Promise<void> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8_000);
+    try {
+      const res = await fetch(url, {
+        signal: controller.signal,
+        headers: { "User-Agent": UA, Accept: "text/html,text/xml,application/xml,text/plain,*/*" },
+        redirect: "follow",
+      });
+      clearTimeout(timer);
+      if (res.ok) {
+        const text = (await res.text()).slice(0, maxBytes);
+        parts.push(`=== ${label} ===\n${text}`);
+      }
+    } catch {
+      clearTimeout(timer);
+    }
+  };
+
+  await Promise.allSettled([
+    tryFetch(`${baseUrl}/sitemap.xml`, "SITEMAP.XML"),
+    tryFetch(`${baseUrl}/sitemap_index.xml`, "SITEMAP_INDEX.XML"),
+    tryFetch(`${baseUrl}/robots.txt`, "ROBOTS.TXT"),
+  ]);
+
+  return parts.join("\n\n");
+}
+
+// ─── Authority / charity register search (always runs for charity sector) ──────
+// Targets the Charity Commission register, Companies House, and other authoritative
+// public sources to fill registration details the site itself may not make obvious.
+
+async function searchAuthorityRegisters(openai: OpenAI, url: string): Promise<string | null> {
+  try {
+    const domain = new URL(url).hostname.replace(/^www\./, "");
+    const result = await openai.responses.create({
+      model: "gpt-4o-search-preview",
+      tools: [{ type: "web_search_preview" as const }],
+      input: `Look up the UK charity at ${url} (domain: ${domain}) on authoritative public registers. Specifically:
+1. Search register-of-charities.charitycommission.gov.uk for the charity — find its registered charity number, registered legal name, registered address, date of registration, charitable objects, and current income/expenditure figures.
+2. Search find-and-update.company-information.service.gov.uk (Companies House) for any associated company number.
+3. Find the names of current trustees, board chair, CEO or executive director.
+4. Find whether they are registered with the Fundraising Regulator (fundraisingregulator.org.uk).
+5. Find their registered office address and main phone number.
+6. Find which countries they operate in from any overview sources.
+Provide exact numbers, names, and URLs from the registers — not summaries.`,
+    });
+    return result.output_text;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Web search fallback (used when site blocks direct crawl) ─────────────────
 // Runs three targeted searches in parallel for maximum coverage.
 
@@ -37,11 +150,11 @@ async function webSearchForSite(openai: OpenAI, url: string, sector: string): Pr
   const domain = new URL(url).hostname.replace(/^www\./, "");
 
   const [identityResult, programmesResult, socialResult, pagesResult] = await Promise.allSettled([
-    // Search 1: Legal identity, registration, leadership, founding
+    // Search 1: Legal identity — additional targeted sources beyond the authority search
     openai.responses.create({
       model: "gpt-4o-search-preview",
       tools: [{ type: "web_search_preview" as const }],
-      input: `Research ${url} and "${domain}". Find the following and provide specific verified details: full legal/registered organisation name, charity registration number (e.g. Charity Commission number), company number, regulator, tax status, registration URL, year founded, founder names, headquarters city and country, mission statement (exact wording if available), vision statement, stated values, current chair/trustees, executive director or CEO, any about or governance pages. Check the Charity Commission website and official sources.`,
+      input: `Research the ${sector} organisation at ${url} (domain: ${domain}). Find: the full legal organisation name, year founded, founder names, mission statement (exact wording), vision statement, stated values, headquarters city and country, about page URL, governance page URL. Also search the charity's own website for: privacy policy URL, terms and conditions URL, contact page URL, cookie policy URL, complaints policy URL, safeguarding page URL. Look at the footer and header navigation for these links.`,
     }),
 
     // Search 2: Programmes, beneficiaries, geography, impact statistics, campaigns
@@ -186,6 +299,17 @@ export async function POST(request: NextRequest) {
       // Fall through — will use web search fallback below
     }
 
+    // ── Fetch auxiliary data + always-run authority search in parallel with crawl
+    const [auxiliaryDataResult, authoritySearchResult] = await Promise.allSettled([
+      fetchAuxiliaryData(normalizedWebsite),
+      template.sector.toLowerCase().includes("charit") || template.sector.toLowerCase().includes("nonprofit") || template.sector.toLowerCase().includes("non-profit")
+        ? searchAuthorityRegisters(openai, normalizedWebsite)
+        : Promise.resolve(null),
+    ]);
+
+    const auxiliaryData = auxiliaryDataResult.status === "fulfilled" ? auxiliaryDataResult.value : "";
+    const authorityData = authoritySearchResult.status === "fulfilled" ? (authoritySearchResult.value ?? "") : "";
+
     // ── Web search fallback when site blocks crawlers ──────────────────────
     let webSearchData: string | null = null;
     const crawlWasBlocked = crawl.homepageError && /^HTTP (4|5)\d\d/.test(crawl.homepageError);
@@ -235,9 +359,16 @@ export async function POST(request: NextRequest) {
       : "\nNo social media profiles found on homepage.";
 
     // Build data section: prefer web search results over blocked crawl
+    const authorityBlock = authorityData
+      ? `\n=== CHARITY REGISTER & AUTHORITY DATA (Charity Commission, Companies House) ===\n${authorityData}\n`
+      : "";
+    const auxiliaryBlock = auxiliaryData
+      ? `\n=== SITEMAP / ROBOTS.TXT (real internal URLs) ===\n${auxiliaryData}\n`
+      : "";
+
     const dataSection = webSearchData
-      ? `--- WEB SEARCH RESEARCH DATA ---\n(Direct crawl was blocked; the following was gathered via web search)\n${webSearchData}\n${socialData}\n--- END WEB SEARCH DATA ---`
-      : `--- CRAWLED WEBSITE DATA ---\n${crawlData}\n${socialData}\n${crawlBlockedNote}--- END CRAWLED DATA ---`;
+      ? `--- WEB SEARCH RESEARCH DATA ---\n(Direct crawl was blocked; the following was gathered via web search)\n${webSearchData}\n${socialData}${authorityBlock}${auxiliaryBlock}\n--- END WEB SEARCH DATA ---`
+      : `--- CRAWLED WEBSITE DATA ---\n${crawlData}\n${socialData}${authorityBlock}${auxiliaryBlock}\n${crawlBlockedNote}--- END CRAWLED DATA ---`;
 
     const prompt = `You are an expert in AI search optimisation, LLM indexing, and llm.txt files. Your task is to generate a complete, accurate llm.txt file for the website below.
 
@@ -280,6 +411,9 @@ Output the complete filled-in llm.txt followed by the ## DATA GAPS block. No pre
     });
 
     let output = completion.choices[0].message.content ?? "";
+
+    // ── Server-side sanitize: strip any "not found" placeholders the AI left in
+    output = sanitizeNotFound(output);
 
     // ── Post-generation URL verification: strip confirmed 404 links ────────
     let deadUrlCount = 0;
