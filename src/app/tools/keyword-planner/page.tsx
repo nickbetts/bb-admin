@@ -547,14 +547,6 @@ export default function KeywordPlannerPage() {
       const data = await res.json() as { html?: string; filename?: string; error?: string; proposalId?: string };
       if (!res.ok) throw new Error(data.error ?? "Request failed");
       if (typeof data.html !== "string" || !data.html) throw new Error("Invalid response from server");
-      // Trigger download
-      const blob = new Blob([data.html], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = typeof data.filename === "string" ? data.filename : "proposal.html";
-      a.click();
-      URL.revokeObjectURL(url);
       // Store proposalId so user can navigate to the saved proposal
       if (data.proposalId) setGeneratedProposalId(data.proposalId);
     } catch (err) {
@@ -1630,7 +1622,7 @@ export default function KeywordPlannerPage() {
               {generatedProposalId && !generatingProposal && (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "var(--r)", fontSize: 13, color: "#15803d" }}>
                   <Check style={{ width: 15, height: 15, flexShrink: 0 }} />
-                  <span style={{ flex: 1 }}>Proposal downloaded and saved!</span>
+                  <span style={{ flex: 1 }}>Proposal created and saved!</span>
                   <Link href={`/tools/proposals/${generatedProposalId}`} className="btn btn-primary btn-sm" style={{ gap: 5 }}
                     onClick={() => setShowProposalModal(false)}>
                     <Eye style={{ width: 12, height: 12 }} /> View Proposal
