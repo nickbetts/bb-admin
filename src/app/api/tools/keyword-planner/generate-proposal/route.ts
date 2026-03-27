@@ -60,12 +60,18 @@ interface ProposalData {
   };
   whereYouAreNow: {
     summary: string;
+    positives: Array<{ title: string; description: string }>;
     gaps: ProposalGap[];
   };
   keywordClusters: KeywordCluster[];
   contentCluster: {
     pillarPage: { title: string; description: string };
     articles: ContentArticle[];
+  };
+  whyUs: Array<{ stat: string; title: string; description: string }>;
+  cta: {
+    headline: string;
+    body: string;
   };
 }
 
@@ -104,8 +110,13 @@ function generateProposalHTML(params: {
     estimatedClicks: number;
     estimatedConversions: number;
   };
+  ppc: {
+    maxCpc: number;
+    monthlyBudget: number;
+    conversionRate: number;
+  };
 }): string {
-  const { clientName, website, services, timeline, ideas, adGroups, proposalData, stats } = params;
+  const { clientName, website, services, timeline, ideas, adGroups, proposalData, stats, ppc } = params;
   const pd = proposalData;
 
   const topKeywords = [...ideas]
@@ -142,13 +153,41 @@ function generateProposalHTML(params: {
   const gapCards = (pd.whereYouAreNow?.gaps ?? [])
     .map(
       (gap) => `
-      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;flex:1;min-width:200px">
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;flex:1;min-width:200px;border-left:4px solid #ef4444">
         <div style="width:32px;height:32px;border-radius:8px;background:#fee2e2;display:flex;align-items:center;justify-content:center;margin-bottom:12px">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         </div>
         <h3 style="font-size:15px;font-weight:700;color:#1e293b;margin:0 0 8px">${gap.title}</h3>
         <p style="font-size:13px;color:#475569;line-height:1.6;margin:0 0 8px">${gap.description}</p>
         <p style="font-size:12px;color:#ef4444;font-weight:600;margin:0">Impact: ${gap.impact}</p>
+      </div>`
+    )
+    .join("");
+
+  const positiveCards = (pd.whereYouAreNow?.positives ?? [])
+    .map(
+      (pos) => `
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px;flex:1;min-width:200px;border-left:4px solid #22c55e">
+        <div style="width:32px;height:32px;border-radius:8px;background:#dcfce7;display:flex;align-items:center;justify-content:center;margin-bottom:12px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h3 style="font-size:15px;font-weight:700;color:#1e293b;margin:0 0 8px">${pos.title}</h3>
+        <p style="font-size:13px;color:#475569;line-height:1.6;margin:0">${pos.description}</p>
+      </div>`
+    )
+    .join("");
+
+  const whyUsCards = (pd.whyUs ?? [
+    { stat: "10+", title: "Years of experience", description: "Deep expertise in performance marketing across every major digital channel." },
+    { stat: "£2M+", title: "Ad spend managed", description: "Proven track record delivering results with budgets of all sizes." },
+    { stat: "3.2x", title: "Average ROAS", description: "Our clients consistently outperform industry benchmarks on return on ad spend." },
+  ])
+    .map(
+      (item) => `
+      <div style="text-align:center;padding:32px 24px">
+        <p style="font-size:48px;font-weight:900;color:#ffffff;line-height:1;margin:0 0 8px">${item.stat}</p>
+        <p style="font-size:15px;font-weight:700;color:#c7d2fe;margin:0 0 10px">${item.title}</p>
+        <p style="font-size:13px;color:#a5b4fc;line-height:1.6;margin:0;max-width:220px;margin-inline:auto">${item.description}</p>
       </div>`
     )
     .join("");
@@ -214,6 +253,107 @@ function generateProposalHTML(params: {
     }
   })();
 
+  // ── Interactive PPC Forecaster (for downloaded HTML) ──────────────────────
+  const ppcMaxCpc = ppc.maxCpc > 0 ? ppc.maxCpc : 1.5;
+  const ppcBudget = ppc.monthlyBudget > 0 ? ppc.monthlyBudget : 1500;
+  const ppcConvRate = ppc.conversionRate > 0 ? ppc.conversionRate : 3;
+
+  const ppcForecastSection = `
+  <!-- ── PPC Forecaster ── -->
+  <section id="ppc-forecaster" style="padding:64px 0">
+    <div class="container">
+      <p class="section-label">PPC Forecaster</p>
+      <h2>Interactive PPC Forecast</h2>
+      <p style="font-size:16px;color:#475569;margin-bottom:40px;max-width:680px;line-height:1.7">Use the sliders to model different scenarios. Adjust your budget, CPC, and conversion rate to see projected performance.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px">
+        <div style="background:#f8fafc;border-radius:16px;padding:28px;border:1px solid #e2e8f0">
+          <h3 style="font-size:15px;font-weight:700;color:#1e293b;margin:0 0 24px">Adjust Inputs</h3>
+          <div style="margin-bottom:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <label style="font-size:13px;font-weight:600;color:#475569">Average CPC</label>
+              <span id="pfc-cpc-val" style="font-size:14px;font-weight:700;color:#6366f1;background:#ede9fe;padding:3px 10px;border-radius:99px">\u00a3${ppcMaxCpc.toFixed(2)}</span>
+            </div>
+            <input type="range" id="pfc-cpc" min="0.10" max="15" step="0.10" value="${ppcMaxCpc}">
+            <div style="display:flex;justify-content:space-between;margin-top:4px"><span style="font-size:10px;color:#94a3b8">\u00a30.10</span><span style="font-size:10px;color:#94a3b8">\u00a315.00</span></div>
+          </div>
+          <div style="margin-bottom:24px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <label style="font-size:13px;font-weight:600;color:#475569">Monthly Budget</label>
+              <span id="pfc-budget-val" style="font-size:14px;font-weight:700;color:#6366f1;background:#ede9fe;padding:3px 10px;border-radius:99px">\u00a3${ppcBudget.toLocaleString("en-GB")}</span>
+            </div>
+            <input type="range" id="pfc-budget" min="100" max="10000" step="100" value="${ppcBudget}">
+            <div style="display:flex;justify-content:space-between;margin-top:4px"><span style="font-size:10px;color:#94a3b8">\u00a3100</span><span style="font-size:10px;color:#94a3b8">\u00a310,000</span></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <label style="font-size:13px;font-weight:600;color:#475569">Conversion Rate</label>
+              <span id="pfc-conv-val" style="font-size:14px;font-weight:700;color:#6366f1;background:#ede9fe;padding:3px 10px;border-radius:99px">${ppcConvRate}%</span>
+            </div>
+            <input type="range" id="pfc-conv" min="0.5" max="15" step="0.5" value="${ppcConvRate}">
+            <div style="display:flex;justify-content:space-between;margin-top:4px"><span style="font-size:10px;color:#94a3b8">0.5%</span><span style="font-size:10px;color:#94a3b8">15%</span></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="background:linear-gradient(135deg,#6366f1,#7c3aed);border-radius:16px;padding:24px;color:#fff">
+            <p style="font-size:12px;font-weight:700;color:#c4b5fd;margin:0 0 4px;letter-spacing:.06em;text-transform:uppercase">Est. Monthly Clicks</p>
+            <p id="pfc-clicks" style="font-size:40px;font-weight:900;margin:0;line-height:1">\u2014</p>
+          </div>
+          <div style="background:#f0fdf4;border-radius:16px;padding:24px;border:1px solid #bbf7d0">
+            <p style="font-size:12px;font-weight:700;color:#16a34a;margin:0 0 4px;letter-spacing:.06em;text-transform:uppercase">Est. Conversions/Month</p>
+            <p id="pfc-convs" style="font-size:40px;font-weight:900;color:#15803d;margin:0;line-height:1">\u2014</p>
+          </div>
+          <div style="background:#fff7ed;border-radius:16px;padding:24px;border:1px solid #fed7aa">
+            <p style="font-size:12px;font-weight:700;color:#ea580c;margin:0 0 4px;letter-spacing:.06em;text-transform:uppercase">Cost Per Conversion</p>
+            <p id="pfc-cpa" style="font-size:40px;font-weight:900;color:#c2410c;margin:0;line-height:1">\u2014</p>
+          </div>
+        </div>
+      </div>
+      <div style="background:#f8fafc;border-radius:16px;padding:28px;border:1px solid #e2e8f0">
+        <h3 style="font-size:14px;font-weight:700;color:#1e293b;margin:0 0 16px">6-Month Performance Ramp</h3>
+        <div id="pfc-chart" style="display:flex;align-items:flex-end;gap:6px;height:140px;padding:0 4px"></div>
+        <p style="font-size:12px;color:#94a3b8;margin-top:12px;text-align:center">Campaigns typically ramp up over 6 months as Quality Scores and ad relevancy improve.</p>
+      </div>
+    </div>
+  </section>`;
+
+  const interactiveScript = `<script>
+(function(){
+  function fmtN(n){if(n>=1000000)return(n/1000000).toFixed(1)+'M';if(n>=1000)return(n/1000).toFixed(1)+'K';return String(Math.round(n));}
+  function fmtC(n){return'\u00a3'+Math.round(n).toLocaleString('en-GB');}
+  var ms=['M1','M2','M3','M4','M5','M6'];
+  var cpcEl=document.getElementById('pfc-cpc'),budgetEl=document.getElementById('pfc-budget'),convEl=document.getElementById('pfc-conv');
+  var cpcV=document.getElementById('pfc-cpc-val'),budgetV=document.getElementById('pfc-budget-val'),convV=document.getElementById('pfc-conv-val');
+  var clicksEl=document.getElementById('pfc-clicks'),convsEl=document.getElementById('pfc-convs'),cpaEl=document.getElementById('pfc-cpa');
+  var chartEl=document.getElementById('pfc-chart');
+  if(!cpcEl||!chartEl)return;
+  function update(){
+    var cpc=parseFloat(cpcEl.value),budget=parseFloat(budgetEl.value),conv=parseFloat(convEl.value);
+    cpcV.textContent='\u00a3'+cpc.toFixed(2);
+    budgetV.textContent=fmtC(budget);
+    convV.textContent=conv+'%';
+    var clicks=cpc>0?Math.round(budget/cpc):0;
+    var convs=Math.round(clicks*conv/100);
+    clicksEl.textContent=fmtN(clicks);
+    convsEl.textContent=String(convs);
+    cpaEl.textContent=convs>0?fmtC(Math.round(budget/convs)):'\u2014';
+    var mdata=ms.map(function(l,i){return{label:l,clicks:Math.round(clicks*Math.min(1,0.6+i*0.08))};});
+    var maxC=mdata.reduce(function(m,d){return Math.max(m,d.clicks);},1);
+    chartEl.innerHTML='';
+    mdata.forEach(function(d){
+      var h=Math.max(4,Math.round(d.clicks/maxC*100));
+      var col=document.createElement('div');
+      col.style.cssText='flex:1;display:flex;flex-direction:column;align-items:center;gap:4px';
+      col.innerHTML='<div style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:110px"><div style="width:70%;height:'+h+'px;background:linear-gradient(to top,#6366f1,#818cf8);border-radius:4px 4px 0 0;min-height:4px;position:relative"><div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:#6366f1;font-weight:700;white-space:nowrap">'+fmtN(d.clicks)+'</div></div></div><div style="font-size:10px;color:#94a3b8;text-align:center">'+d.label+'</div>';
+      chartEl.appendChild(col);
+    });
+  }
+  cpcEl.addEventListener('input',update);
+  budgetEl.addEventListener('input',update);
+  convEl.addEventListener('input',update);
+  update();
+})();
+<\/script>`;
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -230,6 +370,7 @@ function generateProposalHTML(params: {
     table{width:100%;border-collapse:collapse}
     th{text-align:left;padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;border-bottom:2px solid #e2e8f0;background:#fff}
     .section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#6366f1;margin-bottom:12px}
+  input[type=range]{accent-color:#6366f1;cursor:pointer;width:100%}
   </style>
 </head>
 <body>
@@ -279,6 +420,12 @@ function generateProposalHTML(params: {
       <p class="section-label">01 — Situation Analysis</p>
       <h2>Where You Are Now</h2>
       <p style="font-size:16px;color:#475569;margin-bottom:40px;max-width:680px;line-height:1.7">${pd.whereYouAreNow?.summary ?? ""}</p>
+      ${positiveCards ? `
+      <p style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#16a34a;margin-bottom:16px">What you do well</p>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:32px">
+        ${positiveCards}
+      </div>` : ""}
+      <p style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#ef4444;margin-bottom:16px">Where the gaps are</p>
       <div style="display:flex;gap:20px;flex-wrap:wrap">
         ${gapCards}
       </div>
@@ -322,6 +469,8 @@ function generateProposalHTML(params: {
       </div>
     </div>
   </section>
+
+  ${ppcForecastSection}
 
   <!-- ── 03. Keyword Clusters ── -->
   ${(pd.keywordClusters ?? []).length > 0 ? `
@@ -389,14 +538,39 @@ function generateProposalHTML(params: {
   </section>
   ` : ""}
 
+  <!-- ── Why i3media ── -->
+  <section style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4c1d95 100%);padding:80px 0">
+    <div class="container">
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#a5b4fc;margin-bottom:12px;text-align:center">Why choose us</p>
+      <h2 style="color:#ffffff;text-align:center;margin-bottom:56px">Why i3media?</h2>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px">
+        ${whyUsCards}
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA ── -->
+  <section style="background:#f0f4ff;padding:80px 0">
+    <div class="container" style="text-align:center;max-width:640px">
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#6366f1;margin-bottom:12px">Next steps</p>
+      <h2 style="font-size:36px;font-weight:900;color:#1e1b4b;margin-bottom:20px;line-height:1.15">${pd.cta?.headline ?? `Ready to grow ${clientName}?`}</h2>
+      <p style="font-size:16px;color:#475569;line-height:1.8;margin-bottom:40px">${pd.cta?.body ?? "Let's talk about how we can accelerate your digital growth. Our team is ready to build a campaign tailored specifically to your business."}</p>
+      <div style="display:inline-flex;gap:16px;flex-wrap:wrap;justify-content:center">
+        <div style="background:#6366f1;color:#fff;padding:14px 32px;border-radius:8px;font-size:14px;font-weight:700">Get in touch</div>
+        <div style="background:#fff;color:#6366f1;border:2px solid #6366f1;padding:14px 32px;border-radius:8px;font-size:14px;font-weight:700">hello@i3media.co.uk</div>
+      </div>
+    </div>
+  </section>
+
   <!-- ── Footer ── -->
-  <div style="background:#1e1b4b;padding:40px 0;margin-top:0">
-    <div class="container" style="text-align:center">
-      <p style="font-size:14px;color:#a5b4fc;margin-bottom:8px">Prepared by <strong style="color:white">i3media</strong></p>
+  <div style="background:#1e1b4b;padding:32px 0">
+    <div class="container" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <p style="font-size:14px;color:#a5b4fc">Prepared by <strong style="color:white">i3media</strong></p>
       <p style="font-size:12px;color:#6366f1">${today}</p>
     </div>
   </div>
 
+${interactiveScript}
 </body>
 </html>`;
 }
@@ -423,6 +597,7 @@ export async function POST(request: NextRequest) {
         maxCpc: string;
         monthlyBudget: string;
         conversionRate: string;
+        websiteContext?: string;
       };
     };
 
@@ -438,6 +613,7 @@ export async function POST(request: NextRequest) {
     let maxCpc: string;
     let monthlyBudget: string;
     let conversionRate: string;
+    let websiteContext: string;
 
     if (researchId) {
       const research = await prisma.keywordPlannerResearch.findUnique({
@@ -453,8 +629,10 @@ export async function POST(request: NextRequest) {
       maxCpc = research.maxCpc;
       monthlyBudget = research.monthlyBudget;
       conversionRate = research.conversionRate;
+      websiteContext = research.websiteContext ?? "";
     } else if (body.inlineData) {
       ({ website, brief, adGroups, ideas, maxCpc, monthlyBudget, conversionRate } = body.inlineData);
+      websiteContext = body.inlineData.websiteContext ?? "";
     } else {
       return NextResponse.json(
         { error: "Either researchId or inlineData is required" },
@@ -537,7 +715,7 @@ export async function POST(request: NextRequest) {
 Client: ${clientName}
 Website: ${website}
 Brief: ${brief}
-
+${websiteContext ? `\nWebsite Context (crawled):\n${websiteContext}\n` : ""}
 Keyword Research Summary:
 - Total Keywords: ${ideas.length}
 - Ad Groups: ${topGroupSummary}
@@ -558,6 +736,10 @@ Generate a comprehensive proposal in JSON with this exact structure:
   },
   "whereYouAreNow": {
     "summary": "2-3 sentences about their current digital situation and what they are missing",
+    "positives": [
+      { "title": "What they do well", "description": "A genuine strength based on their website or business" },
+      { "title": "Another positive", "description": "Another genuine strength" }
+    ],
     "gaps": [
       { "title": "Gap title", "description": "What they are missing", "impact": "Why it matters to their business" },
       { "title": "Gap title", "description": "What they are missing", "impact": "Why it matters to their business" },
@@ -595,10 +777,19 @@ Generate a comprehensive proposal in JSON with this exact structure:
       { "title": "Supporting article title", "targetKeyword": "target keyword" },
       { "title": "Supporting article title", "targetKeyword": "target keyword" }
     ]
+  },
+  "whyUs": [
+    { "stat": "10+", "title": "Years of experience", "description": "Why this matters for the client's sector" },
+    { "stat": "£2M+", "title": "Ad spend managed", "description": "Proven track record with budgets like theirs" },
+    { "stat": "3.2x", "title": "Average ROAS", "description": "Typical return on ad spend we deliver" }
+  ],
+  "cta": {
+    "headline": "Ready to grow ${clientName}?",
+    "body": "2-3 sentences inviting the client to take the next step, referencing their specific opportunity."
   }
 }
 
-Use specific, actionable insights from the keyword data. Write in British English.`;
+Use specific, actionable insights from the keyword data${websiteContext ? " and the crawled website content" : ""}. Match the client's brand voice. Write in British English.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -628,6 +819,7 @@ Use specific, actionable insights from the keyword data. Write in British Englis
       adGroups,
       proposalData,
       stats,
+      ppc: { maxCpc: maxCpcVal, monthlyBudget: budgetVal, conversionRate: convRateVal },
     });
 
     const slugName = clientName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "client";

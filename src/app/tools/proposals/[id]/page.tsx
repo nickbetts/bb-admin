@@ -367,14 +367,28 @@ export default function ProposalViewPage({ params }: Props) {
         </div>
       )}
 
-      {/* Proposal iframe preview */}
-      {blobUrl && (
+      {/* Proposal iframe preview — use live interactive share page when shared, fall back to static blob */}
+      {proposal.shareToken ? (
+        <iframe
+          src={`/share/proposal/${proposal.shareToken}`}
+          style={{ flex: 1, border: "none", background: "#fff" }}
+          title="Proposal Preview"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        />
+      ) : blobUrl ? (
         <iframe
           src={blobUrl}
           style={{ flex: 1, border: "none", background: "#fff" }}
           title="Proposal Preview"
           sandbox="allow-same-origin"
         />
+      ) : (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc" }}>
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 8 }}>Preview unavailable</p>
+            <p style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>Share this proposal with the client to preview the interactive version.</p>
+          </div>
+        </div>
       )}
     </div>
   );

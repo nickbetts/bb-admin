@@ -54,6 +54,7 @@ interface SavedResearchFull extends SavedResearchSummary {
   maxCpc: string;
   monthlyBudget: string;
   conversionRate: string;
+  websiteContext?: string;
 }
 
 interface ProposalService {
@@ -341,6 +342,7 @@ export default function KeywordPlannerPage() {
   const [suggesting, setSuggesting] = useState(false);
   const [suggestError, setSuggestError] = useState("");
   const [rationale, setRationale] = useState("");
+  const [websiteContext, setWebsiteContext] = useState("");
 
   // Ad group state
   const [adGroups, setAdGroups] = useState<AdGroup[]>([]);
@@ -417,6 +419,7 @@ export default function KeywordPlannerPage() {
         selectedKws: [...selectedKws],
         ideas,
         maxCpc, monthlyBudget, conversionRate,
+        websiteContext,
       };
       if (currentResearchId) {
         await fetch(`/api/tools/keyword-planner/saved/${currentResearchId}`, {
@@ -456,6 +459,7 @@ export default function KeywordPlannerPage() {
       setConversionRate(research.conversionRate);
       setCpcAutoFilled(false);
       setCrAutoFilled(false);
+      setWebsiteContext(research.websiteContext ?? "");
       setCurrentResearchId(research.id);
       setResearchTitle(research.title);
       setStep(3);
@@ -501,6 +505,7 @@ export default function KeywordPlannerPage() {
           maxCpc,
           monthlyBudget,
           conversionRate,
+          websiteContext,
         };
       }
       const res = await fetch("/api/tools/keyword-planner/generate-proposal", {
@@ -542,6 +547,7 @@ export default function KeywordPlannerPage() {
       const groups: AdGroup[] = data.adGroups ?? [];
       setAdGroups(groups);
       setRationale(data.rationale ?? "");
+      setWebsiteContext(data.websiteContext ?? "");
       // Select all keywords by default
       const allKeys = new Set<string>();
       for (const g of groups) for (const kw of g.keywords) allKeys.add(kwKey(g.name, kw));

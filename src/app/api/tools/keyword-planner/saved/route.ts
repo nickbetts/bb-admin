@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   const userId = session.user.id;
 
   const body = await request.json();
-  const { title, website, brief, location, adGroups, selectedKws, ideas, maxCpc, monthlyBudget, conversionRate } = body;
+  const { title, website, brief, location, adGroups, selectedKws, ideas, maxCpc, monthlyBudget, conversionRate, websiteContext } = body;
 
   if (!title || !website) {
     return NextResponse.json({ error: "title and website are required" }, { status: 400 });
@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
       maxCpc: maxCpc ?? "",
       monthlyBudget: monthlyBudget ?? "",
       conversionRate: conversionRate ?? "3",
+      ...(websiteContext !== undefined && { websiteContext }),
     },
   });
 
