@@ -36,7 +36,7 @@ function extractSocialProfiles(html: string): string[] {
 async function webSearchForSite(openai: OpenAI, url: string, sector: string): Promise<string> {
   const domain = new URL(url).hostname.replace(/^www\./, "");
 
-  const [identityResult, programmesResult, socialResult] = await Promise.allSettled([
+  const [identityResult, programmesResult, socialResult, pagesResult] = await Promise.allSettled([
     // Search 1: Legal identity, registration, leadership, founding
     openai.responses.create({
       model: "gpt-4o-search-preview",
@@ -48,7 +48,7 @@ async function webSearchForSite(openai: OpenAI, url: string, sector: string): Pr
     openai.responses.create({
       model: "gpt-4o-search-preview",
       tools: [{ type: "web_search_preview" as const }],
-      input: `Research ${url} and the ${sector} organisation at ${domain}. Find specific details about: all named programmes, appeals, and campaigns (with their URLs and descriptions), beneficiary groups and eligibility, every country and region where they operate, impact statistics with real numbers (people helped, meals provided, water wells, schools, clinics, children sponsored, families supported), annual report findings, evidence of impact, seasonal campaigns (Ramadan, Qurbani, Zakat, winter, etc.), faith-based giving options, donation types accepted, and volunteering opportunities.`,
+      input: `Research ${url} and the ${sector} organisation at ${domain}. Find specific details about: all named programmes, appeals, and campaigns (with their EXACT URLs and descriptions), beneficiary groups and eligibility, every country and region where they operate, impact statistics with real numbers (people helped, meals provided, water wells, schools, clinics, children sponsored, families supported), annual report findings, evidence of impact, seasonal campaigns (Ramadan, Qurbani, Zakat, winter, etc.), faith-based giving options, donation types accepted, and volunteering opportunities.`,
     }),
 
     // Search 3: Social media, contact, partnerships, accreditations, media coverage
@@ -56,6 +56,13 @@ async function webSearchForSite(openai: OpenAI, url: string, sector: string): Pr
       model: "gpt-4o-search-preview",
       tools: [{ type: "web_search_preview" as const }],
       input: `Research ${url} and "${domain}". Find: exact URLs for all social media profiles (Facebook, Instagram, Twitter/X, LinkedIn, YouTube, TikTok), general contact email address, phone number, media or press email, institutional or implementation partners, corporate partners, accreditations, charity memberships (e.g. NCVO, Fundraising Regulator), any media coverage or press mentions, awards received, and any notable news stories about this organisation.`,
+    }),
+
+    // Search 4: Real page URLs — only verified pages that actually exist on the site
+    openai.responses.create({
+      model: "gpt-4o-search-preview",
+      tools: [{ type: "web_search_preview" as const }],
+      input: `Find the actual real pages that exist on the website ${url}. Check the sitemap at ${url}/sitemap.xml if it exists. Look for the real exact URLs for pages like: about, donate, get involved, impact, programmes, annual reports, privacy policy, terms, contact, FAQ, blog, news, volunteer, safeguarding, governance, trustees, resources, stories. List ONLY exact URLs you can confirm actually exist on this website — do not guess paths. If ${url}/sitemap.xml is accessible list the URLs from it.`,
     }),
   ]);
 
@@ -70,10 +77,67 @@ async function webSearchForSite(openai: OpenAI, url: string, sector: string): Pr
   if (socialResult.status === "fulfilled") {
     sections.push(`=== SOCIAL MEDIA, CONTACT & PARTNERSHIPS ===\n${socialResult.value.output_text}`);
   }
+  if (pagesResult.status === "fulfilled") {
+    sections.push(`=== VERIFIED PAGE URLS FROM SITEMAP/NAVIGATION ===\n${pagesResult.value.output_text}`);
+  }
 
   if (sections.length === 0) throw new Error("All web searches failed");
 
   return sections.join("\n\n");
+}
+
+// ─── URL verification: remove URLs that return 404 ──────────────────────────────
+// Only removes confirmed 404s; keeps 403s (blocked but may exist) and timeouts.
+
+async function verifyTargetUrls(targetDomain: string, text: string): Promise<Set<string>> {
+  const urlPattern = /https?:\/\/[^\s"',\]\)>]+/g;
+  const allUrls = [...new Set(text.match(urlPattern) ?? [])];
+  const targetUrls = allUrls.filter((u) => {
+    try {
+      return new URL(u).hostname.replace(/^www\./, "") === targetDomain;
+    } catch {
+      return false;
+    }
+  });
+
+  const deadUrls = new Set<string>();
+
+  await Promise.allSettled(
+    targetUrls.map(async (pageUrl) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 6_000);
+      try {
+        const res = await fetch(pageUrl, {
+          method: "HEAD",
+          signal: controller.signal,
+          redirect: "follow",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          },
+        });
+        if (res.status === 404) {
+          deadUrls.add(pageUrl);
+        } else if (res.status === 405) {
+          // HEAD not allowed — retry with GET to check existence
+          const res2 = await fetch(pageUrl, {
+            method: "GET",
+            signal: controller.signal,
+            redirect: "follow",
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            },
+          });
+          if (res2.status === 404) deadUrls.add(pageUrl);
+        }
+      } catch {
+        // Timeout or connection error — assume page may exist, don't remove
+      } finally {
+        clearTimeout(timer);
+      }
+    })
+  );
+
+  return deadUrls;
 }
 
 // ─── Route Handler ─────────────────────────────────────────────────────────────
@@ -190,9 +254,10 @@ ${template.promptGuidance ? `\nSTRATEGIC GUIDANCE — SECTION PRIORITY AND QUALI
 CRITICAL INSTRUCTIONS — READ CAREFULLY:
 1. Fill in EVERY field and list item using only verified real data from the research data above
 2. Replace [Charity Name] with the actual organisation name found in the research
-3. Replace [domain] in all URLs with the actual domain slug (e.g. "orphansinneed" for orphansinneed.org.uk)
+3. Replace [domain] in all URLs with the actual domain slug (e.g. "orphansinneed" for orphansinneed.org.uk) — but ONLY for URLs you have confirmed actually exist in the research data
 4. Replace [YYYY-MM-DD] with ${todayISO}
 5. REMOVE any field, list item, or entire section block for which you cannot find real data — do NOT leave "Insert if applicable" anywhere in the output. Every value in the final file must be real and verified.
+   CRITICAL URL RULE: For every URL field, you must have seen that exact URL (or a URL clearly pointing to that page) in the research data above. NEVER construct a URL by guessing a path like /safeguarding, /governance, /trustees, /financials etc. If you did not find the specific URL in the research data, remove that URL field entirely. This rule applies to ALL URL fields without exception.
 6. After the main llm.txt content, append a final comment block headed "## DATA GAPS" that lists every field or section you removed and a one-line reason why (e.g. "not found in research data"). Format as YAML comments (# prefixed lines).
 7. Keep ALL section headers, comment lines (# lines), and YAML formatting exactly as shown in the template for fields you DO fill
 8. Write in British English throughout
@@ -214,9 +279,35 @@ Output the complete filled-in llm.txt followed by the ## DATA GAPS block. No pre
       ],
     });
 
-    const output = completion.choices[0].message.content ?? "";
+    let output = completion.choices[0].message.content ?? "";
 
-    return NextResponse.json({ output, pagesCrawled: crawl.pagesCrawled.length });
+    // ── Post-generation URL verification: strip confirmed 404 links ────────
+    let deadUrlCount = 0;
+    try {
+      const targetDomain = new URL(normalizedWebsite).hostname.replace(/^www\./, "");
+      const deadUrls = await verifyTargetUrls(targetDomain, output);
+      deadUrlCount = deadUrls.size;
+      if (deadUrls.size > 0) {
+        output = output
+          .split("\n")
+          .filter((line) => {
+            for (const dead of deadUrls) {
+              if (line.includes(dead)) return false;
+            }
+            return true;
+          })
+          .join("\n");
+        // Append removed URLs to DATA GAPS block
+        const gapNote = [...deadUrls]
+          .map((u) => `# REMOVED (404 confirmed): ${u}`)
+          .join("\n");
+        output += `\n\n## URLS REMOVED (returned 404)\n${gapNote}`;
+      }
+    } catch {
+      // Best-effort — return unfiltered if verification errors
+    }
+
+    return NextResponse.json({ output, pagesCrawled: crawl.pagesCrawled.length, deadUrlsRemoved: deadUrlCount });
   } catch (err) {
     console.error("llm-generator error", err);
     return NextResponse.json(
