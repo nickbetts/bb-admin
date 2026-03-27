@@ -69,6 +69,8 @@ interface ProposalData {
     pillarPage: { title: string; description: string };
     articles: ContentArticle[];
   } | null;
+  services?: Array<{ name: string; price: string; description: string }>;
+  timeline?: Array<{ title: string; duration: string; description: string }>;
   whyUs: Array<{ stat: string; title: string; description: string }>;
   cta: {
     headline: string;
@@ -99,8 +101,6 @@ function fmtCurrency(micros: number): string {
 function generateProposalHTML(params: {
   clientName: string;
   website: string;
-  services: Service[];
-  timeline: TimelinePhase[];
   ideas: KeywordIdea[];
   adGroups: AdGroup[];
   proposalData: ProposalData;
@@ -117,7 +117,9 @@ function generateProposalHTML(params: {
     conversionRate: number;
   };
 }): string {
-  const { clientName, website, services, timeline, ideas, adGroups, proposalData, stats, ppc } = params;
+  const { clientName, website, ideas, adGroups, proposalData, stats, ppc } = params;
+  const services = proposalData.services ?? [];
+  const timeline = proposalData.timeline ?? [];
   const pd = proposalData;
 
   const topKeywords = [...ideas]
@@ -584,11 +586,9 @@ export async function POST(request: NextRequest) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { researchId, clientName, services, timeline } = body as {
+    const { researchId, clientName } = body as {
       researchId?: string;
       clientName: string;
-      services: Service[];
-      timeline: TimelinePhase[];
       // Inline data (when research hasn't been saved yet)
       inlineData?: {
         website: string;
@@ -669,18 +669,10 @@ export async function POST(request: NextRequest) {
 
     const openai = new OpenAI({ apiKey });
 
-    // ── Compute brief type from services + brief text ───────────────────────
-    // Derive this deterministically so it's consistent regardless of AI behaviour.
-    // If the user has removed SEO/content services from the proposal modal and
-    // the brief doesn't mention organic/SEO, treat as PAID_ONLY.
-    const serviceNames = (services ?? []).map((s) => s.name);
-    const hasContentSeoService = serviceNames.some((name) =>
-      /\b(seo|content|organic|blog|editorial)\b/i.test(name)
-    );
+    // ── Compute brief type from brief text ─────────────────────────────────
     const briefLower = brief.toLowerCase();
     const hasSeoInBrief = /\b(seo|content\s+marketing|organic|blog)\b/.test(briefLower);
-    const computedBriefType: "PAID_ONLY" | "FULL_SERVICE" =
-      hasContentSeoService || hasSeoInBrief ? "FULL_SERVICE" : "PAID_ONLY";
+    const computedBriefType: "PAID_ONLY" | "FULL_SERVICE" = hasSeoInBrief ? "FULL_SERVICE" : "PAID_ONLY";
 
     // ── Compute stats ───────────────────────────────────────────────────────
     const totalSearchVolume = ideas.reduce((s, i) => s + i.avgMonthlySearches, 0);
@@ -698,22 +690,14 @@ export async function POST(request: NextRequest) {
       estimatedConversions,
     };
 
-    // ── Build prompt context for hours/benchmarks ───────────────────────────
-    const servicesWithHours = (services ?? []) as Array<Service & { hoursPerMonth?: number }>;
-    const contractedHoursContext = servicesWithHours.some((s) => s.hoursPerMonth)
-      ? `\nContracted Monthly Hours per Service:\n${servicesWithHours
-          .filter((s) => s.hoursPerMonth)
-          .map((s) => `- ${s.name}: ${s.hoursPerMonth}h/month`)
-          .join("\n")}`
-      : "";
-
+    // ── Build prompt context for benchmarks ────────────────────────────────
     const benchmarksContext = taskBenchmarks.length > 0
       ? `\nTask Time Benchmarks (hours per deliverable):\n${taskBenchmarks
           .map((b) => `- ${b.task}: ${b.hours}h`)
           .join("\n")}`
       : "";
 
-    const hasHoursContext = contractedHoursContext || benchmarksContext;
+    const hasHoursContext = benchmarksContext;
 
     // ── Build pricing context ───────────────────────────────────────────────
     let pricingContext = "";
@@ -797,8 +781,7 @@ Client: ${clientName}
 Website: ${website}
 Brief: ${brief}
 ${websiteContext ? `\n${websiteContext}\n` : "\n[No website crawl available — base all analysis on the brief, business name, and keyword data only. Do NOT fabricate claims about their website.]\n"}
-Services included in this proposal: ${serviceNames.length ? serviceNames.join(", ") : "Not specified"}
-Proposal type (pre-determined from services and brief): ${computedBriefType}
+Proposal type (determined from brief): ${computedBriefType}
 
 Keyword Research:
 - Total Keywords: ${ideas.length}
@@ -807,8 +790,8 @@ Keyword Research:
 - Average CPC: £${maxCpcVal.toFixed(2)}
 - Estimated Monthly Budget: £${budgetVal.toFixed(0)}
 - Estimated Conversion Rate: ${convRateVal}%
-${contractedHoursContext}${benchmarksContext}
-${hasHoursContext ? `IMPORTANT: Use the contracted hours and task benchmarks to generate a REALISTIC timeline. Calculate how many deliverables can fit within the contracted hours per month and make this explicit in the timeline.\n` : ""}${pricingContext}
+${benchmarksContext}
+${hasHoursContext ? `IMPORTANT: Use the task benchmarks above to inform realistic timelines and deliverable throughput.\n` : ""}${pricingContext}
 --- GENERATE PROPOSAL JSON ---
 
 {
@@ -873,6 +856,18 @@ ${hasHoursContext ? `IMPORTANT: Use the contracted hours and task benchmarks to 
     { "stat": "£2M+", "title": "Ad spend managed", "description": "Relevant track record context for their budget level" },
     { "stat": "3.2x", "title": "Average ROAS", "description": "What this typically means for businesses like theirs" }
   ],
+  "services": [
+    {
+      "name": "The most appropriate service or package name from the agency pricing reference above — name it as it appears in the pricing (e.g. 'SEO Focus', 'Growth Core', 'Google PPC')",
+      "price": "The price for this service/package exactly as listed in the pricing reference",
+      "description": "One concise sentence on what this specific service will deliver for ${clientName}"
+    }
+  ],
+  "timeline": [
+    { "title": "Phase 1 name", "duration": "e.g. Month 1", "description": "Specific activities for ${clientName} in this phase based on the agreed services" },
+    { "title": "Phase 2 name", "duration": "e.g. Months 2–3", "description": "What happens next — be specific to the services and keyword strategy" },
+    { "title": "Phase 3 name", "duration": "e.g. Month 3+", "description": "Ongoing optimisation and growth phase" }
+  ],
   "cta": {
     "headline": "Specific invitation referencing ${clientName}'s goal from the brief — not a generic 'ready to grow?' placeholder",
     "body": "2-3 sentences referencing their actual opportunity — the search volumes, their market, the timing. Make it feel personal."
@@ -910,8 +905,6 @@ Write in British English throughout.`;
     const html = generateProposalHTML({
       clientName,
       website,
-      services: services ?? [],
-      timeline: timeline ?? [],
       ideas,
       adGroups,
       proposalData,
@@ -932,8 +925,6 @@ Write in British English throughout.`;
       brief,
       proposalData,
       stats,
-      services: services ?? [],
-      timeline: timeline ?? [],
       ppc: { maxCpc: maxCpcVal, monthlyBudget: budgetVal, conversionRate: convRateVal },
       topKeywords: [...ideas]
         .sort((a, b) => b.avgMonthlySearches - a.avgMonthlySearches)

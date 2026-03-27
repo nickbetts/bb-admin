@@ -57,13 +57,6 @@ interface SavedResearchFull extends SavedResearchSummary {
   websiteContext?: string;
 }
 
-interface ProposalService {
-  name: string;
-  price: string;
-  description: string;
-  hoursPerMonth: number;
-}
-
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
 const MONTH_ORDER: Record<string, number> = {
@@ -414,18 +407,6 @@ export default function KeywordPlannerPage() {
   const [proposalError, setProposalError] = useState("");
   const [proposalClientName, setProposalClientName] = useState("");
   const [generatedProposalId, setGeneratedProposalId] = useState<string | null>(null);
-  const [proposalServices, setProposalServices] = useState<ProposalService[]>([
-    { name: "Web Design & Development", price: "£5,000", description: "Custom website design and build", hoursPerMonth: 0 },
-    { name: "SEO & Content Strategy", price: "£2,500/month", description: "Organic search optimisation", hoursPerMonth: 10 },
-    { name: "PPC Management", price: "£1,500/month", description: "Google & Bing paid advertising", hoursPerMonth: 5 },
-    { name: "Social Media Marketing", price: "£1,000/month", description: "Paid and organic social media", hoursPerMonth: 4 },
-  ]);
-  const [proposalTimeline, setProposalTimeline] = useState([
-    { title: "Research & Strategy", duration: "Week 1–2", description: "Audit, keyword research, competitor analysis and strategy definition" },
-    { title: "Website Launch", duration: "Week 3–6", description: "Design, development, content migration and testing" },
-    { title: "Campaign Launch", duration: "Week 7–8", description: "SEO optimisation, PPC setup, content creation and social media launch" },
-    { title: "Ongoing Optimisation", duration: "Month 3+", description: "Monthly reporting, A/B testing and continuous performance improvement" },
-  ]);
 
   const loadSavedList = useCallback(async () => {
     try {
@@ -522,8 +503,6 @@ export default function KeywordPlannerPage() {
     try {
       const payload: Record<string, unknown> = {
         clientName: proposalClientName.trim(),
-        services: proposalServices,
-        timeline: proposalTimeline,
       };
       if (currentResearchId) {
         payload.researchId = currentResearchId;
@@ -1506,113 +1485,6 @@ export default function KeywordPlannerPage() {
                 />
               </div>
 
-              {/* Services */}
-              <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <div>
-                    <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Services & Pricing</label>
-                    <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 2 }}>Hours/month feeds the AI for realistic timeline generation</p>
-                  </div>
-                  <button className="btn btn-ghost btn-sm" style={{ gap: 4, fontSize: 12 }}
-                    onClick={() => setProposalServices((prev) => [...prev, { name: "", price: "", description: "", hoursPerMonth: 0 }])}>
-                    <Plus style={{ width: 13, height: 13 }} /> Add Service
-                  </button>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {proposalServices.map((svc, i) => (
-                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 100px 80px auto", gap: 8, alignItems: "center" }}>
-                      <input
-                        type="text"
-                        style={{ ...inputStyle, fontSize: 13, padding: "8px 12px" }}
-                        placeholder="Service name"
-                        value={svc.name}
-                        onChange={(e) => setProposalServices((prev) => prev.map((s, idx) => idx === i ? { ...s, name: e.target.value } : s))}
-                        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
-                        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
-                      />
-                      <input
-                        type="text"
-                        style={{ ...inputStyle, fontSize: 13, padding: "8px 10px" }}
-                        placeholder="£2,500/mo"
-                        value={svc.price}
-                        onChange={(e) => setProposalServices((prev) => prev.map((s, idx) => idx === i ? { ...s, price: e.target.value } : s))}
-                        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
-                        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
-                      />
-                      <div style={{ position: "relative" }}>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          style={{ ...inputStyle, fontSize: 13, padding: "8px 28px 8px 10px", width: "100%", textAlign: "right" }}
-                          placeholder="0"
-                          title="Hours per month allocated"
-                          value={svc.hoursPerMonth || ""}
-                          onChange={(e) => setProposalServices((prev) => prev.map((s, idx) => idx === i ? { ...s, hoursPerMonth: parseFloat(e.target.value) || 0 } : s))}
-                          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
-                          onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
-                        />
-                        <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "var(--text-4)", pointerEvents: "none" }}>h/mo</span>
-                      </div>
-                      <button className="btn btn-ghost btn-sm" style={{ padding: 6, color: "#ef4444", flexShrink: 0 }}
-                        onClick={() => setProposalServices((prev) => prev.filter((_, idx) => idx !== i))}>
-                        <Trash2 style={{ width: 13, height: 13 }} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Timeline */}
-              <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Project Timeline</label>
-                  <button className="btn btn-ghost btn-sm" style={{ gap: 4, fontSize: 12 }}
-                    onClick={() => setProposalTimeline((prev) => [...prev, { title: "", duration: "", description: "" }])}>
-                    <Plus style={{ width: 13, height: 13 }} /> Add Phase
-                  </button>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {proposalTimeline.map((phase, i) => (
-                    <div key={i} style={{ background: "var(--bg)", border: "1px solid var(--border-subtle)", borderRadius: "var(--r)", padding: "12px 14px" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, marginBottom: 8 }}>
-                        <input
-                          type="text"
-                          style={{ ...inputStyle, fontSize: 13, padding: "7px 12px" }}
-                          placeholder="Phase title"
-                          value={phase.title}
-                          onChange={(e) => setProposalTimeline((prev) => prev.map((p, idx) => idx === i ? { ...p, title: e.target.value } : p))}
-                          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
-                          onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
-                        />
-                        <input
-                          type="text"
-                          style={{ ...inputStyle, fontSize: 13, padding: "7px 12px" }}
-                          placeholder="Duration e.g. Week 1–2"
-                          value={phase.duration}
-                          onChange={(e) => setProposalTimeline((prev) => prev.map((p, idx) => idx === i ? { ...p, duration: e.target.value } : p))}
-                          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
-                          onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
-                        />
-                        <button className="btn btn-ghost btn-sm" style={{ padding: 6, color: "#ef4444", flexShrink: 0 }}
-                          onClick={() => setProposalTimeline((prev) => prev.filter((_, idx) => idx !== i))}>
-                          <Trash2 style={{ width: 13, height: 13 }} />
-                        </button>
-                      </div>
-                      <input
-                        type="text"
-                        style={{ ...inputStyle, fontSize: 13, padding: "7px 12px" }}
-                        placeholder="Phase description"
-                        value={phase.description}
-                        onChange={(e) => setProposalTimeline((prev) => prev.map((p, idx) => idx === i ? { ...p, description: e.target.value } : p))}
-                        onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
-                        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {proposalError && (
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "var(--r)", fontSize: 13, color: "#991b1b" }}>
                   <AlertTriangle style={{ width: 15, height: 15, flexShrink: 0, marginTop: 1 }} />{proposalError}
@@ -1642,7 +1514,7 @@ export default function KeywordPlannerPage() {
                     ? <><Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> Generating Proposal…</>
                     : generatedProposalId
                     ? <><FileText style={{ width: 16, height: 16 }} /> Regenerate Proposal</>
-                    : <><FileText style={{ width: 16, height: 16 }} /> Generate & Download Proposal</>}
+                    : <><FileText style={{ width: 16, height: 16 }} /> Generate Proposal</>}
                 </button>
               </div>
             </div>
