@@ -64,10 +64,11 @@ interface ProposalData {
     gaps: ProposalGap[];
   };
   keywordClusters: KeywordCluster[];
-  contentCluster: {
+  contentCluster?: {
+    type?: "content" | "landing_pages";
     pillarPage: { title: string; description: string };
     articles: ContentArticle[];
-  };
+  } | null;
   whyUs: Array<{ stat: string; title: string; description: string }>;
   cta: {
     headline: string;
@@ -491,17 +492,17 @@ function generateProposalHTML(params: {
   </section>
   ` : ""}
 
-  <!-- ── 04. Content Strategy ── -->
+  <!-- ── 04. Content / Landing Page Strategy ── -->
   ${pd.contentCluster?.pillarPage ? `
   <section style="padding:64px 0;background:#fff">
     <div class="container">
-      <p class="section-label">04 — Content Strategy</p>
-      <h2>Content Cluster Plan</h2>
-      <p style="font-size:16px;color:#475569;margin-bottom:40px;max-width:680px;line-height:1.7">A hub-and-spoke content model to build topical authority and capture organic traffic at every stage of the buyer journey.</p>
+      <p class="section-label">04 — ${pd.contentCluster?.type === "landing_pages" ? "Landing Pages" : "Content Strategy"}</p>
+      <h2>${pd.contentCluster?.type === "landing_pages" ? "Landing Page Strategy" : "Content Cluster Plan"}</h2>
+      <p style="font-size:16px;color:#475569;margin-bottom:40px;max-width:680px;line-height:1.7">${pd.contentCluster?.type === "landing_pages" ? "Dedicated landing pages built around your ad group themes — each designed to convert paid traffic with copy and layout matched to search intent." : "A hub-and-spoke content model to build topical authority and capture organic traffic at every stage of the buyer journey."}</p>
       <div style="background:linear-gradient(135deg,#ede9fe,#dbeafe);border-radius:16px;padding:32px;margin-bottom:24px">
-        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#6366f1;margin-bottom:8px">Pillar Page</p>
-        <h3 style="font-size:20px;font-weight:800;color:#1e1b4b;margin-bottom:8px">${pd.contentCluster.pillarPage.title}</h3>
-        <p style="font-size:14px;color:#4338ca;line-height:1.6">${pd.contentCluster.pillarPage.description}</p>
+        <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#6366f1;margin-bottom:8px">${pd.contentCluster?.type === "landing_pages" ? "Primary Landing Page" : "Pillar Page"}</p>
+        <h3 style="font-size:20px;font-weight:800;color:#1e1b4b;margin-bottom:8px">${pd.contentCluster?.pillarPage?.title ?? ""}</h3>
+        <p style="font-size:14px;color:#4338ca;line-height:1.6">${pd.contentCluster?.pillarPage?.description ?? ""}</p>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
         ${articleCards}
@@ -712,11 +713,13 @@ export async function POST(request: NextRequest) {
 
     const prompt = `You are an expert digital marketing strategist writing a client proposal in British English.
 
+--- RESEARCH: READ ALL OF THIS CAREFULLY BEFORE WRITING ANYTHING ---
+
 Client: ${clientName}
 Website: ${website}
 Brief: ${brief}
-${websiteContext ? `\nWebsite Context (crawled):\n${websiteContext}\n` : ""}
-Keyword Research Summary:
+${websiteContext ? `\nCrawled Website Content:\n${websiteContext}\n` : "\n[No website crawl available — base all analysis on the brief, business name, and keyword data only. Do NOT fabricate claims about their website.]\n"}
+Keyword Research:
 - Total Keywords: ${ideas.length}
 - Ad Groups: ${topGroupSummary}
 - Total Monthly Search Volume: ${fmtNum(totalSearchVolume)}
@@ -724,82 +727,106 @@ Keyword Research Summary:
 - Estimated Monthly Budget: £${budgetVal.toFixed(0)}
 - Estimated Conversion Rate: ${convRateVal}%
 ${contractedHoursContext}${benchmarksContext}
-${hasHoursContext ? `
-IMPORTANT: Use the contracted hours and task benchmarks above to generate a REALISTIC timeline. Calculate how many deliverables can be completed each month given the contracted hours. For example, if the client has 10h/month for SEO & Content and a blog post takes 3h, that's roughly 3 blog posts per month. Make these calculations explicit in the timeline phase descriptions.
-` : ""}
-Generate a comprehensive proposal in JSON with this exact structure:
+${hasHoursContext ? `IMPORTANT: Use the contracted hours and task benchmarks to generate a REALISTIC timeline. Calculate how many deliverables can fit within the contracted hours per month and make this explicit in the timeline.\n` : ""}
+--- BRIEF TYPE: CLASSIFY FIRST ---
+
+Read the brief above and classify it as one of:
+- PAID_ONLY — brief focuses exclusively on paid advertising (Google Ads, PPC, Meta Ads)
+- FULL_SERVICE — brief includes SEO, content marketing, organic strategy, or multiple channels
+
+This classification MUST drive what you put in contentCluster.
+
+--- GENERATE PROPOSAL JSON ---
 
 {
+  "_briefType": "PAID_ONLY or FULL_SERVICE — your classification above",
   "hero": {
-    "tagline": "Short punchy tagline (max 10 words) specific to this client",
-    "description": "2-3 sentences about the digital opportunity for this client"
+    "tagline": "Short tagline (max 10 words). Must be specific to ${clientName} and their actual industry — not a generic marketing slogan.",
+    "description": "2-3 sentences about the specific opportunity for this client. Reference their actual market, product type, or audience — not generic statements that could apply to anyone."
   },
   "whereYouAreNow": {
-    "summary": "2-3 sentences about their current digital situation and what they are missing",
+    "summary": "2-3 honest sentences about their current digital position. If their website or crawled content shows strong existing presence in any area — content, organic rankings, brand authority, product range — acknowledge this EXPLICITLY. Do NOT assume they have weaknesses. Focus on what the proposed service adds incrementally to what they already have.",
     "positives": [
-      { "title": "What they do well", "description": "A genuine strength based on their website or business" },
-      { "title": "Another positive", "description": "Another genuine strength" }
+      {
+        "title": "Specific strength",
+        "description": "A genuine strength evidenced by actual details from their website, product range, brand, or keyword signals. Reference specifics — product categories, content depth, brand tone, market position. Do NOT invent or give generic praise."
+      },
+      {
+        "title": "Another specific strength",
+        "description": "Another evidenced strength with concrete detail — reference something real."
+      }
     ],
     "gaps": [
-      { "title": "Gap title", "description": "What they are missing", "impact": "Why it matters to their business" },
-      { "title": "Gap title", "description": "What they are missing", "impact": "Why it matters to their business" },
-      { "title": "Gap title", "description": "What they are missing", "impact": "Why it matters to their business" }
+      {
+        "title": "Specific gap",
+        "description": "A genuine gap that the proposed service directly addresses. Do NOT invent weaknesses — only include gaps that are real and relevant to what was asked for.",
+        "impact": "The concrete business cost of leaving this gap unaddressed"
+      }
     ]
   },
   "keywordClusters": [
     {
-      "intent": "Commercial",
+      "intent": "Transactional | Commercial | Informational",
       "keywords": ["keyword1", "keyword2", "keyword3"],
-      "searchVolume": 5000,
-      "opportunity": "Why this cluster matters"
-    },
-    {
-      "intent": "Transactional",
-      "keywords": ["keyword1", "keyword2", "keyword3"],
-      "searchVolume": 3000,
-      "opportunity": "Why this cluster matters"
-    },
-    {
-      "intent": "Informational",
-      "keywords": ["keyword1", "keyword2", "keyword3"],
-      "searchVolume": 8000,
-      "opportunity": "Why this cluster matters"
+      "searchVolume": 0,
+      "opportunity": "Specific to ${clientName}'s actual products or services — not generic. Reference the actual keyword themes and what they mean for this business."
     }
   ],
   "contentCluster": {
+    "type": "PAID_ONLY brief: set to 'landing_pages'. FULL_SERVICE brief: set to 'content'",
     "pillarPage": {
-      "title": "Main pillar page topic",
-      "description": "What the pillar page covers and why it builds authority"
+      "title": "PAID_ONLY: the primary campaign landing page to build or optimise. FULL_SERVICE: the main pillar content topic.",
+      "description": "PAID_ONLY: what this page should contain and how it should be structured to convert paid traffic. FULL_SERVICE: why this topic builds topical authority."
     },
     "articles": [
-      { "title": "Supporting article title", "targetKeyword": "target keyword" },
-      { "title": "Supporting article title", "targetKeyword": "target keyword" },
-      { "title": "Supporting article title", "targetKeyword": "target keyword" },
-      { "title": "Supporting article title", "targetKeyword": "target keyword" }
+      {
+        "title": "PAID_ONLY: a secondary ad-group-specific landing page. FULL_SERVICE: a supporting article.",
+        "targetKeyword": "matching keyword from the research"
+      },
+      {
+        "title": "PAID_ONLY: another landing page. FULL_SERVICE: another article.",
+        "targetKeyword": "matching keyword"
+      },
+      {
+        "title": "PAID_ONLY: another landing page. FULL_SERVICE: another article.",
+        "targetKeyword": "matching keyword"
+      },
+      {
+        "title": "PAID_ONLY: another landing page. FULL_SERVICE: another article.",
+        "targetKeyword": "matching keyword"
+      }
     ]
   },
   "whyUs": [
-    { "stat": "10+", "title": "Years of experience", "description": "Why this matters for the client's sector" },
-    { "stat": "£2M+", "title": "Ad spend managed", "description": "Proven track record with budgets like theirs" },
-    { "stat": "3.2x", "title": "Average ROAS", "description": "Typical return on ad spend we deliver" }
+    { "stat": "10+", "title": "Years of experience", "description": "Why this specific experience matters for ${clientName}'s sector" },
+    { "stat": "£2M+", "title": "Ad spend managed", "description": "Relevant track record context for their budget level" },
+    { "stat": "3.2x", "title": "Average ROAS", "description": "What this typically means for businesses like theirs" }
   ],
   "cta": {
-    "headline": "Ready to grow ${clientName}?",
-    "body": "2-3 sentences inviting the client to take the next step, referencing their specific opportunity."
+    "headline": "Specific invitation referencing ${clientName}'s goal from the brief — not a generic 'ready to grow?' placeholder",
+    "body": "2-3 sentences referencing their actual opportunity — the search volumes, their market, the timing. Make it feel personal."
   }
 }
 
-Use specific, actionable insights from the keyword data${websiteContext ? " and the crawled website content" : ""}. Match the client's brand voice. Write in British English.`;
+--- MANDATORY WRITING RULES ---
+1. SPECIFIC: Every sentence must reference ${clientName}'s actual products, services, or market. If you could copy-paste a sentence into a different client's proposal unchanged, rewrite it.
+2. NO AI CLICHÉS: Do NOT write any of these words or phrases: "leverage", "unlock", "elevate", "harness", "empower", "bespoke", "tailored solutions", "seamlessly", "robust", "cutting-edge", "game-changer", "at the forefront", "dynamic", "holistic", "synergy"
+3. HONEST POSITIVES: Back every positive with specific evidence. If their website shows strong product photography, say that. If they have a wide product range, name it. Do NOT invent.
+4. EARNED GAPS: Only list gaps the proposed services genuinely close. Do not inflate the gap list to appear thorough.
+5. PAID_ONLY RULE: If brief is PAID_ONLY, contentCluster type MUST be "landing_pages" with landing page recommendations — NOT blog articles or organic content strategy.
+6. RESEARCH FIRST: If websiteContext is provided, read it carefully and reference specific details you found there.
+
+Write in British English throughout.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.5,
+      model: "gpt-4o",
+      temperature: 0.4,
       response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
           content:
-            "You are an expert digital marketing strategist. Always respond with valid JSON only.",
+            "You are an expert digital marketing strategist. You research clients thoroughly before writing — studying their website, brief, and market data to produce specific, honest proposals. Never use vague marketing clichés. Always respond with valid JSON only.",
         },
         { role: "user", content: prompt },
       ],
