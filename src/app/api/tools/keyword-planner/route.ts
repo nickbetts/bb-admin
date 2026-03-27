@@ -146,6 +146,7 @@ Rules:
       return NextResponse.json({
         adGroups: parsed.adGroups ?? [],
         rationale: parsed.rationale ?? "",
+        websiteContext: pageContext.join("\n"),
       });
     }
 

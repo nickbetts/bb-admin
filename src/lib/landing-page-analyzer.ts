@@ -21,8 +21,12 @@ export interface PageSignals {
   h1Tags: string[];
   /** Number of H2 tags */
   h2Count: number;
+  /** First few H2 heading texts found */
+  h2Texts: string[];
   /** Number of H3 tags */
   h3Count: number;
+  /** First 3 paragraph snippets (up to 150 chars each) */
+  bodySnippets: string[];
   /** Visible text from button / a[role=button] / input[type=submit] / input[type=button] elements */
   ctaTexts: string[];
   /** Number of <form> elements on the page */
@@ -63,7 +67,9 @@ export async function fetchPageSignals(url: string): Promise<PageSignals> {
     isResponsiveViewport: false,
     h1Tags: [],
     h2Count: 0,
+    h2Texts: [],
     h3Count: 0,
+    bodySnippets: [],
     ctaTexts: [],
     formCount: 0,
     formFieldCount: 0,
@@ -141,10 +147,20 @@ function extractSignals(html: string, base: PageSignals): PageSignals {
   }
 
   // ── Headings ───────────────────────────────────────────────────────────────
-  const h1Matches = [...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)];
+  const h1Matches = [...html.matchAll(/<h1[^>]*>([\/\s\S]*?)<\/h1>/gi)];
   signals.h1Tags = h1Matches.map((m) => stripTags(m[1]).trim()).filter(Boolean).slice(0, 5);
-  signals.h2Count = (html.match(/<h2[\s>]/gi) ?? []).length;
+  const h2Matches = [...html.matchAll(/<h2[^>]*>([\/\s\S]*?)<\/h2>/gi)];
+  signals.h2Count = h2Matches.length;
+  signals.h2Texts = h2Matches.map((m) => stripTags(m[1]).trim()).filter(Boolean).slice(0, 8);
   signals.h3Count = (html.match(/<h3[\s>]/gi) ?? []).length;
+
+  // ── Body snippets ─────────────────────────────────────────────────────────
+  const paraMatches = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)];
+  signals.bodySnippets = paraMatches
+    .map((m) => stripTags(m[1]).replace(/\s+/g, " ").trim())
+    .filter((t) => t.length > 40)
+    .slice(0, 3)
+    .map((t) => t.slice(0, 150));
 
   // ── CTA buttons ───────────────────────────────────────────────────────────
   const ctaSet = new Set<string>();
@@ -239,6 +255,10 @@ const IMPORTANT_SEGMENTS = [
   "pricing", "price", "prices",
   "about", "about-us",
   "what-we-do",
+  "our-work", "work",
+  "portfolio",
+  "team", "our-team",
+  "story", "our-story",
   "contact", "contact-us",
   "industry", "industries",
   "use-case", "use-cases",
@@ -342,7 +362,7 @@ export interface SiteCrawlContext {
  */
 export async function crawlSiteForKeywordContext(
   website: string,
-  maxPages = 6
+  maxPages = 10
 ): Promise<SiteCrawlContext> {
   // 1. Fetch homepage
   const homepage = await fetchPageSignals(website);
@@ -358,6 +378,8 @@ export async function crawlSiteForKeywordContext(
   if (homepage.metaDescription) contextLines.push(`Homepage meta description: ${homepage.metaDescription}`);
   if (homepage.ogDescription) contextLines.push(`Homepage OG description: ${homepage.ogDescription}`);
   if (homepage.h1Tags.length) contextLines.push(`Homepage H1: ${homepage.h1Tags.join(" | ")}`);
+  if (homepage.h2Texts.length) contextLines.push(`Homepage H2 headings: ${homepage.h2Texts.slice(0, 6).join(" | ")}`);
+  if (homepage.bodySnippets.length) contextLines.push(`Homepage content: ${homepage.bodySnippets.join(" … ")}`);
   if (homepage.ctaTexts.length) contextLines.push(`Homepage CTAs: ${homepage.ctaTexts.slice(0, 6).join(" | ")}`);
   pagesCrawled.push(website);
 
@@ -395,6 +417,8 @@ export async function crawlSiteForKeywordContext(
     if (sig.title) lines.push(`Title: ${sig.title}`);
     if (sig.metaDescription) lines.push(`Description: ${sig.metaDescription}`);
     if (sig.h1Tags.length) lines.push(`H1: ${sig.h1Tags.join(" | ")}`);
+    if (sig.h2Texts.length) lines.push(`H2 headings: ${sig.h2Texts.slice(0, 5).join(" | ")}`);
+    if (sig.bodySnippets.length) lines.push(`Content: ${sig.bodySnippets.join(" … ")}`);
     if (sig.ctaTexts.length) lines.push(`CTAs: ${sig.ctaTexts.slice(0, 4).join(" | ")}`);
 
     if (lines.length) {

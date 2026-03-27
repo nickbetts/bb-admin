@@ -38,7 +38,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   const body = await request.json();
-  const { title, website, brief, location, adGroups, selectedKws, ideas, maxCpc, monthlyBudget, conversionRate } = body;
+  const { title, website, brief, location, adGroups, selectedKws, ideas, maxCpc, monthlyBudget, conversionRate, websiteContext } = body;
 
   const research = await prisma.keywordPlannerResearch.update({
     where: { id },
@@ -53,6 +53,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       ...(maxCpc !== undefined && { maxCpc }),
       ...(monthlyBudget !== undefined && { monthlyBudget }),
       ...(conversionRate !== undefined && { conversionRate }),
+      ...(websiteContext !== undefined && { websiteContext }),
     },
   });
 

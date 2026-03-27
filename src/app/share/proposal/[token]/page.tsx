@@ -38,12 +38,18 @@ interface ContentArticle { title: string; targetKeyword: string }
 
 interface ProposalAIData {
   hero?: { tagline: string; description: string };
-  whereYouAreNow?: { summary: string; gaps: ProposalGap[] };
+  whereYouAreNow?: {
+    summary: string;
+    positives?: Array<{ title: string; description: string }>;
+    gaps: ProposalGap[];
+  };
   keywordClusters?: KeywordCluster[];
   contentCluster?: {
     pillarPage: { title: string; description: string };
     articles: ContentArticle[];
   };
+  whyUs?: Array<{ stat: string; title: string; description: string }>;
+  cta?: { headline: string; body: string };
 }
 
 interface ProposalData {
@@ -822,9 +828,26 @@ export default function ShareProposalPage({ params }: Props) {
             <p style={{ fontSize: 16, color: "#475569", lineHeight: 1.7, marginBottom: 40 }}>
               {ai.whereYouAreNow.summary}
             </p>
+            {(ai.whereYouAreNow.positives ?? []).length > 0 && (
+              <>
+                <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#16a34a", marginBottom: 16 }}>What you do well</p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, marginBottom: 32 }}>
+                  {(ai.whereYouAreNow.positives ?? []).map((pos, i) => (
+                    <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 24, borderLeft: "4px solid #22c55e" }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                      </div>
+                      <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", margin: "0 0 8px" }}>{pos.title}</h3>
+                      <p style={{ fontSize: 13, color: "#475569", lineHeight: 1.6, margin: 0 }}>{pos.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#ef4444", marginBottom: 16 }}>Where the gaps are</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20 }}>
               {(ai.whereYouAreNow.gaps ?? []).map((gap, i) => (
-                <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 24 }}>
+                <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 24, borderLeft: "4px solid #ef4444" }}>
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                   </div>
@@ -1127,6 +1150,27 @@ export default function ShareProposalPage({ params }: Props) {
         </div>
       )}
 
+      {/* ── Why i3media ── */}
+      {(ai?.whyUs ?? []).length > 0 && (
+        <div style={{ background: "linear-gradient(135deg, #1e1b4b, #312e81, #4c1d95)", padding: "80px 24px" }}>
+          <div style={{ maxWidth: 900, margin: "0 auto" }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.1em", textTransform: "uppercase" }}>Why choose us</span>
+            </div>
+            <h2 style={{ fontSize: 28, fontWeight: 800, color: "#fff", lineHeight: 1.2, margin: "0 0 56px", textAlign: "center" }}>Why i3media?</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 4 }}>
+              {(ai!.whyUs ?? []).map((item, i) => (
+                <div key={i} style={{ textAlign: "center", padding: "32px 24px" }}>
+                  <p style={{ fontSize: 48, fontWeight: 900, color: "#ffffff", lineHeight: 1, margin: "0 0 8px" }}>{item.stat}</p>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: "#c7d2fe", margin: "0 0 10px" }}>{item.title}</p>
+                  <p style={{ fontSize: 13, color: "#a5b4fc", lineHeight: 1.6, margin: "0 auto", maxWidth: 220 }}>{item.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Get Started / Enquiry CTA ── */}
       <div id="contact" style={{ background: "linear-gradient(135deg, #0f0c29, #1e1b4b)", padding: "80px 24px" }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
@@ -1138,10 +1182,10 @@ export default function ShareProposalPage({ params }: Props) {
                 <span style={{ fontSize: 12, fontWeight: 700, color: "#6366f1", letterSpacing: "0.08em", textTransform: "uppercase" }}>Next Steps</span>
               </div>
               <h2 style={{ fontSize: 36, fontWeight: 900, color: "#fff", lineHeight: 1.1, margin: "0 0 20px" }}>
-                Ready to grow {meta.clientName}?
+                {ai?.cta?.headline ?? `Ready to grow ${meta.clientName}?`}
               </h2>
               <p style={{ fontSize: 16, color: "#94a3b8", lineHeight: 1.7, margin: "0 0 32px" }}>
-                Get in touch and we&apos;ll set up a discovery call to walk you through the strategy, answer your questions, and get things moving.
+                {ai?.cta?.body ?? "Get in touch and we'll set up a discovery call to walk you through the strategy, answer your questions, and get things moving."}
               </p>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
