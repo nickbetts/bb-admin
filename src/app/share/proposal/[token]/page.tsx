@@ -458,6 +458,39 @@ export default function ShareProposalPage({ params }: Props) {
     fetch(`/api/share/proposal/${token}/ping`, { method: "POST" }).catch(() => { /* silent */ });
   }, [token]);
 
+  // ── Source-code protection ─────────────────────────────────────────────────
+  // These measures deter casual inspection and prevent automated scrapers.
+  // They cannot stop a determined technical user, but raise the barrier
+  // significantly for non-technical recipients.
+  useEffect(() => {
+    // Block right-click context menu
+    const blockContextMenu = (e: MouseEvent) => e.preventDefault();
+
+    // Block keyboard shortcuts used to view/save source
+    const blockKeys = (e: KeyboardEvent) => {
+      const ctrl = e.ctrlKey || e.metaKey;
+      // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C → DevTools
+      // Ctrl+U → View Source,  Ctrl+S → Save As
+      if (
+        e.key === "F12" ||
+        (ctrl && e.shiftKey && ["i", "I", "j", "J", "c", "C"].includes(e.key)) ||
+        (ctrl && ["u", "U", "s", "S"].includes(e.key))
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    };
+
+    document.addEventListener("contextmenu", blockContextMenu);
+    document.addEventListener("keydown", blockKeys);
+
+    return () => {
+      document.removeEventListener("contextmenu", blockContextMenu);
+      document.removeEventListener("keydown", blockKeys);
+    };
+  }, []);
+
   useEffect(() => {
     async function load() {
       try {
@@ -541,7 +574,64 @@ export default function ShareProposalPage({ params }: Props) {
   const adGroups = data?.adGroups ?? [];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "'Inter', -apple-system, sans-serif" }}>
+    <div
+      style={{ minHeight: "100vh", background: "#fff", fontFamily: "'Inter', -apple-system, sans-serif", userSelect: "none", WebkitUserSelect: "none" }}
+      onCopy={(e) => {
+        // Allow copy within form inputs so the enquiry form works normally
+        const target = e.target as HTMLElement;
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+        e.preventDefault();
+      }}
+    >
+      {/* ── Print & copy protection styles ── */}
+      <style>{`
+        @media print {
+          body > * { display: none !important; }
+          body::before {
+            display: block !important;
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: white;
+          }
+          body::after {
+            display: block !important;
+            content: 'CONFIDENTIAL — This proposal is prepared exclusively for the named recipient by i3media. Unauthorised reproduction, distribution or use is strictly prohibited.';
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+            text-align: center;
+            padding: 48px;
+            white-space: pre-wrap;
+          }
+        }
+        /* Invisible diagonal watermark visible on every printed page */
+        @media print {
+          html::before {
+            content: 'CONFIDENTIAL · i3media';
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-35deg);
+            font-size: 72px;
+            font-weight: 900;
+            color: rgba(0,0,0,0.04);
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 9999;
+          }
+        }
+        /* Prevent drag-selection highlight */
+        * { -webkit-tap-highlight-color: transparent; }
+        a { -webkit-user-drag: none; }
+        /* Always allow selection inside form inputs for usability */
+        input, textarea, select { user-select: text !important; -webkit-user-select: text !important; }
+      `}</style>
 
       {/* ── Sticky Nav (portal-like, rendered at top) ── */}
       <StickyNav clientName={meta.clientName} token={token} />
@@ -884,9 +974,38 @@ export default function ShareProposalPage({ params }: Props) {
         <p style={{ fontSize: 13, color: "#475569", margin: "0 0 4px" }}>
           Prepared by <strong style={{ color: "#a5b4fc" }}>i3media</strong> · Digital Marketing Agency
         </p>
-        <p style={{ fontSize: 11, color: "#334155", margin: 0 }}>
+        <p style={{ fontSize: 11, color: "#334155", margin: "0 0 12px" }}>
           {new Date(meta.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
         </p>
+        <p style={{ fontSize: 11, color: "#1e293b", margin: 0, lineHeight: 1.5 }}>
+          🔒 This proposal is confidential and prepared exclusively for {meta.clientName}.
+          Unauthorised sharing, reproduction or use by third parties is strictly prohibited.
+        </p>
+      </div>
+
+      {/* ── Fixed confidentiality watermark badge ── */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "fixed",
+          bottom: 16,
+          right: 16,
+          zIndex: 9999,
+          background: "rgba(15,12,41,0.82)",
+          backdropFilter: "blur(8px)",
+          borderRadius: 10,
+          padding: "7px 14px",
+          display: "flex",
+          alignItems: "center",
+          gap: 7,
+          pointerEvents: "none",
+          border: "1px solid rgba(99,102,241,0.3)",
+        }}
+      >
+        <span style={{ fontSize: 13 }}>🔒</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: "#a5b4fc", letterSpacing: "0.03em" }}>
+          Confidential · i3media
+        </span>
       </div>
     </div>
   );
