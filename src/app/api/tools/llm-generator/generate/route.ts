@@ -112,18 +112,49 @@ ${socialData}
 TEMPLATE STRUCTURE TO FOLLOW:
 ${template.templateText}
 
+STRATEGIC GUIDANCE — SECTION PRIORITY BY CHARITY TYPE:
+This template is intentionally comprehensive. Read the crawled data carefully to determine the type of charity site, then prioritise accordingly:
+
+For ALL charity websites (highest impact — fill with maximum detail):
+- description and short_description: write as clean, directly quotable sentences. LLMs reuse clean sentences, not fluffy marketing copy.
+- mission_statement: use the charity's exact wording where possible
+- registrations: include all available trust signals (charity number, regulator, tax status)
+- programmes: provide full structured detail for every programme found, with real descriptions and URLs
+- engagement_pages: list every real donation, giving, and involvement pathway found on the site
+- impact_metrics: use only real numbers found on the site — never estimate or invent; omit metric keys where no data was found
+- featured_articles: identify real article URLs with factual, neutral summaries — these are citation targets for LLMs
+- priority_pages: list only pages that actually exist on the site
+- citation_guidelines: fill completely — this tells AI systems how to attribute the charity
+
+For article-heavy charity sites (strong blog or resources hub):
+- featured_articles, pillar_content, research_and_reports, and faq_topics matter most — give LLMs concrete citation targets
+
+For donation-focused sites (primarily fundraising):
+- engagement_pages, donation_details, high_trust_pages, and impact sections take priority
+
+For multi-country charities:
+- geography, countries_served, local_focus_pages, and service_delivery_model — populate carefully to prevent vague country-level summaries
+
+For faith-based charities (e.g. Islamic, Christian, Jewish charities):
+- faith_based_giving section: fill fully with detected giving types (zakat, sadaqah, etc.)
+- seasonal_campaigns: populate with known faith-based appeal seasons if found
+
+QUALITY RULES:
+- Keep description, mission_statement, and short_description factual and directly quotable — avoid vague superlatives
+- Fill metadata fields (founded_year, headquarters, registrations) where found — these build entity trust signals
+- Only include real URLs from the crawl — never construct guessed URLs for pages not found
+
 INSTRUCTIONS:
-1. Fill in EVERY section using only real data found in the crawled website content above
-2. Replace [ORGANISATION_NAME] with the actual organisation name from the website
-3. Replace [WEBSITE_URL] with ${normalizedWebsite}
-4. Replace [DATE] with ${todayISO}
-5. For sections where data is not available from the crawl, use: Insert if applicable, or Insert if known
-6. Keep ALL section headers, comment lines (# lines), and YAML-like formatting exactly as shown in the template
+1. Fill in EVERY section using only real data from the crawled website content above
+2. Replace [Charity Name] with the actual organisation name from the website
+3. Replace [domain] in all URLs with the actual domain slug (e.g. "orphansinneed" for orphansinneed.org)
+4. Replace [YYYY-MM-DD] with ${todayISO}
+5. For sections where data is not available from the crawl, use: Insert if applicable
+6. Keep ALL section headers, comment lines (# lines), and YAML formatting exactly as shown in the template
 7. Write in British English throughout
-8. For list items, use the exact YAML list format shown in the template (- item: value)
-9. Do NOT add explanatory text, markdown code fences, or any content outside the llm.txt itself
-10. Social profiles found above should be included in the social_profiles section
-11. Be specific and accurate — do not invent data, pad with generic claims, or repeat placeholder text
+8. Do NOT add explanatory text, markdown code fences, or any content outside the llm.txt itself
+9. Social profiles found above should be used in the social_profiles section; remove placeholder entries for platforms not found on the site
+10. Be specific and accurate — do not invent data, pad with generic claims, or repeat placeholder text verbatim
 
 Output the complete, filled-in llm.txt content only. No preamble, no code fences.`;
 
