@@ -63,9 +63,15 @@ export async function POST(request: NextRequest) {
     const crawl = await crawlSiteForKeywordContext(normalizedWebsite, 12);
 
     if (crawl.homepageError) {
-      return NextResponse.json({
-        error: `Could not reach the website: ${crawl.homepageError}`,
-      }, { status: 422 });
+      // Hard fail only for connection errors (DNS failure, timeout, etc.)
+      // For HTTP 4xx/5xx, the site is reachable but blocking crawlers — proceed with a note
+      const isHttpBlocked = /^HTTP (4|5)\d\d/.test(crawl.homepageError);
+      if (!isHttpBlocked) {
+        return NextResponse.json({
+          error: `Could not reach the website: ${crawl.homepageError}`,
+        }, { status: 422 });
+      }
+      // Fall through — generate with minimal data and warn the AI
     }
 
     // ── Also fetch raw homepage HTML to extract social links ───────────────
@@ -75,7 +81,13 @@ export async function POST(request: NextRequest) {
       const timer = setTimeout(() => controller.abort(), 8_000);
       const res = await fetch(normalizedWebsite, {
         signal: controller.signal,
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; LLMBot/1.0)", Accept: "text/html" },
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-GB,en;q=0.9",
+          "Cache-Control": "max-age=0",
+          "Upgrade-Insecure-Requests": "1",
+        },
         redirect: "follow",
       });
       clearTimeout(timer);
@@ -91,6 +103,9 @@ export async function POST(request: NextRequest) {
     const todayISO = new Date().toISOString().slice(0, 10);
 
     const crawlData = crawl.contextLines.join("\n") || "No page content could be extracted.";
+    const crawlBlockedNote = crawl.homepageError
+      ? `\nNOTE: The website returned ${crawl.homepageError} — direct crawling was blocked. Use the website URL and domain name to infer the organisation name, sector, and structure. Fill what you reasonably can from the URL; use "Insert if applicable" for anything that requires real page data.\n`
+      : "";
     const socialData = socialProfiles.length > 0
       ? `\nSocial media profiles found on homepage:\n${socialProfiles.join("\n")}`
       : "\nNo social media profiles found on homepage.";
@@ -107,7 +122,7 @@ Template: ${template.name}
 --- CRAWLED WEBSITE DATA ---
 ${crawlData}
 ${socialData}
---- END CRAWLED DATA ---
+${crawlBlockedNote}--- END CRAWLED DATA ---
 
 TEMPLATE STRUCTURE TO FOLLOW:
 ${template.templateText}
