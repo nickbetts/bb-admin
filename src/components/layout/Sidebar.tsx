@@ -64,6 +64,11 @@ const toolsNavItems: NavItem[] = [
     label: "Keyword Planner",
     icon: <TrendingUp className="h-4 w-4" />,
   },
+  {
+    href: "/tools/proposals",
+    label: "Proposals",
+    icon: <FileText className="h-4 w-4" />,
+  },
 ];
 
 interface SidebarProps {

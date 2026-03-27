@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Loader2, Upload, X } from "lucide-react";
+import { Save, Loader2, Upload, X, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
 
 interface Client {
@@ -27,6 +27,7 @@ interface Client {
   woocommerceSecret: string | null;
   shopifyStoreDomain: string | null;
   shopifyAccessToken: string | null;
+  contractedHours: string | null; // JSON: Array<{service: string, hoursPerMonth: number}>
 }
 
 interface ClientSettingsFormProps {
@@ -107,6 +108,13 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
     woocommerceSecret: client.woocommerceSecret ?? "",
     shopifyStoreDomain: client.shopifyStoreDomain ?? "",
     shopifyAccessToken: client.shopifyAccessToken ?? "",
+  });
+
+  // Contracted hours per service
+  const [contractedHours, setContractedHours] = useState<Array<{ service: string; hoursPerMonth: number }>>(() => {
+    try {
+      return client.contractedHours ? JSON.parse(client.contractedHours) as Array<{ service: string; hoursPerMonth: number }> : [];
+    } catch { return []; }
   });
 
   useEffect(() => {
@@ -191,7 +199,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       const res = await fetch(`/api/clients/${client.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          contractedHours: contractedHours.length > 0 ? JSON.stringify(contractedHours) : null,
+        }),
       });
 
       if (res.ok) {
@@ -606,6 +617,73 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
           Settings saved successfully!
         </div>
       )}
+
+      {/* Contracted Hours */}
+      <div className="card">
+        <div className="card-header">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+            <div className="flex items-center gap-3">
+              <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-700">H</span>
+              <div>
+                <h2 className="card-title">Contracted Hours</h2>
+                <p className="card-subtitle">Monthly hours allocated per service — used by AI to generate realistic proposal timelines</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              style={{ gap: 5, flexShrink: 0 }}
+              onClick={() => setContractedHours((prev) => [...prev, { service: "", hoursPerMonth: 0 }])}
+            >
+              <Plus size={13} /> Add Service
+            </button>
+          </div>
+        </div>
+        <div className="card-body">
+          {contractedHours.length === 0 ? (
+            <p style={{ fontSize: 13, color: "var(--text-3)" }}>No contracted hours set. Click &ldquo;Add Service&rdquo; to define monthly hour allocations.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {contractedHours.map((row, i) => (
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, alignItems: "center" }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    style={{ fontSize: 13 }}
+                    placeholder="Service name (e.g. SEO & Content)"
+                    value={row.service}
+                    onChange={(e) => setContractedHours((prev) => prev.map((r, idx) => idx === i ? { ...r, service: e.target.value } : r))}
+                  />
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      className="form-input"
+                      style={{ fontSize: 13, width: 90, textAlign: "right" }}
+                      placeholder="0"
+                      value={row.hoursPerMonth || ""}
+                      onChange={(e) => setContractedHours((prev) => prev.map((r, idx) => idx === i ? { ...r, hoursPerMonth: parseFloat(e.target.value) || 0 } : r))}
+                    />
+                    <span style={{ fontSize: 12, color: "var(--text-3)", whiteSpace: "nowrap" }}>h/month</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ padding: 6, color: "#ef4444" }}
+                    onClick={() => setContractedHours((prev) => prev.filter((_, idx) => idx !== i))}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-slate-500" style={{ marginTop: 10 }}>
+            These values are included in the AI prompt when generating a proposal from the Keyword Planner. The AI will calculate realistic deliverables based on hours and task benchmarks set in Settings.
+          </p>
+        </div>
+      </div>
 
       <div>
         <button
