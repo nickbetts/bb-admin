@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { FileText, Plus, Trash2, ExternalLink, Clock, Eye, Share2 } from "lucide-react";
+import { FileText, Plus, Trash2, ExternalLink, Clock, Eye, Share2, BarChart3, MessageSquare } from "lucide-react";
 
 interface ProposalSummary {
   id: string;
@@ -10,6 +10,9 @@ interface ProposalSummary {
   clientName: string;
   website: string;
   shareToken: string | null;
+  viewCount: number;
+  lastViewedAt: string | null;
+  _count: { enquiries: number };
   researchId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -34,6 +37,14 @@ export default function ProposalsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  function timeAgo(dateStr: string): string {
+    const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+    if (diff < 60) return "just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+  }
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this proposal?")) return;
@@ -84,7 +95,7 @@ export default function ProposalsPage() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 3 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 12, color: "var(--text-3)" }}>{p.clientName}</span>
                     {p.website && (
                       <>
@@ -97,6 +108,25 @@ export default function ProposalsPage() {
                       <Clock style={{ width: 10, height: 10 }} />
                       {new Date(p.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                     </span>
+                    {p.viewCount > 0 && (
+                      <>
+                        <span style={{ color: "var(--text-4)" }}>·</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-3)" }}>
+                          <BarChart3 style={{ width: 10, height: 10 }} />
+                          {p.viewCount} view{p.viewCount !== 1 ? "s" : ""}
+                          {p.lastViewedAt && ` · ${timeAgo(p.lastViewedAt)}`}
+                        </span>
+                      </>
+                    )}
+                    {p._count.enquiries > 0 && (
+                      <>
+                        <span style={{ color: "var(--text-4)" }}>·</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "#6366f1", fontWeight: 600 }}>
+                          <MessageSquare style={{ width: 10, height: 10 }} />
+                          {p._count.enquiries} enquir{p._count.enquiries !== 1 ? "ies" : "y"}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>

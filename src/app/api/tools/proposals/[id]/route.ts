@@ -13,7 +13,10 @@ export async function GET(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const proposal = await prisma.proposal.findUnique({ where: { id } });
+  const proposal = await prisma.proposal.findUnique({
+    where: { id },
+    include: { _count: { select: { enquiries: true } } },
+  });
 
   if (!proposal || proposal.userId !== session.user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -24,6 +27,7 @@ export async function GET(
       ...proposal,
       services: JSON.parse(proposal.servicesJson),
       timeline: JSON.parse(proposal.timelineJson),
+      enquiryCount: proposal._count.enquiries,
     },
   });
 }

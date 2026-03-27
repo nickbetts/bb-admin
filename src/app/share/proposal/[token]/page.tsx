@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, use, useMemo } from "react";
-import { Loader2, ExternalLink } from "lucide-react";
+import { useState, useEffect, use, useMemo, useRef, useCallback } from "react";
+import { Loader2, ExternalLink, ChevronRight, Phone, Mail, MessageSquare, CheckCircle2, Menu, X as XIcon } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -199,6 +199,242 @@ function H2({ children }: { children: React.ReactNode }) {
 
 interface Props { params: Promise<{ token: string }> }
 
+// Nav items that map to section IDs
+const NAV_SECTIONS = [
+  { id: "ppc-forecaster", label: "PPC Forecast" },
+  { id: "services", label: "Services" },
+  { id: "keywords", label: "Keywords" },
+  { id: "content", label: "Content" },
+  { id: "keyword-data", label: "Research" },
+  { id: "timeline", label: "Timeline" },
+  { id: "contact", label: "Get Started" },
+];
+
+// ─── Sticky Nav ────────────────────────────────────────────────────────────────
+
+function StickyNav({ clientName, token }: { clientName: string; token: string }) {
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
+
+  useEffect(() => {
+    const onScroll = () => {
+      setScrolled(window.scrollY > 120);
+      // Detect active section
+      for (const nav of [...NAV_SECTIONS].reverse()) {
+        const el = document.getElementById(nav.id);
+        if (el && el.getBoundingClientRect().top <= 90) {
+          setActiveSection(nav.id);
+          break;
+        }
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  function scrollTo(id: string) {
+    setMobileOpen(false);
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  if (!scrolled) return null;
+
+  return (
+    <div style={{
+      position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+      background: "rgba(15,12,41,0.96)", backdropFilter: "blur(12px)",
+      borderBottom: "1px solid rgba(255,255,255,0.08)",
+      transition: "all 0.2s",
+    }}>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", height: 52 }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#a5b4fc", marginRight: "auto" }}>{clientName}</span>
+
+        {/* Desktop nav */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }} className="hidden-mobile">
+          {NAV_SECTIONS.map((nav) => (
+            <button
+              key={nav.id}
+              onClick={() => scrollTo(nav.id)}
+              style={{
+                background: activeSection === nav.id ? "rgba(99,102,241,0.2)" : "transparent",
+                border: "none", color: activeSection === nav.id ? "#a5b4fc" : "#94a3b8",
+                padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600,
+                cursor: "pointer", transition: "all 0.15s",
+              }}
+            >
+              {nav.label}
+            </button>
+          ))}
+          <button
+            onClick={() => scrollTo("contact")}
+            style={{
+              marginLeft: 8, background: "linear-gradient(135deg, #6366f1, #7c3aed)",
+              border: "none", color: "#fff", padding: "7px 16px", borderRadius: 8,
+              fontSize: 12, fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            Get Started →
+          </button>
+        </div>
+
+        {/* Mobile hamburger */}
+        <button
+          onClick={() => setMobileOpen((v) => !v)}
+          style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", padding: 4 }}
+          className="show-mobile"
+        >
+          {mobileOpen ? <XIcon style={{ width: 18, height: 18 }} /> : <Menu style={{ width: 18, height: 18 }} />}
+        </button>
+      </div>
+
+      {/* Mobile dropdown */}
+      {mobileOpen && (
+        <div style={{ background: "#1e1b4b", padding: "12px 24px 20px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          {NAV_SECTIONS.map((nav) => (
+            <button
+              key={nav.id}
+              onClick={() => scrollTo(nav.id)}
+              style={{
+                display: "block", width: "100%", textAlign: "left",
+                background: "none", border: "none", color: "#94a3b8",
+                padding: "10px 0", fontSize: 14, fontWeight: 500, cursor: "pointer",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              {nav.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <style>{`
+        @media (max-width: 640px) { .hidden-mobile { display: none !important; } }
+        @media (min-width: 641px) { .show-mobile { display: none !important; } }
+      `}</style>
+    </div>
+  );
+}
+
+// ─── Enquiry Form ─────────────────────────────────────────────────────────────
+
+function EnquiryForm({ token, clientName }: { token: string; clientName: string }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim() || !email.trim() || !message.trim()) {
+      setError("Please fill in your name, email and message.");
+      return;
+    }
+    setError("");
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/share/proposal/${token}/enquiry`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), phone: phone.trim(), message: message.trim() }),
+      });
+      if (res.ok) {
+        setSubmitted(true);
+      } else {
+        const data = await res.json() as { error?: string };
+        setError(data.error ?? "Something went wrong. Please try again.");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (submitted) {
+    return (
+      <div style={{ textAlign: "center", padding: "48px 24px" }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#d1fae5", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+          <CheckCircle2 style={{ width: 32, height: 32, color: "#16a34a" }} />
+        </div>
+        <h3 style={{ fontSize: 22, fontWeight: 800, color: "#fff", margin: "0 0 8px" }}>Message sent!</h3>
+        <p style={{ fontSize: 15, color: "#a5b4fc", margin: 0, lineHeight: 1.6 }}>
+          Thanks {name.split(" ")[0]}! We&apos;ll be in touch shortly.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#a5b4fc", marginBottom: 6, letterSpacing: "0.04em" }}>
+            Your Name *
+          </label>
+          <input
+            type="text" value={name} onChange={(e) => setName(e.target.value)}
+            placeholder="Jane Smith"
+            style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid rgba(165,180,252,0.2)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#a5b4fc", marginBottom: 6, letterSpacing: "0.04em" }}>
+            Email *
+          </label>
+          <input
+            type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+            placeholder="jane@example.com"
+            style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid rgba(165,180,252,0.2)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+          />
+        </div>
+      </div>
+      <div>
+        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#a5b4fc", marginBottom: 6, letterSpacing: "0.04em" }}>
+          Phone (optional)
+        </label>
+        <input
+          type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
+          placeholder="+44 7700 000000"
+          style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid rgba(165,180,252,0.2)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+        />
+      </div>
+      <div>
+        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#a5b4fc", marginBottom: 6, letterSpacing: "0.04em" }}>
+          Message *
+        </label>
+        <textarea
+          value={message} onChange={(e) => setMessage(e.target.value)}
+          placeholder={`Hi, I'd love to discuss this proposal for ${clientName}…`}
+          rows={4}
+          style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid rgba(165,180,252,0.2)", background: "rgba(255,255,255,0.06)", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "vertical" }}
+        />
+      </div>
+      {error && (
+        <p style={{ fontSize: 13, color: "#fca5a5", margin: 0 }}>{error}</p>
+      )}
+      <button
+        type="submit"
+        disabled={submitting}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          padding: "14px 24px", background: "linear-gradient(135deg, #6366f1, #7c3aed)",
+          border: "none", borderRadius: 12, color: "#fff", fontSize: 15, fontWeight: 700,
+          cursor: submitting ? "default" : "pointer", opacity: submitting ? 0.7 : 1,
+          transition: "opacity 0.2s",
+        }}
+      >
+        {submitting ? <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> : <ChevronRight style={{ width: 16, height: 16 }} />}
+        {submitting ? "Sending…" : "Send Message"}
+      </button>
+    </form>
+  );
+}
+
 export default function ShareProposalPage({ params }: Props) {
   const { token } = use(params);
   const [loading, setLoading] = useState(true);
@@ -213,6 +449,14 @@ export default function ShareProposalPage({ params }: Props) {
 
   // Service hours sliders
   const [serviceHours, setServiceHours] = useState<number[]>([]);
+
+  const pinged = useRef(false);
+
+  const ping = useCallback(() => {
+    if (pinged.current) return;
+    pinged.current = true;
+    fetch(`/api/share/proposal/${token}/ping`, { method: "POST" }).catch(() => { /* silent */ });
+  }, [token]);
 
   useEffect(() => {
     async function load() {
@@ -232,12 +476,14 @@ export default function ShareProposalPage({ params }: Props) {
             setServiceHours(d.services.map((s) => s.hoursPerMonth ?? 0));
           } catch { /* use fallback */ }
         }
+        // Fire view ping after successful load
+        ping();
       } catch { setNotFound(true); } finally {
         setLoading(false);
       }
     }
     load();
-  }, [token]);
+  }, [token, ping]);
 
   // PPC calculations
   const ppcMetrics = useMemo(() => {
@@ -296,6 +542,9 @@ export default function ShareProposalPage({ params }: Props) {
 
   return (
     <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "'Inter', -apple-system, sans-serif" }}>
+
+      {/* ── Sticky Nav (portal-like, rendered at top) ── */}
+      <StickyNav clientName={meta.clientName} token={token} />
 
       {/* ── Hero ── */}
       <div style={{ background: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)", color: "#fff", padding: "80px 24px 100px" }}>
@@ -572,12 +821,70 @@ export default function ShareProposalPage({ params }: Props) {
         </div>
       )}
 
+      {/* ── Get Started / Enquiry CTA ── */}
+      <div id="contact" style={{ background: "linear-gradient(135deg, #0f0c29, #1e1b4b)", padding: "80px 24px" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          {/* Two-column layout: CTA left, form right */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "flex-start" }}>
+            <div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                <div style={{ width: 32, height: 3, background: "linear-gradient(to right, #6366f1, #818cf8)", borderRadius: 99 }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#6366f1", letterSpacing: "0.08em", textTransform: "uppercase" }}>Next Steps</span>
+              </div>
+              <h2 style={{ fontSize: 36, fontWeight: 900, color: "#fff", lineHeight: 1.1, margin: "0 0 20px" }}>
+                Ready to grow {meta.clientName}?
+              </h2>
+              <p style={{ fontSize: 16, color: "#94a3b8", lineHeight: 1.7, margin: "0 0 32px" }}>
+                Get in touch and we&apos;ll set up a discovery call to walk you through the strategy, answer your questions, and get things moving.
+              </p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {[
+                  { icon: "📞", title: "Discovery call", desc: "30-minute strategy session — no commitment" },
+                  { icon: "📊", title: "Custom roadmap", desc: "We tailor the plan to your timeline and budget" },
+                  { icon: "🚀", title: "Fast onboarding", desc: "Campaigns live within 2 weeks of sign-off" },
+                ].map((item) => (
+                  <div key={item.title} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                    <span style={{ fontSize: 20, flexShrink: 0 }}>{item.icon}</span>
+                    <div>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: "#e2e8f0", margin: 0 }}>{item.title}</p>
+                      <p style={{ fontSize: 13, color: "#64748b", margin: "2px 0 0" }}>{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 20, padding: 32, border: "1px solid rgba(165,180,252,0.12)" }}>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: "#fff", margin: "0 0 20px" }}>
+                Send us a message
+              </h3>
+              <EnquiryForm token={token} clientName={meta.clientName} />
+            </div>
+          </div>
+
+          {/* Mobile: contact details row */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 24, justifyContent: "center", marginTop: 60, paddingTop: 40, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+            {[
+              { Icon: Mail, text: "hello@i3media.co.uk" },
+              { Icon: Phone, text: "+44 (0)20 1234 5678" },
+              { Icon: MessageSquare, text: "Live chat on our website" },
+            ].map(({ Icon, text }) => (
+              <div key={text} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Icon style={{ width: 16, height: 16, color: "#6366f1" }} />
+                <span style={{ fontSize: 13, color: "#64748b" }}>{text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* ── Footer ── */}
-      <div style={{ background: "#0f0c29", padding: "48px 24px", textAlign: "center" }}>
-        <p style={{ fontSize: 14, color: "#a5b4fc", margin: "0 0 8px" }}>
-          Prepared by <strong style={{ color: "#fff" }}>i3media</strong>
+      <div style={{ background: "#080614", padding: "32px 24px", textAlign: "center" }}>
+        <p style={{ fontSize: 13, color: "#475569", margin: "0 0 4px" }}>
+          Prepared by <strong style={{ color: "#a5b4fc" }}>i3media</strong> · Digital Marketing Agency
         </p>
-        <p style={{ fontSize: 12, color: "#6366f1", margin: 0 }}>
+        <p style={{ fontSize: 11, color: "#334155", margin: 0 }}>
           {new Date(meta.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
         </p>
       </div>

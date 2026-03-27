@@ -18,9 +18,12 @@ export async function GET() {
       clientName: true,
       website: true,
       shareToken: true,
+      viewCount: true,
+      lastViewedAt: true,
       researchId: true,
       createdAt: true,
       updatedAt: true,
+      _count: { select: { enquiries: true } },
     },
   });
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Download, Pencil, Check, X, Trash2, Loader2, RefreshCw, Share2, Copy, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Download, Pencil, Check, X, Trash2, Loader2, RefreshCw, Share2, Copy, Eye, EyeOff, BarChart3, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ProposalFull {
   id: string;
@@ -12,13 +12,34 @@ interface ProposalFull {
   website: string;
   html: string;
   shareToken: string | null;
+  viewCount: number;
+  lastViewedAt: string | null;
+  enquiryCount: number;
   researchId: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
+interface ProposalEnquiry {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  message: string;
+  createdAt: string;
+}
+
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
 export default function ProposalViewPage({ params }: Props) {
@@ -38,6 +59,11 @@ export default function ProposalViewPage({ params }: Props) {
   // Share state
   const [sharingBusy, setSharingBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Enquiries panel
+  const [enquiries, setEnquiries] = useState<ProposalEnquiry[]>([]);
+  const [enquiriesOpen, setEnquiriesOpen] = useState(false);
+  const [enquiriesLoading, setEnquiriesLoading] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -75,6 +101,20 @@ export default function ProposalViewPage({ params }: Props) {
         setEditingTitle(false);
       }
     } finally { setSavingTitle(false); }
+  }
+
+  async function handleLoadEnquiries() {
+    if (enquiriesLoading) return;
+    setEnquiriesOpen((v) => {
+      if (!v && enquiries.length === 0) {
+        setEnquiriesLoading(true);
+        fetch(`/api/tools/proposals/${id}/enquiries`)
+          .then((r) => r.json() as Promise<{ enquiries: ProposalEnquiry[] }>)
+          .then((data) => setEnquiries(data.enquiries ?? []))
+          .finally(() => setEnquiriesLoading(false));
+      }
+      return !v;
+    });
   }
 
   async function handleToggleShare() {
@@ -254,6 +294,76 @@ export default function ProposalViewPage({ params }: Props) {
             {copied ? <Check style={{ width: 11, height: 11 }} /> : <Copy style={{ width: 11, height: 11 }} />}
             {copied ? "Copied" : "Copy"}
           </button>
+        </div>
+      )}
+
+      {/* View stats + enquiries bar */}
+      {(proposal.viewCount > 0 || proposal.enquiryCount > 0) && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 16, padding: "8px 20px",
+          background: "var(--surface-2, #f8fafc)", borderBottom: "1px solid var(--border-subtle)", flexShrink: 0, flexWrap: "wrap",
+        }}>
+          {proposal.viewCount > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <BarChart3 style={{ width: 13, height: 13, color: "var(--text-3)" }} />
+              <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                Viewed <strong style={{ color: "var(--text-2)" }}>{proposal.viewCount} {proposal.viewCount === 1 ? "time" : "times"}</strong>
+                {proposal.lastViewedAt && (
+                  <> · last seen <strong style={{ color: "var(--text-2)" }}>{timeAgo(proposal.lastViewedAt)}</strong></>
+                )}
+              </span>
+            </div>
+          )}
+          {proposal.enquiryCount > 0 && (
+            <button
+              onClick={handleLoadEnquiries}
+              style={{
+                display: "flex", alignItems: "center", gap: 5, background: "none", border: "none",
+                cursor: "pointer", padding: 0,
+              }}
+            >
+              <MessageSquare style={{ width: 13, height: 13, color: "#6366f1" }} />
+              <span style={{ fontSize: 12, color: "#6366f1", fontWeight: 600 }}>
+                {proposal.enquiryCount} {proposal.enquiryCount === 1 ? "enquiry" : "enquiries"}
+              </span>
+              {enquiriesOpen ? <ChevronUp style={{ width: 12, height: 12, color: "#6366f1" }} /> : <ChevronDown style={{ width: 12, height: 12, color: "#6366f1" }} />}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Enquiries panel */}
+      {enquiriesOpen && (
+        <div style={{
+          background: "#fafafa", borderBottom: "1px solid var(--border-subtle)", flexShrink: 0,
+          maxHeight: 320, overflowY: "auto", padding: "12px 20px",
+        }}>
+          {enquiriesLoading ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 0" }}>
+              <Loader2 style={{ width: 14, height: 14, color: "var(--text-3)" }} className="animate-spin" />
+              <span style={{ fontSize: 13, color: "var(--text-3)" }}>Loading enquiries…</span>
+            </div>
+          ) : enquiries.length === 0 ? (
+            <p style={{ fontSize: 13, color: "var(--text-3)", margin: 0, padding: "8px 0" }}>No enquiries yet.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {enquiries.map((enq) => (
+                <div key={enq.id} style={{
+                  background: "#fff", border: "1px solid var(--border-subtle)", borderRadius: 8, padding: 14,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <strong style={{ fontSize: 13, color: "var(--text)" }}>{enq.name}</strong>
+                      <a href={`mailto:${enq.email}`} style={{ fontSize: 12, color: "#6366f1", textDecoration: "none" }}>{enq.email}</a>
+                      {enq.phone && <span style={{ fontSize: 12, color: "var(--text-3)" }}>{enq.phone}</span>}
+                    </div>
+                    <span style={{ fontSize: 11, color: "var(--text-4)" }}>{timeAgo(enq.createdAt)}</span>
+                  </div>
+                  <p style={{ fontSize: 13, color: "var(--text-2)", margin: 0, lineHeight: 1.5 }}>{enq.message}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
