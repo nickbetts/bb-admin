@@ -14,8 +14,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (existing.isBuiltIn) return NextResponse.json({ error: "Built-in templates cannot be edited" }, { status: 403 });
 
-  const body = await request.json() as { name?: string; sector?: string; description?: string; templateText?: string };
-  const { name, sector, description, templateText } = body;
+  const body = await request.json() as { name?: string; sector?: string; description?: string; templateText?: string; promptGuidance?: string };
+  const { name, sector, description, templateText, promptGuidance } = body;
 
   const template = await prisma.llmTemplate.update({
     where: { id },
@@ -24,6 +24,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       ...(sector !== undefined && { sector: sector.trim() }),
       ...(description !== undefined && { description: description.trim() || null }),
       ...(templateText !== undefined && { templateText: templateText.trim() }),
+      ...(promptGuidance !== undefined && { promptGuidance: promptGuidance.trim() || null }),
     },
   });
 

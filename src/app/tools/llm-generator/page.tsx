@@ -16,6 +16,7 @@ interface LlmTemplate {
   sector: string;
   description?: string | null;
   templateText: string;
+  promptGuidance?: string | null;
   isBuiltIn: boolean;
   createdAt: string;
   updatedAt: string;
@@ -72,6 +73,7 @@ export default function LlmGeneratorPage() {
   const [formSector, setFormSector] = useState("");
   const [formDesc, setFormDesc] = useState("");
   const [formText, setFormText] = useState("");
+  const [formPrompt, setFormPrompt] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [formError, setFormError] = useState("");
   const [expandedPreview, setExpandedPreview] = useState<string | null>(null);
@@ -142,6 +144,7 @@ export default function LlmGeneratorPage() {
     setFormSector("");
     setFormDesc("");
     setFormText("");
+    setFormPrompt("");
     setFormError("");
     setShowForm(true);
   }
@@ -152,6 +155,7 @@ export default function LlmGeneratorPage() {
     setFormSector(t.sector);
     setFormDesc(t.description ?? "");
     setFormText(t.templateText);
+    setFormPrompt(t.promptGuidance ?? "");
     setFormError("");
     setShowForm(true);
   }
@@ -170,7 +174,7 @@ export default function LlmGeneratorPage() {
       const res = await fetch(url, {
         method: editingId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: formName, sector: formSector, description: formDesc, templateText: formText }),
+        body: JSON.stringify({ name: formName, sector: formSector, description: formDesc, templateText: formText, promptGuidance: formPrompt }),
       });
       const data = await res.json() as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "Save failed");
@@ -459,16 +463,32 @@ export default function LlmGeneratorPage() {
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>
-                    Template text *
+                    Template structure *
                     <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-3)", marginLeft: 8 }}>
-                      Define the sections and structure the AI should use. Use [PLACEHOLDER] markers for dynamic fields.
+                      The llm.txt skeleton the AI fills in. Use [placeholder] markers for dynamic fields.
                     </span>
                   </label>
                   <textarea
                     style={{ ...inputStyle, resize: "vertical", minHeight: 320, fontFamily: "monospace", fontSize: 12, lineHeight: 1.6 }}
-                    placeholder={`# LLM Index File\n# Version: 1.0 ([Sector] Optimised)\n# Last Updated: [DATE]\n\n########################################\n# CORE INFORMATION\n########################################\n...\n`}
+                    placeholder={`# llm.txt\n# Version: 1.0\n# Last Updated: [YYYY-MM-DD]\n\n##################################################\n# CORE ORGANISATION IDENTITY\n##################################################\n\norganisation_name: [Organisation Name]\n...\n`}
                     value={formText}
                     onChange={e => setFormText(e.target.value)}
+                    onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
+                    onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>
+                    AI prompt guidance
+                    <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-3)", marginLeft: 8 }}>
+                      Instructions and prioritisation rules the AI follows when filling this template. Leave blank for defaults.
+                    </span>
+                  </label>
+                  <textarea
+                    style={{ ...inputStyle, resize: "vertical", minHeight: 200, fontFamily: "monospace", fontSize: 12, lineHeight: 1.6 }}
+                    placeholder={`e.g.\nPrioritise the description and mission_statement — write as clean, directly quotable sentences.\nFor impact_metrics, only use real numbers found on the site — never estimate.\nFor faith-based charities, fill the faith_based_giving section fully.`}
+                    value={formPrompt}
+                    onChange={e => setFormPrompt(e.target.value)}
                     onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
                     onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
                   />
@@ -549,13 +569,26 @@ export default function LlmGeneratorPage() {
                     </div>
                     {expanded && (
                       <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "0 20px 16px" }}>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", marginTop: 12, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>Template structure</p>
                         <pre style={{
-                          marginTop: 12, padding: "12px 16px", background: "var(--bg)", borderRadius: "var(--r)",
+                          padding: "12px 16px", background: "var(--bg)", borderRadius: "var(--r)",
                           fontSize: 11, lineHeight: 1.65, color: "var(--text-3)", overflow: "auto", maxHeight: 360,
                           fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-word",
                         }}>
                           {t.templateText}
                         </pre>
+                        {t.promptGuidance && (
+                          <>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", marginTop: 12, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>AI prompt guidance</p>
+                            <pre style={{
+                              padding: "12px 16px", background: "#fef9ec", border: "1px solid #fde68a", borderRadius: "var(--r)",
+                              fontSize: 11, lineHeight: 1.65, color: "#78350f", overflow: "auto", maxHeight: 240,
+                              fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-word",
+                            }}>
+                              {t.promptGuidance}
+                            </pre>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -571,11 +604,11 @@ export default function LlmGeneratorPage() {
                 How to write a great template
               </p>
               <ul style={{ fontSize: 12, color: "#4338ca", lineHeight: 1.8, paddingLeft: 16 }}>
-                <li>Use <code>[ORGANISATION_NAME]</code>, <code>[WEBSITE_URL]</code>, and <code>[DATE]</code> — these are replaced automatically</li>
-                <li>Use <code>[Descriptive placeholders in square brackets]</code> to guide the AI — e.g. <code>[List 3-5 cause areas]</code></li>
-                <li>Keep the <code># Section header</code> and YAML-like format for clean output</li>
-                <li>The AI fills in all placeholders from the crawled website — be specific about what data to extract</li>
-                <li>Add sector-specific sections (e.g. charity: registration numbers, ecommerce: product categories)</li>
+                <li><strong>Template structure</strong> — the llm.txt skeleton. Use <code>[Charity Name]</code>, <code>[domain]</code>, and <code>[YYYY-MM-DD]</code> as auto-replaced markers</li>
+                <li>Use <code>[descriptive placeholders]</code> to guide the AI on what to fill in — e.g. <code>[Citation-ready description of what the programme does]</code></li>
+                <li>Keep <code>## Section headers</code> and YAML indentation exactly — the AI reproduces them verbatim</li>
+                <li><strong>AI prompt guidance</strong> — separate from the template. Tell the AI which sections to prioritise and any quality rules. Editable per template.</li>
+                <li>Add sector-specific sections and guidance (e.g. charity: registration + faith giving, ecommerce: product schema, healthcare: CQC registration)</li>
               </ul>
             </div>
           </div>

@@ -663,6 +663,38 @@ changelog:
   - [YYYY-MM-DD]: Updated impact metrics
   - [YYYY-MM-DD]: Updated reports and governance links`;
 
+const CHARITY_PROMPT_GUIDANCE = `This template is intentionally comprehensive. Read the crawled data carefully to determine the type of charity site, then prioritise accordingly.
+
+FOR ALL CHARITY WEBSITES (highest impact — fill with maximum detail):
+- description and short_description: write as clean, directly quotable sentences. LLMs reuse clean sentences, not fluffy marketing copy.
+- mission_statement: use the charity's exact wording where possible
+- registrations: include all available trust signals (charity number, regulator, tax status)
+- programmes: provide full structured detail for every programme found, with real descriptions and URLs
+- engagement_pages: list every real donation, giving, and involvement pathway found on the site
+- impact_metrics: use only real numbers found on the site — never estimate or invent; omit metric keys where no data was found
+- featured_articles: identify real article URLs with factual, neutral summaries — these are citation targets for LLMs
+- priority_pages: list only pages that actually exist on the site
+- citation_guidelines: fill completely — this tells AI systems how to attribute the charity
+
+FOR ARTICLE-HEAVY CHARITY SITES (strong blog or resources hub):
+- featured_articles, pillar_content, research_and_reports, and faq_topics matter most — give LLMs concrete citation targets
+
+FOR DONATION-FOCUSED SITES (primarily fundraising):
+- engagement_pages, donation_details, high_trust_pages, and impact sections take priority
+
+FOR MULTI-COUNTRY CHARITIES:
+- geography, countries_served, local_focus_pages, and service_delivery_model — populate carefully to prevent vague country-level summaries
+
+FOR FAITH-BASED CHARITIES (e.g. Islamic, Christian, Jewish charities):
+- faith_based_giving section: fill fully with detected giving types (zakat, sadaqah, kaffarah, fidya, etc.)
+- seasonal_campaigns: populate with known faith-based appeal seasons if found
+
+QUALITY RULES:
+- Keep description, mission_statement, and short_description factual and directly quotable — avoid vague superlatives
+- Fill metadata fields (founded_year, headquarters, registrations) where found — these build entity trust signals
+- Only include real URLs from the crawl — never construct guessed URLs for pages not found
+- Social profiles found in the crawl should populate the social_profiles section; remove placeholder entries for platforms not detected`;
+
 async function seedBuiltIns() {
   const existing = await prisma.llmTemplate.findFirst({ where: { isBuiltIn: true, sector: "charity" } });
   const data = {
@@ -671,6 +703,7 @@ async function seedBuiltIns() {
     description:
       "Comprehensive llm.txt v3.0 for charities and non-profits — covers core identity, trust signals, programmes, impact, content hubs, and citation guidance for AI systems.",
     templateText: CHARITY_TEMPLATE,
+    promptGuidance: CHARITY_PROMPT_GUIDANCE,
     isBuiltIn: true,
   };
   if (existing) {
@@ -699,8 +732,8 @@ export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await request.json() as { name?: string; sector?: string; description?: string; templateText?: string };
-  const { name, sector, description, templateText } = body;
+  const body = await request.json() as { name?: string; sector?: string; description?: string; templateText?: string; promptGuidance?: string };
+  const { name, sector, description, templateText, promptGuidance } = body;
 
   if (!name?.trim() || !sector?.trim() || !templateText?.trim()) {
     return NextResponse.json({ error: "name, sector, and templateText are required" }, { status: 400 });
@@ -712,6 +745,7 @@ export async function POST(request: NextRequest) {
       sector: sector.trim(),
       description: description?.trim() ?? null,
       templateText: templateText.trim(),
+      promptGuidance: promptGuidance?.trim() ?? null,
       isBuiltIn: false,
     },
   });

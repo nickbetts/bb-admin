@@ -197,12 +197,13 @@ model ProposalEnquiry {
 }
 
 model LlmTemplate {
-  id           String   @id @default(cuid())
-  name         String
-  sector       String
-  description  String?
-  templateText String   // The structure/format the AI follows to generate the llm.txt
-  isBuiltIn    Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  sector          String
+  description     String?
+  templateText    String   // The structure/format the AI follows to generate the llm.txt
+  promptGuidance  String?  // Strategic/prioritisation instructions the AI should follow when filling this template
+  isBuiltIn       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
