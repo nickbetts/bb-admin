@@ -195,6 +195,141 @@ function H2({ children }: { children: React.ReactNode }) {
   return <h2 style={{ fontSize: 28, fontWeight: 800, color: "#1e293b", lineHeight: 1.2, margin: "0 0 16px" }}>{children}</h2>;
 }
 
+// ─── Ad mockup helpers ────────────────────────────────────────────────────────
+
+function extractDomain(url: string): string {
+  try {
+    const u = new URL(url.startsWith("http") ? url : `https://${url}`);
+    return u.hostname.replace(/^www\./, "");
+  } catch {
+    return url.replace(/^https?:\/\/(www\.)?/, "").split("/")[0];
+  }
+}
+
+function slugify(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function trunc(s: string, max: number): string {
+  return s.length <= max ? s : s.slice(0, max - 1) + "…";
+}
+
+// ─── Google Search Ad preview ─────────────────────────────────────────────────
+
+function GoogleSearchAdCard({
+  headline1, headline2, headline3,
+  displayUrl, urlPath,
+  description1, description2,
+}: {
+  headline1: string; headline2: string; headline3?: string;
+  displayUrl: string; urlPath?: string;
+  description1: string; description2?: string;
+}) {
+  return (
+    <div style={{
+      background: "#fff", border: "1px solid #dadce0", borderRadius: 12,
+      padding: "16px 20px", fontFamily: "Arial, sans-serif",
+    }}>
+      {/* Ad badge + display URL */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <span style={{
+          fontSize: 11, fontWeight: 700, color: "#188038",
+          border: "1px solid #188038", borderRadius: 3, padding: "1px 5px", lineHeight: 1.4,
+        }}>Ad</span>
+        <span style={{ fontSize: 14, color: "#202124" }}>
+          {displayUrl}{urlPath ? ` › ${urlPath}` : ""}
+        </span>
+      </div>
+      {/* Headlines */}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "0 2px", marginBottom: 4 }}>
+        {[headline1, headline2, headline3].filter(Boolean).map((h, i, arr) => (
+          <span key={i} style={{ display: "inline-flex", alignItems: "baseline" }}>
+            <span style={{ fontSize: 20, color: "#1a0dab", lineHeight: 1.3 }}>{h}</span>
+            {i < arr.length - 1 && <span style={{ fontSize: 20, color: "#1a0dab", margin: "0 4px" }}>|</span>}
+          </span>
+        ))}
+      </div>
+      {/* Descriptions */}
+      <p style={{ fontSize: 14, color: "#4d5156", lineHeight: 1.57, margin: 0 }}>
+        {description1}{description2 && ` ${description2}`}
+      </p>
+    </div>
+  );
+}
+
+// ─── Meta / Social ad preview ─────────────────────────────────────────────────
+
+function MetaAdCard({
+  clientName, tagline, description, domain,
+}: {
+  clientName: string; tagline: string; description: string; domain: string;
+}) {
+  return (
+    <div style={{
+      background: "#fff", border: "1px solid #dde3ef", borderRadius: 12,
+      overflow: "hidden", maxWidth: 380,
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    }}>
+      {/* Profile header */}
+      <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
+          background: "linear-gradient(135deg, #6366f1, #7c3aed)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#fff", fontWeight: 800, fontSize: 15,
+        }}>
+          {(clientName[0] ?? "?").toUpperCase()}
+        </div>
+        <div>
+          <p style={{ fontSize: 14, fontWeight: 700, color: "#050505", margin: 0 }}>{clientName}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 12, color: "#65676b" }}>Sponsored</span>
+            <span style={{ fontSize: 11, color: "#65676b" }}> · 🌐</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Post body */}
+      <p style={{ padding: "0 16px 12px", fontSize: 15, color: "#050505", lineHeight: 1.5, margin: 0 }}>
+        {description}
+      </p>
+
+      {/* Image placeholder */}
+      <div style={{
+        background: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
+        height: 200,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        flexDirection: "column", gap: 8, padding: "0 24px",
+      }}>
+        <p style={{ fontSize: 22, fontWeight: 900, color: "#fff", textAlign: "center", margin: 0, lineHeight: 1.2 }}>
+          {tagline}
+        </p>
+        <p style={{ fontSize: 11, color: "#a5b4fc", margin: 0, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          i3media · Digital Marketing
+        </p>
+      </div>
+
+      {/* Footer with CTA */}
+      <div style={{
+        padding: "12px 16px", borderTop: "1px solid #e4e6eb",
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+      }}>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: "#050505", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tagline}</p>
+          <p style={{ fontSize: 12, color: "#65676b", margin: "2px 0 0" }}>{domain}</p>
+        </div>
+        <button style={{
+          background: "#e4e6eb", border: "none", borderRadius: 6,
+          padding: "8px 16px", fontSize: 13, fontWeight: 700, color: "#050505",
+          cursor: "default", flexShrink: 0,
+        }}>
+          Learn More
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 
 interface Props { params: Promise<{ token: string }> }
@@ -202,6 +337,7 @@ interface Props { params: Promise<{ token: string }> }
 // Nav items that map to section IDs
 const NAV_SECTIONS = [
   { id: "ppc-forecaster", label: "PPC Forecast" },
+  { id: "ad-previews", label: "Ad Mockups" },
   { id: "services", label: "Services" },
   { id: "keywords", label: "Keywords" },
   { id: "content", label: "Content" },
@@ -763,9 +899,89 @@ export default function ShareProposalPage({ params }: Props) {
         </div>
       </Section>
 
+      {/* ── Ad Creatives / Mockups ── */}
+      {(adGroups.length > 0 || meta.website) && (
+        <div style={{ background: "#f8fafc" }}>
+          <Section id="ad-previews">
+            <SectionLabel>Ad Creatives</SectionLabel>
+            <H2>How Your Ads Will Look</H2>
+            <p style={{ fontSize: 15, color: "#475569", lineHeight: 1.7, marginBottom: 48 }}>
+              Below are mockups of how your ads will appear across Google Search and Meta (Facebook &amp; Instagram). Each ad is built around your target keywords and campaign goals.
+            </p>
+
+            {/* Google Search Ads */}
+            <div style={{ marginBottom: 48 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <span style={{ fontSize: 22 }}>🔍</span>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: "#1e293b", margin: 0 }}>Google Search Ads</h3>
+              </div>
+              <p style={{ fontSize: 14, color: "#64748b", margin: "0 0 20px", lineHeight: 1.6 }}>
+                Your ads will appear at the top of Google Search results when potential customers search for your target keywords.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {(adGroups.length > 0
+                  ? adGroups.slice(0, 3)
+                  : [{ name: meta.clientName, keywords: [] }]
+                ).map((group, i) => {
+                  const domain = extractDomain(meta.website || "example.com");
+                  const urlPath = slugify(group.name).slice(0, 20);
+                  const heroDesc = ai?.hero?.description;
+                  const firstSentence = heroDesc ? heroDesc.split(/\.\s/)[0] + "." : null;
+                  const descs = [
+                    firstSentence ?? `${meta.clientName} provides expert ${group.name.toLowerCase()} services.`,
+                    `Speak to our specialist team about ${group.name.toLowerCase()}. Results-driven campaigns tailored to your business goals.`,
+                    `Trusted ${group.name.toLowerCase()} experts. Dedicated account management and transparent monthly reporting.`,
+                  ];
+                  const ctaLines = [
+                    "Get a Free Quote Today",
+                    "Contact Us Now",
+                    "Book a Consultation",
+                  ];
+                  return (
+                    <GoogleSearchAdCard
+                      key={i}
+                      headline1={trunc(meta.clientName, 30)}
+                      headline2={trunc(group.name, 30)}
+                      headline3={ctaLines[i % 3]}
+                      displayUrl={domain}
+                      urlPath={urlPath}
+                      description1={trunc(descs[i % descs.length], 90)}
+                      description2="Call now · No obligation · Results guaranteed"
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Meta / Social Ads */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <span style={{ fontSize: 22 }}>📱</span>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: "#1e293b", margin: 0 }}>Meta (Facebook &amp; Instagram) Ads</h3>
+              </div>
+              <p style={{ fontSize: 14, color: "#64748b", margin: "0 0 20px", lineHeight: 1.6 }}>
+                Targeted social media ads designed to reach your ideal customers on Facebook and Instagram.
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
+                <MetaAdCard
+                  clientName={meta.clientName}
+                  tagline={trunc(ai?.hero?.tagline ?? `Grow ${meta.clientName} Online`, 40)}
+                  description={trunc(
+                    ai?.hero?.description ??
+                    `Looking to grow your business online? ${meta.clientName} is partnering with i3media to reach more customers through targeted digital marketing.`,
+                    140,
+                  )}
+                  domain={extractDomain(meta.website || "example.com")}
+                />
+              </div>
+            </div>
+          </Section>
+        </div>
+      )}
+
       {/* ── Services & Hours ── */}
       {services.length > 0 && (
-        <div style={{ background: "#f8fafc" }}>
+        <div style={{ background: "#fff" }}>
           <Section id="services">
             <SectionLabel>Our Services</SectionLabel>
             <H2>What&apos;s Included</H2>
