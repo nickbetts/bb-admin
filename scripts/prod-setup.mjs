@@ -34,6 +34,15 @@ async function columnExists(table, column) {
   }
 }
 
+async function tableExists(table) {
+  try {
+    const res = await db.execute(`SELECT name FROM sqlite_master WHERE type='table' AND name='${table}'`);
+    return res.rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 async function main() {
   console.log("→ Checking schema against", url.replace(/\/\/.*@/, "//***@"));
 
@@ -43,6 +52,30 @@ async function main() {
     console.log("✓ Added User.mustChangePassword");
   } else {
     console.log("✓ User.mustChangePassword already present");
+  }
+
+  // ── LlmTemplate table (added 2026-03-27) ───────────────────────────────────
+  if (!(await tableExists("LlmTemplate"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS LlmTemplate (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      sector TEXT NOT NULL,
+      description TEXT,
+      templateText TEXT NOT NULL,
+      promptGuidance TEXT,
+      isBuiltIn INTEGER NOT NULL DEFAULT 0,
+      createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+    console.log("✓ Created LlmTemplate table");
+  } else {
+    // Ensure promptGuidance column exists (added 2026-03-27)
+    if (!(await columnExists("LlmTemplate", "promptGuidance"))) {
+      await db.execute('ALTER TABLE "LlmTemplate" ADD COLUMN "promptGuidance" TEXT');
+      console.log("✓ Added LlmTemplate.promptGuidance");
+    } else {
+      console.log("✓ LlmTemplate table up to date");
+    }
   }
 
   // ── Add future columns here in the same pattern ────────────────────────────
