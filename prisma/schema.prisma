@@ -195,3 +195,14 @@ model ProposalEnquiry {
   createdAt  DateTime @default(now())
   proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
 }
+
+model LlmTemplate {
+  id           String   @id @default(cuid())
+  name         String
+  sector       String
+  description  String?
+  templateText String   // The structure/format the AI follows to generate the llm.txt
+  isBuiltIn    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

@@ -18,6 +18,7 @@ import {
   LayoutTemplate,
   Sparkles,
   Tag,
+  Bot,
 } from "lucide-react";
 
 interface NavItem {
@@ -74,6 +75,11 @@ const toolsNavItems: NavItem[] = [
     href: "/tools/pricing",
     label: "Pricing",
     icon: <Tag className="h-4 w-4" />,
+  },
+  {
+    href: "/tools/llm-generator",
+    label: "LLM.txt Generator",
+    icon: <Bot className="h-4 w-4" />,
   },
 ];
 
