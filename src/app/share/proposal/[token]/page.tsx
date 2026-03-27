@@ -798,6 +798,9 @@ export default function ShareProposalPage({ params }: Props) {
           .prop-arch-row { grid-template-columns: 1fr !important; }
           .prop-forecast-grid { grid-template-columns: 1fr !important; }
           .prop-contact-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+          .prop-stats-grid { grid-template-columns: repeat(3, 1fr) !important; }
+          .prop-deliv-grid { grid-template-columns: 1fr !important; }
+          .prop-obj-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
@@ -867,6 +870,76 @@ export default function ShareProposalPage({ params }: Props) {
               <strong style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#475569", marginBottom: 3 }}>Services</strong>
               <span style={{ color: "#94a3b8", fontSize: 13 }}>{services.length} included</span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Stats Band ── */}
+      <div style={{ background: "#0f172a", padding: "3rem 24px" }}>
+        <div className="prop-stats-grid" style={{ maxWidth: 900, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 0 }}>
+          {([
+            { value: stats ? fmtNum(stats.totalKeywords) : String(topKws.length || "—"), label: "Keywords" },
+            { value: stats ? fmtNum(stats.totalSearchVolume) : "—", label: "Monthly Searches" },
+            { value: adGroups.length > 0 ? String(adGroups.length) : "—", label: "Ad Groups" },
+            { value: fmtNum(ppcMetrics.clicks), label: "Est. Clicks / Mo" },
+            { value: String(services.length), label: "Services Included" },
+          ] as Array<{ value: string; label: string }>).map((s, i, arr) => (
+            <div key={s.label} style={{
+              padding: "0 1.5rem",
+              borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,.1)" : "none",
+              textAlign: "center",
+            }}>
+              <span style={{ fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)", fontWeight: 800, letterSpacing: "-2px", color: "#fff", lineHeight: 1, display: "block", marginBottom: 6 }}>
+                {s.value}
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                {s.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Objectives ── */}
+      <div style={{ background: "#fff", padding: "80px 24px" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <div style={{ width: 24, height: 1, background: "#94a3b8" }} />
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.15em", color: "#94a3b8" }}>The Objective</span>
+          </div>
+          <h2 style={{ fontSize: "clamp(1.5rem, 3.5vw, 2.5rem)", fontWeight: 800, color: "#0f172a", letterSpacing: "-1px", lineHeight: 1.15, margin: "0 0 14px" }}>
+            From invisible to inbound.
+          </h2>
+          <p style={{ fontSize: 15, color: "#64748b", maxWidth: 620, lineHeight: 1.75, marginBottom: 40 }}>
+            {ai?.whereYouAreNow?.summary ?? `This proposal identifies the gaps holding ${meta.clientName} back and maps out the opportunities a focused digital strategy can unlock.`}
+          </p>
+          <div className="prop-obj-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+            {([
+              ...(ai?.whereYouAreNow?.gaps?.slice(0, 2).map((g, i) => ({
+                badge: `Problem ${String(i + 1).padStart(2, "0")}`,
+                title: g.title,
+                body: g.description,
+              })) ?? [
+                { badge: "Problem 01", title: "Low visibility in organic search", body: `${meta.clientName}'s potential clients are searching for your services right now. Without content ranking for those searches, the business is missing from the consideration set entirely.` },
+                { badge: "Problem 02", title: "Paid spend without a targeting framework", body: "Generic ad campaigns generate clicks from a broad, largely irrelevant audience. Without intent mapping and structured targeting, budgets are wasted on people unlikely to convert." },
+              ]),
+              ...(ai?.whereYouAreNow?.positives?.slice(0, 2).map((p, i) => ({
+                badge: `Opportunity ${String(i + 1).padStart(2, "0")}`,
+                title: p.title,
+                body: p.description,
+              })) ?? [
+                { badge: "Opportunity 01", title: "High-intent keywords with real search volume", body: `Keyword research reveals significant search volume directly relevant to ${meta.clientName}'s services — many with manageable competition and strong commercial intent.` },
+                { badge: "Opportunity 02", title: "Content that compounds; paid media that converts", body: "A structured content strategy builds long-term organic visibility while targeted paid campaigns deliver immediate traffic — compounding ROI from the same underlying research." },
+              ]),
+            ] as Array<{ badge: string; title: string; body: string }>).map((card) => (
+              <div key={card.badge} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: 28 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.14em", color: "#94a3b8", background: "#f1f5f9", border: "1px solid #e2e8f0", display: "inline-block", padding: "3px 10px", borderRadius: 20, marginBottom: 14 }}>
+                  {card.badge}
+                </div>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", margin: "0 0 8px" }}>{card.title}</h3>
+                <p style={{ fontSize: 13.5, color: "#334155", lineHeight: 1.7, margin: 0 }}>{card.body}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -968,6 +1041,50 @@ export default function ShareProposalPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {/* ── Deliverables Grid ── */}
+      {services.length > 0 && (
+        <div style={{ background: "#f8fafc", padding: "80px 24px" }}>
+          <div style={{ maxWidth: 900, margin: "0 auto" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <div style={{ width: 32, height: 3, background: "linear-gradient(to right, #6366f1, #818cf8)", borderRadius: 99 }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#6366f1", letterSpacing: "0.08em", textTransform: "uppercase" as const }}>Scope of Work</span>
+            </div>
+            <h2 style={{ fontSize: 28, fontWeight: 800, color: "#1e293b", lineHeight: 1.2, margin: "0 0 14px" }}>Every deliverable, documented and ready.</h2>
+            <p style={{ fontSize: 15, color: "#475569", lineHeight: 1.7, maxWidth: 600, marginBottom: 40 }}>
+              This is not a strategy deck. Every campaign has been structured, every keyword list researched, and every content brief is ready to act on from day one.
+            </p>
+            <div className="prop-deliv-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+              {services.slice(0, 6).map((svc, i) => {
+                const headerColors = ["#0f172a", "#1d4ed8", "#0369a1", "#7c3aed", "#b45309", "#065f46"];
+                const color = headerColors[i % headerColors.length];
+                const rows = [
+                  svc.description ?? "Strategy, setup & ongoing management",
+                  "Monthly reporting & analytics review",
+                  "Dedicated account management",
+                  ...(svc.hoursPerMonth ? [`${svc.hoursPerMonth}h / month allocated`] : []),
+                ];
+                return (
+                  <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, overflow: "hidden" }}>
+                    <div style={{ background: color, padding: "11px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, fontSize: 12, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.08em", color: "#fff" }}>
+                      <span>{svc.name}</span>
+                      <span style={{ opacity: 0.75, fontWeight: 600, fontSize: 13 }}>{svc.price}</span>
+                    </div>
+                    <div style={{ padding: "14px 18px" }}>
+                      {rows.map((row, j) => (
+                        <div key={j} style={{ display: "flex", alignItems: "flex-start", gap: 9, padding: "5px 0", borderBottom: j < rows.length - 1 ? "1px solid #f1f5f9" : "none", fontSize: 13, color: "#334155" }}>
+                          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#94a3b8", flexShrink: 0, marginTop: 6 }} />
+                          <span>{row}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── PPC Forecaster (Interactive) ── */}
       <Section id="ppc-forecaster">
@@ -1378,6 +1495,41 @@ export default function ShareProposalPage({ params }: Props) {
       {/* ── Get Started / Enquiry CTA ── */}
       <div id="contact" style={{ background: "linear-gradient(135deg, #0f0c29, #1e1b4b)", padding: "80px 24px" }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          {/* Plan navigation cards */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 14, marginBottom: 56 }}>
+            <div style={{ width: "100%", marginBottom: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 24, height: 1, background: "#60a5fa" }} />
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.18em", color: "#60a5fa" }}>Access the Plan</span>
+              </div>
+            </div>
+            {([
+              { icon: "📊", title: "PPC Forecast", desc: "Model performance scenarios", href: "ppc-forecaster" },
+              { icon: "🎨", title: "Ad Mockups", desc: "See your ads in action", href: "ad-previews" },
+              { icon: "📄", title: "Content Plan", desc: "Topic clusters & article briefs", href: "content" },
+              { icon: "🔍", title: "Keyword Research", desc: "Target keywords & intent map", href: "keywords" },
+            ] as Array<{ icon: string; title: string; desc: string; href: string }>).map((card) => (
+              <button
+                key={card.title}
+                onClick={() => {
+                  const el = document.getElementById(card.href);
+                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                style={{
+                  background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)",
+                  borderRadius: 12, padding: "16px 20px", color: "#fff",
+                  display: "flex", alignItems: "center", gap: 12,
+                  cursor: "pointer", textAlign: "left" as const, flex: "1 1 180px",
+                }}
+              >
+                <span style={{ fontSize: "1.5rem", flexShrink: 0 }}>{card.icon}</span>
+                <div>
+                  <strong style={{ display: "block", fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{card.title}</strong>
+                  <span style={{ fontSize: 12, color: "rgba(255,255,255,.5)" }}>{card.desc}</span>
+                </div>
+              </button>
+            ))}
+          </div>
           {/* Two-column layout: CTA left, form right */}
           <div className="prop-contact-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "flex-start" }}>
             <div>
