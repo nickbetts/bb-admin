@@ -115,61 +115,92 @@ function competitionLabel(level: string): string {
 
 // ─── Forecast algorithm ───────────────────────────────────────────────────────
 //
-// Methodology (matching Google Keyword Planner's approach):
+// Methodology matching Google Keyword Planner's approach as closely as possible
+// without access to Google's proprietary ML models.
 //
-// 1. Impression Share is determined by how competitive your max CPC is vs the
-//    market CPC for each keyword (bid competitiveness ratio).
+// 1. IMPRESSION SHARE: S-curve keyed on (maxCpc / marketCpc). The marketCpc is
+//    SEMrush's Cp field — the average actual CPC paid across all advertisers,
+//    which already reflects second-price auction discounting. At ratio = 1.0
+//    (bidding exactly the market average CPC) a median bidder wins ~50% of
+//    auctions. Practical IS ceiling ~80%: even at very high bids, serving
+//    limits and ad-rank floors prevent 100% IS for competitive terms.
+//    Source: Google Ads Help; practitioner IS research.
 //
-// 2. Expected CTR depends on estimated ad position, which correlates with IS.
-//    Base CTRs are calibrated to industry averages (WordStream/Google benchmarks
-//    for Google Search, ~3.2% median). Position multiplier shifts this up/down.
+// 2. CTR uses COMPETITION LEVEL as a commercial-intent proxy. HIGH competition
+//    = many advertisers bidding = keyword has high transactional value = users
+//    are more likely to click ads (e.g. "emergency plumber": 5–8% CTR per
+//    impression). LOW competition often = informational queries (~1.5%).
+//    IMPORTANT: HIGH > MEDIUM > LOW. This is the correct direction — high
+//    competition signals high commercial intent, not merely a position handicap.
+//    IS then feeds positionCtrMultiplier() to adjust for estimated ad position.
+//    Sources: FirstPageSage Apr 2025 (generic pos-1 = 2.1%, n=109 accounts);
+//    industry benchmarks (Local Services/HVAC: 3.2%, Emergency Services: 5–8%).
 //
-// 3. Actual CPC uses Google's second-price auction discount: on average you pay
-//    ~82% of your max CPC (or the market CPC if lower than your max).
+// 3. ACTUAL CPC: SEMrush avg CPC IS the second-price equilibrium average — the
+//    mean of what advertisers actually pay after second-price discounting. No
+//    additional discount factor is applied (doing so would double-discount).
+//    Formula: actualCpc = min(maxCpc, marketCpc).
+//    Above market → pay market rate; below market → pay your bid (winning cheap
+//    auctions where the 2nd-highest bid ≈ your own bid).
+//    Source: Google Ads Help; SEMrush Cp field documentation.
 //
-// 4. Budget constraint: if the uncapped monthly spend across all keywords exceeds
-//    the monthly budget, all traffic is scaled proportionally.
+// 4. BUDGET: Google uses monthly = daily × 30.4 (365 ÷ 12, rounded to 1 d.p.).
+//    Source: Google Ads Help — monthly spending limit page.
+//
+// 5. BUDGET SCALING: linear proportional when budget < uncapped cost — confirmed
+//    by Google's planning-mode methodology and practitioner consensus.
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Base CTR benchmarks by competition level (calibrated to Google Search averages) */
+/**
+ * Base CTR by competition level (commercial-intent proxy).
+ * HIGH competition = many advertisers bidding = keyword has high transactional
+ * value = users more likely to click ads. LOW competition = often informational.
+ * These rates represent CTR per impression at mid-range positions (2–3);
+ * positionCtrMultiplier() then adjusts for estimated position via IS.
+ */
 const BASE_CTR_BY_COMPETITION: Record<string, number> = {
-  LOW:         0.042,  // Low-competition → easier to land in positions 1–2
-  MEDIUM:      0.030,  // Average competitive keyword
-  HIGH:        0.020,  // Highly competitive → harder to maintain top positions
-  UNSPECIFIED: 0.028,
+  HIGH:        0.055,  // transactional/urgent: "buy X", "emergency Y", "hire Z"
+  MEDIUM:      0.032,  // general commercial: product/service consideration queries
+  LOW:         0.015,  // often informational/research — fewer ad clicks per impression
+  UNSPECIFIED: 0.025,
 };
 
 /**
- * Estimates impression share (0–1) based on how your max CPC compares to the
- * market CPC for a keyword. Higher bid → more auction wins → higher IS.
- * Thresholds approximate Google's bid-to-IS curve.
+ * Estimates Impression Share (0–1) from bid/market ratio.
+ * Calibrated so ratio = 1.0 (bidding avg market CPC) → 50% IS (median bidder).
+ * Ceiling 0.80: Google's practical max IS for generic competitive keywords.
+ * Concave above 1.30× — diminishing returns, consistent with Google IS reports.
  */
 function impressionShareEstimate(maxCpcPounds: number, marketCpcPounds: number): number {
-  if (marketCpcPounds <= 0) return 0.44;
+  if (marketCpcPounds <= 0) return 0.50;
   const ratio = maxCpcPounds / marketCpcPounds;
-  if (ratio >= 1.60) return 0.66;   // significantly outbidding competitors
-  if (ratio >= 1.15) return 0.56;   // comfortably above market
-  if (ratio >= 0.88) return 0.44;   // at/near market rate
-  if (ratio >= 0.66) return 0.30;   // below market
-  if (ratio >= 0.45) return 0.16;   // well below market
-  return 0.07;                       // far below, minimal presence
+  if (ratio >= 2.50) return 0.80;  // approaching absolute IS ceiling
+  if (ratio >= 1.80) return 0.72;  // strongly above market
+  if (ratio >= 1.30) return 0.62;  // above top-of-page high bid range
+  if (ratio >= 1.00) return 0.50;  // at average market CPC (median bidder)
+  if (ratio >= 0.75) return 0.36;  // below average market CPC
+  if (ratio >= 0.50) return 0.20;  // well below market
+  if (ratio >= 0.30) return 0.10;  // rarely appearing
+  return 0.04;                      // minimal presence
 }
 
 /**
- * CTR position multiplier: higher impression share → better average ad position
- * → higher CTR. Based on Google's average CTR by position data.
+ * CTR position multiplier based on IS (IS proxies ad position).
+ * IS ≥ 0.60: predominantly positions 1–2 (top of page) → higher CTR.
+ * Below 0.26: mostly positions 3+ or below-fold → lower CTR per impression.
  */
 function positionCtrMultiplier(impressionShare: number): number {
-  if (impressionShare >= 0.58) return 1.40;  // ~positions 1–2
-  if (impressionShare >= 0.42) return 1.10;  // ~positions 2–3
-  if (impressionShare >= 0.26) return 0.82;  // ~positions 3–4
-  return 0.50;                               //  below-top positions
+  if (impressionShare >= 0.60) return 1.40;  // top of page (positions 1–2)
+  if (impressionShare >= 0.42) return 1.10;  // mixed positions 1–3
+  if (impressionShare >= 0.26) return 0.80;  // positions 2–4
+  return 0.50;                                // below-fold / positions 4+
 }
 
 /**
- * Estimates per-keyword monthly metrics using bid-aware impression share and
- * position-adjusted CTR. Applies Google's second-price auction discount (~18%).
+ * Per-keyword monthly forecast for the Keywords tab.
+ * actualCpc = min(maxCpc, marketCpc) — no additional discount, since SEMrush
+ * avg CPC already embeds the second-price auction average paid.
  */
 function estimateForecast(idea: KeywordIdea, maxCpcMicros: number) {
   const maxCpcPounds  = maxCpcMicros / 1_000_000;
@@ -177,14 +208,14 @@ function estimateForecast(idea: KeywordIdea, maxCpcMicros: number) {
   const effectiveMax  = maxCpcPounds > 0 ? maxCpcPounds : marketCpc;
 
   const isEst         = impressionShareEstimate(effectiveMax, marketCpc);
-  const baseCtr       = BASE_CTR_BY_COMPETITION[idea.competition] ?? 0.028;
+  const baseCtr       = BASE_CTR_BY_COMPETITION[idea.competition] ?? 0.025;
   const ctr           = baseCtr * positionCtrMultiplier(isEst);
 
   const impressions   = Math.round(idea.avgMonthlySearches * isEst);
   const clicks        = Math.round(impressions * ctr);
 
-  // Second-price auction: actual CPC ≈ min(maxCpc, marketCpc) × 0.82
-  const actualCpc     = Math.min(effectiveMax, marketCpc) * 0.82;
+  // SEMrush avg CPC is already the second-price equilibrium — no extra discount.
+  const actualCpc     = Math.min(effectiveMax, marketCpc);
   const costPounds    = clicks * actualCpc;
 
   return { clicks, impressions, costPounds };
@@ -243,12 +274,12 @@ function buildForecastAtBudget(
     const effectiveMax = maxCpcPounds > 0 ? maxCpcPounds : marketCpc;
 
     const isEst        = impressionShareEstimate(effectiveMax, marketCpc);
-    const baseCtr      = BASE_CTR_BY_COMPETITION[idea.competition] ?? 0.028;
+    const baseCtr      = BASE_CTR_BY_COMPETITION[idea.competition] ?? 0.025;
     const ctr          = baseCtr * positionCtrMultiplier(isEst);
 
     const impressions  = Math.round(idea.avgMonthlySearches * isEst);
     const clicks       = Math.round(impressions * ctr);
-    const actualCpc    = Math.min(effectiveMax, marketCpc) * 0.82;
+    const actualCpc    = Math.min(effectiveMax, marketCpc);
 
     return { impressions, clicks, actualCpc };
   });
@@ -424,7 +455,7 @@ export default function KeywordPlannerPage() {
       setMaxCpc(research.maxCpc);
       setMonthlyBudget(research.monthlyBudget);
       const mb = parseFloat(research.monthlyBudget);
-      setDailyBudget(!isNaN(mb) && research.monthlyBudget ? (mb / 30.44).toFixed(2) : "");
+      setDailyBudget(!isNaN(mb) && research.monthlyBudget ? (mb / 30.4).toFixed(2) : "");
       setConversionRate(research.conversionRate);
       setCpcAutoFilled(false);
       setCrAutoFilled(false);
@@ -621,7 +652,7 @@ export default function KeywordPlannerPage() {
     .map(([label, volume]) => ({ label, volume }));
 
   // ── Forecaster derived data ───────────────────────────────────────────
-  const DAYS_PER_MONTH = 30.44;
+  const DAYS_PER_MONTH = 30.4;
   const budgetPounds = monthlyBudget ? parseFloat(monthlyBudget) : 0;
   const convRatePct = conversionRate ? parseFloat(conversionRate) : 3;
   const maxCpcPounds = maxCpc ? parseFloat(maxCpc) : 0;
@@ -1219,7 +1250,7 @@ export default function KeywordPlannerPage() {
                       onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
                       onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
                     <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 5 }}>
-                      {dailyBudget ? `\xa3${dailyBudget}/day \xd7 30.44 days` : "Updates daily automatically"}
+                      {dailyBudget ? `\xa3${dailyBudget}/day \xd7 30.4 days` : "Updates daily automatically"}
                     </p>
                   </div>
                   {/* Max CPC */}
