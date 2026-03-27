@@ -154,23 +154,36 @@ function Slider({ label, value, min, max, step, format, onChange }: {
           background: "#ede9fe", padding: "3px 10px", borderRadius: 99,
         }}>{format(value)}</span>
       </div>
-      <div style={{ position: "relative", height: 20, display: "flex", alignItems: "center" }}>
+      <div style={{ position: "relative", height: 28, display: "flex", alignItems: "center" }}>
+        {/* Track background */}
         <div style={{
           position: "absolute", left: 0, right: 0, height: 6,
-          background: "#e2e8f0", borderRadius: 99, overflow: "hidden",
+          background: "#e2e8f0", borderRadius: 99,
         }}>
           <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(to right, #6366f1, #818cf8)", borderRadius: 99 }} />
         </div>
+        {/* Visible thumb indicator */}
+        <div style={{
+          position: "absolute",
+          left: `calc(${pct}% - 10px)`,
+          width: 20, height: 20, borderRadius: "50%",
+          background: "linear-gradient(135deg, #6366f1, #7c3aed)",
+          border: "2.5px solid #fff",
+          boxShadow: "0 2px 8px rgba(99,102,241,0.5)",
+          pointerEvents: "none",
+          zIndex: 1,
+        }} />
+        {/* Invisible input on top for interaction */}
         <input
           type="range" min={min} max={max} step={step} value={value}
           onChange={(e) => onChange(parseFloat(e.target.value))}
           style={{
             position: "absolute", left: 0, right: 0, width: "100%",
-            opacity: 0, cursor: "pointer", height: 20,
+            opacity: 0, cursor: "pointer", height: 28, zIndex: 2, margin: 0,
           }}
         />
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
         <span style={{ fontSize: 10, color: "#94a3b8" }}>{format(min)}</span>
         <span style={{ fontSize: 10, color: "#94a3b8" }}>{format(max)}</span>
       </div>
@@ -773,49 +786,88 @@ export default function ShareProposalPage({ params }: Props) {
         a { -webkit-user-drag: none; }
         /* Always allow selection inside form inputs for usability */
         input, textarea, select { user-select: text !important; -webkit-user-select: text !important; }
+        /* Reset range input so custom thumb renders cleanly */
+        input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; }
+        input[type=range]::-webkit-slider-runnable-track { background: transparent; }
+        input[type=range]::-moz-range-thumb { width: 1px; height: 1px; border: none; background: transparent; }
+        /* Responsive helpers for new grid sections */
+        @media (max-width: 700px) {
+          .prop-pillars { grid-template-columns: 1fr !important; }
+          .prop-channels { grid-template-columns: 1fr !important; }
+          .prop-arch-row { grid-template-columns: 1fr !important; }
+          .prop-forecast-grid { grid-template-columns: 1fr !important; }
+          .prop-contact-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+        }
       `}</style>
 
       {/* ── Sticky Nav (portal-like, rendered at top) ── */}
       <StickyNav clientName={meta.clientName} token={token} />
 
       {/* ── Hero ── */}
-      <div style={{ background: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)", color: "#fff", padding: "80px 24px 100px" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto" }}>
-          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", color: "#a5b4fc", textTransform: "uppercase", marginBottom: 16 }}>
-            Digital Strategy Proposal
-          </p>
-          <h1 style={{ fontSize: "clamp(28px, 5vw, 52px)", fontWeight: 900, lineHeight: 1.1, margin: "0 0 20px" }}>
+      <div style={{ background: "linear-gradient(145deg, #0c1426 0%, #0f172a 40%, #131f38 72%, #0e1a31 100%)", color: "#fff", padding: "80px 24px 100px", position: "relative", overflow: "hidden" }}>
+        {/* Decorative orbs */}
+        <div aria-hidden="true" style={{ position: "absolute", width: 700, height: 700, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,255,255,.07) 0%, transparent 70%)", top: -200, right: -150, pointerEvents: "none" }} />
+        <div aria-hidden="true" style={{ position: "absolute", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,255,255,.05) 0%, transparent 70%)", bottom: -100, left: -80, pointerEvents: "none" }} />
+        <div aria-hidden="true" style={{ position: "absolute", width: 250, height: 250, borderRadius: "50%", background: "radial-gradient(circle, rgba(96,165,250,.18) 0%, transparent 70%)", top: "30%", right: "25%", pointerEvents: "none" }} />
+        <div style={{ maxWidth: 900, margin: "0 auto", position: "relative", zIndex: 1 }}>
+          {/* Kicker label with line */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
+            <div style={{ width: 28, height: 1, background: "#64748b" }} />
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.18em", color: "#64748b" }}>Digital Strategy Proposal</span>
+          </div>
+          <h1 style={{ fontSize: "clamp(2rem, 5vw, 4rem)", fontWeight: 900, lineHeight: 1.06, margin: "0 0 20px", letterSpacing: "-1.5px", color: "#fff" }}>
             {ai?.hero?.tagline ?? `Growing ${meta.clientName} Online`}
           </h1>
-          <p style={{ fontSize: 17, color: "#cbd5e1", lineHeight: 1.7, maxWidth: 600, margin: "0 0 40px" }}>
+          {/* Blue accent divider */}
+          <div style={{ width: 48, height: 3, background: "#3b82f6", borderRadius: 2, marginBottom: 24 }} />
+          <p style={{ fontSize: 17, color: "#94a3b8", lineHeight: 1.75, maxWidth: 580, margin: "0 0 48px" }}>
             {ai?.hero?.description ?? `A comprehensive digital marketing strategy for ${meta.clientName}.`}
           </p>
 
           {/* Stats row */}
           {stats && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 32, marginBottom: 48 }}>
               {[
                 { value: fmtNum(stats.totalKeywords), label: "Keywords Identified" },
                 { value: fmtNum(stats.totalSearchVolume), label: "Monthly Searches" },
                 { value: String(adGroups.length), label: "Ad Groups" },
                 { value: fmtNum(ppcMetrics.clicks), label: "Est. Monthly Clicks" },
               ].map((s) => (
-                <div key={s.label} style={{ textAlign: "center", minWidth: 100 }}>
-                  <p style={{ fontSize: 32, fontWeight: 900, color: "#fff", margin: 0, lineHeight: 1 }}>{s.value}</p>
-                  <p style={{ fontSize: 12, color: "#a5b4fc", margin: "6px 0 0", fontWeight: 500 }}>{s.label}</p>
+                <div key={s.label} style={{ textAlign: "center", minWidth: 90 }}>
+                  <p style={{ fontSize: "clamp(24px, 4vw, 40px)", fontWeight: 900, color: "#fff", margin: 0, lineHeight: 1, letterSpacing: "-1.5px" }}>{s.value}</p>
+                  <p style={{ fontSize: 11, color: "#64748b", margin: "6px 0 0", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.label}</p>
                 </div>
               ))}
             </div>
           )}
 
-          {meta.website && (
-            <a href={meta.website.startsWith("http") ? meta.website : `https://${meta.website}`}
-              target="_blank" rel="noopener noreferrer"
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 32, fontSize: 13, color: "#a5b4fc", textDecoration: "none" }}>
-              <ExternalLink style={{ width: 14, height: 14 }} />
-              {meta.website.replace(/^https?:\/\/(www\.)?/, "")}
-            </a>
-          )}
+          {/* Hero meta strip */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 32, borderTop: "1px solid rgba(255,255,255,.08)", paddingTop: 28 }}>
+            <div>
+              <strong style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#475569", marginBottom: 3 }}>Client</strong>
+              <span style={{ color: "#94a3b8", fontSize: 13 }}>{meta.clientName}</span>
+            </div>
+            {meta.website && (
+              <div>
+                <strong style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#475569", marginBottom: 3 }}>Website</strong>
+                <a href={meta.website.startsWith("http") ? meta.website : `https://${meta.website}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ color: "#94a3b8", fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <ExternalLink style={{ width: 12, height: 12 }} />
+                  {meta.website.replace(/^https?:\/\/(www\.)?/, "")}
+                </a>
+              </div>
+            )}
+            <div>
+              <strong style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#475569", marginBottom: 3 }}>Prepared</strong>
+              <span style={{ color: "#94a3b8", fontSize: 13 }}>{new Date(meta.updatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</span>
+            </div>
+            <div>
+              <strong style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#475569", marginBottom: 3 }}>Services</strong>
+              <span style={{ color: "#94a3b8", fontSize: 13 }}>{services.length} included</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -861,6 +913,62 @@ export default function ShareProposalPage({ params }: Props) {
         </div>
       )}
 
+      {/* ── Strategy Pillars ── */}
+      <div style={{ background: "#0f172a", padding: "80px 24px" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <div style={{ width: 24, height: 1, background: "#60a5fa" }} />
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.18em", color: "#60a5fa" }}>The Strategy</span>
+          </div>
+          <h2 style={{ fontSize: "clamp(1.6rem, 3.5vw, 2.5rem)", fontWeight: 800, color: "#fff", letterSpacing: "-0.05em", lineHeight: 1.15, margin: "0 0 14px" }}>
+            Three pillars. One coherent plan.
+          </h2>
+          <p style={{ fontSize: 15, color: "#64748b", maxWidth: 600, lineHeight: 1.75, marginBottom: 40 }}>
+            Every element of this strategy — content, paid search, and keyword research — is built around the same underlying data. They reinforce each other rather than running in parallel.
+          </p>
+          <div className="prop-pillars" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+            {/* Pillar 1: Content & SEO */}
+            <div style={{ borderRadius: 16, padding: 28, background: "linear-gradient(135deg, #1e3a5f, #1d4ed8)", position: "relative", overflow: "hidden" }}>
+              <div aria-hidden="true" style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,.07)", top: -50, right: -50 }} />
+              <span style={{ fontSize: "1.75rem", display: "block", marginBottom: 14, position: "relative", zIndex: 1 }}>📄</span>
+              <h3 style={{ fontSize: "1.05rem", fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", margin: "0 0 8px", position: "relative", zIndex: 1 }}>Content &amp; SEO</h3>
+              <p style={{ fontSize: 13.5, color: "rgba(255,255,255,.72)", lineHeight: 1.65, margin: 0, position: "relative", zIndex: 1 }}>
+                Long-form content assets built around the keywords your ideal clients are actively searching. Pillar pages, guides, and articles designed to rank and convert.
+              </p>
+              {ai?.contentCluster && (
+                <span style={{ display: "inline-block", background: "rgba(255,255,255,.18)", color: "rgba(255,255,255,.9)", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, marginTop: 18, position: "relative", zIndex: 1 }}>
+                  {ai.contentCluster.articles.length} articles · 1 pillar page
+                </span>
+              )}
+            </div>
+            {/* Pillar 2: Paid Media */}
+            <div style={{ borderRadius: 16, padding: 28, background: "linear-gradient(135deg, #7c2d12, #c2410c)", position: "relative", overflow: "hidden" }}>
+              <div aria-hidden="true" style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,.07)", top: -50, right: -50 }} />
+              <span style={{ fontSize: "1.75rem", display: "block", marginBottom: 14, position: "relative", zIndex: 1 }}>🎯</span>
+              <h3 style={{ fontSize: "1.05rem", fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", margin: "0 0 8px", position: "relative", zIndex: 1 }}>Paid Media</h3>
+              <p style={{ fontSize: 13.5, color: "rgba(255,255,255,.72)", lineHeight: 1.65, margin: 0, position: "relative", zIndex: 1 }}>
+                Structured campaigns across Google Search and Meta, built around your target keywords. Ad groups mapped to specific intent with coverage for every stage of the buying journey.
+              </p>
+              <span style={{ display: "inline-block", background: "rgba(255,255,255,.18)", color: "rgba(255,255,255,.9)", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, marginTop: 18, position: "relative", zIndex: 1 }}>
+                {adGroups.length > 0 ? `${adGroups.length} ad groups` : "Google · Meta"} · {fmtNum(ppcMetrics.clicks)} est. clicks/mo
+              </span>
+            </div>
+            {/* Pillar 3: Keyword Research */}
+            <div style={{ borderRadius: 16, padding: 28, background: "linear-gradient(135deg, #14532d, #16a34a)", position: "relative", overflow: "hidden" }}>
+              <div aria-hidden="true" style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "rgba(255,255,255,.07)", top: -50, right: -50 }} />
+              <span style={{ fontSize: "1.75rem", display: "block", marginBottom: 14, position: "relative", zIndex: 1 }}>🔍</span>
+              <h3 style={{ fontSize: "1.05rem", fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", margin: "0 0 8px", position: "relative", zIndex: 1 }}>Keyword Research</h3>
+              <p style={{ fontSize: 13.5, color: "rgba(255,255,255,.72)", lineHeight: 1.65, margin: 0, position: "relative", zIndex: 1 }}>
+                In-depth keyword research across every intent stage — informational, commercial, and transactional — so content and campaigns speak to clients wherever they are in their journey.
+              </p>
+              <span style={{ display: "inline-block", background: "rgba(255,255,255,.18)", color: "rgba(255,255,255,.9)", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, marginTop: 18, position: "relative", zIndex: 1 }}>
+                {stats ? `${fmtNum(stats.totalKeywords)} keywords · ${fmtNum(stats.totalSearchVolume)}/mo searches` : "Full keyword map"}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── PPC Forecaster (Interactive) ── */}
       <Section id="ppc-forecaster">
         <SectionLabel>PPC Forecasting</SectionLabel>
@@ -869,7 +977,7 @@ export default function ShareProposalPage({ params }: Props) {
           Use the sliders below to model different PPC scenarios. Adjust your CPC, monthly budget, and expected conversion rate to see how your campaigns could perform.
         </p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
+        <div className="prop-forecast-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
           {/* Sliders */}
           <div style={{ background: "#f8fafc", borderRadius: 16, padding: 28, border: "1px solid #e2e8f0" }}>
             <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", margin: "0 0 24px" }}>Adjust Your Inputs</h3>
@@ -931,6 +1039,59 @@ export default function ShareProposalPage({ params }: Props) {
             <p style={{ fontSize: 15, color: "#475569", lineHeight: 1.7, marginBottom: 48 }}>
               Below are mockups of how your ads will appear across Google Search and Meta (Facebook &amp; Instagram). Each ad is built around your target keywords and campaign goals.
             </p>
+
+            {/* Paid Media Channels Overview */}
+            <div className="prop-channels" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, marginBottom: 48 }}>
+              {([
+                {
+                  title: "Google PPC", sub: "Search & Display", icon: "G",
+                  gradient: "linear-gradient(135deg, #ea4335, #fbbc04)",
+                  rows: [
+                    ["Ad groups", adGroups.length > 0 ? String(adGroups.length) : "Structured"] as [string, string],
+                    ["Match types", "Exact, Phrase, Broad"] as [string, string],
+                    ["Intent", "Bottom-of-funnel"] as [string, string],
+                    ["Keywords", stats ? fmtNum(stats.totalKeywords) : "Researched"] as [string, string],
+                  ],
+                },
+                {
+                  title: "Meta Ads", sub: "Facebook & Instagram", icon: "📱",
+                  gradient: "linear-gradient(135deg, #3b5998, #c2185b)",
+                  rows: [
+                    ["Targeting", "Interest + lookalike"] as [string, string],
+                    ["Formats", "Static, video, story"] as [string, string],
+                    ["Retargeting", "Site visitor audiences"] as [string, string],
+                    ["Funnel", "Awareness + retarget"] as [string, string],
+                  ],
+                },
+                {
+                  title: "LinkedIn Ads", sub: "Sponsored Content", icon: "in",
+                  gradient: "linear-gradient(135deg, #0077b5, #0a66c2)",
+                  rows: [
+                    ["Targeting", "Job title + company"] as [string, string],
+                    ["Formats", "Single image + carousel"] as [string, string],
+                    ["Strategy", "ABM & lead gen"] as [string, string],
+                    ["Funnel", "Mid-funnel awareness"] as [string, string],
+                  ],
+                },
+              ] as Array<{ title: string; sub: string; icon: string; gradient: string; rows: Array<[string, string]> }>).map((ch) => (
+                <div key={ch.title} style={{ borderRadius: 14, overflow: "hidden", border: "1px solid #e2e8f0" }}>
+                  <div style={{ background: ch.gradient, padding: "22px 20px 18px", color: "#fff", position: "relative" }}>
+                    <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.12)" }} />
+                    <span style={{ fontSize: "1.6rem", display: "block", marginBottom: 8, position: "relative" }}>{ch.icon}</span>
+                    <h3 style={{ fontSize: "1.05rem", fontWeight: 800, margin: "0 0 3px", position: "relative" }}>{ch.title}</h3>
+                    <span style={{ fontSize: 12, opacity: 0.88, position: "relative" }}>{ch.sub}</span>
+                  </div>
+                  <div style={{ background: "#fff", padding: "14px 18px" }}>
+                    {ch.rows.map(([k, v]) => (
+                      <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #f1f5f9", fontSize: 13, color: "#334155" }}>
+                        <span>{k}</span>
+                        <strong style={{ color: "#0f172a", fontWeight: 700 }}>{v}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
 
             {/* Google Search Ads */}
             <div style={{ marginBottom: 48 }}>
@@ -1085,6 +1246,49 @@ export default function ShareProposalPage({ params }: Props) {
               <h3 style={{ fontSize: 20, fontWeight: 800, margin: "0 0 8px" }}>{ai.contentCluster.pillarPage.title}</h3>
               <p style={{ fontSize: 14, color: "#c4b5fd", margin: 0, lineHeight: 1.6 }}>{ai.contentCluster.pillarPage.description}</p>
             </div>
+
+            {/* Content architecture breakdown */}
+            <div style={{ borderTop: "1px solid #e2e8f0", margin: "8px 0 24px" }}>
+              {([
+                {
+                  type: "Pillar Page", isPillar: true, count: 1, countLabel: "total",
+                  title: "The commercial centrepiece",
+                  desc: "Decision-intent keyword targeting — full service description, proof points, and a clear route to enquiry.",
+                  chips: [
+                    { label: "Decision intent", color: "#065f46", bg: "#d1fae5", border: "#a7f3d0" },
+                    { label: "Direct enquiry", color: "#065f46", bg: "#d1fae5", border: "#a7f3d0" },
+                  ],
+                },
+                {
+                  type: "Articles", isPillar: false, count: ai.contentCluster.articles.length, countLabel: "articles",
+                  title: "Topic cluster coverage",
+                  desc: "Each article targets a defined keyword, covering the full range of searches a potential client makes across their decision journey.",
+                  chips: [
+                    { label: "Mixed intent", color: "#92400e", bg: "#fef3c7", border: "#fde68a" },
+                    { label: "Long-tail coverage", color: "#92400e", bg: "#fef3c7", border: "#fde68a" },
+                  ],
+                },
+              ] as Array<{ type: string; isPillar: boolean; count: number; countLabel: string; title: string; desc: string; chips: Array<{ label: string; color: string; bg: string; border: string }> }>).map((row, i, arr) => (
+                <div key={i} className="prop-arch-row" style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 24, alignItems: "start", padding: "22px 0", borderBottom: i < arr.length - 1 ? "1px solid #e2e8f0" : "none" }}>
+                  <div>
+                    <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", padding: "4px 12px", borderRadius: 6, display: "inline-block", marginBottom: 10, ...(row.isPillar ? { background: "#0f172a", color: "#fff" } : { background: "#f1f5f9", color: "#334155", border: "1px solid #e2e8f0" }) }}>{row.type}</span>
+                    <span style={{ fontSize: "1.5rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.05em", display: "block" }}>{row.count}</span>
+                    <span style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em" }}>{row.countLabel}</span>
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: "0.9rem", fontWeight: 700, color: "#0f172a", margin: "0 0 6px" }}>{row.title}</h4>
+                    <p style={{ fontSize: 13.5, color: "#334155", lineHeight: 1.7, margin: "0 0 10px" }}>{row.desc}</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {row.chips.map((chip, j) => (
+                        <span key={j} style={{ fontSize: 11.5, padding: "3px 12px", borderRadius: 20, border: `1px solid ${chip.border}`, background: chip.bg, color: chip.color }}>{chip.label}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 12px" }}>All Articles</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
               {ai.contentCluster.articles.map((article, i) => (
                 <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 16 }}>
@@ -1175,7 +1379,7 @@ export default function ShareProposalPage({ params }: Props) {
       <div id="contact" style={{ background: "linear-gradient(135deg, #0f0c29, #1e1b4b)", padding: "80px 24px" }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
           {/* Two-column layout: CTA left, form right */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "flex-start" }}>
+          <div className="prop-contact-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "flex-start" }}>
             <div>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
                 <div style={{ width: 32, height: 3, background: "linear-gradient(to right, #6366f1, #818cf8)", borderRadius: 99 }} />
