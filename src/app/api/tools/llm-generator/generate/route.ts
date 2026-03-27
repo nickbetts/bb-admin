@@ -5,7 +5,7 @@ import { crawlSiteForKeywordContext } from "@/lib/landing-page-analyzer";
 import OpenAI from "openai";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 180;
 
 // ─── Extract social media profiles from raw HTML ──────────────────────────────
 
@@ -31,14 +31,49 @@ function extractSocialProfiles(html: string): string[] {
 }
 
 // ─── Web search fallback (used when site blocks direct crawl) ─────────────────
+// Runs three targeted searches in parallel for maximum coverage.
 
 async function webSearchForSite(openai: OpenAI, url: string, sector: string): Promise<string> {
-  const response = await openai.responses.create({
-    model: "gpt-4o-search-preview",
-    tools: [{ type: "web_search_preview" as const }],
-    input: `Research the ${sector} website ${url} thoroughly. Find and summarise all of the following: organisation name, mission statement and values, programmes and services offered, beneficiary groups served, geographic reach and countries/regions covered, impact statistics and results (numbers, figures), donation methods and funding sources, charity registration or legal entity numbers, key staff or trustees, social media profiles and handles, recent news or campaigns, partnerships and accreditations, contact details. Be specific — include real data, numbers, and facts from the website and related sources.`,
-  });
-  return response.output_text;
+  const domain = new URL(url).hostname.replace(/^www\./, "");
+
+  const [identityResult, programmesResult, socialResult] = await Promise.allSettled([
+    // Search 1: Legal identity, registration, leadership, founding
+    openai.responses.create({
+      model: "gpt-4o-search-preview",
+      tools: [{ type: "web_search_preview" as const }],
+      input: `Research ${url} and "${domain}". Find the following and provide specific verified details: full legal/registered organisation name, charity registration number (e.g. Charity Commission number), company number, regulator, tax status, registration URL, year founded, founder names, headquarters city and country, mission statement (exact wording if available), vision statement, stated values, current chair/trustees, executive director or CEO, any about or governance pages. Check the Charity Commission website and official sources.`,
+    }),
+
+    // Search 2: Programmes, beneficiaries, geography, impact statistics, campaigns
+    openai.responses.create({
+      model: "gpt-4o-search-preview",
+      tools: [{ type: "web_search_preview" as const }],
+      input: `Research ${url} and the ${sector} organisation at ${domain}. Find specific details about: all named programmes, appeals, and campaigns (with their URLs and descriptions), beneficiary groups and eligibility, every country and region where they operate, impact statistics with real numbers (people helped, meals provided, water wells, schools, clinics, children sponsored, families supported), annual report findings, evidence of impact, seasonal campaigns (Ramadan, Qurbani, Zakat, winter, etc.), faith-based giving options, donation types accepted, and volunteering opportunities.`,
+    }),
+
+    // Search 3: Social media, contact, partnerships, accreditations, media coverage
+    openai.responses.create({
+      model: "gpt-4o-search-preview",
+      tools: [{ type: "web_search_preview" as const }],
+      input: `Research ${url} and "${domain}". Find: exact URLs for all social media profiles (Facebook, Instagram, Twitter/X, LinkedIn, YouTube, TikTok), general contact email address, phone number, media or press email, institutional or implementation partners, corporate partners, accreditations, charity memberships (e.g. NCVO, Fundraising Regulator), any media coverage or press mentions, awards received, and any notable news stories about this organisation.`,
+    }),
+  ]);
+
+  const sections: string[] = [];
+
+  if (identityResult.status === "fulfilled") {
+    sections.push(`=== IDENTITY, REGISTRATION & LEADERSHIP ===\n${identityResult.value.output_text}`);
+  }
+  if (programmesResult.status === "fulfilled") {
+    sections.push(`=== PROGRAMMES, IMPACT & CAMPAIGNS ===\n${programmesResult.value.output_text}`);
+  }
+  if (socialResult.status === "fulfilled") {
+    sections.push(`=== SOCIAL MEDIA, CONTACT & PARTNERSHIPS ===\n${socialResult.value.output_text}`);
+  }
+
+  if (sections.length === 0) throw new Error("All web searches failed");
+
+  return sections.join("\n\n");
 }
 
 // ─── Route Handler ─────────────────────────────────────────────────────────────
@@ -152,18 +187,19 @@ ${dataSection}
 TEMPLATE STRUCTURE TO FOLLOW:
 ${template.templateText}
 ${template.promptGuidance ? `\nSTRATEGIC GUIDANCE — SECTION PRIORITY AND QUALITY RULES:\n${template.promptGuidance}\n` : ""}
-INSTRUCTIONS:
-1. Fill in EVERY section using only real data from the research data above
-2. Replace [Charity Name] with the actual organisation name from the website
-3. Replace [domain] in all URLs with the actual domain slug (e.g. "orphansinneed" for orphansinneed.org)
+CRITICAL INSTRUCTIONS — READ CAREFULLY:
+1. Fill in EVERY field and list item using only verified real data from the research data above
+2. Replace [Charity Name] with the actual organisation name found in the research
+3. Replace [domain] in all URLs with the actual domain slug (e.g. "orphansinneed" for orphansinneed.org.uk)
 4. Replace [YYYY-MM-DD] with ${todayISO}
-5. For sections where data is not available, use: Insert if applicable
-6. Keep ALL section headers, comment lines (# lines), and YAML formatting exactly as shown in the template
-7. Write in British English throughout
-8. Do NOT add explanatory text, markdown code fences, or any content outside the llm.txt itself
-9. Be specific and accurate — do not invent data, pad with generic claims, or repeat placeholder text verbatim
+5. REMOVE any field, list item, or entire section block for which you cannot find real data — do NOT leave "Insert if applicable" anywhere in the output. Every value in the final file must be real and verified.
+6. After the main llm.txt content, append a final comment block headed "## DATA GAPS" that lists every field or section you removed and a one-line reason why (e.g. "not found in research data"). Format as YAML comments (# prefixed lines).
+7. Keep ALL section headers, comment lines (# lines), and YAML formatting exactly as shown in the template for fields you DO fill
+8. Write in British English throughout
+9. Do NOT add explanatory prose, markdown code fences, or any content outside the llm.txt structure itself
+10. Be specific and accurate — use exact numbers, exact programme names, exact registration numbers where found; do not pad with vague generics
 
-Output the complete, filled-in llm.txt content only. No preamble, no code fences.`;
+Output the complete filled-in llm.txt followed by the ## DATA GAPS block. No preamble, no code fences.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -172,7 +208,7 @@ Output the complete, filled-in llm.txt content only. No preamble, no code fences
         {
           role: "system",
           content:
-            "You are an expert in AI search optimisation and llm.txt file generation. You produce accurate, specific llm.txt files based only on real website data. You never fabricate information. When data is unavailable you use 'Insert if applicable' placeholders. You output only the raw llm.txt content with no explanatory text or markdown formatting.",
+            "You are an expert in AI search optimisation and llm.txt file generation. You produce accurate, specific llm.txt files based only on verified real data. You NEVER use placeholder text like 'Insert if applicable' — if data is unavailable you remove that field entirely and log it in the DATA GAPS block. You output only the raw llm.txt content followed by the DATA GAPS section. No markdown formatting, no code fences, no preamble.",
         },
         { role: "user", content: prompt },
       ],
