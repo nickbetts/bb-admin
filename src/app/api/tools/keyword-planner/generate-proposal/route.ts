@@ -668,6 +668,19 @@ export async function POST(request: NextRequest) {
 
     const openai = new OpenAI({ apiKey });
 
+    // ── Compute brief type from services + brief text ───────────────────────
+    // Derive this deterministically so it's consistent regardless of AI behaviour.
+    // If the user has removed SEO/content services from the proposal modal and
+    // the brief doesn't mention organic/SEO, treat as PAID_ONLY.
+    const serviceNames = (services ?? []).map((s) => s.name);
+    const hasContentSeoService = serviceNames.some((name) =>
+      /\b(seo|content|organic|blog|editorial)\b/i.test(name)
+    );
+    const briefLower = brief.toLowerCase();
+    const hasSeoInBrief = /\b(seo|content\s+marketing|organic|blog)\b/.test(briefLower);
+    const computedBriefType: "PAID_ONLY" | "FULL_SERVICE" =
+      hasContentSeoService || hasSeoInBrief ? "FULL_SERVICE" : "PAID_ONLY";
+
     // ── Compute stats ───────────────────────────────────────────────────────
     const totalSearchVolume = ideas.reduce((s, i) => s + i.avgMonthlySearches, 0);
     const maxCpcVal = parseFloat(maxCpc) || 0;
@@ -718,7 +731,10 @@ export async function POST(request: NextRequest) {
 Client: ${clientName}
 Website: ${website}
 Brief: ${brief}
-${websiteContext ? `\nCrawled Website Content:\n${websiteContext}\n` : "\n[No website crawl available — base all analysis on the brief, business name, and keyword data only. Do NOT fabricate claims about their website.]\n"}
+${websiteContext ? `\n${websiteContext}\n` : "\n[No website crawl available — base all analysis on the brief, business name, and keyword data only. Do NOT fabricate claims about their website.]\n"}
+Services included in this proposal: ${serviceNames.length ? serviceNames.join(", ") : "Not specified"}
+Proposal type (pre-determined from services and brief): ${computedBriefType}
+
 Keyword Research:
 - Total Keywords: ${ideas.length}
 - Ad Groups: ${topGroupSummary}
@@ -728,18 +744,9 @@ Keyword Research:
 - Estimated Conversion Rate: ${convRateVal}%
 ${contractedHoursContext}${benchmarksContext}
 ${hasHoursContext ? `IMPORTANT: Use the contracted hours and task benchmarks to generate a REALISTIC timeline. Calculate how many deliverables can fit within the contracted hours per month and make this explicit in the timeline.\n` : ""}
---- BRIEF TYPE: CLASSIFY FIRST ---
-
-Read the brief above and classify it as one of:
-- PAID_ONLY — brief focuses exclusively on paid advertising (Google Ads, PPC, Meta Ads)
-- FULL_SERVICE — brief includes SEO, content marketing, organic strategy, or multiple channels
-
-This classification MUST drive what you put in contentCluster.
-
 --- GENERATE PROPOSAL JSON ---
 
 {
-  "_briefType": "PAID_ONLY or FULL_SERVICE — your classification above",
   "hero": {
     "tagline": "Short tagline (max 10 words). Must be specific to ${clientName} and their actual industry — not a generic marketing slogan.",
     "description": "2-3 sentences about the specific opportunity for this client. Reference their actual market, product type, or audience — not generic statements that could apply to anyone."
@@ -759,7 +766,7 @@ This classification MUST drive what you put in contentCluster.
     "gaps": [
       {
         "title": "Specific gap",
-        "description": "A genuine gap that the proposed service directly addresses. Do NOT invent weaknesses — only include gaps that are real and relevant to what was asked for.",
+        "description": "A genuine gap that the proposed services directly address. Do NOT invent weaknesses — only include gaps that are real and relevant to what was asked for.",
         "impact": "The concrete business cost of leaving this gap unaddressed"
       }
     ]
@@ -769,33 +776,32 @@ This classification MUST drive what you put in contentCluster.
       "intent": "Transactional | Commercial | Informational",
       "keywords": ["keyword1", "keyword2", "keyword3"],
       "searchVolume": 0,
-      "opportunity": "Specific to ${clientName}'s actual products or services — not generic. Reference the actual keyword themes and what they mean for this business."
+      "opportunity": "Specific to ${clientName}'s actual products or services — reference the actual keyword themes and what they mean for this business."
     }
   ],
   "contentCluster": {
-    "type": "PAID_ONLY brief: set to 'landing_pages'. FULL_SERVICE brief: set to 'content'",
+    "type": "${computedBriefType === "PAID_ONLY" ? "landing_pages" : "content"}",
+    ${computedBriefType === "PAID_ONLY" ? `
     "pillarPage": {
-      "title": "PAID_ONLY: the primary campaign landing page to build or optimise. FULL_SERVICE: the main pillar content topic.",
-      "description": "PAID_ONLY: what this page should contain and how it should be structured to convert paid traffic. FULL_SERVICE: why this topic builds topical authority."
+      "title": "The primary campaign landing page to build or optimise — name it specifically based on the main ad group theme.",
+      "description": "What this page should contain and how it should be structured to convert paid traffic from these specific keywords."
     },
     "articles": [
-      {
-        "title": "PAID_ONLY: a secondary ad-group-specific landing page. FULL_SERVICE: a supporting article.",
-        "targetKeyword": "matching keyword from the research"
-      },
-      {
-        "title": "PAID_ONLY: another landing page. FULL_SERVICE: another article.",
-        "targetKeyword": "matching keyword"
-      },
-      {
-        "title": "PAID_ONLY: another landing page. FULL_SERVICE: another article.",
-        "targetKeyword": "matching keyword"
-      },
-      {
-        "title": "PAID_ONLY: another landing page. FULL_SERVICE: another article.",
-        "targetKeyword": "matching keyword"
-      }
-    ]
+      { "title": "A secondary ad-group-specific landing page — name it based on an actual ad group from the research.", "targetKeyword": "the primary keyword for that ad group" },
+      { "title": "Another ad-group landing page.", "targetKeyword": "matching keyword" },
+      { "title": "Another ad-group landing page.", "targetKeyword": "matching keyword" },
+      { "title": "Another ad-group landing page.", "targetKeyword": "matching keyword" }
+    ]` : `
+    "pillarPage": {
+      "title": "Main pillar content topic directly relevant to ${clientName}'s core service or product.",
+      "description": "Why this topic builds topical authority and what it should cover."
+    },
+    "articles": [
+      { "title": "Supporting article title relevant to an actual keyword cluster.", "targetKeyword": "matching keyword from the research" },
+      { "title": "Supporting article title.", "targetKeyword": "matching keyword" },
+      { "title": "Supporting article title.", "targetKeyword": "matching keyword" },
+      { "title": "Supporting article title.", "targetKeyword": "matching keyword" }
+    ]`}
   },
   "whyUs": [
     { "stat": "10+", "title": "Years of experience", "description": "Why this specific experience matters for ${clientName}'s sector" },
@@ -811,10 +817,9 @@ This classification MUST drive what you put in contentCluster.
 --- MANDATORY WRITING RULES ---
 1. SPECIFIC: Every sentence must reference ${clientName}'s actual products, services, or market. If you could copy-paste a sentence into a different client's proposal unchanged, rewrite it.
 2. NO AI CLICHÉS: Do NOT write any of these words or phrases: "leverage", "unlock", "elevate", "harness", "empower", "bespoke", "tailored solutions", "seamlessly", "robust", "cutting-edge", "game-changer", "at the forefront", "dynamic", "holistic", "synergy"
-3. HONEST POSITIVES: Back every positive with specific evidence. If their website shows strong product photography, say that. If they have a wide product range, name it. Do NOT invent.
-4. EARNED GAPS: Only list gaps the proposed services genuinely close. Do not inflate the gap list to appear thorough.
-5. PAID_ONLY RULE: If brief is PAID_ONLY, contentCluster type MUST be "landing_pages" with landing page recommendations — NOT blog articles or organic content strategy.
-6. RESEARCH FIRST: If websiteContext is provided, read it carefully and reference specific details you found there.
+3. HONEST POSITIVES: Back every positive with specific evidence. Do NOT invent.
+4. EARNED GAPS: Only list gaps the proposed services genuinely close. Do not inflate the gap list.
+5. USE THE CONTEXT: If websiteContext includes a CAMPAIGN STRATEGY ANALYSIS section, use those insights throughout — especially for positives, gaps, and clusters.
 
 Write in British English throughout.`;
 

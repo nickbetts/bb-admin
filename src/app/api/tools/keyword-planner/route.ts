@@ -95,32 +95,43 @@ export async function POST(request: NextRequest) {
         messages: [
           {
             role: "system",
-            content: `You are an expert Google Ads keyword strategist. Given a website URL, crawled website content, and a campaign brief, generate a comprehensive keyword list organised into themed ad groups suitable for a Google Ads campaign.
+            content: `You are an expert Google Ads keyword strategist. Your job is to generate a focused, high-relevance keyword list that strictly follows the client's brief — not a generic spread of everything the business does.
 
-Return ONLY a JSON object with this exact structure (no markdown, no explanation):
+STEP 1 — ANALYSE THE BRIEF FIRST:
+Read the brief carefully and identify:
+a) Specific products, services, or campaign focus areas the client has explicitly mentioned
+b) Whether this is a FOCUSED campaign (specific product/service named) or a BROAD one (whole brand/multiple services)
+c) Any explicit exclusions or scope limits
+
+STEP 2 — SCALE YOUR OUTPUT TO MATCH THE BRIEF:
+- FOCUSED brief (client names specific things to target): 2–5 ad groups only. Do NOT add unrelated groups just to fill space. Quality and relevance beats quantity.
+- BROAD brief (whole business, no specific focus): 6–12 ad groups covering the key business areas from the brief and website.
+- No brief provided: 6–10 ad groups based on main services evident from the website.
+- Keyword count per group: 40–70 tightly relevant keywords.
+
+STEP 3 — KEYWORD QUALITY RULES:
+- Stay strictly within the stated scope — if brief says "focus on engagement rings", do NOT add groups for wedding dresses or honeymoons
+- Each keyword must directly serve the ad group's specific theme
+- Mix head terms and long-tail variations of the SAME theme
+- Include commercial intent phrases (buy, hire, cost, quote, best, near me, UK, etc.)
+- Include problem/solution queries relevant to the specific product or service
+- Include location-modified variants where relevant
+- No branded terms unless explicitly mentioned
+- Keywords should be 2–6 words
+
+Return ONLY this JSON (no markdown, no explanation):
 {
+  "briefScope": "FOCUSED | BROAD",
+  "briefAnalysis": "2–3 sentences: what the client specifically wants, what focus areas were identified, and what is deliberately out of scope (if FOCUSED).",
   "adGroups": [
     {
-      "name": "Ad Group Name",
-      "rationale": "One sentence explaining this group\'s theme and intent.",
+      "name": "Specific Ad Group Name",
+      "rationale": "One sentence: what this group targets and why it fits the brief.",
       "keywords": ["keyword one", "keyword two", ...]
     }
   ],
-  "rationale": "2-3 sentence overview of the overall keyword strategy."
-}
-
-Rules:
-- Generate 10-16 ad groups
-- Total keywords across all groups: 400-600
-- Each group should have 30-45 keywords with a consistent intent/theme
-- Ad group names should be concise and descriptive (e.g. "Plumber London", "Emergency Plumbing", "Boiler Repair")
-- Use the crawled website data to understand the business and tailor keywords
-- Mix broad head terms and specific long-tail keywords in each group
-- Include commercial intent phrases (hire, cost, near me, service, quote, best, UK etc.)
-- Include problem/pain-point queries the target audience would search
-- Include location-modified variants
-- No branded terms unless explicitly mentioned in the brief
-- Keywords should be 2-6 words each`,
+  "rationale": "2–3 sentences on the overall keyword strategy and why this scope was chosen."
+}`,
           },
           {
             role: "user",
@@ -130,7 +141,7 @@ Rules:
       });
 
       const raw = completion.choices[0]?.message?.content ?? "{}";
-      let parsed: { adGroups?: AdGroupSeed[]; rationale?: string };
+      let parsed: { adGroups?: AdGroupSeed[]; rationale?: string; briefScope?: string; briefAnalysis?: string };
       try {
         parsed = JSON.parse(raw);
       } catch {
@@ -143,10 +154,21 @@ Rules:
         }
       }
 
+      // Combine brief analysis + crawled content into websiteContext so it
+      // carries through to saved research and proposal generation automatically.
+      const websiteContextParts: string[] = [];
+      if (parsed.briefAnalysis) {
+        websiteContextParts.push(`CAMPAIGN STRATEGY ANALYSIS:\n${parsed.briefAnalysis}`);
+      }
+      if (pageContext.length) {
+        websiteContextParts.push(`CRAWLED WEBSITE CONTENT:\n${pageContext.join("\n")}`);
+      }
+
       return NextResponse.json({
         adGroups: parsed.adGroups ?? [],
         rationale: parsed.rationale ?? "",
-        websiteContext: pageContext.join("\n"),
+        briefScope: parsed.briefScope ?? "BROAD",
+        websiteContext: websiteContextParts.join("\n\n"),
       });
     }
 
