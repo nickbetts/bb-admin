@@ -646,9 +646,10 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Get OpenAI API key ──────────────────────────────────────────────────
-    const [apiKeySetting, taskBenchmarksSetting] = await Promise.all([
+    const [apiKeySetting, taskBenchmarksSetting, pricingStrategySetting] = await Promise.all([
       prisma.appSetting.findUnique({ where: { key: "openaiApiKey" } }),
       prisma.appSetting.findUnique({ where: { key: "taskBenchmarks" } }),
+      prisma.appSetting.findUnique({ where: { key: "pricingStrategy" } }),
     ]);
     const apiKey = apiKeySetting?.value ?? process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -714,6 +715,70 @@ export async function POST(request: NextRequest) {
 
     const hasHoursContext = contractedHoursContext || benchmarksContext;
 
+    // ── Build pricing context ───────────────────────────────────────────────
+    let pricingContext = "";
+    if (pricingStrategySetting?.value) {
+      try {
+        const ps = JSON.parse(pricingStrategySetting.value) as {
+          notes?: string;
+          singleServices?: Array<{ name: string; monthlyFee: string; notes?: string }>;
+          focusPackages?: Array<{ name: string; monthlyFee: string; hoursPerMonth: number; includes: string[] }>;
+          focusAddOns?: {
+            seoFocus?: Array<{ name: string; channels: string; growth: string; elevate: string }>;
+            paidFocus?: Array<{ name: string; channels: string; growth: string; elevate: string }>;
+          };
+          retainerPackages?: Array<{ name: string; priceRange: string; description: string; includes: string[]; quarterlyAccelerator: string[] }>;
+          otherServices?: Array<{ name: string; monthlyFee: string; notes?: string }>;
+        };
+
+        const lines: string[] = ["\nAgency Pricing Reference (use this ONLY as background context — do NOT quote or list prices in the proposal itself. Use it to understand the scale of engagement and to pitch the most appropriate package for this client's needs):"];
+
+        if (ps.notes) lines.push(`Notes: ${ps.notes}`);
+
+        if (ps.singleServices?.length) {
+          lines.push("\nSingle-Channel Services:");
+          ps.singleServices.forEach(s => lines.push(`  - ${s.name}: ${s.monthlyFee}/mo${s.notes ? " (" + s.notes + ")" : ""}`));
+        }
+
+        if (ps.focusPackages?.length) {
+          lines.push("\nFocus Packages:");
+          ps.focusPackages.forEach(pkg => {
+            lines.push(`  ${pkg.name} — ${pkg.monthlyFee}/mo, ${pkg.hoursPerMonth} hrs/mo`);
+            lines.push(`    Includes: ${pkg.includes.join(", ")}`);
+          });
+        }
+
+        if (ps.focusAddOns?.seoFocus?.length) {
+          lines.push("\nSEO Focus Add-ons (impact tiers): " + ps.focusAddOns.seoFocus.map(
+            a => `${a.name}: Channels ${a.channels}${a.growth ? " / Growth " + a.growth : ""}${a.elevate ? " / Elevate " + a.elevate : ""}`
+          ).join("; "));
+        }
+        if (ps.focusAddOns?.paidFocus?.length) {
+          lines.push("Paid Focus Add-ons (impact tiers): " + ps.focusAddOns.paidFocus.map(
+            a => `${a.name}: Channels ${a.channels}${a.elevate ? " / Elevate " + a.elevate : ""}`
+          ).join("; "));
+        }
+
+        if (ps.retainerPackages?.length) {
+          lines.push("\nMulti-Channel Retainer Packages:");
+          ps.retainerPackages.forEach(pkg => {
+            lines.push(`  ${pkg.name} — ${pkg.priceRange}/mo`);
+            lines.push(`    Includes: ${pkg.includes.join(", ")}`);
+            if (pkg.quarterlyAccelerator?.length) {
+              lines.push(`    + Quarterly Accelerator: ${pkg.quarterlyAccelerator.join(", ")}`);
+            }
+          });
+        }
+
+        if (ps.otherServices?.length) {
+          lines.push("\nOther Services:");
+          ps.otherServices.forEach(s => lines.push(`  - ${s.name}: ${s.monthlyFee}${s.notes ? " (" + s.notes + ")" : ""}`) );
+        }
+
+        pricingContext = lines.join("\n");
+      } catch { /* ignore malformed pricing JSON */ }
+    }
+
     // ── Call OpenAI ─────────────────────────────────────────────────────────
     const topGroupSummary = [...new Set(ideas.map((i) => i.adGroup))]
       .slice(0, 8)
@@ -743,7 +808,7 @@ Keyword Research:
 - Estimated Monthly Budget: £${budgetVal.toFixed(0)}
 - Estimated Conversion Rate: ${convRateVal}%
 ${contractedHoursContext}${benchmarksContext}
-${hasHoursContext ? `IMPORTANT: Use the contracted hours and task benchmarks to generate a REALISTIC timeline. Calculate how many deliverables can fit within the contracted hours per month and make this explicit in the timeline.\n` : ""}
+${hasHoursContext ? `IMPORTANT: Use the contracted hours and task benchmarks to generate a REALISTIC timeline. Calculate how many deliverables can fit within the contracted hours per month and make this explicit in the timeline.\n` : ""}${pricingContext}
 --- GENERATE PROPOSAL JSON ---
 
 {

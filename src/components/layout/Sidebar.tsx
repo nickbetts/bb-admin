@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   LayoutTemplate,
   TrendingUp,
+  Tag,
 } from "lucide-react";
 
 interface NavItem {
@@ -68,6 +69,11 @@ const toolsNavItems: NavItem[] = [
     href: "/tools/proposals",
     label: "Proposals",
     icon: <FileText className="h-4 w-4" />,
+  },
+  {
+    href: "/tools/pricing",
+    label: "Pricing",
+    icon: <Tag className="h-4 w-4" />,
   },
 ];
 
