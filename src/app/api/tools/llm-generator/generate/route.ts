@@ -30,6 +30,17 @@ function extractSocialProfiles(html: string): string[] {
   return profiles.slice(0, 10);
 }
 
+// ─── Web search fallback (used when site blocks direct crawl) ─────────────────
+
+async function webSearchForSite(openai: OpenAI, url: string, sector: string): Promise<string> {
+  const response = await openai.responses.create({
+    model: "gpt-4o-search-preview",
+    tools: [{ type: "web_search_preview" as const }],
+    input: `Research the ${sector} website ${url} thoroughly. Find and summarise all of the following: organisation name, mission statement and values, programmes and services offered, beneficiary groups served, geographic reach and countries/regions covered, impact statistics and results (numbers, figures), donation methods and funding sources, charity registration or legal entity numbers, key staff or trustees, social media profiles and handles, recent news or campaigns, partnerships and accreditations, contact details. Be specific — include real data, numbers, and facts from the website and related sources.`,
+  });
+  return response.output_text;
+}
+
 // ─── Route Handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
@@ -59,19 +70,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "OpenAI API key not configured. Add it in Settings." }, { status: 400 });
     }
 
+    const openai = new OpenAI({ apiKey });
+
     // ── Crawl website ──────────────────────────────────────────────────────
     const crawl = await crawlSiteForKeywordContext(normalizedWebsite, 12);
 
     if (crawl.homepageError) {
       // Hard fail only for connection errors (DNS failure, timeout, etc.)
-      // For HTTP 4xx/5xx, the site is reachable but blocking crawlers — proceed with a note
+      // For HTTP 4xx/5xx, the site is reachable but blocking crawlers — fall back to web search
       const isHttpBlocked = /^HTTP (4|5)\d\d/.test(crawl.homepageError);
       if (!isHttpBlocked) {
         return NextResponse.json({
           error: `Could not reach the website: ${crawl.homepageError}`,
         }, { status: 422 });
       }
-      // Fall through — generate with minimal data and warn the AI
+      // Fall through — will use web search fallback below
+    }
+
+    // ── Web search fallback when site blocks crawlers ──────────────────────
+    let webSearchData: string | null = null;
+    const crawlWasBlocked = crawl.homepageError && /^HTTP (4|5)\d\d/.test(crawl.homepageError);
+    if (crawlWasBlocked) {
+      try {
+        webSearchData = await webSearchForSite(openai, normalizedWebsite, template.sector);
+      } catch (err) {
+        console.warn("Web search fallback failed:", err);
+        // Not fatal — proceed with minimal data
+      }
     }
 
     // ── Also fetch raw homepage HTML to extract social links ───────────────
@@ -103,14 +128,17 @@ export async function POST(request: NextRequest) {
     const todayISO = new Date().toISOString().slice(0, 10);
 
     const crawlData = crawl.contextLines.join("\n") || "No page content could be extracted.";
-    const crawlBlockedNote = crawl.homepageError
-      ? `\nNOTE: The website returned ${crawl.homepageError} — direct crawling was blocked. Use the website URL and domain name to infer the organisation name, sector, and structure. Fill what you reasonably can from the URL; use "Insert if applicable" for anything that requires real page data.\n`
+    const crawlBlockedNote = crawlWasBlocked && !webSearchData
+      ? `\nNOTE: The website returned ${crawl.homepageError} — direct crawling was blocked and web search fallback also failed. Use the website URL and domain name to infer the organisation name, sector, and structure. Fill what you reasonably can; use "Insert if applicable" for anything that requires real page data.\n`
       : "";
     const socialData = socialProfiles.length > 0
       ? `\nSocial media profiles found on homepage:\n${socialProfiles.join("\n")}`
       : "\nNo social media profiles found on homepage.";
 
-    const openai = new OpenAI({ apiKey });
+    // Build data section: prefer web search results over blocked crawl
+    const dataSection = webSearchData
+      ? `--- WEB SEARCH RESEARCH DATA ---\n(Direct crawl was blocked; the following was gathered via web search)\n${webSearchData}\n${socialData}\n--- END WEB SEARCH DATA ---`
+      : `--- CRAWLED WEBSITE DATA ---\n${crawlData}\n${socialData}\n${crawlBlockedNote}--- END CRAWLED DATA ---`;
 
     const prompt = `You are an expert in AI search optimisation, LLM indexing, and llm.txt files. Your task is to generate a complete, accurate llm.txt file for the website below.
 
@@ -119,20 +147,17 @@ Website URL: ${normalizedWebsite}
 Sector: ${template.sector}
 Template: ${template.name}
 
---- CRAWLED WEBSITE DATA ---
-${crawlData}
-${socialData}
-${crawlBlockedNote}--- END CRAWLED DATA ---
+${dataSection}
 
 TEMPLATE STRUCTURE TO FOLLOW:
 ${template.templateText}
 ${template.promptGuidance ? `\nSTRATEGIC GUIDANCE — SECTION PRIORITY AND QUALITY RULES:\n${template.promptGuidance}\n` : ""}
 INSTRUCTIONS:
-1. Fill in EVERY section using only real data from the crawled website content above
+1. Fill in EVERY section using only real data from the research data above
 2. Replace [Charity Name] with the actual organisation name from the website
 3. Replace [domain] in all URLs with the actual domain slug (e.g. "orphansinneed" for orphansinneed.org)
 4. Replace [YYYY-MM-DD] with ${todayISO}
-5. For sections where data is not available from the crawl, use: Insert if applicable
+5. For sections where data is not available, use: Insert if applicable
 6. Keep ALL section headers, comment lines (# lines), and YAML formatting exactly as shown in the template
 7. Write in British English throughout
 8. Do NOT add explanatory text, markdown code fences, or any content outside the llm.txt itself
