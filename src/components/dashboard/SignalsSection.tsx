@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { AlertTriangle, CheckCircle, RefreshCw, Loader2, Zap } from "lucide-react";
-import { getPreviousPeriod } from "@/lib/utils";
+import { getPreviousPeriod, formatCurrency, formatNumber } from "@/lib/utils";
 
 interface Client {
   id: string;
@@ -49,6 +49,124 @@ const SEV_CONFIG: Record<string, { bg: string; border: string; headerBg: string;
   medium: { bg: "#fffbeb", border: "#fcd34d", headerBg: "#fef3c7", headerText: "#92400e", badgeBg: "#d97706", label: "Medium Priority" },
   low:    { bg: "#eff6ff", border: "#bfdbfe", headerBg: "#dbeafe", headerText: "#1e40af", badgeBg: "#2563eb", label: "Low Priority" },
 };
+
+// ─── Types for rich context building ─────────────────────────────────────────
+
+interface SignalsAdCreative {
+  adName: string;
+  adSetId?: string;
+  adSetName?: string;
+  campaignId?: string;
+  campaignName?: string;
+  status?: string;
+  mediaType?: "IMAGE" | "VIDEO" | "CAROUSEL" | "UNKNOWN";
+  headline?: string | null;
+  bodyText?: string | null;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  cpm: number;
+  frequency: number;
+  conversions: number;
+  roas: number;
+  costPerConversion: number;
+}
+
+interface SignalsAdSet {
+  id?: string;
+  name: string;
+  campaignId?: string;
+  status?: string;
+  spend: number;
+  frequency: number;
+  ctr: number;
+  cpc: number;
+  roas: number;
+  conversions: number;
+  dailyBudget?: number | null;
+  lifetimeBudget?: number | null;
+}
+
+interface SignalsCampaign {
+  id?: string;
+  name: string;
+  status?: string;
+  frequency: number;
+  roas: number;
+  spend: number;
+  ctr: number;
+  impressions: number;
+  objective?: string;
+  channelType?: string;
+  searchBudgetLostImpressionShare?: number | null;
+  searchRankLostImpressionShare?: number | null;
+  searchImpressionShare?: number | null;
+}
+
+interface SignalsAdSetAudience {
+  adSetId: string;
+  adSetName: string;
+  campaignId: string;
+  status: string;
+  ageMin: number | null;
+  ageMax: number | null;
+  genders: number[];
+  hasDetailedTargeting: boolean;
+  customAudiences: Array<{ id: string; name: string }>;
+  excludedAudiences: Array<{ id: string; name: string }>;
+}
+
+/** Build a hierarchical campaign → ad set → creative summary string for AI context */
+function buildCreativeSummary(creatives: SignalsAdCreative[], adSetsData: SignalsAdSet[]): string | undefined {
+  if (!creatives.length) return undefined;
+
+  const campaignMap = new Map<string, { name: string; adSets: Map<string, { name: string; creatives: SignalsAdCreative[] }> }>();
+  for (const c of creatives) {
+    const campKey = c.campaignId ?? "unknown";
+    if (!campaignMap.has(campKey)) campaignMap.set(campKey, { name: c.campaignName ?? "Unknown Campaign", adSets: new Map() });
+    const camp = campaignMap.get(campKey)!;
+    const asKey = c.adSetId ?? "unknown";
+    if (!camp.adSets.has(asKey)) camp.adSets.set(asKey, { name: c.adSetName ?? "Unknown Ad Set", creatives: [] });
+    camp.adSets.get(asKey)!.creatives.push(c);
+  }
+
+  const lines: string[] = [];
+  const videoCount    = creatives.filter(c => c.mediaType === "VIDEO").length;
+  const imageCount    = creatives.filter(c => c.mediaType === "IMAGE").length;
+  const carouselCount = creatives.filter(c => c.mediaType === "CAROUSEL").length;
+  lines.push(`Ad Creative Hierarchy (${creatives.length} ads: ${imageCount} image, ${videoCount} video, ${carouselCount} carousel):`);
+
+  for (const [, camp] of campaignMap) {
+    lines.push(`\nCampaign: "${camp.name}"`);
+    for (const [asKey, adSet] of camp.adSets) {
+      const adSetMeta = adSetsData.find(s => s.id === asKey || s.name === adSet.name);
+      const asBudget  = adSetMeta?.dailyBudget ? `${formatCurrency(adSetMeta.dailyBudget)}/d` : adSetMeta?.lifetimeBudget ? `${formatCurrency(adSetMeta.lifetimeBudget)} ltm` : "";
+      const asFreq    = (adSetMeta?.frequency ?? 0) > 0 ? ` Freq: ${adSetMeta!.frequency.toFixed(1)}x` : "";
+      const asCtr     = adSetMeta ? ` CTR: ${adSetMeta.ctr.toFixed(2)}%` : "";
+      const asCpc     = adSetMeta ? ` CPC: ${formatCurrency(adSetMeta.cpc)}` : "";
+      lines.push(`  Ad Set: "${adSet.name}"${asBudget ? ` [Budget: ${asBudget}]` : ""}${asFreq}${asCtr}${asCpc}`);
+      for (const c of adSet.creatives) {
+        const parts = [`    Ad: "${c.adName}" [${c.mediaType ?? "UNKNOWN"}] [${c.status ?? "UNKNOWN"}]`];
+        parts.push(`Spend: ${formatCurrency(c.spend)}`);
+        parts.push(`Impr: ${formatNumber(c.impressions)}`);
+        parts.push(`Clicks: ${c.clicks}`);
+        parts.push(`CTR: ${c.ctr.toFixed(2)}%`);
+        parts.push(`CPC: ${formatCurrency(c.cpc)}`);
+        parts.push(`CPM: ${formatCurrency(c.cpm)}`);
+        if (c.frequency > 0) parts.push(`Freq: ${c.frequency.toFixed(1)}x`);
+        parts.push(`Conv: ${c.conversions}`);
+        if (c.conversions > 0) parts.push(`CPA: ${formatCurrency(c.costPerConversion)}`);
+        parts.push(`ROAS: ${c.roas.toFixed(2)}x`);
+        if (c.headline) parts.push(`Headline: "${c.headline}"`);
+        if (c.bodyText) parts.push(`Body: "${c.bodyText}"`);
+        lines.push(parts.join(", "));
+      }
+    }
+  }
+  return "\n" + lines.join("\n");
+}
 
 // ─── Signal card component ─────────────────────────────────────────────────────
 
@@ -136,14 +254,16 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
 
     try {
       // ── Parallel platform data fetches ──────────────────────────────────────
-      const [metaResult, gadsResult, scResult, ga4Result, ga4PrevResult] = await Promise.allSettled([
-        // Meta: campaigns-enriched + adsets + creatives + overview (all in parallel)
+      const [metaResult, gadsResult, scResult, ga4Result, semrushResult] = await Promise.allSettled([
+        // Meta: campaigns-enriched, adsets, creatives, overview, prev-overview, audiences (all in parallel)
         client.metaAccountId
           ? Promise.all([
               fetch(`/api/meta?clientId=${client.id}&type=campaigns-enriched&startDate=${startDate}&endDate=${endDate}`).then(r => r.ok ? r.json() : null).catch(() => null),
               fetch(`/api/meta?clientId=${client.id}&type=adsets&startDate=${startDate}&endDate=${endDate}`).then(r => r.ok ? r.json() : null).catch(() => null),
               fetch(`/api/meta?clientId=${client.id}&type=creatives&startDate=${startDate}&endDate=${endDate}`).then(r => r.ok ? r.json() : null).catch(() => null),
               fetch(`/api/meta?clientId=${client.id}&type=overview&startDate=${startDate}&endDate=${endDate}`).then(r => r.ok ? r.json() : null).catch(() => null),
+              fetch(`/api/meta?clientId=${client.id}&type=overview&startDate=${prevStart}&endDate=${prevEnd}`).then(r => r.ok ? r.json() : null).catch(() => null),
+              fetch(`/api/meta?clientId=${client.id}&type=audiences&startDate=${startDate}&endDate=${endDate}`).then(r => r.ok ? r.json() : null).catch(() => null),
             ])
           : Promise.resolve(null),
 
@@ -152,37 +272,55 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
           ? fetch(`/api/google-ads?customerId=${client.googleAdsCustomerId}&startDate=${startDate}&endDate=${endDate}`).then(r => r.ok ? r.json() : null).catch(() => null)
           : Promise.resolve(null),
 
-        // Search Console: compare mode gives current + previous in one call
+        // Search Console: bulk mode — current + previous data + top queries in one call
         client.searchConsoleSiteUrl
-          ? fetch(`/api/search-console?siteUrl=${encodeURIComponent(client.searchConsoleSiteUrl)}&startDate=${startDate}&endDate=${endDate}&type=compare`).then(r => r.ok ? r.json() : null).catch(() => null)
+          ? fetch(`/api/search-console?siteUrl=${encodeURIComponent(client.searchConsoleSiteUrl)}&startDate=${startDate}&endDate=${endDate}&type=bulk`).then(r => r.ok ? r.json() : null).catch(() => null)
           : Promise.resolve(null),
 
-        // GA4: current period
+        // GA4: current overview + traffic sources + previous overview (all in parallel)
         client.ga4PropertyId
-          ? fetch(`/api/ga4?propertyId=${client.ga4PropertyId}&startDate=${startDate}&endDate=${endDate}&type=overview`).then(r => r.ok ? r.json() : null).catch(() => null)
+          ? Promise.all([
+              fetch(`/api/ga4?propertyId=${client.ga4PropertyId}&startDate=${startDate}&endDate=${endDate}&type=overview`).then(r => r.ok ? r.json() : null).catch(() => null),
+              fetch(`/api/ga4?propertyId=${client.ga4PropertyId}&startDate=${startDate}&endDate=${endDate}&type=sources`).then(r => r.ok ? r.json() : null).catch(() => null),
+              fetch(`/api/ga4?propertyId=${client.ga4PropertyId}&startDate=${prevStart}&endDate=${prevEnd}&type=overview`).then(r => r.ok ? r.json() : null).catch(() => null),
+            ])
           : Promise.resolve(null),
 
-        // GA4: previous period
-        client.ga4PropertyId
-          ? fetch(`/api/ga4?propertyId=${client.ga4PropertyId}&startDate=${prevStart}&endDate=${prevEnd}&type=overview`).then(r => r.ok ? r.json() : null).catch(() => null)
+        // SEMrush: overview + keywords (both in parallel)
+        client.semrushDomain
+          ? Promise.all([
+              fetch(`/api/semrush?domain=${encodeURIComponent(client.semrushDomain)}&type=overview`).then(r => r.ok ? r.json() : null).catch(() => null),
+              fetch(`/api/semrush?domain=${encodeURIComponent(client.semrushDomain)}&type=keywords`).then(r => r.ok ? r.json() : null).catch(() => null),
+            ])
           : Promise.resolve(null),
       ]);
 
-      const metaData   = metaResult.status   === "fulfilled" ? metaResult.value   : null;
-      const gadsData   = gadsResult.status   === "fulfilled" ? gadsResult.value   : null;
-      const scData     = scResult.status     === "fulfilled" ? scResult.value     : null;
-      const ga4Data    = ga4Result.status    === "fulfilled" ? ga4Result.value    : null;
-      const ga4PrevData = ga4PrevResult.status === "fulfilled" ? ga4PrevResult.value : null;
+      const metaData         = metaResult.status     === "fulfilled" ? metaResult.value     : null;
+      const gadsData         = gadsResult.status     === "fulfilled" ? gadsResult.value     : null;
+      const scData           = scResult.status       === "fulfilled" ? scResult.value       : null;
+      const ga4ResultVal     = ga4Result.status      === "fulfilled" ? ga4Result.value      : null;
+      const semrushResultVal = semrushResult.status  === "fulfilled" ? semrushResult.value  : null;
+
+      // Unpack GA4 sub-results
+      const ga4Data     = Array.isArray(ga4ResultVal) ? ga4ResultVal[0] : ga4ResultVal;
+      const ga4Sources  = Array.isArray(ga4ResultVal) ? (ga4ResultVal[1] ?? []) : [];
+      const ga4PrevData = Array.isArray(ga4ResultVal) ? ga4ResultVal[2] : null;
+
+      // Unpack SEMrush sub-results
+      const semrushOverview  = Array.isArray(semrushResultVal) ? semrushResultVal[0] : semrushResultVal;
+      const semrushKeywords  = Array.isArray(semrushResultVal) ? (semrushResultVal[1] ?? []) : [];
 
       // ── COMPUTED CHECKS ────────────────────────────────────────────────────
 
       // ── Meta ──
       if (metaData) {
-        const [campaignsEnriched, adSets, creatives] = metaData as [
-          Array<{ name: string; status?: string; frequency: number; roas: number; spend: number; ctr: number; impressions: number }> | null,
-          Array<{ name: string; status?: string; frequency: number; roas: number; spend: number; conversions: number }> | null,
-          Array<{ adName: string; status?: string; roas: number; spend: number; frequency: number; conversions: number; impressions: number }> | null,
+        const [campaignsEnriched, adSets, creatives, , , metaAudiences] = metaData as [
+          Array<SignalsCampaign> | null,
+          Array<SignalsAdSet> | null,
+          Array<SignalsAdCreative> | null,
           unknown,
+          unknown,
+          Array<SignalsAdSetAudience> | null,
         ];
 
         // Campaign-level
@@ -229,6 +367,29 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
               allSignals.push({ platform: "Meta", source: "computed", severity: "medium", level: "Creative", metric: "Conversions", label: cr.adName, detail: `£${cr.spend.toFixed(0)} spend, 0 conversions`, direction: "down", recommendation: "Pause and test new variations — try different formats (video vs. image), headlines, or calls-to-action." });
           }
         }
+
+        // Audience / targeting checks
+        if (Array.isArray(metaAudiences) && metaAudiences.length && campaignsEnriched?.length && adSets?.length) {
+          const adSetsById = new Map(adSets.filter(s => s.id).map(s => [s.id!, s]));
+          for (const aud of metaAudiences) {
+            if (aud.status !== "ACTIVE") continue;
+            const matchedAdSet   = adSetsById.get(aud.adSetId);
+            const spend          = matchedAdSet?.spend ?? 0;
+            const parentCampaign = campaignsEnriched.find(c => c.id === aud.campaignId);
+            const objective      = (parentCampaign?.objective ?? "").toUpperCase();
+            const isConversion   = objective.includes("CONVER") || objective.includes("PURCHASE") || objective.includes("SALES");
+
+            if (isConversion && aud.customAudiences.length === 0 && spend > 20)
+              allSignals.push({ platform: "Meta", source: "computed", severity: "medium", level: "Ad Set", metric: "Audience Targeting", label: aud.adSetName, detail: "Conversion campaign running with no custom audience — missing retargeting", direction: "down", recommendation: "Add a website custom audience or customer list to retarget warm prospects. Retargeting typically delivers significantly higher ROAS than cold audience conversion campaigns." });
+
+            if (aud.customAudiences.length > 0 && aud.excludedAudiences.length === 0 && spend > 50 && (matchedAdSet?.conversions ?? 0) > 0)
+              allSignals.push({ platform: "Meta", source: "computed", severity: "medium", level: "Ad Set", metric: "Audience Exclusions", label: aud.adSetName, detail: "No excluded custom audiences — existing converters may be served ads repeatedly", direction: "down", recommendation: "Exclude recent purchasers and high-value customer lists to avoid wasting budget on audiences unlikely to convert again and to improve overall ROAS." });
+
+            const isFullyBroad = (aud.ageMin === null || aud.ageMin <= 18) && (aud.ageMax === null || aud.ageMax >= 65) && aud.genders.length === 0 && !aud.hasDetailedTargeting && aud.customAudiences.length === 0;
+            if (isFullyBroad && spend > 30)
+              allSignals.push({ platform: "Meta", source: "computed", severity: "medium", level: "Ad Set", metric: "Audience Targeting", label: aud.adSetName, detail: "Fully broad targeting (18–65+, all genders, no interests, no audiences)", direction: "down", recommendation: "Consider adding interest, behaviour, or custom audience layers. Fully broad targeting can work with Advantage+ but may waste budget without directional signals." });
+          }
+        }
       }
 
       // ── Google Ads ──
@@ -272,9 +433,9 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
       }
 
       // ── Search Console ──
-      if (scData?.current && scData?.previous) {
-        const curr = scData.current as { clicks: number; impressions: number; ctr: number; position: number };
-        const prev = scData.previous as { clicks: number; impressions: number; ctr: number; position: number };
+      if (scData?.overview && scData?.prevOverview) {
+        const curr = scData.overview as { clicks: number; impressions: number; ctr: number; position: number };
+        const prev = scData.prevOverview as { clicks: number; impressions: number; ctr: number; position: number };
 
         if (prev.clicks > 0) {
           const clicksChange = ((curr.clicks - prev.clicks) / prev.clicks) * 100;
@@ -323,12 +484,107 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
         }
       }
 
+      // ── Build rich AI context ────────────────────────────────────────────────
+
+      // Meta creative hierarchy
+      const metaCreativeContext: string | undefined = (() => {
+        if (!metaData) return undefined;
+        const creatives = (metaData as Array<unknown>)[2] as Array<SignalsAdCreative> | null;
+        const adSetsArr = (metaData as Array<unknown>)[1] as Array<SignalsAdSet> | null;
+        return buildCreativeSummary(creatives ?? [], adSetsArr ?? []);
+      })();
+
+      // GA4 traffic sources
+      const ga4SourcesContext: string | undefined = Array.isArray(ga4Sources) && ga4Sources.length
+        ? [
+            "Top traffic sources this period:",
+            ...ga4Sources.slice(0, 6).map((s: { source: string; medium: string; sessions: number; users: number; bounceRate: number; conversions: number }) =>
+              `  \u2022 ${s.source} / ${s.medium} \u2014 ${s.sessions.toLocaleString()} sessions, ${s.users.toLocaleString()} users, ${(s.bounceRate * 100).toFixed(0)}% bounce, ${s.conversions} conversions`
+            ),
+          ].join("\n")
+        : undefined;
+
+      // Search Console top queries
+      const scQueriesContext: string | undefined = (() => {
+        const queries: Array<{ query: string; clicks: number; ctr: number; position: number }> = scData?.queries ?? [];
+        const prevQ: Array<{ query: string; position: number }> = scData?.prevQueries ?? [];
+        if (!queries.length) return undefined;
+        const prevMap = new Map(prevQ.map(q => [q.query, q]));
+        return [
+          "Top search queries:",
+          ...queries.slice(0, 10).map((q: { query: string; clicks: number; ctr: number; position: number }) => {
+            const prev = prevMap.get(q.query);
+            const posChange = prev != null ? (prev.position - q.position) : null;
+            const posStr = posChange != null
+              ? (posChange > 0.5 ? ` (\u2191${posChange.toFixed(1)} pos)` : posChange < -0.5 ? ` (\u2193${Math.abs(posChange).toFixed(1)} pos)` : "")
+              : "";
+            return `  \u2022 "${q.query}" \u2014 pos ${q.position.toFixed(1)}${posStr}, ${q.clicks} clicks, ${(q.ctr * 100).toFixed(1)}% CTR`;
+          }),
+        ].join("\n");
+      })();
+
+      // SEMrush top keywords
+      const semrushKeywordsContext: string | undefined = Array.isArray(semrushKeywords) && semrushKeywords.length
+        ? [
+            "Top organic keywords:",
+            ...semrushKeywords.slice(0, 10).map((kw: { keyword: string; position: number; previousPosition: number; searchVolume: number; trafficPercent: number }) => {
+              const delta = kw.previousPosition > 0 ? kw.previousPosition - kw.position : null;
+              const deltaStr = delta != null ? (delta > 0 ? ` (\u2191${delta})` : delta < 0 ? ` (\u2193${Math.abs(delta)})` : " (=)") : "";
+              return `  \u2022 "${kw.keyword}" \u2014 pos ${kw.position}${deltaStr}, vol ${kw.searchVolume.toLocaleString()}, ${kw.trafficPercent.toFixed(1)}% traffic`;
+            }),
+          ].join("\n")
+        : undefined;
+
+      // Cross-platform summary for all AI calls
+      const crossPlatformContext: string | undefined = (() => {
+        const lines: string[] = [`Cross-platform summary for ${client.name} (${startDate} to ${endDate}):`];
+        if (metaData) {
+          const ov    = (metaData as Array<unknown>)[3] as Record<string, number> | null;
+          const prevM = (metaData as Array<unknown>)[4] as Record<string, number> | null;
+          if (ov) {
+            const spend = typeof ov.totalSpend === "number" ? `\u00a3${ov.totalSpend.toFixed(0)}` : "n/a";
+            const roas  = typeof ov.avgRoas === "number" ? `${ov.avgRoas.toFixed(2)}\u00d7` : "n/a";
+            const prevR = typeof prevM?.avgRoas === "number" ? ` (prev ${prevM.avgRoas.toFixed(2)}\u00d7)` : "";
+            const conv  = typeof ov.totalConversions === "number" ? ov.totalConversions : "n/a";
+            lines.push(`\u2022 Meta: ${spend} spend, ${conv} conv, ROAS ${roas}${prevR}`);
+          }
+        }
+        if (gadsData?.overview) {
+          const o = gadsData.overview as Record<string, number>;
+          const spend = typeof o.totalCost === "number" ? `\u00a3${o.totalCost.toFixed(0)}` : "n/a";
+          const impr  = typeof o.totalImpressions === "number" ? o.totalImpressions.toLocaleString() : "n/a";
+          lines.push(`\u2022 Google Ads: ${spend} spend, ${impr} impressions`);
+        }
+        if (ga4Data) {
+          const o     = ga4Data as Record<string, number>;
+          const sess  = typeof o.sessions === "number" ? o.sessions.toLocaleString() : "n/a";
+          const prevS = ga4PrevData && typeof (ga4PrevData as Record<string, number>).sessions === "number" ? ` (prev ${(ga4PrevData as Record<string, number>).sessions.toLocaleString()})` : "";
+          const cvr   = typeof o.conversionRate === "number" ? `${o.conversionRate.toFixed(2)}%` : "n/a";
+          const br    = typeof o.bounceRate === "number" ? `${o.bounceRate.toFixed(1)}%` : "n/a";
+          lines.push(`\u2022 GA4: ${sess} sessions${prevS}, ${cvr} conv rate, ${br} bounce`);
+        }
+        if (scData?.overview) {
+          const o      = scData.overview as Record<string, number>;
+          const clicks = typeof o.clicks === "number" ? o.clicks.toLocaleString() : "n/a";
+          const prevC  = typeof scData.prevOverview?.clicks === "number" ? ` (prev ${scData.prevOverview.clicks.toLocaleString()})` : "";
+          const pos    = typeof o.position === "number" ? o.position.toFixed(1) : "n/a";
+          lines.push(`\u2022 Search Console: ${clicks} clicks${prevC}, avg pos ${pos}`);
+        }
+        if (semrushOverview) {
+          const o        = semrushOverview as Record<string, number>;
+          const traffic  = typeof o.organicTraffic === "number" ? o.organicTraffic.toLocaleString() : "n/a";
+          const keywords = typeof o.organicKeywords === "number" ? o.organicKeywords.toLocaleString() : "n/a";
+          lines.push(`\u2022 SEMrush: ${traffic} organic traffic, ${keywords} keywords`);
+        }
+        return lines.length > 1 ? lines.join("\n") : undefined;
+      })();
+
       // ── AI SUMMARY CALLS ──────────────────────────────────────────────────
       const aiCalls: Promise<{ platform: string; anomalies: Array<{ metric: string; severity: string; direction: string; description: string; context?: string }> }>[] = [];
 
-      // Meta AI — structural anomalies (frequency, ROAS, CTR fatigue) from campaign data
+      // Meta AI — frequency, ROAS, CTR fatigue anomalies with creative hierarchy context
       if (metaData) {
-        const [campaignsEnriched, , , overview] = metaData as [unknown[] | null, unknown, unknown, Record<string, number> | null];
+        const [campaignsEnriched, , , overview, prevMetaOverview] = (metaData as unknown) as [Array<SignalsCampaign> | null, unknown, unknown, Record<string, number> | null, Record<string, number> | null];
         if (overview && campaignsEnriched?.length) {
           aiCalls.push(
             fetch("/api/ai/summary", {
@@ -337,9 +593,12 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
               body: JSON.stringify({
                 sectionType: "meta",
                 metrics: overview,
+                previousMetrics: prevMetaOverview ?? undefined,
                 clientName: client.name,
                 dateRange: `${startDate} to ${endDate}`,
                 campaignData: campaignsEnriched,
+                extraContext: metaCreativeContext,
+                crossPlatformContext,
               }),
             })
               .then(r => r.ok ? r.json() : { anomalies: [] })
@@ -362,6 +621,7 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
               dateRange: `${startDate} to ${endDate}`,
               campaignData: gadsData.campaignsEnriched ?? [],
               landingPages: (gadsData.landingPages ?? []).slice(0, 10),
+              crossPlatformContext,
             }),
           })
             .then(r => r.ok ? r.json() : { anomalies: [] })
@@ -370,7 +630,7 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
         );
       }
 
-      // GA4 AI — period-over-period anomalies
+      // GA4 AI — period-over-period anomalies with traffic source breakdown
       if (ga4Data) {
         aiCalls.push(
           fetch("/api/ai/summary", {
@@ -382,6 +642,8 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
               previousMetrics: ga4PrevData ?? undefined,
               clientName: client.name,
               dateRange: `${startDate} to ${endDate}`,
+              extraContext: ga4SourcesContext,
+              crossPlatformContext,
             }),
           })
             .then(r => r.ok ? r.json() : { anomalies: [] })
@@ -390,18 +652,20 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
         );
       }
 
-      // Search Console AI — period-over-period + structural anomalies
-      if (scData?.current) {
+      // Search Console AI — period-over-period + structural anomalies + top queries
+      if (scData?.overview) {
         aiCalls.push(
           fetch("/api/ai/summary", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               sectionType: "searchconsole",
-              metrics: scData.current,
-              previousMetrics: scData.previous ?? undefined,
+              metrics: scData.overview,
+              previousMetrics: scData.prevOverview ?? undefined,
               clientName: client.name,
               dateRange: `${startDate} to ${endDate}`,
+              extraContext: scQueriesContext,
+              crossPlatformContext,
             }),
           })
             .then(r => r.ok ? r.json() : { anomalies: [] })
@@ -410,29 +674,25 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
         );
       }
 
-      // SEMrush AI — structural overview anomalies
-      if (client.semrushDomain) {
-        const seoData = await fetch(`/api/semrush?domain=${encodeURIComponent(client.semrushDomain)}&type=overview`)
-          .then(r => r.ok ? r.json() : null)
-          .catch(() => null);
-
-        if (seoData) {
-          aiCalls.push(
-            fetch("/api/ai/summary", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                sectionType: "seo",
-                metrics: seoData,
-                clientName: client.name,
-                dateRange: `${startDate} to ${endDate}`,
-              }),
-            })
-              .then(r => r.ok ? r.json() : { anomalies: [] })
-              .then(json => ({ platform: "SEMrush", anomalies: json.anomalies ?? [] }))
-              .catch(() => ({ platform: "SEMrush", anomalies: [] }))
-          );
-        }
+      // SEMrush AI — organic visibility anomalies with keyword context
+      if (semrushOverview) {
+        aiCalls.push(
+          fetch("/api/ai/summary", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sectionType: "seo",
+              metrics: semrushOverview,
+              clientName: client.name,
+              dateRange: `${startDate} to ${endDate}`,
+              extraContext: semrushKeywordsContext,
+              crossPlatformContext,
+            }),
+          })
+            .then(r => r.ok ? r.json() : { anomalies: [] })
+            .then(json => ({ platform: "SEMrush", anomalies: json.anomalies ?? [] }))
+            .catch(() => ({ platform: "SEMrush", anomalies: [] }))
+        );
       }
 
       // Run all AI calls in parallel
@@ -483,6 +743,7 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
             })),
             clientName: client.name,
             dateRange: `${startDate} to ${endDate}`,
+            crossPlatformContext,
           }),
         })
           .then(r => r.ok ? r.json() : null)
