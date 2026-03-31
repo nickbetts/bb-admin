@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, Upload, Trash2, Check, X, Eye, EyeOff, ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search, MessageSquare, LayoutGrid, FileText, Image, ShoppingCart, CalendarRange } from "lucide-react";
+import { ArrowLeft, Download, Upload, Trash2, Check, X, Eye, EyeOff, ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search, MessageSquare, LayoutGrid, FileText, Image, ShoppingCart, CalendarRange, LayoutTemplate, Save } from "lucide-react";
 import { SemrushSection } from "@/components/dashboard/SemrushSection";
 import { GA4Section } from "@/components/dashboard/GA4Section";
 import { MetaSection } from "@/components/dashboard/MetaSection";
@@ -130,6 +130,10 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive">("professional");
   const [aiFormat, setAiFormat] = useState<"prose" | "bullets" | "both">("prose");
   const [sectionMetrics, setSectionMetrics] = useState<Record<string, Record<string, number>>>({});
+  const [templateSaveOpen, setTemplateSaveOpen] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateSaved, setTemplateSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const reportRef = useRef<HTMLDivElement>(null);
   const captionInputRef = useRef<string>("");
@@ -227,6 +231,35 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     const res = await fetch(`/api/reports/${report.id}/screenshots?screenshotId=${screenshotId}`, { method: "DELETE" });
     if (res.ok) {
       setReport((prev) => ({ ...prev, screenshots: prev.screenshots.filter((s) => s.id !== screenshotId) }));
+    }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!templateName.trim()) return;
+    setSavingTemplate(true);
+    try {
+      const sections = report.sections.map((s, i) => ({
+        sectionType: s.sectionType,
+        title: s.title,
+        orderIndex: i,
+        enabled: s.enabled !== false,
+        cardConfig: s.cardConfig ?? null,
+      }));
+      const res = await fetch("/api/report-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: templateName.trim(), sections }),
+      });
+      if (res.ok) {
+        setTemplateSaved(true);
+        setTemplateName("");
+        setTimeout(() => {
+          setTemplateSaveOpen(false);
+          setTemplateSaved(false);
+        }, 1500);
+      }
+    } finally {
+      setSavingTemplate(false);
     }
   };
 
@@ -851,6 +884,63 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 </div>
               );
             })}
+          </div>
+
+          {/* Sidebar footer — Save as Template */}
+          <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "14px 16px", flexShrink: 0 }}>
+            {!templateSaveOpen ? (
+              <button
+                onClick={() => { setTemplateSaveOpen(true); setTemplateName(""); setTemplateSaved(false); }}
+                className="btn btn-secondary btn-sm"
+                style={{ width: "100%", justifyContent: "center", gap: 6 }}
+              >
+                <LayoutTemplate size={13} />
+                Save as Template
+              </button>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)", marginBottom: 2 }}>
+                  Save as Template
+                </p>
+                <input
+                  autoFocus
+                  type="text"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSaveAsTemplate(); if (e.key === "Escape") setTemplateSaveOpen(false); }}
+                  placeholder="Template name…"
+                  style={{
+                    width: "100%", padding: "7px 10px", fontSize: 13,
+                    borderRadius: "var(--r-sm)", border: "1px solid var(--border)",
+                    background: "var(--surface)", color: "var(--text)",
+                    outline: "none", boxSizing: "border-box",
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+                />
+                <p style={{ fontSize: 11, color: "var(--text-4)", lineHeight: 1.4 }}>
+                  Saves all {report.sections.length} sections with their current show/hide configuration.
+                </p>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    onClick={handleSaveAsTemplate}
+                    disabled={savingTemplate || !templateName.trim()}
+                    className="btn btn-primary btn-sm"
+                    style={{ flex: 1, justifyContent: "center", gap: 5 }}
+                  >
+                    {templateSaved ? <Check size={13} /> : <Save size={13} />}
+                    {templateSaved ? "Saved!" : savingTemplate ? "Saving…" : "Save"}
+                  </button>
+                  <button
+                    onClick={() => setTemplateSaveOpen(false)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ gap: 5 }}
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </aside>
       </div>
