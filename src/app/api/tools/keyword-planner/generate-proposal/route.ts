@@ -647,12 +647,11 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Get OpenAI API key ──────────────────────────────────────────────────
-    const [apiKeySetting, taskBenchmarksSetting, pricingStrategySetting] = await Promise.all([
-      prisma.appSetting.findUnique({ where: { key: "openaiApiKey" } }),
+    const [taskBenchmarksSetting, pricingStrategySetting] = await Promise.all([
       prisma.appSetting.findUnique({ where: { key: "taskBenchmarks" } }),
       prisma.appSetting.findUnique({ where: { key: "pricingStrategy" } }),
     ]);
-    const apiKey = apiKeySetting?.value ?? process.env.OPENAI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
         { error: "OpenAI API key not configured. Add it in Settings." },

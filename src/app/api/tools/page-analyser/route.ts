@@ -39,8 +39,7 @@ export async function POST(request: NextRequest) {
     const domain = extractDomain(pageUrl);
 
     // Resolve OpenAI key
-    const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "openaiApiKey" } });
-    const apiKey = apiKeySetting?.value ?? process.env.OPENAI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
         { error: "OpenAI API key not configured. Add it in Settings." },

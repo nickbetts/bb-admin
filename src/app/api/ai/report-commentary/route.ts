@@ -97,9 +97,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "sectionType and metrics are required" }, { status: 400 });
     }
 
-    // Get OpenAI API key from app settings
-    const settingRow = await prisma.appSetting.findUnique({ where: { key: "openaiApiKey" } });
-    const apiKey = settingRow?.value ?? process.env.OPENAI_API_KEY;
+    // Get OpenAI API key from environment
+    const apiKey = process.env.OPENAI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json({ error: "OpenAI API key not configured. Add it in Settings." }, { status: 500 });

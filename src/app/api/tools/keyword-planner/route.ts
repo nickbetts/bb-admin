@@ -66,10 +66,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "website and brief are required" }, { status: 400 });
       }
 
-      const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "openaiApiKey" } });
-      const apiKey = apiKeySetting?.value ?? process.env.OPENAI_API_KEY;
+      const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) {
-        return NextResponse.json({ error: "OpenAI API key not configured. Add it in Settings." }, { status: 400 });
+        return NextResponse.json({ error: "OPENAI_API_KEY environment variable is not set." }, { status: 400 });
       }
 
       const openai = new OpenAI({ apiKey });
@@ -224,8 +223,7 @@ Return ONLY this JSON (no markdown, no explanation):
     if (body.action === "smart-defaults") {
       const { website, brief, keywords } = body as SmartDefaultsBody;
 
-      const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "openaiApiKey" } });
-      const apiKey = apiKeySetting?.value ?? process.env.OPENAI_API_KEY;
+      const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) {
         return NextResponse.json({ conversionRate: 2.5 });
       }

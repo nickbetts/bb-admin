@@ -537,11 +537,10 @@ export async function POST(request: NextRequest) {
 
       if (!alerts.length) return NextResponse.json({ recommendations: [] });
 
-      const apiKeySetting2 = await prisma.appSetting.findUnique({ where: { key: "openaiApiKey" } });
-      const apiKey2 = apiKeySetting2?.value ?? process.env.OPENAI_API_KEY;
-      if (!apiKey2 || !apiKey2.startsWith("sk-")) {
+      const apiKey2 = process.env.OPENAI_API_KEY;
+      if (!apiKey2) {
         return NextResponse.json(
-          { error: "OpenAI API key is not configured or is invalid. Please update it in Settings.", recommendations: alerts.map(() => "") },
+          { error: "OPENAI_API_KEY environment variable is not set.", recommendations: alerts.map(() => "") },
           { status: 503 }
         );
       }
@@ -590,15 +589,11 @@ One string per alert, in the same order. British English.`;
     }
     // ──────────────────────────────────────────────────────────────────────────
 
-    const apiKeySetting = await prisma.appSetting.findUnique({
-      where: { key: "openaiApiKey" },
-    });
+    const apiKey = process.env.OPENAI_API_KEY;
 
-    const apiKey = apiKeySetting?.value ?? process.env.OPENAI_API_KEY;
-
-    if (!apiKey || !apiKey.startsWith("sk-")) {
+    if (!apiKey) {
       return NextResponse.json(
-        { error: "OpenAI API key is not configured or is invalid. Please update it in Settings." },
+        { error: "OPENAI_API_KEY environment variable is not set." },
         { status: 400 }
       );
     }
