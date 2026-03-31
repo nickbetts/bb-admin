@@ -16,6 +16,8 @@ export function LoadingSpinner({ size = "md", className }: LoadingSpinnerProps) 
 
   return (
     <div
+      role="status"
+      aria-label="Loading"
       className={cn(
         "animate-spin rounded-full border-slate-200 border-t-indigo-600",
         sizeMap[size],
@@ -68,6 +70,7 @@ export function Delta({ current, previous, format = "none", invert = false }: De
   if (previous == null || previous === 0) return null;
   const diff = current - previous;
   const pctVal = (diff / previous) * 100;
+  if (!isFinite(pctVal)) return null;
   if (Math.abs(pctVal) < 0.05) {
     return <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500, whiteSpace: "nowrap" }}>→</span>;
   }

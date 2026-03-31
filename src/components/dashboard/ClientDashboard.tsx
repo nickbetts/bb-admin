@@ -172,12 +172,14 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
     <div>
       {/* Tab bar + date controls */}
       <div className="tabs-bar">
-        <nav className="tabs-nav">
+        <nav className="tabs-nav" role="tablist" aria-label="Dashboard sections">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => tab.available && setActiveTab(tab.id)}
               disabled={!tab.available}
+              role="tab"
+              aria-selected={activeTab === tab.id && tab.available}
               className={cn("tab-btn", activeTab === tab.id && tab.available && "active")}
             >
               {tab.label}

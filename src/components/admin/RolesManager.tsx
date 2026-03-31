@@ -353,6 +353,7 @@ export function RolesManager() {
                             editingId === role.id ? setEditingId(null) : setEditingId(role.id)
                           }
                           title="Edit"
+                          aria-label={editingId === role.id ? "Cancel editing" : "Edit role"}
                         >
                           {editingId === role.id ? <X size={14} /> : <Pencil size={14} />}
                         </button>
@@ -362,6 +363,7 @@ export function RolesManager() {
                             style={{ padding: "5px 10px", color: "#ef4444" }}
                             onClick={() => setDeletingId(role.id)}
                             title="Delete"
+                            aria-label="Delete role"
                           >
                             <Trash2 size={14} />
                           </button>

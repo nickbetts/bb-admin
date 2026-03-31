@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { FileText, Plus, Trash2, ExternalLink, Clock, Eye, Share2, BarChart3, MessageSquare } from "lucide-react";
+import { SearchInput } from "@/components/ui/SearchInput";
 
 interface ProposalSummary {
   id: string;
@@ -22,6 +23,7 @@ export default function ProposalsPage() {
   const [proposals, setProposals] = useState<ProposalSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,6 +74,12 @@ export default function ProposalsPage() {
         </Link>
       </div>
 
+      {!loading && proposals.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <SearchInput value={search} onChange={setSearch} placeholder="Search proposals..." />
+        </div>
+      )}
+
       {loading ? (
         <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 14 }}>Loading proposals…</div>
       ) : proposals.length === 0 ? (
@@ -87,7 +95,11 @@ export default function ProposalsPage() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {proposals.map((p) => (
+          {proposals.filter((p) => {
+            if (!search) return true;
+            const q = search.toLowerCase();
+            return p.title.toLowerCase().includes(q) || p.clientName.toLowerCase().includes(q) || p.website?.toLowerCase().includes(q);
+          }).map((p) => (
             <div key={p.id} className="card" style={{ padding: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px" }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>

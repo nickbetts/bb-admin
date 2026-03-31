@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { FileText, ArrowRight, Trash2, Pencil, Check, X } from "lucide-react";
+import { SearchInput } from "@/components/ui/SearchInput";
 
 interface Report {
   id: string;
@@ -16,6 +17,7 @@ interface Report {
 export default function ReportsPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   // Bulk selection
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -110,25 +112,34 @@ export default function ReportsPage() {
   const allSelected = reports.length > 0 && selected.size === reports.length;
   const someSelected = selected.size > 0;
 
+  const filtered = reports.filter((r) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return r.title.toLowerCase().includes(q) || r.client.name.toLowerCase().includes(q) || r.period.toLowerCase().includes(q);
+  });
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-10" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+      <div className="mb-10" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Reports</h1>
           <p className="text-slate-500 text-sm mt-1">
             All performance reports across your clients
           </p>
         </div>
-        {someSelected && (
-          <button
-            onClick={handleBulkDelete}
-            disabled={bulkDeleting}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-sm font-medium transition border border-red-200"
-          >
-            <Trash2 className="h-4 w-4" />
-            {bulkDeleting ? "Deleting…" : `Delete ${selected.size} selected`}
-          </button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <SearchInput value={search} onChange={setSearch} placeholder="Search reports..." />
+          {someSelected && (
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-sm font-medium transition border border-red-200"
+            >
+              <Trash2 className="h-4 w-4" />
+              {bulkDeleting ? "Deleting…" : `Delete ${selected.size}`}
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -171,7 +182,7 @@ export default function ReportsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {reports.map((report) => (
+              {filtered.map((report) => (
                 <tr
                   key={report.id}
                   className={`hover:bg-slate-50 transition ${selected.has(report.id) ? "bg-indigo-50/40" : ""}`}
@@ -227,6 +238,7 @@ export default function ReportsPage() {
                           }}
                           className="text-slate-300 hover:text-slate-500 transition"
                           title="Rename"
+                          aria-label="Rename report"
                         >
                           <Pencil className="h-3 w-3" />
                         </button>
@@ -299,6 +311,7 @@ export default function ReportsPage() {
                           onClick={() => setDeletingId(report.id)}
                           className="text-slate-300 hover:text-red-500 transition ml-2"
                           title="Delete report"
+                          aria-label="Delete report"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>

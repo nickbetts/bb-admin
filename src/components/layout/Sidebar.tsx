@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,7 @@ import {
   Sparkles,
   Tag,
   Bot,
+  X,
 } from "lucide-react";
 
 interface NavItem {
@@ -29,69 +30,19 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  {
-    href: "/dashboard",
-    label: "Dashboard",
-    icon: <LayoutDashboard className="h-4 w-4" />,
-    permission: "dashboard",
-  },
-  {
-    href: "/clients",
-    label: "Clients",
-    icon: <Users className="h-4 w-4" />,
-    permission: "clients",
-  },
-  {
-    href: "/reports",
-    label: "Reports",
-    icon: <FileText className="h-4 w-4" />,
-    permission: "reports",
-  },
-  {
-    href: "/reports/templates",
-    label: "Templates",
-    icon: <LayoutTemplate className="h-4 w-4" />,
-    permission: "templates",
-  },
-  {
-    href: "/settings",
-    label: "Settings",
-    icon: <Settings className="h-4 w-4" />,
-    permission: "settings",
-  },
+  { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" />, permission: "dashboard" },
+  { href: "/clients", label: "Clients", icon: <Users className="h-4 w-4" />, permission: "clients" },
+  { href: "/reports", label: "Reports", icon: <FileText className="h-4 w-4" />, permission: "reports" },
+  { href: "/reports/templates", label: "Templates", icon: <LayoutTemplate className="h-4 w-4" />, permission: "templates" },
+  { href: "/settings", label: "Settings", icon: <Settings className="h-4 w-4" />, permission: "settings" },
 ];
 
 const toolsNavItems: NavItem[] = [
-  {
-    href: "/tools/page-analyser",
-    label: "Page Analyser",
-    icon: <ScanSearch className="h-4 w-4" />,
-    permission: "page_analyser",
-  },
-  {
-    href: "/tools/keyword-planner",
-    label: "Proposal Generator",
-    icon: <Sparkles className="h-4 w-4" />,
-    permission: "proposal_generator",
-  },
-  {
-    href: "/tools/proposals",
-    label: "Proposals",
-    icon: <FileText className="h-4 w-4" />,
-    permission: "proposals",
-  },
-  {
-    href: "/tools/pricing",
-    label: "Pricing",
-    icon: <Tag className="h-4 w-4" />,
-    permission: "pricing",
-  },
-  {
-    href: "/tools/llm-generator",
-    label: "LLM.txt Generator",
-    icon: <Bot className="h-4 w-4" />,
-    permission: "llm_generator",
-  },
+  { href: "/tools/page-analyser", label: "Page Analyser", icon: <ScanSearch className="h-4 w-4" />, permission: "page_analyser" },
+  { href: "/tools/keyword-planner", label: "Proposal Generator", icon: <Sparkles className="h-4 w-4" />, permission: "proposal_generator" },
+  { href: "/tools/proposals", label: "Proposals", icon: <FileText className="h-4 w-4" />, permission: "proposals" },
+  { href: "/tools/pricing", label: "Pricing", icon: <Tag className="h-4 w-4" />, permission: "pricing" },
+  { href: "/tools/llm-generator", label: "LLM.txt Generator", icon: <Bot className="h-4 w-4" />, permission: "llm_generator" },
 ];
 
 interface SidebarProps {
@@ -101,54 +52,49 @@ interface SidebarProps {
 
 export function Sidebar({ user, permissions }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setCollapsed(false);
+        setMobileOpen(false);
+      } else if (window.innerWidth < 1024) {
+        setCollapsed(true);
+      }
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // Close mobile sidebar on navigation
+  useEffect(() => {
+    if (isMobile) setMobileOpen(false);
+  }, [pathname, isMobile]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
   }
 
-  const initials = (user.name ?? user.email)
+  const nameStr = user.name || user.email || "";
+  const initials = nameStr
     .split(" ")
+    .filter(Boolean)
     .map((w) => w[0])
     .join("")
     .toUpperCase()
-    .slice(0, 2);
+    .slice(0, 2) || "?";
 
-  return (
-    <aside className={cn("sidebar", collapsed && "collapsed")}>
-      {/* Logo */}
-      <div className="sidebar-logo">
-        <div className="sidebar-logo-inner">
-          <div className="sidebar-logo-icon">
-            <BarChart3 style={{ width: 20, height: 20, color: "white" }} />
-          </div>
-          {!collapsed && (
-            <div className="min-w-0">
-              <p className="sidebar-logo-name">i3media</p>
-              <p className="sidebar-logo-tag">Reporting</p>
-            </div>
-          )}
-        </div>
-        {!collapsed && (
-          <button onClick={() => setCollapsed(true)} className="btn btn-ghost btn-sm" style={{ padding: "6px 8px" }}>
-            <ChevronLeft style={{ width: 16, height: 16 }} />
-          </button>
-        )}
-      </div>
-
-      {/* Expand when collapsed */}
-      {collapsed && (
-        <div style={{ padding: "12px 12px 0" }}>
-          <button onClick={() => setCollapsed(false)} className="nav-item" style={{ justifyContent: "center" }}>
-            <Menu style={{ width: 18, height: 18 }} />
-          </button>
-        </div>
-      )}
-
-      {/* Navigation */}
-      <nav className="sidebar-nav">
+  function renderNavLinks() {
+    return (
+      <nav className="sidebar-nav" aria-label="Main navigation">
         {!collapsed && <p className="sidebar-nav-label">Menu</p>}
         {navItems.filter((item) => permissions.includes(item.permission)).map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -211,8 +157,99 @@ export function Sidebar({ user, permissions }: SidebarProps) {
           </>
         )}
       </nav>
+    );
+  }
 
-      {/* Footer */}
+  // Mobile: hamburger trigger + overlay sidebar
+  if (isMobile) {
+    return (
+      <>
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="sidebar-mobile-trigger"
+          aria-label="Open navigation menu"
+        >
+          <Menu style={{ width: 20, height: 20 }} />
+        </button>
+
+        {mobileOpen && (
+          <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} aria-hidden="true" />
+        )}
+
+        <aside className={cn("sidebar sidebar-mobile", mobileOpen && "open")} aria-label="Main navigation">
+          <div className="sidebar-logo">
+            <div className="sidebar-logo-inner">
+              <div className="sidebar-logo-icon">
+                <BarChart3 style={{ width: 20, height: 20, color: "white" }} />
+              </div>
+              <div className="min-w-0">
+                <p className="sidebar-logo-name">i3media</p>
+                <p className="sidebar-logo-tag">Reporting</p>
+              </div>
+            </div>
+            <button onClick={() => setMobileOpen(false)} className="btn btn-ghost btn-sm" style={{ padding: "6px 8px" }} aria-label="Close navigation menu">
+              <X style={{ width: 16, height: 16 }} />
+            </button>
+          </div>
+
+          {renderNavLinks()}
+
+          <div className="sidebar-footer">
+            <div className="sidebar-user">
+              <div className="sidebar-avatar">{initials}</div>
+              <div className="min-w-0 flex-1">
+                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1 }}>
+                  {user.name ?? user.email.split("@")[0]}
+                </p>
+                <p style={{ fontSize: 11, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 3 }}>
+                  {user.email}
+                </p>
+              </div>
+            </div>
+            <button onClick={handleLogout} className="nav-item sidebar-logout-btn" style={{ marginTop: 4 }} aria-label="Sign out">
+              <span className="nav-item-icon" style={{ display: "flex", width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                <LogOut style={{ width: 16, height: 16 }} />
+              </span>
+              <span>Sign out</span>
+            </button>
+          </div>
+        </aside>
+      </>
+    );
+  }
+
+  // Desktop sidebar
+  return (
+    <aside className={cn("sidebar", collapsed && "collapsed")} aria-label="Main navigation">
+      <div className="sidebar-logo">
+        <div className="sidebar-logo-inner">
+          <div className="sidebar-logo-icon">
+            <BarChart3 style={{ width: 20, height: 20, color: "white" }} />
+          </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="sidebar-logo-name">i3media</p>
+              <p className="sidebar-logo-tag">Reporting</p>
+            </div>
+          )}
+        </div>
+        {!collapsed && (
+          <button onClick={() => setCollapsed(true)} className="btn btn-ghost btn-sm" style={{ padding: "6px 8px" }} aria-label="Collapse sidebar">
+            <ChevronLeft style={{ width: 16, height: 16 }} />
+          </button>
+        )}
+      </div>
+
+      {collapsed && (
+        <div style={{ padding: "12px 12px 0" }}>
+          <button onClick={() => setCollapsed(false)} className="nav-item" style={{ justifyContent: "center" }} aria-label="Expand sidebar">
+            <Menu style={{ width: 18, height: 18 }} />
+          </button>
+        </div>
+      )}
+
+      {renderNavLinks()}
+
       <div className="sidebar-footer">
         {!collapsed && (
           <div className="sidebar-user">
@@ -229,11 +266,10 @@ export function Sidebar({ user, permissions }: SidebarProps) {
         )}
         <button
           onClick={handleLogout}
-          title={collapsed ? "Logout" : undefined}
-          className="nav-item"
-          style={{ color: "var(--text-3)", ...(collapsed ? { justifyContent: "center" } : {}), marginTop: 4 }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "#ef4444"; (e.currentTarget as HTMLButtonElement).style.background = "#fff1f2"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)"; (e.currentTarget as HTMLButtonElement).style.background = ""; }}
+          title={collapsed ? "Sign out" : undefined}
+          className="nav-item sidebar-logout-btn"
+          style={{ ...(collapsed ? { justifyContent: "center" } : {}), marginTop: 4 }}
+          aria-label="Sign out"
         >
           <span className="nav-item-icon" style={{ display: "flex", width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
             <LogOut style={{ width: 16, height: 16 }} />
@@ -244,4 +280,3 @@ export function Sidebar({ user, permissions }: SidebarProps) {
     </aside>
   );
 }
-

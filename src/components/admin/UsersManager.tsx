@@ -355,15 +355,17 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
                             editingId === user.id ? setEditingId(null) : startEdit(user)
                           }
                           title="Edit"
+                          aria-label={editingId === user.id ? "Cancel editing" : "Edit user"}
                         >
                           {editingId === user.id ? <X size={14} /> : <Pencil size={14} />}
-                        </button>
+</button>
                         {user.id !== currentUserId && (
                           <button
                             className="btn btn-ghost"
                             style={{ padding: "5px 10px", color: "#ef4444" }}
                             onClick={() => setDeletingId(user.id)}
                             title="Delete"
+                            aria-label="Delete user"
                           >
                             <Trash2 size={14} />
                           </button>
