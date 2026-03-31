@@ -25,6 +25,7 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
+  permission: string;
 }
 
 const navItems: NavItem[] = [
@@ -32,26 +33,31 @@ const navItems: NavItem[] = [
     href: "/dashboard",
     label: "Dashboard",
     icon: <LayoutDashboard className="h-4 w-4" />,
+    permission: "dashboard",
   },
   {
     href: "/clients",
     label: "Clients",
     icon: <Users className="h-4 w-4" />,
+    permission: "clients",
   },
   {
     href: "/reports",
     label: "Reports",
     icon: <FileText className="h-4 w-4" />,
+    permission: "reports",
   },
   {
     href: "/reports/templates",
     label: "Templates",
     icon: <LayoutTemplate className="h-4 w-4" />,
+    permission: "templates",
   },
   {
     href: "/settings",
     label: "Settings",
     icon: <Settings className="h-4 w-4" />,
+    permission: "settings",
   },
 ];
 
@@ -60,34 +66,40 @@ const toolsNavItems: NavItem[] = [
     href: "/tools/page-analyser",
     label: "Page Analyser",
     icon: <ScanSearch className="h-4 w-4" />,
+    permission: "page_analyser",
   },
   {
     href: "/tools/keyword-planner",
     label: "Proposal Generator",
     icon: <Sparkles className="h-4 w-4" />,
+    permission: "proposal_generator",
   },
   {
     href: "/tools/proposals",
     label: "Proposals",
     icon: <FileText className="h-4 w-4" />,
+    permission: "proposals",
   },
   {
     href: "/tools/pricing",
     label: "Pricing",
     icon: <Tag className="h-4 w-4" />,
+    permission: "pricing",
   },
   {
     href: "/tools/llm-generator",
     label: "LLM.txt Generator",
     icon: <Bot className="h-4 w-4" />,
+    permission: "llm_generator",
   },
 ];
 
 interface SidebarProps {
-  user: { name?: string | null; email: string; role?: string };
+  user: { name?: string | null; email: string };
+  permissions: string[];
 }
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, permissions }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -138,7 +150,7 @@ export function Sidebar({ user }: SidebarProps) {
       {/* Navigation */}
       <nav className="sidebar-nav">
         {!collapsed && <p className="sidebar-nav-label">Menu</p>}
-        {navItems.map((item) => {
+        {navItems.filter((item) => permissions.includes(item.permission)).map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
@@ -155,25 +167,29 @@ export function Sidebar({ user }: SidebarProps) {
             </Link>
           );
         })}
-        {!collapsed && <p className="sidebar-nav-label" style={{ marginTop: 12 }}>Tools</p>}
-        {toolsNavItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={collapsed ? item.label : undefined}
-              className={cn("nav-item", isActive && "active", collapsed && "justify-center")}
-              style={collapsed ? { justifyContent: "center" } : undefined}
-            >
-              <span className="nav-item-icon" style={{ display: "flex", width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
-                {item.icon}
-              </span>
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
-          );
-        })}
-        {user.role === "admin" && (
+        {toolsNavItems.some((item) => permissions.includes(item.permission)) && (
+          <>
+            {!collapsed && <p className="sidebar-nav-label" style={{ marginTop: 12 }}>Tools</p>}
+            {toolsNavItems.filter((item) => permissions.includes(item.permission)).map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={collapsed ? item.label : undefined}
+                  className={cn("nav-item", isActive && "active", collapsed && "justify-center")}
+                  style={collapsed ? { justifyContent: "center" } : undefined}
+                >
+                  <span className="nav-item-icon" style={{ display: "flex", width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                    {item.icon}
+                  </span>
+                  {!collapsed && <span>{item.label}</span>}
+                </Link>
+              );
+            })}
+          </>
+        )}
+        {permissions.includes("users") && (
           <>
             {!collapsed && <p className="sidebar-nav-label" style={{ marginTop: 12 }}>Admin</p>}
             {(() => {

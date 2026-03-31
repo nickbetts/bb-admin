@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { UsersManager } from "@/components/admin/UsersManager";
+import { RolesManager } from "@/components/admin/RolesManager";
 import { AdminNav } from "@/components/admin/AdminNav";
 
-export default async function AdminPage() {
+export default async function RolesPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!session.user.permissions.includes("users")) redirect("/dashboard");
@@ -11,13 +11,13 @@ export default async function AdminPage() {
   return (
     <div className="page">
       <div className="mb-8">
-        <h1 className="page-title">User Management</h1>
+        <h1 className="page-title">Roles &amp; Permissions</h1>
         <p style={{ color: "var(--text-3)", fontSize: 14, marginTop: 6 }}>
-          Create, edit or delete user accounts
+          Create roles and configure what each role can access
         </p>
       </div>
-      <AdminNav active="users" />
-      <UsersManager currentUserId={session.user.id} />
+      <AdminNav active="roles" />
+      <RolesManager />
     </div>
   );
 }

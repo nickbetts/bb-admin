@@ -78,6 +78,35 @@ async function main() {
     }
   }
 
+  // ── Role table + default roles (added 2026-03-31) ─────────────────────────
+  if (!(await tableExists("Role"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "Role" (
+      "id" TEXT PRIMARY KEY,
+      "name" TEXT NOT NULL UNIQUE,
+      "permissions" TEXT NOT NULL,
+      "isSystem" INTEGER NOT NULL DEFAULT 0,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+    console.log("✓ Created Role table");
+
+    await db.execute(`INSERT INTO "Role" ("id", "name", "permissions", "isSystem", "createdAt", "updatedAt") VALUES
+      ('role_standard', 'Standard User', '["dashboard","clients","reports","templates"]', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+      ('role_admin', 'Administrator', '["dashboard","clients","reports","templates","settings","page_analyser","proposal_generator","proposals","pricing","llm_generator","users"]', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `);
+    console.log("✓ Seeded default roles (Standard User, Administrator)");
+  } else {
+    console.log("✓ Role table up to date");
+  }
+
+  // ── User.roleId (added 2026-03-31) ─────────────────────────────────────────
+  if (!(await columnExists("User", "roleId"))) {
+    await db.execute('ALTER TABLE "User" ADD COLUMN "roleId" TEXT REFERENCES "Role"("id") ON DELETE SET NULL');
+    console.log("✓ Added User.roleId");
+  } else {
+    console.log("✓ User.roleId already present");
+  }
+
   // ── Add future columns here in the same pattern ────────────────────────────
 
   await db.close();

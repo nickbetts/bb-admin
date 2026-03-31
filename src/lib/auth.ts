@@ -4,11 +4,30 @@ import { prisma } from "@/lib/prisma";
 
 const SESSION_SECRET = process.env.SESSION_SECRET ?? "i3media-session-secret";
 
+export const ALL_PERMISSIONS = [
+  "dashboard",
+  "clients",
+  "reports",
+  "templates",
+  "settings",
+  "page_analyser",
+  "proposal_generator",
+  "proposals",
+  "pricing",
+  "llm_generator",
+  "users",
+] as const;
+
+export type Permission = typeof ALL_PERMISSIONS[number];
+
+const DEFAULT_USER_PERMISSIONS: string[] = ["dashboard", "clients", "reports", "templates"];
+
 export interface SessionUser {
   id: string;
   email: string;
   name: string;
   role: string;
+  permissions: string[];
   mustChangePassword: boolean;
 }
 
@@ -18,6 +37,7 @@ const LEGACY_ADMIN_USER: SessionUser = {
   email: "admin@i3media.co.uk",
   name: "i3media Admin",
   role: "admin",
+  permissions: [...ALL_PERMISSIONS],
   mustChangePassword: false,
 };
 
@@ -80,10 +100,38 @@ export async function getSession(): Promise<Session | null> {
     try {
       const user = await prisma.user.findUnique({
         where: { id: result.userId },
-        select: { id: true, email: true, name: true, role: true, mustChangePassword: true },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          mustChangePassword: true,
+          userRole: { select: { permissions: true } },
+        },
       });
       if (!user) return null;
-      return { user: { ...user, name: user.name ?? user.email } };
+
+      let permissions: string[];
+      if (user.userRole) {
+        try {
+          permissions = JSON.parse(user.userRole.permissions) as string[];
+        } catch {
+          permissions = DEFAULT_USER_PERMISSIONS;
+        }
+      } else {
+        permissions = user.role === "admin" ? [...ALL_PERMISSIONS] : DEFAULT_USER_PERMISSIONS;
+      }
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name ?? user.email,
+          role: user.role,
+          permissions,
+          mustChangePassword: user.mustChangePassword,
+        },
+      };
     } catch {
       return null;
     }
@@ -97,4 +145,9 @@ export async function requireAuth(): Promise<Session> {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
   return session;
+}
+
+/** Returns true if the session user has the given permission. */
+export function hasPermission(session: Session, permission: Permission): boolean {
+  return session.user.permissions.includes(permission);
 }

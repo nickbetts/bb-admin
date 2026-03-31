@@ -3,21 +3,32 @@ import bcrypt from "bcryptjs";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-async function requireAdmin() {
+async function requireUsersPermission() {
   const session = await getSession();
   if (!session) return null;
-  if (session.user.role !== "admin") return null;
+  if (!session.user.permissions.includes("users")) return null;
   return session;
 }
 
+const userSelect = {
+  id: true,
+  email: true,
+  name: true,
+  role: true,
+  mustChangePassword: true,
+  createdAt: true,
+  roleId: true,
+  userRole: { select: { id: true, name: true } },
+} as const;
+
 export async function GET() {
-  const session = await requireAdmin();
+  const session = await requireUsersPermission();
   if (!session) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const users = await prisma.user.findMany({
-    select: { id: true, email: true, name: true, role: true, mustChangePassword: true, createdAt: true },
+    select: userSelect,
     orderBy: { createdAt: "asc" },
   });
 
@@ -25,20 +36,23 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await requireAdmin();
+  const session = await requireUsersPermission();
   if (!session) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { email, name, password, role } = await request.json() as {
+  const { email, name, password, roleId } = await request.json() as {
     email?: string;
     name?: string;
     password?: string;
-    role?: string;
+    roleId?: string;
   };
 
   if (!email || !name || !password) {
     return NextResponse.json({ error: "email, name and password are required" }, { status: 400 });
+  }
+  if (!roleId) {
+    return NextResponse.json({ error: "roleId is required" }, { status: 400 });
   }
 
   const normalizedEmail = email.toLowerCase().trim();
@@ -48,6 +62,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "A user with that email already exists" }, { status: 409 });
   }
 
+  const roleRecord = await prisma.role.findUnique({ where: { id: roleId } });
+  if (!roleRecord) {
+    return NextResponse.json({ error: "Role not found" }, { status: 400 });
+  }
+
   const hash = await bcrypt.hash(password, 12);
 
   const user = await prisma.user.create({
@@ -55,10 +74,10 @@ export async function POST(request: NextRequest) {
       email: normalizedEmail,
       name: name.trim(),
       password: hash,
-      role: role === "admin" ? "admin" : "user",
+      roleId,
       mustChangePassword: true,
     },
-    select: { id: true, email: true, name: true, role: true, mustChangePassword: true, createdAt: true },
+    select: userSelect,
   });
 
   return NextResponse.json(user, { status: 201 });

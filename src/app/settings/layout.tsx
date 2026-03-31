@@ -14,10 +14,13 @@ export default async function SettingsLayout({
   if (session.user.mustChangePassword) {
     redirect("/change-password");
   }
+  if (!session.user.permissions.includes("settings")) {
+    redirect("/dashboard");
+  }
 
   return (
     <div className="app-shell">
-      <Sidebar user={{ name: session.user.name, email: session.user.email, role: session.user.role }} />
+      <Sidebar user={{ name: session.user.name, email: session.user.email }} permissions={session.user.permissions} />
       <main className="app-main">
         {children}
       </main>

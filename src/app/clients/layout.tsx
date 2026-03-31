@@ -17,7 +17,7 @@ export default async function ClientsLayout({
 
   return (
     <div className="app-shell">
-      <Sidebar user={{ name: session.user.name, email: session.user.email, role: session.user.role }} />
+      <Sidebar user={{ name: session.user.name, email: session.user.email }} permissions={session.user.permissions} />
       <main className="app-main">
         {children}
       </main>
