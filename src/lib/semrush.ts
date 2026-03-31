@@ -62,14 +62,10 @@ export async function getDomainOverview(
   const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
   const lines = response.data.trim().split("\n");
 
-  if (lines.length < 2) {
+  if (lines.length < 2 || lines[0]?.startsWith("ERROR")) {
     return {
-      organicTraffic: 0,
-      organicKeywords: 0,
-      organicCost: 0,
-      paidTraffic: 0,
-      paidKeywords: 0,
-      paidCost: 0,
+      organicTraffic: 0, organicKeywords: 0, organicCost: 0,
+      paidTraffic: 0, paidKeywords: 0, paidCost: 0,
     };
   }
 
@@ -394,7 +390,17 @@ export async function getSemrushAIVisibility(
     display_limit: "200",
   });
 
-  const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+  let response;
+  try {
+    response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+  } catch (err) {
+    // HTTP 400 means the Ai column or project_id is not supported — return empty gracefully
+    if (axios.isAxiosError(err) && err.response?.status === 400) {
+      return empty;
+    }
+    throw err;
+  }
+
   const lines = (response.data as string).trim().split("\n");
 
   if (lines[0]?.startsWith("ERROR")) {

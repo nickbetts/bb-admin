@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import axios from "axios";
 import { getSession } from "@/lib/auth";
 import {
   getDomainOverview,
@@ -70,6 +71,9 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     console.error("SemRush API error:", error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("SemRush response body:", typeof error.response.data === "string" ? error.response.data.slice(0, 500) : JSON.stringify(error.response.data));
+    }
     const message = error instanceof Error ? error.message : "Failed to fetch SemRush data";
     return NextResponse.json({ error: message }, { status: 500 });
   }
