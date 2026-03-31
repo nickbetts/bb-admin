@@ -4,8 +4,10 @@ let _browser: Browser | null = null;
 
 // chromium-min downloads the browser binary at runtime from this URL
 // instead of bundling it (which fails with Turbopack on Vercel).
+// Must match the installed @sparticuz/chromium-min version (143.0.4).
+// Vercel serverless runs on x64 Linux.
 const CHROMIUM_PACK_URL =
-  "https://github.com/nicholasgasior/chromium-brotli-binaries/releases/download/v131.0.0/chromium-v131.0.0-pack.tar";
+  "https://github.com/Sparticuz/chromium/releases/download/v143.0.4/chromium-v143.0.4-pack.x64.tar";
 
 export async function getBrowser(): Promise<Browser> {
   if (_browser && _browser.connected) return _browser;
