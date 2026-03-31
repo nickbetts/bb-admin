@@ -1004,7 +1004,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
         />
       )}
 
-      {/* AI Insights */}}
+      {/* AI Insights */}
       {!hideAi && !loading && !error && overview && (
         <AiInsightsPanel
           sectionType="meta"
