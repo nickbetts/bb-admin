@@ -107,6 +107,14 @@ async function main() {
     console.log("✓ User.roleId already present");
   }
 
+  // ── Screenshot.sectionId (added 2026-03-31) ────────────────────────────────
+  if (!(await columnExists("Screenshot", "sectionId"))) {
+    await db.execute('ALTER TABLE "Screenshot" ADD COLUMN "sectionId" TEXT');
+    console.log("✓ Added Screenshot.sectionId");
+  } else {
+    console.log("✓ Screenshot.sectionId already present");
+  }
+
   // ── Add future columns here in the same pattern ────────────────────────────
 
   await db.close();
