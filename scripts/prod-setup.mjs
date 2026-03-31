@@ -115,6 +115,15 @@ async function main() {
     console.log("✓ Screenshot.sectionId already present");
   }
 
+  // ── Report.shareToken (added 2026-03-31) ───────────────────────────────────
+  if (!(await columnExists("Report", "shareToken"))) {
+    await db.execute('ALTER TABLE "Report" ADD COLUMN "shareToken" TEXT');
+    await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS "Report_shareToken_key" ON "Report"("shareToken")');
+    console.log("✓ Added Report.shareToken");
+  } else {
+    console.log("✓ Report.shareToken already present");
+  }
+
   // ── Add future columns here in the same pattern ────────────────────────────
 
   await db.close();
