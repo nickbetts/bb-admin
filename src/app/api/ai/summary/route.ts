@@ -539,7 +539,12 @@ export async function POST(request: NextRequest) {
 
       const apiKeySetting2 = await prisma.appSetting.findUnique({ where: { key: "openaiApiKey" } });
       const apiKey2 = apiKeySetting2?.value ?? process.env.OPENAI_API_KEY;
-      if (!apiKey2) return NextResponse.json({ recommendations: alerts.map(() => "") });
+      if (!apiKey2 || !apiKey2.startsWith("sk-")) {
+        return NextResponse.json(
+          { error: "OpenAI API key is not configured or is invalid. Please update it in Settings.", recommendations: alerts.map(() => "") },
+          { status: 503 }
+        );
+      }
 
       const campaignCtxText = campaignData?.length
         ? buildCampaignSummaryText(campaignPlatform, campaignData)
@@ -575,7 +580,7 @@ One string per alert, in the same order. British English.`;
           { role: "user", content: recPrompt },
         ],
         response_format: { type: "json_object" },
-        max_tokens: 1200,
+        max_tokens: Math.max(1200, alerts.length * 120),
         temperature: 0.3,
       });
 
@@ -591,9 +596,9 @@ One string per alert, in the same order. British English.`;
 
     const apiKey = apiKeySetting?.value ?? process.env.OPENAI_API_KEY;
 
-    if (!apiKey) {
+    if (!apiKey || !apiKey.startsWith("sk-")) {
       return NextResponse.json(
-        { error: "OpenAI API key not configured. Please add it in Settings." },
+        { error: "OpenAI API key is not configured or is invalid. Please update it in Settings." },
         { status: 400 }
       );
     }

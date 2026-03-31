@@ -122,11 +122,13 @@ function SignalCard({ signal, isLast }: { signal: Signal; isLast: boolean }) {
 export function SignalsSection({ client, startDate, endDate }: SignalsSectionProps) {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [aiRecsLoading, setAiRecsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
   const fetchSignals = useCallback(async () => {
     setLoading(true);
+    setAiRecsLoading(false);
     setError(null);
 
     const allSignals: Signal[] = [];
@@ -465,6 +467,7 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
 
       // Fire-and-forget: fetch AI-generated recommendations for ALL signals
       if (allSignals.length) {
+        setAiRecsLoading(true);
         fetch("/api/ai/summary", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -495,7 +498,8 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
               return updated;
             });
           })
-          .catch(() => {});
+          .catch(() => {})
+          .finally(() => setAiRecsLoading(false));
       }
 
       setLastRefreshed(new Date());
@@ -614,6 +618,14 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
             </>
           )}
         </div>
+
+        {/* AI recs loading indicator */}
+        {aiRecsLoading && (
+          <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text-3)" }}>
+            <Loader2 style={{ width: 11, height: 11, animation: "spin 1s linear infinite" }} />
+            Generating AI actions&hellip;
+          </span>
+        )}
 
         {/* Timestamp + refresh */}
         {lastRefreshed && (
