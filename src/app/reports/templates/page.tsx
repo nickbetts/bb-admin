@@ -4,14 +4,26 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, Edit2, Star, Check, X, LayoutTemplate } from "lucide-react";
 
-const ALL_SECTION_TYPES = [
+const CONTENT_SECTION_TYPES = [
   { sectionType: "overview", title: "Overview & Commentary" },
+  { sectionType: "text_notable_achievements", title: "Notable Achievements" },
+  { sectionType: "text_work_complete", title: "Work Completed" },
+  { sectionType: "text_content_done", title: "Content Updates" },
+  { sectionType: "text_technical_update", title: "Technical Update" },
+  { sectionType: "text_ppc_update", title: "PPC Update" },
+  { sectionType: "text_screenshots", title: "Screenshots" },
+];
+
+const DATA_SECTION_TYPES = [
   { sectionType: "seo", title: "SEO Performance" },
   { sectionType: "web", title: "Website Analytics" },
   { sectionType: "paid_social", title: "Paid Social Performance" },
   { sectionType: "googleads", title: "Google Ads Performance" },
   { sectionType: "searchconsole", title: "Search Console" },
+  { sectionType: "ecommerce", title: "E-commerce Performance" },
 ];
+
+const ALL_SECTION_TYPES = [...CONTENT_SECTION_TYPES, ...DATA_SECTION_TYPES];
 
 interface Template {
   id: string;
@@ -187,16 +199,35 @@ export default function ReportTemplatesPage() {
 
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-2">Sections to include <span className="text-red-500">*</span></label>
-            <div className="space-y-1 border border-slate-200 rounded-lg p-3 bg-slate-50">
-              {ALL_SECTION_TYPES.map((s) => {
-                const checked = !!form.sections.find((fs) => fs.sectionType === s.sectionType);
-                return (
-                  <label key={s.sectionType} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white cursor-pointer">
-                    <input type="checkbox" checked={checked} onChange={() => toggleSection(s.sectionType)} className="rounded accent-indigo-600" />
-                    <span className="text-sm text-slate-700">{s.title}</span>
-                  </label>
-                );
-              })}
+            <div className="border border-slate-200 rounded-lg bg-slate-50 overflow-hidden">
+              <div className="px-3 pt-3 pb-1">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Content</p>
+                <div className="space-y-0.5">
+                  {CONTENT_SECTION_TYPES.map((s) => {
+                    const checked = !!form.sections.find((fs) => fs.sectionType === s.sectionType);
+                    return (
+                      <label key={s.sectionType} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white cursor-pointer">
+                        <input type="checkbox" checked={checked} onChange={() => toggleSection(s.sectionType)} className="rounded accent-indigo-600" />
+                        <span className="text-sm text-slate-700">{s.title}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="px-3 pt-2 pb-3 border-t border-slate-200 mt-2">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Data</p>
+                <div className="space-y-0.5">
+                  {DATA_SECTION_TYPES.map((s) => {
+                    const checked = !!form.sections.find((fs) => fs.sectionType === s.sectionType);
+                    return (
+                      <label key={s.sectionType} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-white cursor-pointer">
+                        <input type="checkbox" checked={checked} onChange={() => toggleSection(s.sectionType)} className="rounded accent-indigo-600" />
+                        <span className="text-sm text-slate-700">{s.title}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
 

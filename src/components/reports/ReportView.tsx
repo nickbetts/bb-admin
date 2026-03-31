@@ -2,7 +2,27 @@
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, Upload, Trash2, Check, X, Eye, EyeOff, ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search, MessageSquare, LayoutGrid, FileText, Image, ShoppingCart, CalendarRange, LayoutTemplate, Save } from "lucide-react";
+import {
+  ArrowLeft, Download, Upload, Trash2, Check, X, Eye, EyeOff,
+  ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search,
+  MessageSquare, LayoutGrid, FileText, Image, ShoppingCart, CalendarRange,
+  LayoutTemplate, Save, GripVertical, Globe2, Link2, Link2Off, CheckCircle2,
+} from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { SemrushSection } from "@/components/dashboard/SemrushSection";
 import { GA4Section } from "@/components/dashboard/GA4Section";
 import { MetaSection } from "@/components/dashboard/MetaSection";
@@ -12,6 +32,7 @@ import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { EcommerceSection } from "@/components/dashboard/EcommerceSection";
 import { TextSection } from "@/components/reports/TextSection";
 import { ScreenshotsSection } from "@/components/reports/ScreenshotsSection";
+import { ScreenshotCaptionDialog } from "@/components/reports/ScreenshotCaptionDialog";
 import { parsePeriodToDateRange } from "@/lib/utils";
 import { SECTION_BLOCKS, isTextSection, TEXT_SECTION_LABELS, type TextSectionType } from "@/lib/report-blocks";
 
@@ -55,6 +76,7 @@ interface Report {
   title: string;
   period: string;
   status: string;
+  shareToken?: string | null;
   customStartDate?: string | null;
   customEndDate?: string | null;
   compareStartDate?: string | null;
@@ -68,6 +90,138 @@ interface ReportViewProps {
   report: Report;
 }
 
+// ── Sortable sidebar item ───────────────────────────────────────────────────
+function SortableSectionItem({
+  section,
+  isEnabled,
+  isExpanded,
+  meta,
+  availableBlocks,
+  visibleBlocks,
+  onToggleEnabled,
+  onToggleExpand,
+  onToggleBlock,
+  onScrollTo,
+}: {
+  section: Section;
+  isEnabled: boolean;
+  isExpanded: boolean;
+  meta: { icon: React.ReactNode; badge: string };
+  availableBlocks: { id: string; label: string }[];
+  visibleBlocks: string[] | undefined;
+  onToggleEnabled: () => void;
+  onToggleExpand: () => void;
+  onToggleBlock: (blockId: string) => void;
+  onScrollTo: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={{ ...style, borderBottom: "1px solid var(--border-subtle)" }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 6,
+        padding: "8px 16px",
+        opacity: isEnabled ? 1 : 0.45,
+      }}>
+        {/* Drag handle */}
+        <button
+          {...listeners}
+          {...attributes}
+          style={{
+            flexShrink: 0, background: "none", border: "none",
+            cursor: isDragging ? "grabbing" : "grab",
+            padding: 2, color: "var(--text-4)",
+            display: "flex", alignItems: "center",
+            touchAction: "none",
+          }}
+          aria-label="Drag to reorder section"
+        >
+          <GripVertical size={14} />
+        </button>
+
+        {/* Eye toggle */}
+        <button
+          onClick={onToggleEnabled}
+          title={isEnabled ? "Hide section" : "Show section"}
+          style={{
+            flexShrink: 0, background: "none", border: "none", cursor: "pointer",
+            padding: 4, borderRadius: "var(--r-sm)",
+            color: isEnabled ? "var(--accent)" : "var(--text-4)",
+            transition: "color 0.15s",
+            display: "flex", alignItems: "center",
+          }}
+          aria-label={isEnabled ? "Hide section" : "Show section"}
+        >
+          {isEnabled ? <Eye size={15} /> : <EyeOff size={15} />}
+        </button>
+
+        {/* Title (clickable → scroll) */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={onScrollTo}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onScrollTo(); }}
+          style={{
+            flex: 1, display: "flex", alignItems: "center", gap: 6, minWidth: 0,
+            cursor: "pointer",
+          }}
+        >
+          <span style={{ color: "var(--text-3)", flexShrink: 0 }}>{meta.icon}</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {section.title}
+          </span>
+        </div>
+
+        {availableBlocks.length > 0 && isEnabled && (
+          <button
+            onClick={onToggleExpand}
+            style={{
+              flexShrink: 0, background: "none", border: "none", cursor: "pointer",
+              padding: 4, borderRadius: "var(--r-sm)", color: "var(--text-3)",
+              display: "flex", alignItems: "center", transition: "color 0.15s",
+            }}
+          >
+            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </button>
+        )}
+      </div>
+
+      {isExpanded && isEnabled && availableBlocks.length > 0 && (
+        <div style={{ padding: "4px 16px 12px", display: "flex", flexDirection: "column", gap: 2 }}>
+          {availableBlocks.map((block) => {
+            const isVisible = !visibleBlocks || visibleBlocks.includes(block.id);
+            return (
+              <button
+                key={block.id}
+                onClick={() => onToggleBlock(block.id)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "7px 10px", borderRadius: "var(--r-sm)",
+                  background: isVisible ? "var(--accent-bg)" : "var(--border-subtle)",
+                  color: isVisible ? "var(--accent-text)" : "var(--text-3)",
+                  border: "none", cursor: "pointer", textAlign: "left",
+                  fontSize: 12, fontWeight: isVisible ? 500 : 400,
+                  transition: "all 0.15s",
+                }}
+              >
+                {isVisible ? <Eye size={12} style={{ flexShrink: 0 }} /> : <EyeOff size={12} style={{ flexShrink: 0 }} />}
+                {block.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main component ──────────────────────────────────────────────────────────
 export function ReportView({ report: initialReport }: ReportViewProps) {
   const [report, setReport] = useState<Report>({
     ...initialReport,
@@ -77,7 +231,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       cardConfig: s.cardConfig ?? null,
     })),
   });
-  // Use custom dates if set, otherwise derive from the period string.
   const derived = parsePeriodToDateRange(report.period);
   const startDate = report.customStartDate || derived.startDate;
   const endDate   = report.customEndDate   || derived.endDate;
@@ -92,6 +245,124 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [dpCompareEnd, setDpCompareEnd] = useState(compareEndDate ?? "");
   const [savingDates, setSavingDates] = useState(false);
 
+  // Share state
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [statusSaving, setStatusSaving] = useState(false);
+
+  // Commentary state
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [commentary, setCommentary] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+  const [savedSection, setSavedSection] = useState<string | null>(null);
+
+  // Upload state
+  const [uploading, setUploading] = useState(false);
+  const [uploadingSectionId, setUploadingSectionId] = useState<string | null>(null);
+  const [pendingUpload, setPendingUpload] = useState<{ file: File; sectionId: string | null } | null>(null);
+
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [aiLength, setAiLength] = useState<"short" | "medium" | "long">("medium");
+  const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive" | "roadman">("professional");
+  const [aiFormat, setAiFormat] = useState<"prose" | "bullets" | "both">("prose");
+  const [sectionMetrics, setSectionMetrics] = useState<Record<string, Record<string, number>>>({});
+  const [templateSaveOpen, setTemplateSaveOpen] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateSaved, setTemplateSaved] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const sectionFileInputRef = useRef<HTMLInputElement>(null);
+  const pendingSectionIdRef = useRef<string | null>(null);
+  const reportRef = useRef<HTMLDivElement>(null);
+
+  // ── DnD sensors ────────────────────────────────────────────────────────────
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = report.sections.findIndex((s) => s.id === active.id);
+    const newIndex = report.sections.findIndex((s) => s.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(report.sections, oldIndex, newIndex).map((s, i) => ({ ...s, orderIndex: i }));
+    setReport((prev) => ({ ...prev, sections: reordered }));
+
+    await fetch(`/api/reports/${report.id}/sections/reorder`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: reordered.map((s) => s.id) }),
+    });
+  }, [report.id, report.sections]);
+
+  // ── Publish / share ─────────────────────────────────────────────────────────
+  const handleTogglePublish = async () => {
+    setStatusSaving(true);
+    const newStatus = report.status === "published" ? "draft" : "published";
+    try {
+      const res = await fetch(`/api/reports/${report.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setReport((prev) => ({ ...prev, status: updated.status }));
+      }
+    } finally {
+      setStatusSaving(false);
+    }
+  };
+
+  const handleGenerateShareToken = async () => {
+    setShareLoading(true);
+    try {
+      const res = await fetch(`/api/reports/${report.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ generateShareToken: true }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setReport((prev) => ({ ...prev, shareToken: updated.shareToken }));
+        const url = `${window.location.origin}/share/report/${updated.shareToken}`;
+        await navigator.clipboard.writeText(url);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2500);
+      }
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!report.shareToken) return;
+    const url = `${window.location.origin}/share/report/${report.shareToken}`;
+    await navigator.clipboard.writeText(url);
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2500);
+  };
+
+  const handleRevokeShareToken = async () => {
+    setShareLoading(true);
+    try {
+      const res = await fetch(`/api/reports/${report.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ revokeShareToken: true }),
+      });
+      if (res.ok) {
+        setReport((prev) => ({ ...prev, shareToken: null }));
+      }
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  // ── Date range ──────────────────────────────────────────────────────────────
   const handleSaveDates = async () => {
     setSavingDates(true);
     try {
@@ -121,27 +392,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     }
   };
 
-  const [editingSection, setEditingSection] = useState<string | null>(null);
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
-  const [commentary, setCommentary] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [exportingPdf, setExportingPdf] = useState(false);
-  const [aiLength, setAiLength] = useState<"short" | "medium" | "long">("medium");
-  const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive" | "roadman">("professional");
-  const [aiFormat, setAiFormat] = useState<"prose" | "bullets" | "both">("prose");
-  const [sectionMetrics, setSectionMetrics] = useState<Record<string, Record<string, number>>>({});
-  const [templateSaveOpen, setTemplateSaveOpen] = useState(false);
-  const [templateName, setTemplateName] = useState("");
-  const [savingTemplate, setSavingTemplate] = useState(false);
-  const [templateSaved, setTemplateSaved] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const sectionFileInputRef = useRef<HTMLInputElement>(null);
-  const pendingSectionIdRef = useRef<string | null>(null);
-  const reportRef = useRef<HTMLDivElement>(null);
-  const captionInputRef = useRef<string>("");
-  const [uploadingSectionId, setUploadingSectionId] = useState<string | null>(null);
-
+  // ── Section visibility / block toggles ──────────────────────────────────────
   const getVisibleBlocks = (section: Section): string[] | undefined => {
     if (!section.cardConfig) return undefined;
     try {
@@ -188,6 +439,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     });
   };
 
+  // ── Commentary ───────────────────────────────────────────────────────────────
   const handleEditSection = (section: Section) => {
     setEditingSection(section.id);
     setCommentary((prev) => ({ ...prev, [section.id]: section.commentary ?? "" }));
@@ -208,13 +460,16 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           sections: prev.sections.map((s) => s.id === sectionId ? { ...s, commentary: updated.commentary } : s),
         }));
         setEditingSection(null);
+        setSavedSection(sectionId);
+        setTimeout(() => setSavedSection(null), 2500);
       }
     } finally {
       setSaving(null);
     }
   };
 
-  const handleUploadScreenshot = async (file: File, sectionId?: string | null) => {
+  // ── Screenshots ──────────────────────────────────────────────────────────────
+  const handleUploadScreenshot = async (file: File, caption: string, sectionId?: string | null) => {
     if (sectionId) {
       setUploadingSectionId(sectionId);
     } else {
@@ -223,7 +478,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("caption", captionInputRef.current);
+      formData.append("caption", caption);
       if (sectionId) formData.append("sectionId", sectionId);
       const res = await fetch(`/api/reports/${report.id}/screenshots`, { method: "POST", body: formData });
       if (res.ok) {
@@ -236,7 +491,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       } else {
         setUploading(false);
       }
-      captionInputRef.current = "";
+      setPendingUpload(null);
     }
   };
 
@@ -247,6 +502,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     }
   };
 
+  // ── Template ─────────────────────────────────────────────────────────────────
   const handleSaveAsTemplate = async () => {
     if (!templateName.trim()) return;
     setSavingTemplate(true);
@@ -276,24 +532,22 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     }
   };
 
+  // ── PDF export ───────────────────────────────────────────────────────────────
   const handleExportPdf = useCallback(async () => {
     if (!reportRef.current) return;
     setExportingPdf(true);
 
     const container = reportRef.current;
 
-    // Hoisted so finally can restore stylesheet state even if an error is thrown
     const pdfStyleEls: HTMLStyleElement[] = [];
     const pdfOriginalStyleTexts: string[] = [];
     const pdfLinkEls: HTMLLinkElement[] = [];
     const pdfOriginalLinkMedia: string[] = [];
     const pdfInjectedStyles: HTMLStyleElement[] = [];
-    const pdfSpacers: HTMLElement[] = [];         // page-break spacers injected pre-capture
-    let pdfSavedWidth = "";                       // restored in finally
+    const pdfSpacers: HTMLElement[] = [];
+    let pdfSavedWidth = "";
     let pdfSavedMaxWidth = "";
 
-    // html2canvas v1.4.1 can't parse oklch()/lab()/oklab()/lch() (Tailwind v4).
-    // Use the browser's canvas API to resolve them to rgb() before capture.
     const fixColorFns = (css: string): string =>
       css.replace(
         /\b(oklch|oklab|lab|lch)\s*\([^)]*\)/gi,
@@ -312,12 +566,10 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       );
 
     try {
-      // ── 1. Wait for loading spinners ──────────────────────────────────────
       const deadline = Date.now() + 30_000;
       while (container.querySelectorAll(".animate-spin").length > 0 && Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, 500));
       }
-      // If sections are still loading after the deadline, warn before continuing
       if (container.querySelectorAll(".animate-spin").length > 0) {
         const proceed = window.confirm(
           "Some sections are still loading. The exported PDF may be incomplete.\n\nContinue anyway?"
@@ -329,35 +581,21 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       }
       await new Promise((r) => setTimeout(r, 1200));
 
-      // ── 2. Scroll to top ──────────────────────────────────────────────────
       window.scrollTo({ top: 0, behavior: "instant" });
       const appMainEl = document.querySelector<HTMLElement>(".app-main");
       if (appMainEl) appMainEl.scrollTop = 0;
       await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
-      // ── 3. Hide non-printable elements before capture ─────────────────────
-      // The .pdf-exporting class (defined in globals.css) hides buttons, inputs,
-      // and print:hidden elements from the canvas without removing them from the DOM.
       container.classList.add("pdf-exporting");
 
-      // ── 3b. Freeze container to a stable px width ────────────────────────────
-      // Converts "flex: 1" to a concrete pixel width so html2canvas sees a stable
-      // layout regardless of sidebar or viewport size. Also gives us the width we
-      // need to calculate A4 page boundaries below.
       const exportWidth = container.offsetWidth;
       pdfSavedWidth = container.style.width;
       pdfSavedMaxWidth = container.style.maxWidth;
       container.style.width = `${exportWidth}px`;
       container.style.maxWidth = `${exportWidth}px`;
-      // Flush styles so the frozen width is applied before we snapshot positions
       void container.offsetHeight;
 
-      // ── 3c. Inject spacers to prevent direct-child blocks spanning page breaks ─
-      // Snapshot ALL element positions BEFORE inserting any spacers (which would
-      // shift subsequent elements). Then apply top-to-bottom, tracking the
-      // cumulative height added so each subsequent element's adjusted position
-      // accounts for spacers already inserted above it.
-      const A4_PAGE_H = exportWidth * (297 / 210); // page height in CSS px
+      const A4_PAGE_H = exportWidth * (297 / 210);
       const cRect = container.getBoundingClientRect();
       const childSnapshot = Array.from(
         container.children as HTMLCollectionOf<HTMLElement>
@@ -373,7 +611,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
         const firstPage = Math.floor(adjTop / A4_PAGE_H);
         const lastPage  = Math.floor((adjBottom - 1) / A4_PAGE_H);
         if (lastPage > firstPage) {
-          // Block straddles a page boundary → push it to the start of the next page
           const spacerH = Math.ceil((firstPage + 1) * A4_PAGE_H - adjTop);
           if (spacerH > 0 && spacerH < A4_PAGE_H) {
             const spacer = document.createElement("div");
@@ -385,18 +622,13 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           }
         }
       });
-      // Reflow after spacer insertion before we capture styles
       await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
-      // ── 4. Resolve Tailwind v4 color functions for html2canvas compatibility ─
-      // Patch inline <style> elements (critical CSS / Next.js dev mode)
       pdfStyleEls.push(...Array.from(document.querySelectorAll<HTMLStyleElement>("style")));
       pdfStyleEls.forEach((s) => {
         pdfOriginalStyleTexts.push(s.textContent ?? "");
         s.textContent = fixColorFns(s.textContent ?? "");
       });
-      // Fetch <link> stylesheets, fix their colors, inject as <style>, then
-      // disable the originals so html2canvas only sees rgb()-safe CSS.
       pdfLinkEls.push(
         ...Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
       );
@@ -412,17 +644,11 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             pdfInjectedStyles.push(style);
             link.setAttribute("media", "not all");
           } catch {
-            // leave link as-is if fetch fails
             pdfOriginalLinkMedia[i] = link.getAttribute("media") ?? "";
           }
         })
       );
 
-      // ── 5. html2pdf.js — page-break avoidance is built-in ─────────────────
-      // The `pagebreak.avoid` list tells html2pdf to insert a forced page break
-      // before any matching element that would otherwise straddle a page boundary.
-      // html2canvas (already a dep) is used for rendering — html2pdf handles the
-      // page-split logic internally so we don't need any custom coordinate arithmetic.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const html2pdfMod = await import("html2pdf.js") as any;
       const html2pdf = (html2pdfMod.default ?? html2pdfMod) as (el?: HTMLElement) => {
@@ -445,19 +671,14 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             useCORS: true,
             backgroundColor: "#ffffff",
             logging: false,
-            // Match the frozen container width so html2canvas uses a consistent
-            // virtual viewport — prevents responsive CSS from reflowing at a
-            // different breakpoint during capture vs. what the user sees.
             windowWidth: exportWidth,
             scrollX: 0,
             scrollY: 0,
-            // Safety-net: fix any remaining color functions in the cloned <style> elements
             onclone: (clonedDoc: Document) => {
               clonedDoc.querySelectorAll<HTMLStyleElement>("style").forEach((s) => {
                 if (s.textContent) s.textContent = fixColorFns(s.textContent);
               });
             },
-            // Ignore elements inside .pdf-exporting that should not appear in PDF
             ignoreElements: (el: HTMLElement) =>
               el.tagName === "BUTTON" ||
               el.tagName === "SELECT" ||
@@ -466,12 +687,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               (el.getAttribute("class") ?? "").includes("print:hidden"),
           },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-          pagebreak: {
-            // Only 'css' mode — page-break avoidance is handled by the spacer
-            // injection above (Steps 3b/3c), which is far more reliable than
-            // html2pdf's legacy scanner.
-            mode: ["css"],
-          },
+          pagebreak: { mode: ["css"] },
         })
         .from(container)
         .save();
@@ -479,15 +695,11 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       console.error("PDF export error:", err);
       alert(`PDF export failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
-      // Always restore the container — even if an error was thrown mid-export
       container.classList.remove("pdf-exporting");
-      // Remove page-break spacers injected in step 3c
       pdfSpacers.forEach((s) => s.remove());
-      // Restore frozen container width (step 3b)
       container.style.width = pdfSavedWidth;
       container.style.maxWidth = pdfSavedMaxWidth;
       setExportingPdf(false);
-      // Restore all stylesheets that were patched for color-function compatibility
       pdfStyleEls.forEach((s, i) => { s.textContent = pdfOriginalStyleTexts[i] ?? ""; });
       pdfLinkEls.forEach((l, i) => {
         if (pdfOriginalLinkMedia[i]) {
@@ -501,7 +713,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   }, [report.client.name, report.period]);
 
   const enabledSections = report.sections.filter((s) => s.enabled !== false);
-
 
   const SECTION_META: Record<string, { icon: React.ReactNode; badge: string }> = {
     overview:                    { icon: <LayoutGrid size={14} />, badge: "badge-slate" },
@@ -519,8 +730,21 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     ecommerce:                   { icon: <ShoppingCart size={14} />, badge: "badge-emerald" },
   };
 
+  const isPublished = report.status === "published";
+  const shareUrl = report.shareToken ? `${typeof window !== "undefined" ? window.location.origin : ""}/share/report/${report.shareToken}` : null;
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+      {/* Screenshot caption dialog */}
+      {pendingUpload && (
+        <ScreenshotCaptionDialog
+          file={pendingUpload.file}
+          uploading={pendingUpload.sectionId ? uploadingSectionId === pendingUpload.sectionId : uploading}
+          onUpload={(caption) => handleUploadScreenshot(pendingUpload.file, caption, pendingUpload.sectionId)}
+          onCancel={() => setPendingUpload(null)}
+        />
+      )}
+
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <div className="print:hidden" style={{
         position: "sticky", top: 0, zIndex: 20,
@@ -544,6 +768,55 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
+
+          {/* Publish toggle */}
+          <button
+            onClick={handleTogglePublish}
+            disabled={statusSaving}
+            className="btn btn-secondary btn-sm"
+            style={{ gap: 6 }}
+            title={isPublished ? "Unpublish report" : "Publish report"}
+          >
+            <Globe2 size={13} />
+            {statusSaving ? "…" : isPublished ? "Published" : "Draft"}
+          </button>
+
+          {/* Share link */}
+          {report.shareToken ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <button
+                onClick={handleCopyShareLink}
+                className="btn btn-secondary btn-sm"
+                style={{ gap: 5, color: shareCopied ? "#10b981" : undefined }}
+                title="Copy client share link"
+              >
+                {shareCopied ? <CheckCircle2 size={13} /> : <Link2 size={13} />}
+                {shareCopied ? "Copied!" : "Copy link"}
+              </button>
+              <button
+                onClick={handleRevokeShareToken}
+                disabled={shareLoading}
+                className="btn btn-secondary btn-sm"
+                style={{ padding: "5px 8px", color: "#ef4444" }}
+                title="Revoke share link"
+                aria-label="Revoke share link"
+              >
+                <Link2Off size={13} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleGenerateShareToken}
+              disabled={shareLoading}
+              className="btn btn-secondary btn-sm"
+              style={{ gap: 5 }}
+              title="Generate a client share link"
+            >
+              <Link2 size={13} />
+              {shareLoading ? "…" : "Share"}
+            </button>
+          )}
+
           {/* Date range picker */}
           <div style={{ position: "relative" }}>
             <button
@@ -629,26 +902,34 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             <Upload size={13} />
             {uploading ? "Uploading…" : "Screenshot"}
           </button>
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-              const caption = prompt("Add a caption for this screenshot (optional):") ?? "";
-              captionInputRef.current = caption;
-              handleUploadScreenshot(file);
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                setPendingUpload({ file, sectionId: null });
+              }
               e.target.value = "";
-            }
-          }} />
-          <input ref={sectionFileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
-            const file = e.target.files?.[0];
-            const sid = pendingSectionIdRef.current;
-            if (file && sid) {
-              const caption = prompt("Add a caption for this screenshot (optional):") ?? "";
-              captionInputRef.current = caption;
-              handleUploadScreenshot(file, sid);
-              pendingSectionIdRef.current = null;
+            }}
+          />
+          <input
+            ref={sectionFileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              const sid = pendingSectionIdRef.current;
+              if (file) {
+                setPendingUpload({ file, sectionId: sid });
+                pendingSectionIdRef.current = null;
+              }
               e.target.value = "";
-            }
-          }} />
+            }}
+          />
           <button onClick={handleExportPdf} disabled={exportingPdf} className="btn btn-primary btn-sm">
             <Download size={13} />
             {exportingPdf ? "Generating…" : "Export PDF"}
@@ -696,10 +977,17 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               <p style={{ fontSize: 12, color: "var(--text-3)" }}>
                 Prepared by i3media · {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
               </p>
-              <p style={{ fontSize: 12, color: "var(--text-4)" }}>
-                {enabledSections.length} section{enabledSections.length !== 1 ? "s" : ""}
-                {report.screenshots.length > 0 && ` · ${report.screenshots.length} screenshot${report.screenshots.length !== 1 ? "s" : ""}`}
-              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <p style={{ fontSize: 12, color: "var(--text-4)" }}>
+                  {enabledSections.length} section{enabledSections.length !== 1 ? "s" : ""}
+                  {report.screenshots.length > 0 && ` · ${report.screenshots.length} screenshot${report.screenshots.length !== 1 ? "s" : ""}`}
+                </p>
+                {shareUrl && (
+                  <span style={{ fontSize: 11, color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: 3 }}>
+                    <Globe2 size={11} /> Shared
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -709,13 +997,18 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             const meta = SECTION_META[section.sectionType] ?? { icon: <LayoutGrid size={14} />, badge: "badge-slate" };
 
             const commentaryCard = (
-              <div className="card" data-pdf-avoid="true">
+              <div className="card" id={`section-${section.id}`} data-pdf-avoid="true">
                 <div className="card-header">
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span className={`badge ${meta.badge}`} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                       {meta.icon}
                       {section.title}
                     </span>
+                    {savedSection === section.id && (
+                      <span style={{ fontSize: 11, color: "#10b981", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                        <CheckCircle2 size={12} /> Saved
+                      </span>
+                    )}
                   </div>
                   <div className="print:hidden" style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <button
@@ -743,7 +1036,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 <div className="card-body" style={{ padding: "20px 28px" }}>
                   {editingSection === section.id ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                      {/* Tone + length controls */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <select
                           value={aiTone}
@@ -779,7 +1071,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                         </select>
                       </div>
 
-                      {/* AI generate button */}
                       {(sectionMetrics[section.id] || section.sectionType === "overview") ? (
                         <AiInsightsPanel
                           compact
@@ -801,7 +1092,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                         </p>
                       )}
 
-                      {/* Editable commentary textarea */}
                       <textarea
                         value={commentary[section.id] ?? ""}
                         onChange={(e) => setCommentary((prev) => ({ ...prev, [section.id]: e.target.value }))}
@@ -818,7 +1108,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                         onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
                         onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
                       />
-                      <div style={{ display: "flex", gap: 8 }}>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <button onClick={() => handleSaveSection(section.id)} disabled={saving === section.id} className="btn btn-primary btn-sm">
                           <Check size={13} />
                           {saving === section.id ? "Saving…" : "Save"}
@@ -893,27 +1183,29 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               );
             }
 
-            // Text-only sections render a simple editable text block
+            // Text-only sections
             if (isTextSection(section.sectionType)) {
               if (section.sectionType === "text_screenshots") {
                 return (
-                  <ScreenshotsSection
-                    key={section.id}
-                    screenshots={report.screenshots.filter((s) => !s.sectionId)}
-                    title={TEXT_SECTION_LABELS[section.sectionType as TextSectionType] ?? section.title}
-                    onDelete={handleDeleteScreenshot}
-                  />
+                  <div key={section.id} id={`section-${section.id}`}>
+                    <ScreenshotsSection
+                      screenshots={report.screenshots.filter((s) => !s.sectionId)}
+                      title={TEXT_SECTION_LABELS[section.sectionType as TextSectionType] ?? section.title}
+                      onDelete={handleDeleteScreenshot}
+                    />
+                  </div>
                 );
               }
               return (
-                <TextSection
-                  key={section.id}
-                  sectionId={section.id}
-                  reportId={report.id}
-                  sectionType={section.sectionType}
-                  title={section.title}
-                  contentText={section.contentText ?? null}
-                />
+                <div key={section.id} id={`section-${section.id}`}>
+                  <TextSection
+                    sectionId={section.id}
+                    reportId={report.id}
+                    sectionType={section.sectionType}
+                    title={section.title}
+                    contentText={section.contentText ?? null}
+                  />
+                </div>
               );
             }
 
@@ -926,7 +1218,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             );
 
             return (
-              <div key={section.id} style={{ marginBottom: 56 }}>
+              <div key={section.id} id={`section-${section.id}`} style={{ marginBottom: 56 }}>
                 {section.sectionType === "seo" && (
                   report.client.semrushDomain
                     ? <SemrushSection domain={report.client.semrushDomain} projectId={report.client.semrushProjectId} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
@@ -961,7 +1253,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             );
           })}
 
-          {/* Screenshots — report-level only (section screenshots appear inline above) */}
+          {/* Screenshots — report-level only */}
           {report.screenshots.filter((s) => !s.sectionId).length > 0 && (
             <div style={{ marginBottom: 36 }}>
               <p className="card-title" style={{ marginBottom: 16 }}>Additional Screenshots</p>
@@ -1005,7 +1297,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           </div>
         </div>
 
-        {/* ── Right sidebar ------------------------------------------------- */}
+        {/* ── Right sidebar ─────────────────────────────────────────────── */}
         <aside className="print:hidden" style={{
           width: 264, flexShrink: 0,
           position: "sticky", top: 60, height: "calc(100vh - 60px)",
@@ -1021,83 +1313,35 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
-            {report.sections.map((section) => {
-              const isEnabled = section.enabled !== false;
-              const availableBlocks = SECTION_BLOCKS[section.sectionType] ?? [];
-              const visibleBlocks = getVisibleBlocks(section);
-              const isExpanded = expandedSections[section.id] ?? false;
-              const meta = SECTION_META[section.sectionType] ?? { icon: <LayoutGrid size={14} />, badge: "badge-slate" };
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={report.sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                {report.sections.map((section) => {
+                  const isEnabled = section.enabled !== false;
+                  const availableBlocks = SECTION_BLOCKS[section.sectionType] ?? [];
+                  const visibleBlocks = getVisibleBlocks(section);
+                  const isExpanded = expandedSections[section.id] ?? false;
+                  const meta = SECTION_META[section.sectionType] ?? { icon: <LayoutGrid size={14} />, badge: "badge-slate" };
 
-              return (
-                <div key={section.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  {/* Section row */}
-                  <div style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    padding: "8px 16px",
-                    opacity: isEnabled ? 1 : 0.45,
-                  }}>
-                    <button
-                      onClick={() => handleToggleSectionEnabled(section.id)}
-                      title={isEnabled ? "Hide section" : "Show section"}
-                      style={{
-                        flexShrink: 0, background: "none", border: "none", cursor: "pointer",
-                        padding: 4, borderRadius: "var(--r-sm)",
-                        color: isEnabled ? "var(--accent)" : "var(--text-4)",
-                        transition: "color 0.15s",
-                        display: "flex", alignItems: "center",
+                  return (
+                    <SortableSectionItem
+                      key={section.id}
+                      section={section}
+                      isEnabled={isEnabled}
+                      isExpanded={isExpanded}
+                      meta={meta}
+                      availableBlocks={availableBlocks}
+                      visibleBlocks={visibleBlocks}
+                      onToggleEnabled={() => handleToggleSectionEnabled(section.id)}
+                      onToggleExpand={() => setExpandedSections((prev) => ({ ...prev, [section.id]: !isExpanded }))}
+                      onToggleBlock={(blockId) => handleToggleBlock(section.id, blockId)}
+                      onScrollTo={() => {
+                        document.getElementById(`section-${section.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
                       }}
-                    >
-                      {isEnabled ? <Eye size={15} /> : <EyeOff size={15} />}
-                    </button>
-                    <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                      <span style={{ color: "var(--text-3)", flexShrink: 0 }}>{meta.icon}</span>
-                      <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {section.title}
-                      </span>
-                    </div>
-                    {availableBlocks.length > 0 && isEnabled && (
-                      <button
-                        onClick={() => setExpandedSections((prev) => ({ ...prev, [section.id]: !isExpanded }))}
-                        style={{
-                          flexShrink: 0, background: "none", border: "none", cursor: "pointer",
-                          padding: 4, borderRadius: "var(--r-sm)", color: "var(--text-3)",
-                          display: "flex", alignItems: "center", transition: "color 0.15s",
-                        }}
-                      >
-                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Block toggles */}
-                  {isExpanded && isEnabled && availableBlocks.length > 0 && (
-                    <div style={{ padding: "4px 16px 12px", display: "flex", flexDirection: "column", gap: 2 }}>
-                      {availableBlocks.map((block) => {
-                        const isVisible = !visibleBlocks || visibleBlocks.includes(block.id);
-                        return (
-                          <button
-                            key={block.id}
-                            onClick={() => handleToggleBlock(section.id, block.id)}
-                            style={{
-                              display: "flex", alignItems: "center", gap: 8,
-                              padding: "7px 10px", borderRadius: "var(--r-sm)",
-                              background: isVisible ? "var(--accent-bg)" : "var(--border-subtle)",
-                              color: isVisible ? "var(--accent-text)" : "var(--text-3)",
-                              border: "none", cursor: "pointer", textAlign: "left",
-                              fontSize: 12, fontWeight: isVisible ? 500 : 400,
-                              transition: "all 0.15s",
-                            }}
-                          >
-                            {isVisible ? <Eye size={12} style={{ flexShrink: 0 }} /> : <EyeOff size={12} style={{ flexShrink: 0 }} />}
-                            {block.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    />
+                  );
+                })}
+              </SortableContext>
+            </DndContext>
           </div>
 
           {/* Sidebar footer — Save as Template */}

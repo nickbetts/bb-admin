@@ -51,12 +51,21 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid status value" }, { status: 400 });
     }
 
+    // Build share token update
+    let shareTokenUpdate: { shareToken?: string | null } = {};
+    if (data.generateShareToken === true) {
+      shareTokenUpdate = { shareToken: crypto.randomUUID() };
+    } else if (data.revokeShareToken === true) {
+      shareTokenUpdate = { shareToken: null };
+    }
+
     const report = await prisma.report.update({
       where: { id },
       data: {
         title: data.title,
         period: data.period,
         status: data.status,
+        ...shareTokenUpdate,
         customStartDate: data.customStartDate ?? undefined,
         customEndDate: data.customEndDate ?? undefined,
         compareStartDate: data.compareStartDate ?? undefined,

@@ -85,6 +85,7 @@ model Report {
   title            String
   period           String
   status           String          @default("draft")
+  shareToken       String?         @unique
   customStartDate  String?
   customEndDate    String?
   compareStartDate String?
