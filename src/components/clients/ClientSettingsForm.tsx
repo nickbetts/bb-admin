@@ -471,7 +471,18 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             />
             <p className="text-xs text-slate-500 mt-1.5">Not in the list? Paste the account ID directly above.</p>
             {googleAdsFetchError && (
-              <p className="text-xs text-red-600 mt-1">{googleAdsFetchError}</p>
+              googleAdsFetchError.toLowerCase().includes("invalid_grant") ||
+              googleAdsFetchError.toLowerCase().includes("expired") ? (
+                <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">
+                  <p className="font-semibold mb-1">Google account token expired</p>
+                  <p className="mb-2">One or more connected Google accounts have an expired or revoked token. Go to Settings and reconnect the affected account to restore access.</p>
+                  <a href="/settings" className="inline-flex items-center gap-1 font-medium underline text-red-700">
+                    Go to Settings → Reconnect account
+                  </a>
+                </div>
+              ) : (
+                <p className="text-xs text-red-600 mt-1">{googleAdsFetchError}</p>
+              )
             )}
           </div>
         </div>

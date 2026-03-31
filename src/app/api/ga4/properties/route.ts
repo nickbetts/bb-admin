@@ -24,28 +24,37 @@ export async function GET() {
 
     const token = await getGoogleAccessToken();
 
-    const response = await fetch(
-      "https://analyticsadmin.googleapis.com/v1beta/accountSummaries",
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`GA4 Admin API error: ${err}`);
-    }
-
-    const data = await response.json();
-
     const properties: GA4Property[] = [];
-    for (const account of data.accountSummaries ?? []) {
-      for (const prop of account.propertySummaries ?? []) {
-        properties.push({
-          id: prop.property.replace("properties/", ""),
-          displayName: prop.displayName,
-          account: account.displayName,
-        });
+    let pageToken: string | undefined;
+
+    do {
+      const url = new URL("https://analyticsadmin.googleapis.com/v1beta/accountSummaries");
+      url.searchParams.set("pageSize", "200");
+      if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+      const response = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`GA4 Admin API error: ${err}`);
       }
-    }
+
+      const data = await response.json();
+
+      for (const account of data.accountSummaries ?? []) {
+        for (const prop of account.propertySummaries ?? []) {
+          properties.push({
+            id: prop.property.replace("properties/", ""),
+            displayName: prop.displayName,
+            account: account.displayName,
+          });
+        }
+      }
+
+      pageToken = data.nextPageToken;
+    } while (pageToken);
 
     return NextResponse.json(properties);
   } catch (error) {

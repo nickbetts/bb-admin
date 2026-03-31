@@ -50,6 +50,7 @@ function SettingsInner() {
   const [connectionsLoading, setConnectionsLoading] = useState(true);
   const [connectionsError, setConnectionsError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [connectionStatuses, setConnectionStatuses] = useState<Record<string, "ok" | "expired" | "checking">>({}); 
 
   // OpenAI API key state
   const [openaiKey, setOpenaiKey] = useState("");
@@ -102,6 +103,20 @@ function SettingsInner() {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setConnections(data);
+      // Kick off token verification after connections are loaded
+      const conns = data as Connection[];
+      if (conns.length > 0) {
+        setConnectionStatuses(Object.fromEntries(conns.map((c) => [c.id, "checking" as const])));
+        fetch("/api/settings/connections/verify")
+          .then((r) => r.json())
+          .then((statuses: Array<{ id: string; status: "ok" | "expired" }>) => {
+            setConnectionStatuses(Object.fromEntries(statuses.map((s) => [s.id, s.status])));
+          })
+          .catch(() => {
+            // Non-fatal — leave statuses as checking (shown as Active)
+            setConnectionStatuses({});
+          });
+      }
     } catch (err) {
       setConnectionsError(err instanceof Error ? err.message : "Failed to load connections");
     } finally {
@@ -430,33 +445,57 @@ function SettingsInner() {
                 </p>
               )}
 
-              {connections.map((conn) => (
-                <div key={conn.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 0", borderBottom: "1px solid var(--border-subtle)" }}>
-                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--bg)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <GoogleIcon />
+              {connections.map((conn) => {
+                const tokenStatus = connectionStatuses[conn.id];
+                const isExpired = tokenStatus === "expired";
+                return (
+                  <div key={conn.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 0", borderBottom: "1px solid var(--border-subtle)" }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--bg)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <GoogleIcon />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conn.email}</p>
+                      <p style={{ fontSize: 12, color: "var(--text-3)" }}>
+                        Connected{" "}
+                        {new Date(conn.createdAt).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </p>
+                      {isExpired && (
+                        <p style={{ fontSize: 12, color: "#b91c1c", marginTop: 2 }}>
+                          Token expired — reconnect to restore access.
+                        </p>
+                      )}
+                    </div>
+                    {tokenStatus === "checking" ? (
+                      <span className="badge" style={{ background: "var(--border-subtle)", color: "var(--text-3)" }}>Checking…</span>
+                    ) : isExpired ? (
+                      <span className="badge" style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }}>Expired</span>
+                    ) : (
+                      <span className="badge badge-green">Active</span>
+                    )}
+                    {isExpired && (
+                      <a
+                        href="/api/auth/google-ads"
+                        className="btn btn-primary btn-sm"
+                        style={{ flexShrink: 0 }}
+                      >
+                        Reconnect
+                      </a>
+                    )}
+                    <button
+                      onClick={() => handleRemoveConnection(conn.id)}
+                      disabled={removing === conn.id}
+                      className="btn btn-ghost btn-sm"
+                      style={{ color: "var(--danger)", opacity: removing === conn.id ? 0.4 : 1 }}
+                    >
+                      {removing === conn.id ? "Removing…" : "Disconnect"}
+                    </button>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conn.email}</p>
-                    <p style={{ fontSize: 12, color: "var(--text-3)" }}>
-                      Connected{" "}
-                      {new Date(conn.createdAt).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </p>
-                  </div>
-                  <span className="badge badge-green">Active</span>
-                  <button
-                    onClick={() => handleRemoveConnection(conn.id)}
-                    disabled={removing === conn.id}
-                    className="btn btn-ghost btn-sm"
-                    style={{ color: "var(--danger)", opacity: removing === conn.id ? 0.4 : 1 }}
-                  >
-                    {removing === conn.id ? "Removing…" : "Disconnect"}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

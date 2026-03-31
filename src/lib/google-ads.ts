@@ -583,7 +583,7 @@ export async function getGoogleAdsAccounts(): Promise<GoogleAdsAccount[]> {
       customer_client.manager,
       customer_client.status
     FROM customer_client
-    WHERE customer_client.level = 1
+    WHERE customer_client.level > 0
       AND customer_client.status = 'ENABLED'
     ORDER BY customer_client.descriptive_name ASC
   `;
@@ -681,7 +681,7 @@ async function getMccSubAccountsWithToken(
       customer_client.manager,
       customer_client.status
     FROM customer_client
-    WHERE customer_client.level = 1
+    WHERE customer_client.level > 0
       AND customer_client.status = 'ENABLED'
     ORDER BY customer_client.descriptive_name ASC
   `;
