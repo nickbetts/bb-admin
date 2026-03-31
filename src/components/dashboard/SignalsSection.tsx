@@ -170,7 +170,7 @@ function buildCreativeSummary(creatives: SignalsAdCreative[], adSetsData: Signal
 
 // ─── Signal card component ─────────────────────────────────────────────────────
 
-function SignalCard({ signal, isLast }: { signal: Signal; isLast: boolean }) {
+function SignalCard({ signal, isLast, aiLoading }: { signal: Signal; isLast: boolean; aiLoading?: boolean }) {
   const platColour = PLATFORM_COLOURS[signal.platform] ?? { bg: "#f8fafc", text: "#475569", border: "#e2e8f0" };
   return (
     <div style={{
@@ -211,12 +211,22 @@ function SignalCard({ signal, isLast }: { signal: Signal; isLast: boolean }) {
         <p style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.55, margin: 0 }}>
           {signal.detail}
         </p>
-        {signal.recommendation && (
-          <p style={{ fontSize: 11, color: "#0f766e", margin: "3px 0 0 0", lineHeight: 1.5 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", background: signal.aiRec ? "#d1fae5" : "#f0fdf4", color: signal.aiRec ? "#065f46" : "#0f766e", borderRadius: 4, padding: "1px 5px", marginRight: 6 }}>
+        {/* Recommendation row: shows computed rec immediately, spinner while AI is generating, AI rec once ready */}
+        {(signal.recommendation || aiLoading) && (
+          <p style={{ fontSize: 11, color: "#0f766e", margin: "3px 0 0 0", lineHeight: 1.5, display: "flex", alignItems: "flex-start", gap: 5 }}>
+            <span style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase",
+              background: signal.aiRec ? "#d1fae5" : "#f0fdf4",
+              color: signal.aiRec ? "#065f46" : "#0f766e",
+              borderRadius: 4, padding: "1px 5px", flexShrink: 0, marginTop: 1,
+            }}>
               {signal.aiRec ? "AI" : "Action"}
             </span>
-            {signal.recommendation}
+            <span style={{ flex: 1 }}>{signal.recommendation}</span>
+            {/* Per-row spinner while AI is still generating for this platform */}
+            {aiLoading && (
+              <Loader2 style={{ width: 10, height: 10, flexShrink: 0, marginTop: 2, opacity: 0.45, animation: "spin 1s linear infinite" }} />
+            )}
           </p>
         )}
       </div>
@@ -240,13 +250,14 @@ function SignalCard({ signal, isLast }: { signal: Signal; isLast: boolean }) {
 export function SignalsSection({ client, startDate, endDate }: SignalsSectionProps) {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [aiRecsLoading, setAiRecsLoading] = useState(false);
+  // Track which platforms still have AI recommendation calls in-flight (for per-row spinners)
+  const [aiLoadingPlatforms, setAiLoadingPlatforms] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
   const fetchSignals = useCallback(async () => {
     setLoading(true);
-    setAiRecsLoading(false);
+    setAiLoadingPlatforms(new Set());
     setError(null);
 
     const allSignals: Signal[] = [];
@@ -725,42 +736,123 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
 
       setSignals(allSignals);
 
-      // Fire-and-forget: fetch AI-generated recommendations for ALL signals
-      if (allSignals.length) {
-        setAiRecsLoading(true);
-        fetch("/api/ai/summary", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sectionType: "alert_recommendations",
-            campaignPlatform: "mixed",
-            alerts: allSignals.map(s => ({
-              severity: s.severity,
-              level: s.level ?? "",
-              label: `[${s.platform}] ${s.label ?? s.metric}`,
-              metric: s.metric,
-              detail: s.detail,
-            })),
-            clientName: client.name,
-            dateRange: `${startDate} to ${endDate}`,
-            crossPlatformContext,
-          }),
-        })
-          .then(r => r.ok ? r.json() : null)
-          .then(json => {
-            if (!json?.recommendations?.length) return;
-            setSignals(prev => {
-              const updated = prev.map((s, i) => {
-                if (json.recommendations[i]) {
-                  return { ...s, recommendation: json.recommendations[i], aiRec: true };
-                }
-                return { ...s };
-              });
-              return updated;
-            });
+      // ── Per-platform AI recommendation calls ─────────────────────────────────
+      // Group sorted signals by platform so each call gets only its own channel's
+      // signals, and receives real channel data as grounding context.
+      const platformGroups = new Map<string, Array<{ signal: Signal; idx: number }>>();
+      allSignals.forEach((s, idx) => {
+        if (!platformGroups.has(s.platform)) platformGroups.set(s.platform, []);
+        platformGroups.get(s.platform)!.push({ signal: s, idx });
+      });
+
+      if (platformGroups.size > 0) {
+        setAiLoadingPlatforms(new Set(platformGroups.keys()));
+
+        for (const [platform, entries] of platformGroups) {
+          // Build a channel-specific context string so the AI only reasons over real data
+          const channelType = platform.toLowerCase().replace(/\s+/g, "_");
+          let channelContext = "";
+
+          if (platform === "Search Console" && scData?.overview) {
+            const ov = scData.overview as Record<string, number>;
+            const pv = scData.prevOverview as Record<string, number> | null;
+            const lines = [
+              "Channel: Search Console (organic search only — NO budget, bids, or paid media)",
+              `Current: ${ov.clicks?.toLocaleString() ?? "n/a"} clicks, ${ov.impressions?.toLocaleString() ?? "n/a"} impressions, ${((ov.ctr ?? 0) * 100).toFixed(2)}% CTR, avg pos ${ov.position?.toFixed(1) ?? "n/a"}`,
+            ];
+            if (pv) lines.push(`Previous: ${pv.clicks?.toLocaleString() ?? "n/a"} clicks, ${pv.impressions?.toLocaleString() ?? "n/a"} impressions, ${((pv.ctr ?? 0) * 100).toFixed(2)}% CTR, avg pos ${pv.position?.toFixed(1) ?? "n/a"}`);
+            const queries = (scData.queries ?? []) as Array<{ query: string; clicks: number; ctr: number; position: number }>;
+            if (queries.length) lines.push("Top queries: " + queries.slice(0, 6).map(q => `"${q.query}" pos ${q.position.toFixed(1)}, ${q.clicks} clicks, ${(q.ctr * 100).toFixed(1)}% CTR`).join(" | "));
+            channelContext = lines.join("\n");
+
+          } else if (platform === "GA4" && ga4Data) {
+            const ov = ga4Data as Record<string, number>;
+            const pv = ga4PrevData as Record<string, number> | null;
+            const lines = [
+              "Channel: GA4 (website analytics — sessions, engagement, conversions)",
+              `Current: ${ov.sessions?.toLocaleString() ?? "n/a"} sessions, ${ov.conversionRate?.toFixed(2) ?? "n/a"}% conv rate, ${ov.bounceRate?.toFixed(1) ?? "n/a"}% bounce rate`,
+            ];
+            if (pv) lines.push(`Previous: ${pv.sessions?.toLocaleString() ?? "n/a"} sessions, ${pv.conversionRate?.toFixed(2) ?? "n/a"}% conv rate, ${pv.bounceRate?.toFixed(1) ?? "n/a"}% bounce rate`);
+            const sources = ga4Sources as Array<{ source: string; medium: string; sessions: number }>;
+            if (sources.length) lines.push("Top sources: " + sources.slice(0, 5).map(s => `${s.source}/${s.medium} (${s.sessions.toLocaleString()} sessions)`).join(", "));
+            channelContext = lines.join("\n");
+
+          } else if (platform === "Meta" && metaData) {
+            const ov  = (metaData as Array<unknown>)[3] as Record<string, number> | null;
+            const pv  = (metaData as Array<unknown>)[4] as Record<string, number> | null;
+            const camps = (metaData as Array<unknown>)[0] as Array<SignalsCampaign> | null;
+            const lines = ["Channel: Meta Ads (Facebook/Instagram paid social)"];
+            if (ov) lines.push(`Overview: £${ov.totalSpend?.toFixed(0) ?? "n/a"} spend, ${ov.totalConversions ?? "n/a"} conversions, ROAS ${ov.avgRoas?.toFixed(2) ?? "n/a"}x, avg freq ${ov.avgFrequency?.toFixed(1) ?? "n/a"}x`);
+            if (pv) lines.push(`Previous: £${pv.totalSpend?.toFixed(0) ?? "n/a"} spend, ${pv.totalConversions ?? "n/a"} conversions, ROAS ${pv.avgRoas?.toFixed(2) ?? "n/a"}x`);
+            if (camps?.length) {
+              const activeCamps = camps.filter(c => c.status === "ACTIVE").slice(0, 5);
+              if (activeCamps.length) lines.push("Active campaigns: " + activeCamps.map(c => `"${c.name}" £${c.spend.toFixed(0)} spend, ROAS ${c.roas.toFixed(2)}x, freq ${c.frequency.toFixed(1)}x`).join(" | "));
+            }
+            if (metaCreativeContext) lines.push(metaCreativeContext);
+            channelContext = lines.join("\n");
+
+          } else if (platform === "Google Ads" && gadsData?.overview) {
+            const ov = gadsData.overview as Record<string, number>;
+            const camps = (gadsData.campaignsEnriched ?? []) as Array<{ name: string; status?: string; searchImpressionShare?: number | null; searchBudgetLostImpressionShare?: number | null }>;
+            const lines = [
+              "Channel: Google Ads (paid search/display)",
+              `Overview: £${ov.totalCost?.toFixed(0) ?? "n/a"} spend, ${ov.totalImpressions?.toLocaleString() ?? "n/a"} impressions, ${ov.totalClicks?.toLocaleString() ?? "n/a"} clicks`,
+            ];
+            const enabledCamps = camps.filter(c => c.status === "ENABLED").slice(0, 5);
+            if (enabledCamps.length) lines.push("Active campaigns: " + enabledCamps.map(c => `"${c.name}" IS ${c.searchImpressionShare != null ? Math.round(c.searchImpressionShare * 100) + "%" : "n/a"}${c.searchBudgetLostImpressionShare != null && c.searchBudgetLostImpressionShare > 0.05 ? ` (IS lost budget: ${Math.round(c.searchBudgetLostImpressionShare * 100)}%)` : ""}`).join(" | "));
+            channelContext = lines.join("\n");
+
+          } else if (platform === "SEMrush" && semrushOverview) {
+            const ov = semrushOverview as Record<string, number>;
+            const kws = semrushKeywords as Array<{ keyword: string; position: number; searchVolume: number }>;
+            const lines = [
+              "Channel: SEMrush (organic SEO visibility data)",
+              `Overview: ${ov.organicTraffic?.toLocaleString() ?? "n/a"} organic traffic, ${ov.organicKeywords?.toLocaleString() ?? "n/a"} keywords`,
+            ];
+            if (kws.length) lines.push("Top keywords: " + kws.slice(0, 5).map(k => `"${k.keyword}" pos ${k.position} (vol ${k.searchVolume.toLocaleString()})`).join(", "));
+            channelContext = lines.join("\n");
+          }
+
+          fetch("/api/ai/summary", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sectionType: "alert_recommendations",
+              channelType,
+              channelContext,
+              alerts: entries.map(({ signal }) => ({
+                severity: signal.severity,
+                level: signal.level ?? "",
+                label: signal.label ?? signal.metric,
+                metric: signal.metric,
+                detail: signal.detail,
+              })),
+              clientName: client.name,
+              dateRange: `${startDate} to ${endDate}`,
+            }),
           })
-          .catch(() => {})
-          .finally(() => setAiRecsLoading(false));
+            .then(r => r.ok ? r.json() : null)
+            .then(json => {
+              if (!json?.recommendations?.length) return;
+              setSignals(prev => {
+                const next = [...prev];
+                entries.forEach(({ idx }, recIdx) => {
+                  if (json.recommendations[recIdx]) {
+                    next[idx] = { ...next[idx], recommendation: json.recommendations[recIdx], aiRec: true };
+                  }
+                });
+                return next;
+              });
+            })
+            .catch(() => {})
+            .finally(() => {
+              setAiLoadingPlatforms(prev => {
+                const next = new Set(prev);
+                next.delete(platform);
+                return next;
+              });
+            });
+        }
       }
 
       setLastRefreshed(new Date());
@@ -880,8 +972,8 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
           )}
         </div>
 
-        {/* AI recs loading indicator */}
-        {aiRecsLoading && (
+        {/* AI recs loading indicator — shows how many platforms still have calls in-flight */}
+        {aiLoadingPlatforms.size > 0 && (
           <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text-3)" }}>
             <Loader2 style={{ width: 11, height: 11, animation: "spin 1s linear infinite" }} />
             Generating AI actions&hellip;
@@ -977,7 +1069,7 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
             {/* Signal rows */}
             <div>
               {items.map((signal, i) => (
-                <SignalCard key={i} signal={signal} isLast={i === items.length - 1} />
+                <SignalCard key={i} signal={signal} isLast={i === items.length - 1} aiLoading={aiLoadingPlatforms.has(signal.platform)} />
               ))}
             </div>
           </div>

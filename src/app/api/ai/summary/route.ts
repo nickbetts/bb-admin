@@ -526,14 +526,18 @@ export async function POST(request: NextRequest) {
     const length = (body as unknown as { length?: string }).length;
 
     // ─── Alert-level AI recommendations ───────────────────────────────────────
-    // Lightweight call: takes the computed alerts array and returns one specific,
-    // quantified recommendation per alert. Used by MetaSection + GoogleAdsSection.
+    // Per-channel call: returns one specific recommendation per alert, using a
+    // channel-appropriate persona so suggestions are always relevant to that platform.
     if (sectionType === "alert_recommendations") {
       const alerts = (body as unknown as {
         alerts?: Array<{ severity: string; level?: string; label?: string; metric?: string; detail: string; platform?: string }>;
         campaignPlatform?: string;
+        channelType?: string;
+        channelContext?: string;
       }).alerts ?? [];
       const campaignPlatform = (body as unknown as { campaignPlatform?: string }).campaignPlatform ?? "meta";
+      const channelType = (body as unknown as { channelType?: string }).channelType ?? campaignPlatform;
+      const channelContext = (body as unknown as { channelContext?: string }).channelContext ?? "";
 
       if (!alerts.length) return NextResponse.json({ recommendations: [] });
 
@@ -545,6 +549,34 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // ── Channel-specific personas — prevents nonsensical suggestions ──────────
+      const CHANNEL_PERSONAS: Record<string, string> = {
+        search_console: `You are a senior SEO specialist at a UK digital marketing agency reviewing organic search data from Google Search Console.
+CRITICAL CONSTRAINT: Search Console is an ORGANIC SEARCH ANALYTICS TOOL ONLY. It has NO advertising budget, NO paid bids, and NO paid media settings.
+You must NEVER suggest budget increases, CPC changes, bid adjustments, paid campaign actions, or any paid advertising recommendation for Search Console signals.
+Only suggest actions achievable through SEO: improving title tags and meta descriptions, refreshing content quality and depth, fixing technical SEO issues (crawlability, indexing, Core Web Vitals, page speed), improving internal linking, adding structured data, targeting keyword gaps, or responding to SERP feature changes that affect click-through.`,
+
+        meta: `You are a senior paid social specialist at a UK digital marketing agency reviewing Meta Ads (Facebook/Instagram) performance data.
+Available levers: campaign budgets, bid strategies, ad frequency management, creative refresh, audience targeting, campaign objectives, ad set structure, and placement settings.`,
+
+        google_ads: `You are a senior paid search specialist at a UK digital marketing agency reviewing Google Ads performance data.
+Available levers: campaign daily budgets, bid strategies, Quality Scores, keyword-level bids, impression share improvements, keyword additions/negatives, ad copy, landing page alignment, and dayparting.`,
+
+        ga4: `You are a senior web analytics specialist at a UK digital marketing agency reviewing Google Analytics 4 website behaviour data.
+GA4 shows sessions, engagement, bounce rate, conversions, and traffic source breakdowns — not paid media settings.
+Suggest actions around: investigating traffic source drops, landing page experience improvements, tracking and tagging fixes, conversion funnel issues, or content/UX changes. Do not suggest platform-specific budget changes unless the data clearly ties to a specific paid channel.`,
+
+        semrush: `You are a senior SEO specialist at a UK digital marketing agency reviewing SEMrush organic search visibility data.
+Only suggest SEO actions: content creation, keyword gap targeting, technical SEO improvements, link building, or competitor analysis. Do not suggest paid media actions.`,
+
+        gsc: `You are a senior SEO specialist at a UK digital marketing agency reviewing organic search performance data.
+CRITICAL CONSTRAINT: This is organic search data with NO advertising budget, bids, or paid media settings.
+Only suggest SEO actions: content improvements, title tag/meta description optimisation, technical SEO, internal linking, or SERP feature responses.`,
+      };
+
+      const systemPrompt = CHANNEL_PERSONAS[channelType]
+        ?? `You are a senior digital marketing strategist at a UK performance marketing agency. Only suggest actions that are genuinely applicable to this channel's data.`;
+
       const campaignCtxText = campaignData?.length
         ? buildCampaignSummaryText(campaignPlatform, campaignData)
         : "";
@@ -555,18 +587,17 @@ export async function POST(request: NextRequest) {
         )
         .join("\n");
 
-      const recPrompt = `You are a senior paid media strategist at a UK performance marketing agency.
+      const contextBlock = [channelContext, campaignCtxText].filter(Boolean).join("\n\n");
 
-Client: ${clientName ?? "client"} | Period: ${dateRange ?? "selected period"}
+      const recPrompt = `Client: ${clientName ?? "client"} | Period: ${dateRange ?? "selected period"}
 
 For each numbered alert below, write ONE specific, data-driven recommendation (1–2 sentences max).
-Use the actual numbers in the alert and the campaign context. Be concrete — include specific budget amounts, percentage adjustments, timelines, or actions where possible.
-Do NOT use generic phrases like "consider reviewing" or "monitor closely". Make every recommendation actionable and numbered.
+Base every recommendation only on the data provided — use the actual numbers from the alert and context below. Be concrete and actionable.
+Do NOT invent numbers, budgets, or metrics that are not present in the data. Do NOT use generic phrases like "consider reviewing" or "monitor closely".
 
+${contextBlock ? `Channel data:\n${contextBlock}\n` : ""}
 Alerts:
 ${alertList}
-
-${campaignCtxText}
 
 Return JSON: { "recommendations": ["rec for alert 1", "rec for alert 2", ...] }
 One string per alert, in the same order. British English.`;
@@ -575,11 +606,11 @@ One string per alert, in the same order. British English.`;
       const comp2 = await openai2.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "You are a senior digital marketing strategist. Provide specific, quantified, actionable recommendations. No vague generalities. British English." },
+          { role: "system", content: systemPrompt + "\nProvide specific, data-grounded, actionable recommendations. British English. Never fabricate numbers or metrics not present in the data." },
           { role: "user", content: recPrompt },
         ],
         response_format: { type: "json_object" },
-        max_tokens: Math.max(1200, alerts.length * 120),
+        max_tokens: Math.max(1200, alerts.length * 130),
         temperature: 0.3,
       });
 
