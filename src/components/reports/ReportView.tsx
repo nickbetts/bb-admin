@@ -722,7 +722,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     const pdfOriginalLinkMedia: string[] = [];
     const pdfInjectedStyles: HTMLStyleElement[] = [];
     const pdfSpacers: HTMLElement[] = [];
-    const pdfResolvedColorEls: Array<{ el: HTMLElement; cssKey: string }> = [];
+    const pdfResolvedColorEls: Array<{ el: HTMLElement; cssKey: string; original: string }> = [];
     let pdfSavedWidth = "";
     let pdfSavedMaxWidth = "";
 
@@ -774,9 +774,10 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       void container.offsetHeight;
 
       // ── Inline computed colors to resolve CSS variables + oklch ────────────
-      // html2canvas calls getComputedStyle() internally, but Chrome 111+ returns
-      // oklch() values for oklch-defined colors, which html2canvas cannot parse.
-      // We pre-resolve every color property to rgb() so the canvas captures it.
+      // html2canvas cannot parse CSS custom properties or modern color spaces.
+      // We read each element's getComputedStyle (browser-resolved to rgb/oklch),
+      // convert any oklch → rgb via fixColorFns, and set as inline style so the
+      // html2canvas clone inherits concrete rgb() values instead of var() refs.
       {
         const COLOR_PROPS: [string, string][] = [
           ["backgroundColor", "background-color"],
@@ -785,16 +786,16 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           ["borderRightColor", "border-right-color"],
           ["borderBottomColor", "border-bottom-color"],
           ["borderLeftColor", "border-left-color"],
+          ["boxShadow", "box-shadow"],
         ];
         const walkForColors = (el: HTMLElement) => {
           const cs = window.getComputedStyle(el);
           COLOR_PROPS.forEach(([, cssKey]) => {
-            if (!el.style.getPropertyValue(cssKey)) {
-              const val = cs.getPropertyValue(cssKey);
-              if (val) {
-                el.style.setProperty(cssKey, fixColorFns(val));
-                pdfResolvedColorEls.push({ el, cssKey });
-              }
+            const val = cs.getPropertyValue(cssKey);
+            if (val && val !== "none" && val !== "rgba(0, 0, 0, 0)") {
+              const original = el.style.getPropertyValue(cssKey);
+              el.style.setProperty(cssKey, fixColorFns(val));
+              pdfResolvedColorEls.push({ el, cssKey, original });
             }
           });
           Array.from(el.children).forEach((c) => walkForColors(c as HTMLElement));
@@ -905,7 +906,10 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     } finally {
       container.classList.remove("pdf-exporting");
       pdfSpacers.forEach((s) => s.remove());
-      pdfResolvedColorEls.forEach(({ el, cssKey }) => el.style.removeProperty(cssKey));
+      pdfResolvedColorEls.forEach(({ el, cssKey, original }) => {
+        if (original) el.style.setProperty(cssKey, original);
+        else el.style.removeProperty(cssKey);
+      });
       container.style.width = pdfSavedWidth;
       container.style.maxWidth = pdfSavedMaxWidth;
       setExportingPdf(false);
