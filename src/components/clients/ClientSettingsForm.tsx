@@ -79,6 +79,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
   const [ga4ServiceAccountEmail, setGa4ServiceAccountEmail] = useState<string | null>(null);
   const [ga4ServiceAccountEmailError, setGa4ServiceAccountEmailError] = useState(false);
   const [ga4EmailCopied, setGa4EmailCopied] = useState(false);
+  const [gscEmailCopied, setGscEmailCopied] = useState(false);
   const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
   const [semrushProjects, setSemrushProjects] = useState<SemrushProject[]>([]);
   const [googleAdsAccounts, setGoogleAdsAccounts] = useState<GoogleAdsAccount[]>([]);
@@ -587,8 +588,43 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                 <p className="text-xs text-slate-500 mt-1.5">Not in the list? Paste the site URL directly above.</p>
               </>
             )}
-          </div>
-        </div>
+          </div>          <div style={{ borderRadius: "var(--r)", border: "1px solid #bbf7d0", background: "#f0fdf4", padding: "12px 16px", fontSize: 13, color: "#14532d" }}>
+            <p style={{ fontWeight: 600, marginBottom: 6 }}>Site not in the list?</p>
+            <p style={{ marginBottom: 8, color: "#166534", lineHeight: 1.5 }}>
+              This app uses a Google service account to read Search Console data. The site will only appear
+              once that service account has been added as a <strong>Full User</strong> inside Google Search Console.
+            </p>
+            <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 5, color: "#166534", lineHeight: 1.5 }}>
+              <li>Open <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style={{ color: "#15803d", textDecoration: "underline" }}>search.google.com/search-console</a> and select the property</li>
+              <li>Click <strong>Settings</strong> (bottom-left) → <strong>Users and permissions</strong></li>
+              <li>Click <strong>Add user</strong> and paste the service account email below</li>
+              <li>Set the permission to <strong>Full</strong> and click <strong>Add</strong></li>
+              <li>Come back here and refresh — the site will appear in the dropdown</li>
+            </ol>
+            {ga4ServiceAccountEmail && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #bbf7d0", borderRadius: "var(--r-sm)", padding: "8px 12px", marginTop: 12 }}>
+                <code style={{ flex: 1, fontSize: 12, fontFamily: "monospace", color: "#14532d", wordBreak: "break-all", userSelect: "all" as const }}>
+                  {ga4ServiceAccountEmail}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(ga4ServiceAccountEmail);
+                    setGscEmailCopied(true);
+                    setTimeout(() => setGscEmailCopied(false), 2000);
+                  }}
+                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 500, background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: "#14532d" }}
+                >
+                  {gscEmailCopied ? "Copied ✓" : "Copy"}
+                </button>
+              </div>
+            )}
+            {ga4ServiceAccountEmailError && (
+              <p style={{ fontSize: 12, color: "#b45309", marginTop: 10, background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 6, padding: "6px 10px" }}>
+                Could not fetch service account email — verify <code>GA4_CLIENT_EMAIL</code> is set in environment variables.
+              </p>
+            )}
+          </div>        </div>
       </div>
 
       {/* AI Report Instructions */}
