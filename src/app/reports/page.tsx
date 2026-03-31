@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FileText, ArrowRight, Trash2, Pencil, Check, X } from "lucide-react";
+import { FileText, ArrowRight, Trash2, Pencil, Check, X, Copy } from "lucide-react";
 import { SearchInput } from "@/components/ui/SearchInput";
 
 interface Report {
@@ -15,6 +16,7 @@ interface Report {
 }
 
 export default function ReportsPage() {
+  const router = useRouter();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -31,6 +33,9 @@ export default function ReportsPage() {
   // Per-row delete confirmation
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Duplicate
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   const fetchReports = useCallback(async () => {
     setLoading(true);
@@ -107,6 +112,19 @@ export default function ReportsPage() {
     setReports((prev) => prev.filter((r) => !selected.has(r.id)));
     setSelected(new Set());
     setBulkDeleting(false);
+  }
+
+  async function handleDuplicate(id: string) {
+    setDuplicatingId(id);
+    try {
+      const res = await fetch(`/api/reports/${id}/duplicate`, { method: "POST" });
+      if (res.ok) {
+        const { id: newId } = await res.json();
+        router.push(`/reports/${newId}`);
+      }
+    } finally {
+      setDuplicatingId(null);
+    }
   }
 
   const allSelected = reports.length > 0 && selected.size === reports.length;
@@ -289,6 +307,15 @@ export default function ReportsPage() {
                         View
                         <ArrowRight className="h-3.5 w-3.5" />
                       </Link>
+                      <button
+                        onClick={() => handleDuplicate(report.id)}
+                        disabled={duplicatingId === report.id}
+                        className="text-slate-300 hover:text-indigo-500 transition ml-1"
+                        title="Duplicate report"
+                        aria-label="Duplicate report"
+                      >
+                        {duplicatingId === report.id ? <span className="text-xs text-slate-400">…</span> : <Copy className="h-3.5 w-3.5" />}
+                      </button>
                       {deletingId === report.id ? (
                         <div className="flex items-center gap-1.5 ml-2">
                           <span className="text-xs text-red-600">Delete?</span>

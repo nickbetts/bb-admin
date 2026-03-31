@@ -78,6 +78,34 @@ export async function POST(
   }
 }
 
+export async function PATCH(
+  request: NextRequest
+) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const data = await request.json();
+    const { screenshotId, caption } = data as { screenshotId?: string; caption?: string | null };
+
+    if (!screenshotId) {
+      return NextResponse.json({ error: "screenshotId is required" }, { status: 400 });
+    }
+
+    const screenshot = await prisma.screenshot.update({
+      where: { id: screenshotId },
+      data: { caption: caption ?? null },
+    });
+
+    return NextResponse.json(screenshot);
+  } catch (error) {
+    console.error("Update screenshot error:", error);
+    return NextResponse.json({ error: "Failed to update screenshot" }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   request: NextRequest
 ) {

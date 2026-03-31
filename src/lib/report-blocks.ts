@@ -27,6 +27,7 @@ export function isTextSection(sectionType: string): boolean {
 
 export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
   overview: [],
+  executive_summary: [],
   // Text-only sections — no configurable blocks
   text_notable_achievements: [],
   text_screenshots: [],

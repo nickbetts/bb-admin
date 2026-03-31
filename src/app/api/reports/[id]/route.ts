@@ -46,7 +46,7 @@ export async function PATCH(
     const { id } = await params;
     const data = await request.json();
 
-    const VALID_STATUSES = ["draft", "published", "archived"];
+    const VALID_STATUSES = ["draft", "review", "published", "archived"];
     if (data.status !== undefined && !VALID_STATUSES.includes(data.status)) {
       return NextResponse.json({ error: "Invalid status value" }, { status: 400 });
     }

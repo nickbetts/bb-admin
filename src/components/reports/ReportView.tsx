@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Download, Upload, Trash2, Check, X, Eye, EyeOff,
   ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search,
   MessageSquare, LayoutGrid, FileText, Image, ShoppingCart, CalendarRange,
   LayoutTemplate, Save, GripVertical, Globe2, Link2, Link2Off, CheckCircle2,
+  Copy, Printer, Sparkles, Pencil, Star,
 } from "lucide-react";
 import {
   DndContext,
@@ -223,6 +225,7 @@ function SortableSectionItem({
 
 // ── Main component ──────────────────────────────────────────────────────────
 export function ReportView({ report: initialReport }: ReportViewProps) {
+  const router = useRouter();
   const [report, setReport] = useState<Report>({
     ...initialReport,
     sections: initialReport.sections.map((s) => ({
@@ -277,6 +280,24 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const pendingSectionIdRef = useRef<string | null>(null);
   const reportRef = useRef<HTMLDivElement>(null);
 
+  // ── Autosave state ──────────────────────────────────────────────────────────
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const commentaryRef = useRef<Record<string, string>>({});
+  const [autosaveStatus, setAutosaveStatus] = useState<Record<string, "saving" | "saved" | null>>({});
+
+  // ── Caption editing state ───────────────────────────────────────────────────
+  const [editingCaptionId, setEditingCaptionId] = useState<string | null>(null);
+  const [captionEditValue, setCaptionEditValue] = useState("");
+
+  // ── Generate all AI / executive summary ───────────────────────────────────
+  const [generatingAll, setGeneratingAll] = useState(false);
+  const [generateAllProgress, setGenerateAllProgress] = useState(0);
+  const [generateAllTotal, setGenerateAllTotal] = useState(0);
+  const [generatingExecutiveSummary, setGeneratingExecutiveSummary] = useState(false);
+
+  // ── Duplicate state ─────────────────────────────────────────────────────────
+  const [duplicating, setDuplicating] = useState(false);
+
   // ── DnD sensors ────────────────────────────────────────────────────────────
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -299,9 +320,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   }, [report.id, report.sections]);
 
   // ── Publish / share ─────────────────────────────────────────────────────────
-  const handleTogglePublish = async () => {
+  const handleSetStatus = async (newStatus: string) => {
+    if (newStatus === report.status) return;
     setStatusSaving(true);
-    const newStatus = report.status === "published" ? "draft" : "published";
     try {
       const res = await fetch(`/api/reports/${report.id}`, {
         method: "PATCH",
@@ -442,10 +463,16 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   // ── Commentary ───────────────────────────────────────────────────────────────
   const handleEditSection = (section: Section) => {
     setEditingSection(section.id);
-    setCommentary((prev) => ({ ...prev, [section.id]: section.commentary ?? "" }));
+    // Preserve any in-progress edits — only set from server value if no draft exists
+    setCommentary((prev) => ({
+      ...prev,
+      [section.id]: prev[section.id] ?? section.commentary ?? "",
+    }));
   };
 
   const handleSaveSection = async (sectionId: string) => {
+    // Cancel any pending autosave so we don't double-save
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     setSaving(sectionId);
     try {
       const res = await fetch(`/api/reports/${report.id}/sections`, {
@@ -465,6 +492,156 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       }
     } finally {
       setSaving(null);
+    }
+  };
+
+  // ── Autosave commentary ────────────────────────────────────────────────────
+  // Keep a ref of the latest commentary to avoid stale closures inside the debounce
+  useEffect(() => { commentaryRef.current = commentary; }, [commentary]);
+
+  const handleAutoSave = useCallback(async (sectionId: string) => {
+    const text = commentaryRef.current[sectionId] ?? "";
+    setAutosaveStatus((prev) => ({ ...prev, [sectionId]: "saving" }));
+    try {
+      const res = await fetch(`/api/reports/${report.id}/sections`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sectionId, commentary: text }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setReport((prev) => ({
+          ...prev,
+          sections: prev.sections.map((s) => s.id === sectionId ? { ...s, commentary: updated.commentary } : s),
+        }));
+        setAutosaveStatus((prev) => ({ ...prev, [sectionId]: "saved" }));
+        setTimeout(() => setAutosaveStatus((prev) => ({ ...prev, [sectionId]: null })), 2500);
+      } else {
+        setAutosaveStatus((prev) => ({ ...prev, [sectionId]: null }));
+      }
+    } catch {
+      setAutosaveStatus((prev) => ({ ...prev, [sectionId]: null }));
+    }
+  }, [report.id]);
+
+  // Debounce autosave: 1.5s after the user stops typing
+  useEffect(() => {
+    if (!editingSection) return;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      handleAutoSave(editingSection);
+    }, 1500);
+    return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [commentary, editingSection]);
+
+  // ── Screenshot caption update ──────────────────────────────────────────────
+  const handleUpdateCaption = async (screenshotId: string, caption: string) => {
+    const res = await fetch(`/api/reports/${report.id}/screenshots`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ screenshotId, caption: caption.trim() || null }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setReport((prev) => ({
+        ...prev,
+        screenshots: prev.screenshots.map((s) => s.id === screenshotId ? { ...s, caption: updated.caption } : s),
+      }));
+    }
+    setEditingCaptionId(null);
+  };
+
+  // ── Generate all AI commentary ─────────────────────────────────────────────
+  const handleGenerateAll = async () => {
+    const eligible = report.sections.filter(
+      (s) => s.enabled !== false && (s.sectionType === "overview" || sectionMetrics[s.id])
+    );
+    if (eligible.length === 0) return;
+    setGeneratingAll(true);
+    setGenerateAllProgress(0);
+    setGenerateAllTotal(eligible.length);
+
+    for (const section of eligible) {
+      try {
+        const res = await fetch("/api/ai/report-commentary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sectionType: section.sectionType === "web" ? "ga4" : section.sectionType === "paid_social" ? "meta" : section.sectionType,
+            metrics: sectionMetrics[section.id] ?? {},
+            clientName: report.client.name,
+            clientId: report.client.id,
+            dateRange: report.period,
+            tone: aiTone,
+            length: aiLength,
+            format: aiFormat,
+          }),
+        });
+        if (res.ok) {
+          const { commentary: text } = await res.json();
+          await fetch(`/api/reports/${report.id}/sections`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sectionId: section.id, commentary: text }),
+          });
+          setReport((prev) => ({
+            ...prev,
+            sections: prev.sections.map((s) => s.id === section.id ? { ...s, commentary: text } : s),
+          }));
+        }
+      } catch { /* continue */ }
+      setGenerateAllProgress((p) => p + 1);
+    }
+    setGeneratingAll(false);
+  };
+
+  // ── Executive summary AI ────────────────────────────────────────────────────
+  const handleGenerateExecutiveSummary = async (sectionId: string) => {
+    setGeneratingExecutiveSummary(true);
+    try {
+      const sections = report.sections
+        .filter((s) => s.enabled !== false && s.commentary)
+        .map((s) => ({ sectionType: s.sectionType, title: s.title, commentary: s.commentary! }));
+
+      const res = await fetch("/api/ai/executive-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sections,
+          clientName: report.client.name,
+          clientId: report.client.id,
+          period: report.period,
+        }),
+      });
+      if (res.ok) {
+        const { commentary: text } = await res.json();
+        await fetch(`/api/reports/${report.id}/sections`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sectionId, commentary: text }),
+        });
+        setReport((prev) => ({
+          ...prev,
+          sections: prev.sections.map((s) => s.id === sectionId ? { ...s, commentary: text } : s),
+        }));
+      }
+    } finally {
+      setGeneratingExecutiveSummary(false);
+    }
+  };
+
+  // ── Duplicate report ────────────────────────────────────────────────────────
+  const handleDuplicate = async () => {
+    setDuplicating(true);
+    try {
+      const res = await fetch(`/api/reports/${report.id}/duplicate`, { method: "POST" });
+      if (res.ok) {
+        const { id } = await res.json();
+        router.push(`/reports/${id}`);
+      }
+    } finally {
+      setDuplicating(false);
     }
   };
 
@@ -716,6 +893,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
   const SECTION_META: Record<string, { icon: React.ReactNode; badge: string }> = {
     overview:                    { icon: <LayoutGrid size={14} />, badge: "badge-slate" },
+    executive_summary:           { icon: <Star size={14} />, badge: "badge-amber" },
     seo:                         { icon: <TrendingUp size={14} />, badge: "badge-indigo" },
     web:                         { icon: <Globe size={14} />, badge: "badge-blue" },
     paid_social:                 { icon: <BarChart2 size={14} />, badge: "badge-orange" },
@@ -769,17 +947,45 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
 
-          {/* Publish toggle */}
-          <button
-            onClick={handleTogglePublish}
-            disabled={statusSaving}
-            className="btn btn-secondary btn-sm"
-            style={{ gap: 6 }}
-            title={isPublished ? "Unpublish report" : "Publish report"}
-          >
-            <Globe2 size={13} />
-            {statusSaving ? "…" : isPublished ? "Published" : "Draft"}
-          </button>
+          {/* Status stepper: Draft → In Review → Published */}
+          <div style={{ display: "flex", alignItems: "center", gap: 0, marginRight: 4 }}>
+            {(["draft", "review", "published"] as const).map((st, i) => {
+              const statusOrder = ["draft", "review", "published"];
+              const currentIdx = statusOrder.indexOf(report.status);
+              const thisIdx = statusOrder.indexOf(st);
+              const isCurrent = report.status === st;
+              const isPast = currentIdx > thisIdx;
+              return (
+                <div key={st} style={{ display: "flex", alignItems: "center" }}>
+                  {i > 0 && (
+                    <div style={{
+                      width: 14, height: 1,
+                      background: isPast || isCurrent ? "var(--accent)" : "var(--border)",
+                    }} />
+                  )}
+                  <button
+                    onClick={() => handleSetStatus(st)}
+                    disabled={statusSaving || isCurrent}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 4,
+                      padding: "4px 9px", borderRadius: "var(--r-sm)",
+                      border: "1px solid",
+                      borderColor: isCurrent ? "var(--accent)" : isPast ? "var(--accent)" : "var(--border)",
+                      background: isCurrent ? "var(--accent)" : "transparent",
+                      color: isCurrent ? "#fff" : isPast ? "var(--accent)" : "var(--text-4)",
+                      fontSize: 10, fontWeight: 700, cursor: isCurrent ? "default" : "pointer",
+                      transition: "all 0.15s",
+                      textTransform: "uppercase", letterSpacing: "0.07em",
+                      opacity: statusSaving ? 0.6 : 1,
+                    }}
+                    title={`Set status to ${st}`}
+                  >
+                    {st === "draft" ? "Draft" : st === "review" ? "In Review" : "Published"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
 
           {/* Share link */}
           {report.shareToken ? (
@@ -930,6 +1136,18 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               e.target.value = "";
             }}
           />
+          <button onClick={handleDuplicate} disabled={duplicating} className="btn btn-secondary btn-sm" title="Duplicate this report">
+            <Copy size={13} />
+            {duplicating ? "…" : "Duplicate"}
+          </button>
+          <button
+            onClick={() => window.open(`/reports/${report.id}/print`, "_blank")}
+            className="btn btn-secondary btn-sm"
+            title="Open print view in new tab"
+          >
+            <Printer size={13} />
+            Print
+          </button>
           <button onClick={handleExportPdf} disabled={exportingPdf} className="btn btn-primary btn-sm">
             <Download size={13} />
             {exportingPdf ? "Generating…" : "Export PDF"}
@@ -1004,9 +1222,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       {meta.icon}
                       {section.title}
                     </span>
-                    {savedSection === section.id && (
-                      <span style={{ fontSize: 11, color: "#10b981", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3 }}>
-                        <CheckCircle2 size={12} /> Saved
+                    {autosaveStatus[section.id] && (
+                      <span style={{ fontSize: 11, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3, color: autosaveStatus[section.id] === "saved" ? "#10b981" : "var(--text-4)" }}>
+                        {autosaveStatus[section.id] === "saved" ? <><CheckCircle2 size={12} /> Saved</> : "Autosaving…"}
                       </span>
                     )}
                   </div>
@@ -1144,11 +1362,38 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                               <div key={ss.id} style={{ position: "relative", borderRadius: "var(--r)", overflow: "hidden", border: "1px solid var(--border-subtle)" }}>
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src={ss.url} alt={ss.caption ?? ss.filename} style={{ width: "100%", display: "block", objectFit: "cover" }} />
-                                {ss.caption && (
-                                  <div style={{ padding: "8px 12px", background: "var(--surface)", borderTop: "1px solid var(--border-subtle)" }}>
-                                    <p style={{ fontSize: 12, color: "var(--text-3)" }}>{ss.caption}</p>
-                                  </div>
-                                )}
+                                <div style={{ background: "var(--surface)", borderTop: "1px solid var(--border-subtle)" }}>
+                                  {editingCaptionId === ss.id ? (
+                                    <div style={{ display: "flex", gap: 6, padding: "8px 10px" }}>
+                                      <input
+                                        autoFocus
+                                        value={captionEditValue}
+                                        onChange={(e) => setCaptionEditValue(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") handleUpdateCaption(ss.id, captionEditValue);
+                                          if (e.key === "Escape") setEditingCaptionId(null);
+                                        }}
+                                        placeholder="Add caption…"
+                                        style={{ flex: 1, fontSize: 12, padding: "4px 8px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", outline: "none" }}
+                                      />
+                                      <button onClick={() => handleUpdateCaption(ss.id, captionEditValue)} style={{ background: "none", border: "none", cursor: "pointer", color: "#10b981", padding: 4, display: "flex" }}><Check size={13} /></button>
+                                      <button onClick={() => setEditingCaptionId(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 4, display: "flex" }}><X size={13} /></button>
+                                    </div>
+                                  ) : (
+                                    <div className="print:hidden" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 10px", gap: 6 }}>
+                                      <p style={{ fontSize: 12, color: "var(--text-3)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                        {ss.caption ?? <span style={{ color: "var(--text-4)", fontStyle: "italic" }}>No caption</span>}
+                                      </p>
+                                      <button
+                                        onClick={() => { setEditingCaptionId(ss.id); setCaptionEditValue(ss.caption ?? ""); }}
+                                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2, display: "flex", flexShrink: 0 }}
+                                        title="Edit caption"
+                                      >
+                                        <Pencil size={11} />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                                 <button
                                   onClick={() => handleDeleteScreenshot(ss.id)}
                                   className="print:hidden"
@@ -1173,6 +1418,80 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 </div>
               </div>
             );
+
+            // Executive summary section — AI-generated TL;DR
+            if (section.sectionType === "executive_summary") {
+              return (
+                <div key={section.id} id={`section-${section.id}`} style={{ marginBottom: 56 }}>
+                  <div className="card" data-pdf-avoid="true">
+                    <div className="card-header">
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span className={`badge badge-amber`} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                          <Star size={14} />
+                          {section.title || "Executive Summary"}
+                        </span>
+                        {autosaveStatus[section.id] && (
+                          <span style={{ fontSize: 11, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3, color: autosaveStatus[section.id] === "saved" ? "#10b981" : "var(--text-4)" }}>
+                            {autosaveStatus[section.id] === "saved" ? <><CheckCircle2 size={12} /> Saved</> : "Autosaving…"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="print:hidden" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <button
+                          onClick={() => handleGenerateExecutiveSummary(section.id)}
+                          disabled={generatingExecutiveSummary}
+                          className="btn btn-secondary btn-sm"
+                          style={{ gap: 6 }}
+                          title="AI-generate executive summary from all section commentaries"
+                        >
+                          <Sparkles size={13} />
+                          {generatingExecutiveSummary ? "Generating…" : "Generate Summary"}
+                        </button>
+                        <button
+                          onClick={() => editingSection === section.id ? setEditingSection(null) : handleEditSection(section)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ gap: 6 }}
+                        >
+                          <MessageSquare size={13} />
+                          {editingSection === section.id ? "Cancel" : "Edit"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="card-body" style={{ padding: "20px 28px" }}>
+                      {editingSection === section.id ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                          <textarea
+                            value={commentary[section.id] ?? ""}
+                            onChange={(e) => setCommentary((prev) => ({ ...prev, [section.id]: e.target.value }))}
+                            placeholder="Executive summary will appear here after generation…"
+                            rows={6}
+                            style={{ width: "100%", padding: "12px 16px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 14, lineHeight: 1.6, resize: "vertical", outline: "none", fontFamily: "inherit" }}
+                            onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+                            onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+                          />
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button onClick={() => handleSaveSection(section.id)} disabled={saving === section.id} className="btn btn-primary btn-sm">
+                              <Check size={13} />
+                              {saving === section.id ? "Saving…" : "Save & Close"}
+                            </button>
+                            <button onClick={() => setEditingSection(null)} className="btn btn-secondary btn-sm"><X size={13} /> Cancel</button>
+                          </div>
+                        </div>
+                      ) : section.commentary ? (
+                        <div style={{ background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r)", padding: "14px 18px" }}>
+                          <p style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Executive Summary</p>
+                          <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{section.commentary}</p>
+                        </div>
+                      ) : (
+                        <p style={{ fontSize: 13, color: "var(--text-4)", fontStyle: "italic" }}>
+                          No executive summary yet — click &quot;Generate Summary&quot; to auto-create one from all section commentaries, or &quot;Edit&quot; to write manually.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
 
             // Overview section — commentary only, no data feed
             if (section.sectionType === "overview") {
@@ -1262,11 +1581,38 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   <div key={screenshot.id} className="card" style={{ overflow: "hidden", position: "relative" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={screenshot.url} alt={screenshot.caption ?? screenshot.filename} style={{ width: "100%", display: "block", objectFit: "cover" }} />
-                    {screenshot.caption && (
-                      <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border-subtle)" }}>
-                        <p style={{ fontSize: 12, color: "var(--text-3)" }}>{screenshot.caption}</p>
-                      </div>
-                    )}
+                    <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                      {editingCaptionId === screenshot.id ? (
+                        <div style={{ display: "flex", gap: 6, padding: "8px 10px" }}>
+                          <input
+                            autoFocus
+                            value={captionEditValue}
+                            onChange={(e) => setCaptionEditValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleUpdateCaption(screenshot.id, captionEditValue);
+                              if (e.key === "Escape") setEditingCaptionId(null);
+                            }}
+                            placeholder="Add caption…"
+                            style={{ flex: 1, fontSize: 12, padding: "4px 8px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", outline: "none" }}
+                          />
+                          <button onClick={() => handleUpdateCaption(screenshot.id, captionEditValue)} style={{ background: "none", border: "none", cursor: "pointer", color: "#10b981", padding: 4, display: "flex" }}><Check size={13} /></button>
+                          <button onClick={() => setEditingCaptionId(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 4, display: "flex" }}><X size={13} /></button>
+                        </div>
+                      ) : (
+                        <div className="print:hidden" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 12px", gap: 6 }}>
+                          <p style={{ fontSize: 12, color: "var(--text-3)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {screenshot.caption ?? <span style={{ color: "var(--text-4)", fontStyle: "italic" }}>No caption</span>}
+                          </p>
+                          <button
+                            onClick={() => { setEditingCaptionId(screenshot.id); setCaptionEditValue(screenshot.caption ?? ""); }}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2, display: "flex", flexShrink: 0 }}
+                            title="Edit caption"
+                          >
+                            <Pencil size={11} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <button
                       onClick={() => handleDeleteScreenshot(screenshot.id)}
                       className="print:hidden"
@@ -1344,9 +1690,42 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             </DndContext>
           </div>
 
-          {/* Sidebar footer — Save as Template */}
-          <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "14px 16px", flexShrink: 0 }}>
-            {!templateSaveOpen ? (
+          {/* Sidebar footer — Generate All + Save as Template */}
+          <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "12px 16px", flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+
+            {/* Generate All AI */}
+            <div style={{ paddingBottom: 4 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-4)", marginBottom: 6 }}>AI Commentary</p>
+              <button
+                onClick={handleGenerateAll}
+                disabled={generatingAll}
+                className="btn btn-secondary btn-sm"
+                style={{ width: "100%", justifyContent: "center", gap: 6, marginBottom: 6 }}
+                title="Generate AI commentary for all data sections at once"
+              >
+                <Sparkles size={13} />
+                {generatingAll
+                  ? `Generating ${generateAllProgress}/${generateAllTotal}…`
+                  : "Generate All Commentary"}
+              </button>
+              {generatingAll && (
+                <div style={{ background: "var(--border-subtle)", borderRadius: "var(--r-sm)", height: 3 }}>
+                  <div
+                    style={{
+                      background: "var(--accent)",
+                      height: 3,
+                      borderRadius: "var(--r-sm)",
+                      width: generateAllTotal > 0 ? `${(generateAllProgress / generateAllTotal) * 100}%` : "0%",
+                      transition: "width 0.3s ease",
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Save as Template */}
+            <div>
+              {!templateSaveOpen ? (
               <button
                 onClick={() => { setTemplateSaveOpen(true); setTemplateName(""); setTemplateSaved(false); }}
                 className="btn btn-secondary btn-sm"
@@ -1399,6 +1778,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </aside>
       </div>
