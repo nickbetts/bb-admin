@@ -76,6 +76,8 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const [ga4Properties, setGa4Properties] = useState<GA4Property[]>([]);
+  const [ga4ServiceAccountEmail, setGa4ServiceAccountEmail] = useState<string | null>(null);
+  const [ga4EmailCopied, setGa4EmailCopied] = useState(false);
   const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
   const [semrushProjects, setSemrushProjects] = useState<SemrushProject[]>([]);
   const [googleAdsAccounts, setGoogleAdsAccounts] = useState<GoogleAdsAccount[]>([]);
@@ -126,6 +128,11 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       })
       .catch(() => setGa4FetchError("Failed to load GA4 properties"))
       .finally(() => setGa4Loading(false));
+
+    fetch("/api/ga4/service-account")
+      .then((r) => r.json())
+      .then((data) => { if (data.email) setGa4ServiceAccountEmail(data.email); })
+      .catch(() => { /* non-fatal */ });
 
     fetch("/api/meta/accounts")
       .then((r) => r.json())
@@ -336,7 +343,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <h2 className="card-title">Google Analytics 4</h2>
           </div>
         </div>
-        <div className="card-body">
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <label className="form-label">Property</label>
             {ga4Loading ? (
@@ -371,6 +378,40 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                   <option key={p.id} value={p.id}>{p.displayName} ({p.account})</option>
                 ))}
               </select>
+            )}
+          </div>
+
+          {/* Property not in the list? Instructions */}
+          <div style={{ borderRadius: "var(--r)", border: "1px solid #bfdbfe", background: "#eff6ff", padding: "12px 16px", fontSize: 13, color: "#1e40af" }}>
+            <p style={{ fontWeight: 600, marginBottom: 6 }}>Property not in the list?</p>
+            <p style={{ marginBottom: 8, color: "#1d4ed8", lineHeight: 1.5 }}>
+              This app uses a Google service account to read Analytics data. The property will only appear here
+              once that service account has been granted <strong>Viewer</strong> access inside Google Analytics.
+            </p>
+            <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 5, color: "#1d4ed8", lineHeight: 1.5 }}>
+              <li>Open <a href="https://analytics.google.com" target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", textDecoration: "underline" }}>analytics.google.com</a> and go to the GA4 property you want to add</li>
+              <li>Click <strong>Admin</strong> (bottom-left) → <strong>Property Access Management</strong></li>
+              <li>Click <strong>+ Add users</strong> and paste the service account email below</li>
+              <li>Set the role to <strong>Viewer</strong> and click <strong>Add</strong></li>
+              <li>Come back here and refresh — the property will appear in the dropdown</li>
+            </ol>
+            {ga4ServiceAccountEmail && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #bfdbfe", borderRadius: "var(--r-sm)", padding: "8px 12px", marginTop: 12 }}>
+                <code style={{ flex: 1, fontSize: 12, fontFamily: "monospace", color: "#1e3a8a", wordBreak: "break-all", userSelect: "all" as const }}>
+                  {ga4ServiceAccountEmail}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(ga4ServiceAccountEmail);
+                    setGa4EmailCopied(true);
+                    setTimeout(() => setGa4EmailCopied(false), 2000);
+                  }}
+                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 500, background: "#dbeafe", border: "1px solid #bfdbfe", borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: "#1e40af" }}
+                >
+                  {ga4EmailCopied ? "Copied ✓" : "Copy"}
+                </button>
+              </div>
             )}
           </div>
         </div>
