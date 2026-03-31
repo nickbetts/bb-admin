@@ -77,6 +77,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
 
   const [ga4Properties, setGa4Properties] = useState<GA4Property[]>([]);
   const [ga4ServiceAccountEmail, setGa4ServiceAccountEmail] = useState<string | null>(null);
+  const [ga4ServiceAccountEmailError, setGa4ServiceAccountEmailError] = useState(false);
   const [ga4EmailCopied, setGa4EmailCopied] = useState(false);
   const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
   const [semrushProjects, setSemrushProjects] = useState<SemrushProject[]>([]);
@@ -132,7 +133,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
     fetch("/api/ga4/service-account")
       .then((r) => r.json())
       .then((data) => { if (data.email) setGa4ServiceAccountEmail(data.email); })
-      .catch(() => { /* non-fatal */ });
+      .catch(() => setGa4ServiceAccountEmailError(true));
 
     fetch("/api/meta/accounts")
       .then((r) => r.json())
@@ -412,6 +413,11 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                   {ga4EmailCopied ? "Copied ✓" : "Copy"}
                 </button>
               </div>
+            )}
+            {ga4ServiceAccountEmailError && (
+              <p style={{ fontSize: 12, color: "#b45309", marginTop: 10, background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 6, padding: "6px 10px" }}>
+                Could not fetch service account email — verify <code>GA4_CLIENT_EMAIL</code> is set in environment variables.
+              </p>
             )}
           </div>
         </div>

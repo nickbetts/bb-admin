@@ -23,16 +23,18 @@ export async function POST(request: NextRequest) {
     if (!name || !sections) {
       return NextResponse.json({ error: "name and sections are required" }, { status: 400 });
     }
-    if (isDefault) {
-      await prisma.reportTemplate.updateMany({ where: { isDefault: true }, data: { isDefault: false } });
-    }
-    const template = await prisma.reportTemplate.create({
-      data: {
-        name,
-        description: description ?? null,
-        sections: JSON.stringify(sections),
-        isDefault: isDefault ?? false,
-      },
+    const template = await prisma.$transaction(async (tx) => {
+      if (isDefault) {
+        await tx.reportTemplate.updateMany({ where: { isDefault: true }, data: { isDefault: false } });
+      }
+      return tx.reportTemplate.create({
+        data: {
+          name,
+          description: description ?? null,
+          sections: JSON.stringify(sections),
+          isDefault: isDefault ?? false,
+        },
+      });
     });
     return NextResponse.json(template, { status: 201 });
   } catch (error) {

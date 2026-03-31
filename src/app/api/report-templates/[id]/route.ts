@@ -28,9 +28,6 @@ export async function PATCH(
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { id } = await params;
     const data = await request.json();
-    if (data.isDefault) {
-      await prisma.reportTemplate.updateMany({ where: { isDefault: true }, data: { isDefault: false } });
-    }
     const updateData: {
       name?: string;
       description?: string | null;
@@ -41,7 +38,12 @@ export async function PATCH(
     if (data.description !== undefined) updateData.description = data.description;
     if (data.sections !== undefined) updateData.sections = JSON.stringify(data.sections);
     if (data.isDefault !== undefined) updateData.isDefault = data.isDefault;
-    const template = await prisma.reportTemplate.update({ where: { id }, data: updateData });
+    const template = await prisma.$transaction(async (tx) => {
+      if (data.isDefault) {
+        await tx.reportTemplate.updateMany({ where: { isDefault: true }, data: { isDefault: false } });
+      }
+      return tx.reportTemplate.update({ where: { id }, data: updateData });
+    });
     return NextResponse.json(template);
   } catch (error) {
     console.error("Update template error:", error);

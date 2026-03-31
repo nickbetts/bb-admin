@@ -275,6 +275,16 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       while (container.querySelectorAll(".animate-spin").length > 0 && Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, 500));
       }
+      // If sections are still loading after the deadline, warn before continuing
+      if (container.querySelectorAll(".animate-spin").length > 0) {
+        const proceed = window.confirm(
+          "Some sections are still loading. The exported PDF may be incomplete.\n\nContinue anyway?"
+        );
+        if (!proceed) {
+          setExportingPdf(false);
+          return;
+        }
+      }
       await new Promise((r) => setTimeout(r, 1200));
 
       // ── 2. Scroll to top ──────────────────────────────────────────────────

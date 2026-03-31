@@ -325,12 +325,20 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
     return alerts;
   }, [campaignsEnriched, adSets, creatives, adSetAudiences]);
 
+  // Memoize creative summary — expensive string concatenation across potentially 500+ creatives
+  const creativeSummary = useMemo(
+    () => (creatives.length ? buildCreativeSummary(creatives, adSets) : undefined),
+    [creatives, adSets]
+  );
+
   // Fetch AI-generated recommendations for each alert
   useEffect(() => {
     setAlertAiRecs([]);
     if (!metaAlerts.length) return;
     setAlertAiLoading(true);
+    const controller = new AbortController();
     fetch("/api/ai/summary", {
+      signal: controller.signal,
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -344,8 +352,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
     })
       .then(r => r.ok ? r.json() : null)
       .then(json => { if (json?.recommendations?.length) setAlertAiRecs(json.recommendations); })
-      .catch(() => {})
+      .catch((e) => { if (!(e instanceof Error && e.name === "AbortError")) console.error("Meta AI recs error", e); })
       .finally(() => setAlertAiLoading(false));
+    return () => controller.abort();
   }, [metaAlerts, clientId, startDate, endDate]);
 
   useEffect(() => {
@@ -990,12 +999,12 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
           landingPages={landingPages.length ? landingPages : undefined}
           clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
-          extraContext={creatives.length ? buildCreativeSummary(creatives, adSets) : undefined}
+          extraContext={creativeSummary}
           crossPlatformContext={crossPlatformContext}
         />
       )}
 
-      {/* AI Insights */}
+      {/* AI Insights */}}
       {!hideAi && !loading && !error && overview && (
         <AiInsightsPanel
           sectionType="meta"
@@ -1020,7 +1029,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
           clientId={clientId}
           clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
-          extraContext={creatives.length ? buildCreativeSummary(creatives, adSets) : undefined}
+          extraContext={creativeSummary}
           crossPlatformContext={crossPlatformContext}
         />
       )}

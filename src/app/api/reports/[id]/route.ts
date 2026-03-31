@@ -46,6 +46,11 @@ export async function PATCH(
     const { id } = await params;
     const data = await request.json();
 
+    const VALID_STATUSES = ["draft", "published", "archived"];
+    if (data.status !== undefined && !VALID_STATUSES.includes(data.status)) {
+      return NextResponse.json({ error: "Invalid status value" }, { status: 400 });
+    }
+
     const report = await prisma.report.update({
       where: { id },
       data: {

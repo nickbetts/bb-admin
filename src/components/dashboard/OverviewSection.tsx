@@ -237,6 +237,7 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
       const result: PlatformData = {};
       const prevResult: PlatformData = {};
       const campaignList: CampaignHighlight[] = [];
+      const failedPlatforms: string[] = [];
 
       const fetches: Promise<void>[] = [];
 
@@ -270,6 +271,7 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
               if (prevJson?.overview) prevResult.googleads = prevJson.overview;
             } catch (e) {
               if (e instanceof Error && e.name === "AbortError") throw e;
+              failedPlatforms.push("Google Ads");
             }
           })()
         );
@@ -312,6 +314,7 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
               }
             } catch (e) {
               if (e instanceof Error && e.name === "AbortError") throw e;
+              failedPlatforms.push("Meta");
             }
           })()
         );
@@ -334,6 +337,7 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
               if (prevJson?.sessions != null) prevResult.ga4 = prevJson;
             } catch (e) {
               if (e instanceof Error && e.name === "AbortError") throw e;
+              failedPlatforms.push("GA4");
             }
           })()
         );
@@ -350,6 +354,7 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
               if (json.organicTraffic != null) result.seo = json;
             } catch (e) {
               if (e instanceof Error && e.name === "AbortError") throw e;
+              failedPlatforms.push("SEMrush");
             }
           })()
         );
@@ -372,6 +377,7 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
               if (prevJson?.clicks != null) prevResult.searchconsole = prevJson;
             } catch (e) {
               if (e instanceof Error && e.name === "AbortError") throw e;
+              failedPlatforms.push("Search Console");
             }
           })()
         );
@@ -381,7 +387,10 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
         await Promise.all(fetches);
       } catch (e) {
         if (e instanceof Error && e.name === "AbortError") return;
-        setError("Failed to load some platform data");
+      }
+
+      if (failedPlatforms.length > 0) {
+        setError(`Could not load data for: ${failedPlatforms.join(", ")}`);
       }
 
       setData(result);

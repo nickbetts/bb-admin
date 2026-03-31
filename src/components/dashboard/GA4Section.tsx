@@ -254,8 +254,15 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           : getPreviousPeriod(startDate, endDate);
         const prevBase = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
         // Year-ago: shift start/end dates back by 1 year
-        const yoyStart = new Date(startDate); yoyStart.setFullYear(yoyStart.getFullYear() - 1);
-        const yoyEnd = new Date(endDate); yoyEnd.setFullYear(yoyEnd.getFullYear() - 1);
+        // Clamp day if year subtraction produces an invalid date (e.g. Feb 29 → Feb 28 on non-leap years)
+        const yoyStart = new Date(startDate);
+        const origStartMonth = yoyStart.getMonth();
+        yoyStart.setFullYear(yoyStart.getFullYear() - 1);
+        if (yoyStart.getMonth() !== origStartMonth) yoyStart.setDate(0);
+        const yoyEnd = new Date(endDate);
+        const origEndMonth = yoyEnd.getMonth();
+        yoyEnd.setFullYear(yoyEnd.getFullYear() - 1);
+        if (yoyEnd.getMonth() !== origEndMonth) yoyEnd.setDate(0);
         const yoyBase = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${yoyStart.toISOString().split("T")[0]}&endDate=${yoyEnd.toISOString().split("T")[0]}`;
         const [ovRes, dailyRes, srcRes, pagesRes, prevOvRes, prevPagesRes, geoRes, devRes, organicRes, yoyRes, nvrRes, demoRes, cvEvRes, cvChRes, aiRefRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),

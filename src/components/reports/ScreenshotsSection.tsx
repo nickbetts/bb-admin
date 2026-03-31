@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Trash2, Image } from "lucide-react";
 
 interface Screenshot {
@@ -12,10 +13,22 @@ interface Screenshot {
 interface ScreenshotsSectionProps {
   screenshots: Screenshot[];
   title: string;
-  onDelete: (screenshotId: string) => void;
+  onDelete: (screenshotId: string) => Promise<void>;
 }
 
 export function ScreenshotsSection({ screenshots, title, onDelete }: ScreenshotsSectionProps) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDeleteClick = async (id: string) => {
+    if (deletingId) return;
+    setDeletingId(id);
+    try {
+      await onDelete(id);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (screenshots.length === 0) {
     return (
       <div className="card" style={{ marginBottom: 36 }}>
@@ -63,27 +76,32 @@ export function ScreenshotsSection({ screenshots, title, onDelete }: Screenshots
                 </div>
               )}
               <button
-                onClick={() => onDelete(screenshot.id)}
+                onClick={() => handleDeleteClick(screenshot.id)}
+                disabled={!!deletingId}
                 className="print:hidden"
                 style={{
                   position: "absolute",
                   top: 8,
                   right: 8,
-                  background: "rgba(239,68,68,0.85)",
+                  background: deletingId === screenshot.id ? "rgba(239,68,68,0.6)" : "rgba(239,68,68,0.85)",
                   color: "#fff",
                   border: "none",
                   borderRadius: "var(--r-sm)",
                   padding: 6,
-                  cursor: "pointer",
+                  cursor: deletingId ? "not-allowed" : "pointer",
                   display: "flex",
                   opacity: 0,
                   transition: "opacity 0.15s",
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.opacity = "0"; }}
-                title="Delete screenshot"
+                title={deletingId === screenshot.id ? "Deleting…" : "Delete screenshot"}
               >
-                <Trash2 size={14} />
+                {deletingId === screenshot.id ? (
+                  <span className="animate-spin" style={{ display: "inline-block", fontSize: 14, lineHeight: 1 }}>↻</span>
+                ) : (
+                  <Trash2 size={14} />
+                )}
               </button>
             </div>
           ))}

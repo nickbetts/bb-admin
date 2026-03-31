@@ -46,18 +46,25 @@ export async function POST(
     const filename = `uploads/${id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
     const blob = await put(filename, file, { access: "public" });
 
-    // Get next order index
-    const count = await prisma.screenshot.count({ where: { reportId: id } });
+    // Use timestamp as orderIndex — avoids collision when two uploads arrive concurrently
+    const orderIndex = Date.now();
 
-    const screenshot = await prisma.screenshot.create({
-      data: {
-        reportId: id,
-        filename: blob.pathname,
-        url: blob.url,
-        caption,
-        orderIndex: count,
-      },
-    });
+    let screenshot;
+    try {
+      screenshot = await prisma.screenshot.create({
+        data: {
+          reportId: id,
+          filename: blob.pathname,
+          url: blob.url,
+          caption,
+          orderIndex,
+        },
+      });
+    } catch (dbError) {
+      // DB write failed — remove the uploaded blob so it doesn't become orphaned storage
+      try { await del(blob.url); } catch { /* ignore blob cleanup errors */ }
+      throw dbError;
+    }
 
     return NextResponse.json(screenshot, { status: 201 });
   } catch (error) {

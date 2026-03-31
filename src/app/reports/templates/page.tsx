@@ -44,6 +44,7 @@ export default function ReportTemplatesPage() {
   const [form, setForm] = useState<TemplateForm>(defaultForm());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -115,12 +116,17 @@ export default function ReportTemplatesPage() {
   };
 
   const handleSetDefault = async (id: string) => {
-    await fetch(`/api/report-templates/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isDefault: true }),
-    });
-    await load();
+    setSettingDefaultId(id);
+    try {
+      await fetch(`/api/report-templates/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isDefault: true }),
+      });
+      await load();
+    } finally {
+      setSettingDefaultId(null);
+    }
   };
 
   const isEditing = creating || !!editingId;
@@ -255,7 +261,12 @@ export default function ReportTemplatesPage() {
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   {!template.isDefault && (
-                    <button onClick={() => handleSetDefault(template.id)} className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition" title="Set as default">
+                    <button
+                      onClick={() => handleSetDefault(template.id)}
+                      disabled={settingDefaultId !== null}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition disabled:opacity-40 disabled:cursor-wait"
+                      title={settingDefaultId === template.id ? "Setting as default…" : "Set as default"}
+                    >
                       <Star className="h-4 w-4" />
                     </button>
                   )}

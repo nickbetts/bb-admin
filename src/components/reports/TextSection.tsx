@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { FileText } from "lucide-react";
 import { TEXT_SECTION_LABELS, type TextSectionType } from "@/lib/report-blocks";
 
@@ -15,21 +15,39 @@ interface TextSectionProps {
 export function TextSection({ sectionId, reportId, sectionType, title, contentText: initialText }: TextSectionProps) {
   const [text, setText] = useState(initialText ?? "");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks the sequence number of the latest persist call so stale responses are ignored
+  const requestSeqRef = useRef(0);
 
   const label = TEXT_SECTION_LABELS[sectionType as TextSectionType] ?? title;
 
+  // Clean up pending save timer on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, []);
+
   const persist = useCallback(
     async (value: string) => {
+      const seq = ++requestSeqRef.current;
       setSaving(true);
+      setSaveError(false);
       try {
-        await fetch(`/api/reports/${reportId}/sections`, {
+        const res = await fetch(`/api/reports/${reportId}/sections`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sectionId, contentText: value }),
         });
+        // Ignore response if a newer request has already been dispatched
+        if (seq === requestSeqRef.current && !res.ok) {
+          setSaveError(true);
+        }
+      } catch {
+        if (seq === requestSeqRef.current) setSaveError(true);
       } finally {
-        setSaving(false);
+        if (seq === requestSeqRef.current) setSaving(false);
       }
     },
     [reportId, sectionId],
@@ -38,6 +56,7 @@ export function TextSection({ sectionId, reportId, sectionType, title, contentTe
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setText(value);
+    setSaveError(false);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => persist(value), 1000);
   };
@@ -56,6 +75,9 @@ export function TextSection({ sectionId, reportId, sectionType, title, contentTe
         </div>
         {saving && (
           <span style={{ fontSize: 11, color: "var(--text-4)", fontStyle: "italic" }}>Saving…</span>
+        )}
+        {saveError && !saving && (
+          <span style={{ fontSize: 11, color: "#ef4444", fontStyle: "italic" }}>Save failed — check your connection</span>
         )}
       </div>
 

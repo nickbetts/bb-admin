@@ -120,10 +120,11 @@ export function parsePeriodToDateRange(period: string): { startDate: string; end
     };
   }
 
-  // Monthly: "March 2025", "January 2026", etc.
+  // Monthly: "March 2025", "January 2026", etc. (case-insensitive)
   const monthMatch = period.match(/^(\w+)\s+(\d{4})$/);
   if (monthMatch) {
-    const monthIndex = MONTH_NAMES.indexOf(monthMatch[1]);
+    const normalised = monthMatch[1].charAt(0).toUpperCase() + monthMatch[1].slice(1).toLowerCase();
+    const monthIndex = MONTH_NAMES.indexOf(normalised);
     const year = parseInt(monthMatch[2]);
     if (monthIndex !== -1) {
       const start = new Date(year, monthIndex, 1);
