@@ -10,7 +10,6 @@ import {
   formatDateDisplay,
   getPreviousPeriod,
   pctChange,
-  computeHealthScore,
 } from "@/lib/utils";
 import {
   DollarSign,
@@ -545,6 +544,8 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
   // ─── Channel efficiency rows ──────────────────────────────────────────
 
   const channelRows = useMemo(() => {
+    const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+
     const rows: { platform: string; platformKey: string; investment: number; traffic: number; conversions: number; revenue: number; efficiency: number; prevEfficiency: number | null; healthScore: number }[] = [];
 
     if (data.googleads) {
@@ -553,8 +554,32 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
       const roas = spend > 0 ? g.conversionsValue / spend : 0;
       const prevG = prevData.googleads;
       const prevRoas = prevG && micros(prevG.costMicros) > 0 ? prevG.conversionsValue / micros(prevG.costMicros) : null;
-      const alerts = crossAlerts.filter(a => a.platform === "Google Ads");
-      rows.push({ platform: "Google Ads", platformKey: "googleads", investment: spend, traffic: g.clicks, conversions: g.conversions, revenue: g.conversionsValue, efficiency: roas, prevEfficiency: prevRoas, healthScore: computeHealthScore(alerts) });
+
+      let health = 65;
+      if (spend > 0) {
+        // ROAS
+        if (roas >= 5) health += 30;
+        else if (roas >= 4) health += 24;
+        else if (roas >= 3) health += 16;
+        else if (roas >= 2) health += 8;
+        else if (roas >= 1.5) health += 2;
+        else if (roas >= 1.0) health -= 5;
+        else health -= 20; // spending more than earning
+        // Conversion trend
+        if (prevG && prevG.conversions > 0) {
+          const convTrend = pctChange(g.conversions, prevG.conversions) ?? 0;
+          if (convTrend >= 15) health += 10;
+          else if (convTrend >= 0) health += 4;
+          else if (convTrend >= -15) health -= 5;
+          else if (convTrend >= -30) health -= 12;
+          else health -= 18;
+        }
+        // CTR signal
+        const ctr = g.impressions > 0 ? g.clicks / g.impressions : 0;
+        if (ctr >= 0.05) health += 5;
+        else if (ctr < 0.01 && g.impressions > 1000) health -= 5;
+      }
+      rows.push({ platform: "Google Ads", platformKey: "googleads", investment: spend, traffic: g.clicks, conversions: g.conversions, revenue: g.conversionsValue, efficiency: roas, prevEfficiency: prevRoas, healthScore: clamp(health) });
     }
 
     if (data.meta) {
@@ -562,14 +587,57 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
       const roas = m.avgRoas;
       const prevM = prevData.meta;
       const prevRoas = prevM ? prevM.avgRoas : null;
-      const alerts = crossAlerts.filter(a => a.platform === "Meta");
-      rows.push({ platform: "Meta Ads", platformKey: "meta", investment: m.totalSpend, traffic: m.totalClicks, conversions: m.totalConversions, revenue: m.totalConversionValue, efficiency: roas, prevEfficiency: prevRoas, healthScore: computeHealthScore(alerts) });
+
+      let health = 65;
+      if (m.totalSpend > 0) {
+        // ROAS
+        if (roas >= 5) health += 30;
+        else if (roas >= 4) health += 24;
+        else if (roas >= 3) health += 16;
+        else if (roas >= 2) health += 8;
+        else if (roas >= 1.5) health += 2;
+        else if (roas >= 1.0) health -= 5;
+        else health -= 20;
+        // Conversion trend
+        if (prevM && prevM.totalConversions > 0) {
+          const convTrend = pctChange(m.totalConversions, prevM.totalConversions) ?? 0;
+          if (convTrend >= 15) health += 10;
+          else if (convTrend >= 0) health += 4;
+          else if (convTrend >= -15) health -= 5;
+          else if (convTrend >= -30) health -= 12;
+          else health -= 18;
+        }
+        // CTR signal
+        if (m.avgCtr >= 0.02) health += 5;
+        else if (m.avgCtr < 0.005) health -= 5;
+      }
+      rows.push({ platform: "Meta Ads", platformKey: "meta", investment: m.totalSpend, traffic: m.totalClicks, conversions: m.totalConversions, revenue: m.totalConversionValue, efficiency: roas, prevEfficiency: prevRoas, healthScore: clamp(health) });
     }
 
     if (data.ga4) {
       const g = data.ga4;
-      const alerts = crossAlerts.filter(a => a.platform === "GA4");
-      rows.push({ platform: "Web Analytics", platformKey: "ga4", investment: 0, traffic: g.sessions, conversions: Math.round(g.sessions * g.conversionRate / 100), revenue: 0, efficiency: g.conversionRate, prevEfficiency: prevData.ga4 ? prevData.ga4.conversionRate : null, healthScore: computeHealthScore(alerts) });
+      const prevG4 = prevData.ga4;
+
+      let health = 65;
+      // Bounce rate (lower = better; 0–100%)
+      if (g.bounceRate < 25) health += 20;
+      else if (g.bounceRate < 45) health += 12;
+      else if (g.bounceRate < 65) health += 3;
+      else if (g.bounceRate > 80) health -= 15;
+      else health -= 5;
+      // Conversion rate
+      if (g.conversionRate >= 5) health += 15;
+      else if (g.conversionRate >= 3) health += 9;
+      else if (g.conversionRate >= 1) health += 3;
+      else if (g.conversionRate < 0.5) health -= 8;
+      // Session trend
+      if (prevG4 && prevG4.sessions > 0) {
+        const sessTrend = pctChange(g.sessions, prevG4.sessions) ?? 0;
+        if (sessTrend >= 20) health += 5;
+        else if (sessTrend <= -25) health -= 10;
+        else if (sessTrend <= -10) health -= 4;
+      }
+      rows.push({ platform: "Web Analytics", platformKey: "ga4", investment: 0, traffic: g.sessions, conversions: Math.round(g.sessions * g.conversionRate / 100), revenue: 0, efficiency: g.conversionRate, prevEfficiency: prevG4 ? prevG4.conversionRate : null, healthScore: clamp(health) });
     }
 
     if (data.seo) {
@@ -579,12 +647,32 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
 
     if (data.searchconsole) {
       const sc = data.searchconsole;
-      const alerts = crossAlerts.filter(a => a.platform === "Search Console");
-      rows.push({ platform: "Search Console", platformKey: "searchconsole", investment: 0, traffic: sc.clicks, conversions: 0, revenue: 0, efficiency: sc.ctr * 100, prevEfficiency: prevData.searchconsole ? prevData.searchconsole.ctr * 100 : null, healthScore: computeHealthScore(alerts) });
+      const prevSC = prevData.searchconsole;
+
+      let health = 65;
+      // Average position (lower = better)
+      if (sc.position <= 3) health += 28;
+      else if (sc.position <= 5) health += 22;
+      else if (sc.position <= 10) health += 14;
+      else if (sc.position <= 20) health += 4;
+      else health -= 5;
+      // CTR (expected CTR declines with position)
+      if (sc.ctr >= 0.08) health += 10;
+      else if (sc.ctr >= 0.04) health += 5;
+      else if (sc.ctr >= 0.02) health += 0;
+      else if (sc.ctr < 0.01) health -= 5;
+      // Click trend
+      if (prevSC && prevSC.clicks > 0) {
+        const clickTrend = pctChange(sc.clicks, prevSC.clicks) ?? 0;
+        if (clickTrend >= 10) health += 5;
+        else if (clickTrend <= -25) health -= 8;
+        else if (clickTrend <= -10) health -= 3;
+      }
+      rows.push({ platform: "Search Console", platformKey: "searchconsole", investment: 0, traffic: sc.clicks, conversions: 0, revenue: 0, efficiency: sc.ctr * 100, prevEfficiency: prevSC ? prevSC.ctr * 100 : null, healthScore: clamp(health) });
     }
 
     return rows;
-  }, [data, prevData, crossAlerts]);
+  }, [data, prevData]);
 
   // ─── AI generation ─────────────────────────────────────────────────────────
 
