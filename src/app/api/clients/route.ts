@@ -31,7 +31,20 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json();
-    const { name, website, semrushDomain, ga4PropertyId, metaAccountId, googleAdsCustomerId } = data;
+    const {
+      name,
+      website,
+      semrushDomain,
+      semrushProjectId,
+      ga4PropertyId,
+      ga4PropertyName,
+      metaAccountId,
+      metaAccountName,
+      googleAdsCustomerId,
+      googleAdsAccountName,
+      searchConsoleSiteUrl,
+      aiReportInstructions,
+    } = data;
 
     if (!name) {
       return NextResponse.json({ error: "Client name is required" }, { status: 400 });
@@ -46,11 +59,17 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         slug,
-        website,
-        semrushDomain,
-        ga4PropertyId,
-        metaAccountId,
-        googleAdsCustomerId,
+        website: website || null,
+        semrushDomain: semrushDomain || null,
+        semrushProjectId: semrushProjectId ?? null,
+        ga4PropertyId: ga4PropertyId || null,
+        ga4PropertyName: ga4PropertyName || null,
+        metaAccountId: metaAccountId || null,
+        metaAccountName: metaAccountName || null,
+        googleAdsCustomerId: googleAdsCustomerId || null,
+        googleAdsAccountName: googleAdsAccountName || null,
+        searchConsoleSiteUrl: searchConsoleSiteUrl || null,
+        aiReportInstructions: aiReportInstructions || null,
       },
     });
 

@@ -736,11 +736,20 @@ body {
   display: none !important;
 }
 
-/* html2pdf respects these CSS break rules (mode:['css','legacy']) */
+/* html2pdf respects break-inside: avoid (mode: ['css']).
+   The JS spacer algorithm handles top-level block avoidance;
+   these rules catch inline elements and nested tables. */
 .card,
 .metric-card,
+.stat-card,
 table,
 [data-pdf-avoid] {
   break-inside: avoid;
   page-break-inside: avoid;
+}
+
+/* Spacers injected by the JS page-break algorithm */
+[data-pdf-spacer] {
+  display: block;
+  pointer-events: none;
 }

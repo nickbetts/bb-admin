@@ -288,6 +288,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     const pdfLinkEls: HTMLLinkElement[] = [];
     const pdfOriginalLinkMedia: string[] = [];
     const pdfInjectedStyles: HTMLStyleElement[] = [];
+    const pdfSpacers: HTMLElement[] = [];         // page-break spacers injected pre-capture
+    let pdfSavedWidth = "";                       // restored in finally
+    let pdfSavedMaxWidth = "";
 
     // html2canvas v1.4.1 can't parse oklch()/lab()/oklab()/lch() (Tailwind v4).
     // Use the browser's canvas API to resolve them to rgb() before capture.
@@ -336,8 +339,54 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       // The .pdf-exporting class (defined in globals.css) hides buttons, inputs,
       // and print:hidden elements from the canvas without removing them from the DOM.
       container.classList.add("pdf-exporting");
-      // Flush styles before html2pdf clones the DOM
+
+      // ── 3b. Freeze container to a stable px width ────────────────────────────
+      // Converts "flex: 1" to a concrete pixel width so html2canvas sees a stable
+      // layout regardless of sidebar or viewport size. Also gives us the width we
+      // need to calculate A4 page boundaries below.
+      const exportWidth = container.offsetWidth;
+      pdfSavedWidth = container.style.width;
+      pdfSavedMaxWidth = container.style.maxWidth;
+      container.style.width = `${exportWidth}px`;
+      container.style.maxWidth = `${exportWidth}px`;
+      // Flush styles so the frozen width is applied before we snapshot positions
       void container.offsetHeight;
+
+      // ── 3c. Inject spacers to prevent direct-child blocks spanning page breaks ─
+      // Snapshot ALL element positions BEFORE inserting any spacers (which would
+      // shift subsequent elements). Then apply top-to-bottom, tracking the
+      // cumulative height added so each subsequent element's adjusted position
+      // accounts for spacers already inserted above it.
+      const A4_PAGE_H = exportWidth * (297 / 210); // page height in CSS px
+      const cRect = container.getBoundingClientRect();
+      const childSnapshot = Array.from(
+        container.children as HTMLCollectionOf<HTMLElement>
+      ).map((el) => {
+        const r = el.getBoundingClientRect();
+        return { el, top: r.top - cRect.top, height: r.height };
+      });
+      childSnapshot.sort((a, b) => a.top - b.top);
+      let cumulative = 0;
+      childSnapshot.forEach(({ el, top, height }) => {
+        const adjTop    = top + cumulative;
+        const adjBottom = adjTop + height;
+        const firstPage = Math.floor(adjTop / A4_PAGE_H);
+        const lastPage  = Math.floor((adjBottom - 1) / A4_PAGE_H);
+        if (lastPage > firstPage) {
+          // Block straddles a page boundary → push it to the start of the next page
+          const spacerH = Math.ceil((firstPage + 1) * A4_PAGE_H - adjTop);
+          if (spacerH > 0 && spacerH < A4_PAGE_H) {
+            const spacer = document.createElement("div");
+            spacer.style.height = `${spacerH}px`;
+            spacer.dataset.pdfSpacer = "1";
+            container.insertBefore(spacer, el);
+            pdfSpacers.push(spacer);
+            cumulative += spacerH;
+          }
+        }
+      });
+      // Reflow after spacer insertion before we capture styles
+      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
       // ── 4. Resolve Tailwind v4 color functions for html2canvas compatibility ─
       // Patch inline <style> elements (critical CSS / Next.js dev mode)
@@ -396,6 +445,12 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             useCORS: true,
             backgroundColor: "#ffffff",
             logging: false,
+            // Match the frozen container width so html2canvas uses a consistent
+            // virtual viewport — prevents responsive CSS from reflowing at a
+            // different breakpoint during capture vs. what the user sees.
+            windowWidth: exportWidth,
+            scrollX: 0,
+            scrollY: 0,
             // Safety-net: fix any remaining color functions in the cloned <style> elements
             onclone: (clonedDoc: Document) => {
               clonedDoc.querySelectorAll<HTMLStyleElement>("style").forEach((s) => {
@@ -412,10 +467,10 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
           pagebreak: {
-            // 'css'    — respects `page-break-inside: avoid` in globals.css
-            // 'legacy' — scans elements and inserts breaks before straddlers
-            mode: ["css", "legacy"],
-            avoid: [".card", ".metric-card", "table", "[data-pdf-avoid]"],
+            // Only 'css' mode — page-break avoidance is handled by the spacer
+            // injection above (Steps 3b/3c), which is far more reliable than
+            // html2pdf's legacy scanner.
+            mode: ["css"],
           },
         })
         .from(container)
@@ -426,6 +481,11 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     } finally {
       // Always restore the container — even if an error was thrown mid-export
       container.classList.remove("pdf-exporting");
+      // Remove page-break spacers injected in step 3c
+      pdfSpacers.forEach((s) => s.remove());
+      // Restore frozen container width (step 3b)
+      container.style.width = pdfSavedWidth;
+      container.style.maxWidth = pdfSavedMaxWidth;
       setExportingPdf(false);
       // Restore all stylesheets that were patched for color-function compatibility
       pdfStyleEls.forEach((s, i) => { s.textContent = pdfOriginalStyleTexts[i] ?? ""; });
