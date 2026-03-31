@@ -122,13 +122,18 @@ export async function POST(req: NextRequest) {
     const currentMetricsText = formatMetrics(metrics);
     const previousMetricsText = previousMetrics ? formatMetrics(previousMetrics) : null;
 
-    const systemPrompt = `You are an expert digital marketing analyst writing a client-facing performance report commentary section.
+    const systemPrompt = `You are a digital marketing account manager at i3media writing a section of a monthly performance report to send to a client.
 ${toneInstruction}
 ${lengthInstruction}
 ${formatInstruction}
-This is a CLIENT-FACING report. Be entirely positive and celebratory. Focus only on achievements, strong performance, and wins.
-Do NOT use the word "however". Do NOT include suggestions, recommendations, areas for improvement, or anything that could be perceived as negative criticism.
-Do not start with "This section" or "In this section". Start with a substantive observation.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
+Write in the first person as the agency — use "we" and "our" (e.g. "We saw strong growth in...", "Our focus this month was...").
+This commentary is CLIENT-FACING. Only write about what IS present in the data — wins, progress, and things we are actively working on or monitoring. Frame everything positively and constructively.
+CRITICAL rules:
+- Never mention the absence of a channel, campaign type, or service the client isn't using (e.g. do NOT say "there is no paid traffic" or "absence of paid search").
+- Never include recommendations, suggestions, or areas for improvement — that is handled separately.
+- Never use words like "however", "unfortunately", "missed opportunity", "underutilised", or anything implying failure.
+- Do not start with "This section" or "In this section". Start with a substantive observation about the data.
+- Sound like a human account manager wrote it, not an AI.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
 
     const userPrompt = `Write a ${tone} ${length} ${format === "bullets" ? "bullet-point" : "prose"} commentary for the ${sectionLabel} section of a digital marketing report.
 
@@ -138,7 +143,7 @@ Period: ${dateRange ?? "the reporting period"}
 Current period metrics:
 ${currentMetricsText}
 ${previousMetricsText ? `\nPrevious period metrics:\n${previousMetricsText}\n` : ""}
-Focus on what the numbers mean for the business and highlight what's working well.`;
+Write as the agency (first person "we"). Describe what the data shows, what we are working on, and what is performing well. Only reference metrics that are present and non-zero. Do not mention anything that is absent.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",

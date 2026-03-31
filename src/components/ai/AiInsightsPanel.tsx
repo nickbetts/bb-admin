@@ -130,7 +130,35 @@ export function AiInsightsPanel({
     setLoading(true);
     setError(null);
     try {
-      // Optionally fetch historical snapshots for trend context
+      // Compact mode = report commentary → use the client-facing endpoint
+      if (compact) {
+        const res = await fetch("/api/ai/report-commentary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sectionType,
+            metrics,
+            previousMetrics,
+            clientName,
+            clientId,
+            dateRange,
+            tone: tone ?? undefined,
+            length: length ?? undefined,
+            format: format ?? undefined,
+          }),
+        });
+        const data = await res.json() as { commentary?: string; error?: string };
+        if (!res.ok) {
+          setError(data.error ?? "Failed to generate commentary");
+          return;
+        }
+        if (onInsightsGenerated && data.commentary) {
+          onInsightsGenerated(data.commentary);
+        }
+        return;
+      }
+
+      // Full dashboard mode → internal analytical summary
       let historicalSnapshots: unknown[] = [];
       if (clientId && sectionType) {
         try {
