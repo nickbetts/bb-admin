@@ -108,7 +108,7 @@ export function TextSection({ sectionId, reportId, sectionType, title, contentTe
         {/* Read-only render when there is text (shown in PDF/print view) */}
         {text && (
           <div
-            className="print:block"
+            className="print:block pdf-text-view"
             style={{
               display: "none",
               background: "var(--accent-bg)",

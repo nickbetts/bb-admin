@@ -722,6 +722,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     const pdfOriginalLinkMedia: string[] = [];
     const pdfInjectedStyles: HTMLStyleElement[] = [];
     const pdfSpacers: HTMLElement[] = [];
+    const pdfResolvedColorEls: Array<{ el: HTMLElement; cssKey: string }> = [];
     let pdfSavedWidth = "";
     let pdfSavedMaxWidth = "";
 
@@ -771,6 +772,36 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       container.style.width = `${exportWidth}px`;
       container.style.maxWidth = `${exportWidth}px`;
       void container.offsetHeight;
+
+      // ── Inline computed colors to resolve CSS variables + oklch ────────────
+      // html2canvas calls getComputedStyle() internally, but Chrome 111+ returns
+      // oklch() values for oklch-defined colors, which html2canvas cannot parse.
+      // We pre-resolve every color property to rgb() so the canvas captures it.
+      {
+        const COLOR_PROPS: [string, string][] = [
+          ["backgroundColor", "background-color"],
+          ["color", "color"],
+          ["borderTopColor", "border-top-color"],
+          ["borderRightColor", "border-right-color"],
+          ["borderBottomColor", "border-bottom-color"],
+          ["borderLeftColor", "border-left-color"],
+        ];
+        const walkForColors = (el: HTMLElement) => {
+          const cs = window.getComputedStyle(el);
+          COLOR_PROPS.forEach(([, cssKey]) => {
+            if (!el.style.getPropertyValue(cssKey)) {
+              const val = cs.getPropertyValue(cssKey);
+              if (val) {
+                el.style.setProperty(cssKey, fixColorFns(val));
+                pdfResolvedColorEls.push({ el, cssKey });
+              }
+            }
+          });
+          Array.from(el.children).forEach((c) => walkForColors(c as HTMLElement));
+        };
+        walkForColors(container);
+      }
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
 
       const A4_PAGE_H = exportWidth * (297 / 210);
       const cRect = container.getBoundingClientRect();
@@ -874,6 +905,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     } finally {
       container.classList.remove("pdf-exporting");
       pdfSpacers.forEach((s) => s.remove());
+      pdfResolvedColorEls.forEach(({ el, cssKey }) => el.style.removeProperty(cssKey));
       container.style.width = pdfSavedWidth;
       container.style.maxWidth = pdfSavedMaxWidth;
       setExportingPdf(false);

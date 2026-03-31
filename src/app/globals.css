@@ -804,6 +804,11 @@ body {
   display: none !important;
 }
 
+/* Show the read-only text view that is normally hidden (edit mode shows textarea instead) */
+.pdf-exporting .pdf-text-view {
+  display: block !important;
+}
+
 /* html2pdf respects break-inside: avoid (mode: ['css']).
    The JS spacer algorithm handles top-level block avoidance;
    these rules catch inline elements and nested tables. */
