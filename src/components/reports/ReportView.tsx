@@ -278,7 +278,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sectionFileInputRef = useRef<HTMLInputElement>(null);
   const pendingSectionIdRef = useRef<string | null>(null);
-  const reportRef = useRef<HTMLDivElement>(null);
 
   // ── Autosave state ──────────────────────────────────────────────────────────
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -711,219 +710,32 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
   // ── PDF export ───────────────────────────────────────────────────────────────
   const handleExportPdf = useCallback(async () => {
-    if (!reportRef.current) return;
     setExportingPdf(true);
-
-    const container = reportRef.current;
-
-    const pdfStyleEls: HTMLStyleElement[] = [];
-    const pdfOriginalStyleTexts: string[] = [];
-    const pdfLinkEls: HTMLLinkElement[] = [];
-    const pdfOriginalLinkMedia: string[] = [];
-    const pdfInjectedStyles: HTMLStyleElement[] = [];
-    const pdfSpacers: HTMLElement[] = [];
-    const pdfResolvedColorEls: Array<{ el: HTMLElement; cssKey: string; original: string }> = [];
-    let pdfSavedWidth = "";
-    let pdfSavedMaxWidth = "";
-
-    const fixColorFns = (css: string): string =>
-      css.replace(
-        /\b(oklch|oklab|lab|lch)\s*\([^)]*\)/gi,
-        (match) => {
-          const tmp = document.createElement("canvas");
-          tmp.width = tmp.height = 1;
-          const ctx = tmp.getContext("2d");
-          if (!ctx) return match;
-          try { ctx.fillStyle = match; } catch { return match; }
-          ctx.fillRect(0, 0, 1, 1);
-          const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
-          return a === 255
-            ? `rgb(${r},${g},${b})`
-            : `rgba(${r},${g},${b},${+(a / 255).toFixed(3)})`;
-        }
-      );
-
     try {
-      const deadline = Date.now() + 30_000;
-      while (container.querySelectorAll(".animate-spin").length > 0 && Date.now() < deadline) {
-        await new Promise((r) => setTimeout(r, 500));
+      const res = await fetch(`/api/reports/${report.id}/pdf`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error ?? `PDF generation failed (${res.status})`);
       }
-      if (container.querySelectorAll(".animate-spin").length > 0) {
-        const proceed = window.confirm(
-          "Some sections are still loading. The exported PDF may be incomplete.\n\nContinue anyway?"
-        );
-        if (!proceed) {
-          setExportingPdf(false);
-          return;
-        }
-      }
-      await new Promise((r) => setTimeout(r, 1200));
-
-      window.scrollTo({ top: 0, behavior: "instant" });
-      const appMainEl = document.querySelector<HTMLElement>(".app-main");
-      if (appMainEl) appMainEl.scrollTop = 0;
-      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-
-      container.classList.add("pdf-exporting");
-
-      const exportWidth = container.offsetWidth;
-      pdfSavedWidth = container.style.width;
-      pdfSavedMaxWidth = container.style.maxWidth;
-      container.style.width = `${exportWidth}px`;
-      container.style.maxWidth = `${exportWidth}px`;
-      void container.offsetHeight;
-
-      // ── Inline computed colors to resolve CSS variables + oklch ────────────
-      // html2canvas cannot parse CSS custom properties or modern color spaces.
-      // We read each element's getComputedStyle (browser-resolved to rgb/oklch),
-      // convert any oklch → rgb via fixColorFns, and set as inline style so the
-      // html2canvas clone inherits concrete rgb() values instead of var() refs.
-      {
-        const COLOR_PROPS: [string, string][] = [
-          ["backgroundColor", "background-color"],
-          ["color", "color"],
-          ["borderTopColor", "border-top-color"],
-          ["borderRightColor", "border-right-color"],
-          ["borderBottomColor", "border-bottom-color"],
-          ["borderLeftColor", "border-left-color"],
-          ["boxShadow", "box-shadow"],
-        ];
-        const walkForColors = (el: HTMLElement) => {
-          const cs = window.getComputedStyle(el);
-          COLOR_PROPS.forEach(([, cssKey]) => {
-            const val = cs.getPropertyValue(cssKey);
-            if (val && val !== "none" && val !== "rgba(0, 0, 0, 0)") {
-              const original = el.style.getPropertyValue(cssKey);
-              el.style.setProperty(cssKey, fixColorFns(val));
-              pdfResolvedColorEls.push({ el, cssKey, original });
-            }
-          });
-          Array.from(el.children).forEach((c) => walkForColors(c as HTMLElement));
-        };
-        walkForColors(container);
-      }
-      await new Promise<void>((r) => requestAnimationFrame(() => r()));
-
-      const A4_PAGE_H = exportWidth * (297 / 210);
-      const cRect = container.getBoundingClientRect();
-      const childSnapshot = Array.from(
-        container.children as HTMLCollectionOf<HTMLElement>
-      ).map((el) => {
-        const r = el.getBoundingClientRect();
-        return { el, top: r.top - cRect.top, height: r.height };
-      });
-      childSnapshot.sort((a, b) => a.top - b.top);
-      let cumulative = 0;
-      childSnapshot.forEach(({ el, top, height }) => {
-        const adjTop    = top + cumulative;
-        const adjBottom = adjTop + height;
-        const firstPage = Math.floor(adjTop / A4_PAGE_H);
-        const lastPage  = Math.floor((adjBottom - 1) / A4_PAGE_H);
-        if (lastPage > firstPage) {
-          const spacerH = Math.ceil((firstPage + 1) * A4_PAGE_H - adjTop);
-          if (spacerH > 0 && spacerH < A4_PAGE_H) {
-            const spacer = document.createElement("div");
-            spacer.style.height = `${spacerH}px`;
-            spacer.dataset.pdfSpacer = "1";
-            container.insertBefore(spacer, el);
-            pdfSpacers.push(spacer);
-            cumulative += spacerH;
-          }
-        }
-      });
-      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-
-      pdfStyleEls.push(...Array.from(document.querySelectorAll<HTMLStyleElement>("style")));
-      pdfStyleEls.forEach((s) => {
-        pdfOriginalStyleTexts.push(s.textContent ?? "");
-        s.textContent = fixColorFns(s.textContent ?? "");
-      });
-      pdfLinkEls.push(
-        ...Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
-      );
-      pdfLinkEls.forEach((link) => pdfOriginalLinkMedia.push(link.getAttribute("media") ?? ""));
-      await Promise.all(
-        pdfLinkEls.map(async (link, i) => {
-          try {
-            const res = await fetch(link.href, { cache: "force-cache" });
-            if (!res.ok) return;
-            const style = document.createElement("style");
-            style.textContent = fixColorFns(await res.text());
-            document.head.appendChild(style);
-            pdfInjectedStyles.push(style);
-            link.setAttribute("media", "not all");
-          } catch {
-            pdfOriginalLinkMedia[i] = link.getAttribute("media") ?? "";
-          }
-        })
-      );
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const html2pdfMod = await import("html2pdf.js") as any;
-      const html2pdf = (html2pdfMod.default ?? html2pdfMod) as (el?: HTMLElement) => {
-        set(opts: Record<string, unknown>): unknown;
-        from(el: HTMLElement): { save(): Promise<void> };
-      };
-
-      const filename = `${report.client.name}-${report.period}-report.pdf`
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${report.client.name}-${report.period}-report.pdf`
         .toLowerCase()
-        .replace(/\s+/g, "-");
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (html2pdf() as any)
-        .set({
-          margin: 0,
-          filename,
-          image: { type: "jpeg", quality: 0.97 },
-          html2canvas: {
-            scale: 3,
-            useCORS: true,
-            backgroundColor: "#ffffff",
-            logging: false,
-            windowWidth: exportWidth,
-            scrollX: 0,
-            scrollY: 0,
-            onclone: (clonedDoc: Document) => {
-              clonedDoc.querySelectorAll<HTMLStyleElement>("style").forEach((s) => {
-                if (s.textContent) s.textContent = fixColorFns(s.textContent);
-              });
-            },
-            ignoreElements: (el: HTMLElement) =>
-              el.tagName === "BUTTON" ||
-              el.tagName === "SELECT" ||
-              el.tagName === "INPUT" ||
-              el.tagName === "TEXTAREA" ||
-              (el.getAttribute("class") ?? "").includes("print:hidden"),
-          },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-          pagebreak: { mode: ["css"] },
-        })
-        .from(container)
-        .save();
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9._-]/g, "");
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
     } catch (err) {
       console.error("PDF export error:", err);
       alert(`PDF export failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
-      container.classList.remove("pdf-exporting");
-      pdfSpacers.forEach((s) => s.remove());
-      pdfResolvedColorEls.forEach(({ el, cssKey, original }) => {
-        if (original) el.style.setProperty(cssKey, original);
-        else el.style.removeProperty(cssKey);
-      });
-      container.style.width = pdfSavedWidth;
-      container.style.maxWidth = pdfSavedMaxWidth;
       setExportingPdf(false);
-      pdfStyleEls.forEach((s, i) => { s.textContent = pdfOriginalStyleTexts[i] ?? ""; });
-      pdfLinkEls.forEach((l, i) => {
-        if (pdfOriginalLinkMedia[i]) {
-          l.setAttribute("media", pdfOriginalLinkMedia[i]);
-        } else {
-          l.removeAttribute("media");
-        }
-      });
-      pdfInjectedStyles.forEach((s) => s.remove());
     }
-  }, [report.client.name, report.period]);
+  }, [report.id, report.client.name, report.period]);
 
   const enabledSections = report.sections.filter((s) => s.enabled !== false);
 
@@ -1195,7 +1007,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       <div style={{ display: "flex", alignItems: "flex-start" }}>
 
         {/* Main content */}
-        <div ref={reportRef} style={{ flex: 1, minWidth: 0, padding: "36px 40px", maxWidth: 1000 }}>
+        <div style={{ flex: 1, minWidth: 0, padding: "36px 40px", maxWidth: 1000 }}>
 
           {/* Cover card */}
           <div className="card" style={{ marginBottom: 36 }}>
@@ -1251,7 +1063,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             const meta = SECTION_META[section.sectionType] ?? { icon: <LayoutGrid size={14} />, badge: "badge-slate" };
 
             const commentaryCard = (
-              <div className="card" id={`section-${section.id}`} data-pdf-avoid="true">
+              <div className="card" id={`section-${section.id}`}>
                 <div className="card-header">
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span className={`badge ${meta.badge}`} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -1459,7 +1271,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             if (section.sectionType === "executive_summary") {
               return (
                 <div key={section.id} id={`section-${section.id}`} style={{ marginBottom: 56 }}>
-                  <div className="card" data-pdf-avoid="true">
+                  <div className="card">
                     <div className="card-header">
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <span className={`badge badge-amber`} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>

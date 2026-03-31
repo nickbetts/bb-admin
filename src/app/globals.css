@@ -791,38 +791,3 @@ body {
     box-shadow: none !important;
   }
 }
-
-/* ── PDF export (html2pdf.js canvas capture) ────────────────────────────────
-   Applied to the report container just before html2pdf clones the DOM.
-   Hides interactive controls that should not appear in the exported PDF.
-   The .pdf-exporting class is added/removed in handleExportPdf().           */
-.pdf-exporting button,
-.pdf-exporting select,
-.pdf-exporting input,
-.pdf-exporting textarea,
-.pdf-exporting [data-pdf-hidden] {
-  display: none !important;
-}
-
-/* Show the read-only text view that is normally hidden (edit mode shows textarea instead) */
-.pdf-exporting .pdf-text-view {
-  display: block !important;
-}
-
-/* html2pdf respects break-inside: avoid (mode: ['css']).
-   The JS spacer algorithm handles top-level block avoidance;
-   these rules catch inline elements and nested tables. */
-.card,
-.metric-card,
-.stat-card,
-table,
-[data-pdf-avoid] {
-  break-inside: avoid;
-  page-break-inside: avoid;
-}
-
-/* Spacers injected by the JS page-break algorithm */
-[data-pdf-spacer] {
-  display: block;
-  pointer-events: none;
-}
