@@ -19,6 +19,7 @@ export async function POST(
     const formData = await request.formData();
     const file = formData.get("file") as File;
     const caption = formData.get("caption") as string;
+    const sectionId = (formData.get("sectionId") as string | null) || null;
 
     if (!file) {
       return NextResponse.json({ error: "File is required" }, { status: 400 });
@@ -54,6 +55,7 @@ export async function POST(
       screenshot = await prisma.screenshot.create({
         data: {
           reportId: id,
+          sectionId,
           filename: blob.pathname,
           url: blob.url,
           caption,

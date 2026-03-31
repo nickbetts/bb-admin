@@ -41,8 +41,8 @@ interface AiInsightsPanelProps {
   extraContext?: string;
   /** Cross-platform context from other channels for enriched analysis */
   crossPlatformContext?: string;
-  /** Writing tone for the AI output (professional / friendly / technical / executive) */
-  tone?: "professional" | "friendly" | "technical" | "executive";
+  /** Writing tone for the AI output (professional / friendly / technical / executive / roadman) */
+  tone?: "professional" | "friendly" | "technical" | "executive" | "roadman";
   /** Length of the AI output (short / medium / long) */
   length?: "short" | "medium" | "long";
   /** Format of the AI output (prose / bullets / both) */

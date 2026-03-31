@@ -31,6 +31,7 @@ interface Screenshot {
   url: string;
   filename: string;
   caption: string | null;
+  sectionId?: string | null;
 }
 
 interface Client {
@@ -127,7 +128,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [uploading, setUploading] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [aiLength, setAiLength] = useState<"short" | "medium" | "long">("medium");
-  const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive">("professional");
+  const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive" | "roadman">("professional");
   const [aiFormat, setAiFormat] = useState<"prose" | "bullets" | "both">("prose");
   const [sectionMetrics, setSectionMetrics] = useState<Record<string, Record<string, number>>>({});
   const [templateSaveOpen, setTemplateSaveOpen] = useState(false);
@@ -135,8 +136,11 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateSaved, setTemplateSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sectionFileInputRef = useRef<HTMLInputElement>(null);
+  const pendingSectionIdRef = useRef<string | null>(null);
   const reportRef = useRef<HTMLDivElement>(null);
   const captionInputRef = useRef<string>("");
+  const [uploadingSectionId, setUploadingSectionId] = useState<string | null>(null);
 
   const getVisibleBlocks = (section: Section): string[] | undefined => {
     if (!section.cardConfig) return undefined;
@@ -210,19 +214,28 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     }
   };
 
-  const handleUploadScreenshot = async (file: File) => {
-    setUploading(true);
+  const handleUploadScreenshot = async (file: File, sectionId?: string | null) => {
+    if (sectionId) {
+      setUploadingSectionId(sectionId);
+    } else {
+      setUploading(true);
+    }
     try {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("caption", captionInputRef.current);
+      if (sectionId) formData.append("sectionId", sectionId);
       const res = await fetch(`/api/reports/${report.id}/screenshots`, { method: "POST", body: formData });
       if (res.ok) {
         const screenshot = await res.json();
         setReport((prev) => ({ ...prev, screenshots: [...prev.screenshots, screenshot] }));
       }
     } finally {
-      setUploading(false);
+      if (sectionId) {
+        setUploadingSectionId(null);
+      } else {
+        setUploading(false);
+      }
       captionInputRef.current = "";
     }
   };
@@ -269,6 +282,32 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
     const container = reportRef.current;
 
+    // Hoisted so finally can restore stylesheet state even if an error is thrown
+    const pdfStyleEls: HTMLStyleElement[] = [];
+    const pdfOriginalStyleTexts: string[] = [];
+    const pdfLinkEls: HTMLLinkElement[] = [];
+    const pdfOriginalLinkMedia: string[] = [];
+    const pdfInjectedStyles: HTMLStyleElement[] = [];
+
+    // html2canvas v1.4.1 can't parse oklch()/lab()/oklab()/lch() (Tailwind v4).
+    // Use the browser's canvas API to resolve them to rgb() before capture.
+    const fixColorFns = (css: string): string =>
+      css.replace(
+        /\b(oklch|oklab|lab|lch)\s*\([^)]*\)/gi,
+        (match) => {
+          const tmp = document.createElement("canvas");
+          tmp.width = tmp.height = 1;
+          const ctx = tmp.getContext("2d");
+          if (!ctx) return match;
+          try { ctx.fillStyle = match; } catch { return match; }
+          ctx.fillRect(0, 0, 1, 1);
+          const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+          return a === 255
+            ? `rgb(${r},${g},${b})`
+            : `rgba(${r},${g},${b},${+(a / 255).toFixed(3)})`;
+        }
+      );
+
     try {
       // ── 1. Wait for loading spinners ──────────────────────────────────────
       const deadline = Date.now() + 30_000;
@@ -300,7 +339,37 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       // Flush styles before html2pdf clones the DOM
       void container.offsetHeight;
 
-      // ── 4. html2pdf.js — page-break avoidance is built-in ─────────────────
+      // ── 4. Resolve Tailwind v4 color functions for html2canvas compatibility ─
+      // Patch inline <style> elements (critical CSS / Next.js dev mode)
+      pdfStyleEls.push(...Array.from(document.querySelectorAll<HTMLStyleElement>("style")));
+      pdfStyleEls.forEach((s) => {
+        pdfOriginalStyleTexts.push(s.textContent ?? "");
+        s.textContent = fixColorFns(s.textContent ?? "");
+      });
+      // Fetch <link> stylesheets, fix their colors, inject as <style>, then
+      // disable the originals so html2canvas only sees rgb()-safe CSS.
+      pdfLinkEls.push(
+        ...Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
+      );
+      pdfLinkEls.forEach((link) => pdfOriginalLinkMedia.push(link.getAttribute("media") ?? ""));
+      await Promise.all(
+        pdfLinkEls.map(async (link, i) => {
+          try {
+            const res = await fetch(link.href, { cache: "force-cache" });
+            if (!res.ok) return;
+            const style = document.createElement("style");
+            style.textContent = fixColorFns(await res.text());
+            document.head.appendChild(style);
+            pdfInjectedStyles.push(style);
+            link.setAttribute("media", "not all");
+          } catch {
+            // leave link as-is if fetch fails
+            pdfOriginalLinkMedia[i] = link.getAttribute("media") ?? "";
+          }
+        })
+      );
+
+      // ── 5. html2pdf.js — page-break avoidance is built-in ─────────────────
       // The `pagebreak.avoid` list tells html2pdf to insert a forced page break
       // before any matching element that would otherwise straddle a page boundary.
       // html2canvas (already a dep) is used for rendering — html2pdf handles the
@@ -327,6 +396,12 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             useCORS: true,
             backgroundColor: "#ffffff",
             logging: false,
+            // Safety-net: fix any remaining color functions in the cloned <style> elements
+            onclone: (clonedDoc: Document) => {
+              clonedDoc.querySelectorAll<HTMLStyleElement>("style").forEach((s) => {
+                if (s.textContent) s.textContent = fixColorFns(s.textContent);
+              });
+            },
             // Ignore elements inside .pdf-exporting that should not appear in PDF
             ignoreElements: (el: HTMLElement) =>
               el.tagName === "BUTTON" ||
@@ -352,6 +427,16 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       // Always restore the container — even if an error was thrown mid-export
       container.classList.remove("pdf-exporting");
       setExportingPdf(false);
+      // Restore all stylesheets that were patched for color-function compatibility
+      pdfStyleEls.forEach((s, i) => { s.textContent = pdfOriginalStyleTexts[i] ?? ""; });
+      pdfLinkEls.forEach((l, i) => {
+        if (pdfOriginalLinkMedia[i]) {
+          l.setAttribute("media", pdfOriginalLinkMedia[i]);
+        } else {
+          l.removeAttribute("media");
+        }
+      });
+      pdfInjectedStyles.forEach((s) => s.remove());
     }
   }, [report.client.name, report.period]);
 
@@ -493,6 +578,17 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               e.target.value = "";
             }
           }} />
+          <input ref={sectionFileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
+            const file = e.target.files?.[0];
+            const sid = pendingSectionIdRef.current;
+            if (file && sid) {
+              const caption = prompt("Add a caption for this screenshot (optional):") ?? "";
+              captionInputRef.current = caption;
+              handleUploadScreenshot(file, sid);
+              pendingSectionIdRef.current = null;
+              e.target.value = "";
+            }
+          }} />
           <button onClick={handleExportPdf} disabled={exportingPdf} className="btn btn-primary btn-sm">
             <Download size={13} />
             {exportingPdf ? "Generating…" : "Export PDF"}
@@ -563,6 +659,17 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   </div>
                   <div className="print:hidden" style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <button
+                      onClick={() => {
+                        pendingSectionIdRef.current = section.id;
+                        sectionFileInputRef.current?.click();
+                      }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ gap: 6 }}
+                      title="Upload screenshot for this section"
+                    >
+                      {uploadingSectionId === section.id ? <span style={{ fontSize: 11 }}>Uploading…</span> : <><Image size={13} /> Screenshot</>}
+                    </button>
+                    <button
                       onClick={() => editingSection === section.id ? setEditingSection(null) : handleEditSection(section)}
                       className="btn btn-secondary btn-sm"
                       style={{ gap: 6 }}
@@ -588,6 +695,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                           <option value="friendly">Friendly</option>
                           <option value="technical">Technical</option>
                           <option value="executive">Executive</option>
+                          <option value="roadman">Roadman 🎤</option>
                         </select>
                         <select
                           value={aiLength}
@@ -612,11 +720,11 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       </div>
 
                       {/* AI generate button */}
-                      {sectionMetrics[section.id] ? (
+                      {(sectionMetrics[section.id] || section.sectionType === "overview") ? (
                         <AiInsightsPanel
                           compact
                           sectionType={section.sectionType === "web" ? "ga4" : section.sectionType === "paid_social" ? "meta" : section.sectionType}
-                          metrics={sectionMetrics[section.id]}
+                          metrics={sectionMetrics[section.id] ?? {}}
                           clientName={report.client.name}
                           clientId={report.client.id}
                           dateRange={report.period}
@@ -661,21 +769,57 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                         </button>
                       </div>
                     </div>
-                  ) : section.commentary ? (
-                    <div style={{
-                      background: "var(--accent-bg)", border: "1px solid #c7d2fe",
-                      borderRadius: "var(--r)", padding: "14px 18px",
-                    }}>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
-                        Commentary
-                      </p>
-                      <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{section.commentary}</p>
-                    </div>
-                  ) : (
-                    <p style={{ fontSize: 13, color: "var(--text-4)", fontStyle: "italic" }}>
-                      No commentary added yet — click &quot;Commentary&quot; to add insights.
-                    </p>
-                  )}
+                  ) : (() => {
+                    const sectionScreenshots = report.screenshots.filter((s) => s.sectionId === section.id);
+                    return (
+                      <>
+                        {section.commentary ? (
+                          <div style={{
+                            background: "var(--accent-bg)", border: "1px solid #c7d2fe",
+                            borderRadius: "var(--r)", padding: "14px 18px",
+                          }}>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
+                              Commentary
+                            </p>
+                            <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{section.commentary}</p>
+                          </div>
+                        ) : (
+                          <p style={{ fontSize: 13, color: "var(--text-4)", fontStyle: "italic" }}>
+                            No commentary added yet — click &quot;Commentary&quot; to add insights.
+                          </p>
+                        )}
+                        {sectionScreenshots.length > 0 && (
+                          <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+                            {sectionScreenshots.map((ss) => (
+                              <div key={ss.id} style={{ position: "relative", borderRadius: "var(--r)", overflow: "hidden", border: "1px solid var(--border-subtle)" }}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={ss.url} alt={ss.caption ?? ss.filename} style={{ width: "100%", display: "block", objectFit: "cover" }} />
+                                {ss.caption && (
+                                  <div style={{ padding: "8px 12px", background: "var(--surface)", borderTop: "1px solid var(--border-subtle)" }}>
+                                    <p style={{ fontSize: 12, color: "var(--text-3)" }}>{ss.caption}</p>
+                                  </div>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteScreenshot(ss.id)}
+                                  className="print:hidden"
+                                  style={{
+                                    position: "absolute", top: 8, right: 8,
+                                    background: "rgba(239,68,68,0.85)", color: "#fff",
+                                    border: "none", borderRadius: "var(--r-sm)", padding: 6,
+                                    cursor: "pointer", display: "flex", opacity: 0, transition: "opacity 0.15s",
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.opacity = "0"; }}
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             );
@@ -695,7 +839,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 return (
                   <ScreenshotsSection
                     key={section.id}
-                    screenshots={report.screenshots}
+                    screenshots={report.screenshots.filter((s) => !s.sectionId)}
                     title={TEXT_SECTION_LABELS[section.sectionType as TextSectionType] ?? section.title}
                     onDelete={handleDeleteScreenshot}
                   />
@@ -757,12 +901,12 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             );
           })}
 
-          {/* Screenshots */}
-          {report.screenshots.length > 0 && (
+          {/* Screenshots — report-level only (section screenshots appear inline above) */}
+          {report.screenshots.filter((s) => !s.sectionId).length > 0 && (
             <div style={{ marginBottom: 36 }}>
               <p className="card-title" style={{ marginBottom: 16 }}>Additional Screenshots</p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 16 }}>
-                {report.screenshots.map((screenshot) => (
+                {report.screenshots.filter((s) => !s.sectionId).map((screenshot) => (
                   <div key={screenshot.id} className="card" style={{ overflow: "hidden", position: "relative" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={screenshot.url} alt={screenshot.caption ?? screenshot.filename} style={{ width: "100%", display: "block", objectFit: "cover" }} />

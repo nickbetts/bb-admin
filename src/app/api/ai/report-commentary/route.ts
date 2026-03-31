@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const SECTION_LABELS: Record<string, string> = {
+  overview: "Overview & Commentary",
   ga4: "Google Analytics 4 (Website Traffic)",
   web: "Google Analytics 4 (Website Traffic)",
   seo: "SEO / Organic Search (SEMrush)",
@@ -32,6 +33,7 @@ const TONE_INSTRUCTIONS: Record<string, string> = {
   friendly: "Use approachable, conversational language — warm but still informative.",
   technical: "Be data-focused with precise metric references, percentages, and specific figures throughout.",
   executive: "Provide a high-level strategic summary focused on business outcomes, ROI, and strategic direction rather than granular metrics.",
+  roadman: "Write in authentic London roadman slang — use phrases like 'bare', 'mandem', 'on a madness', 'wagwan', 'innit', 'peng', 'dun know', 'blud', 'fam', 'it's giving'. Keep it energetic and hype the results like you're gassing up the mandem. Still communicate the actual data clearly underneath the slang.",
 };
 
 function formatMetrics(metrics: Record<string, number>): string {
@@ -123,6 +125,7 @@ export async function POST(req: NextRequest) {
     const previousMetricsText = previousMetrics ? formatMetrics(previousMetrics) : null;
 
     const systemPrompt = `You are a digital marketing account manager at i3media writing a section of a monthly performance report to send to a client.
+Always write in British English — use British spellings (e.g. optimise, analyse, behaviour, colour, centre) and British phrasing throughout.
 ${toneInstruction}
 ${lengthInstruction}
 ${formatInstruction}
@@ -135,7 +138,15 @@ CRITICAL rules:
 - Do not start with "This section" or "In this section". Start with a substantive observation about the data.
 - Sound like a human account manager wrote it, not an AI.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
 
-    const userPrompt = `Write a ${tone} ${length} ${format === "bullets" ? "bullet-point" : "prose"} commentary for the ${sectionLabel} section of a digital marketing report.
+    const isOverview = sectionType === "overview";
+    const userPrompt = isOverview
+      ? `Write a ${tone} ${length} ${format === "bullets" ? "bullet-point" : "prose"} introductory overview commentary for a digital marketing report.
+
+Client: ${clientName ?? "the client"}
+Period: ${dateRange ?? "the reporting period"}
+
+This is the opening section of the report. Write a warm, forward-looking introduction that sets the tone for the month, acknowledges the ongoing work across channels, and positions the rest of the report. Write as the agency (first person "we").`
+      : `Write a ${tone} ${length} ${format === "bullets" ? "bullet-point" : "prose"} commentary for the ${sectionLabel} section of a digital marketing report.
 
 Client: ${clientName ?? "the client"}
 Period: ${dateRange ?? "the reporting period"}

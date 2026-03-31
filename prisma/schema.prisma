@@ -114,6 +114,7 @@ model ReportSection {
 model Screenshot {
   id        String   @id @default(cuid())
   reportId  String
+  sectionId String?
   filename  String
   url       String
   caption   String?
