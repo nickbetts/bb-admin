@@ -1078,19 +1078,19 @@ Core improvements that make the existing platform more powerful and reliable.
 
 ---
 
-### Phase 2 — AI Intelligence Expansion (3–6 months)
+### Phase 2 — AI Intelligence Expansion (3–6 months) ✅ Complete
 
 Transform the AI layer from insights into a full intelligence system.
 
-- [ ] **Predictive performance forecasting** — 30/60/90 day projections
-- [ ] **Budget optimisation advisor** — cross-channel budget recommendations
-- [ ] **Creative performance intelligence** — Meta and Google ad creative analysis
-- [ ] **AI strategy document generator** — quarterly strategy output per client
-- [ ] **New integrations: LinkedIn Ads, Klaviyo/email marketing**
-- [ ] **Attribution modelling** — multi-touch attribution comparison
-- [ ] **Seasonality intelligence** — automated pattern detection and baseline adjustment
-- [ ] **Share of voice dashboard** — competitive position tracking
-- [ ] **Goal setting & tracking** — per-client KPI goals with progress tracking
+- [x] **Predictive performance forecasting** — 30/60/90 day projections
+- [x] **Budget optimisation advisor** — cross-channel budget recommendations
+- [x] **Creative performance intelligence** — Meta and Google ad creative analysis
+- [x] **AI strategy document generator** — quarterly strategy output per client
+- [x] **New integrations: LinkedIn Ads, Klaviyo/email marketing**
+- [x] **Attribution modelling** — multi-touch attribution comparison
+- [x] **Seasonality intelligence** — automated pattern detection and baseline adjustment
+- [x] **Share of voice dashboard** — competitive position tracking
+- [x] **Goal setting & tracking** — per-client KPI goals with progress tracking
 
 ---
 
@@ -1196,5 +1196,5 @@ Build this, and the question stops being "why would we use this?" and starts bei
 
 ---
 
-*Document version: 1.1 — April 2026 (Phase 1 complete)*
-*Next review: After Phase 2 completion*
+*Document version: 1.2 — April 2026 (Phase 2 complete)*
+*Next review: After Phase 3 completion*
