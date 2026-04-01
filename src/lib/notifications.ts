@@ -43,7 +43,7 @@ function parsePrefs(raw: string | null | undefined): NotificationPrefs {
       email: true,
       slack: false,
       digestFrequency: "immediate",
-      enabledTypes: ["anomaly", "report_ready", "report_sent", "integration_error"],
+      enabledTypes: ["anomaly", "report_ready", "report_sent", "report_opened", "proposal_viewed", "integration_error", "snapshot_complete"],
     };
   }
   try {
@@ -111,14 +111,14 @@ export async function notifyUser(input: CreateNotificationInput) {
   // Email delivery
   if (prefs.email && user?.email) {
     await deliverEmail(user.email, input.title, input.body).catch((err) =>
-      console.error("[notifications] Email delivery failed:", err)
+      console.error("[notifications] Email delivery failed for user", input.userId, "type", input.type, ":", err)
     );
   }
 
   // Slack delivery
   if (prefs.slack && prefs.slackWebhook) {
     await deliverSlack(prefs.slackWebhook, input.title, input.body, input.severity).catch((err) =>
-      console.error("[notifications] Slack delivery failed:", err)
+      console.error("[notifications] Slack delivery failed for user", input.userId, "type", input.type, ":", err)
     );
   }
 

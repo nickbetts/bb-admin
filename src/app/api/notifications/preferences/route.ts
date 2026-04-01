@@ -27,7 +27,7 @@ export async function GET() {
 
     let prefs = defaults;
     if (user?.notificationPrefs) {
-      try { prefs = { ...defaults, ...JSON.parse(user.notificationPrefs) }; } catch { /* use defaults */ }
+      try { prefs = { ...defaults, ...JSON.parse(user.notificationPrefs) }; } catch (err) { console.error("Failed to parse notification preferences for user", session.user.id, ":", err); }
     }
 
     return NextResponse.json(prefs);
