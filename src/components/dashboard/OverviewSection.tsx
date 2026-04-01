@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { MetricCard } from "@/components/ui/MetricCard";
-import { LoadingSpinner } from "@/components/ui/index";
+import { LoadingSpinner, SectionCard } from "@/components/ui/index";
 import {
   formatCurrency,
   formatNumber,
@@ -49,6 +49,9 @@ interface Props {
   client: Client;
   startDate: string;
   endDate: string;
+  reportMode?: boolean;
+  visibleBlocks?: string[];
+  afterHeader?: ReactNode;
 }
 
 interface GoogleAdsOverview {
@@ -201,7 +204,7 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 
-export function OverviewSection({ client, startDate, endDate }: Props) {
+export function OverviewSection({ client, startDate, endDate, reportMode, visibleBlocks, afterHeader }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [data, setData] = useState<PlatformData>({});
@@ -819,6 +822,196 @@ export function OverviewSection({ client, startDate, endDate }: Props) {
         <a href={`/clients/${client.slug}/settings`} className="btn btn-primary" style={{ marginTop: 28 }}>
           Configure in settings
         </a>
+      </div>
+    );
+  }
+
+  const show = (block: string) =>
+    !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+
+  // ─── Report mode ───────────────────────────────────────────────────────────
+  if (reportMode) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+        {afterHeader}
+
+        {/* Active platforms strip */}
+        {activePlatforms.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: "var(--text-3)" }}>Active platforms:</span>
+            {activePlatforms.map((p) => (
+              <span key={p as string} style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 999, background: "var(--accent-bg)", color: "var(--accent-text)", border: "1px solid #c7d2fe" }}>
+                {p as string}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Full-Funnel Board */}
+        {show("funnel") && funnelStages.some(s => s.value > 0) && (
+          <SectionCard title="Full-Funnel Performance" subtitle="Combined reach-to-revenue across all channels">
+            <div style={{ display: "flex", gap: 0, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
+              {funnelStages.map((stage, i) => {
+                const change = stage.prev > 0 ? pctChange(stage.value, stage.prev) : undefined;
+                const maxVal = Math.max(...funnelStages.map(s => s.value));
+                const barHeight = maxVal > 0 ? Math.max(20, (stage.value / maxVal) * 100) : 20;
+                return (
+                  <div key={stage.label} style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 12px 12px", background: i % 2 === 0 ? "var(--surface)" : "var(--bg)", borderRight: i < funnelStages.length - 1 ? "1px solid var(--border)" : "none", position: "relative" }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: "var(--text-3)", marginBottom: 8, textAlign: "center" as const }}>{stage.label}</p>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flex: 1, justifyContent: "flex-end" }}>
+                      <div style={{ width: "70%", height: barHeight, borderRadius: 6, background: "linear-gradient(180deg, #6366f1 0%, #8b5cf6 100%)", opacity: 0.15 + (barHeight / 100) * 0.85 }} />
+                      <p style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>{stage.fmt === "currency" ? formatCurrency(stage.value) : formatNumber(stage.value)}</p>
+                      {change != null && (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: change >= 0 ? "#10b981" : "#ef4444" }}>{change >= 0 ? "+" : ""}{change.toFixed(1)}%</span>
+                      )}
+                    </div>
+                    {i > 0 && stage.rate != null && (
+                      <div style={{ position: "absolute", top: 6, left: -1, transform: "translateX(-50%)", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6, padding: "1px 6px", fontSize: 9, fontWeight: 700, color: "#15803d", whiteSpace: "nowrap" as const, zIndex: 2 }}>
+                        {stage.label === "Revenue" ? formatCurrency(stage.rate) : `${stage.rate.toFixed(1)}%`}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Combined Paid Performance KPIs */}
+        {show("paid_kpis") && hasPaidData && (
+          <SectionCard title="Combined Paid Performance" subtitle="Aggregated metrics across all paid channels">
+            <div className="grid-3" style={{ gap: 16 }}>
+              <MetricCard title="Total Ad Spend" value={formatCurrency(totalAdSpend)} icon={<DollarSign className="h-5 w-5" />} color="purple" change={hasPrevPaid ? pctChange(totalAdSpend, prevTotalAdSpend) : undefined} changeDiff={hasPrevPaid ? diffStr(totalAdSpend, prevTotalAdSpend, "currency") : undefined} changeLabel="vs prev period" />
+              <MetricCard title="Total Conversions" value={formatNumber(totalConversions)} icon={<ShoppingCart className="h-5 w-5" />} color="green" change={hasPrevPaid ? pctChange(totalConversions, prevTotalConversions) : undefined} changeDiff={hasPrevPaid ? diffStr(totalConversions, prevTotalConversions, "count") : undefined} changeLabel="vs prev period" />
+              <MetricCard title="Total Revenue" value={formatCurrency(totalRevenue)} icon={<TrendingUp className="h-5 w-5" />} color="green" change={hasPrevPaid ? pctChange(totalRevenue, prevTotalRevenue) : undefined} changeDiff={hasPrevPaid ? diffStr(totalRevenue, prevTotalRevenue, "currency") : undefined} changeLabel="vs prev period" />
+              <MetricCard title="Blended ROAS" value={`${blendedRoas.toFixed(2)}x`} icon={<TrendingUp className="h-5 w-5" />} color="blue" change={hasPrevPaid && prevBlendedRoas > 0 ? pctChange(blendedRoas, prevBlendedRoas) : undefined} changeLabel="vs prev period" />
+              <MetricCard title="Blended CPA" value={formatCurrency(blendedCpa)} icon={<Wallet className="h-5 w-5" />} color="orange" change={hasPrevPaid && prevBlendedCpa > 0 ? pctChange(blendedCpa, prevBlendedCpa) : undefined} changeDiff={hasPrevPaid ? diffStr(blendedCpa, prevBlendedCpa, "currency") : undefined} changeLabel="vs prev period" />
+              <MetricCard title="Total Paid Clicks" value={formatNumber(totalPaidClicks)} icon={<MousePointer className="h-5 w-5" />} color="blue" change={hasPrevPaid ? pctChange(totalPaidClicks, prevTotalPaidClicks) : undefined} changeDiff={hasPrevPaid ? diffStr(totalPaidClicks, prevTotalPaidClicks, "count") : undefined} changeLabel="vs prev period" />
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Website & Organic KPIs */}
+        {show("website_kpis") && (data.ga4 || data.seo || data.searchconsole) && (
+          <SectionCard title="Website & Organic Performance">
+            <div className="grid-3" style={{ gap: 16 }}>
+              {data.ga4 && (
+                <>
+                  <MetricCard title="Website Sessions" value={formatNumber(data.ga4.sessions)} icon={<Users className="h-5 w-5" />} color="orange" change={prevData.ga4 ? pctChange(data.ga4.sessions, prevData.ga4.sessions) : undefined} changeDiff={prevData.ga4 ? diffStr(data.ga4.sessions, prevData.ga4.sessions, "count") : undefined} changeLabel="vs prev period" />
+                  <MetricCard title="Website Users" value={formatNumber(data.ga4.users)} icon={<Users className="h-5 w-5" />} color="blue" change={prevData.ga4 ? pctChange(data.ga4.users, prevData.ga4.users) : undefined} changeDiff={prevData.ga4 ? diffStr(data.ga4.users, prevData.ga4.users, "count") : undefined} changeLabel="vs prev period" />
+                </>
+              )}
+              {data.seo && (
+                <>
+                  <MetricCard title="Organic Traffic" value={formatNumber(data.seo.organicTraffic)} icon={<Globe className="h-5 w-5" />} color="green" />
+                  <MetricCard title="Organic Keywords" value={formatNumber(data.seo.organicKeywords)} icon={<Search className="h-5 w-5" />} color="green" />
+                </>
+              )}
+              {data.searchconsole && (
+                <>
+                  <MetricCard title="Search Clicks" value={formatNumber(data.searchconsole.clicks)} icon={<MousePointer className="h-5 w-5" />} color="purple" change={prevData.searchconsole ? pctChange(data.searchconsole.clicks, prevData.searchconsole.clicks) : undefined} changeDiff={prevData.searchconsole ? diffStr(data.searchconsole.clicks, prevData.searchconsole.clicks, "count") : undefined} changeLabel="vs prev period" />
+                  <MetricCard title="Avg Position" value={data.searchconsole.position.toFixed(1)} icon={<Search className="h-5 w-5" />} color="purple" change={prevData.searchconsole ? pctChange(data.searchconsole.position, prevData.searchconsole.position) : undefined} changeLabel="vs prev period" />
+                </>
+              )}
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Engagement & Conversion KPIs */}
+        {show("engagement_kpis") && data.ga4 && (
+          <SectionCard title="Engagement & Conversion">
+            <div className="grid-3" style={{ gap: 16 }}>
+              <MetricCard title="Bounce Rate" value={formatPercent(data.ga4.bounceRate / 100)} icon={<Eye className="h-5 w-5" />} color="red" change={prevData.ga4 ? pctChange(data.ga4.bounceRate, prevData.ga4.bounceRate) : undefined} changeLabel="vs prev period" />
+              <MetricCard title="Engagement Rate" value={formatPercent(data.ga4.engagementRate / 100)} icon={<TrendingUp className="h-5 w-5" />} color="green" change={prevData.ga4 ? pctChange(data.ga4.engagementRate, prevData.ga4.engagementRate) : undefined} changeLabel="vs prev period" />
+              <MetricCard title="Conversion Rate" value={formatPercent(data.ga4.conversionRate / 100)} icon={<ShoppingCart className="h-5 w-5" />} color="green" change={prevData.ga4 ? pctChange(data.ga4.conversionRate, prevData.ga4.conversionRate) : undefined} changeLabel="vs prev period" />
+              <MetricCard title="Pageviews" value={formatNumber(data.ga4.pageviews)} icon={<Eye className="h-5 w-5" />} color="blue" change={prevData.ga4 ? pctChange(data.ga4.pageviews, prevData.ga4.pageviews) : undefined} changeDiff={prevData.ga4 ? diffStr(data.ga4.pageviews, prevData.ga4.pageviews, "count") : undefined} changeLabel="vs prev period" />
+              {data.seo && <MetricCard title="Traffic Value" value={formatCurrency(data.seo.organicCost)} icon={<DollarSign className="h-5 w-5" />} color="green" />}
+              {data.searchconsole && <MetricCard title="Search CTR" value={formatPercent(data.searchconsole.ctr)} icon={<MousePointer className="h-5 w-5" />} color="purple" change={prevData.searchconsole ? pctChange(data.searchconsole.ctr, prevData.searchconsole.ctr) : undefined} changeLabel="vs prev period" />}
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Channel Efficiency Matrix */}
+        {show("channel_matrix") && channelRows.length > 0 && (
+          <SectionCard title="Channel Efficiency Matrix" subtitle="Investment, traffic, and performance by platform">
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" as const, fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
+                    {["Platform", "Investment", "Traffic", "Conversions", "Revenue", "Efficiency", "vs Prev", "Health"].map(h => (
+                      <th key={h} style={{ padding: "10px 12px", fontWeight: 700, fontSize: 10, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: "var(--text-3)", textAlign: (h === "Platform" ? "left" : "right") as "left" | "right" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {channelRows.map((row) => {
+                    const effChange = row.prevEfficiency != null ? pctChange(row.efficiency, row.prevEfficiency) : undefined;
+                    const config = CHANNEL_CONFIG[row.platformKey];
+                    return (
+                      <tr key={row.platformKey} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                        <td style={{ padding: "10px 12px", fontWeight: 600, color: "var(--text)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: 4, background: config?.gradient ?? "#6366f1", flexShrink: 0 }} />
+                            {row.platform}
+                          </div>
+                        </td>
+                        <td style={{ padding: "10px 12px", textAlign: "right" as const, color: "var(--text-2)" }}>{row.investment > 0 ? formatCurrency(row.investment) : "—"}</td>
+                        <td style={{ padding: "10px 12px", textAlign: "right" as const, color: "var(--text-2)" }}>{formatNumber(row.traffic)}</td>
+                        <td style={{ padding: "10px 12px", textAlign: "right" as const, color: "var(--text-2)" }}>{row.conversions > 0 ? formatNumber(row.conversions) : "—"}</td>
+                        <td style={{ padding: "10px 12px", textAlign: "right" as const, color: "var(--text-2)" }}>{row.revenue > 0 ? formatCurrency(row.revenue) : "—"}</td>
+                        <td style={{ padding: "10px 12px", textAlign: "right" as const, fontWeight: 600, color: "var(--text)" }}>
+                          {row.platformKey === "googleads" || row.platformKey === "meta" ? `${row.efficiency.toFixed(2)}×` : row.platformKey === "ga4" || row.platformKey === "searchconsole" ? `${row.efficiency.toFixed(1)}%` : "—"}
+                        </td>
+                        <td style={{ padding: "10px 12px", textAlign: "right" as const }}>
+                          {effChange != null ? (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: effChange >= 0 ? "#10b981" : "#ef4444" }}>{effChange >= 0 ? "+" : ""}{effChange.toFixed(1)}%</span>
+                          ) : <span style={{ color: "var(--text-3)" }}>—</span>}
+                        </td>
+                        <td style={{ padding: "10px 12px", textAlign: "right" as const }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: scoreColor(row.healthScore), background: `${scoreColor(row.healthScore)}15`, borderRadius: 4, padding: "2px 6px" }}>{row.healthScore}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Cross-Platform Alerts */}
+        {show("alerts") && (crossAlerts.length > 0 || (keywordOverlapSummary && keywordOverlapSummary.total > 0)) && (
+          <SectionCard title="Cross-Platform Alerts">
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {crossAlerts.length > 0 && (
+                <div style={{ borderRadius: 8, border: `1px solid ${crossAlerts.some(a => a.severity === "high") ? "#fca5a5" : "#fcd34d"}`, background: crossAlerts.some(a => a.severity === "high") ? "#fff1f2" : "#fffbeb", overflow: "hidden" }}>
+                  {crossAlerts.map((a, i) => (
+                    <div key={i} style={{ padding: "8px 14px", borderBottom: i < crossAlerts.length - 1 ? `1px solid ${crossAlerts.some(x => x.severity === "high") ? "#fee2e2" : "#fef3c7"}` : "none" }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" as const }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", background: a.severity === "high" ? "#dc2626" : "#d97706", borderRadius: 4, padding: "1px 5px", flexShrink: 0, textTransform: "uppercase" as const }}>{a.severity}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text)" }}>{a.platform} — {a.label}</span>
+                        <span style={{ fontSize: 12, color: "var(--text-2)" }}>{a.detail}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {keywordOverlapSummary && keywordOverlapSummary.total > 0 && (
+                <div style={{ borderRadius: 8, border: "1px solid var(--border)", padding: "12px 16px", background: keywordOverlapSummary.highRisk > 0 ? "#fff7ed" : "#f0fdf4" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <Search className="h-4 w-4" style={{ color: keywordOverlapSummary.highRisk > 0 ? "#d97706" : "#10b981" }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Organic vs Paid Keyword Overlap</span>
+                  </div>
+                  <p style={{ fontSize: 12, color: "var(--text-2)", margin: 0, lineHeight: 1.6 }}>
+                    <strong>{keywordOverlapSummary.total}</strong> keyword{keywordOverlapSummary.total !== 1 ? "s" : ""} appear in both organic and paid campaigns.
+                    {keywordOverlapSummary.highRisk > 0 && <> <strong style={{ color: "#dc2626" }}>{keywordOverlapSummary.highRisk}</strong> are high-risk.</>}
+                    {keywordOverlapSummary.potentialSavings > 0 && <> Potential savings: <strong style={{ color: "#065f46" }}>{formatCurrency(keywordOverlapSummary.potentialSavings)}</strong>.</>}
+                  </p>
+                </div>
+              )}
+            </div>
+          </SectionCard>
+        )}
       </div>
     );
   }

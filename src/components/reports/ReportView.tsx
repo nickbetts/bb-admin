@@ -30,6 +30,7 @@ import { GA4Section } from "@/components/dashboard/GA4Section";
 import { MetaSection } from "@/components/dashboard/MetaSection";
 import { GoogleAdsSection } from "@/components/dashboard/GoogleAdsSection";
 import { SearchConsoleSection } from "@/components/dashboard/SearchConsoleSection";
+import { OverviewSection } from "@/components/dashboard/OverviewSection";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { EcommerceSection } from "@/components/dashboard/EcommerceSection";
 import { TextSection } from "@/components/reports/TextSection";
@@ -1341,11 +1342,18 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               );
             }
 
-            // Overview section — commentary only, no data feed
+            // Overview section — data + commentary
             if (section.sectionType === "overview") {
               return (
-                <div key={section.id} style={{ marginBottom: 56 }}>
-                  {commentaryCard}
+                <div key={section.id} id={`section-${section.id}`} style={{ marginBottom: 56 }}>
+                  <OverviewSection
+                    client={report.client}
+                    startDate={startDate}
+                    endDate={endDate}
+                    reportMode
+                    visibleBlocks={visibleBlocks}
+                    afterHeader={commentaryCard}
+                  />
                 </div>
               );
             }

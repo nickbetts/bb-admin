@@ -26,7 +26,14 @@ export function isTextSection(sectionType: string): boolean {
 }
 
 export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
-  overview: [],
+  overview: [
+    { id: "funnel", label: "Full-Funnel Board" },
+    { id: "paid_kpis", label: "Paid Performance KPIs" },
+    { id: "website_kpis", label: "Website & Organic KPIs" },
+    { id: "engagement_kpis", label: "Engagement & Conversion KPIs" },
+    { id: "channel_matrix", label: "Channel Efficiency Matrix" },
+    { id: "alerts", label: "Cross-Platform Alerts" },
+  ],
   executive_summary: [],
   // Text-only sections — no configurable blocks
   text_notable_achievements: [],
