@@ -444,7 +444,7 @@ export function SearchConsoleSection({
       )}
 
       {(show("top_queries") || show("top_pages")) && (
-      <div className="grid-2">
+      <div className="flex flex-col gap-5">
         {/* Top Queries */}
         {show("top_queries") && (
         <SectionCard title="Top Queries" subtitle="Ranked by clicks">
@@ -467,7 +467,7 @@ export function SearchConsoleSection({
                     const prevQ = prevQueriesMap.get(q.query);
                     return (
                     <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                      <td style={{ padding: "10px 16px", color: "var(--text)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.query}</td>
+                      <td style={{ padding: "10px 16px", color: "var(--text)", maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.query}</td>
                       <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>
                         <div>{formatNumber(q.clicks)}</div>
                         <Delta current={q.clicks} previous={prevQ?.clicks} format="count" />
@@ -521,7 +521,7 @@ export function SearchConsoleSection({
                     const prevP = prevPagesMap.get(p.page);
                     return (
                       <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                        <td style={{ padding: "10px 16px", color: "var(--text)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <td style={{ padding: "10px 16px", color: "var(--text)", maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           <a href={p.page} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text)", textDecoration: "none" }}>
                             {displayPage}
                           </a>
@@ -586,7 +586,7 @@ export function SearchConsoleSection({
                 <tbody>
                   {movers.map((q, i) => (
                     <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                      <td style={{ padding: "10px 16px", color: "var(--text)", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.query}</td>
+                      <td style={{ padding: "10px 16px", color: "var(--text)", maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.query}</td>
                       <td style={{ padding: "10px 16px", textAlign: "center" }}>
                         <span className={positionBadgeClass(q.position)}>{q.position.toFixed(1)}</span>
                       </td>

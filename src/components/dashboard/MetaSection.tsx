@@ -29,6 +29,7 @@ interface MetaSectionProps {
   visibleBlocks?: string[];
   hideAlerts?: boolean;
   hideAi?: boolean;
+  reportMode?: boolean;
   onMetricsReady?: (metrics: Record<string, number>) => void;
   afterHeader?: React.ReactNode;
 }
@@ -211,7 +212,7 @@ interface AdSetAudience {
 
 type MetaAlert = { severity: "high" | "medium"; label: string; level: "Campaign" | "Ad Set" | "Creative"; detail: string; recommendation: string };
 
-export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady, afterHeader }: MetaSectionProps) {
+export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, onMetricsReady, afterHeader }: MetaSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<MetaOverview | null>(null);
@@ -717,48 +718,52 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
         };
 
         return (
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm" style={{ overflow: "visible" }}>
-            <div className="px-6 py-5 border-b border-slate-100">
-              <h3 className="text-sm font-semibold text-slate-800">Campaign Breakdown</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Click campaigns to expand ad sets, then ad sets to see ad creatives</p>
+          <div className={reportMode ? "card" : "rounded-2xl border border-slate-200 bg-white shadow-sm"} style={reportMode ? undefined : { overflow: "visible" }}>
+            <div className={reportMode ? "card-header" : "px-6 py-5 border-b border-slate-100"}>
+              <div>
+                <h3 className={reportMode ? "card-title" : "text-sm font-semibold text-slate-800"}>Campaign Breakdown</h3>
+                <p className={reportMode ? "card-subtitle" : "text-xs text-slate-500 mt-0.5"}>
+                  {reportMode ? "Performance by campaign and ad set" : "Click campaigns to expand ad sets, then ad sets to see ad creatives"}
+                </p>
+              </div>
             </div>
-            <div style={{ overflowX: "auto", overflowY: "visible", borderRadius: "0 0 16px 16px" }}>
-              <table className="w-full text-xs" style={{ minWidth: 1080 }}>
+            <div style={reportMode ? undefined : { overflowX: "auto", overflowY: "visible", borderRadius: "0 0 16px 16px" }}>
+              <table className="w-full text-xs" style={reportMode ? undefined : { minWidth: 1080 }}>
                 <thead>
                   <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                    <th className="text-left px-6 py-4 font-medium" style={{ minWidth: 240 }}>Name</th>
+                    <th className="text-left px-6 py-4 font-medium" style={{ minWidth: reportMode ? 200 : 240 }}>Name</th>
                     <th className="text-right px-4 py-4 font-medium whitespace-nowrap">Spend</th>
                     <th className="text-right px-4 py-4 font-medium whitespace-nowrap">Impressions</th>
                     <th className="text-right px-4 py-4 font-medium whitespace-nowrap">Clicks</th>
                     <th className="text-right px-4 py-4 font-medium whitespace-nowrap">CTR</th>
                     <th className="text-right px-4 py-4 font-medium whitespace-nowrap">CPC</th>
-                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">CPM</th>
+                    {!reportMode && <th className="text-right px-4 py-4 font-medium whitespace-nowrap">CPM</th>}
                     <th className="text-right px-4 py-4 font-medium whitespace-nowrap">{overview?.conversionLabel ?? "Conv."}</th>
                     <th className="text-right px-4 py-4 font-medium whitespace-nowrap">CPA</th>
                     <th className="text-right px-4 py-4 font-medium whitespace-nowrap">ROAS</th>
-                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">Freq.</th>
-                    <th className="text-right px-6 py-4 font-medium whitespace-nowrap">Budget</th>
+                    {!reportMode && <th className="text-right px-4 py-4 font-medium whitespace-nowrap">Freq.</th>}
+                    {!reportMode && <th className="text-right px-6 py-4 font-medium whitespace-nowrap">Budget</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {displayCampaigns.map((camp) => {
                     const prevC = prevCampaignsMap.get(camp.id);
                     const enriched = camp as CampaignEnriched;
-                    const isExpanded = expandedCampaigns.has(camp.id);
+                    const isExpanded = reportMode || expandedCampaigns.has(camp.id);
                     const campAdSets = adSetsByCampaign.get(camp.id) ?? [];
                     const hasChildren = campAdSets.length > 0;
                     return (
                       <React.Fragment key={camp.id}>
                         {/* Campaign row */}
                         <tr
-                          className={`transition cursor-pointer ${isExpanded ? "bg-slate-50" : "hover:bg-slate-50"}`}
-                          onClick={() => hasChildren && toggleCampaign(camp.id)}
+                          className={reportMode ? "border-b border-slate-100" : `transition cursor-pointer ${isExpanded ? "bg-slate-50" : "hover:bg-slate-50"}`}
+                          onClick={reportMode ? undefined : () => hasChildren && toggleCampaign(camp.id)}
                         >
-                          <td className="px-6 py-4" style={{ minWidth: 240 }}>
+                          <td className="px-6 py-4" style={{ minWidth: reportMode ? 200 : 240 }}>
                             <div className="flex items-center gap-2">
-                              {hasChildren ? (
+                              {!reportMode && (hasChildren ? (
                                 isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                              ) : <span className="w-3.5 shrink-0" />}
+                              ) : <span className="w-3.5 shrink-0" />)}
                               <div className="min-w-0">
                                 <p className="text-slate-800 font-semibold truncate">{camp.name}</p>
                                 <p className="text-slate-400 text-[11px] mt-0.5">
@@ -786,9 +791,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
                           <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
                             {formatCurrency(camp.cpc)}
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                          {!reportMode && <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
                             {formatCurrency(camp.cpm)}
-                          </td>
+                          </td>}
                           <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
                             <div>{formatNumber(camp.conversions)}</div>
                             <Delta current={camp.conversions} previous={prevC?.conversions} format="count" />
@@ -802,34 +807,34 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
                             </span>
                             <Delta current={camp.roas} previous={prevC?.roas} format="none" />
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                          {!reportMode && <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
                             {typeof enriched.frequency === "number" ? enriched.frequency.toFixed(2) : "—"}
-                          </td>
-                          <td className="px-6 py-4 text-right text-slate-600 whitespace-nowrap">
+                          </td>}
+                          {!reportMode && <td className="px-6 py-4 text-right text-slate-600 whitespace-nowrap">
                             {enriched.dailyBudget != null
                               ? formatCurrency(enriched.dailyBudget) + "/d"
                               : enriched.lifetimeBudget != null
                               ? formatCurrency(enriched.lifetimeBudget) + " ltm"
                               : "—"}
-                          </td>
+                          </td>}
                         </tr>
                         {/* Expanded ad sets */}
                         {isExpanded && campAdSets.map((adSet) => {
-                          const asExpanded = expandedAdSets.has(adSet.id);
+                          const asExpanded = !reportMode && expandedAdSets.has(adSet.id);
                           const asCreatives = creativesByAdSet.get(adSet.id) ?? [];
                           const hasCreatives = asCreatives.length > 0;
                           return (
                             <React.Fragment key={adSet.id}>
                               {/* Ad set row */}
                               <tr
-                                className={`transition cursor-pointer ${asExpanded ? "bg-blue-50/40" : "hover:bg-slate-50"}`}
-                                onClick={() => hasCreatives && toggleAdSet(adSet.id)}
+                                className={reportMode ? "border-b border-slate-50 bg-slate-50/50" : `transition cursor-pointer ${asExpanded ? "bg-blue-50/40" : "hover:bg-slate-50"}`}
+                                onClick={reportMode ? undefined : () => hasCreatives && toggleAdSet(adSet.id)}
                               >
                                 <td className="py-3" style={{ paddingLeft: 48 }}>
                                   <div className="flex items-center gap-2">
-                                    {hasCreatives ? (
+                                    {!reportMode && (hasCreatives ? (
                                       asExpanded ? <ChevronDown className="h-3 w-3 text-blue-400 shrink-0" /> : <ChevronRight className="h-3 w-3 text-blue-400 shrink-0" />
-                                    ) : <span className="w-3 shrink-0" />}
+                                    ) : <span className="w-3 shrink-0" />)}
                                     <div className="min-w-0">
                                       <p className="text-slate-700 font-medium truncate text-[11px]">
                                         <Layers className="h-3 w-3 inline-block mr-1 text-blue-400 -mt-0.5" />
@@ -847,7 +852,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
                                 <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(adSet.clicks)}</td>
                                 <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{adSet.ctr.toFixed(2)}%</td>
                                 <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(adSet.cpc)}</td>
-                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(adSet.cpm)}</td>
+                                {!reportMode && <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(adSet.cpm)}</td>}
                                 <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(adSet.conversions)}</td>
                                 <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
                                   {adSet.conversions > 0 ? formatCurrency(adSet.spend / adSet.conversions) : "—"}
@@ -857,16 +862,16 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
                                     {adSet.roas.toFixed(2)}x
                                   </span>
                                 </td>
-                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
+                                {!reportMode && <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
                                   {adSet.frequency > 0 ? adSet.frequency.toFixed(2) : "—"}
-                                </td>
-                                <td className="px-6 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
+                                </td>}
+                                {!reportMode && <td className="px-6 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
                                   {adSet.dailyBudget != null
                                     ? formatCurrency(adSet.dailyBudget) + "/d"
                                     : adSet.lifetimeBudget != null
                                     ? formatCurrency(adSet.lifetimeBudget) + " ltm"
                                     : "—"}
-                                </td>
+                                </td>}
                               </tr>
                               {/* Expanded creatives */}
                               {asExpanded && asCreatives.map((cr) => (
@@ -930,7 +935,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
                                   <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(cr.clicks)}</td>
                                   <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{cr.ctr.toFixed(2)}%</td>
                                   <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(cr.cpc)}</td>
-                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(cr.cpm)}</td>
+                                  {!reportMode && <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(cr.cpm)}</td>}
                                   <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(cr.conversions)}</td>
                                   <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
                                     {cr.conversions > 0 ? formatCurrency(cr.costPerConversion) : "—"}
@@ -940,12 +945,12 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
                                       {cr.roas.toFixed(2)}x
                                     </span>
                                   </td>
-                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
+                                  {!reportMode && <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
                                     {cr.frequency > 0 ? cr.frequency.toFixed(2) : "—"}
-                                  </td>
-                                  <td className="px-6 py-3 text-right text-slate-400 text-[11px] whitespace-nowrap">
+                                  </td>}
+                                  {!reportMode && <td className="px-6 py-3 text-right text-slate-400 text-[11px] whitespace-nowrap">
                                     {cr.status}
-                                  </td>
+                                  </td>}
                                 </tr>
                               ))}
                             </React.Fragment>
