@@ -2,5 +2,15 @@
   "buildCommand": "npx prisma generate && node scripts/prod-setup.mjs && npm run build",
   "framework": "nextjs",
   "installCommand": "npm install",
-  "outputDirectory": ".next"
+  "outputDirectory": ".next",
+  "crons": [
+    {
+      "path": "/api/cron/snapshots",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/reports",
+      "schedule": "0 6 1 * *"
+    }
+  ]
 }

@@ -124,6 +124,111 @@ async function main() {
     console.log("✓ Report.shareToken already present");
   }
 
+  // ── Client.tiktokAdvertiserId (added Phase 1) ────────────────────────────
+  if (!(await columnExists("Client", "tiktokAdvertiserId"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "tiktokAdvertiserId" TEXT');
+    console.log("✓ Added Client.tiktokAdvertiserId");
+  } else {
+    console.log("✓ Client.tiktokAdvertiserId already present");
+  }
+
+  // ── Client.tiktokAccessToken (added Phase 1) ───────────────────────────
+  if (!(await columnExists("Client", "tiktokAccessToken"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "tiktokAccessToken" TEXT');
+    console.log("✓ Added Client.tiktokAccessToken");
+  } else {
+    console.log("✓ Client.tiktokAccessToken already present");
+  }
+
+  // ── Client.microsoftAdsAccountId (added Phase 1) ───────────────────────
+  if (!(await columnExists("Client", "microsoftAdsAccountId"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "microsoftAdsAccountId" TEXT');
+    console.log("✓ Added Client.microsoftAdsAccountId");
+  } else {
+    console.log("✓ Client.microsoftAdsAccountId already present");
+  }
+
+  // ── Client.microsoftAdsAccountName (added Phase 1) ─────────────────────
+  if (!(await columnExists("Client", "microsoftAdsAccountName"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "microsoftAdsAccountName" TEXT');
+    console.log("✓ Added Client.microsoftAdsAccountName");
+  } else {
+    console.log("✓ Client.microsoftAdsAccountName already present");
+  }
+
+  // ── Client.cwvUrl (added Phase 1) ──────────────────────────────────────
+  if (!(await columnExists("Client", "cwvUrl"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "cwvUrl" TEXT');
+    console.log("✓ Added Client.cwvUrl");
+  } else {
+    console.log("✓ Client.cwvUrl already present");
+  }
+
+  // ── Client.reportSchedule (added Phase 1) ──────────────────────────────
+  if (!(await columnExists("Client", "reportSchedule"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "reportSchedule" TEXT');
+    console.log("✓ Added Client.reportSchedule");
+  } else {
+    console.log("✓ Client.reportSchedule already present");
+  }
+
+  // ── Client.notifyEmail (added Phase 1) ─────────────────────────────────
+  if (!(await columnExists("Client", "notifyEmail"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "notifyEmail" TEXT');
+    console.log("✓ Added Client.notifyEmail");
+  } else {
+    console.log("✓ Client.notifyEmail already present");
+  }
+
+  // ── User.notificationPrefs (added Phase 1) ─────────────────────────────
+  if (!(await columnExists("User", "notificationPrefs"))) {
+    await db.execute('ALTER TABLE "User" ADD COLUMN "notificationPrefs" TEXT');
+    console.log("✓ Added User.notificationPrefs");
+  } else {
+    console.log("✓ User.notificationPrefs already present");
+  }
+
+  // ── Notification table (added Phase 1) ─────────────────────────────────
+  if (!(await tableExists("Notification"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "Notification" (
+      "id" TEXT PRIMARY KEY,
+      "userId" TEXT NOT NULL,
+      "clientId" TEXT,
+      "type" TEXT NOT NULL,
+      "severity" TEXT,
+      "title" TEXT NOT NULL,
+      "body" TEXT NOT NULL,
+      "metadata" TEXT,
+      "channel" TEXT NOT NULL DEFAULT 'in_app',
+      "status" TEXT NOT NULL DEFAULT 'unread',
+      "deliveredAt" DATETIME,
+      "readAt" DATETIME,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
+    )`);
+    console.log("✓ Created Notification table");
+  } else {
+    console.log("✓ Notification table already present");
+  }
+
+  // ── ClientConversation table (added Phase 1) ───────────────────────────
+  if (!(await tableExists("ClientConversation"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "ClientConversation" (
+      "id" TEXT PRIMARY KEY,
+      "clientId" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "role" TEXT NOT NULL,
+      "content" TEXT NOT NULL,
+      "metadata" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE,
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
+    )`);
+    console.log("✓ Created ClientConversation table");
+  } else {
+    console.log("✓ ClientConversation table already present");
+  }
+
   // ── Add future columns here in the same pattern ────────────────────────────
 
   await db.close();
