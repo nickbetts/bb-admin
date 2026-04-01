@@ -715,7 +715,8 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
             return (
               <div className="flex flex-col gap-5">
                 <SectionCard title="Campaign Performance">
-                  <table className="w-full text-xs">
+                  <div style={{ overflowX: "auto" }}>
+                  <table className="w-full text-xs" style={{ minWidth: 700 }}>
                     <thead>
                       <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
                         <th className="text-left px-6 py-4 font-medium">Campaign</th>
@@ -766,6 +767,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                       })}
                     </tbody>
                   </table>
+                  </div>
                 </SectionCard>
 
                 {show("ad_groups") && (() => {
@@ -773,7 +775,8 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                   if (!visibleAdGroups.length) return null;
                   return (
                     <SectionCard title="Ad Group Performance">
-                      <table className="w-full text-xs">
+                      <div style={{ overflowX: "auto" }}>
+                      <table className="w-full text-xs" style={{ minWidth: 700 }}>
                         <thead>
                           <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
                             <th className="text-left px-6 py-4 font-medium">Ad Group</th>
@@ -823,6 +826,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                           })}
                         </tbody>
                       </table>
+                      </div>
                     </SectionCard>
                   );
                 })()}
