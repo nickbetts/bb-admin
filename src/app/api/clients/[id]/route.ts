@@ -70,6 +70,13 @@ export async function PATCH(
         shopifyStoreDomain: data.shopifyStoreDomain || null,
         shopifyAccessToken: data.shopifyAccessToken || null,
         contractedHours: data.contractedHours !== undefined ? data.contractedHours : undefined,
+        tiktokAdvertiserId: data.tiktokAdvertiserId || null,
+        tiktokAccessToken: data.tiktokAccessToken || null,
+        microsoftAdsAccountId: data.microsoftAdsAccountId || null,
+        microsoftAdsAccountName: data.microsoftAdsAccountName || null,
+        cwvUrl: data.cwvUrl || null,
+        notifyEmail: data.notifyEmail || null,
+        reportSchedule: data.reportSchedule !== undefined ? data.reportSchedule : undefined,
       },
     });
 

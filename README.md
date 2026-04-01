@@ -1,6 +1,6 @@
 # i3media Report Platform
 
-A full-stack digital marketing performance reporting platform built for agencies. Aggregates data from **8 marketing channels** into unified client dashboards with **AI-powered insights**, **cross-channel anomaly detection**, **automated report generation**, **proposal building**, and **PDF export**.
+A full-stack digital marketing performance reporting platform built for agencies. Aggregates data from **10 marketing channels** into unified client dashboards with **AI-powered insights**, **cross-channel anomaly detection**, **automated report generation**, **conversational AI analyst**, **proposal building**, and **PDF export**.
 
 Built with Next.js 16, Prisma, OpenAI, and deployed on Vercel.
 
@@ -44,11 +44,17 @@ Built with Next.js 16, Prisma, OpenAI, and deployed on Vercel.
   - [Paid Social (Meta Ads)](#paid-social-meta-ads)
   - [Paid Search (Google Ads)](#paid-search-google-ads)
   - [E-Commerce](#e-commerce)
+  - [TikTok Ads](#tiktok-ads)
+  - [Microsoft Advertising](#microsoft-advertising)
+  - [Core Web Vitals](#core-web-vitals)
+  - [Conversational AI Chat](#conversational-ai-chat)
+  - [Notifications](#notifications)
   - [Reports](#reports)
   - [Report Templates](#report-templates)
   - [Tools](#tools)
   - [Admin Panel](#admin-panel)
   - [Settings](#settings)
+  - [Notification Preferences](#notification-preferences)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
@@ -66,11 +72,14 @@ Built with Next.js 16, Prisma, OpenAI, and deployed on Vercel.
 
 i3media Report is an internal agency platform that solves the problem of scattered marketing data across multiple platforms. Instead of logging into GA4, Google Ads, Meta Business Suite, SemRush, and Search Console separately, account managers get a single unified dashboard per client with:
 
-- **8 data source integrations** — GA4, Google Ads, Meta Ads, SemRush, Google Search Console, Moz, WooCommerce, Shopify
-- **AI-powered analysis** — OpenAI generates insights, detects anomalies, writes report commentary, scores landing pages, and builds client proposals
+- **10 data source integrations** — GA4, Google Ads, Meta Ads, TikTok Ads, Microsoft Advertising, SemRush, Google Search Console, Moz, WooCommerce, Shopify
+- **AI-powered analysis** — OpenAI generates insights, detects anomalies, writes report commentary, scores landing pages, builds proposals, and provides conversational analysis
+- **Conversational AI analyst** — "Ask the Data" chat interface on every client dashboard for instant natural-language performance analysis
 - **Cross-channel intelligence** — each AI analysis receives context from all other connected platforms for richer, more actionable insights
-- **Automated reporting** — drag-and-drop report builder with per-section AI commentary, screenshot uploads, branded PDF export, and shareable links
+- **Automated reporting** — drag-and-drop report builder with per-section AI commentary, screenshot uploads, branded PDF export, shareable links, and automated monthly scheduling
 - **Agency tools** — keyword planner with proposal generation, landing page analyser, LLM.txt generator, pricing strategy editor
+- **Notification system** — email and Slack delivery for anomalies, report events, and key platform alerts with per-user preferences
+- **Core Web Vitals** — real-user performance data via Google's CrUX API
 - **Role-based access control** — granular permissions system with 11 permission types across user-defined roles
 
 ### User Journey (High Level)
@@ -78,13 +87,14 @@ i3media Report is an internal agency platform that solves the problem of scatter
 ```
 Login -> Dashboard (stats overview)
   -> Clients (list/create/configure)
-    -> Client Dashboard (tabbed: Signals | Overview | SEO | GA4 | GSC | Meta | Google Ads | E-Commerce)
+    -> Client Dashboard (tabbed: Signals | Overview | SEO | GA4 | GSC | Meta | Google Ads | TikTok | Microsoft Ads | E-Commerce | CWV)
+      -> "Ask the Data" AI Chat (floating panel, always available)
       -> Create Report (select sections + template)
         -> Edit Report (drag-drop sections, AI commentary, screenshots)
           -> Export PDF / Share Link
   -> Tools (Page Analyser | Keyword Planner | Proposals | LLM Generator | Pricing)
   -> Admin (Users | Roles & Permissions)
-  -> Settings (Google OAuth, OpenAI key, MCC, benchmarks)
+  -> Settings (Google OAuth, OpenAI key, MCC, benchmarks, notifications)
 ```
 
 ---
@@ -1074,7 +1084,66 @@ Aggregates data from all platforms to show:
 - Top products table (name, quantity, revenue)
 - Orders by status bar chart
 
-### Reports
+### TikTok Ads
+
+**Tab:** TikTok Ads (requires `tiktokAdvertiserId` configured in client settings)
+
+- KPI cards: spend, impressions, clicks, CTR, CPC, CPM, conversions, cost/conversion, video views, reach, frequency
+- Campaign performance table with video view metrics
+- Powered by the TikTok Marketing API v1.3
+- Per-client access tokens supported (or global `TIKTOK_ACCESS_TOKEN` env var)
+
+### Microsoft Advertising
+
+**Tab:** Microsoft Ads (requires `microsoftAdsAccountId` configured in client settings)
+
+- KPI cards: spend, impressions, clicks, CTR, CPC, conversions, revenue, ROAS, cost/conversion
+- Campaign performance table with status badges
+- Powered by the Microsoft Advertising REST API v13
+- Requires `MICROSOFT_ADS_CLIENT_ID`, `MICROSOFT_ADS_CLIENT_SECRET`, `MICROSOFT_ADS_REFRESH_TOKEN`, `MICROSOFT_ADS_DEVELOPER_TOKEN` env vars
+
+### Core Web Vitals
+
+**Tab:** Core Web Vitals (available for any client with a website URL or custom `cwvUrl`)
+
+- Overall CWV assessment (Good / Needs Improvement / Poor) based on Google's standards
+- Per-metric cards: LCP, CLS, INP, TTFB, FCP
+- Each card shows 75th percentile value, category label, and good/ok/poor distribution bar
+- Data sourced from Google's **Chrome UX Report (CrUX) API** — real user measurements
+- Requires `GOOGLE_CRUX_API_KEY` (or `GOOGLE_API_KEY`) environment variable
+
+### Conversational AI Chat
+
+**Floating panel:** "Ask the Data" — available on every client dashboard
+
+- GPT-4o-mini powered chat interface anchored to the client's metric history
+- Conversation history persisted per client/user in the database
+- Pre-loaded with all historical `MetricSnapshot` data as context
+- Suggested prompt shortcuts for common questions
+- Supports multi-turn conversations with full history passed on each turn
+- Uses `ClientConversation` model; API at `/api/ai/chat`
+
+### Notifications
+
+**System-wide:** Anomaly alerts, report events, and key platform events
+
+- **In-app** — stored in the `Notification` model, surfaced in UI
+- **Email** — via Resend (configurable in AppSettings: `emailApiKey`, `emailFromAddress`)
+- **Slack** — via incoming webhooks configured per-user in notification preferences
+- **Types:** anomaly, report_ready, report_sent, report_opened, proposal_viewed, integration_error, goal_at_risk, snapshot_complete
+- **Admin broadcast** — `notifyAdmins()` sends to all admin users
+- API at `/api/notifications` (list), `/api/notifications/read` (mark read)
+
+### Notification Preferences
+
+**Route:** `/settings/notifications`
+
+- Toggle email and Slack delivery channels
+- Configure Slack webhook URL per user
+- Choose delivery frequency: Immediate / Daily Digest / Weekly Digest
+- Set quiet hours (non-critical notifications suppressed outside business hours)
+- Enable/disable individual notification types
+- API at `/api/notifications/preferences` (GET/PUT)
 
 **Route:** `/reports` (list) and `/reports/[id]` (editor)
 
@@ -1167,6 +1236,7 @@ Generates AI-search-optimised `llm.txt` files for client websites:
 - **OpenAI API Key:** Enter key (stored in DB, takes priority over env var)
 - **Task Time Benchmarks:** Configure hours-per-task estimates used in proposal generation
 - **Default MCC:** Select default Google Ads Manager account
+- **Notification Preferences:** See [Notification Preferences](#notification-preferences)
 
 ---
 
@@ -1374,6 +1444,13 @@ In your Vercel project dashboard: **Storage -> Create -> Blob**. Vercel auto-add
 | `GOOGLE_ADS_DEVELOPER_TOKEN` | Developer token |
 | `META_ACCESS_TOKEN` | Meta access token |
 | `OPENAI_API_KEY` | OpenAI key *(or set in Settings UI)* |
+| `TIKTOK_ACCESS_TOKEN` | TikTok Ads global access token *(or per-client in settings)* |
+| `MICROSOFT_ADS_CLIENT_ID` | Microsoft Ads OAuth app client ID |
+| `MICROSOFT_ADS_CLIENT_SECRET` | Microsoft Ads OAuth client secret |
+| `MICROSOFT_ADS_REFRESH_TOKEN` | Microsoft Ads OAuth refresh token |
+| `MICROSOFT_ADS_DEVELOPER_TOKEN` | Microsoft Advertising developer token |
+| `GOOGLE_CRUX_API_KEY` | Google CrUX API key for Core Web Vitals |
+| `CRON_SECRET` | Secret for securing `/api/cron/*` endpoints |
 
 4. Deploy. Subsequent pushes to `main` deploy automatically.
 
@@ -1384,6 +1461,17 @@ In your Vercel project dashboard: **Storage -> Create -> Blob**. Vercel auto-add
 - `npm ci` -> `npm run lint` -> `npm run build`
 
 Vercel's GitHub integration handles production deployments separately.
+
+### Cron Jobs
+
+Two Vercel cron jobs are configured in `vercel.json`:
+
+| Path | Schedule | Purpose |
+|------|----------|---------|
+| `/api/cron/snapshots` | Daily at 2:00 UTC | Pull metric data for all clients and upsert `MetricSnapshot` records |
+| `/api/cron/reports` | Monthly on the 1st at 6:00 UTC | Auto-generate reports for clients with a `reportSchedule` configured |
+
+Both endpoints require an `Authorization: Bearer <CRON_SECRET>` header when `CRON_SECRET` is set.
 
 ### Troubleshooting
 

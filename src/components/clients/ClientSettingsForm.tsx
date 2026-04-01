@@ -28,6 +28,13 @@ interface Client {
   shopifyStoreDomain: string | null;
   shopifyAccessToken: string | null;
   contractedHours: string | null; // JSON: Array<{service: string, hoursPerMonth: number}>
+  tiktokAdvertiserId: string | null;
+  tiktokAccessToken: string | null;
+  microsoftAdsAccountId: string | null;
+  microsoftAdsAccountName: string | null;
+  cwvUrl: string | null;
+  notifyEmail: string | null;
+  reportSchedule: string | null; // JSON: { frequency, dayOfMonth, autoApprove, templateId }
 }
 
 interface ClientSettingsFormProps {
@@ -112,6 +119,13 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
     woocommerceSecret: client.woocommerceSecret ?? "",
     shopifyStoreDomain: client.shopifyStoreDomain ?? "",
     shopifyAccessToken: client.shopifyAccessToken ?? "",
+    tiktokAdvertiserId: client.tiktokAdvertiserId ?? "",
+    tiktokAccessToken: client.tiktokAccessToken ?? "",
+    microsoftAdsAccountId: client.microsoftAdsAccountId ?? "",
+    microsoftAdsAccountName: client.microsoftAdsAccountName ?? "",
+    cwvUrl: client.cwvUrl ?? "",
+    notifyEmail: client.notifyEmail ?? "",
+    reportSchedule: client.reportSchedule ?? "",
   });
 
   // Contracted hours per service
@@ -696,6 +710,98 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <label className="form-label">Access Token</label>
             <input type="password" name="shopifyAccessToken" value={form.shopifyAccessToken} onChange={handleChange} placeholder="shpat_…" className="form-input" autoComplete="off" />
             <p className="text-xs text-slate-500 mt-1">Create a private app in Shopify Admin → Apps → Develop apps.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* TikTok Ads */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-black flex items-center justify-center text-xs font-bold text-white">TK</span>
+            <h2 className="card-title">TikTok Ads</h2>
+          </div>
+        </div>
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label className="form-label">Advertiser ID</label>
+            <input type="text" name="tiktokAdvertiserId" value={form.tiktokAdvertiserId} onChange={handleChange} placeholder="7000000000000000000" className="form-input" />
+            <p className="text-xs text-slate-500 mt-1">Found in TikTok Ads Manager → Account settings.</p>
+          </div>
+          <div>
+            <label className="form-label">Access Token</label>
+            <input type="password" name="tiktokAccessToken" value={form.tiktokAccessToken} onChange={handleChange} placeholder="TikTok Marketing API access token" className="form-input" autoComplete="off" />
+            <p className="text-xs text-slate-500 mt-1">Generate via TikTok for Business → Marketing API → Apps. If left blank, the global TIKTOK_ACCESS_TOKEN environment variable is used.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Microsoft Advertising */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: "#00a4ef", color: "white" }}>MS</span>
+            <h2 className="card-title">Microsoft Advertising</h2>
+          </div>
+        </div>
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label className="form-label">Account ID</label>
+            <input type="text" name="microsoftAdsAccountId" value={form.microsoftAdsAccountId} onChange={handleChange} placeholder="123456789" className="form-input" />
+            <p className="text-xs text-slate-500 mt-1">Found in Microsoft Ads → Settings → Account information.</p>
+          </div>
+          <div>
+            <label className="form-label">Account Name <span className="text-slate-400">(optional)</span></label>
+            <input type="text" name="microsoftAdsAccountName" value={form.microsoftAdsAccountName} onChange={handleChange} placeholder="My Bing Ads Account" className="form-input" />
+          </div>
+        </div>
+      </div>
+
+      {/* Core Web Vitals */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700">CWV</span>
+            <h2 className="card-title">Core Web Vitals</h2>
+          </div>
+        </div>
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label className="form-label">Website URL</label>
+            <input type="url" name="cwvUrl" value={form.cwvUrl} onChange={handleChange} placeholder="https://example.com" className="form-input" />
+            <p className="text-xs text-slate-500 mt-1">The URL to fetch real-user Core Web Vitals from Google&apos;s CrUX API. Leave blank to use the client website URL. Requires GOOGLE_CRUX_API_KEY environment variable.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Report Automation */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center text-xs font-bold text-violet-700">⏰</span>
+            <h2 className="card-title">Automated Reports</h2>
+          </div>
+        </div>
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label className="form-label">Report Schedule <span className="text-slate-400">(JSON)</span></label>
+            <textarea
+              name="reportSchedule"
+              value={form.reportSchedule}
+              onChange={handleChange}
+              rows={3}
+              className="form-input"
+              placeholder={'{"frequency":"monthly","dayOfMonth":1,"autoApprove":false}'}
+              style={{ fontFamily: "monospace", fontSize: 12 }}
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Set a schedule to auto-generate reports. Example: <code>{`{"frequency":"monthly","dayOfMonth":1,"autoApprove":false}`}</code>
+            </p>
+          </div>
+          <div>
+            <label className="form-label">Report Delivery Email <span className="text-slate-400">(optional override)</span></label>
+            <input type="email" name="notifyEmail" value={form.notifyEmail} onChange={handleChange} placeholder="client@example.com" className="form-input" />
+            <p className="text-xs text-slate-500 mt-1">Override the default notification email for this client&apos;s automated reports.</p>
           </div>
         </div>
       </div>
