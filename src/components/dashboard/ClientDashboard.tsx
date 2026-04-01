@@ -9,6 +9,10 @@ import { SearchConsoleSection } from "./SearchConsoleSection";
 import { OverviewSection } from "./OverviewSection";
 import { SignalsSection } from "./SignalsSection";
 import { EcommerceSection } from "./EcommerceSection";
+import { TikTokSection } from "./TikTokSection";
+import { MicrosoftAdsSection } from "./MicrosoftAdsSection";
+import { CoreWebVitalsSection } from "./CoreWebVitalsSection";
+import { AiChatPanel } from "./AiChatPanel";
 import { getDateRange, buildCrossContextString } from "@/lib/utils";
 import type { PlatformSummary } from "@/lib/utils";
 import { Calendar } from "lucide-react";
@@ -18,6 +22,7 @@ interface Client {
   id: string;
   name: string;
   slug: string;
+  website?: string | null;
   semrushDomain: string | null;
   semrushProjectId?: number | null;
   ga4PropertyId: string | null;
@@ -26,6 +31,9 @@ interface Client {
   searchConsoleSiteUrl: string | null;
   woocommerceUrl?: string | null;
   shopifyStoreDomain?: string | null;
+  tiktokAdvertiserId?: string | null;
+  microsoftAdsAccountId?: string | null;
+  cwvUrl?: string | null;
 }
 
 interface ClientDashboardProps {
@@ -42,7 +50,7 @@ const periods = [
   { value: "custom", label: "Custom" },
 ];
 
-type Tab = "signals" | "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole" | "ecommerce";
+type Tab = "signals" | "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole" | "ecommerce" | "tiktok" | "microsoftads" | "cwv";
 
 function toDateInputValue(d: Date) {
   return d.toISOString().split("T")[0];
@@ -165,7 +173,10 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
     { id: "searchconsole", label: "Search Console", available: !!client.searchConsoleSiteUrl },
     { id: "paid", label: "Paid Social (Meta)", available: !!client.metaAccountId },
     { id: "googleads", label: "Paid Search (Google Ads)", available: !!client.googleAdsCustomerId },
+    { id: "tiktok", label: "TikTok Ads", available: !!client.tiktokAdvertiserId },
+    { id: "microsoftads", label: "Microsoft Ads", available: !!client.microsoftAdsAccountId },
     { id: "ecommerce", label: "E-Commerce", available: !!(client.woocommerceUrl || client.shopifyStoreDomain) },
+    { id: "cwv", label: "Core Web Vitals", available: !!(client.cwvUrl || client.website) },
   ];
 
   return (
@@ -297,6 +308,33 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
           settingsHref={`/clients/${client.slug}/settings`}
         />
       ) : null}
+
+      {activeTab === "tiktok" && client.tiktokAdvertiserId ? (
+        <TikTokSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} />
+      ) : activeTab === "tiktok" ? (
+        <NotConfigured
+          name="TikTok Ads"
+          description="Add a TikTok Advertiser ID in client settings to see spend, video views, and campaign performance"
+          settingsHref={`/clients/${client.slug}/settings`}
+        />
+      ) : null}
+
+      {activeTab === "microsoftads" && client.microsoftAdsAccountId ? (
+        <MicrosoftAdsSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} />
+      ) : activeTab === "microsoftads" ? (
+        <NotConfigured
+          name="Microsoft Ads"
+          description="Add a Microsoft Ads account ID in client settings to see Bing search campaign performance"
+          settingsHref={`/clients/${client.slug}/settings`}
+        />
+      ) : null}
+
+      {activeTab === "cwv" ? (
+        <CoreWebVitalsSection url={(client.cwvUrl || client.website) ?? ""} />
+      ) : null}
+
+      {/* AI Chat panel — always visible when any platform is connected */}
+      <AiChatPanel clientId={client.id} clientName={client.name} />
     </div>
   );
 }

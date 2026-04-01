@@ -1062,19 +1062,19 @@ This category does not currently have a clear winner. Klipfolio, AgencyAnalytics
 
 ## 14. Phased Roadmap
 
-### Phase 1 — Foundation Hardening (0–3 months)
+### Phase 1 — Foundation Hardening (0–3 months) ✅ Complete
 
 Core improvements that make the existing platform more powerful and reliable.
 
-- [ ] **Notification system** — email + Slack alerts for anomalies and key events
-- [ ] **Historical snapshot automation** — nightly data pulls for all clients
-- [ ] **Conversational AI chat** — "Ask the data" interface on client dashboards
-- [ ] **Root cause analysis** — upgrade anomaly cards with AI explanation chain
-- [ ] **New integrations: TikTok Ads** — highest demand new integration
-- [ ] **New integrations: Microsoft Advertising** — quick win, similar to Google Ads
-- [ ] **Automated monthly report workflow** — schedule, generate, deliver
-- [ ] **Core Web Vitals integration** — free Google data, high SEO value
-- [ ] **Notification preferences UI** — user-configurable alerts
+- [x] **Notification system** — email + Slack alerts for anomalies and key events
+- [x] **Historical snapshot automation** — nightly data pulls for all clients
+- [x] **Conversational AI chat** — "Ask the data" interface on client dashboards
+- [x] **Root cause analysis** — upgrade anomaly cards with AI explanation chain
+- [x] **New integrations: TikTok Ads** — highest demand new integration
+- [x] **New integrations: Microsoft Advertising** — quick win, similar to Google Ads
+- [x] **Automated monthly report workflow** — schedule, generate, deliver
+- [x] **Core Web Vitals integration** — free Google data, high SEO value
+- [x] **Notification preferences UI** — user-configurable alerts
 
 ---
 
@@ -1196,5 +1196,5 @@ Build this, and the question stops being "why would we use this?" and starts bei
 
 ---
 
-*Document version: 1.0 — April 2026*
-*Next review: After Phase 1 completion*
+*Document version: 1.1 — April 2026 (Phase 1 complete)*
+*Next review: After Phase 2 completion*

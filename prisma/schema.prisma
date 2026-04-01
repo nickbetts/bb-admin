@@ -29,9 +29,12 @@ model User {
   mustChangePassword  Boolean   @default(false)
   roleId              String?
   userRole            Role?     @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  notificationPrefs   String?   // JSON: { email: boolean, slack: boolean, slackWebhook?: string, digestFrequency: "immediate"|"daily"|"weekly", quietHoursStart?: string, quietHoursEnd?: string, enabledTypes: string[] }
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   sessions            Session[]
+  notifications       Notification[]
+  conversations       ClientConversation[]
 }
 
 model Session {
@@ -73,10 +76,19 @@ model Client {
   shopifyStoreDomain    String?
   shopifyAccessToken    String?
   contractedHours       String?   // JSON: Array<{service: string, hoursPerMonth: number}>
+  tiktokAdvertiserId    String?
+  tiktokAccessToken     String?
+  microsoftAdsAccountId String?
+  microsoftAdsAccountName String?
+  cwvUrl                String?   // URL for Core Web Vitals tracking
+  reportSchedule        String?   // JSON: { frequency: "monthly"|"weekly", dayOfMonth?: number, dayOfWeek?: number, autoApprove: boolean, templateId?: string }
+  notifyEmail           String?   // Override email for report delivery
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   reports               Report[]
   snapshots             MetricSnapshot[]
+  conversations         ClientConversation[]
+  notifications         Notification[]
 }
 
 model Report {
@@ -220,4 +232,36 @@ model LlmTemplate {
   isBuiltIn       Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+// Notification system: delivers anomaly alerts, report events, and key platform events
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  clientId    String?
+  type        String   // "anomaly" | "report_ready" | "report_sent" | "report_opened" | "proposal_viewed" | "integration_error" | "goal_at_risk" | "snapshot_complete"
+  severity    String?  // "high" | "medium" | "low"
+  title       String
+  body        String
+  metadata    String?  // JSON: extra context (anomaly details, report id, etc.)
+  channel     String   @default("in_app") // "in_app" | "email" | "slack"
+  status      String   @default("unread") // "unread" | "read" | "dismissed"
+  deliveredAt DateTime?
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client      Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+// Conversational AI: stores chat messages per client for the "Ask the Data" feature
+model ClientConversation {
+  id        String   @id @default(cuid())
+  clientId  String
+  userId    String
+  role      String   // "user" | "assistant"
+  content   String
+  metadata  String?  // JSON: suggested prompts, context summary, etc.
+  createdAt DateTime @default(now())
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
