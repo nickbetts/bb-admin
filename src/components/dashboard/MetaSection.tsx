@@ -717,15 +717,158 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
           });
         };
 
+        // === REPORT MODE: per-campaign sections ===
+        if (reportMode) {
+          return (
+            <div className="flex flex-col gap-6">
+              {displayCampaigns.map((camp) => {
+                const enriched = camp as CampaignEnriched;
+                const prevC = prevCampaignsMap.get(camp.id);
+                const campAdSets = adSetsByCampaign.get(camp.id) ?? [];
+                const campCreatives = campAdSets.flatMap((as) => creativesByAdSet.get(as.id) ?? []);
+                const campPurchaseValue = camp.roas * camp.spend;
+                const prevPurchaseValue = prevC != null ? prevC.roas * prevC.spend : undefined;
+
+                const stats: { label: string; display: string; current: number; previous: number | null | undefined; fmt: "currency" | "count" | "none" }[] = [
+                  { label: "Spend", display: formatCurrency(camp.spend), current: camp.spend, previous: prevC?.spend, fmt: "currency" },
+                  { label: "Impressions", display: formatNumber(camp.impressions), current: camp.impressions, previous: prevC?.impressions, fmt: "count" },
+                  { label: "Clicks", display: formatNumber(camp.clicks), current: camp.clicks, previous: prevC?.clicks, fmt: "count" },
+                  { label: "Purchases", display: formatNumber(camp.conversions), current: camp.conversions, previous: prevC?.conversions, fmt: "count" },
+                  { label: "Purchase Value", display: formatCurrency(campPurchaseValue), current: campPurchaseValue, previous: prevPurchaseValue, fmt: "currency" },
+                ];
+
+                return (
+                  <SectionCard
+                    key={camp.id}
+                    title={camp.name}
+                    subtitle={[enriched.objective, campAdSets.length > 0 ? `${campAdSets.length} ad set${campAdSets.length !== 1 ? "s" : ""}` : null].filter(Boolean).join(" · ")}
+                  >
+                    {/* Campaign stats row */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 16, paddingBottom: 20, marginBottom: campAdSets.length > 0 || campCreatives.length > 0 ? 24 : 0, borderBottom: campAdSets.length > 0 || campCreatives.length > 0 ? "1px solid var(--border-subtle)" : "none" }}>
+                      {stats.map(({ label, display, current, previous, fmt }) => (
+                        <div key={label}>
+                          <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)", marginBottom: 4 }}>{label}</p>
+                          <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", whiteSpace: "nowrap" }}>{display}</p>
+                          <Delta current={current} previous={previous ?? null} format={fmt} />
+                        </div>
+                      ))}
+                      <div>
+                        <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)", marginBottom: 4 }}>ROAS</p>
+                        <p style={{ fontSize: 15, fontWeight: 700, whiteSpace: "nowrap", color: camp.roas >= 2 ? "#10b981" : camp.roas >= 1 ? "#f59e0b" : "#ef4444" }}>{camp.roas.toFixed(2)}x</p>
+                        <Delta current={camp.roas} previous={prevC?.roas ?? null} format="none" />
+                      </div>
+                    </div>
+
+                    {/* Ad Sets */}
+                    {campAdSets.length > 0 && (
+                      <div style={{ marginBottom: campCreatives.length > 0 ? 28 : 0 }}>
+                        <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 10 }}>Ad Sets</p>
+                        <table className="w-full" style={{ borderCollapse: "collapse", fontSize: 12 }}>
+                          <thead>
+                            <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                              <th style={{ textAlign: "left", padding: "8px 0", color: "var(--text-3)", fontWeight: 500 }}>Name</th>
+                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Spend</th>
+                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Purchases</th>
+                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Value</th>
+                              <th style={{ textAlign: "right", padding: "8px 0", color: "var(--text-3)", fontWeight: 500 }}>ROAS</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {campAdSets.map((as) => {
+                              const asCreativesCount = (creativesByAdSet.get(as.id) ?? []).length;
+                              const asValue = as.roas * as.spend;
+                              return (
+                                <tr key={as.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                                  <td style={{ padding: "10px 0" }}>
+                                    <p style={{ fontWeight: 600, color: "var(--text)" }}>{as.name}</p>
+                                    <p style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>{[as.optimizationGoal || as.status, asCreativesCount > 0 ? `${asCreativesCount} ad${asCreativesCount !== 1 ? "s" : ""}` : null].filter(Boolean).join(" · ")}</p>
+                                  </td>
+                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatCurrency(as.spend)}</td>
+                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatNumber(as.impressions)}</td>
+                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatNumber(as.clicks)}</td>
+                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatNumber(as.conversions)}</td>
+                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatCurrency(asValue)}</td>
+                                  <td style={{ textAlign: "right", padding: "10px 0", whiteSpace: "nowrap" }}>
+                                    <span style={{ fontWeight: 700, color: as.roas >= 2 ? "#10b981" : as.roas >= 1 ? "#f59e0b" : "#ef4444" }}>{as.roas.toFixed(2)}x</span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {/* Creatives / Ads */}
+                    {campCreatives.length > 0 && (
+                      <div>
+                        <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 10 }}>Ads</p>
+                        <table className="w-full" style={{ borderCollapse: "collapse", fontSize: 12 }}>
+                          <thead>
+                            <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                              <th style={{ textAlign: "left", padding: "8px 0", color: "var(--text-3)", fontWeight: 500 }}>Ad</th>
+                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Spend</th>
+                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Purchases</th>
+                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Value</th>
+                              <th style={{ textAlign: "right", padding: "8px 0", color: "var(--text-3)", fontWeight: 500 }}>ROAS</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {campCreatives.map((cr) => {
+                              const crValue = cr.roas * cr.spend;
+                              return (
+                                <tr key={cr.adId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                                  <td style={{ padding: "10px 0" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                      {(cr.imageUrl || cr.thumbnailUrl) && (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                          src={cr.imageUrl || cr.thumbnailUrl || ""}
+                                          alt={cr.adName}
+                                          style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", flexShrink: 0, border: "1px solid var(--border)" }}
+                                        />
+                                      )}
+                                      <div style={{ minWidth: 0 }}>
+                                        <p style={{ fontWeight: 600, color: "var(--text)" }}>{cr.adName}</p>
+                                        {cr.headline && <p style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>&ldquo;{cr.headline}&rdquo;</p>}
+                                        <span style={{ display: "inline-block", marginTop: 3, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", background: cr.mediaType === "VIDEO" ? "#ede9fe" : cr.mediaType === "CAROUSEL" ? "#dbeafe" : "#f1f5f9", color: cr.mediaType === "VIDEO" ? "#7c3aed" : cr.mediaType === "CAROUSEL" ? "#2563eb" : "#64748b", padding: "1px 5px", borderRadius: 3 }}>
+                                          {cr.mediaType === "UNKNOWN" ? "AD" : cr.mediaType}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatCurrency(cr.spend)}</td>
+                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatNumber(cr.impressions)}</td>
+                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatNumber(cr.clicks)}</td>
+                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatNumber(cr.conversions)}</td>
+                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatCurrency(crValue)}</td>
+                                  <td style={{ textAlign: "right", padding: "10px 0", whiteSpace: "nowrap" }}>
+                                    <span style={{ fontWeight: 700, color: cr.roas >= 2 ? "#10b981" : cr.roas >= 1 ? "#f59e0b" : "#ef4444" }}>{cr.roas.toFixed(2)}x</span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </SectionCard>
+                );
+              })}
+            </div>
+          );
+        }
+
+        // === DASHBOARD MODE: hierarchical table ===
         return (
-          <div className={reportMode ? "card" : "rounded-2xl border border-slate-200 bg-white shadow-sm"} style={reportMode ? undefined : { overflow: "visible" }}>
-            <div className={reportMode ? "card-header" : "px-6 py-5 border-b border-slate-100"}>
-              <div>
-                <h3 className={reportMode ? "card-title" : "text-sm font-semibold text-slate-800"}>Campaign Breakdown</h3>
-                <p className={reportMode ? "card-subtitle" : "text-xs text-slate-500 mt-0.5"}>
-                  {reportMode ? "Performance by campaign and ad set" : "Click campaigns to expand ad sets, then ad sets to see ad creatives"}
-                </p>
-              </div>
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm" style={{ overflow: "visible" }}>
+            <div className="px-6 py-5 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-800">Campaign Breakdown</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Click campaigns to expand ad sets, then ad sets to see ad creatives</p>
             </div>
             <div style={reportMode ? undefined : { overflowX: "auto", overflowY: "visible", borderRadius: "0 0 16px 16px" }}>
               <table className="w-full text-xs" style={reportMode ? undefined : { minWidth: 1080 }}>
