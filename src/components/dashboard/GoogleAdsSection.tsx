@@ -114,6 +114,7 @@ interface Props {
   visibleBlocks?: string[];
   hideAlerts?: boolean;
   hideAi?: boolean;
+  reportMode?: boolean;
   onMetricsReady?: (metrics: Record<string, number>) => void;
   afterHeader?: ReactNode;
 }
@@ -147,7 +148,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
 
 type GAdsAlert = { severity: "high" | "medium"; label: string; level: string; detail: string; recommendation: string };
 
-export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady, afterHeader }: Props) {
+export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, onMetricsReady, afterHeader }: Props) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
@@ -619,140 +620,213 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
             </SectionCard>
           )}
 
-          {/* Campaign breakdown */}
+          {/* Campaign + Ad Group breakdown */}
           {show("campaigns") && data.campaigns.length > 0 && (() => {
             const visibleCampaigns = data.campaigns.filter(c => c.clicks > 0 || c.costMicros > 0);
             if (!visibleCampaigns.length) return null;
-            return (
-            <SectionCard title="Campaign Performance">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                    <th className="text-left px-6 py-4 font-medium">Campaign</th>
-                    <th className="text-right px-4 py-4 font-medium">Clicks</th>
-                    <th className="text-right px-4 py-4 font-medium">Cost</th>
-                    <th className="text-right px-4 py-4 font-medium">Conv.</th>
-                    <th className="text-right px-4 py-4 font-medium">Conv. Value</th>
-                    <th className="text-right px-4 py-4 font-medium">ROAS</th>
-                    <th className="text-right px-6 py-4 font-medium">CTR</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
+
+            if (reportMode) {
+              return (
+                <div className="flex flex-col gap-6">
                   {visibleCampaigns.map((c) => {
                     const prevC = prevCampaignsMap.get(c.id);
-                    return (
-                    <tr key={c.id} className="hover:bg-slate-50 transition">
-                      <td className="px-6 py-4 text-slate-800 font-medium max-w-[300px] truncate">
-                        {c.name}
-                      </td>
-                      <td className="px-4 py-4 text-right text-slate-600">
-                        <div>{formatNumber(c.clicks)}</div>
-                        <Delta current={c.clicks} previous={prevC?.clicks} format="count" />
-                      </td>
-                      <td className="px-4 py-4 text-right text-slate-600">
-                        <div>{formatCurrency(micros(c.costMicros))}</div>
-                        <Delta current={micros(c.costMicros)} previous={prevC ? micros(prevC.costMicros) : undefined} format="currency" />
-                      </td>
-                      <td className="px-4 py-4 text-right text-slate-600">
-                        <div>{formatNumber(c.conversions)}</div>
-                        <Delta current={c.conversions} previous={prevC?.conversions} format="count" />
-                      </td>
-                      <td className="px-4 py-4 text-right text-slate-600">
-                        <div>{formatCurrency(c.conversionsValue)}</div>
-                        <Delta current={c.conversionsValue} previous={prevC?.conversionsValue} format="currency" />
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        <span
-                          className={`font-semibold ${
-                            roas(c.conversionsValue, c.costMicros) >= 2
-                              ? "text-emerald-600"
-                              : roas(c.conversionsValue, c.costMicros) >= 1
-                              ? "text-amber-600"
-                              : "text-red-600"
-                          }`}
-                        >
-                          {roas(c.conversionsValue, c.costMicros).toFixed(2)}x
-                        </span>
-                        <Delta current={roas(c.conversionsValue, c.costMicros)} previous={prevC ? roas(prevC.conversionsValue, prevC.costMicros) : undefined} format="none" />
-                      </td>
-                      <td className="px-6 py-4 text-right text-slate-600">
-                        <div>{formatPercent(ctr(c.clicks, c.impressions))}</div>
-                        <Delta current={ctr(c.clicks, c.impressions)} previous={prevC ? ctr(prevC.clicks, prevC.impressions) : undefined} format="none" />
-                      </td>
-                    </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </SectionCard>
-            );
-          })()}
+                    const campAdGroups = (data.adGroups ?? []).filter(ag => ag.campaignName === c.name && (ag.clicks > 0 || ag.costMicros > 0));
+                    const campRoas = roas(c.conversionsValue, c.costMicros);
+                    const prevRoas = prevC ? roas(prevC.conversionsValue, prevC.costMicros) : undefined;
 
-          {/* Ad group breakdown */}
-          {show("ad_groups") && data.adGroups.length > 0 && (() => {
-            const visibleAdGroups = data.adGroups.filter(ag => ag.clicks > 0 || ag.costMicros > 0);
-            if (!visibleAdGroups.length) return null;
-            return (
-            <SectionCard title="Ad Group Performance">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                    <th className="text-left px-6 py-4 font-medium">Ad Group</th>
-                    <th className="text-left px-4 py-4 font-medium text-slate-600">Campaign</th>
-                    <th className="text-right px-4 py-4 font-medium">Clicks</th>
-                    <th className="text-right px-4 py-4 font-medium">Cost</th>
-                    <th className="text-right px-4 py-4 font-medium">Conv.</th>
-                    <th className="text-right px-4 py-4 font-medium">Conv. Value</th>
-                    <th className="text-right px-6 py-4 font-medium">ROAS</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {visibleAdGroups.map((ag) => {
-                    const prevAg = prevAdGroupsMap.get(ag.id);
+                    const stats: { label: string; display: string; current: number; previous: number | null | undefined; fmt: "currency" | "count" | "none" }[] = [
+                      { label: "Cost", display: formatCurrency(micros(c.costMicros)), current: micros(c.costMicros), previous: prevC ? micros(prevC.costMicros) : undefined, fmt: "currency" },
+                      { label: "Impressions", display: formatNumber(c.impressions), current: c.impressions, previous: prevC?.impressions, fmt: "count" },
+                      { label: "Clicks", display: formatNumber(c.clicks), current: c.clicks, previous: prevC?.clicks, fmt: "count" },
+                      { label: "Conversions", display: formatNumber(c.conversions), current: c.conversions, previous: prevC?.conversions, fmt: "count" },
+                      { label: "Conv. Value", display: formatCurrency(c.conversionsValue), current: c.conversionsValue, previous: prevC?.conversionsValue, fmt: "currency" },
+                    ];
+
                     return (
-                    <tr key={ag.id} className="hover:bg-slate-50 transition">
-                      <td className="px-6 py-4 text-slate-800 font-medium max-w-[220px] truncate">
-                        {ag.name}
-                      </td>
-                      <td className="px-4 py-4 text-slate-500 max-w-[200px] truncate">
-                        {ag.campaignName}
-                      </td>
-                      <td className="px-4 py-4 text-right text-slate-600">
-                        <div>{formatNumber(ag.clicks)}</div>
-                        <Delta current={ag.clicks} previous={prevAg?.clicks} format="count" />
-                      </td>
-                      <td className="px-4 py-4 text-right text-slate-600">
-                        <div>{formatCurrency(micros(ag.costMicros))}</div>
-                        <Delta current={micros(ag.costMicros)} previous={prevAg ? micros(prevAg.costMicros) : undefined} format="currency" />
-                      </td>
-                      <td className="px-4 py-4 text-right text-slate-600">
-                        <div>{formatNumber(ag.conversions)}</div>
-                        <Delta current={ag.conversions} previous={prevAg?.conversions} format="count" />
-                      </td>
-                      <td className="px-4 py-4 text-right text-slate-600">
-                        <div>{formatCurrency(ag.conversionsValue)}</div>
-                        <Delta current={ag.conversionsValue} previous={prevAg?.conversionsValue} format="currency" />
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span
-                          className={`font-semibold ${
-                            roas(ag.conversionsValue, ag.costMicros) >= 2
-                              ? "text-emerald-600"
-                              : roas(ag.conversionsValue, ag.costMicros) >= 1
-                              ? "text-amber-600"
-                              : "text-red-600"
-                          }`}
-                        >
-                          {roas(ag.conversionsValue, ag.costMicros).toFixed(2)}x
-                        </span>
-                        <Delta current={roas(ag.conversionsValue, ag.costMicros)} previous={prevAg ? roas(prevAg.conversionsValue, prevAg.costMicros) : undefined} format="none" />
-                      </td>
-                    </tr>
+                      <SectionCard
+                        key={c.id}
+                        title={c.name}
+                        subtitle={campAdGroups.length > 0 ? `${campAdGroups.length} ad group${campAdGroups.length !== 1 ? "s" : ""}` : c.status}
+                      >
+                        {/* Campaign stats row */}
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 16, paddingBottom: 20, marginBottom: campAdGroups.length > 0 ? 24 : 0, borderBottom: campAdGroups.length > 0 ? "1px solid var(--border-subtle)" : "none" }}>
+                          {stats.map(({ label, display, current, previous, fmt }) => (
+                            <div key={label}>
+                              <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)", marginBottom: 4 }}>{label}</p>
+                              <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", whiteSpace: "nowrap" }}>{display}</p>
+                              <Delta current={current} previous={previous ?? null} format={fmt} />
+                            </div>
+                          ))}
+                          <div>
+                            <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)", marginBottom: 4 }}>ROAS</p>
+                            <p style={{ fontSize: 15, fontWeight: 700, whiteSpace: "nowrap", color: campRoas >= 2 ? "#10b981" : campRoas >= 1 ? "#f59e0b" : "#ef4444" }}>{campRoas.toFixed(2)}x</p>
+                            <Delta current={campRoas} previous={prevRoas ?? null} format="none" />
+                          </div>
+                        </div>
+
+                        {/* Ad Groups */}
+                        {campAdGroups.length > 0 && (
+                          <div>
+                            <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 10 }}>Ad Groups</p>
+                            <table className="w-full" style={{ borderCollapse: "collapse", fontSize: 12 }}>
+                              <thead>
+                                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                                  <th style={{ textAlign: "left", padding: "8px 0", color: "var(--text-3)", fontWeight: 500 }}>Name</th>
+                                  <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Cost</th>
+                                  <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                                  <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                                  <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Conversions</th>
+                                  <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Value</th>
+                                  <th style={{ textAlign: "right", padding: "8px 0", color: "var(--text-3)", fontWeight: 500 }}>ROAS</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {campAdGroups.map((ag) => {
+                                  const prevAg = prevAdGroupsMap.get(ag.id);
+                                  const agRoas = roas(ag.conversionsValue, ag.costMicros);
+                                  return (
+                                    <tr key={ag.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                                      <td style={{ padding: "10px 0" }}>
+                                        <p style={{ fontWeight: 600, color: "var(--text)" }}>{ag.name}</p>
+                                      </td>
+                                      <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatCurrency(micros(ag.costMicros))}</td>
+                                      <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatNumber(ag.impressions)}</td>
+                                      <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatNumber(ag.clicks)}</td>
+                                      <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatNumber(ag.conversions)}</td>
+                                      <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatCurrency(ag.conversionsValue)}</td>
+                                      <td style={{ textAlign: "right", padding: "10px 0", whiteSpace: "nowrap" }}>
+                                        <span style={{ fontWeight: 700, color: agRoas >= 2 ? "#10b981" : agRoas >= 1 ? "#f59e0b" : "#ef4444" }}>{agRoas.toFixed(2)}x</span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </SectionCard>
                     );
                   })}
-                </tbody>
-              </table>
-            </SectionCard>
+                </div>
+              );
+            }
+
+            // Dashboard mode: flat tables
+            return (
+              <div className="flex flex-col gap-5">
+                <SectionCard title="Campaign Performance">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                        <th className="text-left px-6 py-4 font-medium">Campaign</th>
+                        <th className="text-right px-4 py-4 font-medium">Clicks</th>
+                        <th className="text-right px-4 py-4 font-medium">Cost</th>
+                        <th className="text-right px-4 py-4 font-medium">Conv.</th>
+                        <th className="text-right px-4 py-4 font-medium">Conv. Value</th>
+                        <th className="text-right px-4 py-4 font-medium">ROAS</th>
+                        <th className="text-right px-6 py-4 font-medium">CTR</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {visibleCampaigns.map((c) => {
+                        const prevC = prevCampaignsMap.get(c.id);
+                        return (
+                        <tr key={c.id} className="hover:bg-slate-50 transition">
+                          <td className="px-6 py-4 text-slate-800 font-medium max-w-[300px] truncate">
+                            {c.name}
+                          </td>
+                          <td className="px-4 py-4 text-right text-slate-600">
+                            <div>{formatNumber(c.clicks)}</div>
+                            <Delta current={c.clicks} previous={prevC?.clicks} format="count" />
+                          </td>
+                          <td className="px-4 py-4 text-right text-slate-600">
+                            <div>{formatCurrency(micros(c.costMicros))}</div>
+                            <Delta current={micros(c.costMicros)} previous={prevC ? micros(prevC.costMicros) : undefined} format="currency" />
+                          </td>
+                          <td className="px-4 py-4 text-right text-slate-600">
+                            <div>{formatNumber(c.conversions)}</div>
+                            <Delta current={c.conversions} previous={prevC?.conversions} format="count" />
+                          </td>
+                          <td className="px-4 py-4 text-right text-slate-600">
+                            <div>{formatCurrency(c.conversionsValue)}</div>
+                            <Delta current={c.conversionsValue} previous={prevC?.conversionsValue} format="currency" />
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <span className={`font-semibold ${roas(c.conversionsValue, c.costMicros) >= 2 ? "text-emerald-600" : roas(c.conversionsValue, c.costMicros) >= 1 ? "text-amber-600" : "text-red-600"}`}>
+                              {roas(c.conversionsValue, c.costMicros).toFixed(2)}x
+                            </span>
+                            <Delta current={roas(c.conversionsValue, c.costMicros)} previous={prevC ? roas(prevC.conversionsValue, prevC.costMicros) : undefined} format="none" />
+                          </td>
+                          <td className="px-6 py-4 text-right text-slate-600">
+                            <div>{formatPercent(ctr(c.clicks, c.impressions))}</div>
+                            <Delta current={ctr(c.clicks, c.impressions)} previous={prevC ? ctr(prevC.clicks, prevC.impressions) : undefined} format="none" />
+                          </td>
+                        </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </SectionCard>
+
+                {show("ad_groups") && (() => {
+                  const visibleAdGroups = data.adGroups.filter(ag => ag.clicks > 0 || ag.costMicros > 0);
+                  if (!visibleAdGroups.length) return null;
+                  return (
+                    <SectionCard title="Ad Group Performance">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                            <th className="text-left px-6 py-4 font-medium">Ad Group</th>
+                            <th className="text-left px-4 py-4 font-medium text-slate-600">Campaign</th>
+                            <th className="text-right px-4 py-4 font-medium">Clicks</th>
+                            <th className="text-right px-4 py-4 font-medium">Cost</th>
+                            <th className="text-right px-4 py-4 font-medium">Conv.</th>
+                            <th className="text-right px-4 py-4 font-medium">Conv. Value</th>
+                            <th className="text-right px-6 py-4 font-medium">ROAS</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {visibleAdGroups.map((ag) => {
+                            const prevAg = prevAdGroupsMap.get(ag.id);
+                            return (
+                            <tr key={ag.id} className="hover:bg-slate-50 transition">
+                              <td className="px-6 py-4 text-slate-800 font-medium max-w-[220px] truncate">
+                                {ag.name}
+                              </td>
+                              <td className="px-4 py-4 text-slate-500 max-w-[200px] truncate">
+                                {ag.campaignName}
+                              </td>
+                              <td className="px-4 py-4 text-right text-slate-600">
+                                <div>{formatNumber(ag.clicks)}</div>
+                                <Delta current={ag.clicks} previous={prevAg?.clicks} format="count" />
+                              </td>
+                              <td className="px-4 py-4 text-right text-slate-600">
+                                <div>{formatCurrency(micros(ag.costMicros))}</div>
+                                <Delta current={micros(ag.costMicros)} previous={prevAg ? micros(prevAg.costMicros) : undefined} format="currency" />
+                              </td>
+                              <td className="px-4 py-4 text-right text-slate-600">
+                                <div>{formatNumber(ag.conversions)}</div>
+                                <Delta current={ag.conversions} previous={prevAg?.conversions} format="count" />
+                              </td>
+                              <td className="px-4 py-4 text-right text-slate-600">
+                                <div>{formatCurrency(ag.conversionsValue)}</div>
+                                <Delta current={ag.conversionsValue} previous={prevAg?.conversionsValue} format="currency" />
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <span className={`font-semibold ${roas(ag.conversionsValue, ag.costMicros) >= 2 ? "text-emerald-600" : roas(ag.conversionsValue, ag.costMicros) >= 1 ? "text-amber-600" : "text-red-600"}`}>
+                                  {roas(ag.conversionsValue, ag.costMicros).toFixed(2)}x
+                                </span>
+                                <Delta current={roas(ag.conversionsValue, ag.costMicros)} previous={prevAg ? roas(prevAg.conversionsValue, prevAg.costMicros) : undefined} format="none" />
+                              </td>
+                            </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </SectionCard>
+                  );
+                })()}
+              </div>
             );
           })()}
 
