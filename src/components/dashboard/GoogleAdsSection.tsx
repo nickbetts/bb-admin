@@ -17,6 +17,7 @@ import { AlertTriangle } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { AiLandingPageAnalysis } from "@/components/ai/AiLandingPageAnalysis";
 import { SuperSummary } from "@/components/ai/SuperSummary";
+import { CreativeIntelligencePanel } from "./CreativeIntelligencePanel";
 
 interface GoogleAdsOverview {
   clicks: number;
@@ -961,6 +962,22 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           source="googleads"
         />
       ) : null}
+
+      {/* Creative Intelligence */}
+      {!hideAi && !reportMode && !loading && !error && clientId && (
+        <CreativeIntelligencePanel
+          clientId={clientId}
+          platform="google"
+          creativeData={data?.campaignsEnriched?.map((a) => ({
+            name: a.name,
+            impressions: a.impressions,
+            clicks: a.clicks,
+            ctr: a.impressions > 0 ? (a.clicks / a.impressions) * 100 : 0,
+            conversions: a.conversions,
+            spend: a.costMicros / 1e6,
+          })) ?? []}
+        />
+      )}
     </div>
   );
 }

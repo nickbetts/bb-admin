@@ -35,6 +35,11 @@ interface Client {
   cwvUrl: string | null;
   notifyEmail: string | null;
   reportSchedule: string | null; // JSON: { frequency, dayOfMonth, autoApprove, templateId }
+  linkedinAccountId: string | null;
+  linkedinAccountName: string | null;
+  linkedinAccessToken: string | null;
+  klaviyoApiKey: string | null;
+  klaviyoAccountName: string | null;
 }
 
 interface ClientSettingsFormProps {
@@ -126,6 +131,11 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
     cwvUrl: client.cwvUrl ?? "",
     notifyEmail: client.notifyEmail ?? "",
     reportSchedule: client.reportSchedule ?? "",
+    linkedinAccountId: client.linkedinAccountId ?? "",
+    linkedinAccountName: client.linkedinAccountName ?? "",
+    linkedinAccessToken: client.linkedinAccessToken ?? "",
+    klaviyoApiKey: client.klaviyoApiKey ?? "",
+    klaviyoAccountName: client.klaviyoAccountName ?? "",
   });
 
   // Contracted hours per service
@@ -770,6 +780,59 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <label className="form-label">Website URL</label>
             <input type="url" name="cwvUrl" value={form.cwvUrl} onChange={handleChange} placeholder="https://example.com" className="form-input" />
             <p className="text-xs text-slate-500 mt-1">The URL to fetch real-user Core Web Vitals from Google&apos;s CrUX API. Leave blank to use the client website URL. Requires GOOGLE_CRUX_API_KEY environment variable.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* LinkedIn Ads */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#0a66c2" }}>in</span>
+            <div>
+              <h2 className="card-title">LinkedIn Ads</h2>
+              <p className="card-subtitle">Connect LinkedIn Campaign Manager to track B2B ad performance</p>
+            </div>
+          </div>
+        </div>
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label className="form-label">Account ID</label>
+            <input type="text" name="linkedinAccountId" value={form.linkedinAccountId} onChange={handleChange} placeholder="123456789" className="form-input" />
+            <p className="text-xs text-slate-500 mt-1">Found in LinkedIn Campaign Manager → Account Assets → Account Settings.</p>
+          </div>
+          <div>
+            <label className="form-label">Account Name <span className="text-slate-400">(optional)</span></label>
+            <input type="text" name="linkedinAccountName" value={form.linkedinAccountName} onChange={handleChange} placeholder="My Company LinkedIn Ads" className="form-input" />
+          </div>
+          <div>
+            <label className="form-label">Access Token</label>
+            <input type="password" name="linkedinAccessToken" value={form.linkedinAccessToken} onChange={handleChange} placeholder="LinkedIn Marketing API OAuth 2.0 access token" className="form-input" autoComplete="off" />
+            <p className="text-xs text-slate-500 mt-1">Generate via the LinkedIn Developer portal with <code>r_ads_reporting</code> and <code>r_ads</code> scopes.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Klaviyo */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#6c47ff" }}>KL</span>
+            <div>
+              <h2 className="card-title">Email Marketing (Klaviyo)</h2>
+              <p className="card-subtitle">Connect Klaviyo to track email campaign performance and revenue</p>
+            </div>
+          </div>
+        </div>
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label className="form-label">API Key</label>
+            <input type="password" name="klaviyoApiKey" value={form.klaviyoApiKey} onChange={handleChange} placeholder="pk_xxxxxxxxxxxxxxxxxxxxxxxx" className="form-input" autoComplete="off" />
+            <p className="text-xs text-slate-500 mt-1">Create a Private API Key in Klaviyo → Account → Settings → API Keys. Requires <code>Read-only</code> access to Campaigns.</p>
+          </div>
+          <div>
+            <label className="form-label">Account Name <span className="text-slate-400">(optional)</span></label>
+            <input type="text" name="klaviyoAccountName" value={form.klaviyoAccountName} onChange={handleChange} placeholder="My Klaviyo Account" className="form-input" />
           </div>
         </div>
       </div>

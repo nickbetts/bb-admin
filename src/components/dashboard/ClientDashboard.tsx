@@ -13,6 +13,9 @@ import { TikTokSection } from "./TikTokSection";
 import { MicrosoftAdsSection } from "./MicrosoftAdsSection";
 import { CoreWebVitalsSection } from "./CoreWebVitalsSection";
 import { AiChatPanel } from "./AiChatPanel";
+import { LinkedInSection } from "./LinkedInSection";
+import { KlaviyoSection } from "./KlaviyoSection";
+import { GoalsSection } from "./GoalsSection";
 import { getDateRange, buildCrossContextString } from "@/lib/utils";
 import type { PlatformSummary } from "@/lib/utils";
 import { Calendar } from "lucide-react";
@@ -34,6 +37,9 @@ interface Client {
   tiktokAdvertiserId?: string | null;
   microsoftAdsAccountId?: string | null;
   cwvUrl?: string | null;
+  linkedinAccountId?: string | null;
+  linkedinAccessToken?: string | null;
+  klaviyoApiKey?: string | null;
 }
 
 interface ClientDashboardProps {
@@ -50,7 +56,7 @@ const periods = [
   { value: "custom", label: "Custom" },
 ];
 
-type Tab = "signals" | "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole" | "ecommerce" | "tiktok" | "microsoftads" | "cwv";
+type Tab = "signals" | "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole" | "ecommerce" | "tiktok" | "microsoftads" | "cwv" | "linkedin" | "klaviyo" | "goals";
 
 function toDateInputValue(d: Date) {
   return d.toISOString().split("T")[0];
@@ -177,6 +183,9 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
     { id: "microsoftads", label: "Microsoft Ads", available: !!client.microsoftAdsAccountId },
     { id: "ecommerce", label: "E-Commerce", available: !!(client.woocommerceUrl || client.shopifyStoreDomain) },
     { id: "cwv", label: "Core Web Vitals", available: !!(client.cwvUrl || client.website) },
+    { id: "linkedin", label: "LinkedIn Ads", available: !!client.linkedinAccountId },
+    { id: "klaviyo", label: "Email (Klaviyo)", available: !!client.klaviyoApiKey },
+    { id: "goals", label: "Goals & KPIs", available: true },
   ];
 
   return (
@@ -332,6 +341,36 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
       {activeTab === "cwv" ? (
         <CoreWebVitalsSection url={(client.cwvUrl || client.website) ?? ""} />
       ) : null}
+
+      {activeTab === "linkedin" && client.linkedinAccountId ? (
+        <LinkedInSection
+          clientId={client.id}
+          accountId={client.linkedinAccountId}
+          accessToken={client.linkedinAccessToken}
+          startDate={startDate}
+          endDate={endDate}
+        />
+      ) : activeTab === "linkedin" ? (
+        <NotConfigured
+          name="LinkedIn Ads"
+          description="Add a LinkedIn Ads account ID and access token in client settings to see campaign performance"
+          settingsHref={`/clients/${client.slug}/settings`}
+        />
+      ) : null}
+
+      {activeTab === "klaviyo" && client.klaviyoApiKey ? (
+        <KlaviyoSection clientId={client.id} startDate={startDate} endDate={endDate} />
+      ) : activeTab === "klaviyo" ? (
+        <NotConfigured
+          name="Email Marketing (Klaviyo)"
+          description="Add a Klaviyo API key in client settings to see email campaign performance"
+          settingsHref={`/clients/${client.slug}/settings`}
+        />
+      ) : null}
+
+      {activeTab === "goals" && (
+        <GoalsSection clientId={client.id} />
+      )}
 
       {/* AI Chat panel — always visible when any platform is connected */}
       <AiChatPanel clientId={client.id} clientName={client.name} />

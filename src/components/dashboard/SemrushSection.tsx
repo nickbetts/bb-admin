@@ -22,6 +22,7 @@ import { formatNumber, formatCurrency, formatDateDisplay, pctChange } from "@/li
 import { TrendingUp, Search, ArrowUp, ArrowDown, Minus, AlertTriangle } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
+import { ShareOfVoicePanel } from "./ShareOfVoicePanel";
 
 interface SemrushSectionProps {
   domain: string;
@@ -992,6 +993,13 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
           ].join("\n") : undefined}
           crossPlatformContext={crossPlatformContext}
         />
+      )}
+
+      {/* Share of Voice and Seasonality */}
+      {!hideAi && !loading && !error && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <ShareOfVoicePanel domain={domain} startDate={startDate} endDate={endDate} />
+        </div>
       )}
     </div>
   );

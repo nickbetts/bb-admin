@@ -19,6 +19,7 @@ import { DollarSign, MousePointer, Eye, TrendingUp, AlertTriangle, ChevronRight,
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { AiLandingPageAnalysis } from "@/components/ai/AiLandingPageAnalysis";
 import { SuperSummary } from "@/components/ai/SuperSummary";
+import { CreativeIntelligencePanel } from "./CreativeIntelligencePanel";
 
 interface MetaSectionProps {
   clientId: string;
@@ -1190,6 +1191,25 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
           landingPages={landingPages}
           clientName={clientName}
           source="meta"
+        />
+      )}
+
+      {/* Creative Intelligence */}
+      {!hideAi && !reportMode && !loading && !error && (
+        <CreativeIntelligencePanel
+          clientId={clientId}
+          platform="meta"
+          creativeData={creatives.map(c => ({
+            name: c.adName,
+            spend: c.spend,
+            impressions: c.impressions,
+            clicks: c.clicks,
+            ctr: c.ctr,
+            conversions: c.conversions,
+            roas: c.roas,
+            format: c.mediaType,
+            headline: c.headline ?? undefined,
+          }))}
         />
       )}
 
