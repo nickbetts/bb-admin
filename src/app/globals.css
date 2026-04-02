@@ -769,6 +769,13 @@ body {
     display: none !important;
   }
 
+  /* Hide report UI chrome (toolbar, sections sidebar) —
+     these use inline style="display:flex" which beats class selectors
+     without !important, so we must force-override here. */
+  .print\:hidden {
+    display: none !important;
+  }
+
   /* Let main content area flow naturally */
   .app-main {
     overflow: visible !important;
