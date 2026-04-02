@@ -129,7 +129,13 @@ export async function POST(request: NextRequest) {
     ? `https://${process.env.VERCEL_URL}`
     : "http://localhost:3000");
   const cronSecret = process.env.CRON_SECRET;
-  const fetchHeaders: Record<string, string> = cronSecret ? { Authorization: `Bearer ${cronSecret}` } : {};
+  // Forward the session cookie so internal API routes can authenticate via getSessionOrCronAuth.
+  // If CRON_SECRET is also set, include it as a bearer token (covers both browser-initiated
+  // and unattended/cron-initiated snapshot runs).
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const fetchHeaders: Record<string, string> = {};
+  if (cookieHeader) fetchHeaders["Cookie"] = cookieHeader;
+  if (cronSecret) fetchHeaders["Authorization"] = `Bearer ${cronSecret}`;
 
   const clients = await prisma.client.findMany({
     select: {

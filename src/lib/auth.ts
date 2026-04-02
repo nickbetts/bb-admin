@@ -147,6 +147,37 @@ export async function requireAuth(): Promise<Session> {
   return session;
 }
 
+/**
+ * Authenticates a request via either:
+ *  1. A valid CRON_SECRET Bearer token (for server-to-server calls from run-snapshots / cron jobs)
+ *  2. A session cookie (for normal browser-authenticated requests)
+ *
+ * Use this instead of getSession() in API routes that may be called internally
+ * by the run-snapshots admin tool or the nightly cron job.
+ */
+export async function getSessionOrCronAuth(request: Request): Promise<Session | null> {
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader) {
+      const expected = `Bearer ${cronSecret}`;
+      try {
+        const headerBuf = Buffer.from(authHeader);
+        const expectedBuf = Buffer.from(expected);
+        if (
+          headerBuf.length === expectedBuf.length &&
+          timingSafeEqual(headerBuf, expectedBuf)
+        ) {
+          return { user: LEGACY_ADMIN_USER };
+        }
+      } catch {
+        // Buffer length mismatch or other error — fall through to session check
+      }
+    }
+  }
+  return getSession();
+}
+
 /** Returns true if the session user has the given permission. */
 export function hasPermission(session: Session, permission: Permission): boolean {
   return session.user.permissions.includes(permission);
