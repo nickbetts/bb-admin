@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Phone, PhoneCall, PhoneMissed, Loader2, AlertCircle } from "lucide-react";
+import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
 interface CallSummary {
   totalCalls: number;
@@ -30,9 +31,11 @@ interface CallRailData {
 
 interface CallRailSectionProps {
   clientId: string;
+  clientName: string;
+  crossPlatformContext?: string;
 }
 
-export function CallRailSection({ clientId }: CallRailSectionProps) {
+export function CallRailSection({ clientId, clientName, crossPlatformContext }: CallRailSectionProps) {
   const [data, setData] = useState<CallRailData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -148,6 +151,22 @@ export function CallRailSection({ clientId }: CallRailSectionProps) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* AI Insights */}
+      {summary && (
+        <AiInsightsPanel
+          sectionType="callrail"
+          metrics={{
+            totalCalls: summary.totalCalls,
+            answeredCalls: summary.answeredCalls,
+            missedCalls: summary.missedCalls,
+            answeredRate: summary.totalCalls > 0 ? Math.round((summary.answeredCalls / summary.totalCalls) * 100) : 0,
+          }}
+          clientId={clientId}
+          clientName={clientName}
+          crossPlatformContext={crossPlatformContext}
+        />
       )}
     </div>
   );

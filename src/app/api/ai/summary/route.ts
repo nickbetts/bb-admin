@@ -430,6 +430,45 @@ const SECTION_CONFIGS: Record<
       campaignCount: "Campaigns Sent",
     },
   },
+  youtube: {
+    name: "YouTube",
+    higherIsBetter: ["views", "watchTimeHours", "subscribers", "likes", "ctr"],
+    lowerIsBetter: [],
+    metricLabels: {
+      views: "Views",
+      watchTimeHours: "Watch Time (Hours)",
+      subscribers: "New Subscribers",
+      likes: "Likes",
+      ctr: "Click-Through Rate",
+      avgViewDuration: "Avg View Duration",
+      videoCount: "Videos Published",
+    },
+  },
+  hubspot: {
+    name: "HubSpot CRM",
+    higherIsBetter: ["totalContacts", "openDeals", "pipelineValue", "closedWonValue"],
+    lowerIsBetter: [],
+    metricLabels: {
+      totalContacts: "Total Contacts",
+      openDeals: "Open Deals",
+      pipelineValue: "Pipeline Value",
+      closedWonValue: "Closed Won Value",
+      newContacts: "New Contacts",
+      dealsCreated: "Deals Created",
+    },
+  },
+  callrail: {
+    name: "CallRail (Call Tracking)",
+    higherIsBetter: ["totalCalls", "answeredCalls", "answeredRate"],
+    lowerIsBetter: ["missedCalls"],
+    metricLabels: {
+      totalCalls: "Total Calls",
+      answeredCalls: "Answered Calls",
+      missedCalls: "Missed Calls",
+      answeredRate: "Answer Rate",
+      avgDurationSeconds: "Avg Call Duration",
+    },
+  },
 };
 
 // ─── Prompt builder helpers ────────────────────────────────────────────────────
@@ -644,6 +683,15 @@ Available levers: campaign budgets, bid strategies, audience targeting (job titl
 
         klaviyo: `You are a senior email marketing specialist at a UK digital marketing agency reviewing Klaviyo email performance data.
 Available levers: send cadence, segmentation, subject line optimisation, email content and design, send time optimisation, automation flows, and list hygiene. Focus on open rates, click rates, and revenue per email as primary KPIs.`,
+
+        youtube: `You are a senior video marketing specialist at a UK digital marketing agency reviewing YouTube channel performance data.
+Available levers: video content strategy, thumbnail optimisation, title/description SEO, upload cadence, playlist organisation, end screen and card placement, and audience engagement. Focus on views, watch time, subscriber growth, and CTR as key performance indicators.`,
+
+        hubspot: `You are a senior CRM and inbound marketing specialist at a UK digital marketing agency reviewing HubSpot CRM data.
+Available levers: lead nurturing workflows, deal pipeline management, contact segmentation, email sequences, form optimisation, and lifecycle stage progression. Focus on deal velocity, pipeline value, contact growth, and conversion from MQL to SQL.`,
+
+        callrail: `You are a senior call tracking and offline conversion specialist at a UK digital marketing agency reviewing CallRail phone tracking data.
+Available levers: call routing rules, IVR optimisation, tracking number allocation, source attribution, missed call follow-up workflows, and call quality scoring. Focus on total call volume, answer rate, call source attribution, and call duration as indicators of lead quality.`,
       };
 
       const systemPrompt = CHANNEL_PERSONAS[channelType]

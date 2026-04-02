@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Play, Eye, Clock, Users, ThumbsUp, Loader2, AlertCircle } from "lucide-react";
+import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
 interface YouTubeVideo {
   id: string;
@@ -35,9 +36,11 @@ interface YouTubeData {
 
 interface YouTubeSectionProps {
   clientId: string;
+  clientName: string;
+  crossPlatformContext?: string;
 }
 
-export function YouTubeSection({ clientId }: YouTubeSectionProps) {
+export function YouTubeSection({ clientId, clientName, crossPlatformContext }: YouTubeSectionProps) {
   const [data, setData] = useState<YouTubeData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -133,6 +136,22 @@ export function YouTubeSection({ clientId }: YouTubeSectionProps) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* AI Insights */}
+      {analytics && (
+        <AiInsightsPanel
+          sectionType="youtube"
+          metrics={{
+            views: analytics.views,
+            watchTimeHours: analytics.watchTimeHours,
+            subscribers: analytics.subscribers,
+            ctr: analytics.ctr,
+          }}
+          clientId={clientId}
+          clientName={clientName}
+          crossPlatformContext={crossPlatformContext}
+        />
       )}
     </div>
   );

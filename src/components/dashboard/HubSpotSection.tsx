@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Users, DollarSign, TrendingUp, Loader2, AlertCircle } from "lucide-react";
+import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
 interface HubSpotContact {
   id: string;
@@ -30,13 +31,15 @@ interface HubSpotData {
 
 interface HubSpotSectionProps {
   clientId: string;
+  clientName: string;
+  crossPlatformContext?: string;
 }
 
 function formatCurrency(v: number) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(v);
 }
 
-export function HubSpotSection({ clientId }: HubSpotSectionProps) {
+export function HubSpotSection({ clientId, clientName, crossPlatformContext }: HubSpotSectionProps) {
   const [data, setData] = useState<HubSpotData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -121,6 +124,22 @@ export function HubSpotSection({ clientId }: HubSpotSectionProps) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* AI Insights */}
+      {summary && (
+        <AiInsightsPanel
+          sectionType="hubspot"
+          metrics={{
+            totalContacts: summary.totalContacts,
+            openDeals: summary.openDeals,
+            pipelineValue: summary.pipelineValue,
+            closedWonValue: summary.closedWonValue,
+          }}
+          clientId={clientId}
+          clientName={clientName}
+          crossPlatformContext={crossPlatformContext}
+        />
       )}
     </div>
   );
