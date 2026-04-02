@@ -16,6 +16,12 @@ export const ALL_PERMISSIONS = [
   "pricing",
   "llm_generator",
   "users",
+  // Phase 3
+  "portfolio",
+  "actions",
+  "communications",
+  "competitor_intelligence",
+  "media_plan",
 ] as const;
 
 export type Permission = typeof ALL_PERMISSIONS[number];

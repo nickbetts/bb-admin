@@ -40,6 +40,14 @@ interface Client {
   linkedinAccessToken: string | null;
   klaviyoApiKey: string | null;
   klaviyoAccountName: string | null;
+  // Phase 3
+  hubspotPortalId: string | null;
+  hubspotAccessToken: string | null;
+  youtubeChannelId: string | null;
+  youtubeChannelName: string | null;
+  callrailAccountId: string | null;
+  callrailApiKey: string | null;
+  competitorDomains: string | null;
 }
 
 interface ClientSettingsFormProps {
@@ -136,6 +144,17 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
     linkedinAccessToken: client.linkedinAccessToken ?? "",
     klaviyoApiKey: client.klaviyoApiKey ?? "",
     klaviyoAccountName: client.klaviyoAccountName ?? "",
+    // Phase 3
+    hubspotPortalId: client.hubspotPortalId ?? "",
+    hubspotAccessToken: client.hubspotAccessToken ?? "",
+    youtubeChannelId: client.youtubeChannelId ?? "",
+    youtubeChannelName: client.youtubeChannelName ?? "",
+    callrailAccountId: client.callrailAccountId ?? "",
+    callrailApiKey: client.callrailApiKey ?? "",
+    competitorDomains: (() => {
+      if (!client.competitorDomains) return "";
+      try { return (JSON.parse(client.competitorDomains) as string[]).join("\n"); } catch { return client.competitorDomains; }
+    })(),
   });
 
   // Contracted hours per service
@@ -235,6 +254,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
         body: JSON.stringify({
           ...form,
           contractedHours: contractedHours.length > 0 ? JSON.stringify(contractedHours) : null,
+          // Transform competitorDomains textarea to JSON array
+          competitorDomains: form.competitorDomains.trim()
+            ? JSON.stringify(form.competitorDomains.split("\n").map((d) => d.trim()).filter(Boolean))
+            : null,
         }),
       });
 
@@ -834,6 +857,105 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <label className="form-label">Account Name <span className="text-slate-400">(optional)</span></label>
             <input type="text" name="klaviyoAccountName" value={form.klaviyoAccountName} onChange={handleChange} placeholder="My Klaviyo Account" className="form-input" />
           </div>
+        </div>
+      </div>
+
+      {/* HubSpot */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#ff7a59" }}>HS</span>
+            <div>
+              <h2 className="card-title">HubSpot CRM</h2>
+              <p className="card-subtitle">Connect HubSpot to view contacts, open deals and pipeline value</p>
+            </div>
+          </div>
+        </div>
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label className="form-label">Portal ID <span className="text-slate-400">(optional)</span></label>
+            <input type="text" name="hubspotPortalId" value={form.hubspotPortalId} onChange={handleChange} placeholder="12345678" className="form-input" />
+            <p className="text-xs text-slate-500 mt-1">Found in HubSpot → Settings → Account Defaults. Use &ldquo;demo&rdquo; to see sample data.</p>
+          </div>
+          <div>
+            <label className="form-label">Private App Token</label>
+            <input type="password" name="hubspotAccessToken" value={form.hubspotAccessToken} onChange={handleChange} placeholder="pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" className="form-input" autoComplete="off" />
+            <p className="text-xs text-slate-500 mt-1">Create a Private App in HubSpot → Settings → Integrations → Private Apps. Use &ldquo;demo&rdquo; to see sample data.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* YouTube */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#ff0000" }}>YT</span>
+            <div>
+              <h2 className="card-title">YouTube Analytics</h2>
+              <p className="card-subtitle">Connect a YouTube channel to track views, watch time, and top videos</p>
+            </div>
+          </div>
+        </div>
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label className="form-label">Channel ID</label>
+            <input type="text" name="youtubeChannelId" value={form.youtubeChannelId} onChange={handleChange} placeholder="UCxxxxxxxxxxxxxxxxxxxxxx" className="form-input" />
+            <p className="text-xs text-slate-500 mt-1">Found in YouTube Studio → Settings → Channel → Advanced. Use &ldquo;demo&rdquo; to see sample data.</p>
+          </div>
+          <div>
+            <label className="form-label">Channel Name <span className="text-slate-400">(optional)</span></label>
+            <input type="text" name="youtubeChannelName" value={form.youtubeChannelName} onChange={handleChange} placeholder="My Brand Channel" className="form-input" />
+          </div>
+        </div>
+      </div>
+
+      {/* CallRail */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#00c389" }}>CR</span>
+            <div>
+              <h2 className="card-title">CallRail</h2>
+              <p className="card-subtitle">Connect CallRail to track inbound calls, sources and answer rates</p>
+            </div>
+          </div>
+        </div>
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label className="form-label">Account ID</label>
+            <input type="text" name="callrailAccountId" value={form.callrailAccountId} onChange={handleChange} placeholder="ACC000000000000" className="form-input" />
+            <p className="text-xs text-slate-500 mt-1">Found in CallRail → Settings → Account. Use &ldquo;demo&rdquo; to see sample data.</p>
+          </div>
+          <div>
+            <label className="form-label">API Key</label>
+            <input type="password" name="callrailApiKey" value={form.callrailApiKey} onChange={handleChange} placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" className="form-input" autoComplete="off" />
+            <p className="text-xs text-slate-500 mt-1">Create in CallRail → Settings → Integrations → API Keys.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Competitor Intelligence */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-700">CI</span>
+            <div>
+              <h2 className="card-title">Competitor Intelligence</h2>
+              <p className="card-subtitle">Domains to monitor via SemRush — one per line</p>
+            </div>
+          </div>
+        </div>
+        <div className="card-body">
+          <textarea
+            name="competitorDomains"
+            value={form.competitorDomains}
+            onChange={handleChange}
+            rows={4}
+            className="form-input"
+            placeholder={"competitor1.com\ncompetitor2.co.uk\ncompetitor3.com"}
+            style={{ resize: "vertical", fontFamily: "monospace", fontSize: 13 }}
+          />
+          <p className="text-xs text-slate-500 mt-1">These domains will be analysed via the Competitor Intelligence tool. Requires a SemRush API key in global Settings.</p>
         </div>
       </div>
 
