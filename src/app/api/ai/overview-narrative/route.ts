@@ -62,6 +62,7 @@ interface PlatformMetrics {
 
 interface OverviewNarrativeRequest {
   clientName?: string;
+  clientId?: string;
   dateRange?: string;
   platforms: PlatformMetrics;
   previousPlatforms?: PlatformMetrics;
@@ -123,6 +124,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as OverviewNarrativeRequest;
     const {
       clientName,
+      clientId,
       dateRange,
       platforms,
       previousPlatforms,
@@ -138,6 +140,30 @@ export async function POST(request: NextRequest) {
     }
 
     const openai = await getOpenAiClient();
+
+    // Fetch client-specific AI instructions if clientId provided
+    let clientAiInstructions = "";
+    if (clientId) {
+      const client = await prisma.client.findUnique({ where: { id: clientId }, select: { aiReportInstructions: true } });
+      if (client?.aiReportInstructions) {
+        clientAiInstructions = client.aiReportInstructions;
+      }
+    }
+
+    // Fetch active client goals if clientId provided
+    let goalsContext = "";
+    if (clientId) {
+      const goals = await prisma.clientGoal.findMany({
+        where: { clientId, status: { in: ["active", "at_risk"] } },
+        select: { title: true, metric: true, targetValue: true, currentValue: true, unit: true, targetDate: true, status: true },
+      });
+      if (goals.length > 0) {
+        goalsContext = "\n\nACTIVE CLIENT GOALS:\n" + goals.map((g: typeof goals[number]) => {
+          const progress = g.currentValue && g.targetValue && g.targetValue !== 0 ? Math.round((g.currentValue / g.targetValue) * 100) : null;
+          return `• ${g.title}: target ${g.targetValue}${g.unit ? ` ${g.unit}` : ""} by ${g.targetDate} (current: ${g.currentValue ?? "not measured"}${progress ? ` — ${progress}% to target` : ""}, ${g.status.toUpperCase()})`;
+        }).join("\n");
+      }
+    }
 
     // ── Build platform-by-platform context ───────────────────────────────────
     const sections: string[] = [];
@@ -244,7 +270,7 @@ Your analysis covers:
 
 Be specific with numbers and percentages. Use British English. Reference actual metric values.
 Prioritise commercial impact — which changes would deliver the most revenue increase or efficiency gain?
-When only some channels are active, focus your analysis on those and note what's missing.`;
+When only some channels are active, focus your analysis on those and note what's missing.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
 
     const channelList = activePlatforms.join(", ");
     const userPrompt = `Produce a cross-channel performance overview for ${clientName ?? "the client"} (${dateRange ?? "selected period"}).
@@ -255,7 +281,7 @@ CHANNEL-BY-CHANNEL DATA:
 ${sections.join("\n\n")}
 
 ${aggText}
-${campaignText}${alertsText}${channelMetricsText}
+${campaignText}${alertsText}${channelMetricsText}${goalsContext}
 
 Produce a JSON object:
 {

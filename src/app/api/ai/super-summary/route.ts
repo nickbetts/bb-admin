@@ -11,6 +11,7 @@ export const maxDuration = 120;
 interface SuperSummaryRequest {
   sectionType: string;
   clientName?: string;
+  clientId?: string;
   dateRange?: string;
   /** Account-level metrics */
   metrics: Record<string, number>;
@@ -89,6 +90,7 @@ export async function POST(request: NextRequest) {
     const {
       sectionType,
       clientName,
+      clientId,
       dateRange,
       metrics,
       previousMetrics,
@@ -103,6 +105,15 @@ export async function POST(request: NextRequest) {
     }
 
     const openai = await getOpenAiClient();
+
+    // Fetch client-specific AI instructions if clientId provided
+    let clientAiInstructions = "";
+    if (clientId) {
+      const client = await prisma.client.findUnique({ where: { id: clientId }, select: { aiReportInstructions: true } });
+      if (client?.aiReportInstructions) {
+        clientAiInstructions = client.aiReportInstructions;
+      }
+    }
 
     const sectionName = SECTION_NAMES[sectionType] ?? sectionType;
     const labels = METRIC_LABELS[sectionType] ?? {};
@@ -188,7 +199,7 @@ When ad creative data is provided, deliver DETAILED creative-level analysis as p
 - For winning creatives, explain what makes them effective (strong hook, clear CTA, emotional resonance, social proof, etc.) so success can be replicated.
 
 Be specific with numbers, campaign names, page URLs, and metric values. Use British English.
-Prioritise commercial impact — which issues, if fixed, would deliver the most revenue or efficiency gain?`;
+Prioritise commercial impact — which issues, if fixed, would deliver the most revenue or efficiency gain?${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
 
     const userPrompt = `Produce a full-journey performance analysis for ${clientName ?? "the client"}'s ${sectionName} channel (${dateRange ?? "selected period"}).
 

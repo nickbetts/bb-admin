@@ -110,6 +110,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Fetch active client goals if clientId provided
+    let goalsContext = "";
+    if (clientId) {
+      const goals = await prisma.clientGoal.findMany({
+        where: { clientId, status: { in: ["active", "at_risk"] } },
+        select: { title: true, metric: true, targetValue: true, currentValue: true, unit: true, targetDate: true, status: true },
+      });
+      if (goals.length > 0) {
+        goalsContext = "\n\nACTIVE CLIENT GOALS:\n" + goals.map((g: typeof goals[number]) => {
+          const progress = g.currentValue && g.targetValue && g.targetValue !== 0 ? Math.round((g.currentValue / g.targetValue) * 100) : null;
+          return `• ${g.title}: target ${g.targetValue}${g.unit ? ` ${g.unit}` : ""} by ${g.targetDate} (current: ${g.currentValue ?? "not measured"}${progress ? ` — ${progress}% to target` : ""}, ${g.status.toUpperCase()})`;
+        }).join("\n");
+      }
+    }
+
     const sectionLabel = SECTION_LABELS[sectionType] ?? sectionType;
     const lengthInstruction = LENGTH_INSTRUCTIONS[length] ?? LENGTH_INSTRUCTIONS.medium;
     const toneInstruction = TONE_INSTRUCTIONS[tone] ?? TONE_INSTRUCTIONS.professional;
@@ -147,7 +162,7 @@ Period: ${dateRange ?? "the reporting period"}
 
 Current period metrics:
 ${currentMetricsText}
-${previousMetricsText ? `\nPrevious period metrics:\n${previousMetricsText}\n` : ""}
+${previousMetricsText ? `\nPrevious period metrics:\n${previousMetricsText}\n` : ""}${goalsContext}
 Write as the agency (first person "we"). Describe what the data shows, what we are working on, and what is performing well. Only reference metrics that are present and non-zero. Do not mention anything that is absent.`;
 
     const response = await openai.chat.completions.create({

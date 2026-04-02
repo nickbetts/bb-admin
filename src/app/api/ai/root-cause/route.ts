@@ -33,8 +33,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "clientId and anomaly are required" }, { status: 400 });
     }
 
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, aiReportInstructions: true } });
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
+
+    const clientAiInstructions = client.aiReportInstructions ?? "";
 
     // Fetch historical snapshots for the affected platform
     const historicalSnapshots = await prisma.metricSnapshot.findMany({
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     const openai = await getOpenAiClient();
 
-    const prompt = `You are an expert digital marketing analyst performing a root cause analysis for ${client.name}.
+    const prompt = `You are an expert digital marketing analyst performing a root cause analysis for ${client.name}.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}
 
 ## Anomaly Detected
 - Platform: ${anomaly.platform}

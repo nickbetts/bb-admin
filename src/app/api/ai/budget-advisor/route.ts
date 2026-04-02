@@ -20,12 +20,14 @@ export async function POST(request: NextRequest) {
 
     if (!clientId) return NextResponse.json({ error: "clientId is required" }, { status: 400 });
 
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, aiReportInstructions: true } });
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
+
+    const clientAiInstructions = client.aiReportInstructions ?? "";
 
     const openai = await getOpenAiClient();
 
-    const prompt = `You are an expert media buyer and budget optimisation specialist. Analyse the following cross-channel performance data and provide specific, actionable budget reallocation recommendations.
+    const prompt = `You are an expert media buyer and budget optimisation specialist. Analyse the following cross-channel performance data and provide specific, actionable budget reallocation recommendations.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}
 
 Client: ${client.name}
 

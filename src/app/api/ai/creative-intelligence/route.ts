@@ -30,12 +30,14 @@ export async function POST(request: NextRequest) {
 
     if (!clientId || !platform) return NextResponse.json({ error: "clientId and platform are required" }, { status: 400 });
 
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, aiReportInstructions: true } });
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
+
+    const clientAiInstructions = client.aiReportInstructions ?? "";
 
     const openai = await getOpenAiClient();
 
-    const prompt = `You are a creative performance analyst specialising in ${platform === "meta" ? "Meta (Facebook/Instagram)" : "Google"} Ads. Analyse the following creative performance data and identify patterns, insights, and recommendations.
+    const prompt = `You are a creative performance analyst specialising in ${platform === "meta" ? "Meta (Facebook/Instagram)" : "Google"} Ads. Analyse the following creative performance data and identify patterns, insights, and recommendations.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}
 
 Client: ${client.name}
 Platform: ${platform === "meta" ? "Meta Ads" : "Google Ads"}

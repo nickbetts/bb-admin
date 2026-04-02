@@ -19,12 +19,14 @@ export async function POST(request: NextRequest) {
 
     if (!clientId || !period) return NextResponse.json({ error: "clientId and period are required" }, { status: 400 });
 
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, website: true, aiReportInstructions: true } });
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
+
+    const clientAiInstructions = client.aiReportInstructions ?? "";
 
     const openai = await getOpenAiClient();
 
-    const prompt = `You are a senior digital marketing strategist. Create a comprehensive quarterly strategy document for the following client.
+    const prompt = `You are a senior digital marketing strategist. Create a comprehensive quarterly strategy document for the following client.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}
 
 Client: ${client.name}
 Website: ${client.website ?? "Not set"}

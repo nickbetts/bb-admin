@@ -565,6 +565,7 @@ export async function POST(request: NextRequest) {
       metrics: Record<string, number>;
       previousMetrics?: Record<string, number>;
       clientName?: string;
+      clientId?: string;
       dateRange?: string;
       campaignData?: CampaignContext[];
       landingPages?: LandingPageContext[];
@@ -578,6 +579,7 @@ export async function POST(request: NextRequest) {
       metrics,
       previousMetrics,
       clientName,
+      clientId,
       dateRange,
       campaignData,
       landingPages,
@@ -691,6 +693,30 @@ One string per alert, in the same order. British English.`;
 
     const openai = await getOpenAiClient();
 
+    // Fetch client-specific AI instructions if clientId provided
+    let clientAiInstructions = "";
+    if (clientId) {
+      const client = await prisma.client.findUnique({ where: { id: clientId }, select: { aiReportInstructions: true } });
+      if (client?.aiReportInstructions) {
+        clientAiInstructions = client.aiReportInstructions;
+      }
+    }
+
+    // Fetch active client goals if clientId provided
+    let goalsContext = "";
+    if (clientId) {
+      const goals = await prisma.clientGoal.findMany({
+        where: { clientId, status: { in: ["active", "at_risk"] } },
+        select: { title: true, metric: true, targetValue: true, currentValue: true, unit: true, targetDate: true, status: true },
+      });
+      if (goals.length > 0) {
+        goalsContext = "\n\nACTIVE CLIENT GOALS:\n" + goals.map((g: typeof goals[number]) => {
+          const progress = g.currentValue && g.targetValue && g.targetValue !== 0 ? Math.round((g.currentValue / g.targetValue) * 100) : null;
+          return `• ${g.title}: target ${g.targetValue}${g.unit ? ` ${g.unit}` : ""} by ${g.targetDate} (current: ${g.currentValue ?? "not measured"}${progress ? ` — ${progress}% to target` : ""}, ${g.status.toUpperCase()})`;
+        }).join("\n");
+      }
+    }
+
     const config = SECTION_CONFIGS[sectionType] ?? {
       name: sectionType,
       higherIsBetter: [],
@@ -788,7 +814,7 @@ When ad creative data is provided (Meta Ads), deliver GRANULAR creative-level an
 For landing pages, flag pages with high traffic but no conversions as a priority issue, and comment on URL structure/relevance.
 Look for cross-metric patterns: e.g. stable clicks + falling conversions points to a landing page or tracking issue; rising CPCs + falling impression share suggests competitive pressure.
 Distinguish between symptoms and root causes. Prioritise the 1-2 issues that will have the biggest commercial impact.
-Keep summaries punchy: aim for clarity over length.`;
+Keep summaries punchy: aim for clarity over length.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
 
     const contextParts = [
       `${config.name} performance for ${clientName ?? "the client"} — ${dateRange ?? "selected period"}`,
@@ -803,6 +829,7 @@ Keep summaries punchy: aim for clarity over length.`;
       historicalText,
       extraContext ?? "",
       crossPlatformContext ? `\nCROSS-PLATFORM CONTEXT (from other channels — use to inform deeper analysis):\n${crossPlatformContext}` : "",
+      goalsContext,
     ].filter(Boolean);
 
     const userPrompt = `Analyse the following ${config.name} data and provide a comprehensive performance review.
