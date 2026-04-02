@@ -268,7 +268,7 @@ export async function getBacklinks(
     `key=${encodeURIComponent(apiKey)}`,
     `target=${encodeURIComponent(domain)}`,
     `target_type=root_domain`,
-    `export_columns=source_url,target_url,anchor,source_ascore`,
+    `export_columns=source_url,target_url,anchor,ascore`,
     `display_limit=${limit}`,
   ].join("&");
 
@@ -283,7 +283,7 @@ export async function getBacklinks(
     if (lines.length < 2) return [];
 
     return lines.slice(1).map((line: string) => {
-      const [sourceUrl, targetUrl, anchorText, authority] = line.split("\t");
+      const [sourceUrl, targetUrl, anchorText, authority] = line.split("\t");  // columns: source_url, target_url, anchor, ascore
       return {
         sourceUrl: sourceUrl || "",
         targetUrl: targetUrl || "",

@@ -241,6 +241,21 @@ model MetricSnapshot {
   @@unique([clientId, sectionType, periodStart, periodEnd])
 }
 
+// Audit log for each cron/manual snapshot run
+model CronLog {
+  id               String    @id @default(cuid())
+  jobName          String    // "snapshots" | "reports"
+  triggeredBy      String    @default("cron")  // "cron" | "manual"
+  startedAt        DateTime  @default(now())
+  completedAt      DateTime?
+  status           String    @default("running")  // "running" | "success" | "error"
+  clientsTotal     Int       @default(0)
+  snapshotsNew     Int       @default(0)
+  snapshotsSkipped Int       @default(0)
+  errors           Int       @default(0)
+  details          String?   // JSON: per-client results array
+}
+
 model KeywordPlannerResearch {
   id              String   @id @default(cuid())
   userId          String

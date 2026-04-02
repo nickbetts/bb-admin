@@ -70,6 +70,13 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }
   } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 403) {
+      const body = typeof error.response.data === "string" ? error.response.data : "";
+      if (body.includes("BALANCE IS ZERO") || body.includes("ERROR 132")) {
+        console.warn("SemRush API: units balance is zero");
+        return NextResponse.json({ error: "semrush_no_units" }, { status: 402 });
+      }
+    }
     console.error("SemRush API error:", error);
     if (axios.isAxiosError(error) && error.response) {
       console.error("SemRush response body:", typeof error.response.data === "string" ? error.response.data.slice(0, 500) : JSON.stringify(error.response.data));

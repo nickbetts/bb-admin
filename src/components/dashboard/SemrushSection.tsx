@@ -161,6 +161,9 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
 
         if (!overviewRes.ok) {
           const err = await overviewRes.json();
+          if (err.error === "semrush_no_units") {
+            throw new Error("SEMrush API unit balance is zero. Top up units to restore data.");
+          }
           throw new Error(err.error ?? "Failed to fetch SemRush data");
         }
 

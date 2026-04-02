@@ -550,6 +550,27 @@ async function main() {
     console.log("✓ StrategyDocument.type already present");
   }
 
+  // ── CronLog table (added 2026-04-02) ──────────────────────────────────────
+  if (!(await tableExists("CronLog"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "CronLog" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "jobName" TEXT NOT NULL,
+      "triggeredBy" TEXT NOT NULL DEFAULT 'cron',
+      "startedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "completedAt" DATETIME,
+      "status" TEXT NOT NULL DEFAULT 'running',
+      "clientsTotal" INTEGER NOT NULL DEFAULT 0,
+      "snapshotsNew" INTEGER NOT NULL DEFAULT 0,
+      "snapshotsSkipped" INTEGER NOT NULL DEFAULT 0,
+      "errors" INTEGER NOT NULL DEFAULT 0,
+      "details" TEXT
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "CronLog_jobName_startedAt_idx" ON "CronLog"("jobName", "startedAt" DESC)`);
+    console.log("✓ Created CronLog table");
+  } else {
+    console.log("✓ CronLog table already present");
+  }
+
   // ── Add future columns here in the same pattern ────────────────────────────
 
   await db.close();
