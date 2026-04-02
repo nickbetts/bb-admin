@@ -1,0 +1,318 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { CheckSquare, Plus, Loader2, Trash2, Pencil, Filter } from "lucide-react";
+
+interface ActionItem {
+  id: string;
+  clientId: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  assignedTo: string | null;
+  dueDate: string | null;
+  completedAt: string | null;
+  outcome: string | null;
+  sourceType: string | null;
+  createdAt: string;
+}
+
+interface Client {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+interface ActionWithClient extends ActionItem {
+  clientName?: string;
+}
+
+const STATUSES = ["open", "in_progress", "completed", "cancelled"];
+const PRIORITIES = ["urgent", "high", "medium", "low"];
+
+const statusColors: Record<string, string> = {
+  open: "#6366f1",
+  in_progress: "#f59e0b",
+  completed: "#22c55e",
+  cancelled: "#9ca3af",
+};
+
+const priorityColors: Record<string, string> = {
+  urgent: "#ef4444",
+  high: "#f97316",
+  medium: "#6366f1",
+  low: "#9ca3af",
+};
+
+const statusLabels: Record<string, string> = {
+  open: "Open",
+  in_progress: "In Progress",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+export default function ActionsPage() {
+  const [actions, setActions] = useState<ActionWithClient[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterClient, setFilterClient] = useState("all");
+  const [filterPriority, setFilterPriority] = useState("all");
+  const [showForm, setShowForm] = useState(false);
+  const [editingAction, setEditingAction] = useState<ActionWithClient | null>(null);
+  const [form, setForm] = useState({ clientId: "", title: "", description: "", priority: "medium", assignedTo: "", dueDate: "" });
+  const [saving, setSaving] = useState(false);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const clientsRes = await fetch("/api/clients");
+      if (clientsRes.ok) {
+        const data = await clientsRes.json() as { clients: Client[] };
+        setClients(data.clients ?? []);
+
+        const allActions: ActionWithClient[] = [];
+        await Promise.all(
+          (data.clients ?? []).map(async (client) => {
+            const res = await fetch(`/api/clients/${client.id}/actions`);
+            if (res.ok) {
+              const clientActions = await res.json() as ActionItem[];
+              allActions.push(...clientActions.map((a) => ({ ...a, clientName: client.name })));
+            }
+          })
+        );
+        allActions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setActions(allActions);
+      }
+    } catch { /* ignore */ } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  async function handleSave() {
+    if (!form.clientId || !form.title) return;
+    setSaving(true);
+    try {
+      const url = editingAction
+        ? `/api/clients/${editingAction.clientId}/actions/${editingAction.id}`
+        : `/api/clients/${form.clientId}/actions`;
+      const method = editingAction ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        setShowForm(false);
+        setEditingAction(null);
+        setForm({ clientId: "", title: "", description: "", priority: "medium", assignedTo: "", dueDate: "" });
+        await loadData();
+      }
+    } catch { /* ignore */ } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleStatusChange(action: ActionWithClient, newStatus: string) {
+    await fetch(`/api/clients/${action.clientId}/actions/${action.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    await loadData();
+  }
+
+  async function handleDelete(action: ActionWithClient) {
+    if (!confirm("Delete this action?")) return;
+    await fetch(`/api/clients/${action.clientId}/actions/${action.id}`, { method: "DELETE" });
+    await loadData();
+  }
+
+  function startEdit(action: ActionWithClient) {
+    setForm({
+      clientId: action.clientId,
+      title: action.title,
+      description: action.description ?? "",
+      priority: action.priority,
+      assignedTo: action.assignedTo ?? "",
+      dueDate: action.dueDate ?? "",
+    });
+    setEditingAction(action);
+    setShowForm(true);
+  }
+
+  const filtered = actions.filter((a) => {
+    if (filterStatus !== "all" && a.status !== filterStatus) return false;
+    if (filterClient !== "all" && a.clientId !== filterClient) return false;
+    if (filterPriority !== "all" && a.priority !== filterPriority) return false;
+    return true;
+  });
+
+  const grouped = STATUSES.reduce<Record<string, ActionWithClient[]>>((acc, s) => {
+    acc[s] = filtered.filter((a) => a.status === s);
+    return acc;
+  }, {});
+
+  return (
+    <div style={{ padding: "40px 48px", maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#6366f1,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <CheckSquare style={{ width: 20, height: 20, color: "white" }} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Action Board</h1>
+            <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>Track actions and tasks across all clients</p>
+          </div>
+        </div>
+        <button
+          className="btn btn-primary btn-sm"
+          style={{ gap: 6, display: "inline-flex", alignItems: "center" }}
+          onClick={() => { setShowForm(true); setEditingAction(null); setForm({ clientId: "", title: "", description: "", priority: "medium", assignedTo: "", dueDate: "" }); }}
+        >
+          <Plus style={{ width: 14, height: 14 }} /> New Action
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 24, flexWrap: "wrap", alignItems: "center" }}>
+        <Filter style={{ width: 14, height: 14, color: "var(--text-3)" }} />
+        <select className="form-input" style={{ width: "auto", fontSize: 13 }} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+          <option value="all">All Statuses</option>
+          {STATUSES.map((s) => <option key={s} value={s}>{statusLabels[s]}</option>)}
+        </select>
+        <select className="form-input" style={{ width: "auto", fontSize: 13 }} value={filterClient} onChange={(e) => setFilterClient(e.target.value)}>
+          <option value="all">All Clients</option>
+          {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <select className="form-input" style={{ width: "auto", fontSize: 13 }} value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+          <option value="all">All Priorities</option>
+          {PRIORITIES.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+        </select>
+      </div>
+
+      {/* Create/Edit Form */}
+      {showForm && (
+        <div className="card" style={{ padding: 20, marginBottom: 24 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", marginBottom: 16 }}>
+            {editingAction ? "Edit Action" : "New Action"}
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Client *</label>
+              <select className="form-input" value={form.clientId} onChange={(e) => setForm((f) => ({ ...f, clientId: e.target.value }))} disabled={!!editingAction}>
+                <option value="">Select client…</option>
+                {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Priority</label>
+              <select className="form-input" value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}>
+                {PRIORITIES.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+              </select>
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Title *</label>
+              <input className="form-input" placeholder="Action title…" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Assigned To</label>
+              <input className="form-input" placeholder="Name or email" value={form.assignedTo} onChange={(e) => setForm((f) => ({ ...f, assignedTo: e.target.value }))} />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Due Date</label>
+              <input className="form-input" type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Description</label>
+              <textarea className="form-input" rows={2} placeholder="Optional details…" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving || !form.title || !form.clientId}>
+              {saving ? <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> : null}
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <button className="btn btn-secondary btn-sm" onClick={() => { setShowForm(false); setEditingAction(null); }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 14 }}>
+          <Loader2 style={{ width: 20, height: 20, animation: "spin 1s linear infinite", margin: "0 auto 8px", display: "block" }} />
+          Loading actions…
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
+          {STATUSES.map((status) => (
+            <div key={status}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <span style={{ width: 10, height: 10, borderRadius: "50%", background: statusColors[status], flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{statusLabels[status]}</span>
+                <span style={{ fontSize: 11, color: "var(--text-4)", background: "var(--bg-2)", borderRadius: 99, padding: "2px 7px" }}>
+                  {grouped[status]?.length ?? 0}
+                </span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {(grouped[status] ?? []).length === 0 ? (
+                  <div style={{ border: "1px dashed var(--border)", borderRadius: 8, padding: "16px 12px", textAlign: "center", fontSize: 12, color: "var(--text-4)" }}>
+                    No actions
+                  </div>
+                ) : (
+                  (grouped[status] ?? []).map((action) => (
+                    <div key={action.id} className="card" style={{ padding: 14 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 4 }}>{action.title}</p>
+                          <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>{action.clientName}</p>
+                          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 10, fontWeight: 600, color: priorityColors[action.priority], background: `${priorityColors[action.priority]}18`, padding: "2px 6px", borderRadius: 99 }}>
+                              {action.priority}
+                            </span>
+                            {action.dueDate && (
+                              <span style={{ fontSize: 10, color: "var(--text-3)", background: "var(--bg-2)", padding: "2px 6px", borderRadius: 99 }}>
+                                Due {new Date(action.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                              </span>
+                            )}
+                            {action.assignedTo && (
+                              <span style={{ fontSize: 10, color: "var(--text-3)", background: "var(--bg-2)", padding: "2px 6px", borderRadius: 99 }}>
+                                → {action.assignedTo}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+                          <button className="btn btn-ghost btn-sm" style={{ padding: 4 }} onClick={() => startEdit(action)}>
+                            <Pencil style={{ width: 11, height: 11 }} />
+                          </button>
+                          <button className="btn btn-ghost btn-sm" style={{ padding: 4, color: "#ef4444" }} onClick={() => handleDelete(action)}>
+                            <Trash2 style={{ width: 11, height: 11 }} />
+                          </button>
+                        </div>
+                      </div>
+                      {action.description && (
+                        <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8, lineHeight: 1.5 }}>{action.description}</p>
+                      )}
+                      <select
+                        className="form-input"
+                        style={{ fontSize: 11, marginTop: 10, padding: "4px 8px" }}
+                        value={action.status}
+                        onChange={(e) => handleStatusChange(action, e.target.value)}
+                      >
+                        {STATUSES.map((s) => <option key={s} value={s}>{statusLabels[s]}</option>)}
+                      </select>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { ArrowLeft, Plus, ExternalLink, Settings } from "lucide-react";
+import { ArrowLeft, Plus, ExternalLink, Settings, Shield } from "lucide-react";
 import { ClientDashboard } from "@/components/dashboard/ClientDashboard";
 
 interface Props {
@@ -81,6 +81,10 @@ export default async function ClientPage({ params, searchParams }: Props) {
             <Link href={`/clients/${slug}/settings`} className="btn btn-secondary">
               <Settings style={{ width: 15, height: 15 }} />
               Settings
+            </Link>
+            <Link href={`/clients/${slug}/portal`} className="btn btn-secondary">
+              <Shield style={{ width: 15, height: 15 }} />
+              Portal
             </Link>
           </div>
         </div>

@@ -20,6 +20,12 @@ import {
   Tag,
   Bot,
   X,
+  Activity,
+  CheckSquare,
+  MessageSquare,
+  LayoutGrid,
+  TrendingUp,
+  PieChart,
 } from "lucide-react";
 
 interface NavItem {
@@ -37,10 +43,19 @@ const navItems: NavItem[] = [
   { href: "/settings", label: "Settings", icon: <Settings className="h-4 w-4" />, permission: "settings" },
 ];
 
+const opsNavItems: NavItem[] = [
+  { href: "/portfolio", label: "Portfolio Health", icon: <Activity className="h-4 w-4" />, permission: "portfolio" },
+  { href: "/tools/actions", label: "Actions", icon: <CheckSquare className="h-4 w-4" />, permission: "actions" },
+  { href: "/tools/communications", label: "Communications", icon: <MessageSquare className="h-4 w-4" />, permission: "communications" },
+];
+
 const toolsNavItems: NavItem[] = [
   { href: "/tools/page-analyser", label: "Page Analyser", icon: <ScanSearch className="h-4 w-4" />, permission: "page_analyser" },
   { href: "/tools/keyword-planner", label: "Proposal Generator", icon: <Sparkles className="h-4 w-4" />, permission: "proposal_generator" },
   { href: "/tools/proposals", label: "Proposals", icon: <FileText className="h-4 w-4" />, permission: "proposals" },
+  { href: "/tools/proposals/pipeline", label: "Pipeline CRM", icon: <LayoutGrid className="h-4 w-4" />, permission: "proposals" },
+  { href: "/tools/competitor-intelligence", label: "Competitor Intel", icon: <TrendingUp className="h-4 w-4" />, permission: "competitor_intelligence" },
+  { href: "/tools/media-plan", label: "Media Planner", icon: <PieChart className="h-4 w-4" />, permission: "media_plan" },
   { href: "/tools/pricing", label: "Pricing", icon: <Tag className="h-4 w-4" />, permission: "pricing" },
   { href: "/tools/llm-generator", label: "LLM.txt Generator", icon: <Bot className="h-4 w-4" />, permission: "llm_generator" },
 ];
@@ -117,6 +132,24 @@ export function Sidebar({ user, permissions }: SidebarProps) {
         })}
         {toolsNavItems.some((item) => permissions.includes(item.permission)) && (
           <>
+            {!collapsed && <p className="sidebar-nav-label" style={{ marginTop: 12 }}>Operations</p>}
+            {opsNavItems.filter((item) => permissions.includes(item.permission)).map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={collapsed ? item.label : undefined}
+                  className={cn("nav-item", isActive && "active", collapsed && "justify-center")}
+                  style={collapsed ? { justifyContent: "center" } : undefined}
+                >
+                  <span className="nav-item-icon" style={{ display: "flex", width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                    {item.icon}
+                  </span>
+                  {!collapsed && <span>{item.label}</span>}
+                </Link>
+              );
+            })}
             {!collapsed && <p className="sidebar-nav-label" style={{ marginTop: 12 }}>Tools</p>}
             {toolsNavItems.filter((item) => permissions.includes(item.permission)).map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");

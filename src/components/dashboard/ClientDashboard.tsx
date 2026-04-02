@@ -16,6 +16,12 @@ import { AiChatPanel } from "./AiChatPanel";
 import { LinkedInSection } from "./LinkedInSection";
 import { KlaviyoSection } from "./KlaviyoSection";
 import { GoalsSection } from "./GoalsSection";
+import { HubSpotSection } from "./HubSpotSection";
+import { YouTubeSection } from "./YouTubeSection";
+import { CallRailSection } from "./CallRailSection";
+import { ActionsSection } from "./ActionsSection";
+import { CommunicationsSection } from "./CommunicationsSection";
+import { CompetitorIntelligenceSection } from "./CompetitorIntelligenceSection";
 import { getDateRange, buildCrossContextString } from "@/lib/utils";
 import type { PlatformSummary } from "@/lib/utils";
 import { Calendar } from "lucide-react";
@@ -40,6 +46,11 @@ interface Client {
   linkedinAccountId?: string | null;
   linkedinAccessToken?: string | null;
   klaviyoApiKey?: string | null;
+  // Phase 3
+  hubspotAccessToken?: string | null;
+  youtubeChannelId?: string | null;
+  callrailAccountId?: string | null;
+  competitorDomains?: string | null;
 }
 
 interface ClientDashboardProps {
@@ -56,7 +67,7 @@ const periods = [
   { value: "custom", label: "Custom" },
 ];
 
-type Tab = "signals" | "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole" | "ecommerce" | "tiktok" | "microsoftads" | "cwv" | "linkedin" | "klaviyo" | "goals";
+type Tab = "signals" | "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole" | "ecommerce" | "tiktok" | "microsoftads" | "cwv" | "linkedin" | "klaviyo" | "goals" | "hubspot" | "youtube" | "callrail" | "actions" | "communications" | "competitors";
 
 function toDateInputValue(d: Date) {
   return d.toISOString().split("T")[0];
@@ -189,6 +200,12 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
     { id: "linkedin", label: "LinkedIn Ads", available: !!client.linkedinAccountId },
     { id: "klaviyo", label: "Email (Klaviyo)", available: !!client.klaviyoApiKey },
     { id: "goals", label: "Goals & KPIs", available: true },
+    { id: "hubspot", label: "HubSpot CRM", available: !!client.hubspotAccessToken },
+    { id: "youtube", label: "YouTube", available: !!client.youtubeChannelId },
+    { id: "callrail", label: "CallRail", available: !!client.callrailAccountId },
+    { id: "competitors", label: "Competitors", available: true },
+    { id: "actions", label: "Actions", available: true },
+    { id: "communications", label: "Communications", available: true },
   ];
 
   return (
@@ -375,6 +392,36 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
 
       {activeTab === "goals" && (
         <GoalsSection clientId={client.id} />
+      )}
+
+      {activeTab === "hubspot" && client.hubspotAccessToken ? (
+        <HubSpotSection clientId={client.id} />
+      ) : activeTab === "hubspot" ? (
+        <NotConfigured name="HubSpot CRM" description="Add your HubSpot access token in client settings to see contacts, deals and pipeline value" settingsHref={`/clients/${client.slug}/settings`} />
+      ) : null}
+
+      {activeTab === "youtube" && client.youtubeChannelId ? (
+        <YouTubeSection clientId={client.id} />
+      ) : activeTab === "youtube" ? (
+        <NotConfigured name="YouTube Analytics" description="Add your YouTube Channel ID in client settings to see views, watch time and top videos" settingsHref={`/clients/${client.slug}/settings`} />
+      ) : null}
+
+      {activeTab === "callrail" && client.callrailAccountId ? (
+        <CallRailSection clientId={client.id} />
+      ) : activeTab === "callrail" ? (
+        <NotConfigured name="CallRail" description="Add your CallRail account ID and API key in client settings to see call tracking data" settingsHref={`/clients/${client.slug}/settings`} />
+      ) : null}
+
+      {activeTab === "competitors" && (
+        <CompetitorIntelligenceSection clientId={client.id} semrushDomain={client.semrushDomain} />
+      )}
+
+      {activeTab === "actions" && (
+        <ActionsSection clientId={client.id} />
+      )}
+
+      {activeTab === "communications" && (
+        <CommunicationsSection clientId={client.id} />
       )}
 
       {/* AI Chat panel — always visible when any platform is connected */}
