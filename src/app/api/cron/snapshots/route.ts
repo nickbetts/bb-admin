@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { notifyAdmins } from "@/lib/notifications";
+import { getOpenAiClient } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 minutes for long-running snapshot job
@@ -121,6 +123,13 @@ export async function POST(request: NextRequest) {
               },
             });
             clientResult.sections.push(platform.key);
+
+            // ── P3.5: Anomaly detection + push notifications ────────────────
+            try {
+              await detectAndNotifyAnomalies(client.id, client.name, platform.key, metrics, startDateStr, endDate);
+            } catch (err) {
+              console.error(`[cron/snapshots] Anomaly detection failed for ${client.name}/${platform.key}:`, err);
+            }
           }
         } catch (err) {
           clientResult.errors.push(`${platform.key}: ${err instanceof Error ? err.message : "Unknown error"}`);
@@ -222,5 +231,124 @@ function extractMetrics(platform: string, data: Record<string, unknown>): Record
     }
   } catch {
     return null;
+  }
+}
+
+// ─── P3.5: Anomaly detection + push notifications after each snapshot ─────────
+
+// Metrics where higher values are better (growth = good)
+const HIGHER_IS_BETTER: Record<string, string[]> = {
+  ga4: ["sessions", "users", "pageviews", "conversionRate"],
+  googleads: ["clicks", "impressions", "conversions", "conversionsValue"],
+  meta: ["totalClicks", "totalImpressions", "totalConversions", "avgRoas"],
+  searchconsole: ["clicks", "impressions", "ctr"],
+  seo: ["organicTraffic", "organicKeywords", "organicCost"],
+};
+
+// Metrics where lower values are better
+const LOWER_IS_BETTER: Record<string, string[]> = {
+  ga4: ["bounceRate"],
+  googleads: ["costMicros"],
+  meta: ["avgCpm"],
+  searchconsole: ["position"],
+};
+
+async function detectAndNotifyAnomalies(
+  clientId: string,
+  clientName: string,
+  platform: string,
+  currentMetrics: Record<string, number>,
+  periodStart: string,
+  periodEnd: string,
+) {
+  // Fetch the previous snapshot for comparison
+  const previousSnapshots = await prisma.metricSnapshot.findMany({
+    where: {
+      clientId,
+      sectionType: platform,
+      periodEnd: { lt: periodEnd },
+    },
+    orderBy: { periodEnd: "desc" },
+    take: 1,
+  });
+
+  if (!previousSnapshots.length) return;
+
+  const prevMetrics = JSON.parse(previousSnapshots[0].metrics) as Record<string, number>;
+  const highAlerts: { metric: string; direction: string; changePercent: number; detail: string }[] = [];
+
+  const higherBetter = HIGHER_IS_BETTER[platform] ?? [];
+  const lowerBetter = LOWER_IS_BETTER[platform] ?? [];
+
+  for (const [key, currentVal] of Object.entries(currentMetrics)) {
+    const prevVal = prevMetrics[key];
+    if (prevVal == null || prevVal === 0 || typeof currentVal !== "number") continue;
+
+    const changePct = ((currentVal - prevVal) / Math.abs(prevVal)) * 100;
+    const absChange = Math.abs(changePct);
+    if (absChange < 25) continue; // Only flag significant changes (>25%)
+
+    const isUp = changePct > 0;
+    const isGood =
+      (higherBetter.includes(key) && isUp) || (lowerBetter.includes(key) && !isUp);
+
+    // Only alert on bad changes of high severity (>50% for high, >25% for medium)
+    if (!isGood && absChange >= 25) {
+      const severity = absChange >= 50 ? "high" : "medium";
+      const detail = `${key} ${isUp ? "increased" : "decreased"} by ${changePct.toFixed(1)}% (${prevVal.toLocaleString()} → ${currentVal.toLocaleString()})`;
+
+      // Store in DetectedAnomaly (P3.2)
+      await prisma.detectedAnomaly.create({
+        data: {
+          clientId,
+          platform,
+          metric: key,
+          severity,
+          direction: isUp ? "up" : "down",
+          changePercent: changePct,
+          detail,
+          periodStart,
+          periodEnd,
+        },
+      });
+
+      if (severity === "high") {
+        highAlerts.push({ metric: key, direction: isUp ? "up" : "down", changePercent: changePct, detail });
+      }
+    }
+  }
+
+  // For high-severity anomalies, generate a brief AI hypothesis and notify
+  if (highAlerts.length > 0) {
+    let aiHypothesis = "";
+    try {
+      const openai = await getOpenAiClient();
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{
+          role: "user",
+          content: `In 2 sentences, explain the most likely cause of these metric changes for ${clientName} on ${platform}:\n${highAlerts.map((a) => `- ${a.detail}`).join("\n")}\nBe specific and actionable.`,
+        }],
+        temperature: 0.2,
+        max_tokens: 150,
+      });
+      aiHypothesis = completion.choices[0]?.message?.content ?? "";
+    } catch {
+      aiHypothesis = "";
+    }
+
+    const alertSummary = highAlerts.map((a) => a.detail).join("; ");
+    const body = aiHypothesis
+      ? `${alertSummary}\n\nLikely cause: ${aiHypothesis}`
+      : alertSummary;
+
+    await notifyAdmins({
+      clientId,
+      type: "anomaly",
+      severity: "high",
+      title: `⚠️ ${clientName} — ${platform} anomaly detected`,
+      body,
+      metadata: { platform, alerts: highAlerts },
+    });
   }
 }

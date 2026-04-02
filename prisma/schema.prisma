@@ -111,6 +111,7 @@ model Client {
   portalUsers           ClientPortalUser[]
   competitorSnapshots   CompetitorSnapshot[]
   mediaPlans            MediaPlan[]
+  detectedAnomalies     DetectedAnomaly[]
 }
 
 model ClientGoal {
@@ -136,6 +137,7 @@ model StrategyDocument {
   title      String
   period     String
   content    String
+  type       String   @default("strategy") // "strategy" | "briefing"
   shareToken String?  @unique
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -436,4 +438,25 @@ model ClientPortalUser {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+// Phase 3: Anomaly Memory — stores detected anomalies so root-cause can reference history
+model DetectedAnomaly {
+  id             String   @id @default(cuid())
+  clientId       String
+  platform       String   // "googleads" | "meta" | "ga4" | "searchconsole" | "seo" etc.
+  metric         String   // The metric that triggered the anomaly
+  severity       String   // "high" | "medium" | "low"
+  direction      String   // "up" | "down"
+  changePercent  Float
+  detail         String   // Human-readable description
+  rootCauseText  String?  // AI-generated root cause (short, 2-3 sentences)
+  actionsTaken   String?  // JSON: string[] — actions taken in response
+  periodStart    String   // ISO date
+  periodEnd      String   // ISO date
+  resolvedAt     DateTime?
+  createdAt      DateTime @default(now())
+  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, platform, metric])
 }

@@ -2,15 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import OpenAI from "openai";
+import { getOpenAiClient } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-function getOpenAiClient(): OpenAI {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OpenAI API key not configured");
-  return new OpenAI({ apiKey });
-}
 
 // POST /api/ai/chat — conversational AI for client data queries
 export async function POST(request: NextRequest) {
@@ -28,8 +23,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "clientId and message are required" }, { status: 400 });
     }
 
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, website: true, aiReportInstructions: true, ga4PropertyId: true, googleAdsCustomerId: true, metaAccountId: true, searchConsoleSiteUrl: true, semrushDomain: true, woocommerceUrl: true, shopifyStoreDomain: true, tiktokAdvertiserId: true, microsoftAdsAccountId: true } });
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
+
+    const clientAiInstructions = client.aiReportInstructions ?? "";
 
     // Fetch recent metric snapshots for context
     const snapshots = await prisma.metricSnapshot.findMany({
@@ -78,7 +75,7 @@ Instructions:
 - Give actionable recommendations backed by the data
 - Format responses clearly with bullet points and sections where appropriate
 - If data is insufficient, say so and suggest what data would help
-- Be concise but thorough`;
+- Be concise but thorough${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: "system", content: systemPrompt },

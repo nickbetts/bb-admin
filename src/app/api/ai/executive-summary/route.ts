@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -18,10 +18,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "sections array is required" }, { status: 400 });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "OpenAI API key not configured" }, { status: 500 });
-    }
+    const openai = await getOpenAiClient();
 
     let clientAiInstructions = "";
     if (clientId) {
@@ -40,8 +37,6 @@ export async function POST(req: NextRequest) {
     if (!sectionSummaries) {
       return NextResponse.json({ error: "No section commentary available to summarise" }, { status: 400 });
     }
-
-    const openai = new OpenAI({ apiKey });
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",

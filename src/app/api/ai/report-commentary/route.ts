@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +14,9 @@ const SECTION_LABELS: Record<string, string> = {
   paid_social: "Paid Social (Meta Ads)",
   meta: "Paid Social (Meta Ads)",
   searchconsole: "Google Search Console (Organic Search)",
+  ecommerce: "E-Commerce",
+  shopify: "E-Commerce (Shopify)",
+  woocommerce: "E-Commerce (WooCommerce)",
 };
 
 const LENGTH_INSTRUCTIONS: Record<string, string> = {
@@ -99,12 +102,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "sectionType and metrics are required" }, { status: 400 });
     }
 
-    // Get OpenAI API key from environment
-    const apiKey = process.env.OPENAI_API_KEY;
-
-    if (!apiKey) {
-      return NextResponse.json({ error: "OpenAI API key not configured. Add it in Settings." }, { status: 500 });
-    }
+    const openai = await getOpenAiClient();
 
     // Fetch client-specific AI instructions if clientId provided
     let clientAiInstructions = "";
@@ -115,7 +113,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const openai = new OpenAI({ apiKey });
+    // Fetch active client goals if clientId provided
+    let goalsContext = "";
+    if (clientId) {
+      const goals = await prisma.clientGoal.findMany({
+        where: { clientId, status: { in: ["active", "at_risk"] } },
+        select: { title: true, metric: true, targetValue: true, currentValue: true, unit: true, targetDate: true, status: true },
+      });
+      if (goals.length > 0) {
+        goalsContext = "\n\nACTIVE CLIENT GOALS:\n" + goals.map((g: typeof goals[number]) => {
+          const progress = g.currentValue && g.targetValue && g.targetValue !== 0 ? Math.round((g.currentValue / g.targetValue) * 100) : null;
+          return `• ${g.title}: target ${g.targetValue}${g.unit ? ` ${g.unit}` : ""} by ${g.targetDate} (current: ${g.currentValue ?? "not measured"}${progress ? ` — ${progress}% to target` : ""}, ${g.status.toUpperCase()})`;
+        }).join("\n");
+      }
+    }
+
     const sectionLabel = SECTION_LABELS[sectionType] ?? sectionType;
     const lengthInstruction = LENGTH_INSTRUCTIONS[length] ?? LENGTH_INSTRUCTIONS.medium;
     const toneInstruction = TONE_INSTRUCTIONS[tone] ?? TONE_INSTRUCTIONS.professional;
@@ -131,11 +143,23 @@ ${lengthInstruction}
 ${formatInstruction}
 Write in the first person as the agency — use "we" and "our" (e.g. "We saw strong growth in...", "Our focus this month was...").
 This commentary is CLIENT-FACING. Only write about what IS present in the data — wins, progress, and things we are actively working on or monitoring. Frame everything positively and constructively.
+
+SECTION-SPECIFIC GUIDANCE:
+- For paid channels (Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn): reference spend efficiency, ROAS/CPA trends, and conversion performance. Mention specific campaigns or ads by name if campaign data is provided. Note any optimisation work underway.
+- For organic channels (SEO/SemRush, Search Console): focus on visibility trends, keyword growth, and traffic quality. Frame ranking improvements as ongoing strategy outcomes.
+- For website analytics (GA4): discuss traffic quality, user engagement, and conversion patterns. Relate to the broader marketing effort across channels.
+- For email (Klaviyo): highlight campaign performance, engagement trends, and revenue impact. Reference specific high-performing campaigns.
+- For CRM (HubSpot): discuss pipeline health and lead progression. Tie back to marketing activity outcomes.
+- For call tracking (CallRail): frame call volume and answer rates as lead quality indicators.
+- For YouTube: discuss content performance, audience growth, and engagement signals.
+- For e-commerce: lead with revenue and order performance. Discuss AOV trends and top product performance.
+
 CRITICAL rules:
 - Never mention the absence of a channel, campaign type, or service the client isn't using (e.g. do NOT say "there is no paid traffic" or "absence of paid search").
 - Never include recommendations, suggestions, or areas for improvement — that is handled separately.
-- Never use words like "however", "unfortunately", "missed opportunity", "underutilised", or anything implying failure.
+- Never use words like "however", "unfortunately", "missed opportunity", "underutilised", or anything implying failure. If a metric has declined, still mention it factually but frame it with context and what we are doing about it (e.g. "Sessions dipped 8% as we restructured campaigns for stronger Q2 performance" rather than "Unfortunately sessions dropped").
 - Do not start with "This section" or "In this section". Start with a substantive observation about the data.
+- When goals are provided, reference progress towards targets naturally (e.g. "We're now at 82% of our ROAS target").
 - Sound like a human account manager wrote it, not an AI.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
 
     const isOverview = sectionType === "overview";
@@ -153,7 +177,7 @@ Period: ${dateRange ?? "the reporting period"}
 
 Current period metrics:
 ${currentMetricsText}
-${previousMetricsText ? `\nPrevious period metrics:\n${previousMetricsText}\n` : ""}
+${previousMetricsText ? `\nPrevious period metrics:\n${previousMetricsText}\n` : ""}${goalsContext}
 Write as the agency (first person "we"). Describe what the data shows, what we are working on, and what is performing well. Only reference metrics that are present and non-zero. Do not mention anything that is absent.`;
 
     const response = await openai.chat.completions.create({

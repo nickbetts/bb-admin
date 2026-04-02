@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getKeywordVolumeMetrics } from "@/lib/semrush";
 import { crawlSiteForKeywordContext } from "@/lib/landing-page-analyzer";
-import OpenAI from "openai";
+import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -66,12 +66,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "website and brief are required" }, { status: 400 });
       }
 
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) {
-        return NextResponse.json({ error: "OPENAI_API_KEY environment variable is not set." }, { status: 400 });
-      }
-
-      const openai = new OpenAI({ apiKey });
+      const openai = await getOpenAiClient();
 
       const siteCrawl = await crawlSiteForKeywordContext(website);
       const pageContext = siteCrawl.contextLines;
@@ -223,12 +218,12 @@ Return ONLY this JSON (no markdown, no explanation):
     if (body.action === "smart-defaults") {
       const { website, brief, keywords } = body as SmartDefaultsBody;
 
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) {
+      let openai;
+      try {
+        openai = await getOpenAiClient();
+      } catch {
         return NextResponse.json({ conversionRate: 2.5 });
       }
-
-      const openai = new OpenAI({ apiKey });
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",

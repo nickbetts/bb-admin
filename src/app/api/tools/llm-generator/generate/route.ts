@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { crawlSiteForKeywordContext } from "@/lib/landing-page-analyzer";
 import OpenAI from "openai";
+import { getOpenAiClient } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 180;
@@ -275,13 +276,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Template not found" }, { status: 404 });
     }
 
-    // ── Load OpenAI key ────────────────────────────────────────────────────
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "OpenAI API key not configured. Add it in Settings." }, { status: 400 });
-    }
-
-    const openai = new OpenAI({ apiKey });
+    const openai = await getOpenAiClient();
 
     // ── Crawl website ──────────────────────────────────────────────────────
     const crawl = await crawlSiteForKeywordContext(normalizedWebsite, 12);

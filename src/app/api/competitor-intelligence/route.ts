@@ -61,10 +61,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate AI insights if OpenAI configured
-    if (process.env.OPENAI_API_KEY && Object.keys(metrics).length > 0) {
+    if (Object.keys(metrics).length > 0) {
       try {
-        const OpenAI = (await import("openai")).default;
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const { getOpenAiClient } = await import("@/lib/openai-client");
+        const openai = await getOpenAiClient();
         const completion = await openai.chat.completions.create({
           model: "gpt-4o-mini",
           messages: [

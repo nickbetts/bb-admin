@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import OpenAI from "openai";
+import { getOpenAiClient } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -651,13 +651,7 @@ export async function POST(request: NextRequest) {
       prisma.appSetting.findUnique({ where: { key: "taskBenchmarks" } }),
       prisma.appSetting.findUnique({ where: { key: "pricingStrategy" } }),
     ]);
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "OpenAI API key not configured. Add it in Settings." },
-        { status: 400 }
-      );
-    }
+    const openai = await getOpenAiClient();
 
     // ── Load task benchmarks ────────────────────────────────────────────────
     let taskBenchmarks: Array<{ task: string; hours: number }> = [];
@@ -666,8 +660,6 @@ export async function POST(request: NextRequest) {
         taskBenchmarks = JSON.parse(taskBenchmarksSetting.value) as Array<{ task: string; hours: number }>;
       } catch { /* ignore malformed JSON */ }
     }
-
-    const openai = new OpenAI({ apiKey });
 
     // ── Compute brief type from brief text ─────────────────────────────────
     const briefLower = brief.toLowerCase();

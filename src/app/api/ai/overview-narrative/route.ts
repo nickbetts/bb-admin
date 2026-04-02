@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { getOpenAiClient, createWithWebSearch, streamWithWebSearch } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -58,10 +58,77 @@ interface PlatformMetrics {
     ctr: number;
     position: number;
   };
+  tiktok?: {
+    spend: number;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+    cpc: number;
+    cpm: number;
+    conversions: number;
+    costPerConversion: number;
+    videoViews: number;
+    reach: number;
+    frequency: number;
+  };
+  microsoftads?: {
+    spend: number;
+    impressions: number;
+    clicks: number;
+    ctr: number;
+    cpc: number;
+    conversions: number;
+    revenue: number;
+    roas: number;
+    costPerConversion: number;
+  };
+  linkedin?: {
+    impressions: number;
+    clicks: number;
+    spend: number;
+    conversions: number;
+    reach: number;
+    ctr: number;
+    cpc: number;
+    cpl: number;
+  };
+  klaviyo?: {
+    sends: number;
+    opens: number;
+    clicks: number;
+    revenue: number;
+    openRate: number;
+    clickRate: number;
+  };
+  youtube?: {
+    views: number;
+    watchTimeHours: number;
+    subscribers: number;
+    ctr: number;
+  };
+  hubspot?: {
+    totalContacts: number;
+    openDeals: number;
+    pipelineValue: number;
+    closedWonValue: number;
+  };
+  callrail?: {
+    totalCalls: number;
+    answeredCalls: number;
+    missedCalls: number;
+    answeredRate: number;
+  };
+  ecommerce?: {
+    totalRevenue: number;
+    totalOrders: number;
+    averageOrderValue: number;
+    currency: string;
+  };
 }
 
 interface OverviewNarrativeRequest {
   clientName?: string;
+  clientId?: string;
   dateRange?: string;
   platforms: PlatformMetrics;
   previousPlatforms?: PlatformMetrics;
@@ -120,9 +187,10 @@ interface OverviewNarrativeResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as OverviewNarrativeRequest;
+    const body = (await request.json()) as OverviewNarrativeRequest & { stream?: boolean; enableWebSearch?: boolean };
     const {
       clientName,
+      clientId,
       dateRange,
       platforms,
       previousPlatforms,
@@ -137,13 +205,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "platforms and aggregated are required" }, { status: 400 });
     }
 
-    // Resolve OpenAI API key
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "OpenAI API key not configured. Please add it in Settings." },
-        { status: 400 }
-      );
+    const openai = await getOpenAiClient();
+
+    // Fetch client-specific AI instructions if clientId provided
+    let clientAiInstructions = "";
+    if (clientId) {
+      const client = await prisma.client.findUnique({ where: { id: clientId }, select: { aiReportInstructions: true } });
+      if (client?.aiReportInstructions) {
+        clientAiInstructions = client.aiReportInstructions;
+      }
+    }
+
+    // Fetch active client goals if clientId provided
+    let goalsContext = "";
+    if (clientId) {
+      const goals = await prisma.clientGoal.findMany({
+        where: { clientId, status: { in: ["active", "at_risk"] } },
+        select: { title: true, metric: true, targetValue: true, currentValue: true, unit: true, targetDate: true, status: true },
+      });
+      if (goals.length > 0) {
+        goalsContext = "\n\nACTIVE CLIENT GOALS:\n" + goals.map((g: typeof goals[number]) => {
+          const progress = g.currentValue && g.targetValue && g.targetValue !== 0 ? Math.round((g.currentValue / g.targetValue) * 100) : null;
+          return `• ${g.title}: target ${g.targetValue}${g.unit ? ` ${g.unit}` : ""} by ${g.targetDate} (current: ${g.currentValue ?? "not measured"}${progress ? ` — ${progress}% to target` : ""}, ${g.status.toUpperCase()})`;
+        }).join("\n");
+      }
     }
 
     // ── Build platform-by-platform context ───────────────────────────────────
@@ -201,6 +286,74 @@ export async function POST(request: NextRequest) {
       sections.push(text);
     }
 
+    if (platforms.tiktok) {
+      activePlatforms.push("TikTok Ads");
+      const t = platforms.tiktok;
+      const prev = previousPlatforms?.tiktok;
+      let text = `TIKTOK ADS:\n  Spend: £${t.spend.toLocaleString(undefined, { minimumFractionDigits: 2 })}, Clicks: ${t.clicks.toLocaleString()}, Impressions: ${t.impressions.toLocaleString()}, CTR: ${t.ctr.toFixed(2)}%\n  Conversions: ${t.conversions.toLocaleString()}, Cost/Conv: £${t.costPerConversion.toFixed(2)}, Video Views: ${t.videoViews.toLocaleString()}\n  Reach: ${t.reach.toLocaleString()}, Frequency: ${t.frequency.toFixed(1)}`;
+      if (prev) {
+        text += `\n  Previous period — Spend: £${prev.spend.toLocaleString(undefined, { minimumFractionDigits: 2 })}, Clicks: ${prev.clicks.toLocaleString()}, Conversions: ${prev.conversions.toLocaleString()}`;
+      }
+      sections.push(text);
+    }
+
+    if (platforms.microsoftads) {
+      activePlatforms.push("Microsoft Ads");
+      const ms = platforms.microsoftads;
+      const prev = previousPlatforms?.microsoftads;
+      let text = `MICROSOFT ADS:\n  Spend: £${ms.spend.toLocaleString(undefined, { minimumFractionDigits: 2 })}, Clicks: ${ms.clicks.toLocaleString()}, Impressions: ${ms.impressions.toLocaleString()}, CTR: ${ms.ctr.toFixed(2)}%\n  Conversions: ${ms.conversions.toLocaleString()}, Revenue: £${ms.revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}, ROAS: ${ms.roas.toFixed(2)}x, Cost/Conv: £${ms.costPerConversion.toFixed(2)}`;
+      if (prev) {
+        text += `\n  Previous period — Spend: £${prev.spend.toLocaleString(undefined, { minimumFractionDigits: 2 })}, Clicks: ${prev.clicks.toLocaleString()}, Conversions: ${prev.conversions.toLocaleString()}, ROAS: ${prev.roas.toFixed(2)}x`;
+      }
+      sections.push(text);
+    }
+
+    if (platforms.linkedin) {
+      activePlatforms.push("LinkedIn Ads");
+      const li = platforms.linkedin;
+      const prev = previousPlatforms?.linkedin;
+      let text = `LINKEDIN ADS:\n  Spend: £${li.spend.toLocaleString(undefined, { minimumFractionDigits: 2 })}, Clicks: ${li.clicks.toLocaleString()}, Impressions: ${li.impressions.toLocaleString()}, CTR: ${li.ctr.toFixed(2)}%\n  Conversions: ${li.conversions.toLocaleString()}, CPC: £${li.cpc.toFixed(2)}, CPL: £${li.cpl.toFixed(2)}, Reach: ${li.reach.toLocaleString()}`;
+      if (prev) {
+        text += `\n  Previous period — Spend: £${prev.spend.toLocaleString(undefined, { minimumFractionDigits: 2 })}, Clicks: ${prev.clicks.toLocaleString()}, Conversions: ${prev.conversions.toLocaleString()}`;
+      }
+      sections.push(text);
+    }
+
+    if (platforms.klaviyo) {
+      activePlatforms.push("Klaviyo");
+      const k = platforms.klaviyo;
+      const prev = previousPlatforms?.klaviyo;
+      let text = `EMAIL MARKETING (KLAVIYO):\n  Sends: ${k.sends.toLocaleString()}, Opens: ${k.opens.toLocaleString()}, Clicks: ${k.clicks.toLocaleString()}\n  Revenue: £${k.revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}, Open Rate: ${k.openRate.toFixed(1)}%, Click Rate: ${k.clickRate.toFixed(1)}%`;
+      if (prev) {
+        text += `\n  Previous period — Sends: ${prev.sends.toLocaleString()}, Opens: ${prev.opens.toLocaleString()}, Revenue: £${prev.revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+      }
+      sections.push(text);
+    }
+
+    if (platforms.youtube) {
+      activePlatforms.push("YouTube");
+      const yt = platforms.youtube;
+      sections.push(`YOUTUBE:\n  Views: ${yt.views.toLocaleString()}, Watch Time: ${yt.watchTimeHours.toLocaleString()}h, New Subscribers: ${yt.subscribers.toLocaleString()}, CTR: ${yt.ctr.toFixed(1)}%`);
+    }
+
+    if (platforms.hubspot) {
+      activePlatforms.push("HubSpot");
+      const hs = platforms.hubspot;
+      sections.push(`HUBSPOT CRM:\n  Total Contacts: ${hs.totalContacts.toLocaleString()}, Open Deals: ${hs.openDeals}, Pipeline Value: £${hs.pipelineValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}, Closed Won: £${hs.closedWonValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}`);
+    }
+
+    if (platforms.callrail) {
+      activePlatforms.push("CallRail");
+      const cr = platforms.callrail;
+      sections.push(`CALLRAIL (CALL TRACKING):\n  Total Calls: ${cr.totalCalls}, Answered: ${cr.answeredCalls}, Missed: ${cr.missedCalls}, Answer Rate: ${cr.answeredRate}%`);
+    }
+
+    if (platforms.ecommerce) {
+      activePlatforms.push("E-Commerce");
+      const ec = platforms.ecommerce;
+      sections.push(`E-COMMERCE:\n  Revenue: ${ec.currency === "GBP" ? "£" : ec.currency}${ec.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}, Orders: ${ec.totalOrders.toLocaleString()}, AOV: ${ec.currency === "GBP" ? "£" : ec.currency}${ec.averageOrderValue.toFixed(2)}`);
+    }
+
     // ── Build aggregated context ─────────────────────────────────────────────
     const a = aggregated;
     let aggText = `COMBINED PAID TOTALS:\n  Total Ad Spend: £${a.totalAdSpend.toLocaleString(undefined, { minimumFractionDigits: 2 })}, Total Paid Clicks: ${a.totalPaidClicks.toLocaleString()}\n  Total Conversions: ${a.totalConversions.toLocaleString()}, Total Revenue: £${a.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}\n  Blended ROAS: ${a.blendedRoas.toFixed(2)}x, Blended CPA: £${a.blendedCpa.toFixed(2)}`;
@@ -238,7 +391,8 @@ export async function POST(request: NextRequest) {
     }
 
     // ── AI call ──────────────────────────────────────────────────────────────
-    const openai = new OpenAI({ apiKey });
+
+    const enableWebSearch = body.enableWebSearch === true;
 
     const systemPrompt = `You are a senior cross-channel performance strategist at i3media, a UK digital marketing agency.
 You produce executive-level overviews that tell the COMPLETE marketing story across all active channels simultaneously.
@@ -252,7 +406,7 @@ Your analysis covers:
 
 Be specific with numbers and percentages. Use British English. Reference actual metric values.
 Prioritise commercial impact — which changes would deliver the most revenue increase or efficiency gain?
-When only some channels are active, focus your analysis on those and note what's missing.`;
+When only some channels are active, focus your analysis on those and note what's missing.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${enableWebSearch ? "\n\nYou have web search available. Use it to add current market context, industry benchmarks, or relevant platform updates that strengthen your analysis. Cite sources where appropriate." : ""}`;
 
     const channelList = activePlatforms.join(", ");
     const userPrompt = `Produce a cross-channel performance overview for ${clientName ?? "the client"} (${dateRange ?? "selected period"}).
@@ -263,7 +417,7 @@ CHANNEL-BY-CHANNEL DATA:
 ${sections.join("\n\n")}
 
 ${aggText}
-${campaignText}${alertsText}${channelMetricsText}
+${campaignText}${alertsText}${channelMetricsText}${goalsContext}
 
 Produce a JSON object:
 {
@@ -277,8 +431,100 @@ Produce a JSON object:
   "overallScore": <0-100 overall marketing health score>
 }
 
-For channelScores keys, use these exact keys for whichever channels are active: googleads, meta, ga4, seo, searchconsole.
+For channelScores keys, use these exact keys for whichever channels are active: googleads, meta, ga4, seo, searchconsole, tiktok, microsoftads, linkedin, klaviyo, youtube, hubspot, callrail, ecommerce.
 Be frank and specific. Reference actual numbers and percentages.`;
+
+    const stream = body.stream === true;
+
+    // ── Web search path (Responses API) ────────────────────────────────────
+    if (enableWebSearch) {
+      if (stream) {
+        const readable = streamWithWebSearch(openai, {
+          instructions: systemPrompt,
+          input: userPrompt,
+          temperature: 0.3,
+          maxOutputTokens: 3500,
+          searchContextSize: "medium",
+          userLocation: { type: "approximate", country: "GB" },
+        });
+        return new Response(readable, {
+          headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" },
+        });
+      }
+
+      const wsResult = await createWithWebSearch(openai, {
+        instructions: systemPrompt,
+        input: userPrompt,
+        temperature: 0.3,
+        maxOutputTokens: 3500,
+        textFormat: { type: "json_object" },
+        searchContextSize: "medium",
+        userLocation: { type: "approximate", country: "GB" },
+      });
+
+      let parsed: Partial<OverviewNarrativeResponse> = {};
+      try {
+        const jsonMatch = wsResult.text.match(/\{[\s\S]*\}/);
+        parsed = JSON.parse(jsonMatch ? jsonMatch[0] : wsResult.text);
+      } catch {
+        parsed = { narrative: wsResult.text };
+      }
+
+      const result: OverviewNarrativeResponse = {
+        narrative: parsed.narrative ?? "Unable to generate overview.",
+        channelScores: parsed.channelScores ?? {},
+        crossChannelInsights: parsed.crossChannelInsights ?? [],
+        budgetRecommendation: parsed.budgetRecommendation ?? "",
+        wins: parsed.wins ?? [],
+        issues: parsed.issues ?? [],
+        actions: parsed.actions ?? [],
+        overallScore: parsed.overallScore ?? 0,
+      };
+
+      return NextResponse.json({ ...result, webSearchCitations: wsResult.citations });
+    }
+
+    // ── Standard path (Chat Completions API) ───────────────────────────────
+
+    if (stream) {
+      const streamResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 3500,
+        temperature: 0.3,
+        stream: true,
+      });
+
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of streamResponse) {
+              const content = chunk.choices[0]?.delta?.content;
+              if (content) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+              }
+            }
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          } catch (err) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: err instanceof Error ? err.message : "Stream error" })}\n\n`));
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    }
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -287,7 +533,7 @@ Be frank and specific. Reference actual numbers and percentages.`;
         { role: "user", content: userPrompt },
       ],
       response_format: { type: "json_object" },
-      max_tokens: 2500,
+      max_tokens: 3500,
       temperature: 0.3,
     });
 

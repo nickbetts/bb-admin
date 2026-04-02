@@ -395,19 +395,19 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
       )}
 
       {activeTab === "hubspot" && client.hubspotAccessToken ? (
-        <HubSpotSection clientId={client.id} />
+        <HubSpotSection clientId={client.id} clientName={client.name} crossPlatformContext={crossCtx.combined} />
       ) : activeTab === "hubspot" ? (
         <NotConfigured name="HubSpot CRM" description="Add your HubSpot access token in client settings to see contacts, deals and pipeline value" settingsHref={`/clients/${client.slug}/settings`} />
       ) : null}
 
       {activeTab === "youtube" && client.youtubeChannelId ? (
-        <YouTubeSection clientId={client.id} />
+        <YouTubeSection clientId={client.id} clientName={client.name} crossPlatformContext={crossCtx.combined} />
       ) : activeTab === "youtube" ? (
         <NotConfigured name="YouTube Analytics" description="Add your YouTube Channel ID in client settings to see views, watch time and top videos" settingsHref={`/clients/${client.slug}/settings`} />
       ) : null}
 
       {activeTab === "callrail" && client.callrailAccountId ? (
-        <CallRailSection clientId={client.id} />
+        <CallRailSection clientId={client.id} clientName={client.name} crossPlatformContext={crossCtx.combined} />
       ) : activeTab === "callrail" ? (
         <NotConfigured name="CallRail" description="Add your CallRail account ID and API key in client settings to see call tracking data" settingsHref={`/clients/${client.slug}/settings`} />
       ) : null}

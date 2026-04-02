@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -430,6 +430,45 @@ const SECTION_CONFIGS: Record<
       campaignCount: "Campaigns Sent",
     },
   },
+  youtube: {
+    name: "YouTube",
+    higherIsBetter: ["views", "watchTimeHours", "subscribers", "likes", "ctr"],
+    lowerIsBetter: [],
+    metricLabels: {
+      views: "Views",
+      watchTimeHours: "Watch Time (Hours)",
+      subscribers: "New Subscribers",
+      likes: "Likes",
+      ctr: "Click-Through Rate",
+      avgViewDuration: "Avg View Duration",
+      videoCount: "Videos Published",
+    },
+  },
+  hubspot: {
+    name: "HubSpot CRM",
+    higherIsBetter: ["totalContacts", "openDeals", "pipelineValue", "closedWonValue"],
+    lowerIsBetter: [],
+    metricLabels: {
+      totalContacts: "Total Contacts",
+      openDeals: "Open Deals",
+      pipelineValue: "Pipeline Value",
+      closedWonValue: "Closed Won Value",
+      newContacts: "New Contacts",
+      dealsCreated: "Deals Created",
+    },
+  },
+  callrail: {
+    name: "CallRail (Call Tracking)",
+    higherIsBetter: ["totalCalls", "answeredCalls", "answeredRate"],
+    lowerIsBetter: ["missedCalls"],
+    metricLabels: {
+      totalCalls: "Total Calls",
+      answeredCalls: "Answered Calls",
+      missedCalls: "Missed Calls",
+      answeredRate: "Answer Rate",
+      avgDurationSeconds: "Avg Call Duration",
+    },
+  },
 };
 
 // ─── Prompt builder helpers ────────────────────────────────────────────────────
@@ -565,6 +604,7 @@ export async function POST(request: NextRequest) {
       metrics: Record<string, number>;
       previousMetrics?: Record<string, number>;
       clientName?: string;
+      clientId?: string;
       dateRange?: string;
       campaignData?: CampaignContext[];
       landingPages?: LandingPageContext[];
@@ -578,6 +618,7 @@ export async function POST(request: NextRequest) {
       metrics,
       previousMetrics,
       clientName,
+      clientId,
       dateRange,
       campaignData,
       landingPages,
@@ -605,49 +646,145 @@ export async function POST(request: NextRequest) {
 
       if (!alerts.length) return NextResponse.json({ recommendations: [] });
 
-      const apiKey2 = process.env.OPENAI_API_KEY;
-      if (!apiKey2) {
-        return NextResponse.json(
-          { error: "OPENAI_API_KEY environment variable is not set.", recommendations: alerts.map(() => "") },
-          { status: 503 }
-        );
-      }
+      const openai2 = await getOpenAiClient();
 
       // ── Channel-specific personas — prevents nonsensical suggestions ──────────
       const CHANNEL_PERSONAS: Record<string, string> = {
-        search_console: `You are a senior SEO specialist at a UK digital marketing agency reviewing organic search data from Google Search Console.
-CRITICAL CONSTRAINT: Search Console is an ORGANIC SEARCH ANALYTICS TOOL ONLY. It has NO advertising budget, NO paid bids, and NO paid media settings.
-You must NEVER suggest budget increases, CPC changes, bid adjustments, paid campaign actions, or any paid advertising recommendation for Search Console signals.
-Only suggest actions achievable through SEO: improving title tags and meta descriptions, refreshing content quality and depth, fixing technical SEO issues (crawlability, indexing, Core Web Vitals, page speed), improving internal linking, adding structured data, targeting keyword gaps, or responding to SERP feature changes that affect click-through.`,
+        search_console: `You are a senior SEO specialist at a UK digital marketing agency analysing Google Search Console data.
+CRITICAL CONSTRAINT: Search Console is an ORGANIC SEARCH ANALYTICS TOOL ONLY — it has NO advertising budget, NO paid bids, NO paid media settings. You must NEVER suggest budget increases, CPC changes, bid adjustments, or any paid advertising action.
+DATA AVAILABLE: clicks, impressions, CTR, average position. You may also receive top search queries with position changes and cross-platform context from other channels.
+KEY PATTERNS TO IDENTIFY:
+- Impressions rising but clicks flat/falling → CTR problem → review title tags and meta descriptions for the affected queries.
+- Position improving but CTR declining → SERP feature changes (featured snippets, People Also Ask) stealing clicks → consider structured data or content format changes.
+- Clicks dropping with stable position → seasonality or search demand shift → check Google Trends context.
+- Position worsening for key queries → competitor content improvements or algorithm update → audit content depth, freshness, and E-E-A-T signals.
+ONLY suggest SEO actions: title tag/meta description rewrites, content refresh, technical SEO fixes (crawlability, indexing, Core Web Vitals, page speed), internal linking improvements, structured data, keyword gap targeting, or SERP feature responses.`,
 
-        meta: `You are a senior paid social specialist at a UK digital marketing agency reviewing Meta Ads (Facebook/Instagram) performance data.
-Available levers: campaign budgets, bid strategies, ad frequency management, creative refresh, audience targeting, campaign objectives, ad set structure, and placement settings.`,
+        meta: `You are a senior paid social specialist at a UK digital marketing agency analysing Meta Ads (Facebook/Instagram) performance.
+DATA AVAILABLE: spend, impressions, clicks, CTR, CPC, CPM, conversions, ROAS, reach, frequency, outbound clicks, landing page views. You will also receive campaign-level breakdowns (name, objective, budget, ROAS, CPA) and may receive individual ad creative data (ad name, headline, description, format, CTR, ROAS, CPA, conversions).
+KEY PATTERNS TO IDENTIFY:
+- Frequency > 3 with declining CTR or rising CPA → creative fatigue → recommend creative refresh with specific format guidance (static vs carousel vs video vs Reels).
+- High outbound clicks but low landing page views → page load speed issue or tracking gap → investigate landing page performance.
+- High impressions + low CTR → ad creative or targeting mismatch → review audience relevance and ad copy/visual.
+- ROAS below 1x on any campaign → loss-making → recommend pausing, restructuring, or testing new audiences.
+- Gap between reach and conversions → funnel leak → check audience intent alignment and landing page conversion path.
+When creative data is available: name specific ads, quote their metrics, and state whether to keep, pause, iterate, or kill each one. Explain WHY winners work (hook, CTA, social proof, emotional appeal). Compare format performance (image vs video vs carousel).
+AVAILABLE LEVERS: campaign budgets, bid strategies, ad frequency caps, creative refresh, audience targeting (lookalikes, retargeting, interest-based), campaign objectives, ad set structure, placement optimisation (Feed vs Stories vs Reels), and Advantage+ settings.`,
 
-        google_ads: `You are a senior paid search specialist at a UK digital marketing agency reviewing Google Ads performance data.
-Available levers: campaign daily budgets, bid strategies, Quality Scores, keyword-level bids, impression share improvements, keyword additions/negatives, ad copy, landing page alignment, and dayparting.`,
+        google_ads: `You are a senior paid search specialist at a UK digital marketing agency analysing Google Ads performance.
+DATA AVAILABLE: clicks, impressions, CTR, CPC, conversions, conversion value, ROAS, CPA, cost, search impression share, IS lost (budget), IS lost (rank), quality score. You will also receive campaign-level data (name, status, bid strategy, daily budget, impression share breakdown) and landing page URLs with click/conversion data.
+KEY PATTERNS TO IDENTIFY:
+- High IS lost (budget) → campaigns capped by budget → recommend budget reallocation from lower-performing campaigns or budget increase with expected return.
+- High IS lost (rank) → ad rank issues → improve Quality Scores (ad relevance, landing page experience, expected CTR) or adjust bids.
+- Rising CPC with stable/falling conversions → increased auction competition → review keyword match types, add negatives, consider long-tail expansion.
+- High clicks but low conversions on specific campaigns → landing page mismatch or offer issue → audit landing page relevance and conversion path.
+- Quality score below 6 → ad/keyword/landing page alignment problem → specific improvement recommendations.
+- Smart Bidding campaigns with fluctuating CPA → learning phase or insufficient conversion volume → assess if target CPA is realistic given the data.
+AVAILABLE LEVERS: campaign daily budgets, bid strategies (manual CPC, target CPA, target ROAS, maximise conversions), Quality Score improvements, keyword additions/negatives, match type refinement, ad copy testing, landing page alignment, dayparting, audience layering, and device bid adjustments.`,
 
-        ga4: `You are a senior web analytics specialist at a UK digital marketing agency reviewing Google Analytics 4 website behaviour data.
-GA4 shows sessions, engagement, bounce rate, conversions, and traffic source breakdowns — not paid media settings.
-Suggest actions around: investigating traffic source drops, landing page experience improvements, tracking and tagging fixes, conversion funnel issues, or content/UX changes. Do not suggest platform-specific budget changes unless the data clearly ties to a specific paid channel.`,
+        ga4: `You are a senior web analytics specialist at a UK digital marketing agency analysing Google Analytics 4 data.
+DATA AVAILABLE: sessions, users, new users, pageviews, bounce rate, avg session duration, conversion rate, engaged sessions, engagement rate. You may receive cross-platform context showing how paid and organic channels are feeding into site traffic.
+CRITICAL CONSTRAINT: GA4 measures website behaviour — it does NOT control paid media budgets or bids. Do not suggest platform-specific budget changes unless the data clearly ties a traffic source to a specific paid channel.
+KEY PATTERNS TO IDENTIFY:
+- Sessions up but conversion rate down → traffic quality issue → investigate which channels/sources are driving lower-quality traffic.
+- Bounce rate rising with sessions stable → landing page relevance or site speed degradation → recommend UX/content audit.
+- Engagement rate falling → content not resonating or wrong audience → cross-reference with traffic source changes.
+- New users high but returning users low → acquisition working but retention failing → recommend email capture, remarketing, or content strategy.
+- Session duration dropping → page experience issue or thin content → review top landing pages for content depth and load speed.
+SUGGEST ACTIONS AROUND: traffic source investigation, landing page experience improvements, conversion funnel analysis, tracking/tagging fixes, content and UX changes, audience quality assessment, and cross-channel attribution.`,
 
-        semrush: `You are a senior SEO specialist at a UK digital marketing agency reviewing SEMrush organic search visibility data.
-Only suggest SEO actions: content creation, keyword gap targeting, technical SEO improvements, link building, or competitor analysis. Do not suggest paid media actions.`,
+        semrush: `You are a senior SEO specialist at a UK digital marketing agency analysing SEMrush organic search visibility data.
+DATA AVAILABLE: organic traffic estimate, organic keywords count, traffic value (£), paid traffic, paid keywords. You may also receive top organic keywords with position changes and competitor landscape data (competitor domains with their organic traffic, keywords, and domain authority).
+CRITICAL CONSTRAINT: Do not suggest paid media actions — this is organic visibility data.
+KEY PATTERNS TO IDENTIFY:
+- Organic traffic falling with stable keyword count → ranking drops on high-volume keywords → identify which keywords lost position and assess content freshness.
+- Keyword count growing but traffic flat → gaining rankings on low-volume terms → refocus content strategy on higher-intent, higher-volume targets.
+- Traffic value declining → losing rankings on commercial-intent keywords → prioritise content around money pages and transactional queries.
+- Competitors gaining organic traffic while client is flat → competitive gap → analyse competitor content strategy, backlink growth, and topical authority.
+When competitor data is available: explicitly compare the client's metrics against competitors and identify actionable gaps.
+AVAILABLE ACTIONS: content creation for keyword gaps, on-page optimisation, technical SEO improvements, internal linking restructure, backlink/digital PR campaigns, topical authority building, and competitor content analysis.`,
 
-        gsc: `You are a senior SEO specialist at a UK digital marketing agency reviewing organic search performance data.
-CRITICAL CONSTRAINT: This is organic search data with NO advertising budget, bids, or paid media settings.
-Only suggest SEO actions: content improvements, title tag/meta description optimisation, technical SEO, internal linking, or SERP feature responses.`,
+        // gsc is an alias for search_console — some components pass either key
+        gsc: `You are a senior SEO specialist at a UK digital marketing agency analysing Google Search Console data.
+CRITICAL CONSTRAINT: Search Console is an ORGANIC SEARCH ANALYTICS TOOL ONLY — it has NO advertising budget, NO paid bids, NO paid media settings. You must NEVER suggest budget increases, CPC changes, bid adjustments, or any paid advertising action.
+DATA AVAILABLE: clicks, impressions, CTR, average position. You may also receive top search queries with position changes and cross-platform context from other channels.
+KEY PATTERNS TO IDENTIFY:
+- Impressions rising but clicks flat/falling → CTR problem → review title tags and meta descriptions for the affected queries.
+- Position improving but CTR declining → SERP feature changes (featured snippets, People Also Ask) stealing clicks → consider structured data or content format changes.
+- Clicks dropping with stable position → seasonality or search demand shift → check Google Trends context.
+- Position worsening for key queries → competitor content improvements or algorithm update → audit content depth, freshness, and E-E-A-T signals.
+ONLY suggest SEO actions: title tag/meta description rewrites, content refresh, technical SEO fixes (crawlability, indexing, Core Web Vitals, page speed), internal linking improvements, structured data, keyword gap targeting, or SERP feature responses.`,
 
-        tiktok: `You are a senior paid social specialist at a UK digital marketing agency reviewing TikTok Ads performance data.
-Available levers: campaign budgets, bid strategies, creative refresh (video content is king on TikTok), audience targeting, campaign objectives, and ad placement. Focus on video engagement metrics (views, completion rate) as key performance indicators alongside cost and conversion data.`,
+        tiktok: `You are a senior paid social specialist at a UK digital marketing agency analysing TikTok Ads performance.
+DATA AVAILABLE: spend, impressions, clicks, CTR, CPC, CPM, conversions, cost per conversion, video views, reach, frequency. You will also receive campaign-level data (name, objective, spend, impressions, clicks, CTR, conversions, video views).
+KEY PATTERNS TO IDENTIFY:
+- High video views but low clicks → content engages but doesn't drive action → strengthen CTA placement and urgency (TikTok CTAs need to be within the first 3 seconds and repeated).
+- Frequency > 4 with declining CTR → creative fatigue → TikTok content burns out faster than other platforms (7–14 day cycle); recommend new UGC-style creatives.
+- High CPM relative to other social platforms → audience too narrow or competitive vertical → broaden targeting or test Spark Ads with organic posts.
+- Low conversion rate with good video engagement → landing page disconnect → ensure mobile-first landing page matches TikTok creative tone.
+TikTok is a video-first platform: ALL recommendations should consider creative format. Native, authentic, UGC-style content outperforms polished ads. Vertical video, trending sounds, and hook-within-1-second are critical.
+AVAILABLE LEVERS: campaign budgets, bid strategies, creative refresh (prioritise UGC and native video formats), audience targeting, Spark Ads, campaign objectives, placement settings, and creative testing cadence.`,
 
-        microsoftads: `You are a senior paid search specialist at a UK digital marketing agency reviewing Microsoft Advertising (Bing Ads) performance data.
-Available levers: campaign daily budgets, bid strategies, impression share improvements, keyword targeting, ad copy, landing page alignment, and audience targeting. Microsoft Ads often delivers lower CPCs than Google Ads for similar queries.`,
+        microsoftads: `You are a senior paid search specialist at a UK digital marketing agency analysing Microsoft Advertising (Bing Ads) performance.
+DATA AVAILABLE: spend, impressions, clicks, CTR, CPC, conversions, revenue, ROAS, cost per conversion, impression share. You will also receive campaign-level data.
+KEY PATTERNS TO IDENTIFY:
+- CPC significantly lower than Google Ads benchmarks → Microsoft Ads strength → recommend scaling budget to capture more of this efficient inventory.
+- Low impression share → opportunity to capture more volume → assess if budget or bid limited.
+- Good ROAS on Microsoft but client spending proportionally less here → budget reallocation opportunity from less efficient channels.
+- Microsoft Ads audience skews older and higher-income (desktop-heavy, B2B-friendly) → tailor messaging to this demographic profile.
+Microsoft Ads often serves as a high-ROAS supplementary channel. Frame recommendations in the context of the broader paid search strategy alongside Google Ads.
+AVAILABLE LEVERS: campaign daily budgets, bid strategies, impression share improvements, keyword targeting, audience targeting (LinkedIn profile targeting is unique to Microsoft Ads), ad copy, landing page alignment, and device bid adjustments.`,
 
-        linkedin: `You are a senior B2B paid social specialist at a UK digital marketing agency reviewing LinkedIn Ads performance data.
-Available levers: campaign budgets, bid strategies, audience targeting (job title, industry, company size), creative refresh, and campaign objectives. LinkedIn CPCs are typically high but drive quality B2B leads — focus on cost per lead and lead quality over volume.`,
+        linkedin: `You are a senior B2B paid social specialist at a UK digital marketing agency analysing LinkedIn Ads performance.
+DATA AVAILABLE: impressions, clicks, spend, conversions/leads, reach, CTR, CPC, cost per lead. You will also receive campaign-level data (name, impressions, clicks, spend, conversions).
+KEY PATTERNS TO IDENTIFY:
+- High CPC (£5-15+ is normal on LinkedIn) with low conversion rate → audience or offer mismatch → refine job title/seniority targeting or test different content formats (document ads, thought leadership).
+- High impressions but low CTR → ad creative not compelling for B2B audience → test more professional, value-led messaging with clear business outcomes.
+- Cost per lead acceptable but lead quality low → targeting too broad → tighten company size, industry, or seniority filters.
+- Reach plateauing → audience exhaustion → expand targeting criteria or refresh creative assets.
+LinkedIn is premium inventory — high CPCs are expected. ALWAYS frame CPC/CPL against lead quality and downstream pipeline value, not just cost. A £40 CPL that converts to a £10,000 deal is excellent.
+AVAILABLE LEVERS: campaign budgets, bid strategies, audience targeting (job title, function, seniority, industry, company size, skills, groups), ad format testing (single image, carousel, video, document, conversation ads), lead gen forms vs landing page, and content strategy (thought leadership vs direct response).`,
 
-        klaviyo: `You are a senior email marketing specialist at a UK digital marketing agency reviewing Klaviyo email performance data.
-Available levers: send cadence, segmentation, subject line optimisation, email content and design, send time optimisation, automation flows, and list hygiene. Focus on open rates, click rates, and revenue per email as primary KPIs.`,
+        klaviyo: `You are a senior email marketing specialist at a UK digital marketing agency analysing Klaviyo email performance.
+DATA AVAILABLE: total sends, opens, clicks, revenue, open rate, click rate, campaign count. You will also receive individual campaign data (name, status, sends, opens, clicks, revenue, open rate, click rate).
+KEY PATTERNS TO IDENTIFY:
+- Open rate below 20% → subject line or deliverability issue → test subject lines, check sender reputation, review list hygiene.
+- Open rate healthy but click rate below 2% → email content not compelling → improve CTA placement, design, and offer clarity.
+- Revenue concentrated in few campaigns → over-reliance on promotional sends → diversify with automated flows (welcome, abandoned cart, post-purchase, win-back).
+- Declining open rates over time → list fatigue or deliverability degradation → implement sunset policy for unengaged subscribers, warm up sending domain.
+- Specific campaigns with high click rate → analyse what makes them work (timing, subject line, offer, design) and replicate.
+Name specific campaigns by performance. Compare campaigns against each other to identify what content, timing, or offer type drives best results.
+AVAILABLE LEVERS: send cadence and timing, list segmentation (RFM, engagement-based, purchase behaviour), subject line A/B testing, email design and content, automation flow optimisation, send time optimisation, list hygiene/sunset flows, and deliverability improvements.`,
+
+        youtube: `You are a senior video marketing and content strategist at a UK digital marketing agency analysing YouTube channel performance.
+DATA AVAILABLE: views, watch time (hours), new subscribers, click-through rate (CTR). Note: this is organic channel data, not YouTube Ads — there is no spend or conversion data.
+KEY PATTERNS TO IDENTIFY:
+- Views up but watch time flat → viewers clicking but not staying → review video hooks (first 30 seconds) and content pacing; check if thumbnails/titles set accurate expectations.
+- CTR below 4% → thumbnails or titles not compelling → A/B test thumbnail styles, use curiosity-driven titles, ensure faces and text are visible at mobile thumbnail size.
+- Subscriber growth stagnating → not converting viewers to subscribers → add subscribe CTAs, end screens, and community engagement; review channel positioning.
+- Watch time strong but views low → content is good but discovery is poor → optimise titles/descriptions for YouTube search (keyword research), improve posting consistency, and leverage Shorts for top-of-funnel discovery.
+YouTube is a search AND discovery platform. Recommendations should balance SEO (titles, descriptions, tags) with algorithm signals (CTR, watch time, engagement).
+AVAILABLE LEVERS: video content strategy, thumbnail A/B testing, title/description SEO optimisation, upload cadence and consistency, playlist organisation, end screen and card placement, YouTube Shorts strategy, community posts, and collaboration opportunities.`,
+
+        hubspot: `You are a senior CRM and inbound marketing specialist at a UK digital marketing agency analysing HubSpot CRM data.
+DATA AVAILABLE: total contacts, open deals, pipeline value (£), closed won value (£). Note: this is CRM pipeline data — you see the sales funnel, not individual marketing channel performance.
+KEY PATTERNS TO IDENTIFY:
+- Pipeline value high but closed won low → deals stalling in pipeline → review deal stages for bottlenecks, assess follow-up cadence and sales enablement content.
+- Open deals growing but pipeline value flat → attracting small deals → review lead qualification criteria and target account strategy.
+- Total contacts growing but open deals flat → leads not converting to opportunities → assess lead nurturing workflows, scoring criteria, and MQL-to-SQL handoff process.
+- Closed won value strong → celebrate the win; identify which lead sources/campaigns fed the closed deals to inform future marketing investment.
+Frame CRM insights in the context of the marketing-to-sales funnel. The agency's role is generating and nurturing leads — tie pipeline performance back to marketing activity where possible.
+AVAILABLE LEVERS: lead nurturing workflow optimisation, deal pipeline stage definitions, contact segmentation and scoring, email sequences, form and landing page optimisation, lifecycle stage automation, and sales-marketing alignment.`,
+
+        callrail: `You are a senior call tracking and offline conversion specialist at a UK digital marketing agency analysing CallRail phone tracking data.
+DATA AVAILABLE: total calls, answered calls, missed calls, answer rate (%). Note: you see call volume and answer rates but not call recording content or conversion outcomes.
+KEY PATTERNS TO IDENTIFY:
+- Low answer rate (below 80%) → missed revenue opportunity → every missed call is a potential lost customer. Quantify the impact: if 20% of calls are missed and 30% of answered calls convert, the business is losing X potential conversions. Recommend staffing adjustments, call routing rules, voicemail-to-text alerts, or callback workflows.
+- Call volume dropping → either marketing driving fewer phone leads (cross-reference with paid/organic channel performance) or seasonal pattern. Check cross-platform context.
+- Call volume rising but answer rate dropping → capacity issue → receptionist/team overwhelmed → recommend overflow routing or extended hours.
+- Calls concentrated from specific sources → identify which marketing channels drive phone calls to inform budget allocation.
+Phone calls are HIGH-INTENT leads — typically 10-15x more likely to convert than web leads. Frame missed calls in revenue terms, not just operational terms.
+AVAILABLE LEVERS: call routing rules and schedules, overflow and failover routing, missed call alerts and follow-up workflows, tracking number allocation per campaign/channel, IVR menu optimisation, and operating hours configuration.`,
       };
 
       const systemPrompt = CHANNEL_PERSONAS[channelType]
@@ -678,7 +815,6 @@ ${alertList}
 Return JSON: { "recommendations": ["rec for alert 1", "rec for alert 2", ...] }
 One string per alert, in the same order. British English.`;
 
-      const openai2 = new OpenAI({ apiKey: apiKey2 });
       const comp2 = await openai2.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
@@ -696,13 +832,62 @@ One string per alert, in the same order. British English.`;
     }
     // ──────────────────────────────────────────────────────────────────────────
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const openai = await getOpenAiClient();
 
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "OPENAI_API_KEY environment variable is not set." },
-        { status: 400 }
-      );
+    // Fetch competitor context for SEO/SemRush section types
+    let competitorContext = "";
+    if (clientId && (sectionType === "seo" || sectionType === "searchconsole")) {
+      try {
+        const competitors = await prisma.competitorSnapshot.findMany({
+          where: { clientId },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        });
+        // Deduplicate by domain (keep latest per domain)
+        const byDomain = new Map<string, typeof competitors[0]>();
+        for (const snap of competitors) {
+          if (!byDomain.has(snap.domain)) byDomain.set(snap.domain, snap);
+        }
+        const uniqueCompetitors = Array.from(byDomain.values());
+        if (uniqueCompetitors.length > 0) {
+          competitorContext = "\n\nCOMPETITOR LANDSCAPE:\n" + uniqueCompetitors.map(c => {
+            let metricsStr = "";
+            try {
+              const m = typeof c.metrics === "string" ? JSON.parse(c.metrics) : c.metrics;
+              const parts: string[] = [];
+              if (m.organicTraffic != null) parts.push(`${Number(m.organicTraffic).toLocaleString()} organic traffic`);
+              if (m.organicKeywords != null) parts.push(`${Number(m.organicKeywords).toLocaleString()} keywords`);
+              if (m.domainAuthority != null || m.authorityScore != null) parts.push(`DA ${m.domainAuthority ?? m.authorityScore}`);
+              metricsStr = parts.length ? ` — ${parts.join(", ")}` : "";
+            } catch { /* ignore parse errors */ }
+            return `• ${c.domain}${metricsStr}`;
+          }).join("\n");
+        }
+      } catch { /* ignore competitor fetch errors */ }
+    }
+
+    // Fetch client-specific AI instructions if clientId provided
+    let clientAiInstructions = "";
+    if (clientId) {
+      const client = await prisma.client.findUnique({ where: { id: clientId }, select: { aiReportInstructions: true } });
+      if (client?.aiReportInstructions) {
+        clientAiInstructions = client.aiReportInstructions;
+      }
+    }
+
+    // Fetch active client goals if clientId provided
+    let goalsContext = "";
+    if (clientId) {
+      const goals = await prisma.clientGoal.findMany({
+        where: { clientId, status: { in: ["active", "at_risk"] } },
+        select: { title: true, metric: true, targetValue: true, currentValue: true, unit: true, targetDate: true, status: true },
+      });
+      if (goals.length > 0) {
+        goalsContext = "\n\nACTIVE CLIENT GOALS:\n" + goals.map((g: typeof goals[number]) => {
+          const progress = g.currentValue && g.targetValue && g.targetValue !== 0 ? Math.round((g.currentValue / g.targetValue) * 100) : null;
+          return `• ${g.title}: target ${g.targetValue}${g.unit ? ` ${g.unit}` : ""} by ${g.targetDate} (current: ${g.currentValue ?? "not measured"}${progress ? ` — ${progress}% to target` : ""}, ${g.status.toUpperCase()})`;
+        }).join("\n");
+      }
     }
 
     const config = SECTION_CONFIGS[sectionType] ?? {
@@ -743,8 +928,6 @@ One string per alert, in the same order. British English.`;
       const sev: Record<string, number> = { high: 3, medium: 2, low: 1 };
       return (sev[b.severity] ?? 0) - (sev[a.severity] ?? 0);
     });
-
-    const openai = new OpenAI({ apiKey });
 
     const metricsText = Object.entries(metrics)
       .map(([k, v]) => `${config.metricLabels[k] ?? k}: ${typeof v === "number" ? v.toLocaleString() : v}`)
@@ -790,21 +973,39 @@ One string per alert, in the same order. British English.`;
     const lengthInstruction = length ? LENGTH_INSTRUCTIONS[length] : null;
 
     const systemPrompt = `You are a senior digital marketing analyst at i3media, a UK performance marketing agency.
-${toneInstruction ? toneInstruction + "\n" : ""}${lengthInstruction ? lengthInstruction + "\n" : ""}You write incisive, data-driven performance summaries for client reports. Your audience is experienced clients who want frank, actionable analysis — not vague reassurances.
+${toneInstruction ? toneInstruction + "\n" : ""}${lengthInstruction ? lengthInstruction + "\n" : ""}You write incisive, data-driven performance summaries for both internal analysis and client reports. Your audience is experienced marketers and clients who want frank, actionable analysis — not vague reassurances.
 Be specific with numbers. Use British English. Prioritise insights that drive decisions.
 Where anomalies exist, explain likely causes and concrete remediation steps.
-For paid media (Google Ads, Meta Ads), factor in bid strategies, budget constraints, impression share, quality scores, campaign-level performance, and ad fatigue.
-When ad creative data is provided (Meta Ads), deliver GRANULAR creative-level analysis:
-- Evaluate each individual ad's performance (CTR, ROAS, CPA, conversions) and explicitly recommend which ads to PAUSE or KILL (e.g. high spend + low ROAS, high CPA, low CTR).
-- Assess headline and body copy quality — are they compelling, clear, and aligned with the offer? Suggest specific copy improvements.
-- Compare image vs video ad performance — which format is delivering better results? Recommend whether to create more images or more video content.
-- Identify creative fatigue (frequency > 3 combined with declining CTR or rising CPA) at the individual ad level.
-- For winning ads, explain WHY they work (strong hook, clear CTA, emotional appeal, social proof, etc.).
-- Be specific: name the ads, quote their metrics, and state whether to keep, pause, iterate, or kill each one.
-For landing pages, flag pages with high traffic but no conversions as a priority issue, and comment on URL structure/relevance.
-Look for cross-metric patterns: e.g. stable clicks + falling conversions points to a landing page or tracking issue; rising CPCs + falling impression share suggests competitive pressure.
-Distinguish between symptoms and root causes. Prioritise the 1-2 issues that will have the biggest commercial impact.
-Keep summaries punchy: aim for clarity over length.`;
+
+PLATFORM-SPECIFIC ANALYSIS GUIDANCE:
+
+For PAID SEARCH (Google Ads, Microsoft Ads): Factor in bid strategies, budget constraints, impression share (and where it's being lost — budget vs rank), quality scores, campaign-level performance, keyword match type implications, and landing page alignment. Flag any campaign spending above target CPA or below target ROAS.
+
+For PAID SOCIAL (Meta Ads, TikTok, LinkedIn):
+- When ad creative data is provided: deliver GRANULAR creative-level analysis — name specific ads, quote their metrics, and state whether to keep, pause, iterate, or kill each one. Compare format performance (image vs video vs carousel). Identify creative fatigue (frequency > 3 + declining CTR or rising CPA). For winners, explain WHY they work (hook, CTA, social proof, emotional appeal).
+- Assess frequency and audience saturation. Flag any campaign with ROAS below 1x as loss-making.
+- For TikTok specifically: all recommendations must consider video-first, UGC-native creative format.
+- For LinkedIn specifically: frame CPC/CPL in context of B2B lead value, not just raw cost.
+
+For SEO (SemRush, Search Console): Focus on organic visibility trends, keyword position movements, CTR optimisation, and competitive context when competitor data is provided. NEVER suggest paid media actions for organic channels.
+
+For WEB ANALYTICS (GA4): Investigate traffic quality and on-site behaviour. Cross-reference with traffic source data. Focus on conversion rate trends, engagement patterns, and funnel drop-off points. Do not suggest platform-specific budget changes unless data clearly ties to a specific paid channel.
+
+For EMAIL (Klaviyo): Analyse campaign-level performance. Compare campaigns against each other. Focus on deliverability signals, engagement trends, and revenue attribution. Name specific campaigns.
+
+For CRM (HubSpot): Focus on the marketing-to-sales funnel — lead quality, pipeline velocity, and deal conversion. Tie pipeline performance back to marketing activity where the data supports it.
+
+For CALL TRACKING (CallRail): Frame missed calls in revenue terms (high-intent leads). Quantify the cost of poor answer rates.
+
+For YOUTUBE: This is organic channel data — focus on content strategy, discoverability (SEO + algorithm signals), and audience growth. No spend data is available.
+
+CROSS-CUTTING RULES:
+- For landing pages, flag pages with high traffic but no conversions as a priority issue.
+- Look for cross-metric patterns: stable clicks + falling conversions = landing page or tracking issue; rising CPCs + falling impression share = competitive pressure.
+- Distinguish between symptoms and root causes. Prioritise the 1-2 issues with the biggest commercial impact.
+- When cross-platform context is provided, identify cross-channel interactions (e.g. paid cannibalising organic, email supporting paid retargeting).
+- When client goals are provided, frame performance against those targets.
+- Keep summaries punchy: aim for clarity over length.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
 
     const contextParts = [
       `${config.name} performance for ${clientName ?? "the client"} — ${dateRange ?? "selected period"}`,
@@ -819,6 +1020,8 @@ Keep summaries punchy: aim for clarity over length.`;
       historicalText,
       extraContext ?? "",
       crossPlatformContext ? `\nCROSS-PLATFORM CONTEXT (from other channels — use to inform deeper analysis):\n${crossPlatformContext}` : "",
+      goalsContext,
+      competitorContext,
     ].filter(Boolean);
 
     const userPrompt = `Analyse the following ${config.name} data and provide a comprehensive performance review.
@@ -863,6 +1066,34 @@ Respond in JSON format:
       insights: parsed.insights ?? [],
       recommendations: parsed.recommendations ?? [],
     };
+
+    // ── P3.2: Anomaly Memory — persist detected anomalies for pattern learning ──
+    if (clientId && allAnomalies.length > 0) {
+      const today = new Date().toISOString().split("T")[0];
+      try {
+        await Promise.allSettled(
+          allAnomalies
+            .filter((a) => a.severity === "high" || a.severity === "medium")
+            .map((a) =>
+              prisma.detectedAnomaly.create({
+                data: {
+                  clientId,
+                  platform: sectionType,
+                  metric: a.metric,
+                  severity: a.severity,
+                  direction: a.direction,
+                  changePercent: a.changePercent ?? 0,
+                  detail: a.description,
+                  periodStart: dateRange ?? today,
+                  periodEnd: dateRange ?? today,
+                },
+              })
+            )
+        );
+      } catch {
+        // Non-critical — don't fail the summary if anomaly storage fails
+      }
+    }
 
     return NextResponse.json(result);
   } catch (error) {

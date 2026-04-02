@@ -1,39 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import OpenAI from "openai";
+import { getOpenAiClient, createWithWebSearch, streamWithWebSearch } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
-
-async function getOpenAiClient(): Promise<OpenAI> {
-  const setting = await prisma.appSetting.findUnique({ where: { key: "openaiApiKey" } });
-  const apiKey = setting?.value || process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OpenAI API key not configured");
-  return new OpenAI({ apiKey });
-}
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { clientId, period, crossPlatformData } = await request.json() as {
+    const requestBody = await request.json() as {
       clientId: string;
       period: string;
       crossPlatformData: Record<string, unknown>;
+      stream?: boolean;
+      enableWebSearch?: boolean;
     };
+    const { clientId, period, crossPlatformData } = requestBody;
+    const stream = requestBody.stream === true;
+    const enableWebSearch = requestBody.enableWebSearch === true;
 
     if (!clientId || !period) return NextResponse.json({ error: "clientId and period are required" }, { status: 400 });
 
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, website: true, aiReportInstructions: true } });
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
+
+    const clientAiInstructions = client.aiReportInstructions ?? "";
 
     const openai = await getOpenAiClient();
 
-    const prompt = `You are a senior digital marketing strategist. Create a comprehensive quarterly strategy document for the following client.
+    const systemInstruction = `You are a senior digital marketing strategist. Create a comprehensive quarterly strategy document for the following client.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${enableWebSearch ? "\n\nYou have web search available. Use it to find current industry benchmarks, competitor insights, market trends, and platform updates that are relevant to this client's strategy. Cite sources where appropriate." : ""}`;
 
-Client: ${client.name}
+    const userPrompt = `Client: ${client.name}
 Website: ${client.website ?? "Not set"}
 Period: ${period}
 
@@ -75,6 +75,90 @@ Generate a strategy document as JSON:
 }
 
 Return only valid JSON.`;
+
+    // ── Web search path (Responses API) ────────────────────────────────────
+    if (enableWebSearch) {
+      if (stream) {
+        const readable = streamWithWebSearch(openai, {
+          instructions: systemInstruction,
+          input: userPrompt,
+          temperature: 0.4,
+          maxOutputTokens: 3000,
+          searchContextSize: "medium",
+          userLocation: { type: "approximate", country: "GB" },
+        });
+        return new Response(readable, {
+          headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" },
+        });
+      }
+
+      const wsResult = await createWithWebSearch(openai, {
+        instructions: systemInstruction,
+        input: userPrompt,
+        temperature: 0.4,
+        maxOutputTokens: 3000,
+        searchContextSize: "medium",
+        userLocation: { type: "approximate", country: "GB" },
+      });
+
+      let content;
+      try {
+        const jsonMatch = wsResult.text.match(/\{[\s\S]*\}/);
+        content = JSON.parse(jsonMatch ? jsonMatch[0] : wsResult.text);
+      } catch {
+        content = { performanceSummary: wsResult.text, wins: [], challenges: [], opportunities: [], channelStrategy: {}, contentPriorities: [], technicalActions: [], kpiTargets: [] };
+      }
+
+      const title = `${client.name} — ${period} Strategy`;
+      const doc = await prisma.strategyDocument.create({
+        data: { clientId, title, period, content: JSON.stringify(content) },
+      });
+
+      return NextResponse.json({
+        document: { id: doc.id, title: doc.title, period: doc.period, content, shareToken: null },
+        webSearchCitations: wsResult.citations,
+      });
+    }
+
+    // ── Standard path (Chat Completions API) ───────────────────────────────
+    const prompt = `${systemInstruction}\n\n${userPrompt}`;
+
+    if (stream) {
+      const streamResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.4,
+        max_tokens: 3000,
+        messages: [{ role: "user", content: prompt }],
+        stream: true,
+      });
+
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of streamResponse) {
+              const content = chunk.choices[0]?.delta?.content;
+              if (content) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+              }
+            }
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          } catch (err) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: err instanceof Error ? err.message : "Stream error" })}\n\n`));
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    }
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",

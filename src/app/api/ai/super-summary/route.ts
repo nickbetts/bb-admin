@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 import { fetchPageSignals, type PageSignals } from "@/lib/landing-page-analyzer";
 
@@ -11,6 +11,7 @@ export const maxDuration = 120;
 interface SuperSummaryRequest {
   sectionType: string;
   clientName?: string;
+  clientId?: string;
   dateRange?: string;
   /** Account-level metrics */
   metrics: Record<string, number>;
@@ -85,10 +86,11 @@ const METRIC_LABELS: Record<string, Record<string, string>> = {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as SuperSummaryRequest;
+    const body = (await request.json()) as SuperSummaryRequest & { stream?: boolean };
     const {
       sectionType,
       clientName,
+      clientId,
       dateRange,
       metrics,
       previousMetrics,
@@ -102,13 +104,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "sectionType and metrics are required" }, { status: 400 });
     }
 
-    // Resolve OpenAI API key
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "OpenAI API key not configured. Please add it in Settings." },
-        { status: 400 }
-      );
+    const openai = await getOpenAiClient();
+
+    // Fetch client-specific AI instructions if clientId provided
+    let clientAiInstructions = "";
+    if (clientId) {
+      const client = await prisma.client.findUnique({ where: { id: clientId }, select: { aiReportInstructions: true } });
+      if (client?.aiReportInstructions) {
+        clientAiInstructions = client.aiReportInstructions;
+      }
     }
 
     const sectionName = SECTION_NAMES[sectionType] ?? sectionType;
@@ -179,7 +183,6 @@ export async function POST(request: NextRequest) {
     }
 
     // ── AI call ──────────────────────────────────────────────────────────────
-    const openai = new OpenAI({ apiKey });
 
     const systemPrompt = `You are a senior performance marketing strategist at i3media, a UK digital marketing agency.
 You produce executive-level "full journey" summaries that tell the COMPLETE story of a marketing channel's performance — from ad/campaign level, through user click, to landing page experience
@@ -196,7 +199,7 @@ When ad creative data is provided, deliver DETAILED creative-level analysis as p
 - For winning creatives, explain what makes them effective (strong hook, clear CTA, emotional resonance, social proof, etc.) so success can be replicated.
 
 Be specific with numbers, campaign names, page URLs, and metric values. Use British English.
-Prioritise commercial impact — which issues, if fixed, would deliver the most revenue or efficiency gain?`;
+Prioritise commercial impact — which issues, if fixed, would deliver the most revenue or efficiency gain?${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
 
     const userPrompt = `Produce a full-journey performance analysis for ${clientName ?? "the client"}'s ${sectionName} channel (${dateRange ?? "selected period"}).
 
@@ -221,6 +224,48 @@ Analyse the FULL JOURNEY — traffic generation → click → landing page → c
 
 ${landingPages?.length ? "" : "pageScores should be an empty array since no landing pages were provided."}
 Be frank and specific. Reference actual campaign names, URLs, and figures.`;
+
+    const stream = body.stream === true;
+
+    if (stream) {
+      const streamResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 2000,
+        temperature: 0.3,
+        stream: true,
+      });
+
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of streamResponse) {
+              const content = chunk.choices[0]?.delta?.content;
+              if (content) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+              }
+            }
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          } catch (err) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: err instanceof Error ? err.message : "Stream error" })}\n\n`));
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    }
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
