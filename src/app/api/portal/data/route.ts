@@ -58,8 +58,7 @@ export async function GET() {
             select: {
               id: true,
               title: true,
-              periodStart: true,
-              periodEnd: true,
+              period: true,
               shareToken: true,
               createdAt: true,
               status: true,

@@ -28,53 +28,61 @@
 
 ### What We Have (and It's Actually Impressive)
 
-i3media Report is already ahead of most agency tooling on the market. A cold audit shows genuine strengths:
+i3media Report is already ahead of most agency tooling on the market. A cold audit as of April 2026 shows genuine strengths across all three build phases:
 
 | Capability | Current State | Rating |
 |---|---|---|
-| Data integrations | 8 channels (GA4, Google Ads, Meta, SemRush, GSC, Moz, WooCommerce, Shopify) | ⭐⭐⭐⭐ |
-| AI insights per channel | Per-section anomaly detection + OpenAI summaries | ⭐⭐⭐⭐ |
-| Cross-channel context | All platform metrics fed into each AI call | ⭐⭐⭐⭐ |
-| Report builder | Drag-and-drop, AI commentary, PDF export, share links | ⭐⭐⭐⭐ |
-| Proposal generation | AI-powered PPC proposals with interactive forecaster | ⭐⭐⭐⭐ |
-| Landing page analysis | CRO/SEO/Mobile/Forms scoring with AI | ⭐⭐⭐ |
-| Keyword planner | SemRush-backed research with proposal output | ⭐⭐⭐ |
-| Historical snapshots | MetricSnapshot model exists, underused in dashboards | ⭐⭐ |
-| Client management | Basic CRUD with integration badges | ⭐⭐⭐ |
-| Role-based access | 11 permissions, role editor | ⭐⭐⭐ |
-| LLM.txt generator | Novel, well-executed, niche | ⭐⭐⭐⭐ |
+| Data integrations | 15 channels (GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, SemRush, GSC, Moz, WooCommerce, Shopify, YouTube, HubSpot, CallRail) | ⭐⭐⭐⭐⭐ |
+| AI insights per channel | 14 AI endpoints: anomaly detection, summaries, forecasting, budget advice, attribution, creative intelligence, root cause, strategy documents, conversational chat | ⭐⭐⭐⭐⭐ |
+| Cross-channel context | All platform metrics fed into every AI call; cross-platform intelligence in every section | ⭐⭐⭐⭐⭐ |
+| Report builder | Drag-and-drop, AI commentary, collaboration comments, approval workflow, PDF export, share links | ⭐⭐⭐⭐⭐ |
+| Proposal generation | AI-powered PPC proposals with interactive forecaster, pipeline CRM, view tracking, enquiry capture | ⭐⭐⭐⭐⭐ |
+| Landing page analysis | CRO/SEO/Mobile/Forms scoring with AI, SuperSummary journey analysis | ⭐⭐⭐⭐ |
+| Keyword planner | SemRush-backed research with proposal output | ⭐⭐⭐⭐ |
+| Historical snapshots | Nightly automated snapshots across all channels, used for forecasting, seasonality, and anomaly context | ⭐⭐⭐⭐ |
+| Client management | Full CRUD, integration badges, contracted hours, AI instructions, portal management | ⭐⭐⭐⭐ |
+| Role-based access | 11 permissions, role editor, granular per-section control | ⭐⭐⭐⭐ |
+| LLM.txt generator | Novel, well-executed, sector-specific templates | ⭐⭐⭐⭐ |
+| Client portal | Self-serve login with magic link, goals, reports, communications view | ⭐⭐⭐⭐ |
+| Action tracking | AI recommendations → assigned actions → outcomes, full CRUD | ⭐⭐⭐⭐ |
+| Communication hub | Centralised log for emails, calls, meetings, notes with email drafting | ⭐⭐⭐⭐ |
+| Competitor intelligence | SemRush-backed competitor monitoring, share of voice, AI-generated insights | ⭐⭐⭐⭐ |
+| Media plan builder | Paid media planning with channel allocation and AI forecast outputs | ⭐⭐⭐⭐ |
+| Portfolio health | Agency-wide client health dashboard with churn risk scoring | ⭐⭐⭐⭐ |
+| Automated reporting | Monthly cron-triggered report generation, schedule configuration per client | ⭐⭐⭐⭐⭐ |
+| Notifications | Email + Slack delivery for anomalies, report events, goals at risk — fully configurable | ⭐⭐⭐⭐⭐ |
 
-### The Gaps — Where We Fall Short
+### The Original Gaps — Resolution Status
 
-**Gap 1: Insights without action**
-The AI generates brilliant observations but stops short of taking or initiating action. An account manager still has to read the insight, agree with it, and go into Google Ads or Meta to act. The insight-to-action loop is broken.
+**Gap 1: Insights without action** ✅ **Resolved**
+Action tracking is now a first-class feature. AI recommendations surface as `ActionItem` records that can be assigned, tracked, and measured. The `/tools/actions` dashboard gives a full view of open, in-progress, and completed actions across all clients.
 
-**Gap 2: Siloed historical data**
-MetricSnapshot exists in the schema and is partially used for Google Ads, but trend analysis across all channels (seasonality detection, anomaly explanation against history, year-over-year comparisons at a glance) is largely absent. There is a goldmine of data sitting unanalysed.
+**Gap 2: Siloed historical data** ✅ **Resolved**
+Nightly snapshot automation runs across all channels. MetricSnapshot data powers predictive forecasting, seasonality intelligence, conversational AI context, and anomaly explanation. The data is no longer sitting unanalysed.
 
-**Gap 3: No client-facing layer**
-Clients have zero visibility unless an account manager manually exports a PDF or shares a report link. There is no portal, no real-time dashboard, no goal tracking, no alerts directed at clients. The agency retains all the intelligence.
+**Gap 3: No client-facing layer** ✅ **Resolved**
+The client portal (`/portal`) gives clients a magic-link login to view their reports, goals, and communications. `ClientPortalUser` records are managed per client with configurable permissions.
 
-**Gap 4: Manual report workflow**
-Reports are still predominantly manual — someone has to create them, generate AI commentary, add screenshots, and send. There is no automation, no scheduling, no one-click monthly send.
+**Gap 4: Manual report workflow** ✅ **Resolved**
+Monthly report automation is live via `/api/cron/reports`. Each client can have a `reportSchedule` configured (frequency, day, template, auto-approve). Reports are generated, AI commentary added, and notifications sent automatically.
 
-**Gap 5: Limited integrations for modern marketing**
-TikTok, LinkedIn, Microsoft Ads, Klaviyo, HubSpot, YouTube, Core Web Vitals, and call tracking are absent. These aren't edge cases — they are in active use on most client accounts.
+**Gap 5: Limited integrations** ✅ **Resolved**
+TikTok Ads, Microsoft Advertising, LinkedIn Ads, Klaviyo, YouTube Analytics, HubSpot CRM, Core Web Vitals, and CallRail are all live. The platform now covers 15 channels.
 
-**Gap 6: No attribution modelling**
-Last-click attribution is the default for almost every platform. There is no cross-channel attribution model, no customer journey mapping, no first-touch or data-driven model comparison. This is the most requested feature for CMOs everywhere.
+**Gap 6: No attribution modelling** ✅ **Resolved**
+Multi-touch attribution is live on the Overview tab. Five models supported: Last Click, First Click, Linear, Time Decay, and Position-Based. AI narrative explains cross-channel contribution patterns.
 
-**Gap 7: Proposal and pipeline management is thin**
-The proposal tool is excellent for PPC but there is no CRM-style pipeline for managing which proposals are active, who has viewed them, who has converted, and what the resulting revenue looks like.
+**Gap 7: Proposal pipeline is thin** ✅ **Resolved**
+Proposals now have full pipeline fields: `pipelineStage`, `pipelineNotes`, `expectedValue`, `closeDate`, `lostReason`. A `/api/tools/proposals/[id]/pipeline` endpoint manages stage transitions.
 
-**Gap 8: No competitor intelligence feed**
-SemRush competitor data is shown in the SEO tab but there is no unified competitor monitoring, no share-of-voice tracking, no competitor ad intelligence, and no alerts when a competitor changes strategy.
+**Gap 8: No competitor intelligence feed** ✅ **Resolved**
+Competitor intelligence is live. `CompetitorSnapshot` model stores ongoing competitive data. `CompetitorIntelligenceSection` surfaces it on the SEO tab. `/tools/competitor-intelligence` provides agency-wide monitoring.
 
-**Gap 9: Notifications are absent**
-There is no email, Slack, or webhook alert system. Anomalies are detected but they live silently in the platform. Account managers have to remember to check in.
+**Gap 9: Notifications are absent** ✅ **Resolved**
+Email (Resend) and Slack (webhooks) notifications are fully implemented. Per-user preferences with quiet hours, digest frequency, and per-type enable/disable are configurable at `/settings/notifications`.
 
-**Gap 10: No agency-level business intelligence**
-The platform can see a single client's performance but has no view across the portfolio. There is no "which clients are underperforming?", no "what is our total managed spend?", no "which channel is delivering the best results across all clients?".
+**Gap 10: No agency-level business intelligence** ✅ **Resolved**
+The portfolio health dashboard (`/portfolio`) provides a cross-client view with health scores, churn risk indicators, open action counts, goal achievement rates, and anomaly counts per client.
 
 ---
 
@@ -1094,20 +1102,20 @@ Transform the AI layer from insights into a full intelligence system.
 
 ---
 
-### Phase 3 — Agency Operating System (6–12 months)
+### Phase 3 — Agency Operating System (6–12 months) ✅ Complete
 
 Build the agency workflow features that embed the platform into daily operations.
 
-- [ ] **Client portal** — self-serve client-facing dashboard
-- [ ] **Internal action tracking** — AI recommendations → assigned actions → outcomes
-- [ ] **Client communication hub** — centralised communication log and email drafting
-- [ ] **Proposal pipeline CRM** — full sales pipeline management
-- [ ] **Interactive web reports** — beyond PDF, live interactive report experience
-- [ ] **Report collaboration** — multi-user editing, comments, approval workflow
-- [ ] **Client health dashboard** — portfolio-level overview with churn risk scoring
-- [ ] **New integrations: HubSpot CRM, YouTube Analytics, CallRail**
-- [ ] **Competitor intelligence feed** — ongoing competitive monitoring
-- [ ] **Media plan builder** — paid media planning with forecast outputs
+- [x] **Client portal** — self-serve client-facing dashboard with magic-link login
+- [x] **Internal action tracking** — AI recommendations → assigned actions → outcomes
+- [x] **Client communication hub** — centralised communication log and email drafting
+- [x] **Proposal pipeline CRM** — full sales pipeline with stages, value, close date, lost reason
+- [x] **Report collaboration** — multi-user comments, approval workflow, approval status
+- [x] **Client health dashboard** — portfolio-level overview with churn risk scoring (`/portfolio`)
+- [x] **New integrations: HubSpot CRM, YouTube Analytics, CallRail**
+- [x] **Competitor intelligence feed** — ongoing competitive monitoring with `CompetitorSnapshot`
+- [x] **Media plan builder** — paid media planning with channel allocation and AI forecast outputs
+- [ ] **Interactive web reports** — fully live interactive report experience beyond the current read-only share view *(in progress — share view exists; full interactivity deferred to Phase 4)*
 
 ---
 
@@ -1196,5 +1204,5 @@ Build this, and the question stops being "why would we use this?" and starts bei
 
 ---
 
-*Document version: 1.2 — April 2026 (Phase 2 complete)*
-*Next review: After Phase 3 completion*
+*Document version: 1.3 — April 2026 (Phase 3 substantially complete — 9/10 items done)*
+*Next review: After Phase 4 planning session*
