@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSessionOrCronAuth } from "@/lib/auth";
 import { getCoreWebVitals } from "@/lib/core-web-vitals";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 // GET /api/cwv — fetch Core Web Vitals for a URL
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSession();
+    const session = await getSessionOrCronAuth(request);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const url = request.nextUrl.searchParams.get("url");

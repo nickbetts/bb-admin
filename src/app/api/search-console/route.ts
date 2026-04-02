@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSessionOrCronAuth } from "@/lib/auth";
 import {
   getGSCOverview,
   getGSCTopQueries,
@@ -15,7 +15,7 @@ export const maxDuration = 30;
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSession();
+    const session = await getSessionOrCronAuth(request);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
