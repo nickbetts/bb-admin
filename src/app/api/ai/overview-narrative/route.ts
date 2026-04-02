@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, createWithWebSearch, streamWithWebSearch } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -187,7 +187,7 @@ interface OverviewNarrativeResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as OverviewNarrativeRequest & { stream?: boolean };
+    const body = (await request.json()) as OverviewNarrativeRequest & { stream?: boolean; enableWebSearch?: boolean };
     const {
       clientName,
       clientId,
@@ -392,6 +392,8 @@ export async function POST(request: NextRequest) {
 
     // ── AI call ──────────────────────────────────────────────────────────────
 
+    const enableWebSearch = body.enableWebSearch === true;
+
     const systemPrompt = `You are a senior cross-channel performance strategist at i3media, a UK digital marketing agency.
 You produce executive-level overviews that tell the COMPLETE marketing story across all active channels simultaneously.
 
@@ -404,7 +406,7 @@ Your analysis covers:
 
 Be specific with numbers and percentages. Use British English. Reference actual metric values.
 Prioritise commercial impact — which changes would deliver the most revenue increase or efficiency gain?
-When only some channels are active, focus your analysis on those and note what's missing.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
+When only some channels are active, focus your analysis on those and note what's missing.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${enableWebSearch ? "\n\nYou have web search available. Use it to add current market context, industry benchmarks, or relevant platform updates that strengthen your analysis. Cite sources where appropriate." : ""}`;
 
     const channelList = activePlatforms.join(", ");
     const userPrompt = `Produce a cross-channel performance overview for ${clientName ?? "the client"} (${dateRange ?? "selected period"}).
@@ -433,6 +435,56 @@ For channelScores keys, use these exact keys for whichever channels are active: 
 Be frank and specific. Reference actual numbers and percentages.`;
 
     const stream = body.stream === true;
+
+    // ── Web search path (Responses API) ────────────────────────────────────
+    if (enableWebSearch) {
+      if (stream) {
+        const readable = streamWithWebSearch(openai, {
+          instructions: systemPrompt,
+          input: userPrompt,
+          temperature: 0.3,
+          maxOutputTokens: 3500,
+          searchContextSize: "medium",
+          userLocation: { type: "approximate", country: "GB" },
+        });
+        return new Response(readable, {
+          headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" },
+        });
+      }
+
+      const wsResult = await createWithWebSearch(openai, {
+        instructions: systemPrompt,
+        input: userPrompt,
+        temperature: 0.3,
+        maxOutputTokens: 3500,
+        textFormat: { type: "json_object" },
+        searchContextSize: "medium",
+        userLocation: { type: "approximate", country: "GB" },
+      });
+
+      let parsed: Partial<OverviewNarrativeResponse> = {};
+      try {
+        const jsonMatch = wsResult.text.match(/\{[\s\S]*\}/);
+        parsed = JSON.parse(jsonMatch ? jsonMatch[0] : wsResult.text);
+      } catch {
+        parsed = { narrative: wsResult.text };
+      }
+
+      const result: OverviewNarrativeResponse = {
+        narrative: parsed.narrative ?? "Unable to generate overview.",
+        channelScores: parsed.channelScores ?? {},
+        crossChannelInsights: parsed.crossChannelInsights ?? [],
+        budgetRecommendation: parsed.budgetRecommendation ?? "",
+        wins: parsed.wins ?? [],
+        issues: parsed.issues ?? [],
+        actions: parsed.actions ?? [],
+        overallScore: parsed.overallScore ?? 0,
+      };
+
+      return NextResponse.json({ ...result, webSearchCitations: wsResult.citations });
+    }
+
+    // ── Standard path (Chat Completions API) ───────────────────────────────
 
     if (stream) {
       const streamResponse = await openai.chat.completions.create({

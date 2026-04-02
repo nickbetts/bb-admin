@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, createWithWebSearch, streamWithWebSearch } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
       currentMetrics?: Record<string, unknown>;
       crossPlatformContext?: string;
     };
+    const enableWebSearch = (body as { enableWebSearch?: boolean }).enableWebSearch === true;
 
     if (!clientId || !anomaly) {
       return NextResponse.json({ error: "clientId and anomaly are required" }, { status: 400 });
@@ -67,9 +68,9 @@ export async function POST(request: NextRequest) {
 
     const openai = await getOpenAiClient();
 
-    const prompt = `You are an expert digital marketing analyst performing a root cause analysis for ${client.name}.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}
+    const systemInstruction = `You are an expert digital marketing analyst performing a root cause analysis for ${client.name}.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${enableWebSearch ? "\n\nYou have web search available. Use it to check for recent algorithm updates, platform policy changes, industry shifts, or seasonal trends that may explain this anomaly. Cite sources where relevant." : ""}`;
 
-## Anomaly Detected
+    const userPrompt = `## Anomaly Detected
 - Platform: ${anomaly.platform}
 - Metric: ${anomaly.metric}
 - Severity: ${anomaly.severity}
@@ -96,11 +97,45 @@ Provide a comprehensive root cause analysis following this exact structure:
 4. **Historical Context** — Is this seasonal? Has a similar pattern occurred before?
 5. **Confidence Level** — Rate your confidence in this analysis: HIGH / MEDIUM / LOW and explain why.
 6. **Recommended Actions** — List 2-4 specific, actionable remediation steps in priority order.
-7. **Monitoring Plan** — What should be watched over the next 1-2 weeks to track resolution?
+7. **Monitoring Plan** — What should be watched over the next 1-2 weeks to track resolution?${enableWebSearch ? "\n8. **External Factors** — Were there any recent algorithm updates, platform policy changes, or industry shifts that coincide with this anomaly? Cite specific sources." : ""}
 
 Be analytical and data-driven. Reference specific numbers where available. If data is insufficient, say so clearly.`;
 
     const stream = (body as { stream?: boolean }).stream === true;
+
+    // ── Web search path (Responses API) ────────────────────────────────────
+    if (enableWebSearch) {
+      if (stream) {
+        const readable = streamWithWebSearch(openai, {
+          instructions: systemInstruction,
+          input: userPrompt,
+          temperature: 0.2,
+          maxOutputTokens: 2000,
+          searchContextSize: "high",
+          userLocation: { type: "approximate", country: "GB" },
+        });
+        return new Response(readable, {
+          headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" },
+        });
+      }
+
+      const wsResult = await createWithWebSearch(openai, {
+        instructions: systemInstruction,
+        input: userPrompt,
+        temperature: 0.2,
+        maxOutputTokens: 2000,
+        searchContextSize: "high",
+        userLocation: { type: "approximate", country: "GB" },
+      });
+
+      return NextResponse.json({
+        analysis: wsResult.text,
+        webSearchCitations: wsResult.citations,
+      });
+    }
+
+    // ── Standard path (Chat Completions API) ───────────────────────────────
+    const prompt = `${systemInstruction}\n\n${userPrompt}`;
 
     if (stream) {
       const streamResponse = await openai.chat.completions.create({

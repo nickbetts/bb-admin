@@ -29,6 +29,7 @@ The following recommendations from this audit have been implemented:
 | **P2.3** Add streaming to long-running endpoints | ✅ Done | strategy-document, super-summary, root-cause, and overview-narrative now support `stream: true` parameter, returning SSE `text/event-stream` responses. Non-streaming mode preserved for backward compatibility. |
 | **P2.4** Improve forecast quality with pre-computed trends | ✅ Done | Added `computeTrendAnalysis()` helper that pre-computes MoM trends, variance coefficients, data quality signals, and YoY comparisons from all available snapshots before sending to GPT. `max_tokens` increased to 2000. |
 | **P2.5** Competitor context in dashboard AI | ✅ Done | SEO/SemRush AI insights now fetch `CompetitorSnapshot` records and include competitor landscape (organic traffic, keywords, DA) in the prompt context. |
+| **P2.6** Web search for contextual AI endpoints | ✅ Done | strategy-document, root-cause, and overview-narrative accept `enableWebSearch: true` — uses OpenAI Responses API with `web_search_preview` tool to pull industry benchmarks, algorithm updates, and market context. Streaming and non-streaming supported. Citations returned in response. |
 
 ### Priority 3 — Innovate (Not Yet Implemented)
 
@@ -69,15 +70,15 @@ Claude Sonnet/Opus integration recommendations are documented below but not impl
 |---|----------|-------|---------|-------------|------|
 | 1 | `POST /api/ai/summary` | gpt-4o-mini | Per-channel anomaly detection + insights. Also handles `alert_recommendations` sub-type | AiInsightsPanel, Signals tab | Session |
 | 2 | `POST /api/ai/super-summary` | gpt-4o-mini | Full-funnel journey narrative: ad → click → landing page → conversion | SuperSummary component | Session |
-| 3 | `POST /api/ai/overview-narrative` | gpt-4o-mini | Cross-channel strategic overview (all channels combined) | CrossChannelOverview tab | Session |
+| 3 | `POST /api/ai/overview-narrative` | gpt-4o-mini (+ web_search opt-in) | Cross-channel strategic overview (all channels combined) | CrossChannelOverview tab | Session |
 | 4 | `POST /api/ai/report-commentary` | gpt-4o-mini | Section-level report commentary (tone/length/format configurable) | ReportView section | Session |
 | 5 | `POST /api/ai/executive-summary` | gpt-4o-mini | Rolls up all section commentaries into a report executive summary | ReportView | Session |
 | 6 | `POST /api/ai/forecast` | gpt-4o-mini | 30/60/90-day performance projections | Overview tab | Session |
 | 7 | `POST /api/ai/budget-advisor` | gpt-4o-mini | Cross-channel budget reallocation recommendations | Overview tab | Session |
 | 8 | `POST /api/ai/attribution` | gpt-4o-mini | Multi-touch attribution modelling + narrative | Overview tab | Session |
 | 9 | `POST /api/ai/creative-intelligence` | gpt-4o-mini | Ad creative pattern analysis (Meta + Google) | Meta/Google Ads tabs | Session |
-| 10 | `POST /api/ai/strategy-document` | gpt-4o-mini | Full quarterly strategy document generator | Strategy tool | Session |
-| 11 | `POST /api/ai/root-cause` | gpt-4o-mini | Deep-dive root cause analysis for specific anomalies | Signals tab | Session |
+| 10 | `POST /api/ai/strategy-document` | gpt-4o-mini (+ web_search opt-in) | Full quarterly strategy document generator | Strategy tool | Session |
+| 11 | `POST /api/ai/root-cause` | gpt-4o-mini (+ web_search opt-in) | Deep-dive root cause analysis for specific anomalies | Signals tab | Session |
 | 12 | `POST /api/ai/landing-page-analysis` | gpt-4o-mini + web_search | CRO/SEO/mobile landing page audit | Page Analyser tool | Session |
 | 13 | `POST /api/ai/chat` | gpt-4o-mini | Conversational "Ask the Data" interface | Client dashboard (all tabs) | Session |
 | 14 | `POST /api/competitor-intelligence` | gpt-4o-mini | 2-3 sentence competitor organic search insight | Competitor Intelligence tool | Session |

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getOpenAiClient } from "@/lib/openai-client";
+import { getOpenAiClient, createWithWebSearch, streamWithWebSearch } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -16,9 +16,11 @@ export async function POST(request: NextRequest) {
       period: string;
       crossPlatformData: Record<string, unknown>;
       stream?: boolean;
+      enableWebSearch?: boolean;
     };
     const { clientId, period, crossPlatformData } = requestBody;
     const stream = requestBody.stream === true;
+    const enableWebSearch = requestBody.enableWebSearch === true;
 
     if (!clientId || !period) return NextResponse.json({ error: "clientId and period are required" }, { status: 400 });
 
@@ -29,9 +31,9 @@ export async function POST(request: NextRequest) {
 
     const openai = await getOpenAiClient();
 
-    const prompt = `You are a senior digital marketing strategist. Create a comprehensive quarterly strategy document for the following client.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}
+    const systemInstruction = `You are a senior digital marketing strategist. Create a comprehensive quarterly strategy document for the following client.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${enableWebSearch ? "\n\nYou have web search available. Use it to find current industry benchmarks, competitor insights, market trends, and platform updates that are relevant to this client's strategy. Cite sources where appropriate." : ""}`;
 
-Client: ${client.name}
+    const userPrompt = `Client: ${client.name}
 Website: ${client.website ?? "Not set"}
 Period: ${period}
 
@@ -73,6 +75,53 @@ Generate a strategy document as JSON:
 }
 
 Return only valid JSON.`;
+
+    // ── Web search path (Responses API) ────────────────────────────────────
+    if (enableWebSearch) {
+      if (stream) {
+        const readable = streamWithWebSearch(openai, {
+          instructions: systemInstruction,
+          input: userPrompt,
+          temperature: 0.4,
+          maxOutputTokens: 3000,
+          searchContextSize: "medium",
+          userLocation: { type: "approximate", country: "GB" },
+        });
+        return new Response(readable, {
+          headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" },
+        });
+      }
+
+      const wsResult = await createWithWebSearch(openai, {
+        instructions: systemInstruction,
+        input: userPrompt,
+        temperature: 0.4,
+        maxOutputTokens: 3000,
+        searchContextSize: "medium",
+        userLocation: { type: "approximate", country: "GB" },
+      });
+
+      let content;
+      try {
+        const jsonMatch = wsResult.text.match(/\{[\s\S]*\}/);
+        content = JSON.parse(jsonMatch ? jsonMatch[0] : wsResult.text);
+      } catch {
+        content = { performanceSummary: wsResult.text, wins: [], challenges: [], opportunities: [], channelStrategy: {}, contentPriorities: [], technicalActions: [], kpiTargets: [] };
+      }
+
+      const title = `${client.name} — ${period} Strategy`;
+      const doc = await prisma.strategyDocument.create({
+        data: { clientId, title, period, content: JSON.stringify(content) },
+      });
+
+      return NextResponse.json({
+        document: { id: doc.id, title: doc.title, period: doc.period, content, shareToken: null },
+        webSearchCitations: wsResult.citations,
+      });
+    }
+
+    // ── Standard path (Chat Completions API) ───────────────────────────────
+    const prompt = `${systemInstruction}\n\n${userPrompt}`;
 
     if (stream) {
       const streamResponse = await openai.chat.completions.create({
