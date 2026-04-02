@@ -18,7 +18,7 @@ interface SeasonalityPanelProps {
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function computeSeasonality(snapshots: Array<{ periodStart: string; periodEnd: string; metrics: string; sectionType: string }>): SeasonalityData[] {
+function computeSeasonality(snapshots: Array<{ periodStart: string; periodEnd: string; metrics: string | Record<string, number>; sectionType: string }>): SeasonalityData[] {
   const byMonth: Record<number, { sessions: number[]; conversions: number[] }> = {};
 
   for (let m = 0; m < 12; m++) byMonth[m] = { sessions: [], conversions: [] };
