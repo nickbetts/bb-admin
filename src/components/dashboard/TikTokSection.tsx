@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Loader2, AlertTriangle, RefreshCw, Video } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
 interface TikTokSectionProps {
   clientId: string;
@@ -48,7 +49,7 @@ interface TikTokDaily {
   videoViews: number;
 }
 
-export function TikTokSection({ clientId, clientName, startDate, endDate }: TikTokSectionProps) {
+export function TikTokSection({ clientId, clientName, startDate, endDate, crossPlatformContext }: TikTokSectionProps) {
   const [data, setData] = useState<{ overview: TikTokOverview; campaigns: TikTokCampaign[]; daily: TikTokDaily[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -167,6 +168,28 @@ export function TikTokSection({ clientId, clientName, startDate, endDate }: TikT
           </table>
         </div>
       )}
+
+      {/* AI Insights */}
+      <AiInsightsPanel
+        sectionType="tiktok"
+        metrics={{
+          spend: overview.spend,
+          impressions: overview.impressions,
+          clicks: overview.clicks,
+          ctr: overview.ctr,
+          cpc: overview.cpc,
+          cpm: overview.cpm,
+          conversions: overview.conversions,
+          costPerConversion: overview.costPerConversion,
+          videoViews: overview.videoViews,
+          reach: overview.reach,
+          frequency: overview.frequency,
+        }}
+        campaignData={campaigns as unknown as Record<string, unknown>[]}
+        clientId={clientId}
+        clientName={clientName}
+        crossPlatformContext={crossPlatformContext}
+      />
     </div>
   );
 }

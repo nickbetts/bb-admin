@@ -117,6 +117,7 @@ interface Props {
   hideAi?: boolean;
   reportMode?: boolean;
   onMetricsReady?: (metrics: Record<string, number>) => void;
+  onPreviousMetricsReady?: (metrics: Record<string, number>) => void;
   afterHeader?: ReactNode;
 }
 
@@ -149,7 +150,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
 
 type GAdsAlert = { severity: "high" | "medium"; label: string; level: string; detail: string; recommendation: string };
 
-export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, onMetricsReady, afterHeader }: Props) {
+export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, onMetricsReady, onPreviousMetricsReady, afterHeader }: Props) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
@@ -291,6 +292,16 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
         if (!prevJson?.error && prevJson?.overview) {
           setPrevOverview(prevJson.overview);
           setPrevData(prevJson);
+          onPreviousMetricsReady?.({
+            clicks: prevJson.overview.clicks,
+            impressions: prevJson.overview.impressions,
+            cost: prevJson.overview.costMicros / 1_000_000,
+            conversions: prevJson.overview.conversions,
+            conversionValue: prevJson.overview.conversionsValue,
+            ctr: prevJson.overview.impressions > 0 ? prevJson.overview.clicks / prevJson.overview.impressions : 0,
+            roas: prevJson.overview.costMicros > 0 ? prevJson.overview.conversionsValue / (prevJson.overview.costMicros / 1_000_000) : 0,
+            cpa: prevJson.overview.conversions > 0 ? (prevJson.overview.costMicros / 1_000_000) / prevJson.overview.conversions : 0,
+          });
         }
       } catch (err) {
         if (err instanceof Error && err.name !== "AbortError") setError("Failed to load Google Ads data");

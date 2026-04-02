@@ -31,7 +31,10 @@ interface GA4SectionProps {
   visibleBlocks?: string[];
   hideAlerts?: boolean;
   hideAi?: boolean;
+  clientId?: string;
+  clientName?: string;
   onMetricsReady?: (metrics: Record<string, number>) => void;
+  onPreviousMetricsReady?: (metrics: Record<string, number>) => void;
   afterHeader?: ReactNode;
 }
 
@@ -132,7 +135,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function GA4Section({ propertyId, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady, afterHeader }: GA4SectionProps) {
+export function GA4Section({ propertyId, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, clientId, clientName, onMetricsReady, onPreviousMetricsReady, afterHeader }: GA4SectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<GA4Overview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GA4Overview | null>(null);
@@ -316,6 +319,12 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         setSources(Array.isArray(s) ? s : []);
         setPages(Array.isArray(p) ? p : []);
         setPrevOverview(prevOv);
+        if (prevOv) onPreviousMetricsReady?.({
+          sessions: prevOv.sessions, users: prevOv.users, newUsers: prevOv.newUsers,
+          pageviews: prevOv.pageviews, bounceRate: prevOv.bounceRate,
+          avgSessionDuration: prevOv.avgSessionDuration, conversionRate: prevOv.conversionRate,
+          engagedSessions: prevOv.engagedSessions ?? 0, engagementRate: prevOv.engagementRate ?? 0,
+        });
         setPrevPages(Array.isArray(prevP) ? prevP : []);
         setGeography(Array.isArray(geo) ? geo : []);
         setDeviceSplit(Array.isArray(devs) ? devs : []);
@@ -874,6 +883,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
             engagedSessions: prevOverview.engagedSessions ?? 0,
             engagementRate: prevOverview.engagementRate ?? 0,
           } : undefined}
+          clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} \u2013 ${formatDateDisplay(endDate)}`}
           extraContext={sources.length > 0 ? [
             "Top traffic sources this period:",
@@ -911,6 +921,8 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
             engagedSessions: prevOverview.engagedSessions ?? 0,
             engagementRate: prevOverview.engagementRate ?? 0,
           } : undefined}
+          clientId={clientId}
+          clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
           extraContext={sources.length > 0 ? [
             "Top traffic sources this period:",

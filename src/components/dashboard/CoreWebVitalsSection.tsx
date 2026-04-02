@@ -99,16 +99,20 @@ export function CoreWebVitalsSection({ url }: CoreWebVitalsSectionProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
-    fetch(`/api/cwv?url=${encodeURIComponent(url)}`)
-      .then((r) => {
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const r = await fetch(`/api/cwv?url=${encodeURIComponent(url)}`);
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then(setData)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+        setData(await r.json());
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
   }, [url]);
 
   if (loading) {

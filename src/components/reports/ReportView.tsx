@@ -271,6 +271,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive" | "roadman">("professional");
   const [aiFormat, setAiFormat] = useState<"prose" | "bullets" | "both">("prose");
   const [sectionMetrics, setSectionMetrics] = useState<Record<string, Record<string, number>>>({});
+  const [sectionPreviousMetrics, setSectionPreviousMetrics] = useState<Record<string, Record<string, number>>>({});
   const [templateSaveOpen, setTemplateSaveOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -570,6 +571,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           body: JSON.stringify({
             sectionType: section.sectionType === "web" ? "ga4" : section.sectionType === "paid_social" ? "meta" : section.sectionType,
             metrics: sectionMetrics[section.id] ?? {},
+            previousMetrics: sectionPreviousMetrics[section.id] ?? undefined,
             clientName: report.client.name,
             clientId: report.client.id,
             dateRange: report.period,
@@ -1143,6 +1145,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                           compact
                           sectionType={section.sectionType === "web" ? "ga4" : section.sectionType === "paid_social" ? "meta" : section.sectionType}
                           metrics={sectionMetrics[section.id] ?? {}}
+                          previousMetrics={sectionPreviousMetrics[section.id] ?? undefined}
                           clientName={report.client.name}
                           clientId={report.client.id}
                           dateRange={report.period}
@@ -1401,22 +1404,22 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 )}
                 {section.sectionType === "web" && (
                   report.client.ga4PropertyId
-                    ? <GA4Section propertyId={report.client.ga4PropertyId} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                    ? <GA4Section propertyId={report.client.ga4PropertyId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
                     : <>{commentaryCard}{unconfiguredNotice("No GA4 property connected — configure it in client settings to enable web analytics.")}</>
                 )}
                 {section.sectionType === "paid_social" && (
                   report.client.metaAccountId
-                    ? <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                    ? <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
                     : <>{commentaryCard}{unconfiguredNotice("No Meta ad account connected — configure it in client settings to enable paid social data.")}</>
                 )}
                 {section.sectionType === "googleads" && (
                   report.client.googleAdsCustomerId
-                    ? <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                    ? <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
                     : <>{commentaryCard}{unconfiguredNotice("No Google Ads account connected — configure it in client settings to enable ads data.")}</>
                 )}
                 {section.sectionType === "searchconsole" && (
                   report.client.searchConsoleSiteUrl
-                    ? <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                    ? <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
                     : <>{commentaryCard}{unconfiguredNotice("No Search Console property connected — configure it in client settings to enable search data.")}</>
                 )}
                 {section.sectionType === "ecommerce" && (

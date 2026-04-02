@@ -31,6 +31,7 @@ interface SearchConsoleSectionProps {
   hideAlerts?: boolean;
   hideAi?: boolean;
   onMetricsReady?: (metrics: Record<string, number>) => void;
+  onPreviousMetricsReady?: (metrics: Record<string, number>) => void;
   afterHeader?: ReactNode;
 }
 
@@ -105,6 +106,7 @@ export function SearchConsoleSection({
   hideAlerts,
   hideAi,
   onMetricsReady,
+  onPreviousMetricsReady,
   afterHeader,
 }: SearchConsoleSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
@@ -149,6 +151,7 @@ export function SearchConsoleSection({
         setPages(Array.isArray(p) ? p : []);
         setDaily(Array.isArray(d) ? d : []);
         setPrevOverview(prevOv ?? null);
+        if (prevOv) onPreviousMetricsReady?.({ clicks: prevOv.clicks, impressions: prevOv.impressions, ctr: prevOv.ctr, position: prevOv.position });
         setDevices(Array.isArray(devs) ? devs : []);
         setCountries(Array.isArray(ctrs) ? ctrs : []);
         if (Array.isArray(prevQ)) setPrevQueriesMap(new Map(prevQ.map((pq: GSCQuery) => [pq.query, pq])));

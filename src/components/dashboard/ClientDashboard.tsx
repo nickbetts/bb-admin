@@ -167,6 +167,9 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
         const key = keyMap[platName];
         if (key) result[key] = ctx_str;
       }
+      // Build a combined context for channels not in the main set (TikTok, Microsoft, LinkedIn, Klaviyo)
+      const combined = buildCrossContextString(summaries, "");
+      if (combined) result["combined"] = combined;
       setCrossCtx(result);
     });
   }, [client, startDate, endDate]);
@@ -264,7 +267,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
       ) : null}
 
       {activeTab === "web" && client.ga4PropertyId ? (
-        <GA4Section propertyId={client.ga4PropertyId} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.ga4} />
+        <GA4Section propertyId={client.ga4PropertyId} clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.ga4} />
       ) : activeTab === "web" ? (
         <NotConfigured
           name="Web Analytics (GA4)"
@@ -319,7 +322,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
       ) : null}
 
       {activeTab === "tiktok" && client.tiktokAdvertiserId ? (
-        <TikTokSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} />
+        <TikTokSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.combined} />
       ) : activeTab === "tiktok" ? (
         <NotConfigured
           name="TikTok Ads"
@@ -329,7 +332,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
       ) : null}
 
       {activeTab === "microsoftads" && client.microsoftAdsAccountId ? (
-        <MicrosoftAdsSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} />
+        <MicrosoftAdsSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.combined} />
       ) : activeTab === "microsoftads" ? (
         <NotConfigured
           name="Microsoft Ads"
@@ -345,10 +348,12 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
       {activeTab === "linkedin" && client.linkedinAccountId ? (
         <LinkedInSection
           clientId={client.id}
+          clientName={client.name}
           accountId={client.linkedinAccountId}
           accessToken={client.linkedinAccessToken}
           startDate={startDate}
           endDate={endDate}
+          crossPlatformContext={crossCtx.combined}
         />
       ) : activeTab === "linkedin" ? (
         <NotConfigured
@@ -359,7 +364,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
       ) : null}
 
       {activeTab === "klaviyo" && client.klaviyoApiKey ? (
-        <KlaviyoSection clientId={client.id} startDate={startDate} endDate={endDate} />
+        <KlaviyoSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.combined} />
       ) : activeTab === "klaviyo" ? (
         <NotConfigured
           name="Email Marketing (Klaviyo)"

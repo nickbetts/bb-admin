@@ -47,23 +47,26 @@ export function EcommerceSection({ clientId, platform, startDate, endDate, visib
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
-    setError(null);
-
     const apiPath = platform === "shopify" ? "/api/shopify" : "/api/woocommerce";
-    fetch(`${apiPath}?clientId=${encodeURIComponent(clientId)}&startDate=${startDate}&endDate=${endDate}`, {
-      signal: controller.signal,
-    })
-      .then(async (res) => {
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${apiPath}?clientId=${encodeURIComponent(clientId)}&startDate=${startDate}&endDate=${endDate}`, {
+          signal: controller.signal,
+        });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Failed to load e-commerce data");
         setStats(data);
-      })
-      .catch((err) => {
-        if (err.name === "AbortError") return;
-        setError(err.message ?? "Failed to load e-commerce data");
-      })
-      .finally(() => setLoading(false));
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+        setError((err as Error).message ?? "Failed to load e-commerce data");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
 
     return () => controller.abort();
   }, [clientId, platform, startDate, endDate]);
