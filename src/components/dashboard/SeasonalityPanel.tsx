@@ -26,7 +26,7 @@ function computeSeasonality(snapshots: Array<{ periodStart: string; periodEnd: s
   for (const snap of snapshots) {
     const month = new Date(snap.periodStart).getMonth();
     try {
-      const m = JSON.parse(snap.metrics) as Record<string, number>;
+      const m = (typeof snap.metrics === 'string' ? JSON.parse(snap.metrics) : snap.metrics) as Record<string, number>;
       if (m.sessions != null) byMonth[month].sessions.push(m.sessions);
       if (m.conversions != null) byMonth[month].conversions.push(m.conversions);
     } catch { /* skip */ }
@@ -71,7 +71,7 @@ export function SeasonalityPanel({ clientId }: SeasonalityPanelProps) {
       // Fetch historical snapshots from AI snapshots endpoint
       const res = await fetch(`/api/ai/snapshots?clientId=${encodeURIComponent(clientId)}&sectionType=ga4&limit=12`);
       if (res.ok) {
-        const snapshots = await res.json() as Array<{ periodStart: string; periodEnd: string; metrics: string; sectionType: string }>;
+        const snapshots = await res.json() as Array<{ periodStart: string; periodEnd: string; metrics: Record<string, number>; sectionType: string }>;
         const ga4Snaps = snapshots.filter(s => s.sectionType === "ga4");
         setHasSufficientData(ga4Snaps.length >= 3);
         if (ga4Snaps.length > 0) {

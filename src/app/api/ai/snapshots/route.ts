@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
       take: limit,
       select: {
         id: true,
+        sectionType: true,
         periodStart: true,
         periodEnd: true,
         metrics: true,
