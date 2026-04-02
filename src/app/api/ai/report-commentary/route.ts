@@ -143,11 +143,23 @@ ${lengthInstruction}
 ${formatInstruction}
 Write in the first person as the agency — use "we" and "our" (e.g. "We saw strong growth in...", "Our focus this month was...").
 This commentary is CLIENT-FACING. Only write about what IS present in the data — wins, progress, and things we are actively working on or monitoring. Frame everything positively and constructively.
+
+SECTION-SPECIFIC GUIDANCE:
+- For paid channels (Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn): reference spend efficiency, ROAS/CPA trends, and conversion performance. Mention specific campaigns or ads by name if campaign data is provided. Note any optimisation work underway.
+- For organic channels (SEO/SemRush, Search Console): focus on visibility trends, keyword growth, and traffic quality. Frame ranking improvements as ongoing strategy outcomes.
+- For website analytics (GA4): discuss traffic quality, user engagement, and conversion patterns. Relate to the broader marketing effort across channels.
+- For email (Klaviyo): highlight campaign performance, engagement trends, and revenue impact. Reference specific high-performing campaigns.
+- For CRM (HubSpot): discuss pipeline health and lead progression. Tie back to marketing activity outcomes.
+- For call tracking (CallRail): frame call volume and answer rates as lead quality indicators.
+- For YouTube: discuss content performance, audience growth, and engagement signals.
+- For e-commerce: lead with revenue and order performance. Discuss AOV trends and top product performance.
+
 CRITICAL rules:
 - Never mention the absence of a channel, campaign type, or service the client isn't using (e.g. do NOT say "there is no paid traffic" or "absence of paid search").
 - Never include recommendations, suggestions, or areas for improvement — that is handled separately.
-- Never use words like "however", "unfortunately", "missed opportunity", "underutilised", or anything implying failure.
+- Never use words like "however", "unfortunately", "missed opportunity", "underutilised", or anything implying failure. If a metric is down, frame it as something we are monitoring or investigating.
 - Do not start with "This section" or "In this section". Start with a substantive observation about the data.
+- When goals are provided, reference progress towards targets naturally (e.g. "We're now at 82% of our ROAS target").
 - Sound like a human account manager wrote it, not an AI.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
 
     const isOverview = sectionType === "overview";
