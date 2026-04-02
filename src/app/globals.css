@@ -758,6 +758,12 @@ body {
     print-color-adjust: exact !important;
   }
 
+  /* Reset design tokens so grey --bg surfaces become white */
+  :root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+  }
+
   /* Reset app shell so content fills the page */
   .app-shell {
     display: block !important;
@@ -776,21 +782,48 @@ body {
     display: none !important;
   }
 
-  /* Let main content area flow naturally */
+  /* Let main content area flow naturally — and kill the grey bg */
   .app-main {
     overflow: visible !important;
     height: auto !important;
+    background: #ffffff !important;
   }
 
-  /* White page background */
+  /* White page background everywhere */
   body, html {
-    background: white !important;
+    background: #ffffff !important;
   }
 
-  /* Avoid breaking cards across pages */
-  .card {
+  /* ── Page-break rules ──────────────────────────────────────────────────
+     Goal: keep every card whole, keep section headings attached to their
+     first block of content, and keep commentary headers with their body.
+     This mirrors how Notion / Linear handle print: avoid-breaks on cards,
+     break-after:avoid on headings so they never strand at bottom of page. */
+
+  /* Every card-like element must not be cut mid-element */
+  .card, .metric-card, .stat-card {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  /* Section heading rows: don't leave a heading dangling at page bottom */
+  h2, h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Card headers: keep header glued to the card body that follows */
+  .card-header {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Commentary cards (class="card" id="section-…"): keep them attached to
+     the section heading immediately above — prevents the classic "title on
+     one page, content on the next" split. */
+  [id^="section-"].card {
+    break-before: avoid;
+    page-break-before: avoid;
   }
 
   /* Remove box shadows for cleaner print */
