@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Mail, Loader2 } from "lucide-react";
+import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
 interface KlaviyoOverview {
   sends: number;
@@ -28,8 +29,10 @@ interface KlaviyoCampaign {
 
 interface KlaviyoSectionProps {
   clientId: string;
+  clientName?: string;
   startDate: string;
   endDate: string;
+  crossPlatformContext?: string;
 }
 
 function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -42,7 +45,7 @@ function MetricCard({ label, value, sub }: { label: string; value: string; sub?:
   );
 }
 
-export function KlaviyoSection({ clientId, startDate: _startDate, endDate: _endDate }: KlaviyoSectionProps) {
+export function KlaviyoSection({ clientId, clientName, startDate: _startDate, endDate: _endDate, crossPlatformContext }: KlaviyoSectionProps) {
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<KlaviyoOverview | null>(null);
   const [campaigns, setCampaigns] = useState<KlaviyoCampaign[]>([]);
@@ -141,6 +144,35 @@ export function KlaviyoSection({ clientId, startDate: _startDate, endDate: _endD
         <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-3)", fontSize: 13 }}>
           No Klaviyo data available. Ensure your API key is configured in client settings.
         </div>
+      )}
+
+      {/* AI Insights */}
+      {!loading && overview && (
+        <AiInsightsPanel
+          sectionType="klaviyo"
+          metrics={{
+            sends: overview.sends,
+            opens: overview.opens,
+            clicks: overview.clicks,
+            revenue: overview.revenue,
+            openRate: overview.openRate,
+            clickRate: overview.clickRate,
+            campaignCount: overview.campaignCount,
+          }}
+          campaignData={campaigns.slice(0, 20).map((c) => ({
+            name: c.name,
+            status: c.status,
+            sends: c.sends,
+            opens: c.opens,
+            clicks: c.clicks,
+            revenue: c.revenue,
+            openRate: c.openRate,
+            clickRate: c.clickRate,
+          }))}
+          clientId={clientId}
+          clientName={clientName}
+          crossPlatformContext={crossPlatformContext}
+        />
       )}
     </div>
   );

@@ -32,6 +32,7 @@ interface MetaSectionProps {
   hideAi?: boolean;
   reportMode?: boolean;
   onMetricsReady?: (metrics: Record<string, number>) => void;
+  onPreviousMetricsReady?: (metrics: Record<string, number>) => void;
   afterHeader?: React.ReactNode;
 }
 
@@ -213,7 +214,7 @@ interface AdSetAudience {
 
 type MetaAlert = { severity: "high" | "medium"; label: string; level: "Campaign" | "Ad Set" | "Creative"; detail: string; recommendation: string };
 
-export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, onMetricsReady, afterHeader }: MetaSectionProps) {
+export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, onMetricsReady, onPreviousMetricsReady, afterHeader }: MetaSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<MetaOverview | null>(null);
@@ -413,6 +414,12 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
         setDaily(Array.isArray(d) ? d : []);
         setLandingPages(Array.isArray(lp) ? lp : []);
         setPrevOverview(prevOv?.totalSpend != null ? prevOv : null);
+        if (prevOv?.totalSpend != null) onPreviousMetricsReady?.({
+          totalSpend: prevOv.totalSpend, totalImpressions: prevOv.totalImpressions,
+          totalClicks: prevOv.totalClicks, avgCtr: prevOv.avgCtr, avgCpc: prevOv.avgCpc,
+          avgCpm: prevOv.avgCpm, totalConversions: prevOv.totalConversions,
+          avgRoas: prevOv.avgRoas, reach: prevOv.reach, frequency: prevOv.frequency,
+        });
         setPrevCampaigns(Array.isArray(prevCamp) ? prevCamp : []);
         setAdSets(Array.isArray(adSetsData) ? adSetsData : []);
         setCreatives(Array.isArray(creativesData) ? creativesData : []);

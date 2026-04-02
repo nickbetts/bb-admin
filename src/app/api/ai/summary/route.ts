@@ -366,6 +366,70 @@ const SECTION_CONFIGS: Record<
       position: "Avg Position",
     },
   },
+  tiktok: {
+    name: "TikTok Ads",
+    higherIsBetter: ["clicks", "impressions", "conversions", "videoViews", "reach"],
+    lowerIsBetter: ["cpc", "cpm", "costPerConversion", "frequency"],
+    metricLabels: {
+      spend: "Total Spend",
+      impressions: "Impressions",
+      clicks: "Clicks",
+      ctr: "CTR",
+      cpc: "CPC",
+      cpm: "CPM",
+      conversions: "Conversions",
+      costPerConversion: "Cost per Conversion",
+      videoViews: "Video Views",
+      reach: "Reach",
+      frequency: "Frequency",
+    },
+  },
+  microsoftads: {
+    name: "Microsoft Ads",
+    higherIsBetter: ["clicks", "impressions", "conversions", "revenue", "roas"],
+    lowerIsBetter: ["cpc", "costPerConversion"],
+    metricLabels: {
+      spend: "Total Spend",
+      impressions: "Impressions",
+      clicks: "Clicks",
+      ctr: "CTR",
+      cpc: "CPC",
+      conversions: "Conversions",
+      revenue: "Revenue",
+      roas: "ROAS",
+      costPerConversion: "Cost per Conversion",
+      impressionSharePercent: "Impression Share",
+    },
+  },
+  linkedin: {
+    name: "LinkedIn Ads",
+    higherIsBetter: ["clicks", "impressions", "conversions", "reach"],
+    lowerIsBetter: ["cpc", "cpl"],
+    metricLabels: {
+      impressions: "Impressions",
+      clicks: "Clicks",
+      spend: "Total Spend",
+      conversions: "Conversions / Leads",
+      reach: "Reach",
+      ctr: "CTR",
+      cpc: "CPC",
+      cpl: "Cost per Lead",
+    },
+  },
+  klaviyo: {
+    name: "Email Marketing (Klaviyo)",
+    higherIsBetter: ["sends", "opens", "clicks", "revenue", "openRate", "clickRate"],
+    lowerIsBetter: [],
+    metricLabels: {
+      sends: "Total Sends",
+      opens: "Opens",
+      clicks: "Clicks",
+      revenue: "Revenue",
+      openRate: "Open Rate",
+      clickRate: "Click Rate",
+      campaignCount: "Campaigns Sent",
+    },
+  },
 };
 
 // ─── Prompt builder helpers ────────────────────────────────────────────────────
@@ -572,6 +636,18 @@ Only suggest SEO actions: content creation, keyword gap targeting, technical SEO
         gsc: `You are a senior SEO specialist at a UK digital marketing agency reviewing organic search performance data.
 CRITICAL CONSTRAINT: This is organic search data with NO advertising budget, bids, or paid media settings.
 Only suggest SEO actions: content improvements, title tag/meta description optimisation, technical SEO, internal linking, or SERP feature responses.`,
+
+        tiktok: `You are a senior paid social specialist at a UK digital marketing agency reviewing TikTok Ads performance data.
+Available levers: campaign budgets, bid strategies, creative refresh (video content is king on TikTok), audience targeting, campaign objectives, and ad placement. Focus on video engagement metrics (views, completion rate) as key performance indicators alongside cost and conversion data.`,
+
+        microsoftads: `You are a senior paid search specialist at a UK digital marketing agency reviewing Microsoft Advertising (Bing Ads) performance data.
+Available levers: campaign daily budgets, bid strategies, impression share improvements, keyword targeting, ad copy, landing page alignment, and audience targeting. Microsoft Ads often delivers lower CPCs than Google Ads for similar queries.`,
+
+        linkedin: `You are a senior B2B paid social specialist at a UK digital marketing agency reviewing LinkedIn Ads performance data.
+Available levers: campaign budgets, bid strategies, audience targeting (job title, industry, company size), creative refresh, and campaign objectives. LinkedIn CPCs are typically high but drive quality B2B leads — focus on cost per lead and lead quality over volume.`,
+
+        klaviyo: `You are a senior email marketing specialist at a UK digital marketing agency reviewing Klaviyo email performance data.
+Available levers: send cadence, segmentation, subject line optimisation, email content and design, send time optimisation, automation flows, and list hygiene. Focus on open rates, click rates, and revenue per email as primary KPIs.`,
       };
 
       const systemPrompt = CHANNEL_PERSONAS[channelType]

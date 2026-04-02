@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Linkedin, Loader2, ExternalLink } from "lucide-react";
+import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
 interface LinkedInOverview {
   impressions: number;
@@ -24,10 +25,12 @@ interface LinkedInCampaign {
 
 interface LinkedInSectionProps {
   clientId: string;
+  clientName?: string;
   accountId?: string | null;
   accessToken?: string | null;
   startDate: string;
   endDate: string;
+  crossPlatformContext?: string;
 }
 
 function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -40,7 +43,7 @@ function MetricCard({ label, value, sub }: { label: string; value: string; sub?:
   );
 }
 
-export function LinkedInSection({ clientId: _clientId, accountId, accessToken, startDate, endDate }: LinkedInSectionProps) {
+export function LinkedInSection({ clientId, clientName, accountId, accessToken, startDate, endDate, crossPlatformContext }: LinkedInSectionProps) {
   const [loading, setLoading] = useState(false);
   const [overview, setOverview] = useState<LinkedInOverview | null>(null);
   const [campaigns, setCampaigns] = useState<LinkedInCampaign[]>([]);
@@ -146,6 +149,33 @@ export function LinkedInSection({ clientId: _clientId, accountId, accessToken, s
             Open Campaign Manager <ExternalLink style={{ width: 12, height: 12 }} />
           </a>
         </div>
+      )}
+
+      {/* AI Insights */}
+      {!loading && overview && (
+        <AiInsightsPanel
+          sectionType="linkedin"
+          metrics={{
+            impressions: overview.impressions,
+            clicks: overview.clicks,
+            spend: overview.spend,
+            conversions: overview.conversions,
+            reach: overview.reach,
+            ctr: overview.ctr,
+            cpc: overview.cpc,
+            cpl: overview.cpl,
+          }}
+          campaignData={campaigns.slice(0, 20).map((c) => ({
+            name: c.pivotValues?.[0] ?? "Campaign",
+            impressions: c.impressions ?? 0,
+            clicks: c.clicks ?? 0,
+            spend: parseFloat(c.costInLocalCurrency ?? "0"),
+            conversions: c.externalWebsiteConversions ?? 0,
+          }))}
+          clientId={clientId}
+          clientName={clientName}
+          crossPlatformContext={crossPlatformContext}
+        />
       )}
     </div>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Loader2, AlertTriangle, RefreshCw, Search } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 
 interface MicrosoftAdsSectionProps {
   clientId: string;
@@ -38,7 +39,7 @@ interface MicrosoftAdsCampaign {
   roas: number;
 }
 
-export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate }: MicrosoftAdsSectionProps) {
+export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, crossPlatformContext }: MicrosoftAdsSectionProps) {
   const [data, setData] = useState<{ overview: MicrosoftAdsOverview; campaigns: MicrosoftAdsCampaign[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -167,6 +168,27 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate }
           </table>
         </div>
       )}
+
+      {/* AI Insights */}
+      <AiInsightsPanel
+        sectionType="microsoftads"
+        metrics={{
+          spend: overview.spend,
+          impressions: overview.impressions,
+          clicks: overview.clicks,
+          ctr: overview.ctr,
+          cpc: overview.cpc,
+          conversions: overview.conversions,
+          revenue: overview.revenue,
+          roas: overview.roas,
+          costPerConversion: overview.costPerConversion,
+          impressionSharePercent: overview.impressionSharePercent,
+        }}
+        campaignData={campaigns as unknown as Record<string, unknown>[]}
+        clientId={clientId}
+        clientName={clientName}
+        crossPlatformContext={crossPlatformContext}
+      />
     </div>
   );
 }
