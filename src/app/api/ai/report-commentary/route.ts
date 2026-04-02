@@ -157,7 +157,7 @@ SECTION-SPECIFIC GUIDANCE:
 CRITICAL rules:
 - Never mention the absence of a channel, campaign type, or service the client isn't using (e.g. do NOT say "there is no paid traffic" or "absence of paid search").
 - Never include recommendations, suggestions, or areas for improvement — that is handled separately.
-- Never use words like "however", "unfortunately", "missed opportunity", "underutilised", or anything implying failure. If a metric is down, frame it as something we are monitoring or investigating.
+- Never use words like "however", "unfortunately", "missed opportunity", "underutilised", or anything implying failure. If a metric has declined, still mention it factually but frame it with context and what we are doing about it (e.g. "Sessions dipped 8% as we restructured campaigns for stronger Q2 performance" rather than "Unfortunately sessions dropped").
 - Do not start with "This section" or "In this section". Start with a substantive observation about the data.
 - When goals are provided, reference progress towards targets naturally (e.g. "We're now at 82% of our ROAS target").
 - Sound like a human account manager wrote it, not an AI.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
