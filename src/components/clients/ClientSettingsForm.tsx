@@ -48,7 +48,7 @@ interface Client {
   callrailAccountId: string | null;
   callrailApiKey: string | null;
   competitorDomains: string | null;
-  contactEmails: string | null; // JSON: string[]
+  contactEmails?: string | null; // JSON: string[]
 }
 
 interface ClientSettingsFormProps {
