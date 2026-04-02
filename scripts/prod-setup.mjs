@@ -12,13 +12,28 @@ config({ path: resolve(__dirname, "../.env.local") });
 
 const url = process.env.DATABASE_URL;
 const authToken = process.env.TURSO_AUTH_TOKEN;
+const isVercelBuild = process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV);
 
 if (!url || !authToken) {
+  if (isVercelBuild) {
+    console.error(
+      "Missing DATABASE_URL or TURSO_AUTH_TOKEN for Vercel build. " +
+        "Set both environment variables in Vercel and redeploy."
+    );
+    process.exit(1);
+  }
   console.log("No Turso credentials found — skipping prod migration (local dev mode)");
   process.exit(0);
 }
 
 if (!url.startsWith("libsql://")) {
+  if (isVercelBuild) {
+    console.error(
+      "DATABASE_URL must be a remote libsql:// URL in Vercel builds. " +
+        "Update DATABASE_URL and redeploy."
+    );
+    process.exit(1);
+  }
   console.log("DATABASE_URL is not a libsql URL — skipping prod migration");
   process.exit(0);
 }
@@ -178,6 +193,46 @@ async function main() {
     console.log("✓ Added Client.notifyEmail");
   } else {
     console.log("✓ Client.notifyEmail already present");
+  }
+
+  // ── Client.linkedinAccountId (added Phase 2) ───────────────────────────
+  if (!(await columnExists("Client", "linkedinAccountId"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "linkedinAccountId" TEXT');
+    console.log("✓ Added Client.linkedinAccountId");
+  } else {
+    console.log("✓ Client.linkedinAccountId already present");
+  }
+
+  // ── Client.linkedinAccountName (added Phase 2) ─────────────────────────
+  if (!(await columnExists("Client", "linkedinAccountName"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "linkedinAccountName" TEXT');
+    console.log("✓ Added Client.linkedinAccountName");
+  } else {
+    console.log("✓ Client.linkedinAccountName already present");
+  }
+
+  // ── Client.linkedinAccessToken (added Phase 2) ─────────────────────────
+  if (!(await columnExists("Client", "linkedinAccessToken"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "linkedinAccessToken" TEXT');
+    console.log("✓ Added Client.linkedinAccessToken");
+  } else {
+    console.log("✓ Client.linkedinAccessToken already present");
+  }
+
+  // ── Client.klaviyoApiKey (added Phase 2) ───────────────────────────────
+  if (!(await columnExists("Client", "klaviyoApiKey"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "klaviyoApiKey" TEXT');
+    console.log("✓ Added Client.klaviyoApiKey");
+  } else {
+    console.log("✓ Client.klaviyoApiKey already present");
+  }
+
+  // ── Client.klaviyoAccountName (added Phase 2) ──────────────────────────
+  if (!(await columnExists("Client", "klaviyoAccountName"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "klaviyoAccountName" TEXT');
+    console.log("✓ Added Client.klaviyoAccountName");
+  } else {
+    console.log("✓ Client.klaviyoAccountName already present");
   }
 
   // ── User.notificationPrefs (added Phase 1) ─────────────────────────────
