@@ -1,8 +1,53 @@
 # AI Audit — i3media Report Platform
 
-**Document version:** 1.0  
+**Document version:** 1.1  
 **Audit date:** April 2026  
+**Last updated:** April 2026  
 **Scope:** Every AI endpoint, AI UI component, prompt architecture, data flow, and latent opportunity across the platform
+
+---
+
+## Implementation Status
+
+The following recommendations from this audit have been implemented:
+
+### Priority 1 — Immediate ✅
+
+| Rec | Status | Notes |
+|-----|--------|-------|
+| **P1.1** Standardise API key resolution | ✅ Done | Created shared `getOpenAiKey()` / `getOpenAiClient()` in `src/lib/openai-client.ts`. All 18 endpoints updated to check `AppSetting` DB first, fall back to `OPENAI_API_KEY` env var. |
+| **P1.2** Inject `aiReportInstructions` into all endpoints | ✅ Done | Extended to: summary, super-summary, overview-narrative, strategy-document, root-cause, chat, budget-advisor, creative-intelligence (8 endpoints, previously only 2). |
+| **P1.3** Inject `ClientGoal` data | ✅ Done | Active goals with progress tracking now injected into summary, overview-narrative, and report-commentary prompts. |
+| **P1.4** YouTube, HubSpot, CallRail AI panels | ✅ Done | Added SECTION_CONFIGS, channel personas, and `AiInsightsPanel` to all three dashboard sections. `ClientDashboard` updated to pass `clientName` and `crossPlatformContext`. |
+
+### Priority 2 — High Impact ✅
+
+| Rec | Status | Notes |
+|-----|--------|-------|
+| **P2.1** Extend overview-narrative to all channels | ✅ Done | `PlatformMetrics` type now includes TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, and E-Commerce. Prompt builder generates context blocks for all active channels. `max_tokens` increased to 3500. |
+| **P2.2** Feed e-commerce revenue into AI | ✅ Done | E-commerce data (`totalRevenue`, `totalOrders`, `AOV`) added to overview-narrative, budget-advisor, forecast, and report-commentary (new section labels for ecommerce/shopify/woocommerce). |
+| **P2.3** Add streaming to long-running endpoints | ✅ Done | strategy-document, super-summary, root-cause, and overview-narrative now support `stream: true` parameter, returning SSE `text/event-stream` responses. Non-streaming mode preserved for backward compatibility. |
+| **P2.4** Improve forecast quality with pre-computed trends | ✅ Done | Added `computeTrendAnalysis()` helper that pre-computes MoM trends, variance coefficients, data quality signals, and YoY comparisons from all available snapshots before sending to GPT. `max_tokens` increased to 2000. |
+| **P2.5** Competitor context in dashboard AI | ✅ Done | SEO/SemRush AI insights now fetch `CompetitorSnapshot` records and include competitor landscape (organic traffic, keywords, DA) in the prompt context. |
+
+### Priority 3 — Innovate (Not Yet Implemented)
+
+| Rec | Status | Notes |
+|-----|--------|-------|
+| **P3.1** AI-powered Goal Setting Assistant | ⬜ Planned | |
+| **P3.2** Anomaly Memory + Pattern Learning | ⬜ Planned | |
+| **P3.3** Pre-Meeting Briefing Generator | ⬜ Planned | |
+| **P3.4** Intelligent Report Narrative stitching | ⬜ Planned | |
+| **P3.5** Real-time anomaly push notifications | ⬜ Planned | |
+| **P3.6** AI-powered Action Recommendations | ⬜ Planned | |
+| **P3.7** Blended Revenue Attribution | ⬜ Planned | |
+| **P3.8** AI Visibility (GEO) Monitoring | ⬜ Planned | |
+
+### Section 7 — Claude Integration (Out of Scope)
+
+Claude Sonnet/Opus integration recommendations are documented below but not implemented. The hybrid architecture proposal remains valid for future consideration.
+
+---
 
 ---
 
@@ -446,29 +491,29 @@ This string is passed to each section's AiInsightsPanel / SuperSummary
 
 ### 5.1 Critical Gaps
 
-**1. No goal awareness across any AI component**  
-Every prompt asks "how are we performing?" but never "are we on track for the client's targets?". The `ClientGoal` model holds metric targets, deadlines, and statuses — none of this reaches any AI prompt. Every piece of AI output should be filtered through the lens of "does this help or hinder goal attainment?"
+**1. ~~No goal awareness across any AI component~~** ✅ FIXED  
+~~Every prompt asks "how are we performing?" but never "are we on track for the client's targets?".~~ `ClientGoal` data is now injected into summary, overview-narrative, and report-commentary prompts with progress tracking.
 
-**2. E-commerce revenue is invisible**  
-WooCommerce and Shopify order data (actual revenue, orders, AOV, product performance) is available but never sent to any AI endpoint. The budget advisor, forecast, and overview narrative are missing the most commercially important data a marketer cares about.
+**2. ~~E-commerce revenue is invisible~~** ✅ FIXED  
+~~WooCommerce and Shopify order data was never sent to any AI endpoint.~~ E-commerce data (revenue, orders, AOV) is now fed into overview-narrative, budget-advisor, forecast, and report-commentary.
 
-**3. TikTok/LinkedIn/YouTube/HubSpot/CallRail excluded from cross-channel AI**  
-The `overview-narrative` endpoint has `PlatformMetrics` typed for only 5 channels. As the platform grows, the cross-channel AI becomes less representative. A client spending £3,000/month on TikTok gets zero TikTok intelligence in their cross-channel overview.
+**3. ~~TikTok/LinkedIn/YouTube/HubSpot/CallRail excluded from cross-channel AI~~** ✅ FIXED  
+~~The `overview-narrative` endpoint had `PlatformMetrics` typed for only 5 channels.~~ All 12 channel types are now supported in overview-narrative. YouTube, HubSpot, and CallRail now have AiInsightsPanel on their dashboard tabs.
 
 **4. Model used everywhere: gpt-4o-mini**  
 This model is fast and cheap but has meaningful limitations for complex, multi-document reasoning tasks like strategy documents and root cause analysis. There is no routing logic to escalate to a more capable model for higher-stakes requests.
 
-**5. Per-client AI instructions only used in 2/18 endpoints**  
-`client.aiReportInstructions` is a powerful per-client personalisation field, but only `report-commentary` and `executive-summary` read it. `summary`, `super-summary`, `overview-narrative`, `strategy-document`, `root-cause`, and `chat` all ignore this field entirely.
+**5. ~~Per-client AI instructions only used in 2/18 endpoints~~** ✅ FIXED  
+~~`client.aiReportInstructions` was only read by `report-commentary` and `executive-summary`.~~ Now injected into all 10 relevant AI endpoints (summary, super-summary, overview-narrative, strategy-document, root-cause, chat, budget-advisor, creative-intelligence + the original 2).
 
 **6. No AI output quality feedback loop**  
 There is no mechanism for users to rate AI outputs (thumbs up/down, edit, reject). Without this signal, prompts cannot be improved based on real-world usage. Anomaly detection thresholds (>15%, >30%, >50%) were set once and never adjusted.
 
-**7. No streaming**  
-All AI endpoints return full responses synchronously. For long-running prompts (strategy-document, super-summary with 5 page crawls), the frontend waits in a loading state. Server streaming (`text/event-stream`) would dramatically improve perceived performance.
+**7. ~~No streaming~~** ✅ FIXED  
+~~All AI endpoints returned full responses synchronously.~~ strategy-document, super-summary, root-cause, and overview-narrative now support `stream: true` parameter for SSE streaming responses.
 
-**8. API key management inconsistency**  
-8 of 18 endpoints read `OPENAI_API_KEY` directly from `process.env` without checking the DB-stored `AppSetting(key="openaiApiKey")`. When an agency manager updates their key in the Settings UI, 8 endpoints will still use the old env key.
+**8. ~~API key management inconsistency~~** ✅ FIXED  
+~~8 of 18 endpoints read `OPENAI_API_KEY` directly from `process.env`.~~ All 18 endpoints now use the shared `getOpenAiClient()` utility from `src/lib/openai-client.ts` which checks `AppSetting` DB first.
 
 ---
 
