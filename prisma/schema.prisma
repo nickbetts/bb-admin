@@ -88,6 +88,15 @@ model Client {
   linkedinAccessToken   String?
   klaviyoApiKey         String?
   klaviyoAccountName    String?
+  // Phase 3: New integrations
+  hubspotPortalId       String?   // HubSpot portal ID
+  hubspotAccessToken    String?   // HubSpot private app token
+  youtubeChannelId      String?   // YouTube channel ID
+  youtubeChannelName    String?   // YouTube channel display name
+  callrailAccountId     String?   // CallRail account ID
+  callrailApiKey        String?   // CallRail API key
+  // Phase 3: Competitor intelligence
+  competitorDomains     String?   // JSON: string[] — domains to monitor
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   reports               Report[]
@@ -97,6 +106,11 @@ model Client {
   goals                 ClientGoal[]
   strategyDocuments     StrategyDocument[]
   budgetRecommendations BudgetRecommendation[]
+  actions               ActionItem[]
+  communications        ClientCommunication[]
+  portalUsers           ClientPortalUser[]
+  competitorSnapshots   CompetitorSnapshot[]
+  mediaPlans            MediaPlan[]
 }
 
 model ClientGoal {
@@ -150,11 +164,17 @@ model Report {
   customEndDate    String?
   compareStartDate String?
   compareEndDate   String?
+  // Phase 3: Collaboration & approval
+  approvalStatus   String?         // "pending" | "approved" | "changes_requested"
+  approvalNotes    String?
+  approvedBy       String?
+  approvedAt       DateTime?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   client           Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   sections         ReportSection[]
   screenshots      Screenshot[]
+  comments         ReportComment[]
 }
 
 model ReportSection {
@@ -253,6 +273,12 @@ model Proposal {
   viewCount       Int                     @default(0)
   lastViewedAt    DateTime?
   researchId      String?
+  // Phase 3: Pipeline CRM fields
+  pipelineStage   String                  @default("prospect") // prospect|sent|viewed|negotiating|won|lost
+  pipelineNotes   String?
+  expectedValue   Float?
+  closeDate       String?
+  lostReason      String?
   research        KeywordPlannerResearch? @relation(fields: [researchId], references: [id], onDelete: SetNull)
   enquiries       ProposalEnquiry[]
   createdAt       DateTime                @default(now())
@@ -312,4 +338,102 @@ model ClientConversation {
   createdAt DateTime @default(now())
   client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Phase 3: Internal Action Tracking — AI recommendations → assigned actions → outcomes
+model ActionItem {
+  id          String    @id @default(cuid())
+  clientId    String
+  title       String
+  description String?
+  status      String    @default("open")    // open|in_progress|completed|cancelled
+  priority    String    @default("medium")  // low|medium|high|urgent
+  assignedTo  String?                       // User ID
+  dueDate     String?
+  completedAt DateTime?
+  outcome     String?                       // Notes / measured outcome after completion
+  sourceType  String?                       // "ai_recommendation" | "manual"
+  sourceRef   String?                       // Reference to source (e.g., anomaly id)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+// Phase 3: Client Communication Hub — centralised communication log
+model ClientCommunication {
+  id          String    @id @default(cuid())
+  clientId    String
+  userId      String    // Agency user who logged/sent the communication
+  type        String    // "email" | "call" | "meeting" | "note" | "report_share" | "proposal_share"
+  direction   String    @default("outbound")  // "inbound" | "outbound"
+  subject     String
+  body        String?
+  status      String    @default("logged")    // "draft" | "sent" | "logged"
+  sentAt      DateTime?
+  metadata    String?   // JSON: { reportId?, proposalId?, duration?, participants?: string[] }
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+// Phase 3: Report Collaboration — comments on report sections
+model ReportComment {
+  id         String   @id @default(cuid())
+  reportId   String
+  sectionId  String?
+  userId     String   // Author
+  content    String
+  resolved   Boolean  @default(false)
+  parentId   String?  // For threaded replies
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  report     Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+// Phase 3: Competitor Intelligence — ongoing competitive monitoring snapshots
+model CompetitorSnapshot {
+  id          String   @id @default(cuid())
+  clientId    String
+  domain      String
+  metrics     String   // JSON: { organicTraffic?, organicKeywords?, backlinks?, paidKeywords?, etc. }
+  insights    String?  // AI-generated competitive summary
+  periodStart String
+  periodEnd   String
+  createdAt   DateTime @default(now())
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, domain, periodStart, periodEnd])
+}
+
+// Phase 3: Media Plan Builder — paid media planning with forecast outputs
+model MediaPlan {
+  id          String   @id @default(cuid())
+  clientId    String?
+  title       String
+  objective   String   // "brand_awareness" | "lead_gen" | "ecommerce" | "traffic"
+  totalBudget Float
+  duration    Int      // Duration in days
+  startDate   String?
+  channels    String   // JSON: ChannelAllocation[]
+  forecast    String?  // JSON: AI-generated forecast output
+  status      String   @default("draft")  // draft|active|completed|archived
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  client      Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+}
+
+// Phase 3: Client Portal — self-serve client-facing dashboard access
+model ClientPortalUser {
+  id          String    @id @default(cuid())
+  clientId    String
+  email       String    @unique
+  name        String?
+  magicToken  String?   @unique  // Single-use login token
+  tokenExpiry DateTime?
+  lastLoginAt DateTime?
+  permissions String    @default("[]")  // JSON: ["reports","goals","communications"]
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
