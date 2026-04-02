@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json().catch(() => ({})) as { months?: number; skipExisting?: boolean };
-  const months = Math.min(Math.max(1, body.months ?? 1), 24);
+  const months = Math.min(Math.max(1, body.months ?? 1), 60);
   const skipExisting = body.skipExisting !== false; // default true — skip already-fetched periods
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL

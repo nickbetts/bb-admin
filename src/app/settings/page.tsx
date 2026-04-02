@@ -669,6 +669,7 @@ function SettingsInner() {
               <option value={6}>6 months backfill</option>
               <option value={12}>12 months backfill</option>
               <option value={24}>24 months backfill</option>
+              <option value={60}>All available (~5 years)</option>
             </select>
             <button
               onClick={handleRunSnapshots}
@@ -686,7 +687,7 @@ function SettingsInner() {
               ) : "Run Snapshots Now"}
             </button>
             <span style={{ fontSize: 12, color: "var(--text-3)" }}>
-              {snapshotMonths === 1 ? "Fetches current month for all clients" : `Fetches up to ${snapshotMonths} months of data per client — skips periods already saved`}
+              {snapshotMonths === 1 ? "Fetches current month for all clients" : `Fetches up to ${snapshotMonths} months of data per client — skips periods already saved. Re-run anytime to fill gaps.`}
             </span>
           </div>
 
