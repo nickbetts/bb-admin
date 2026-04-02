@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import OpenAI from "openai";
+import { getOpenAiClient } from "@/lib/openai-client";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-function getOpenAiClient(): OpenAI {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OpenAI API key not configured");
-  return new OpenAI({ apiKey });
-}
 
 export async function POST(request: NextRequest) {
   try {
