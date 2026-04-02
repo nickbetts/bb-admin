@@ -284,6 +284,65 @@ async function main() {
     console.log("✓ ClientConversation table already present");
   }
 
+  // ── ClientGoal table (added Phase 2) ──────────────────────────────────────
+  if (!(await tableExists("ClientGoal"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "ClientGoal" (
+      "id" TEXT PRIMARY KEY,
+      "clientId" TEXT NOT NULL,
+      "title" TEXT NOT NULL,
+      "description" TEXT,
+      "metric" TEXT NOT NULL,
+      "channel" TEXT,
+      "targetValue" REAL NOT NULL,
+      "currentValue" REAL,
+      "unit" TEXT,
+      "targetDate" TEXT NOT NULL,
+      "status" TEXT NOT NULL DEFAULT 'active',
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE
+    )`);
+    console.log("✓ Created ClientGoal table");
+  } else {
+    console.log("✓ ClientGoal table already present");
+  }
+
+  // ── StrategyDocument table (added Phase 2) ────────────────────────────────
+  if (!(await tableExists("StrategyDocument"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "StrategyDocument" (
+      "id" TEXT PRIMARY KEY,
+      "clientId" TEXT NOT NULL,
+      "title" TEXT NOT NULL,
+      "period" TEXT NOT NULL,
+      "content" TEXT NOT NULL,
+      "shareToken" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE
+    )`);
+    await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS "StrategyDocument_shareToken_key" ON "StrategyDocument"("shareToken")`);
+    console.log("✓ Created StrategyDocument table");
+  } else {
+    console.log("✓ StrategyDocument table already present");
+  }
+
+  // ── BudgetRecommendation table (added Phase 2) ────────────────────────────
+  if (!(await tableExists("BudgetRecommendation"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "BudgetRecommendation" (
+      "id" TEXT PRIMARY KEY,
+      "clientId" TEXT NOT NULL,
+      "periodStart" TEXT NOT NULL,
+      "periodEnd" TEXT NOT NULL,
+      "recommendations" TEXT NOT NULL,
+      "summary" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE
+    )`);
+    console.log("✓ Created BudgetRecommendation table");
+  } else {
+    console.log("✓ BudgetRecommendation table already present");
+  }
+
   // ── Add future columns here in the same pattern ────────────────────────────
 
   await db.close();
