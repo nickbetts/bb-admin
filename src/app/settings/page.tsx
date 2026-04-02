@@ -239,6 +239,32 @@ function SettingsInner() {
     }
   }
 
+  // Snapshot run state
+  const [snapshotRunning, setSnapshotRunning] = useState(false);
+  const [snapshotResult, setSnapshotResult] = useState<{
+    clientsProcessed: number;
+    totalSnapshots: number;
+    totalErrors: number;
+    results: Array<{ clientName: string; sections: string[]; errors: string[] }>;
+  } | null>(null);
+  const [snapshotError, setSnapshotError] = useState<string | null>(null);
+
+  async function handleRunSnapshots() {
+    setSnapshotRunning(true);
+    setSnapshotResult(null);
+    setSnapshotError(null);
+    try {
+      const res = await fetch("/api/admin/run-snapshots", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Snapshot run failed");
+      setSnapshotResult(data);
+    } catch (err) {
+      setSnapshotError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setSnapshotRunning(false);
+    }
+  }
+
   const [prereqOpen, setPrereqOpen] = useState(false);
   const [clientIdCopied, setClientIdCopied] = useState(false);
 
@@ -609,6 +635,71 @@ function SettingsInner() {
               {benchmarksSaving ? "Saving…" : benchmarksSaved ? "Saved ✓" : "Save Benchmarks"}
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Data Snapshots */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-header">
+          <div>
+            <h2 className="card-title">Data Snapshots</h2>
+            <p className="card-subtitle">
+              Snapshots are collected automatically every night. Run manually to seed historical data immediately — required for Seasonality Intelligence and AI trend analysis.
+            </p>
+          </div>
+        </div>
+        <div className="card-body">
+          <button
+            onClick={handleRunSnapshots}
+            disabled={snapshotRunning}
+            className="btn btn-primary"
+            style={{ minWidth: 180 }}
+          >
+            {snapshotRunning ? (
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <svg style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Running…
+              </span>
+            ) : "Run Snapshots Now"}
+          </button>
+
+          {snapshotError && (
+            <p style={{ fontSize: 13, color: "var(--danger)", marginTop: 12 }}>{snapshotError}</p>
+          )}
+
+          {snapshotResult && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ display: "flex", gap: 24, marginBottom: 12 }}>
+                <div style={{ fontSize: 13 }}>
+                  <span style={{ fontWeight: 600, color: "var(--text)" }}>{snapshotResult.clientsProcessed}</span>
+                  <span style={{ color: "var(--text-3)", marginLeft: 4 }}>clients</span>
+                </div>
+                <div style={{ fontSize: 13 }}>
+                  <span style={{ fontWeight: 600, color: "var(--text)" }}>{snapshotResult.totalSnapshots}</span>
+                  <span style={{ color: "var(--text-3)", marginLeft: 4 }}>snapshots saved</span>
+                </div>
+                {snapshotResult.totalErrors > 0 && (
+                  <div style={{ fontSize: 13 }}>
+                    <span style={{ fontWeight: 600, color: "var(--danger)" }}>{snapshotResult.totalErrors}</span>
+                    <span style={{ color: "var(--text-3)", marginLeft: 4 }}>errors</span>
+                  </div>
+                )}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {snapshotResult.results.map((r, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 12, padding: "6px 0", borderBottom: "1px solid var(--border-subtle)" }}>
+                    <span style={{ fontWeight: 500, color: "var(--text)", minWidth: 140 }}>{r.clientName}</span>
+                    <span style={{ color: "#16a34a" }}>{r.sections.join(", ") || "—"}</span>
+                    {r.errors.length > 0 && (
+                      <span style={{ color: "var(--danger)", marginLeft: "auto" }}>{r.errors.join("; ")}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
