@@ -11,11 +11,14 @@ export async function POST(request: NextRequest) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { clientId, period, crossPlatformData } = await request.json() as {
+    const requestBody = await request.json() as {
       clientId: string;
       period: string;
       crossPlatformData: Record<string, unknown>;
+      stream?: boolean;
     };
+    const { clientId, period, crossPlatformData } = requestBody;
+    const stream = requestBody.stream === true;
 
     if (!clientId || !period) return NextResponse.json({ error: "clientId and period are required" }, { status: 400 });
 
@@ -70,6 +73,43 @@ Generate a strategy document as JSON:
 }
 
 Return only valid JSON.`;
+
+    if (stream) {
+      const streamResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        temperature: 0.4,
+        max_tokens: 3000,
+        messages: [{ role: "user", content: prompt }],
+        stream: true,
+      });
+
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of streamResponse) {
+              const content = chunk.choices[0]?.delta?.content;
+              if (content) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+              }
+            }
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          } catch (err) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: err instanceof Error ? err.message : "Stream error" })}\n\n`));
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    }
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",

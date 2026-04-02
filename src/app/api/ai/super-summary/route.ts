@@ -86,7 +86,7 @@ const METRIC_LABELS: Record<string, Record<string, string>> = {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as SuperSummaryRequest;
+    const body = (await request.json()) as SuperSummaryRequest & { stream?: boolean };
     const {
       sectionType,
       clientName,
@@ -224,6 +224,48 @@ Analyse the FULL JOURNEY — traffic generation → click → landing page → c
 
 ${landingPages?.length ? "" : "pageScores should be an empty array since no landing pages were provided."}
 Be frank and specific. Reference actual campaign names, URLs, and figures.`;
+
+    const stream = body.stream === true;
+
+    if (stream) {
+      const streamResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 2000,
+        temperature: 0.3,
+        stream: true,
+      });
+
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of streamResponse) {
+              const content = chunk.choices[0]?.delta?.content;
+              if (content) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+              }
+            }
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+          } catch (err) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: err instanceof Error ? err.message : "Stream error" })}\n\n`));
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    }
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
