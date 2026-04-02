@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -137,14 +137,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "platforms and aggregated are required" }, { status: 400 });
     }
 
-    // Resolve OpenAI API key
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "OpenAI API key not configured. Please add it in Settings." },
-        { status: 400 }
-      );
-    }
+    const openai = await getOpenAiClient();
 
     // ── Build platform-by-platform context ───────────────────────────────────
     const sections: string[] = [];
@@ -238,7 +231,6 @@ export async function POST(request: NextRequest) {
     }
 
     // ── AI call ──────────────────────────────────────────────────────────────
-    const openai = new OpenAI({ apiKey });
 
     const systemPrompt = `You are a senior cross-channel performance strategist at i3media, a UK digital marketing agency.
 You produce executive-level overviews that tell the COMPLETE marketing story across all active channels simultaneously.

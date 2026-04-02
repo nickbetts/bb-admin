@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -99,12 +99,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "sectionType and metrics are required" }, { status: 400 });
     }
 
-    // Get OpenAI API key from environment
-    const apiKey = process.env.OPENAI_API_KEY;
-
-    if (!apiKey) {
-      return NextResponse.json({ error: "OpenAI API key not configured. Add it in Settings." }, { status: 500 });
-    }
+    const openai = await getOpenAiClient();
 
     // Fetch client-specific AI instructions if clientId provided
     let clientAiInstructions = "";
@@ -115,7 +110,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const openai = new OpenAI({ apiKey });
     const sectionLabel = SECTION_LABELS[sectionType] ?? sectionType;
     const lengthInstruction = LENGTH_INSTRUCTIONS[length] ?? LENGTH_INSTRUCTIONS.medium;
     const toneInstruction = TONE_INSTRUCTIONS[tone] ?? TONE_INSTRUCTIONS.professional;

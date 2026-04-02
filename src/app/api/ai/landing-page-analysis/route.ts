@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 import { fetchPageSignals, type PageSignals } from "@/lib/landing-page-analyzer";
 
@@ -52,20 +53,12 @@ export async function POST(request: NextRequest) {
     // Limit to 10 URLs per call to avoid excessive cost/time
     const targetUrls = urls.filter(Boolean).slice(0, 10);
 
-    // Resolve OpenAI API key
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "OpenAI API key not configured. Please add it in Settings." },
-        { status: 400 }
-      );
-    }
+    const openai = await getOpenAiClient();
 
     // Fetch all pages in parallel
     const signals = await Promise.all(targetUrls.map((u) => fetchPageSignals(u)));
 
     // Build the AI analysis for all pages in one request (batched)
-    const openai = new OpenAI({ apiKey });
     const analyses = await analysePages(openai, signals, clientName, source);
 
     return NextResponse.json({ analyses });

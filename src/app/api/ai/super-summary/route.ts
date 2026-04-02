@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 import { fetchPageSignals, type PageSignals } from "@/lib/landing-page-analyzer";
 
@@ -102,14 +102,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "sectionType and metrics are required" }, { status: 400 });
     }
 
-    // Resolve OpenAI API key
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "OpenAI API key not configured. Please add it in Settings." },
-        { status: 400 }
-      );
-    }
+    const openai = await getOpenAiClient();
 
     const sectionName = SECTION_NAMES[sectionType] ?? sectionType;
     const labels = METRIC_LABELS[sectionType] ?? {};
@@ -179,7 +172,6 @@ export async function POST(request: NextRequest) {
     }
 
     // ── AI call ──────────────────────────────────────────────────────────────
-    const openai = new OpenAI({ apiKey });
 
     const systemPrompt = `You are a senior performance marketing strategist at i3media, a UK digital marketing agency.
 You produce executive-level "full journey" summaries that tell the COMPLETE story of a marketing channel's performance — from ad/campaign level, through user click, to landing page experience

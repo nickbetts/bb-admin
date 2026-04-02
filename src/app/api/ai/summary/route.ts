@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -605,13 +605,7 @@ export async function POST(request: NextRequest) {
 
       if (!alerts.length) return NextResponse.json({ recommendations: [] });
 
-      const apiKey2 = process.env.OPENAI_API_KEY;
-      if (!apiKey2) {
-        return NextResponse.json(
-          { error: "OPENAI_API_KEY environment variable is not set.", recommendations: alerts.map(() => "") },
-          { status: 503 }
-        );
-      }
+      const openai2 = await getOpenAiClient();
 
       // ── Channel-specific personas — prevents nonsensical suggestions ──────────
       const CHANNEL_PERSONAS: Record<string, string> = {
@@ -678,7 +672,6 @@ ${alertList}
 Return JSON: { "recommendations": ["rec for alert 1", "rec for alert 2", ...] }
 One string per alert, in the same order. British English.`;
 
-      const openai2 = new OpenAI({ apiKey: apiKey2 });
       const comp2 = await openai2.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
@@ -696,14 +689,7 @@ One string per alert, in the same order. British English.`;
     }
     // ──────────────────────────────────────────────────────────────────────────
 
-    const apiKey = process.env.OPENAI_API_KEY;
-
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "OPENAI_API_KEY environment variable is not set." },
-        { status: 400 }
-      );
-    }
+    const openai = await getOpenAiClient();
 
     const config = SECTION_CONFIGS[sectionType] ?? {
       name: sectionType,
@@ -743,8 +729,6 @@ One string per alert, in the same order. British English.`;
       const sev: Record<string, number> = { high: 3, medium: 2, low: 1 };
       return (sev[b.severity] ?? 0) - (sev[a.severity] ?? 0);
     });
-
-    const openai = new OpenAI({ apiKey });
 
     const metricsText = Object.entries(metrics)
       .map(([k, v]) => `${config.metricLabels[k] ?? k}: ${typeof v === "number" ? v.toLocaleString() : v}`)
