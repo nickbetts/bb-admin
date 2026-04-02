@@ -343,6 +343,213 @@ async function main() {
     console.log("✓ BudgetRecommendation table already present");
   }
 
+  // ── Phase 3: Client integrations (added 2026-04-02) ───────────────────────
+  const phase3ClientCols = [
+    "hubspotPortalId", "hubspotAccessToken",
+    "youtubeChannelId", "youtubeChannelName",
+    "callrailAccountId", "callrailApiKey",
+    "competitorDomains",
+  ];
+  for (const col of phase3ClientCols) {
+    if (!(await columnExists("Client", col))) {
+      await db.execute(`ALTER TABLE "Client" ADD COLUMN "${col}" TEXT`);
+      console.log(`✓ Added Client.${col}`);
+    } else {
+      console.log(`✓ Client.${col} already present`);
+    }
+  }
+
+  // ── Phase 3: Report approval fields (added 2026-04-02) ────────────────────
+  const phase3ReportCols = ["approvalStatus", "approvalNotes", "approvedBy", "approvedAt"];
+  for (const col of phase3ReportCols) {
+    if (!(await columnExists("Report", col))) {
+      const colType = col === "approvedAt" ? "DATETIME" : "TEXT";
+      await db.execute(`ALTER TABLE "Report" ADD COLUMN "${col}" ${colType}`);
+      console.log(`✓ Added Report.${col}`);
+    } else {
+      console.log(`✓ Report.${col} already present`);
+    }
+  }
+
+  // ── Phase 3: ActionItem table (added 2026-04-02) ───────────────────────────
+  if (!(await tableExists("ActionItem"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "ActionItem" (
+      "id" TEXT PRIMARY KEY,
+      "clientId" TEXT NOT NULL,
+      "title" TEXT NOT NULL,
+      "description" TEXT,
+      "status" TEXT NOT NULL DEFAULT 'open',
+      "priority" TEXT NOT NULL DEFAULT 'medium',
+      "assignedTo" TEXT,
+      "dueDate" TEXT,
+      "completedAt" DATETIME,
+      "outcome" TEXT,
+      "sourceType" TEXT,
+      "sourceRef" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE
+    )`);
+    console.log("✓ Created ActionItem table");
+  } else {
+    console.log("✓ ActionItem table already present");
+  }
+
+  // ── Phase 3: ClientCommunication table (added 2026-04-02) ─────────────────
+  if (!(await tableExists("ClientCommunication"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "ClientCommunication" (
+      "id" TEXT PRIMARY KEY,
+      "clientId" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "type" TEXT NOT NULL,
+      "direction" TEXT NOT NULL DEFAULT 'outbound',
+      "subject" TEXT NOT NULL,
+      "body" TEXT,
+      "status" TEXT NOT NULL DEFAULT 'logged',
+      "sentAt" DATETIME,
+      "metadata" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE
+    )`);
+    console.log("✓ Created ClientCommunication table");
+  } else {
+    console.log("✓ ClientCommunication table already present");
+  }
+
+  // ── Phase 3: ReportComment table (added 2026-04-02) ───────────────────────
+  if (!(await tableExists("ReportComment"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "ReportComment" (
+      "id" TEXT PRIMARY KEY,
+      "reportId" TEXT NOT NULL,
+      "sectionId" TEXT,
+      "userId" TEXT NOT NULL,
+      "content" TEXT NOT NULL,
+      "resolved" INTEGER NOT NULL DEFAULT 0,
+      "parentId" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("reportId") REFERENCES "Report"("id") ON DELETE CASCADE
+    )`);
+    console.log("✓ Created ReportComment table");
+  } else {
+    console.log("✓ ReportComment table already present");
+  }
+
+  // ── Phase 3: CompetitorSnapshot table (added 2026-04-02) ──────────────────
+  if (!(await tableExists("CompetitorSnapshot"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "CompetitorSnapshot" (
+      "id" TEXT PRIMARY KEY,
+      "clientId" TEXT NOT NULL,
+      "domain" TEXT NOT NULL,
+      "metrics" TEXT NOT NULL,
+      "insights" TEXT,
+      "periodStart" TEXT NOT NULL,
+      "periodEnd" TEXT NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE
+    )`);
+    await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS "CompetitorSnapshot_clientId_domain_periodStart_periodEnd_key" ON "CompetitorSnapshot"("clientId", "domain", "periodStart", "periodEnd")`);
+    console.log("✓ Created CompetitorSnapshot table");
+  } else {
+    console.log("✓ CompetitorSnapshot table already present");
+  }
+
+  // ── Phase 3: MediaPlan table (added 2026-04-02) ────────────────────────────
+  if (!(await tableExists("MediaPlan"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "MediaPlan" (
+      "id" TEXT PRIMARY KEY,
+      "clientId" TEXT,
+      "title" TEXT NOT NULL,
+      "objective" TEXT NOT NULL,
+      "totalBudget" REAL NOT NULL,
+      "duration" INTEGER NOT NULL,
+      "startDate" TEXT,
+      "channels" TEXT NOT NULL,
+      "forecast" TEXT,
+      "status" TEXT NOT NULL DEFAULT 'draft',
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE SET NULL
+    )`);
+    console.log("✓ Created MediaPlan table");
+  } else {
+    console.log("✓ MediaPlan table already present");
+  }
+
+  // ── Phase 3: ClientPortalUser table (added 2026-04-02) ────────────────────
+  if (!(await tableExists("ClientPortalUser"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "ClientPortalUser" (
+      "id" TEXT PRIMARY KEY,
+      "clientId" TEXT NOT NULL,
+      "email" TEXT NOT NULL,
+      "name" TEXT,
+      "magicToken" TEXT,
+      "tokenExpiry" DATETIME,
+      "lastLoginAt" DATETIME,
+      "permissions" TEXT NOT NULL DEFAULT '[]',
+      "isActive" INTEGER NOT NULL DEFAULT 1,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE
+    )`);
+    await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS "ClientPortalUser_email_key" ON "ClientPortalUser"("email")`);
+    await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS "ClientPortalUser_magicToken_key" ON "ClientPortalUser"("magicToken")`);
+    console.log("✓ Created ClientPortalUser table");
+  } else {
+    console.log("✓ ClientPortalUser table already present");
+  }
+
+  // ── Phase 3: Proposal pipeline columns (added 2026-04-02) ─────────────────
+  const proposalCols = [
+    { name: "pipelineStage", type: "TEXT NOT NULL DEFAULT 'prospect'" },
+    { name: "pipelineNotes", type: "TEXT" },
+    { name: "expectedValue", type: "REAL" },
+    { name: "closeDate", type: "TEXT" },
+    { name: "lostReason", type: "TEXT" },
+  ];
+  for (const { name, type } of proposalCols) {
+    if (!(await columnExists("Proposal", name))) {
+      await db.execute(`ALTER TABLE "Proposal" ADD COLUMN "${name}" ${type}`);
+      console.log(`✓ Added Proposal.${name}`);
+    } else {
+      console.log(`✓ Proposal.${name} already present`);
+    }
+  }
+
+  // ── DetectedAnomaly table (added 2026-04-02) ──────────────────────────────
+  if (!(await tableExists("DetectedAnomaly"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "DetectedAnomaly" (
+      "id" TEXT PRIMARY KEY,
+      "clientId" TEXT NOT NULL,
+      "platform" TEXT NOT NULL,
+      "metric" TEXT NOT NULL,
+      "severity" TEXT NOT NULL,
+      "direction" TEXT NOT NULL,
+      "changePercent" REAL NOT NULL,
+      "detail" TEXT NOT NULL,
+      "rootCauseText" TEXT,
+      "actionsTaken" TEXT,
+      "periodStart" TEXT NOT NULL,
+      "periodEnd" TEXT NOT NULL,
+      "resolvedAt" DATETIME,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "DetectedAnomaly_clientId_platform_metric_idx" ON "DetectedAnomaly"("clientId", "platform", "metric")`);
+    console.log("✓ Created DetectedAnomaly table");
+  } else {
+    console.log("✓ DetectedAnomaly table already present");
+  }
+
+  // ── StrategyDocument.type column (added 2026-04-02) ───────────────────────
+  if (!(await columnExists("StrategyDocument", "type"))) {
+    await db.execute(`ALTER TABLE "StrategyDocument" ADD COLUMN "type" TEXT NOT NULL DEFAULT 'strategy'`);
+    console.log("✓ Added StrategyDocument.type");
+  } else {
+    console.log("✓ StrategyDocument.type already present");
+  }
+
   // ── Add future columns here in the same pattern ────────────────────────────
 
   await db.close();
