@@ -10,13 +10,12 @@ function PortalLoginInner() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error" | "authenticating">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error" | "authenticating">(() => token ? "authenticating" : "idle");
   const [errorMsg, setErrorMsg] = useState("");
 
   // Auto-authenticate if token in URL
   useEffect(() => {
     if (!token) return;
-    setStatus("authenticating");
     fetch("/api/portal/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -1,6 +1,6 @@
 # i3media Report Platform
 
-A full-stack digital marketing performance reporting platform built for agencies. Aggregates data from **10 marketing channels** into unified client dashboards with **AI-powered insights**, **cross-channel anomaly detection**, **automated report generation**, **conversational AI analyst**, **proposal building**, and **PDF export**.
+A full-stack digital marketing performance reporting platform built for agencies. Aggregates data from **15 marketing channels** into unified client dashboards with **AI-powered insights**, **cross-channel anomaly detection**, **automated report generation**, **conversational AI analyst**, **proposal building**, **PDF export**, and a full **agency operations suite** including client portal, action tracking, communication hub, competitor intelligence, and media plan builder.
 
 Built with Next.js 16, Prisma, OpenAI, and deployed on Vercel.
 
@@ -36,6 +36,8 @@ Built with Next.js 16, Prisma, OpenAI, and deployed on Vercel.
   - [Authentication and User Management](#authentication-and-user-management)
   - [Client Management](#client-management)
   - [Dashboard](#dashboard)
+  - [Portfolio Health Dashboard](#portfolio-health-dashboard)
+  - [Client Dashboard](#client-dashboard)
   - [Signals (Cross-Platform Anomaly Hub)](#signals-cross-platform-anomaly-hub)
   - [Cross-Channel Overview](#cross-channel-overview)
   - [SEO / SemRush](#seo--semrush)
@@ -46,8 +48,26 @@ Built with Next.js 16, Prisma, OpenAI, and deployed on Vercel.
   - [E-Commerce](#e-commerce)
   - [TikTok Ads](#tiktok-ads)
   - [Microsoft Advertising](#microsoft-advertising)
+  - [LinkedIn Ads](#linkedin-ads)
+  - [Klaviyo / Email Marketing](#klaviyo--email-marketing)
+  - [YouTube Analytics](#youtube-analytics)
+  - [HubSpot CRM](#hubspot-crm)
+  - [CallRail / Call Tracking](#callrail--call-tracking)
   - [Core Web Vitals](#core-web-vitals)
+  - [Goals & KPI Tracking](#goals--kpi-tracking)
+  - [Predictive Performance Forecasting](#predictive-performance-forecasting)
+  - [Budget Optimisation Advisor](#budget-optimisation-advisor)
+  - [Multi-Touch Attribution Modelling](#multi-touch-attribution-modelling)
+  - [Seasonality Intelligence](#seasonality-intelligence)
+  - [Share of Voice Dashboard](#share-of-voice-dashboard)
+  - [Creative Performance Intelligence](#creative-performance-intelligence)
+  - [AI Strategy Documents](#ai-strategy-documents)
   - [Conversational AI Chat](#conversational-ai-chat)
+  - [Competitor Intelligence](#competitor-intelligence)
+  - [Client Portal](#client-portal)
+  - [Action Tracking](#action-tracking)
+  - [Communications Hub](#communications-hub)
+  - [Report Collaboration](#report-collaboration)
   - [Notifications](#notifications)
   - [Reports](#reports)
   - [Report Templates](#report-templates)
@@ -72,7 +92,7 @@ Built with Next.js 16, Prisma, OpenAI, and deployed on Vercel.
 
 i3media Report is an internal agency platform that solves the problem of scattered marketing data across multiple platforms. Instead of logging into GA4, Google Ads, Meta Business Suite, SemRush, and Search Console separately, account managers get a single unified dashboard per client with:
 
-- **12 data source integrations** — GA4, Google Ads, Meta Ads, TikTok Ads, Microsoft Advertising, LinkedIn Ads, Klaviyo, SemRush, Google Search Console, Moz, WooCommerce, Shopify
+- **15 data source integrations** — GA4, Google Ads, Meta Ads, TikTok Ads, Microsoft Advertising, LinkedIn Ads, Klaviyo, YouTube Analytics, HubSpot CRM, CallRail, SemRush, Google Search Console, Moz, WooCommerce, Shopify
 - **AI-powered analysis** — OpenAI generates insights, detects anomalies, writes report commentary, scores landing pages, builds proposals, and provides conversational analysis
 - **Conversational AI analyst** — "Ask the Data" chat interface on every client dashboard for instant natural-language performance analysis
 - **Cross-channel intelligence** — each AI analysis receives context from all other connected platforms for richer, more actionable insights
@@ -83,9 +103,13 @@ i3media Report is an internal agency platform that solves the problem of scatter
 - **Multi-touch attribution modelling** — compare last-click, first-click, linear, time-decay, and position-based attribution models
 - **Seasonality intelligence** — automatic seasonal pattern detection from historical snapshots with forward-looking alerts
 - **Share of voice dashboard** — organic + paid competitive position tracking using SemRush data
+- **Competitor intelligence** — ongoing competitive monitoring with AI-generated insights and `CompetitorSnapshot` history
 - **Goal setting & tracking** — per-client KPI goals with progress bars, on-track/at-risk/off-track status, and AI guidance
 - **Automated reporting** — drag-and-drop report builder with per-section AI commentary, screenshot uploads, branded PDF export, shareable links, and automated monthly scheduling
-- **Agency tools** — keyword planner with proposal generation, landing page analyser, LLM.txt generator, pricing strategy editor
+- **Agency operations suite** — action tracking, communication hub, media plan builder, proposal pipeline CRM, portfolio health dashboard
+- **Client portal** — self-serve client-facing dashboard with magic-link login, goals, reports, and communications view
+- **Report collaboration** — multi-user comments, approval workflow, and approval status tracking on every report
+- **Agency tools** — keyword planner with proposal generation, landing page analyser, LLM.txt generator, pricing strategy editor, competitor intelligence monitor, media plan builder
 - **Notification system** — email and Slack delivery for anomalies, report events, and key platform alerts with per-user preferences
 - **Core Web Vitals** — real-user performance data via Google's CrUX API
 - **Role-based access control** — granular permissions system with 11 permission types across user-defined roles
@@ -94,16 +118,18 @@ i3media Report is an internal agency platform that solves the problem of scatter
 
 ```
 Login -> Dashboard (stats overview)
+  -> Portfolio (/portfolio) — agency-wide client health dashboard
   -> Clients (list/create/configure)
-    -> Client Dashboard (tabbed: Signals | Overview | SEO | GA4 | GSC | Meta | Google Ads | TikTok | Microsoft Ads | LinkedIn | Klaviyo | E-Commerce | CWV | Goals & KPIs)
-      -> Overview tab: performance overview + Forecast + Budget Advisor + Attribution + Seasonality panels
+    -> Client Dashboard (tabbed: Signals | Overview | SEO | GA4 | GSC | Meta | Google Ads | TikTok | Microsoft Ads | LinkedIn | Klaviyo | YouTube | HubSpot | CallRail | E-Commerce | CWV | Goals & KPIs)
+      -> Overview tab: performance overview + Forecast + Budget Advisor + Attribution + Seasonality + Share of Voice panels
       -> "Ask the Data" AI Chat (floating panel, always available)
       -> Create Report (select sections + template)
-        -> Edit Report (drag-drop sections, AI commentary, screenshots)
+        -> Edit Report (drag-drop sections, AI commentary, collaboration comments, approval workflow, screenshots)
           -> Export PDF / Share Link
-  -> Tools (Page Analyser | Keyword Planner | Proposals | LLM Generator | Pricing)
+  -> Tools (Page Analyser | Keyword Planner | Proposals | LLM Generator | Pricing | Actions | Communications | Competitor Intelligence | Media Plan)
   -> Admin (Users | Roles & Permissions)
   -> Settings (Google OAuth, OpenAI key, MCC, benchmarks, notifications)
+  -> Portal (/portal) — client self-serve login
 ```
 
 ---
@@ -123,10 +149,10 @@ Login -> Dashboard (stats overview)
                                       |
 +-------------------------------------v---------------------------------------------+
 |                              NEXT.JS API LAYER                                     |
-|                         ~50 API Route Handlers                                     |
+|                         ~100 API Route Handlers                                    |
 |                                                                                    |
 |  /api/auth/*          Authentication (login, logout, session, Google OAuth)        |
-|  /api/ai/*            AI endpoints (summary, super-summary, commentary, etc.)      |
+|  /api/ai/*            14 AI endpoints (summary, forecast, budget-advisor, etc.)    |
 |  /api/ga4/*           GA4 data dispatcher + property discovery                     |
 |  /api/google-ads/*    Google Ads data + account discovery                          |
 |  /api/meta/*          Meta Ads data + account/video proxy                          |
@@ -135,13 +161,27 @@ Login -> Dashboard (stats overview)
 |  /api/seo/*           Moz domain authority                                         |
 |  /api/shopify/*       Shopify e-commerce data                                      |
 |  /api/woocommerce/*   WooCommerce e-commerce data                                  |
-|  /api/clients/*       Client CRUD + logo upload                                    |
-|  /api/reports/*       Report CRUD, sections, screenshots, PDF, share               |
-|  /api/tools/*         Keyword planner, proposals, page analyser, LLM generator     |
-|  /api/admin/*         User/role management                                         |
+|  /api/tiktok/*        TikTok Ads data                                              |
+|  /api/microsoft-ads/* Microsoft Advertising data                                   |
+|  /api/linkedin/*      LinkedIn Ads data                                            |
+|  /api/klaviyo/*       Klaviyo email marketing data                                 |
+|  /api/youtube/*       YouTube Analytics data                                       |
+|  /api/hubspot/*       HubSpot CRM data                                             |
+|  /api/callrail/*      CallRail call tracking data                                  |
+|  /api/cwv/*           Core Web Vitals (Google CrUX API)                            |
+|  /api/clients/*       Client CRUD + goals + actions + communications + logo        |
+|  /api/reports/*       Report CRUD, sections, screenshots, comments, PDF, share     |
+|  /api/report-templates/* Template CRUD                                             |
+|  /api/tools/*         Keyword planner, proposals, LLM, page analyser, media plan   |
+|  /api/admin/*         User/role management + run-snapshots trigger                 |
 |  /api/settings/*      App config + Google connection management                    |
 |  /api/cross/*         Cross-platform analysis (keyword overlap)                    |
 |  /api/share/*         Public share endpoints (proposals, reports)                  |
+|  /api/notifications/* Notifications list + preferences + mark-read                 |
+|  /api/portal/*        Client portal auth, data, users, magic-link                  |
+|  /api/portfolio/*     Agency-wide portfolio health endpoint                        |
+|  /api/competitor-intelligence/* Competitor monitoring + snapshots                  |
+|  /api/cron/*          Cron jobs (snapshots + automated reports)                    |
 +--------+----------+----------+----------+----------+------+-----------+-----------+
          |          |          |          |          |      |           |
     +----v---+ +----v---+ +---v----+ +---v----+ +--v---+ +-v------+ +-v---------+
@@ -149,17 +189,26 @@ Login -> Dashboard (stats overview)
     |  Data  | |  Ads   | |  Ads   | |  API   | | API  | |  API   | | / Shopify |
     |  API   | |  API   | | Graph  | |        | |      | |        | |   APIs    |
     +--------+ +--------+ +--------+ +--------+ +------+ +--------+ +-----------+
+    +--------+ +--------+ +--------+ +--------+ +------+ +--------+ +-----------+
+    | TikTok | |  Msft  | |LinkedIn| | Klaviyo| |  YT  | |HubSpot | | CallRail  |
+    |  Ads   | |  Ads   | |  Ads   | |  API   | |  API | |  CRM   | |    API    |
+    +--------+ +--------+ +--------+ +--------+ +------+ +--------+ +-----------+
 
 +--------------------------------------------+  +---------------------------+
 |          DATABASE (Prisma ORM)             |  |     EXTERNAL SERVICES     |
 |  SQLite (local) / Turso libSQL (prod)      |  |                           |
 |                                            |  |  OpenAI API (GPT-4o-mini, |
-|  15 models: User, Role, Session, Client,   |  |    GPT-4o, GPT-4o with    |
+|  25 models: User, Role, Session, Client,   |  |    GPT-4o, GPT-4o with    |
 |  Report, ReportSection, Screenshot,        |  |    web search)            |
-|  ReportTemplate, GoogleConnection,         |  |                           |
-|  MetricSnapshot, AppSetting,               |  |  Vercel Blob (file        |
-|  KeywordPlannerResearch, Proposal,         |  |    storage for screenshots |
-|  ProposalEnquiry, LlmTemplate             |  |    and logos)              |
+|  ReportTemplate, ReportComment,            |  |                           |
+|  GoogleConnection, MetricSnapshot,         |  |  Vercel Blob (file        |
+|  AppSetting, KeywordPlannerResearch,        |  |    storage for screenshots |
+|  Proposal, ProposalEnquiry, LlmTemplate,   |  |    and logos)              |
+|  Notification, ClientConversation,         |  |                           |
+|  ClientGoal, StrategyDocument,             |  |  Resend (email delivery)  |
+|  BudgetRecommendation, ActionItem,         |  |                           |
+|  ClientCommunication, ClientPortalUser,    |  |  Slack (webhook alerts)   |
+|  CompetitorSnapshot, MediaPlan             |  |                           |
 +--------------------------------------------+  +---------------------------+
 ```
 
@@ -174,7 +223,7 @@ Login -> Dashboard (stats overview)
 | **Charts** | Recharts 3.8 | Area charts, bar charts, pie charts across all dashboard sections |
 | **Icons** | Lucide React | Consistent icon system |
 | **Drag & Drop** | dnd-kit | Report section reordering |
-| **Database** | Prisma v7 + SQLite (dev) / Turso libSQL (prod) | ORM with 15 models, 19 migrations |
+| **Database** | Prisma v7 + SQLite (dev) / Turso libSQL (prod) | ORM with 25 models |
 | **Auth** | HMAC-SHA256 signed cookies + bcrypt | Session management and password hashing |
 | **AI** | OpenAI (gpt-4o-mini, gpt-4o, gpt-4o-search-preview) | Insights, commentary, proposals, analysis |
 | **File Storage** | Vercel Blob | Screenshots and client logos |
@@ -188,7 +237,7 @@ Login -> Dashboard (stats overview)
 
 ### Database Schema
 
-15 Prisma models with 19 migrations (Phase 1) + 3 new models added in Phase 2:
+25 Prisma models across Phases 1, 2, and 3:
 
 ```
 Role ──────────────< User ──────────< Session
@@ -197,14 +246,21 @@ Role ──────────────< User ────────�
                                           │
                                           ├──< Report ──< ReportSection
                                           │       │
-                                          │       └──< Screenshot
+                                          │       ├──< Screenshot
+                                          │       └──< ReportComment
                                           │
                                           ├──< MetricSnapshot
-                                          ├──< KeywordPlannerResearch
-                                          ├──< Proposal ──< ProposalEnquiry
-                                          ├──< ClientGoal            (Phase 2)
-                                          ├──< StrategyDocument      (Phase 2)
-                                          └──< BudgetRecommendation  (Phase 2)
+                                          ├──< KeywordPlannerResearch ──< Proposal ──< ProposalEnquiry
+                                          ├──< ClientGoal
+                                          ├──< StrategyDocument
+                                          ├──< BudgetRecommendation
+                                          ├──< ActionItem
+                                          ├──< ClientCommunication
+                                          ├──< ClientPortalUser
+                                          ├──< CompetitorSnapshot
+                                          ├──< MediaPlan
+                                          ├──< Notification
+                                          └──< ClientConversation
 
 GoogleConnection (standalone — multi-account OAuth)
 AppSetting       (standalone — key/value config)
@@ -215,31 +271,39 @@ LlmTemplate      (standalone — LLM.txt generation templates)
 | Model | Key Fields | Purpose |
 |-------|-----------|---------|
 | **Role** | name, permissions (JSON) | Permission-based access control |
-| **User** | email, passwordHash, roleId, mustChangePassword | User accounts with role assignment |
+| **User** | email, password, roleId, mustChangePassword, notificationPrefs (JSON) | User accounts with role assignment |
 | **Session** | token, userId, expiresAt | Cookie-based sessions (7-day TTL) |
-| **Client** | name, website, logoUrl, ga4PropertyId, metaAccountId, googleAdsCustomerId, semrushDomain, searchConsoleUrl, wooUrl, shopifyDomain, aiInstructions, contractedHours (JSON) | Central entity storing all integration credentials |
-| **Report** | title, period, status, sectionOrder (JSON), blockVisibility (JSON), shareToken, customDateStart/End | Reports with configurable sections and sharing |
-| **ReportSection** | sectionType, title, commentary, contentText, metrics (JSON), aiContext (JSON) | Individual report sections with AI context |
+| **Client** | name, website, logoUrl, all integration credentials, reportSchedule (JSON), contractedHours (JSON), competitorDomains (JSON) | Central entity storing all 15 integration credentials |
+| **Report** | title, period, status, shareToken, approvalStatus, approvedBy | Reports with approval workflow and sharing |
+| **ReportSection** | sectionType, title, commentary, contentText, enabled, cardConfig (JSON) | Individual report sections with AI context |
 | **Screenshot** | url, caption, sectionId | Vercel Blob-stored images linked to report sections |
+| **ReportComment** | content, userId, sectionId, resolved, parentId | Threaded comments for report collaboration |
 | **ReportTemplate** | name, sections (JSON), isDefault | Reusable report section configurations |
-| **GoogleConnection** | email, refreshToken, scopes, googleAdsCustomerIds (JSON) | Multi-account Google OAuth storage |
-| **MetricSnapshot** | clientId, sectionType, periodStart, periodEnd, metrics (JSON) | Historical metric storage (composite unique key) |
+| **GoogleConnection** | email, refreshToken, scopes | Multi-account Google OAuth storage |
+| **MetricSnapshot** | clientId, sectionType, periodStart, periodEnd, metrics (JSON), campaignData (JSON) | Historical metric storage (composite unique key) |
 | **AppSetting** | key, value | Global config (OpenAI key, MCC ID, benchmarks, pricing) |
-| **KeywordPlannerResearch** | keywords (JSON), adGroups (JSON), brief | Saved keyword research sessions |
-| **Proposal** | title, htmlContent, services (JSON), shareToken, viewCount | AI-generated client proposals |
+| **KeywordPlannerResearch** | keywords (JSON), adGroups (JSON), brief, websiteContext | Saved keyword research sessions |
+| **Proposal** | title, html, servicesJson, shareToken, viewCount, pipelineStage, expectedValue, closeDate | AI-generated proposals with pipeline CRM fields |
 | **ProposalEnquiry** | name, email, phone, message | Enquiries from public proposal views |
-| **LlmTemplate** | name, template, sectorType | Templates for LLM.txt generation |
-| **ClientGoal** *(Phase 2)* | metric, channel, targetValue, currentValue, targetDate, status | Per-client KPI goals with on-track/at-risk tracking |
-| **StrategyDocument** *(Phase 2)* | title, period, content (JSON), shareToken | Quarterly AI strategy documents per client |
-| **BudgetRecommendation** *(Phase 2)* | periodStart, periodEnd, recommendations (JSON), summary | Cross-channel budget reallocation snapshots |
+| **LlmTemplate** | name, sector, templateText, promptGuidance, isBuiltIn | Templates for LLM.txt generation |
+| **ClientGoal** | metric, channel, targetValue, currentValue, targetDate, status | Per-client KPI goals with on-track/at-risk tracking |
+| **StrategyDocument** | title, period, content, shareToken | Quarterly AI strategy documents per client |
+| **BudgetRecommendation** | periodStart, periodEnd, recommendations (JSON), summary | Cross-channel budget reallocation snapshots |
+| **ActionItem** | title, status, priority, assignedTo, dueDate, outcome, sourceType | AI recommendations → assigned actions → outcomes |
+| **ClientCommunication** | type, direction, subject, body, status, sentAt | Centralised communication log |
+| **ClientPortalUser** | email, magicToken, tokenExpiry, permissions (JSON), isActive | Client self-serve portal access |
+| **CompetitorSnapshot** | domain, metrics (JSON), insights, periodStart, periodEnd | Competitive monitoring snapshots |
+| **MediaPlan** | title, objective, totalBudget, channels (JSON), forecast (JSON), status | Paid media planning with forecast outputs |
+| **Notification** | type, severity, title, body, channel, status | System notifications (email, Slack, in-app) |
+| **ClientConversation** | role, content, metadata (JSON) | Chat messages for "Ask the Data" feature |
 
 ### Project Structure
 
 ```
 i3media-report/
 ├── prisma/
-│   ├── schema.prisma              # 15 database models
-│   ├── migrations/                # 19 SQL migration files
+│   ├── schema.prisma              # 25 database models
+│   ├── migrations/                # SQL migration files
 │   └── seed.ts                    # Default users and demo client
 ├── public/
 │   └── primary-logo.svg           # i3media branding
@@ -252,10 +316,11 @@ i3media-report/
 │   ├── app/
 │   │   ├── layout.tsx             # Root layout (Inter font, ToastProvider)
 │   │   ├── page.tsx               # Root redirect (session check)
-│   │   ├── globals.css            # Design tokens, component classes (794 lines)
+│   │   ├── globals.css            # Design tokens, component classes
 │   │   ├── login/                 # Login page
 │   │   ├── change-password/       # Forced password change
 │   │   ├── dashboard/             # Main dashboard (stats, recent items)
+│   │   ├── portfolio/             # Agency portfolio health dashboard
 │   │   ├── clients/               # Client list, detail, settings, new report
 │   │   │   └── [slug]/            # Per-client dashboard and settings
 │   │   ├── reports/               # Report list, editor, print view, templates
@@ -263,24 +328,38 @@ i3media-report/
 │   │   ├── tools/                 # Agency tools suite
 │   │   │   ├── page-analyser/     # AI landing page analyser
 │   │   │   ├── keyword-planner/   # Keyword research + proposal generator
-│   │   │   ├── proposals/         # Saved proposals management
+│   │   │   ├── proposals/         # Saved proposals management + pipeline
 │   │   │   ├── pricing/           # Pricing strategy editor
-│   │   │   └── llm-generator/     # LLM.txt content generator
+│   │   │   ├── llm-generator/     # LLM.txt content generator
+│   │   │   ├── actions/           # Action tracking dashboard
+│   │   │   ├── communications/    # Client communication hub
+│   │   │   ├── competitor-intelligence/ # Competitor monitoring dashboard
+│   │   │   └── media-plan/        # Media plan builder
+│   │   ├── portal/                # Client self-serve portal
+│   │   │   ├── login/             # Magic-link portal login
+│   │   │   └── dashboard/         # Client portal dashboard
 │   │   ├── settings/              # Global platform settings
 │   │   ├── admin/                 # User and role management
 │   │   │   └── roles/             # Role/permission editor
 │   │   ├── share/                 # Public share routes (noindex)
 │   │   │   ├── proposal/[token]/  # Shareable proposal view
 │   │   │   └── report/[token]/    # Shareable report view
-│   │   └── api/                   # ~50 API route handlers
+│   │   └── api/                   # ~100 API route handlers
 │   │       ├── auth/              # Login, logout, session, Google Ads OAuth
-│   │       ├── ai/                # 7 AI endpoints
+│   │       ├── ai/                # 14 AI endpoints:
 │   │       │   ├── summary/       # Per-section AI insights + anomaly detection
 │   │       │   ├── super-summary/ # Deep journey analysis + landing page crawl
 │   │       │   ├── report-commentary/ # Configurable report commentary
 │   │       │   ├── executive-summary/ # Cross-section executive summary
 │   │       │   ├── overview-narrative/ # Cross-channel narrative
 │   │       │   ├── landing-page-analysis/ # Batch CRO/SEO analysis
+│   │       │   ├── forecast/      # 30/60/90 day predictions
+│   │       │   ├── budget-advisor/ # Cross-channel budget recommendations
+│   │       │   ├── attribution/   # Multi-touch attribution modelling
+│   │       │   ├── creative-intelligence/ # Ad creative analysis
+│   │       │   ├── root-cause/    # Anomaly root cause analysis
+│   │       │   ├── strategy-document/ # Quarterly strategy generation
+│   │       │   ├── chat/          # Conversational AI ("Ask the Data")
 │   │       │   └── snapshots/     # Historical metric storage
 │   │       ├── ga4/               # GA4 data dispatcher (12 data types)
 │   │       ├── google-ads/        # Google Ads data + accounts + MCC
@@ -290,21 +369,34 @@ i3media-report/
 │   │       ├── seo/               # Moz domain authority
 │   │       ├── shopify/           # Shopify e-commerce data
 │   │       ├── woocommerce/       # WooCommerce e-commerce data
+│   │       ├── tiktok/            # TikTok Ads data
+│   │       ├── microsoft-ads/     # Microsoft Advertising data
+│   │       ├── linkedin/          # LinkedIn Ads data
+│   │       ├── klaviyo/           # Klaviyo email marketing data
+│   │       ├── youtube/           # YouTube Analytics data
+│   │       ├── hubspot/           # HubSpot CRM data
+│   │       ├── callrail/          # CallRail call tracking data
+│   │       ├── cwv/               # Core Web Vitals (CrUX API)
 │   │       ├── cross/             # Cross-platform (keyword overlap)
-│   │       ├── clients/           # Client CRUD + logo upload
-│   │       ├── reports/           # Report CRUD, sections, screenshots, PDF
+│   │       ├── clients/           # Client CRUD + goals + actions + communications
+│   │       ├── reports/           # Report CRUD, sections, screenshots, comments, PDF
 │   │       ├── report-templates/  # Template CRUD
-│   │       ├── tools/             # Keyword planner, proposals, LLM, page analyser
-│   │       ├── admin/             # User/role management
+│   │       ├── tools/             # Keyword planner, proposals, LLM, page analyser, media plan
+│   │       ├── admin/             # User/role management + run-snapshots
 │   │       ├── settings/          # App config + Google connections
-│   │       └── share/             # Public share data endpoints
+│   │       ├── share/             # Public share data endpoints
+│   │       ├── notifications/     # Notification list + preferences + mark-read
+│   │       ├── portal/            # Client portal auth + data + users
+│   │       ├── portfolio/         # Agency-wide health endpoint
+│   │       ├── competitor-intelligence/ # Competitor monitoring
+│   │       └── cron/              # Cron: snapshots + automated reports
 │   ├── components/
 │   │   ├── ai/                    # 3 components
 │   │   │   ├── AiInsightsPanel.tsx    # Dual-mode insights (card + compact button)
 │   │   │   ├── SuperSummary.tsx       # Health score ring + journey analysis
 │   │   │   └── AiLandingPageAnalysis.tsx # Landing page CRO/SEO scoring
-│   │   ├── dashboard/             # 9 components
-│   │   │   ├── ClientDashboard.tsx    # Tab controller + period selector + cross-platform context
+│   │   ├── dashboard/             # 28 components
+│   │   │   ├── ClientDashboard.tsx    # Tab controller + period selector
 │   │   │   ├── SignalsSection.tsx     # Cross-channel anomaly hub
 │   │   │   ├── OverviewSection.tsx    # Cross-channel overview + funnel
 │   │   │   ├── GA4Section.tsx         # Google Analytics dashboard
@@ -312,20 +404,41 @@ i3media-report/
 │   │   │   ├── MetaSection.tsx        # Meta/Facebook Ads dashboard
 │   │   │   ├── GoogleAdsSection.tsx   # Google Ads dashboard
 │   │   │   ├── SearchConsoleSection.tsx # Search Console dashboard
-│   │   │   └── EcommerceSection.tsx   # WooCommerce/Shopify dashboard
-│   │   ├── reports/               # 5 components
-│   │   │   ├── ReportView.tsx         # Full report editor (1644 lines)
+│   │   │   ├── EcommerceSection.tsx   # WooCommerce/Shopify dashboard
+│   │   │   ├── TikTokSection.tsx      # TikTok Ads dashboard
+│   │   │   ├── MicrosoftAdsSection.tsx # Microsoft Advertising dashboard
+│   │   │   ├── LinkedInSection.tsx    # LinkedIn Ads dashboard
+│   │   │   ├── KlaviyoSection.tsx     # Klaviyo email marketing dashboard
+│   │   │   ├── YouTubeSection.tsx     # YouTube Analytics dashboard
+│   │   │   ├── HubSpotSection.tsx     # HubSpot CRM dashboard
+│   │   │   ├── CallRailSection.tsx    # CallRail call tracking dashboard
+│   │   │   ├── CoreWebVitalsSection.tsx # Core Web Vitals dashboard
+│   │   │   ├── GoalsSection.tsx       # Goals and KPI tracking
+│   │   │   ├── ForecastSection.tsx    # 30/60/90 day forecasting panel
+│   │   │   ├── BudgetAdvisorPanel.tsx # Cross-channel budget recommendations
+│   │   │   ├── AttributionPanel.tsx   # Multi-touch attribution comparison
+│   │   │   ├── SeasonalityPanel.tsx   # Seasonal pattern detection
+│   │   │   ├── ShareOfVoicePanel.tsx  # Competitive position tracking
+│   │   │   ├── CreativeIntelligencePanel.tsx # Ad creative analysis
+│   │   │   ├── CompetitorIntelligenceSection.tsx # Competitor monitoring
+│   │   │   ├── AiChatPanel.tsx        # Conversational AI chat
+│   │   │   ├── ActionsSection.tsx     # Action item tracking
+│   │   │   └── CommunicationsSection.tsx # Client communication hub
+│   │   ├── reports/               # 6 components
+│   │   │   ├── ReportView.tsx         # Full report editor
 │   │   │   ├── PrintReportContent.tsx # Print/PDF layout
 │   │   │   ├── TextSection.tsx        # Editable text sections with autosave
 │   │   │   ├── ScreenshotsSection.tsx # Screenshot grid display
-│   │   │   └── ScreenshotCaptionDialog.tsx # Upload dialog
+│   │   │   ├── ScreenshotCaptionDialog.tsx # Upload dialog
+│   │   │   └── ReportCollaboration.tsx # Comments + approval workflow
 │   │   ├── admin/                 # 3 components
 │   │   │   ├── UsersManager.tsx       # User CRUD interface
 │   │   │   ├── RolesManager.tsx       # Role/permission management
 │   │   │   └── AdminNav.tsx           # Admin tab navigation
-│   │   ├── clients/               # 2 components
-│   │   │   ├── ClientSettingsForm.tsx # Client integration settings (796 lines)
-│   │   │   └── ClientListSearch.tsx   # Searchable client grid
+│   │   ├── clients/               # 3 components
+│   │   │   ├── ClientSettingsForm.tsx # Client integration settings
+│   │   │   ├── ClientListSearch.tsx   # Searchable client grid
+│   │   │   └── ClientPortalManager.tsx # Portal user management
 │   │   ├── layout/                # 2 components
 │   │   │   ├── AuthenticatedLayout.tsx # Session guard + permission check
 │   │   │   └── Sidebar.tsx            # Responsive nav (desktop collapsible + mobile drawer)
@@ -335,17 +448,21 @@ i3media-report/
 │   │       ├── PageSkeleton.tsx       # Loading skeleton
 │   │       ├── Toast.tsx              # Toast notification system (Context + Provider)
 │   │       └── index.tsx              # LoadingSpinner, SectionCard, Delta, Badge
-│   └── lib/                       # 15 library modules
+│   └── lib/                       # 18 library modules
 │       ├── auth.ts                # HMAC-SHA256 sessions, permissions, guards
 │       ├── prisma.ts              # Prisma singleton (libSQL adapter in prod)
-│       ├── ga4.ts                 # GA4 Data API client (12 functions)
-│       ├── google-ads.ts          # Google Ads API client (GAQL, 15 functions)
-│       ├── meta.ts                # Meta Graph API client (9 functions)
-│       ├── search-console.ts      # GSC API client (7 functions)
-│       ├── semrush.ts             # SemRush API client (11 functions)
+│       ├── ga4.ts                 # GA4 Data API client
+│       ├── google-ads.ts          # Google Ads API client (GAQL)
+│       ├── meta.ts                # Meta Graph API client
+│       ├── search-console.ts      # GSC API client
+│       ├── semrush.ts             # SemRush API client
 │       ├── domain-authority.ts    # Moz Link API client
 │       ├── shopify.ts             # Shopify Admin API client
 │       ├── woocommerce.ts         # WooCommerce REST API client
+│       ├── tiktok-ads.ts          # TikTok Marketing API client
+│       ├── microsoft-ads.ts       # Microsoft Advertising REST API client
+│       ├── core-web-vitals.ts     # Google CrUX API client
+│       ├── notifications.ts       # Notification dispatch (email, Slack, in-app)
 │       ├── google-auth.ts         # Google service account singleton
 │       ├── landing-page-analyzer.ts # Page signal extraction + site crawling
 │       ├── report-blocks.ts       # Report section/block configuration
@@ -354,7 +471,7 @@ i3media-report/
 │       └── utils.ts               # Formatters, date helpers, health scoring
 ├── .github/workflows/ci.yml      # GitHub Actions CI pipeline
 ├── next.config.ts                 # Puppeteer + Vercel Blob image config
-├── vercel.json                    # Vercel build configuration
+├── vercel.json                    # Vercel build + cron configuration
 └── package.json                   # Dependencies and scripts
 ```
 
@@ -606,7 +723,7 @@ Render read-only view
 
 ### AI Architecture Overview
 
-The platform uses **7 distinct AI endpoints** plus **2 tool-specific AI generators**, all powered by OpenAI:
+The platform uses **14 distinct AI endpoints** plus **2 tool-specific AI generators**, all powered by OpenAI:
 
 ```
                           +-------------------+
@@ -628,12 +745,14 @@ The platform uses **7 distinct AI endpoints** plus **2 tool-specific AI generato
     | /ai/super-      |   |   narrative     |   |   planner/       |
     |   summary       |   | /ai/executive-  |   |   generate-      |
     | /ai/report-     |   |   summary       |   |   proposal       |
-    |   commentary    |   |                 |   | /tools/llm-      |
-    | /ai/landing-    |   |                 |   |   generator/     |
-    |   page-analysis |   |                 |   |   generate       |
-    +-----------------+   +-----------------+   | /tools/page-     |
-                                                |   analyser       |
-                                                +------------------+
+    |   commentary    |   | /ai/forecast    |   | /tools/llm-      |
+    | /ai/landing-    |   | /ai/budget-     |   |   generator/     |
+    |   page-analysis |   |   advisor       |   |   generate       |
+    | /ai/root-cause  |   | /ai/attribution |   | /tools/page-     |
+    | /ai/creative-   |   | /ai/strategy-   |   |   analyser       |
+    |   intelligence  |   |   document      |   +------------------+
+    | /ai/chat        |   +-----------------+
+    +-----------------+
 ```
 
 **API key resolution:** First checks `AppSetting` table (key: `openai_api_key`), then falls back to `OPENAI_API_KEY` environment variable.
@@ -985,9 +1104,19 @@ Output: formatted llm.txt content
   - Search Console integration (site URL selector)
   - WooCommerce credentials (URL, consumer key, consumer secret)
   - Shopify credentials (store URL, access token)
-  - E-commerce platform toggle
+  - TikTok Ads (advertiser ID, access token)
+  - Microsoft Advertising (account ID, account name)
+  - LinkedIn Ads (account ID, access token)
+  - Klaviyo (API key, account name)
+  - YouTube Analytics (channel ID, channel name)
+  - HubSpot CRM (portal ID, access token)
+  - CallRail (account ID, API key)
+  - Core Web Vitals (URL override for CrUX tracking)
+  - Competitor domains (list for monitoring)
   - AI report instructions (per-client prompt customisation)
   - Contracted hours (service type + hours/month entries)
+  - Report schedule (frequency, day, template, auto-approve toggle)
+  - Portal users management (via `ClientPortalManager`)
 
 ### Dashboard
 
@@ -995,11 +1124,30 @@ Output: formatted llm.txt content
 
 Displays platform-wide statistics: total clients, total reports, active integrations count. Lists recent clients and recent reports for quick navigation.
 
+### Portfolio Health Dashboard
+
+**Route:** `/portfolio` (requires `clients` permission)
+
+Agency-wide client health overview with:
+- **Health score gauges** (0–100) per client — green ≥70, amber ≥40, red <40
+- **Churn risk indicators** (Low / Medium / High) based on engagement signals
+- **Trend direction** (trending up, down, or stable) per client
+- **Open action count** — outstanding action items per client
+- **Recent anomalies** count — signals detected in the last 30 days
+- **Goal achievement** rate — achieved goals vs total goals
+- **Report history** — last report date and total report count
+- **Quick links** to each client dashboard
+- Powered by `/api/portfolio/health` which aggregates cross-client metrics in a single request
+
 ### Client Dashboard
 
 **Route:** `/clients/[slug]`
 
-Tabbed interface with date range selector (7d / 30d / 90d / 6m / custom). Tabs are conditionally displayed based on which integrations the client has configured.
+Tabbed interface with date range selector (7d / 30d / 90d / 6m / custom). Tabs are conditionally displayed based on which integrations the client has configured. Available tabs:
+
+**Signals | Overview | SEO | Web Analytics | Search Console | Meta Ads | Google Ads | TikTok | Microsoft Ads | LinkedIn | Klaviyo | YouTube | HubSpot | CallRail | E-Commerce | Core Web Vitals | Goals & KPIs**
+
+The "Ask the Data" AI chat panel is available on every tab as a floating interface.
 
 ### Signals (Cross-Platform Anomaly Hub)
 
@@ -1127,7 +1275,7 @@ Aggregates data from all platforms to show:
 - Data sourced from Google's **Chrome UX Report (CrUX) API** — real user measurements
 - Requires `GOOGLE_CRUX_API_KEY` (or `GOOGLE_API_KEY`) environment variable
 
-### LinkedIn Ads *(Phase 2)*
+### LinkedIn Ads
 
 **Tab:** LinkedIn Ads (available when `linkedinAccountId` is configured)
 
@@ -1136,7 +1284,7 @@ Aggregates data from all platforms to show:
 - API at `/api/linkedin` — uses LinkedIn Marketing API v2 (`adAnalyticsV2`)
 - Configure `linkedinAccountId` and `linkedinAccessToken` in client settings
 
-### Klaviyo / Email Marketing *(Phase 2)*
+### Klaviyo / Email Marketing
 
 **Tab:** Klaviyo (available when `klaviyoApiKey` is configured)
 
@@ -1145,72 +1293,34 @@ Aggregates data from all platforms to show:
 - API at `/api/klaviyo` — uses Klaviyo v2025-01-15 REST API
 - Configure `klaviyoApiKey` in client settings
 
-### Predictive Performance Forecasting *(Phase 2)*
+### YouTube Analytics
 
-**Panel on Overview tab** — 30/60/90 day projections
+**Tab:** YouTube (available when `youtubeChannelId` is configured)
 
-- AI-generated performance projections for sessions, conversions, and revenue
-- Confidence bands: best case / expected / worst case
-- Uses historical `MetricSnapshot` data for trend extrapolation and seasonality correction
-- Narrative explanation: *"We're forecasting a 12% drop in sessions next month based on seasonal patterns..."*
-- API at `POST /api/ai/forecast`
+- KPI cards: views, watch time (hours), subscribers, average view duration, estimated revenue
+- Video-level performance table (title, views, watch time, CTR, likes)
+- API at `/api/youtube` — uses YouTube Data API v3 and YouTube Analytics API
+- Configure `youtubeChannelId` per client; requires service account or OAuth credentials
 
-### Budget Optimisation Advisor *(Phase 2)*
+### HubSpot CRM
 
-**Panel on Overview tab** — cross-channel budget reallocation
+**Tab:** HubSpot (available when `hubspotPortalId` is configured)
 
-- Analyses spend efficiency (ROAS, CPA, impression share) across all paid channels
-- Produces specific reallocation suggestions with projected revenue impact
-- Channel saturation signals: audience frequency warnings, overspend pacing alerts
-- Results saved as `BudgetRecommendation` model per period
-- API at `POST /api/ai/budget-advisor`
+- Contact and deal pipeline metrics: total contacts, new contacts, open deals, deal value
+- Deal stage breakdown table with stage name, count, and total value
+- API at `/api/hubspot` — uses HubSpot Private App token
+- Configure `hubspotPortalId` and `hubspotAccessToken` in client settings
 
-### Creative Performance Intelligence *(Phase 2)*
+### CallRail / Call Tracking
 
-**Panel on Meta and Google Ads tabs**
+**Tab:** CallRail (available when `callrailAccountId` is configured)
 
-- **Meta Ads:** analysis by creative type, frequency vs performance correlation, winning creative patterns
-- **Google Ads:** RSA asset scoring, ad copy pattern analysis, quality score correlation
-- Generates an actionable creative brief based on top-performing patterns
-- API at `POST /api/ai/creative-intelligence`
+- KPI cards: total calls, answered calls, missed calls, average call duration, first-time callers
+- Call log table with source attribution, duration, and status
+- API at `/api/callrail` — uses CallRail REST API
+- Configure `callrailAccountId` and `callrailApiKey` in client settings
 
-### AI Strategy Document Generator *(Phase 2)*
-
-**Tool:** Generate a full quarterly strategy document per client on demand
-
-- 10-section forward-looking strategy: performance summary, wins, challenges, competitor snapshot, opportunities, channel strategy, budget recommendations, content priorities, technical actions, KPI targets
-- Saved as `StrategyDocument` model per client per period
-- Shareable link support (`shareToken`)
-- API at `POST /api/ai/strategy-document`
-
-### Multi-Touch Attribution Modelling *(Phase 2)*
-
-**Panel on Overview tab** — attribution model comparison
-
-- Compare 5 attribution models: **Last Click**, **First Click**, **Linear**, **Time Decay**, **Position-Based** (U-shaped)
-- Shows how each channel's conversion credit changes across models
-- AI narrative explaining cross-channel contribution patterns
-- API at `POST /api/ai/attribution`
-
-### Seasonality Intelligence *(Phase 2)*
-
-**Panel on Overview tab** — pattern detection from historical data
-
-- Automatically detects monthly seasonal patterns from `MetricSnapshot` history (requires 3+ months)
-- Per-channel seasonality index (100 = average, >100 = above average, <100 = below average)
-- Forward-looking alerts: *"Based on last year, expect a 25% increase in conversions starting in 3 weeks"*
-- Requires `MetricSnapshot` data accumulated over time
-
-### Share of Voice Dashboard *(Phase 2)*
-
-**Panel on SEO / SemRush tab**
-
-- Organic share of voice: estimated % of total topic clicks captured vs competitors
-- Tracks your domain against up to 3 competitor domains using SemRush data
-- Trend display and competitor traffic volume comparison
-- Requires SemRush integration and competitor domains configured
-
-### Goal Setting & Tracking *(Phase 2)*
+### Goals & KPI Tracking
 
 **Tab:** Goals & KPIs (always available per client)
 
@@ -1221,6 +1331,71 @@ Aggregates data from all platforms to show:
 - AI-generated guidance when a goal is at risk
 - Full CRUD: add, edit, delete goals
 - API at `GET/POST /api/clients/[id]/goals` and `PUT/DELETE /api/clients/[id]/goals/[goalId]`
+
+### Predictive Performance Forecasting
+
+**Panel on Overview tab** — 30/60/90 day projections
+
+- AI-generated performance projections for sessions, conversions, and revenue
+- Confidence bands: best case / expected / worst case
+- Uses historical `MetricSnapshot` data for trend extrapolation and seasonality correction
+- Narrative explanation: *"We're forecasting a 12% drop in sessions next month based on seasonal patterns..."*
+- API at `POST /api/ai/forecast`
+
+### Budget Optimisation Advisor
+
+**Panel on Overview tab** — cross-channel budget reallocation
+
+- Analyses spend efficiency (ROAS, CPA, impression share) across all paid channels
+- Produces specific reallocation suggestions with projected revenue impact
+- Channel saturation signals: audience frequency warnings, overspend pacing alerts
+- Results saved as `BudgetRecommendation` model per period
+- API at `POST /api/ai/budget-advisor`
+
+### Multi-Touch Attribution Modelling
+
+**Panel on Overview tab** — attribution model comparison
+
+- Compare 5 attribution models: **Last Click**, **First Click**, **Linear**, **Time Decay**, **Position-Based** (U-shaped)
+- Shows how each channel's conversion credit changes across models
+- AI narrative explaining cross-channel contribution patterns
+- API at `POST /api/ai/attribution`
+
+### Seasonality Intelligence
+
+**Panel on Overview tab** — pattern detection from historical data
+
+- Automatically detects monthly seasonal patterns from `MetricSnapshot` history (requires 3+ months)
+- Per-channel seasonality index (100 = average, >100 = above average, <100 = below average)
+- Forward-looking alerts: *"Based on last year, expect a 25% increase in conversions starting in 3 weeks"*
+- Requires `MetricSnapshot` data accumulated over time
+
+### Share of Voice Dashboard
+
+**Panel on SEO / SemRush tab**
+
+- Organic share of voice: estimated % of total topic clicks captured vs competitors
+- Tracks your domain against up to 3 competitor domains using SemRush data
+- Trend display and competitor traffic volume comparison
+- Requires SemRush integration and competitor domains configured in client settings
+
+### Creative Performance Intelligence
+
+**Panel on Meta and Google Ads tabs**
+
+- **Meta Ads:** analysis by creative type, frequency vs performance correlation, winning creative patterns
+- **Google Ads:** RSA asset scoring, ad copy pattern analysis, quality score correlation
+- Generates an actionable creative brief based on top-performing patterns
+- API at `POST /api/ai/creative-intelligence`
+
+### AI Strategy Documents
+
+**Tool:** Generate a full quarterly strategy document per client on demand
+
+- 10-section forward-looking strategy: performance summary, wins, challenges, competitor snapshot, opportunities, channel strategy, budget recommendations, content priorities, technical actions, KPI targets
+- Saved as `StrategyDocument` model per client per period
+- Shareable link support (`shareToken`)
+- API at `POST /api/ai/strategy-document`
 
 ### Conversational AI Chat
 
@@ -1233,6 +1408,71 @@ Aggregates data from all platforms to show:
 - Supports multi-turn conversations with full history passed on each turn
 - Uses `ClientConversation` model; API at `/api/ai/chat`
 
+### Competitor Intelligence
+
+**Tool:** `/tools/competitor-intelligence` and **SEO tab** panel
+
+- Per-client competitor monitoring using SemRush data + AI analysis
+- Tracks organic traffic, keyword counts, paid visibility for each competitor domain
+- `CompetitorSnapshot` model stores periodic competitive data for trend analysis
+- AI-generated competitive summary highlighting opportunities and threats
+- Configure competitor domains in client settings under "Competitor Domains"
+- API at `/api/competitor-intelligence` and `/api/competitor-intelligence/[clientId]`
+
+### Client Portal
+
+**Route:** `/portal` (client-facing)
+
+A self-serve portal allowing clients to log in and view their own data without accessing the full agency platform.
+
+- **Magic-link authentication** — portal users receive a one-time login token via email
+- **Portal dashboard** — clients see their reports, goals, and communications
+- **Read-only access** — clients cannot modify data
+- **Configurable permissions** — agency staff control which data each portal user can access (`reports`, `goals`, `communications`)
+- **User management** — `ClientPortalManager` component lets agency staff create, deactivate, and send magic links to portal users
+- API: `/api/portal/auth` (magic link verify), `/api/portal/data` (portal data), `/api/portal/users` (manage users), `/api/portal/me` (current portal session)
+
+### Action Tracking
+
+**Tool:** `/tools/actions`
+
+Bridges AI recommendations to measured outcomes.
+
+- **Create actions** from AI recommendations or manually
+- **Fields:** title, description, status (open/in_progress/completed/cancelled), priority (low/medium/high/urgent), assignee, due date, outcome notes, source type
+- **Dashboard view** with filtering by status, priority, and client
+- **Outcome recording** — when an action is completed, document the measured result
+- Per-client action lists from the client dashboard
+- API at `/api/clients/[id]/actions` and `/api/clients/[id]/actions/[actionId]`
+
+### Communications Hub
+
+**Tool:** `/tools/communications`
+
+Centralised log of all agency-client communications.
+
+- **Log types:** email, call, meeting, note, report_share, proposal_share
+- **Direction:** inbound or outbound
+- **Status:** draft, sent, logged
+- Link communications to reports or proposals via metadata
+- Per-client communication history accessible from the client dashboard
+- Full CRUD — log, edit, and delete communications
+- API at `/api/clients/[id]/communications` and `/api/clients/[id]/communications/[commId]`
+
+### Report Collaboration
+
+**Within the report editor (`/reports/[id]`)**
+
+Multi-user workflow for reviewing and approving reports before sharing with clients.
+
+- **Inline comments** — any section in a report can receive threaded comments
+- **Resolve/reopen comments** — track which feedback has been addressed
+- **Approval workflow** — reports move through: `draft` → `pending` → `approved` / `changes_requested`
+- **Approval notes** — reviewer can attach notes when requesting changes
+- **Approver tracking** — records which user approved and when
+- `ReportComment` model stores all comments; `Report.approvalStatus/approvedBy/approvedAt` tracks workflow
+- API at `/api/reports/[id]/comments`, `/api/reports/[id]/comments/[commentId]`, `/api/reports/[id]/approve`
+
 ### Notifications
 
 **System-wide:** Anomaly alerts, report events, and key platform events
@@ -1244,16 +1484,7 @@ Aggregates data from all platforms to show:
 - **Admin broadcast** — `notifyAdmins()` sends to all admin users
 - API at `/api/notifications` (list), `/api/notifications/read` (mark read)
 
-### Notification Preferences
-
-**Route:** `/settings/notifications`
-
-- Toggle email and Slack delivery channels
-- Configure Slack webhook URL per user
-- Choose delivery frequency: Immediate / Daily Digest / Weekly Digest
-- Set quiet hours (non-critical notifications suppressed outside business hours)
-- Enable/disable individual notification types
-- API at `/api/notifications/preferences` (GET/PUT)
+### Reports
 
 **Route:** `/reports` (list) and `/reports/[id]` (editor)
 
@@ -1264,8 +1495,8 @@ Aggregates data from all platforms to show:
 - Duplicate report
 - Status badges (draft/published)
 
-**Report editor features (ReportView, 1644 lines):**
-- Status stepper: Draft -> Review -> Published
+**Report editor features:**
+- Status stepper: Draft → Review → Published
 - Custom date range pickers with comparison period
 - Drag-and-drop section reordering (dnd-kit)
 - Per-section visibility toggles (show/hide entire sections)
@@ -1281,6 +1512,7 @@ Aggregates data from all platforms to show:
 - Duplicate report
 - Save as template
 - Print view (`/reports/[id]/print`)
+- Collaboration comments and approval workflow (see [Report Collaboration](#report-collaboration))
 
 ### Report Templates
 
@@ -1312,11 +1544,14 @@ Three-step workflow:
 
 #### Proposals (`/tools/proposals`)
 
-- View saved proposals
+- View saved proposals with pipeline stage management
+- **Pipeline CRM** — track each proposal through: Prospect → Sent → Viewed → Negotiating → Won/Lost
+- Set expected value, close date, and pipeline notes per proposal
 - Share proposals via unique public token
-- Track view counts
+- Track view counts and last viewed timestamp
 - Receive client enquiries through embedded forms
 - Edit proposal details (contracted hours, services)
+- API at `/api/tools/proposals/[id]/pipeline` for stage transitions
 
 #### Pricing Strategy (`/tools/pricing`)
 
@@ -1331,12 +1566,48 @@ Generates AI-search-optimised `llm.txt` files for client websites:
 - Extracts social profiles
 - Generates structured content from templates
 
+#### Action Tracking (`/tools/actions`)
+
+Agency-wide view of all open and completed actions across all clients:
+- Filter by status, priority, and client
+- Create actions manually or from AI recommendations
+- Mark as in-progress, completed, or cancelled with outcome notes
+- Assign to team members with due dates
+
+#### Communications Hub (`/tools/communications`)
+
+Agency-wide view of all client communications:
+- Log emails, calls, meetings, and notes
+- Inbound and outbound direction tracking
+- Link to specific reports or proposals
+- Search and filter across all clients and communication types
+
+#### Competitor Intelligence (`/tools/competitor-intelligence`)
+
+Agency-wide competitor monitoring dashboard:
+- Overview of all clients' competitor landscapes
+- Per-client competitor snapshots with traffic, keyword, and ad data
+- Trigger competitor data pulls for specific clients
+- AI-generated competitive summaries highlighting threats and opportunities
+
+#### Media Plan Builder (`/tools/media-plan`)
+
+Build paid media plans with channel allocation and AI forecast outputs:
+- Define campaign objective (brand awareness, lead gen, e-commerce, traffic)
+- Set total budget and campaign duration
+- Allocate budget across channels with expected metrics
+- AI-generated forecast: projected impressions, clicks, conversions, revenue per channel
+- Save media plans linked to clients
+- Status management: draft → active → completed → archived
+- API at `/api/tools/media-plan` and `/api/tools/media-plan/[id]/forecast`
+
 ### Admin Panel
 
 **Route:** `/admin` (requires `users` permission)
 
 - **Users tab:** Full CRUD — create users with name, email, password, role selection. Edit inline. Delete with confirmation. Password show/hide toggle.
 - **Roles tab:** Create and edit roles with grouped permission checklists. Permission groups: dashboard, clients, reports, templates, settings, page_analyser, proposal_generator, proposals, pricing, llm_generator, users.
+- **Run Snapshots:** Manual trigger to fire the snapshot cron for all clients immediately (useful for testing and backfills)
 
 ### Settings
 
@@ -1344,9 +1615,20 @@ Generates AI-search-optimised `llm.txt` files for client websites:
 
 - **Google Connections:** Connect Google accounts via OAuth2 for Google Ads. Multiple accounts supported for MCC structures. Connection verification and removal.
 - **OpenAI API Key:** Enter key (stored in DB, takes priority over env var)
+- **Email Settings:** Configure Resend API key and sender address for email notifications
 - **Task Time Benchmarks:** Configure hours-per-task estimates used in proposal generation
 - **Default MCC:** Select default Google Ads Manager account
-- **Notification Preferences:** See [Notification Preferences](#notification-preferences)
+
+### Notification Preferences
+
+**Route:** `/settings/notifications`
+
+- Toggle email and Slack delivery channels
+- Configure Slack webhook URL per user
+- Choose delivery frequency: Immediate / Daily Digest / Weekly Digest
+- Set quiet hours (non-critical notifications suppressed outside business hours)
+- Enable/disable individual notification types
+- API at `/api/notifications/preferences` (GET/PUT)
 
 ---
 
@@ -1405,7 +1687,7 @@ BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."
 # ─── SemRush ──────────────────────────────────────────────────────
 SEMRUSH_API_KEY="your-semrush-api-key"
 
-# ─── Google (GA4 + Search Console — service account) ──────────────
+# ─── Google (GA4 + Search Console + YouTube — service account) ────
 GA4_CLIENT_EMAIL="service-account@project.iam.gserviceaccount.com"
 GA4_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
 
@@ -1419,13 +1701,34 @@ GOOGLE_ADS_MANAGER_CUSTOMER_ID="123-456-7890"              # Optional MCC
 # ─── Meta Ads ─────────────────────────────────────────────────────
 META_ACCESS_TOKEN="your-meta-access-token"
 
+# ─── TikTok Ads ───────────────────────────────────────────────────
+TIKTOK_ACCESS_TOKEN="your-tiktok-access-token"             # Optional global (or set per client)
+
+# ─── Microsoft Advertising ────────────────────────────────────────
+MICROSOFT_ADS_CLIENT_ID="your-microsoft-ads-client-id"
+MICROSOFT_ADS_CLIENT_SECRET="your-microsoft-ads-client-secret"
+MICROSOFT_ADS_REFRESH_TOKEN="your-microsoft-ads-refresh-token"
+MICROSOFT_ADS_DEVELOPER_TOKEN="your-microsoft-ads-developer-token"
+
+# ─── Core Web Vitals (Google CrUX API) ───────────────────────────
+GOOGLE_CRUX_API_KEY="your-crux-api-key"                    # Or GOOGLE_API_KEY
+
 # ─── OpenAI ───────────────────────────────────────────────────────
 OPENAI_API_KEY="sk-..."    # Or configure in the app via Settings page
+
+# ─── Email Notifications (Resend) ────────────────────────────────
+# EMAIL_API_KEY="re_..."                                     # Set in Settings UI
+# EMAIL_FROM_ADDRESS="reports@yourdomain.com"                # Set in Settings UI
 
 # ─── Moz (Domain Authority) ──────────────────────────────────────
 MOZ_ACCESS_ID="your-moz-access-id"
 MOZ_SECRET_KEY="your-moz-secret-key"
+
+# ─── Cron Security ───────────────────────────────────────────────
+CRON_SECRET="your-cron-secret"                             # Secures /api/cron/* endpoints
 ```
+
+> **Note:** LinkedIn Ads, Klaviyo, YouTube, HubSpot, and CallRail use per-client credentials stored in the database. Configure them in each client's settings page rather than as environment variables.
 
 ### Configuring API Integrations
 
@@ -1461,6 +1764,35 @@ node scripts/get-gads-refresh-token.mjs
 1. Create a [Meta System User](https://business.facebook.com/settings/system-users) with `ads_read` permission
 2. Generate a long-lived access token (use `scripts/get-meta-long-lived-token.mjs` to exchange)
 3. Add `META_ACCESS_TOKEN` to `.env.local` (or set per-client tokens in client settings)
+
+#### TikTok Ads
+Per client in client settings: set **TikTok Advertiser ID** and **Access Token** from the TikTok Marketing API. Optionally set `TIKTOK_ACCESS_TOKEN` as a global fallback.
+
+#### Microsoft Advertising
+1. Create an app registration in [Microsoft Azure portal](https://portal.azure.com)
+2. Add `MICROSOFT_ADS_CLIENT_ID`, `MICROSOFT_ADS_CLIENT_SECRET`, `MICROSOFT_ADS_DEVELOPER_TOKEN` to env
+3. Generate a refresh token and add as `MICROSOFT_ADS_REFRESH_TOKEN`
+4. Per client: set the **Microsoft Ads Account ID** in client settings
+
+#### LinkedIn Ads
+Per client in client settings: set **LinkedIn Account ID** and **Access Token** from LinkedIn Marketing Solutions.
+
+#### Klaviyo
+Per client in client settings: set the **Klaviyo Private API Key** from your Klaviyo account settings.
+
+#### YouTube Analytics
+Per client in client settings: set the **YouTube Channel ID**. Uses the same service account credentials as GA4/GSC (must have YouTube Data API v3 enabled).
+
+#### HubSpot CRM
+Per client in client settings: set the **HubSpot Portal ID** and a **Private App Access Token** with `crm.objects.contacts.read` and `crm.objects.deals.read` scopes.
+
+#### CallRail
+Per client in client settings: set the **CallRail Account ID** and **API Key** from your CallRail account.
+
+#### Core Web Vitals
+1. Enable the **Chrome UX Report API** in Google Cloud Console
+2. Create or reuse an API key and add as `GOOGLE_CRUX_API_KEY`
+3. Per client: optionally set a custom **CWV URL** to override the website URL
 
 #### OpenAI
 1. Get an API key from [platform.openai.com](https://platform.openai.com)
@@ -1554,15 +1886,17 @@ In your Vercel project dashboard: **Storage -> Create -> Blob**. Vercel auto-add
 | `GOOGLE_ADS_DEVELOPER_TOKEN` | Developer token |
 | `META_ACCESS_TOKEN` | Meta access token |
 | `OPENAI_API_KEY` | OpenAI key *(or set in Settings UI)* |
-| `TIKTOK_ACCESS_TOKEN` | TikTok Ads global access token *(or per-client in settings)* |
+| `TIKTOK_ACCESS_TOKEN` | TikTok Ads global access token *(optional — or per-client)* |
 | `MICROSOFT_ADS_CLIENT_ID` | Microsoft Ads OAuth app client ID |
 | `MICROSOFT_ADS_CLIENT_SECRET` | Microsoft Ads OAuth client secret |
 | `MICROSOFT_ADS_REFRESH_TOKEN` | Microsoft Ads OAuth refresh token |
 | `MICROSOFT_ADS_DEVELOPER_TOKEN` | Microsoft Advertising developer token |
 | `GOOGLE_CRUX_API_KEY` | Google CrUX API key for Core Web Vitals |
+| `MOZ_ACCESS_ID` | Moz API access ID *(optional)* |
+| `MOZ_SECRET_KEY` | Moz API secret key *(optional)* |
 | `CRON_SECRET` | Secret for securing `/api/cron/*` endpoints |
 
-> **Phase 2 integrations** (LinkedIn Ads and Klaviyo) use per-client credentials stored in the database rather than global environment variables. Configure `linkedinAccountId`, `linkedinAccessToken`, and `klaviyoApiKey` in each client's settings page.
+> **Per-client integrations:** LinkedIn Ads, Klaviyo, YouTube Analytics, HubSpot CRM, and CallRail all use per-client credentials stored in the database. Configure them in each client's settings page — no global environment variables needed.
 
 4. Deploy. Subsequent pushes to `main` deploy automatically.
 
