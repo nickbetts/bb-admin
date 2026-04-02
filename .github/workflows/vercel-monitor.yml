@@ -1,0 +1,210 @@
+name: Vercel Build Monitor
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Trigger 1 – deployment_status
+#   Vercel's GitHub app automatically creates/updates a GitHub deployment status
+#   for every build it runs. This event fires each time that status changes.
+#
+# Trigger 2 – issue_comment
+#   When you reply "/fix" on an issue that has the "vercel-failure" label, the
+#   AI Fix Suggestion job runs and posts a Copilot-generated fix suggestion.
+# ─────────────────────────────────────────────────────────────────────────────
+on:
+  deployment_status:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write      # create/comment on issues
+  contents: read     # checkout for context
+  models: read       # GitHub Models API (GPT-4o) for /fix suggestions
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  # JOB 1 · Detect a failed Vercel deployment → open a GitHub issue with logs
+  # ───────────────────────────────────────────────────────────────────────────
+  on-deployment-failure:
+    name: Detect Failure & Open Issue
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'deployment_status' &&
+      github.event.deployment_status.state == 'failure'
+
+    steps:
+      - name: Fetch build logs from Vercel API
+        id: vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          TARGET_URL="${{ github.event.deployment_status.target_url }}"
+
+          # Strip the https:// so we can use the hostname as the Vercel API key
+          URL_HOST=$(echo "$TARGET_URL" | sed 's|https://||')
+          echo "Querying Vercel deployment for host: $URL_HOST"
+
+          # Resolve the internal deployment ID from the preview URL
+          DEPLOYMENT=$(curl -fsSL \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v13/deployments/$URL_HOST")
+
+          DEPLOYMENT_ID=$(echo "$DEPLOYMENT" | jq -r '.id // empty')
+
+          if [[ -z "$DEPLOYMENT_ID" ]]; then
+            echo "Could not resolve deployment ID from Vercel API."
+            {
+              echo "logs<<ENDOFLOG"
+              echo "No logs available — could not resolve deployment ID from URL: $TARGET_URL"
+              echo "ENDOFLOG"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Resolved deployment ID: $DEPLOYMENT_ID"
+
+          # Fetch build events (stdout + stderr) and keep the last ~25 kB
+          LOGS=$(curl -fsSL \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v2/deployments/$DEPLOYMENT_ID/events?direction=asc&limit=2000" \
+            | jq -r '.[] | select(.type == "stdout" or .type == "stderr") | .payload.text // empty' \
+            | grep . \
+            | tail -c 25000)
+
+          {
+            echo "logs<<ENDOFLOG"
+            echo "$LOGS"
+            echo "ENDOFLOG"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open GitHub issue with build logs
+        uses: actions/github-script@v7
+        env:
+          LOGS: ${{ steps.vercel.outputs.logs }}
+        with:
+          script: |
+            const sha     = context.payload.deployment.sha.slice(0, 7);
+            const ref     = context.payload.deployment.ref;
+            const env     = context.payload.deployment.environment;
+            const logUrl  = context.payload.deployment_status.log_url;
+            const logs    = (process.env.LOGS || 'No logs captured.').slice(-20000);
+
+            const body = [
+              `## 🚨 Vercel deployment failed`,
+              ``,
+              `| | |`,
+              `|---|---|`,
+              `| **Environment** | \`${env}\` |`,
+              `| **Branch / ref** | \`${ref}\` |`,
+              `| **Commit** | \`${sha}\` |`,
+              `| **Vercel dashboard** | [View logs on Vercel](${logUrl}) |`,
+              ``,
+              `### Build output (last ~20 kB)`,
+              ``,
+              '```',
+              logs,
+              '```',
+              ``,
+              `---`,
+              `> 💬 Reply \`/fix\` on this issue and GitHub Copilot will analyse the logs above and suggest a fix.`,
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner:  context.repo.owner,
+              repo:   context.repo.repo,
+              title:  `🚨 Vercel build failed — ${ref} @ ${sha}`,
+              body,
+              labels: ['vercel-failure'],
+            });
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # JOB 2 · "/fix" comment on a vercel-failure issue → AI fix suggestion
+  # ───────────────────────────────────────────────────────────────────────────
+  fix-on-request:
+    name: AI Fix Suggestion
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.action == 'created' &&
+      startsWith(github.event.comment.body, '/fix') &&
+      contains(github.event.issue.labels.*.name, 'vercel-failure')
+
+    steps:
+      # Acknowledge the /fix request immediately with a 👀 reaction
+      - name: React to comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner:      context.repo.owner,
+              repo:       context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content:    'eyes',
+            });
+
+      - name: Analyse logs and post fix suggestion
+        uses: actions/github-script@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          script: |
+            const issueBody = context.payload.issue.body ?? '';
+
+            // Extract the build log block from the issue body
+            const fenceMatch = issueBody.match(/```\n([\s\S]*?)\n```/);
+            const logs = (fenceMatch ? fenceMatch[1] : issueBody).slice(0, 20000);
+
+            // Call GitHub Models (GPT-4o) using the built-in GITHUB_TOKEN
+            const resp = await fetch(
+              'https://models.inference.ai.azure.com/chat/completions',
+              {
+                method: 'POST',
+                headers: {
+                  Authorization:  `Bearer ${process.env.GITHUB_TOKEN}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  model: 'gpt-4o',
+                  messages: [
+                    {
+                      role:    'system',
+                      content: [
+                        'You are an expert Next.js 15 / TypeScript / Prisma developer.',
+                        'Analyse the provided Vercel build logs and give concise,',
+                        'actionable fixes with exact file paths and code snippets.',
+                        'Format your response in GitHub-flavoured Markdown.',
+                        'Keep your answer under 800 words.',
+                      ].join(' '),
+                    },
+                    {
+                      role:    'user',
+                      content:
+                        'Here are the Vercel build logs for a failed deployment. ' +
+                        'Identify the root cause and provide the exact code changes needed to fix it.\n\n' +
+                        '```\n' + logs + '\n```',
+                    },
+                  ],
+                  max_tokens: 2000,
+                }),
+              }
+            );
+
+            if (!resp.ok) {
+              const err = await resp.text();
+              throw new Error(`GitHub Models API error ${resp.status}: ${err}`);
+            }
+
+            const data       = await resp.json();
+            const suggestion = data.choices?.[0]?.message?.content ?? 'No suggestion returned.';
+
+            await github.rest.issues.createComment({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: [
+                `## 🤖 Copilot Fix Suggestion`,
+                ``,
+                suggestion,
+                ``,
+                `---`,
+                `_Generated by GitHub Models (GPT-4o) · [View run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})_`,
+              ].join('\n'),
+            });
