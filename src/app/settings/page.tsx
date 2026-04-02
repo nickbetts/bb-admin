@@ -252,6 +252,27 @@ function SettingsInner() {
   } | null>(null);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
 
+  // Snapshot inventory state
+  const [snapshotInventory, setSnapshotInventory] = useState<Array<{
+    clientId: string;
+    clientName: string;
+    totalSnapshots: number;
+    platforms: Record<string, { count: number; earliest: string; latest: string }>;
+  }> | null>(null);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+
+  const loadSnapshotInventory = useCallback(async () => {
+    setInventoryLoading(true);
+    try {
+      const res = await fetch("/api/admin/snapshot-status");
+      if (res.ok) setSnapshotInventory(await res.json());
+    } catch { /* non-critical */ } finally {
+      setInventoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadSnapshotInventory(); }, [loadSnapshotInventory]);
+
   async function handleRunSnapshots() {
     setSnapshotRunning(true);
     setSnapshotResult(null);
@@ -265,6 +286,8 @@ function SettingsInner() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Snapshot run failed");
       setSnapshotResult(data);
+      // Refresh inventory after a run
+      loadSnapshotInventory();
     } catch (err) {
       setSnapshotError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -737,6 +760,95 @@ function SettingsInner() {
               )}
             </div>
           )}
+
+          {/* Per-client snapshot inventory */}
+          <div style={{ marginTop: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Snapshot Inventory</span>
+              <button
+                onClick={loadSnapshotInventory}
+                disabled={inventoryLoading}
+                style={{ fontSize: 11, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+              >
+                {inventoryLoading ? "Refreshing…" : "↻ Refresh"}
+              </button>
+            </div>
+            {inventoryLoading && !snapshotInventory && (
+              <p style={{ fontSize: 13, color: "var(--text-3)" }}>Loading…</p>
+            )}
+            {snapshotInventory && (() => {
+              // Determine which platforms have any data across all clients
+              const platformSet = new Set<string>();
+              for (const c of snapshotInventory) {
+                Object.keys(c.platforms).forEach((p) => platformSet.add(p));
+              }
+              const platforms = Array.from(platformSet).sort();
+              const PLATFORM_LABELS: Record<string, string> = {
+                ga4: "GA4", googleads: "G.Ads", meta: "Meta", searchconsole: "Search", seo: "SEO",
+                tiktok: "TikTok", microsoftads: "MS Ads", cwv: "CWV", woocommerce: "WooC.", shopify: "Shopify",
+                linkedin: "LinkedIn", klaviyo: "Klaviyo",
+              };
+              return (
+                <div style={{ overflowX: "auto", border: "1px solid var(--border-subtle)", borderRadius: "var(--r-sm)" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid var(--border-subtle)", background: "var(--bg-subtle, #f9fafb)" }}>
+                        <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>Client</th>
+                        {platforms.map((p) => (
+                          <th key={p} style={{ textAlign: "center", padding: "8px 8px", fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>
+                            {PLATFORM_LABELS[p] ?? p}
+                          </th>
+                        ))}
+                        <th style={{ textAlign: "center", padding: "8px 12px", fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>Total</th>
+                        <th style={{ textAlign: "center", padding: "8px 12px", fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>Seasonality</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {snapshotInventory.map((client, i) => {
+                        const ga4Count = client.platforms["ga4"]?.count ?? 0;
+                        const seasonalityReady = ga4Count >= 3;
+                        return (
+                          <tr key={client.clientId} style={{ borderBottom: i < snapshotInventory.length - 1 ? "1px solid var(--border-subtle)" : "none" }}>
+                            <td style={{ padding: "7px 12px", fontWeight: 500, color: "var(--text)", whiteSpace: "nowrap" }}>{client.clientName}</td>
+                            {platforms.map((p) => {
+                              const entry = client.platforms[p];
+                              if (!entry) {
+                                return <td key={p} style={{ textAlign: "center", padding: "7px 8px", color: "var(--border-muted, #d1d5db)" }}>—</td>;
+                              }
+                              const yyyyMm = (iso: string) => iso.slice(0, 7);
+                              const label = entry.earliest === entry.latest.slice(0, 7) + "-01"
+                                ? yyyyMm(entry.earliest)
+                                : `${yyyyMm(entry.earliest)}–${yyyyMm(entry.latest)}`;
+                              return (
+                                <td key={p} style={{ textAlign: "center", padding: "7px 8px" }}>
+                                  <span title={label} style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                                    <span style={{ fontWeight: 600, color: "#16a34a" }}>{entry.count}</span>
+                                    <span style={{ fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{label}</span>
+                                  </span>
+                                </td>
+                              );
+                            })}
+                            <td style={{ textAlign: "center", padding: "7px 12px", fontWeight: 600, color: "var(--text)" }}>
+                              {client.totalSnapshots > 0 ? client.totalSnapshots : <span style={{ color: "var(--text-3)" }}>0</span>}
+                            </td>
+                            <td style={{ textAlign: "center", padding: "7px 12px" }}>
+                              {seasonalityReady ? (
+                                <span style={{ color: "#16a34a", fontWeight: 600 }} title={`${ga4Count} GA4 months`}>✓ {ga4Count}mo</span>
+                              ) : (
+                                <span style={{ color: ga4Count > 0 ? "#d97706" : "var(--text-3)", fontSize: 11 }} title={`Needs 3 GA4 months, has ${ga4Count}`}>
+                                  {ga4Count > 0 ? `${ga4Count}/3 mo` : "No GA4"}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </div>
         </div>
       </div>
 
