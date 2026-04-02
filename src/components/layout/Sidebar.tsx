@@ -75,7 +75,9 @@ export function Sidebar({ user, permissions }: SidebarProps) {
 
   // Close mobile sidebar on navigation
   useEffect(() => {
-    if (isMobile) setMobileOpen(false);
+    if (!isMobile) return;
+    function close() { setMobileOpen(false); }
+    close();
   }, [pathname, isMobile]);
 
   async function handleLogout() {
