@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getGA4Overview } from "@/lib/ga4";
+import { getGoogleAdsOverview } from "@/lib/google-ads";
+import { getMetaAdsOverview } from "@/lib/meta";
+import { getGSCOverview } from "@/lib/search-console";
+import { getDomainOverview } from "@/lib/semrush";
+import { getTikTokAdsOverview } from "@/lib/tiktok-ads";
+import { getMicrosoftAdsOverview } from "@/lib/microsoft-ads";
+import { getWooCommerceStats } from "@/lib/woocommerce";
+import { getShopifyStats } from "@/lib/shopify";
+import { getCoreWebVitals } from "@/lib/core-web-vitals";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-// Platforms that support arbitrary date ranges
-const DATE_RANGE_PLATFORMS = ["ga4", "googleads", "meta", "searchconsole", "tiktok", "microsoftads", "woocommerce", "shopify", "linkedin"] as const;
-// Platforms that are point-in-time only (no historical date range support)
-const POINT_IN_TIME_PLATFORMS = ["seo", "cwv", "klaviyo"] as const;
-
-type Platform = typeof DATE_RANGE_PLATFORMS[number] | typeof POINT_IN_TIME_PLATFORMS[number];
+type PlatformKey = "ga4" | "googleads" | "meta" | "searchconsole" | "seo" | "tiktok" | "microsoftads" | "woocommerce" | "shopify" | "cwv";
 
 /** Generate ISO date strings for the first and last day of a given month offset (0 = current month). */
 function monthRange(offset: number): { start: string; end: string } {
@@ -23,98 +28,79 @@ function monthRange(offset: number): { start: string; end: string } {
   return { start, end };
 }
 
-function buildApiUrl(base: string, platform: Platform, client: Record<string, string | null>, start: string, end: string): string | null {
-  switch (platform) {
-    case "ga4":
-      return `${base}/api/ga4?propertyId=${encodeURIComponent(client.ga4PropertyId!)}&startDate=${start}&endDate=${end}`;
-    case "googleads":
-      return `${base}/api/google-ads?customerId=${encodeURIComponent(client.googleAdsCustomerId!)}&startDate=${start}&endDate=${end}`;
-    case "meta":
-      return `${base}/api/meta?clientId=${encodeURIComponent(client.id!)}&startDate=${start}&endDate=${end}`;
-    case "searchconsole":
-      return `${base}/api/search-console?siteUrl=${encodeURIComponent(client.searchConsoleSiteUrl!)}&startDate=${start}&endDate=${end}`;
-    case "tiktok":
-      return `${base}/api/tiktok?clientId=${encodeURIComponent(client.id!)}&startDate=${start}&endDate=${end}`;
-    case "microsoftads":
-      return `${base}/api/microsoft-ads?clientId=${encodeURIComponent(client.id!)}&startDate=${start}&endDate=${end}`;
-    case "woocommerce":
-      return `${base}/api/woocommerce?clientId=${encodeURIComponent(client.id!)}&startDate=${start}&endDate=${end}`;
-    case "shopify":
-      return `${base}/api/shopify?clientId=${encodeURIComponent(client.id!)}&startDate=${start}&endDate=${end}`;
-    case "linkedin":
-      return `${base}/api/linkedin?accountId=${encodeURIComponent(client.linkedinAccountId!)}&accessToken=${encodeURIComponent(client.linkedinAccessToken!)}&startDate=${start}&endDate=${end}`;
-    case "seo":
-      return `${base}/api/semrush?domain=${encodeURIComponent(client.semrushDomain!)}`;
-    case "cwv":
-      return `${base}/api/cwv?url=${encodeURIComponent(client.cwvUrl!)}`;
-    case "klaviyo":
-      return `${base}/api/klaviyo?clientId=${encodeURIComponent(client.id!)}`;
-    default:
-      return null;
-  }
-}
+type ClientRow = {
+  id: string;
+  name: string;
+  ga4PropertyId: string | null;
+  googleAdsCustomerId: string | null;
+  metaAccountId: string | null;
+  metaAccessToken: string | null;
+  searchConsoleSiteUrl: string | null;
+  semrushDomain: string | null;
+  cwvUrl: string | null;
+  tiktokAdvertiserId: string | null;
+  tiktokAccessToken: string | null;
+  microsoftAdsAccountId: string | null;
+  woocommerceUrl: string | null;
+  woocommerceKey: string | null;
+  woocommerceSecret: string | null;
+  shopifyStoreDomain: string | null;
+  shopifyAccessToken: string | null;
+};
 
-function extractMetrics(platform: Platform, data: Record<string, unknown>): Record<string, number> | null {
-  try {
-    switch (platform) {
-      case "ga4": {
-        const d = data as Record<string, number>;
-        return { sessions: d.sessions ?? 0, users: d.users ?? 0, pageviews: d.pageviews ?? 0, bounceRate: d.bounceRate ?? 0, avgSessionDuration: d.avgSessionDuration ?? 0, conversionRate: d.conversionRate ?? 0 };
-      }
-      case "googleads": {
-        const o = (data as { overview?: Record<string, number> }).overview;
-        if (!o) return null;
-        return { clicks: o.clicks ?? 0, impressions: o.impressions ?? 0, costMicros: o.costMicros ?? 0, conversions: o.conversions ?? 0, conversionsValue: o.conversionsValue ?? 0 };
-      }
-      case "meta": {
-        const o = (data as { overview?: Record<string, number> }).overview;
-        if (!o) return null;
-        return { totalSpend: o.totalSpend ?? 0, totalClicks: o.totalClicks ?? 0, totalImpressions: o.totalImpressions ?? 0, totalConversions: o.totalConversions ?? 0, avgCpm: o.avgCpm ?? 0, avgCtr: o.avgCtr ?? 0, avgRoas: o.avgRoas ?? 0 };
-      }
-      case "searchconsole": {
-        const d = data as Record<string, number>;
-        return { clicks: d.clicks ?? 0, impressions: d.impressions ?? 0, ctr: d.ctr ?? 0, position: d.position ?? 0 };
-      }
-      case "tiktok": {
-        const o = (data as { overview?: Record<string, number> }).overview;
-        if (!o) return null;
-        return { spend: o.spend ?? 0, impressions: o.impressions ?? 0, clicks: o.clicks ?? 0, conversions: o.conversions ?? 0, ctr: o.ctr ?? 0, cpc: o.cpc ?? 0, cpm: o.cpm ?? 0, roas: o.roas ?? 0 };
-      }
-      case "microsoftads": {
-        const o = (data as { overview?: Record<string, number> }).overview;
-        if (!o) return null;
-        return { spend: o.spend ?? 0, impressions: o.impressions ?? 0, clicks: o.clicks ?? 0, conversions: o.conversions ?? 0, revenue: o.revenue ?? 0, roas: o.roas ?? 0, ctr: o.ctr ?? 0, cpc: o.cpc ?? 0 };
-      }
-      case "woocommerce": {
-        const d = data as Record<string, number>;
-        return { totalRevenue: d.totalRevenue ?? 0, totalOrders: d.totalOrders ?? 0, averageOrderValue: d.averageOrderValue ?? 0 };
-      }
-      case "shopify": {
-        const d = data as Record<string, number>;
-        return { totalRevenue: d.totalRevenue ?? 0, totalOrders: d.totalOrders ?? 0, averageOrderValue: d.averageOrderValue ?? 0 };
-      }
-      case "linkedin": {
-        const o = (data as { overview?: Record<string, number> }).overview;
-        if (!o) return null;
-        return { spend: o.spend ?? 0, impressions: o.impressions ?? 0, clicks: o.clicks ?? 0, conversions: o.conversions ?? 0, ctr: o.ctr ?? 0, cpc: o.cpc ?? 0 };
-      }
-      case "klaviyo": {
-        const o = (data as { overview?: Record<string, number> }).overview;
-        if (!o) return null;
-        return { sends: o.sends ?? 0, opens: o.opens ?? 0, clicks: o.clicks ?? 0, revenue: o.revenue ?? 0, openRate: o.openRate ?? 0, clickRate: o.clickRate ?? 0 };
-      }
-      case "seo": {
-        const o = (data as { overview?: Record<string, number> }).overview;
-        if (!o) return null;
-        return { organicTraffic: o.organicTraffic ?? 0, organicKeywords: o.organicKeywords ?? 0, organicCost: o.organicCost ?? 0, paidTraffic: o.paidTraffic ?? 0 };
-      }
-      case "cwv": {
-        const d = data as Record<string, number>;
-        return { lcp: d.lcp ?? 0, cls: d.cls ?? 0, inp: d.inp ?? 0, fid: d.fid ?? 0, ttfb: d.ttfb ?? 0 };
-      }
-      default: return null;
+/**
+ * Call lib functions directly — avoids internal HTTP fetches which require
+ * session/CRON_SECRET auth and fail in production when cookies are not forwarded.
+ */
+async function fetchPlatformMetrics(
+  platform: PlatformKey,
+  client: ClientRow,
+  start: string,
+  end: string
+): Promise<Record<string, number>> {
+  switch (platform) {
+    case "ga4": {
+      const d = await getGA4Overview(client.ga4PropertyId!, start, end);
+      return { sessions: d.sessions, users: d.users, pageviews: d.pageviews, bounceRate: d.bounceRate, avgSessionDuration: d.avgSessionDuration, conversionRate: d.conversionRate };
     }
-  } catch { return null; }
+    case "googleads": {
+      const d = await getGoogleAdsOverview(client.googleAdsCustomerId!, start, end);
+      return { clicks: d.clicks, impressions: d.impressions, costMicros: d.costMicros, conversions: d.conversions, conversionsValue: d.conversionsValue };
+    }
+    case "meta": {
+      const accessToken = client.metaAccessToken ?? process.env.META_ACCESS_TOKEN ?? "";
+      const d = await getMetaAdsOverview(client.metaAccountId!, accessToken, start, end);
+      return { totalSpend: d.totalSpend, totalClicks: d.totalClicks, totalImpressions: d.totalImpressions, totalConversions: d.totalConversions, avgCpm: d.avgCpm, avgCtr: d.avgCtr, avgRoas: d.avgRoas };
+    }
+    case "searchconsole": {
+      const d = await getGSCOverview(client.searchConsoleSiteUrl!, start, end);
+      return { clicks: d.clicks, impressions: d.impressions, ctr: d.ctr, position: d.position };
+    }
+    case "seo": {
+      const d = await getDomainOverview(client.semrushDomain!);
+      return { organicTraffic: d.organicTraffic, organicKeywords: d.organicKeywords, organicCost: d.organicCost, paidTraffic: d.paidTraffic };
+    }
+    case "tiktok": {
+      const d = await getTikTokAdsOverview(client.tiktokAdvertiserId!, client.tiktokAccessToken ?? "", start, end);
+      return { spend: d.spend, impressions: d.impressions, clicks: d.clicks, conversions: d.conversions, ctr: d.ctr, cpc: d.cpc, cpm: d.cpm };
+    }
+    case "microsoftads": {
+      const d = await getMicrosoftAdsOverview(client.microsoftAdsAccountId!, start, end);
+      return { spend: d.spend, impressions: d.impressions, clicks: d.clicks, conversions: d.conversions, revenue: d.revenue, roas: d.roas, ctr: d.ctr, cpc: d.cpc };
+    }
+    case "woocommerce": {
+      const d = await getWooCommerceStats(client.woocommerceUrl!, client.woocommerceKey ?? "", client.woocommerceSecret ?? "", start, end);
+      return { totalRevenue: d.totalRevenue, totalOrders: d.totalOrders, averageOrderValue: d.averageOrderValue };
+    }
+    case "shopify": {
+      const d = await getShopifyStats(client.shopifyStoreDomain!, client.shopifyAccessToken ?? "", start, end);
+      return { totalRevenue: d.totalRevenue, totalOrders: d.totalOrders, averageOrderValue: d.averageOrderValue };
+    }
+    case "cwv": {
+      const d = await getCoreWebVitals(client.cwvUrl!);
+      return { lcp: d.lcp?.p75 ?? 0, cls: d.cls?.p75 ?? 0, inp: d.inp?.p75 ?? 0, fid: d.fid?.p75 ?? 0, ttfb: d.ttfb?.p75 ?? 0 };
+    }
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -125,34 +111,24 @@ export async function POST(request: NextRequest) {
   const months = Math.min(Math.max(1, body.months ?? 1), 60);
   const skipExisting = body.skipExisting !== false; // default true — skip already-fetched periods
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000");
-  const cronSecret = process.env.CRON_SECRET;
-  // Forward the session cookie so internal API routes can authenticate via getSessionOrCronAuth.
-  // If CRON_SECRET is also set, include it as a bearer token (covers both browser-initiated
-  // and unattended/cron-initiated snapshot runs).
-  const cookieHeader = request.headers.get("cookie") ?? "";
-  const fetchHeaders: Record<string, string> = {};
-  if (cookieHeader) fetchHeaders["Cookie"] = cookieHeader;
-  if (cronSecret) fetchHeaders["Authorization"] = `Bearer ${cronSecret}`;
-
   const clients = await prisma.client.findMany({
     select: {
       id: true, name: true,
       ga4PropertyId: true,
       googleAdsCustomerId: true,
       metaAccountId: true,
+      metaAccessToken: true,
       searchConsoleSiteUrl: true,
       semrushDomain: true,
       cwvUrl: true,
       tiktokAdvertiserId: true,
+      tiktokAccessToken: true,
       microsoftAdsAccountId: true,
       woocommerceUrl: true,
+      woocommerceKey: true,
+      woocommerceSecret: true,
       shopifyStoreDomain: true,
-      linkedinAccountId: true,
-      linkedinAccessToken: true,
-      klaviyoApiKey: true,
+      shopifyAccessToken: true,
     },
   });
 
@@ -176,20 +152,18 @@ export async function POST(request: NextRequest) {
     for (const client of clients) {
       const row = { clientName: client.name, period: start.slice(0, 7), sections: [] as string[], skipped: [] as string[], errors: [] as string[] };
 
-      const allPlatforms: Array<{ key: Platform; check: string | null }> = [
+      const allPlatforms: Array<{ key: PlatformKey; check: string | null }> = [
         { key: "ga4",           check: client.ga4PropertyId },
         { key: "googleads",     check: client.googleAdsCustomerId },
         { key: "meta",          check: client.metaAccountId },
         { key: "searchconsole", check: client.searchConsoleSiteUrl },
-        { key: "tiktok",        check: client.tiktokAdvertiserId },
+        { key: "tiktok",        check: client.tiktokAdvertiserId && client.tiktokAccessToken ? client.tiktokAdvertiserId : null },
         { key: "microsoftads",  check: client.microsoftAdsAccountId },
         { key: "woocommerce",   check: client.woocommerceUrl },
         { key: "shopify",       check: client.shopifyStoreDomain },
-        { key: "linkedin",      check: client.linkedinAccountId && client.linkedinAccessToken ? client.linkedinAccountId : null },
         // Point-in-time: only run for the most-recent period
-        { key: "seo",     check: start === periods[0].start ? client.semrushDomain : null },
-        { key: "cwv",     check: start === periods[0].start ? client.cwvUrl : null },
-        { key: "klaviyo", check: start === periods[0].start ? client.klaviyoApiKey : null },
+        { key: "seo", check: start === periods[0].start ? client.semrushDomain : null },
+        { key: "cwv", check: start === periods[0].start ? client.cwvUrl : null },
       ];
 
       for (const { key, check } of allPlatforms) {
@@ -202,15 +176,8 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        const url = buildApiUrl(baseUrl, key, { ...client } as Record<string, string | null>, start, end);
-        if (!url) continue;
-
         try {
-          const res = await fetch(url, { headers: fetchHeaders });
-          if (!res.ok) { row.errors.push(`${key}: HTTP ${res.status}`); totalErrors++; continue; }
-          const data = await res.json() as Record<string, unknown>;
-          const metrics = extractMetrics(key, data);
-          if (!metrics) { row.errors.push(`${key}: no metrics`); totalErrors++; continue; }
+          const metrics = await fetchPlatformMetrics(key, client as ClientRow, start, end);
 
           await prisma.metricSnapshot.upsert({
             where: { clientId_sectionType_periodStart_periodEnd: { clientId: client.id, sectionType: key, periodStart: start, periodEnd: end } },
@@ -219,9 +186,10 @@ export async function POST(request: NextRequest) {
           });
           row.sections.push(key);
           totalSnapshots++;
-          existing.add(existingKey); // mark as done so future iterations skip it
+          existing.add(existingKey);
         } catch (err) {
-          row.errors.push(`${key}: ${err instanceof Error ? err.message : "error"}`);
+          const msg = err instanceof Error ? err.message.slice(0, 120) : "error";
+          row.errors.push(`${key}: ${msg}`);
           totalErrors++;
         }
       }
