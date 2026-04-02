@@ -6,9 +6,8 @@ import OpenAI from "openai";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-async function getOpenAiClient(): Promise<OpenAI> {
-  const setting = await prisma.appSetting.findUnique({ where: { key: "openaiApiKey" } });
-  const apiKey = setting?.value || process.env.OPENAI_API_KEY;
+function getOpenAiClient(): OpenAI {
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OpenAI API key not configured");
   return new OpenAI({ apiKey });
 }
