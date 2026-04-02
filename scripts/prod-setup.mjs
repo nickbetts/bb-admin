@@ -573,6 +573,37 @@ async function main() {
 
   // ── Add future columns here in the same pattern ────────────────────────────
 
+  // ── Client.contactEmails (MS365 email sync) ────────────────────────────
+  if (!(await columnExists("Client", "contactEmails"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "contactEmails" TEXT');
+    console.log("✓ Added Client.contactEmails");
+  } else {
+    console.log("✓ Client.contactEmails already present");
+  }
+
+  // ── ClientCommunication.externalMessageId (MS365 dedup) ───────────────
+  if (!(await columnExists("ClientCommunication", "externalMessageId"))) {
+    await db.execute('ALTER TABLE "ClientCommunication" ADD COLUMN "externalMessageId" TEXT');
+    await db.execute('CREATE INDEX IF NOT EXISTS "ClientCommunication_externalMessageId_idx" ON "ClientCommunication"("externalMessageId")');
+    console.log("✓ Added ClientCommunication.externalMessageId");
+  } else {
+    console.log("✓ ClientCommunication.externalMessageId already present");
+  }
+
+  // ── Ms365Connection table (MS365 email sync) ──────────────────────────
+  if (!(await tableExists("Ms365Connection"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "Ms365Connection" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "label" TEXT NOT NULL,
+      "email" TEXT NOT NULL UNIQUE,
+      "refreshToken" TEXT NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+    console.log("✓ Created Ms365Connection table");
+  } else {
+    console.log("✓ Ms365Connection table already present");
+  }
+
   await db.close();
   console.log("✅ Schema migration complete");
 }
