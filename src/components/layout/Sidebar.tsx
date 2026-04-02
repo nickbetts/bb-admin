@@ -114,11 +114,15 @@ export function Sidebar({ user, permissions }: SidebarProps) {
       <nav className="sidebar-nav" aria-label="Main navigation">
         {!collapsed && <p className="sidebar-nav-label">Menu</p>}
         {navItems.filter((item) => permissions.includes(item.permission)).map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          // Admin users access Settings through the Admin panel tabs
+          const href = item.permission === "settings" && permissions.includes("users")
+            ? "/admin/settings"
+            : item.href;
+          const isActive = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={href}
               title={collapsed ? item.label : undefined}
               className={cn("nav-item", isActive && "active", collapsed && "justify-center")}
               style={collapsed ? { justifyContent: "center" } : undefined}
@@ -185,7 +189,7 @@ export function Sidebar({ user, permissions }: SidebarProps) {
                   <span className="nav-item-icon" style={{ display: "flex", width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
                     <ShieldCheck className="h-4 w-4" />
                   </span>
-                  {!collapsed && <span>Users</span>}
+                  {!collapsed && <span>Admin</span>}
                 </Link>
               );
             })()}

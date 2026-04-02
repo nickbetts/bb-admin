@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 interface AdminNavProps {
-  active: "users" | "roles" | "cron";
+  active: "users" | "roles" | "cron" | "settings" | "api-status";
 }
 
 export function AdminNav({ active }: AdminNavProps) {
@@ -21,6 +21,8 @@ export function AdminNav({ active }: AdminNavProps) {
         { href: "/admin", key: "users", label: "Users" },
         { href: "/admin/roles", key: "roles", label: "Roles & Permissions" },
         { href: "/admin/cron", key: "cron", label: "Cron & Snapshots" },
+        { href: "/admin/api-status", key: "api-status", label: "API Status" },
+        { href: "/admin/settings", key: "settings", label: "Settings" },
       ].map((tab) => (
         <Link
           key={tab.key}
