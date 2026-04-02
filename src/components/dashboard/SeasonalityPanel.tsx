@@ -18,13 +18,24 @@ interface SeasonalityPanelProps {
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function computeSeasonality(snapshots: Array<{ periodStart: string; periodEnd: string; metrics: string | Record<string, number>; sectionType: string }>): SeasonalityData[] {
+function computeSeasonality(
+  snapshots: Array<{ periodStart: string; periodEnd: string; metrics: string | Record<string, number>; sectionType: string }>,
+  excludeMonthYear?: { month: number; year: number }
+): SeasonalityData[] {
   const byMonth: Record<number, { sessions: number[]; conversions: number[] }> = {};
 
   for (let m = 0; m < 12; m++) byMonth[m] = { sessions: [], conversions: [] };
 
   for (const snap of snapshots) {
-    const month = new Date(snap.periodStart).getMonth();
+    const snapDate = new Date(snap.periodStart);
+    if (
+      excludeMonthYear &&
+      snapDate.getMonth() === excludeMonthYear.month &&
+      snapDate.getFullYear() === excludeMonthYear.year
+    ) {
+      continue; // skip current partial month — incomplete data skews the index
+    }
+    const month = snapDate.getMonth();
     try {
       const m = (typeof snap.metrics === 'string' ? JSON.parse(snap.metrics) : snap.metrics) as Record<string, number>;
       if (m.sessions != null) byMonth[month].sessions.push(m.sessions);
@@ -75,7 +86,8 @@ export function SeasonalityPanel({ clientId }: SeasonalityPanelProps) {
         const ga4Snaps = snapshots.filter(s => s.sectionType === "ga4");
         setHasSufficientData(ga4Snaps.length >= 3);
         if (ga4Snaps.length > 0) {
-          setData(computeSeasonality(ga4Snaps));
+          const now = new Date();
+          setData(computeSeasonality(ga4Snaps, { month: now.getMonth(), year: now.getFullYear() }));
         }
       }
     } catch { /* non-critical */ } finally {
@@ -122,22 +134,24 @@ export function SeasonalityPanel({ clientId }: SeasonalityPanelProps) {
                 const isCurrent = i === currentMonth;
                 const isHigh = d.avgIndex > 1.1;
                 const isLow = d.avgIndex < 0.9;
-                const color = isHigh ? "#22c55e" : isLow ? "#ef4444" : "#6366f1";
+                const color = isCurrent ? "#a5b4fc" : isHigh ? "#22c55e" : isLow ? "#ef4444" : "#6366f1";
                 return (
                   <div key={d.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
                     <div
-                      title={`${d.monthName}: ${d.avgIndex}× index${d.sessions ? ` (avg ${d.sessions.toLocaleString()} sessions)` : ""}`}
+                      title={isCurrent
+                        ? `${d.monthName}: ${d.avgIndex}× historical avg (current month excluded — partial data)`
+                        : `${d.monthName}: ${d.avgIndex}× index${d.sessions ? ` (avg ${d.sessions.toLocaleString()} sessions)` : ""}`}
                       style={{
                         width: "100%",
-                        height: height,
-                        background: isCurrent ? "#6366f1" : color,
+                        height: isCurrent ? Math.max(height, 4) : height,
+                        background: color,
                         borderRadius: "3px 3px 0 0",
-                        opacity: isCurrent ? 1 : 0.7,
-                        border: isCurrent ? "2px solid #4338ca" : "none",
+                        opacity: isCurrent ? 0.5 : 0.7,
+                        border: isCurrent ? "2px dashed #6366f1" : "none",
                         cursor: "default",
                       }}
                     />
-                    <span style={{ fontSize: 9, color: isCurrent ? "var(--text)" : "var(--text-3)", fontWeight: isCurrent ? 700 : 400 }}>{d.monthName}</span>
+                    <span style={{ fontSize: 9, color: isCurrent ? "#6366f1" : "var(--text-3)", fontWeight: isCurrent ? 700 : 400 }}>{d.monthName}</span>
                   </div>
                 );
               })}
@@ -156,15 +170,22 @@ export function SeasonalityPanel({ clientId }: SeasonalityPanelProps) {
                       padding: "6px 8px",
                       background: isCurrent ? "#eef2ff" : "var(--border)",
                       borderRadius: "var(--r-sm)",
-                      border: isCurrent ? "1px solid #c7d2fe" : "1px solid transparent",
+                      border: isCurrent ? "1px dashed #818cf8" : "1px solid transparent",
+                      opacity: isCurrent ? 0.75 : 1,
                     }}
                   >
                     <div style={{ fontSize: 10, color: "var(--text-3)" }}>{d.monthName}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: isHigh ? "#166534" : isLow ? "#b91c1c" : "var(--text)" }}>
-                      {d.avgIndex.toFixed(2)}×
-                    </div>
-                    {d.trend === "up" && <div style={{ fontSize: 9, color: "#22c55e" }}>↑</div>}
-                    {d.trend === "down" && <div style={{ fontSize: 9, color: "#ef4444" }}>↓</div>}
+                    {isCurrent ? (
+                      <div style={{ fontSize: 11, fontWeight: 600, color: "#6366f1", lineHeight: 1.2 }}>In&nbsp;progress</div>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: isHigh ? "#166534" : isLow ? "#b91c1c" : "var(--text)" }}>
+                          {d.avgIndex.toFixed(2)}×
+                        </div>
+                        {d.trend === "up" && <div style={{ fontSize: 9, color: "#22c55e" }}>↑</div>}
+                        {d.trend === "down" && <div style={{ fontSize: 9, color: "#ef4444" }}>↓</div>}
+                      </>
+                    )}
                   </div>
                 );
               })}
@@ -172,7 +193,7 @@ export function SeasonalityPanel({ clientId }: SeasonalityPanelProps) {
 
             <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>
               Index = month&apos;s average traffic relative to annual average. Above 1.0× = above-average month.
-              {" "}<span style={{ color: "#4338ca", fontWeight: 600 }}>Purple = current month.</span>
+              {" "}<span style={{ color: "#6366f1", fontWeight: 600 }}>Dashed = current month (partial data excluded from index).</span>
             </p>
           </div>
         )}
