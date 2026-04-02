@@ -72,10 +72,18 @@ Built with Next.js 16, Prisma, OpenAI, and deployed on Vercel.
 
 i3media Report is an internal agency platform that solves the problem of scattered marketing data across multiple platforms. Instead of logging into GA4, Google Ads, Meta Business Suite, SemRush, and Search Console separately, account managers get a single unified dashboard per client with:
 
-- **10 data source integrations** — GA4, Google Ads, Meta Ads, TikTok Ads, Microsoft Advertising, SemRush, Google Search Console, Moz, WooCommerce, Shopify
+- **12 data source integrations** — GA4, Google Ads, Meta Ads, TikTok Ads, Microsoft Advertising, LinkedIn Ads, Klaviyo, SemRush, Google Search Console, Moz, WooCommerce, Shopify
 - **AI-powered analysis** — OpenAI generates insights, detects anomalies, writes report commentary, scores landing pages, builds proposals, and provides conversational analysis
 - **Conversational AI analyst** — "Ask the Data" chat interface on every client dashboard for instant natural-language performance analysis
 - **Cross-channel intelligence** — each AI analysis receives context from all other connected platforms for richer, more actionable insights
+- **Predictive forecasting** — 30/60/90 day performance projections with best/expected/worst confidence bands
+- **Budget optimisation advisor** — cross-channel budget reallocation recommendations with projected revenue impact
+- **Creative performance intelligence** — AI analysis of Meta and Google ad creative patterns with actionable creative briefs
+- **AI strategy documents** — quarterly forward-looking strategy documents per client, shareable with clients
+- **Multi-touch attribution modelling** — compare last-click, first-click, linear, time-decay, and position-based attribution models
+- **Seasonality intelligence** — automatic seasonal pattern detection from historical snapshots with forward-looking alerts
+- **Share of voice dashboard** — organic + paid competitive position tracking using SemRush data
+- **Goal setting & tracking** — per-client KPI goals with progress bars, on-track/at-risk/off-track status, and AI guidance
 - **Automated reporting** — drag-and-drop report builder with per-section AI commentary, screenshot uploads, branded PDF export, shareable links, and automated monthly scheduling
 - **Agency tools** — keyword planner with proposal generation, landing page analyser, LLM.txt generator, pricing strategy editor
 - **Notification system** — email and Slack delivery for anomalies, report events, and key platform alerts with per-user preferences
@@ -87,7 +95,8 @@ i3media Report is an internal agency platform that solves the problem of scatter
 ```
 Login -> Dashboard (stats overview)
   -> Clients (list/create/configure)
-    -> Client Dashboard (tabbed: Signals | Overview | SEO | GA4 | GSC | Meta | Google Ads | TikTok | Microsoft Ads | E-Commerce | CWV)
+    -> Client Dashboard (tabbed: Signals | Overview | SEO | GA4 | GSC | Meta | Google Ads | TikTok | Microsoft Ads | LinkedIn | Klaviyo | E-Commerce | CWV | Goals & KPIs)
+      -> Overview tab: performance overview + Forecast + Budget Advisor + Attribution + Seasonality panels
       -> "Ask the Data" AI Chat (floating panel, always available)
       -> Create Report (select sections + template)
         -> Edit Report (drag-drop sections, AI commentary, screenshots)
@@ -179,7 +188,7 @@ Login -> Dashboard (stats overview)
 
 ### Database Schema
 
-15 Prisma models with 19 migrations:
+15 Prisma models with 19 migrations (Phase 1) + 3 new models added in Phase 2:
 
 ```
 Role ──────────────< User ──────────< Session
@@ -192,7 +201,10 @@ Role ──────────────< User ────────�
                                           │
                                           ├──< MetricSnapshot
                                           ├──< KeywordPlannerResearch
-                                          └──< Proposal ──< ProposalEnquiry
+                                          ├──< Proposal ──< ProposalEnquiry
+                                          ├──< ClientGoal            (Phase 2)
+                                          ├──< StrategyDocument      (Phase 2)
+                                          └──< BudgetRecommendation  (Phase 2)
 
 GoogleConnection (standalone — multi-account OAuth)
 AppSetting       (standalone — key/value config)
@@ -217,6 +229,9 @@ LlmTemplate      (standalone — LLM.txt generation templates)
 | **Proposal** | title, htmlContent, services (JSON), shareToken, viewCount | AI-generated client proposals |
 | **ProposalEnquiry** | name, email, phone, message | Enquiries from public proposal views |
 | **LlmTemplate** | name, template, sectorType | Templates for LLM.txt generation |
+| **ClientGoal** *(Phase 2)* | metric, channel, targetValue, currentValue, targetDate, status | Per-client KPI goals with on-track/at-risk tracking |
+| **StrategyDocument** *(Phase 2)* | title, period, content (JSON), shareToken | Quarterly AI strategy documents per client |
+| **BudgetRecommendation** *(Phase 2)* | periodStart, periodEnd, recommendations (JSON), summary | Cross-channel budget reallocation snapshots |
 
 ### Project Structure
 
@@ -1112,6 +1127,101 @@ Aggregates data from all platforms to show:
 - Data sourced from Google's **Chrome UX Report (CrUX) API** — real user measurements
 - Requires `GOOGLE_CRUX_API_KEY` (or `GOOGLE_API_KEY`) environment variable
 
+### LinkedIn Ads *(Phase 2)*
+
+**Tab:** LinkedIn Ads (available when `linkedinAccountId` is configured)
+
+- Spend, impressions, clicks, CTR, CPC, and leads overview
+- Campaign-level breakdown table
+- API at `/api/linkedin` — uses LinkedIn Marketing API v2 (`adAnalyticsV2`)
+- Configure `linkedinAccountId` and `linkedinAccessToken` in client settings
+
+### Klaviyo / Email Marketing *(Phase 2)*
+
+**Tab:** Klaviyo (available when `klaviyoApiKey` is configured)
+
+- Email campaign metrics: sends, opens, clicks, revenue, unsubscribes
+- Campaign-level breakdown table with open rate and click rate per campaign
+- API at `/api/klaviyo` — uses Klaviyo v2025-01-15 REST API
+- Configure `klaviyoApiKey` in client settings
+
+### Predictive Performance Forecasting *(Phase 2)*
+
+**Panel on Overview tab** — 30/60/90 day projections
+
+- AI-generated performance projections for sessions, conversions, and revenue
+- Confidence bands: best case / expected / worst case
+- Uses historical `MetricSnapshot` data for trend extrapolation and seasonality correction
+- Narrative explanation: *"We're forecasting a 12% drop in sessions next month based on seasonal patterns..."*
+- API at `POST /api/ai/forecast`
+
+### Budget Optimisation Advisor *(Phase 2)*
+
+**Panel on Overview tab** — cross-channel budget reallocation
+
+- Analyses spend efficiency (ROAS, CPA, impression share) across all paid channels
+- Produces specific reallocation suggestions with projected revenue impact
+- Channel saturation signals: audience frequency warnings, overspend pacing alerts
+- Results saved as `BudgetRecommendation` model per period
+- API at `POST /api/ai/budget-advisor`
+
+### Creative Performance Intelligence *(Phase 2)*
+
+**Panel on Meta and Google Ads tabs**
+
+- **Meta Ads:** analysis by creative type, frequency vs performance correlation, winning creative patterns
+- **Google Ads:** RSA asset scoring, ad copy pattern analysis, quality score correlation
+- Generates an actionable creative brief based on top-performing patterns
+- API at `POST /api/ai/creative-intelligence`
+
+### AI Strategy Document Generator *(Phase 2)*
+
+**Tool:** Generate a full quarterly strategy document per client on demand
+
+- 10-section forward-looking strategy: performance summary, wins, challenges, competitor snapshot, opportunities, channel strategy, budget recommendations, content priorities, technical actions, KPI targets
+- Saved as `StrategyDocument` model per client per period
+- Shareable link support (`shareToken`)
+- API at `POST /api/ai/strategy-document`
+
+### Multi-Touch Attribution Modelling *(Phase 2)*
+
+**Panel on Overview tab** — attribution model comparison
+
+- Compare 5 attribution models: **Last Click**, **First Click**, **Linear**, **Time Decay**, **Position-Based** (U-shaped)
+- Shows how each channel's conversion credit changes across models
+- AI narrative explaining cross-channel contribution patterns
+- API at `POST /api/ai/attribution`
+
+### Seasonality Intelligence *(Phase 2)*
+
+**Panel on Overview tab** — pattern detection from historical data
+
+- Automatically detects monthly seasonal patterns from `MetricSnapshot` history (requires 3+ months)
+- Per-channel seasonality index (100 = average, >100 = above average, <100 = below average)
+- Forward-looking alerts: *"Based on last year, expect a 25% increase in conversions starting in 3 weeks"*
+- Requires `MetricSnapshot` data accumulated over time
+
+### Share of Voice Dashboard *(Phase 2)*
+
+**Panel on SEO / SemRush tab**
+
+- Organic share of voice: estimated % of total topic clicks captured vs competitors
+- Tracks your domain against up to 3 competitor domains using SemRush data
+- Trend display and competitor traffic volume comparison
+- Requires SemRush integration and competitor domains configured
+
+### Goal Setting & Tracking *(Phase 2)*
+
+**Tab:** Goals & KPIs (always available per client)
+
+- Create goals with a metric, target value, channel, target date, and unit
+- Supported goal types: ROAS targets, session growth, revenue targets, impression reach
+- Status tracking: **On Track** / **At Risk** / **Off Track** / **Achieved**
+- Progress bars with percentage to target
+- AI-generated guidance when a goal is at risk
+- Full CRUD: add, edit, delete goals
+- API at `GET/POST /api/clients/[id]/goals` and `PUT/DELETE /api/clients/[id]/goals/[goalId]`
+
 ### Conversational AI Chat
 
 **Floating panel:** "Ask the Data" — available on every client dashboard
@@ -1451,6 +1561,8 @@ In your Vercel project dashboard: **Storage -> Create -> Blob**. Vercel auto-add
 | `MICROSOFT_ADS_DEVELOPER_TOKEN` | Microsoft Advertising developer token |
 | `GOOGLE_CRUX_API_KEY` | Google CrUX API key for Core Web Vitals |
 | `CRON_SECRET` | Secret for securing `/api/cron/*` endpoints |
+
+> **Phase 2 integrations** (LinkedIn Ads and Klaviyo) use per-client credentials stored in the database rather than global environment variables. Configure `linkedinAccountId`, `linkedinAccessToken`, and `klaviyoApiKey` in each client's settings page.
 
 4. Deploy. Subsequent pushes to `main` deploy automatically.
 

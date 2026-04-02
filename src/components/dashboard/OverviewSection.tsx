@@ -3,6 +3,10 @@
 import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { LoadingSpinner, SectionCard } from "@/components/ui/index";
+import { ForecastSection } from "./ForecastSection";
+import { BudgetAdvisorPanel } from "./BudgetAdvisorPanel";
+import { AttributionPanel } from "./AttributionPanel";
+import { SeasonalityPanel } from "./SeasonalityPanel";
 import {
   formatCurrency,
   formatNumber,
@@ -1636,6 +1640,16 @@ export function OverviewSection({ client, startDate, endDate, reportMode, visibl
           </div>
         )}
       </div>
+
+      {/* Phase 2: Forecast, Budget Advisor, Attribution, and Seasonality panels */}
+      {!reportMode && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 16 }}>
+          <ForecastSection clientId={client.id} />
+          <BudgetAdvisorPanel clientId={client.id} />
+          <AttributionPanel clientId={client.id} />
+          <SeasonalityPanel clientId={client.id} />
+        </div>
+      )}
     </div>
   );
 }

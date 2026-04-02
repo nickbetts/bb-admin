@@ -83,12 +83,60 @@ model Client {
   cwvUrl                String?   // URL for Core Web Vitals tracking
   reportSchedule        String?   // JSON: { frequency: "monthly"|"weekly", dayOfMonth?: number, dayOfWeek?: number, autoApprove: boolean, templateId?: string }
   notifyEmail           String?   // Override email for report delivery
+  linkedinAccountId     String?
+  linkedinAccountName   String?
+  linkedinAccessToken   String?
+  klaviyoApiKey         String?
+  klaviyoAccountName    String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   reports               Report[]
   snapshots             MetricSnapshot[]
   conversations         ClientConversation[]
   notifications         Notification[]
+  goals                 ClientGoal[]
+  strategyDocuments     StrategyDocument[]
+  budgetRecommendations BudgetRecommendation[]
+}
+
+model ClientGoal {
+  id           String   @id @default(cuid())
+  clientId     String
+  title        String
+  description  String?
+  metric       String
+  channel      String?
+  targetValue  Float
+  currentValue Float?
+  unit         String?
+  targetDate   String
+  status       String   @default("active")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model StrategyDocument {
+  id         String   @id @default(cuid())
+  clientId   String
+  title      String
+  period     String
+  content    String
+  shareToken String?  @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model BudgetRecommendation {
+  id              String   @id @default(cuid())
+  clientId        String
+  periodStart     String
+  periodEnd       String
+  recommendations String
+  summary         String?
+  createdAt       DateTime @default(now())
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
 
 model Report {

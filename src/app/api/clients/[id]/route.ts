@@ -77,6 +77,11 @@ export async function PATCH(
         cwvUrl: data.cwvUrl || null,
         notifyEmail: data.notifyEmail || null,
         reportSchedule: data.reportSchedule !== undefined ? data.reportSchedule : undefined,
+        linkedinAccountId: data.linkedinAccountId || null,
+        linkedinAccountName: data.linkedinAccountName || null,
+        linkedinAccessToken: data.linkedinAccessToken || null,
+        klaviyoApiKey: data.klaviyoApiKey || null,
+        klaviyoAccountName: data.klaviyoAccountName || null,
       },
     });
 
