@@ -4,12 +4,11 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
     const { token } = await params;
-    await request.json(); // consume body but tracking is status-only for now
 
     const report = await prisma.report.findUnique({
       where: { shareToken: token },
