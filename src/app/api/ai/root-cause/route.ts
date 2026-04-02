@@ -66,6 +66,32 @@ export async function POST(request: NextRequest) {
       })
       .join("\n");
 
+    // ── P3.2: Fetch anomaly history for pattern learning ──────────────────────
+    const priorAnomalies = await prisma.detectedAnomaly.findMany({
+      where: {
+        clientId,
+        platform: anomaly.platform.toLowerCase().replace(/\s+/g, ""),
+        metric: anomaly.metric,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+    });
+
+    const anomalyHistoryContext = priorAnomalies.length > 0
+      ? `\n## Prior Anomaly History for ${anomaly.metric} on ${anomaly.platform}\nThis metric has triggered ${priorAnomalies.length} anomal${priorAnomalies.length === 1 ? "y" : "ies"} previously:\n` +
+        priorAnomalies.map((pa) => {
+          let entry = `- ${pa.periodStart}: ${pa.direction} ${pa.changePercent.toFixed(1)}% (${pa.severity}) — ${pa.detail}`;
+          if (pa.rootCauseText) entry += `\n  Previous root cause: ${pa.rootCauseText}`;
+          if (pa.actionsTaken) {
+            try {
+              const actions = JSON.parse(pa.actionsTaken) as string[];
+              if (actions.length) entry += `\n  Actions taken: ${actions.join("; ")}`;
+            } catch { /* ignore */ }
+          }
+          return entry;
+        }).join("\n")
+      : "";
+
     const openai = await getOpenAiClient();
 
     const systemInstruction = `You are an expert digital marketing analyst performing a root cause analysis for ${client.name}.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${enableWebSearch ? "\n\nYou have web search available. Use it to check for recent algorithm updates, platform policy changes, industry shifts, or seasonal trends that may explain this anomaly. Cite sources where relevant." : ""}`;
@@ -83,7 +109,7 @@ ${historicalContext || "No historical data available."}
 
 ## Cross-Channel Data
 ${crossChannelContext || "No cross-channel data available."}
-
+${anomalyHistoryContext}
 ${crossPlatformContext ? `## Additional Cross-Platform Context\n${crossPlatformContext}` : ""}
 
 ${currentMetrics ? `## Current Period Metrics\n${JSON.stringify(currentMetrics, null, 2)}` : ""}
@@ -182,6 +208,15 @@ Be analytical and data-driven. Reference specific numbers where available. If da
     });
 
     const analysis = completion.choices[0]?.message?.content ?? "Unable to generate root cause analysis.";
+
+    // ── P3.2: Store root cause text back to most recent anomaly record ──────
+    if (clientId && priorAnomalies.length > 0 && !priorAnomalies[0].rootCauseText) {
+      const shortCause = analysis.substring(0, 500);
+      prisma.detectedAnomaly.update({
+        where: { id: priorAnomalies[0].id },
+        data: { rootCauseText: shortCause },
+      }).catch(() => { /* non-critical */ });
+    }
 
     return NextResponse.json({ analysis });
   } catch (error) {

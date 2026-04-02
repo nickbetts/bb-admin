@@ -1067,6 +1067,34 @@ Respond in JSON format:
       recommendations: parsed.recommendations ?? [],
     };
 
+    // ── P3.2: Anomaly Memory — persist detected anomalies for pattern learning ──
+    if (clientId && allAnomalies.length > 0) {
+      const today = new Date().toISOString().split("T")[0];
+      try {
+        await Promise.allSettled(
+          allAnomalies
+            .filter((a) => a.severity === "high" || a.severity === "medium")
+            .map((a) =>
+              prisma.detectedAnomaly.create({
+                data: {
+                  clientId,
+                  platform: sectionType,
+                  metric: a.metric,
+                  severity: a.severity,
+                  direction: a.direction,
+                  changePercent: a.changePercent ?? 0,
+                  detail: a.description,
+                  periodStart: dateRange ?? today,
+                  periodEnd: dateRange ?? today,
+                },
+              })
+            )
+        );
+      } catch {
+        // Non-critical — don't fail the summary if anomaly storage fails
+      }
+    }
+
     return NextResponse.json(result);
   } catch (error) {
     console.error("AI summary error:", error);

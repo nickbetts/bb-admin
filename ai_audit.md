@@ -31,18 +31,18 @@ The following recommendations from this audit have been implemented:
 | **P2.5** Competitor context in dashboard AI | ✅ Done | SEO/SemRush AI insights now fetch `CompetitorSnapshot` records and include competitor landscape (organic traffic, keywords, DA) in the prompt context. |
 | **P2.6** Web search for contextual AI endpoints | ✅ Done | strategy-document, root-cause, and overview-narrative accept `enableWebSearch: true` — uses OpenAI Responses API with `web_search_preview` tool to pull industry benchmarks, algorithm updates, and market context. Streaming and non-streaming supported. Citations returned in response. |
 
-### Priority 3 — Innovate (Not Yet Implemented)
+### Priority 3 — Innovate
 
 | Rec | Status | Notes |
 |-----|--------|-------|
-| **P3.1** AI-powered Goal Setting Assistant | ⬜ Planned | |
-| **P3.2** Anomaly Memory + Pattern Learning | ⬜ Planned | |
-| **P3.3** Pre-Meeting Briefing Generator | ⬜ Planned | |
-| **P3.4** Intelligent Report Narrative stitching | ⬜ Planned | |
-| **P3.5** Real-time anomaly push notifications | ⬜ Planned | |
-| **P3.6** AI-powered Action Recommendations | ⬜ Planned | |
-| **P3.7** Blended Revenue Attribution | ⬜ Planned | |
-| **P3.8** AI Visibility (GEO) Monitoring | ⬜ Planned | |
+| **P3.1** AI-powered Goal Setting Assistant | ✅ Done | `POST /api/ai/goal-benchmark` — fetches 6 months of MetricSnapshot data, computes trends, uses GPT to suggest conservative/moderate/aggressive targets with confidence scores. |
+| **P3.2** Anomaly Memory + Pattern Learning | ✅ Done | New `DetectedAnomaly` model stores detected anomalies. Summary route persists high/medium anomalies. Root-cause route fetches prior anomaly history and includes it in the prompt. Root cause text stored back to anomaly records. |
+| **P3.3** Pre-Meeting Briefing Generator | ✅ Done | `POST /api/ai/meeting-briefing` — aggregates strategy docs, goals, actions, snapshots, and anomalies into a structured 1-page briefing. Saves as `StrategyDocument` with `type: "briefing"`. Supports SSE streaming. |
+| **P3.4** Intelligent Report Narrative Stitching | ✅ Done | `POST /api/ai/report-narrative` — receives all section commentaries, identifies cross-section stories, generates connection sentences per section, and produces a unified executive summary. |
+| **P3.5** Real-time anomaly push notifications | ✅ Done | Cron snapshot route now runs anomaly detection after each MetricSnapshot write. High-severity anomalies trigger a 2-sentence AI hypothesis and notify all admins via the Notification system. |
+| **P3.6** AI-powered Action Recommendations | ✅ Done | Report approval route now triggers `extractActionsFromReport()` on approval — AI extracts 3-8 concrete `ActionItem` records from report commentaries with priority and platform tagging. Admins notified. |
+| **P3.7** Blended Revenue Attribution | ✅ Done | `POST /api/ai/blended-revenue` — reconciles e-commerce, Klaviyo, Google Ads, Meta, Microsoft Ads, TikTok, LinkedIn revenue. De-duplicates cross-device/view-through overlap. Returns true ROAS per channel. |
+| **P3.8** AI Visibility (GEO) Monitoring | ✅ Done | `POST /api/ai/ai-visibility` — analyses AI referral traffic trends (ChatGPT, Claude, Perplexity, etc.), computes visibility score, cross-references with SEO data, generates 5 specific actions to improve AI search presence. |
 
 ### Section 7 — Claude Integration (Out of Scope)
 
