@@ -48,6 +48,7 @@ interface Client {
   callrailAccountId: string | null;
   callrailApiKey: string | null;
   competitorDomains: string | null;
+  contactEmails: string | null; // JSON: string[]
 }
 
 interface ClientSettingsFormProps {
@@ -139,6 +140,13 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
     cwvUrl: client.cwvUrl ?? "",
     notifyEmail: client.notifyEmail ?? "",
     reportSchedule: client.reportSchedule ?? "",
+    contactEmails: (() => {
+      if (!client.contactEmails) return "";
+      try {
+        const arr = JSON.parse(client.contactEmails) as string[];
+        return Array.isArray(arr) ? arr.join(", ") : client.contactEmails;
+      } catch { return client.contactEmails; }
+    })(),
     linkedinAccountId: client.linkedinAccountId ?? "",
     linkedinAccountName: client.linkedinAccountName ?? "",
     linkedinAccessToken: client.linkedinAccessToken ?? "",
@@ -257,6 +265,10 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
           // Transform competitorDomains textarea to JSON array
           competitorDomains: form.competitorDomains.trim()
             ? JSON.stringify(form.competitorDomains.split("\n").map((d) => d.trim()).filter(Boolean))
+            : null,
+          // Transform comma-separated contactEmails to JSON array
+          contactEmails: form.contactEmails.trim()
+            ? JSON.stringify(form.contactEmails.split(",").map((e) => e.trim()).filter(Boolean))
             : null,
         }),
       });
@@ -987,6 +999,20 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             <label className="form-label">Report Delivery Email <span className="text-slate-400">(optional override)</span></label>
             <input type="email" name="notifyEmail" value={form.notifyEmail} onChange={handleChange} placeholder="client@example.com" className="form-input" />
             <p className="text-xs text-slate-500 mt-1">Override the default notification email for this client&apos;s automated reports.</p>
+          </div>
+          <div>
+            <label className="form-label">Client Contact Emails <span className="text-slate-400">(for email &amp; meeting sync)</span></label>
+            <input
+              type="text"
+              name="contactEmails"
+              value={form.contactEmails}
+              onChange={handleChange}
+              placeholder="john@client.com, jane@client.com"
+              className="form-input"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Comma-separated email addresses used by this client. When MS365 is connected, all emails and Teams meetings involving these addresses are automatically synced to Communications.
+            </p>
           </div>
         </div>
       </div>

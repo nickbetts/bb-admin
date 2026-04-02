@@ -23,6 +23,8 @@ const OAUTH_ERRORS: Record<string, string> = {
   no_refresh_token:
     "Google did not return a refresh token. Please revoke access in your Google account and try again.",
   access_denied: "Access was denied.",
+  ms365_token_exchange_failed: "Failed to exchange MS365 authorisation code. Check your Azure AD app credentials.",
+  ms365_no_refresh_token: "Microsoft did not return a refresh token. Please try connecting again.",
 };
 
 function GoogleIcon() {
@@ -53,6 +55,11 @@ function SettingsPanelInner() {
   const [removing, setRemoving] = useState<string | null>(null);
   const [connectionStatuses, setConnectionStatuses] = useState<Record<string, "ok" | "expired" | "checking">>({});
 
+  const [ms365Connections, setMs365Connections] = useState<Connection[]>([]);
+  const [ms365Loading, setMs365Loading] = useState(true);
+  const [ms365Error, setMs365Error] = useState<string | null>(null);
+  const [removingMs365, setRemovingMs365] = useState<string | null>(null);
+
   const [openaiKey, setOpenaiKey] = useState("");
   const [openaiKeyInput, setOpenaiKeyInput] = useState("");
   const [openaiKeySaving, setOpenaiKeySaving] = useState(false);
@@ -81,14 +88,17 @@ function SettingsPanelInner() {
   useEffect(() => {
     if (oauthConnected === "1") {
       setBanner({ type: "success", message: "Google account connected successfully!" });
+    } else if (searchParams.get("ms365_connected") === "1") {
+      setBanner({ type: "success", message: "Microsoft 365 account connected successfully!" });
     } else if (oauthErrorKey) {
       setBanner({ type: "error", message: OAUTH_ERRORS[oauthErrorKey] ?? `OAuth error: ${oauthErrorKey}` });
     }
     const url = new URL(window.location.href);
     url.searchParams.delete("error");
     url.searchParams.delete("connected");
+    url.searchParams.delete("ms365_connected");
     window.history.replaceState({}, "", url.pathname);
-  }, [oauthConnected, oauthErrorKey]);
+  }, [oauthConnected, oauthErrorKey, searchParams]);
 
   const loadConnections = useCallback(async () => {
     setConnectionsLoading(true);
@@ -112,6 +122,21 @@ function SettingsPanelInner() {
       setConnectionsError(err instanceof Error ? err.message : "Failed to load connections");
     } finally {
       setConnectionsLoading(false);
+    }
+  }, []);
+
+  const loadMs365Connections = useCallback(async () => {
+    setMs365Loading(true);
+    setMs365Error(null);
+    try {
+      const res = await fetch("/api/settings/ms365-connections");
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setMs365Connections(data);
+    } catch (err) {
+      setMs365Error(err instanceof Error ? err.message : "Failed to load MS365 connections");
+    } finally {
+      setMs365Loading(false);
     }
   }, []);
 
@@ -149,7 +174,8 @@ function SettingsPanelInner() {
   useEffect(() => {
     loadConnections();
     loadMcc();
-  }, [loadConnections, loadMcc]);
+    loadMs365Connections();
+  }, [loadConnections, loadMcc, loadMs365Connections]);
 
   async function handleOpenaiKeySave() {
     setOpenaiKeySaving(true);
@@ -208,6 +234,22 @@ function SettingsPanelInner() {
       // silently handle
     } finally {
       setRemoving(null);
+    }
+  }
+
+  async function handleRemoveMs365Connection(id: string) {
+    setRemovingMs365(id);
+    try {
+      await fetch("/api/settings/ms365-connections", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      setMs365Connections((prev) => prev.filter((c) => c.id !== id));
+    } catch {
+      // silently handle
+    } finally {
+      setRemovingMs365(null);
     }
   }
 
@@ -410,6 +452,77 @@ function SettingsPanelInner() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Connected Microsoft 365 Accounts */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-header">
+          <div>
+            <h2 className="card-title">Connected Microsoft 365 Accounts</h2>
+            <p className="card-subtitle">
+              Connect your agency&apos;s Microsoft 365 mailboxes. Once connected, you can sync emails and Teams
+              meetings for any client by setting their contact email addresses in Client Settings.
+            </p>
+          </div>
+          <a
+            href="/api/auth/ms365"
+            className="btn btn-primary btn-sm"
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0 }}
+          >
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden="true"><path d="M12 11h8v2h-8v8h-2v-8H2v-2h8V3h2v8z" /></svg>
+            Connect account
+          </a>
+        </div>
+        <div className="card-body">
+          {ms365Loading && <p style={{ fontSize: 13, color: "var(--text-3)", padding: "16px 0" }}>Loading connections…</p>}
+          {ms365Error && !ms365Loading && <p style={{ fontSize: 13, color: "var(--danger)" }}>{ms365Error}</p>}
+          {!ms365Loading && (
+            <div>
+              {ms365Connections.length === 0 ? (
+                <p style={{ fontSize: 13, color: "var(--text-3)", padding: "16px 0", textAlign: "center" }}>
+                  No Microsoft 365 accounts connected. Click &ldquo;Connect account&rdquo; to add one.
+                </p>
+              ) : (
+                <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                  {ms365Connections.map((conn) => (
+                    <div key={conn.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 0", borderBottom: "1px solid var(--border-subtle)" }}>
+                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#f0f4ff", border: "1px solid #c7d2fe", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <svg viewBox="0 0 23 23" style={{ width: 18, height: 18 }} aria-hidden="true">
+                          <path fill="#f25022" d="M1 1h10v10H1z" />
+                          <path fill="#00a4ef" d="M12 1h10v10H12z" />
+                          <path fill="#7fba00" d="M1 12h10v10H1z" />
+                          <path fill="#ffb900" d="M12 12h10v10H12z" />
+                        </svg>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conn.email}</p>
+                        <p style={{ fontSize: 12, color: "var(--text-3)" }}>
+                          Connected {new Date(conn.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                      </div>
+                      <span className="badge badge-green">Active</span>
+                      <button
+                        onClick={() => handleRemoveMs365Connection(conn.id)}
+                        disabled={removingMs365 === conn.id}
+                        className="btn btn-ghost btn-sm"
+                        style={{ color: "var(--danger)", opacity: removingMs365 === conn.id ? 0.4 : 1 }}
+                      >
+                        {removingMs365 === conn.id ? "Removing…" : "Disconnect"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ marginTop: 16, padding: "12px 16px", background: "var(--bg-2)", borderRadius: "var(--r-sm)", fontSize: 12, color: "var(--text-3)" }}>
+                <strong style={{ color: "var(--text-2)" }}>Azure AD setup required:</strong> Create an app registration at{" "}
+                <a href="https://portal.azure.com" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>portal.azure.com</a>{" "}
+                with <code>Mail.Read</code>, <code>Calendars.Read</code>, <code>User.Read</code> and <code>offline_access</code> permissions.
+                Add <code>{typeof window !== "undefined" ? window.location.origin : ""}/api/auth/ms365/callback</code> as a redirect URI.
+                Set <code>MS365_CLIENT_ID</code> and <code>MS365_CLIENT_SECRET</code> in your environment variables.
+              </div>
             </div>
           )}
         </div>

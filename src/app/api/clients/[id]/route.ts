@@ -82,6 +82,7 @@ export async function PATCH(
         linkedinAccessToken: data.linkedinAccessToken || null,
         klaviyoApiKey: data.klaviyoApiKey || null,
         klaviyoAccountName: data.klaviyoAccountName || null,
+        contactEmails: data.contactEmails !== undefined ? data.contactEmails : undefined,
       },
     });
 
