@@ -11,8 +11,13 @@ import {
   getGoogleAdsAvgQualityScore,
   getGoogleAdsAudienceCriteria,
 } from "@/lib/google-ads";
+import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
+
+// 4h TTL — Google Ads data includes today so we refresh often enough to feel
+// live but avoid hammering the API (and hitting rate limits) on every view.
+const GADS_CACHE_TTL_HOURS = 4;
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,20 +42,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, audienceCriteria] =
-      await Promise.all([
-        getGoogleAdsOverview(customerId, startDate, endDate),
-        getGoogleAdsCampaigns(customerId, startDate, endDate),
-        getGoogleAdsCampaignsEnriched(customerId, startDate, endDate),
-        getGoogleAdsAdGroups(customerId, startDate, endDate),
-        getGoogleAdsDailyData(customerId, startDate, endDate),
-        getGoogleAdsSearchTerms(customerId, startDate, endDate),
-        getGoogleAdsLandingPages(customerId, startDate, endDate),
-        getGoogleAdsAvgQualityScore(customerId),
-        getGoogleAdsAudienceCriteria(customerId),
-      ]);
+    const cacheKey = `googleads:${customerId}:${startDate}:${endDate}`;
 
-    return NextResponse.json({ overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, audienceCriteria });
+    const data = await withApiCache(cacheKey, GADS_CACHE_TTL_HOURS, async () => {
+      const [overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, audienceCriteria] =
+        await Promise.all([
+          getGoogleAdsOverview(customerId, startDate, endDate),
+          getGoogleAdsCampaigns(customerId, startDate, endDate),
+          getGoogleAdsCampaignsEnriched(customerId, startDate, endDate),
+          getGoogleAdsAdGroups(customerId, startDate, endDate),
+          getGoogleAdsDailyData(customerId, startDate, endDate),
+          getGoogleAdsSearchTerms(customerId, startDate, endDate),
+          getGoogleAdsLandingPages(customerId, startDate, endDate),
+          getGoogleAdsAvgQualityScore(customerId),
+          getGoogleAdsAudienceCriteria(customerId),
+        ]);
+      return { overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, audienceCriteria };
+    });
+
+    return NextResponse.json(data);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Google Ads data error:", message);

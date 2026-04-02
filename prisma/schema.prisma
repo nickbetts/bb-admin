@@ -256,6 +256,15 @@ model CronLog {
   details          String?   // JSON: per-client results array
 }
 
+// Short-lived cache for external API responses (SEMrush, GA4, etc.)
+// to avoid burning credits / hitting rate limits on every dashboard load.
+model ApiCache {
+  key       String   @id   // e.g. "semrush:overview:example.com:uk"
+  data      String        // JSON response blob
+  fetchedAt DateTime @default(now())
+  expiresAt DateTime
+}
+
 model KeywordPlannerResearch {
   id              String   @id @default(cuid())
   userId          String

@@ -12,8 +12,12 @@ import {
   getSemrushTrackedKeywords,
   getSemrushAIVisibility,
 } from "@/lib/semrush";
+import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
+
+// SEMrush data is sourced from their daily-refreshed database — 24h TTL is appropriate.
+const SEMRUSH_CACHE_TTL_HOURS = 24;
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,32 +43,35 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Build a deterministic cache key for this request
+    const cacheKey = `semrush:${type}:${domain ?? ""}:${database}:${projectId ?? ""}`;
+
     switch (type) {
       case "overview":
-        return NextResponse.json(await getDomainOverview(domain!, database));
+        return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getDomainOverview(domain!, database)));
       case "keywords":
-        return NextResponse.json(await getTopOrganicKeywords(domain!, database, 20));
+        return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getTopOrganicKeywords(domain!, database, 20)));
       case "rank_movers":
-        return NextResponse.json(await getRankMovers(domain!, database));
+        return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getRankMovers(domain!, database)));
       case "history":
-        return NextResponse.json(await getDomainRankHistory(domain!, database));
+        return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getDomainRankHistory(domain!, database)));
       case "distribution":
-        return NextResponse.json(await getKeywordPositionDistribution(domain!, database));
+        return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getKeywordPositionDistribution(domain!, database)));
       case "competitors":
-        return NextResponse.json(await getCompetitors(domain!, database, 10));
+        return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getCompetitors(domain!, database, 10)));
       case "backlinks":
-        return NextResponse.json(await getBacklinks(domain!, 10));
+        return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getBacklinks(domain!, 10)));
       case "ai-visibility": {
         if (!projectId) {
           return NextResponse.json({ error: "projectId is required" }, { status: 400 });
         }
-        return NextResponse.json(await getSemrushAIVisibility(parseInt(projectId), database));
+        return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getSemrushAIVisibility(parseInt(projectId), database)));
       }
       case "project-keywords": {
         if (!projectId) {
           return NextResponse.json({ error: "projectId is required" }, { status: 400 });
         }
-        return NextResponse.json(await getSemrushTrackedKeywords(parseInt(projectId), database));
+        return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getSemrushTrackedKeywords(parseInt(projectId), database)));
       }
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
@@ -85,3 +92,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+

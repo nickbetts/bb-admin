@@ -14,8 +14,13 @@ import {
   getGA4ConversionsByChannel,
   getGA4AIReferrals,
 } from "@/lib/ga4";
+import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
+
+// 4h TTL — GA4 data includes today so we refresh frequently enough to feel live
+// without hammering the API on every page view.
+const GA4_CACHE_TTL_HOURS = 4;
 
 export async function GET(request: NextRequest) {
   try {
@@ -41,31 +46,33 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const cacheKey = `ga4:${type}:${propertyId}:${startDate}:${endDate}`;
+
     switch (type) {
       case "overview":
-        return NextResponse.json(await getGA4Overview(propertyId, startDate, endDate));
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4Overview(propertyId, startDate, endDate)));
       case "organic-overview":
-        return NextResponse.json(await getGA4OrganicOverview(propertyId, startDate, endDate));
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4OrganicOverview(propertyId, startDate, endDate)));
       case "daily":
-        return NextResponse.json(await getGA4DailyData(propertyId, startDate, endDate));
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4DailyData(propertyId, startDate, endDate)));
       case "sources":
-        return NextResponse.json(await getGA4TrafficSources(propertyId, startDate, endDate));
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4TrafficSources(propertyId, startDate, endDate)));
       case "pages":
-        return NextResponse.json(await getGA4TopPages(propertyId, startDate, endDate));
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4TopPages(propertyId, startDate, endDate)));
       case "geography":
-        return NextResponse.json(await getGA4Geography(propertyId, startDate, endDate));
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4Geography(propertyId, startDate, endDate)));
       case "devices":
-        return NextResponse.json(await getGA4Devices(propertyId, startDate, endDate));
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4Devices(propertyId, startDate, endDate)));
       case "new-vs-returning":
-        return NextResponse.json(await getGA4NewVsReturning(propertyId, startDate, endDate));
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4NewVsReturning(propertyId, startDate, endDate)));
       case "demographics":
-        return NextResponse.json(await getGA4Demographics(propertyId, startDate, endDate));
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4Demographics(propertyId, startDate, endDate)));
       case "conversion-events":
-        return NextResponse.json(await getGA4ConversionEvents(propertyId, startDate, endDate));
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4ConversionEvents(propertyId, startDate, endDate)));
       case "conversions-by-channel":
-        return NextResponse.json(await getGA4ConversionsByChannel(propertyId, startDate, endDate));
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4ConversionsByChannel(propertyId, startDate, endDate)));
       case "ai-referrals":
-        return NextResponse.json(await getGA4AIReferrals(propertyId, startDate, endDate));
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4AIReferrals(propertyId, startDate, endDate)));
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }
