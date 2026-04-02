@@ -11,10 +11,11 @@ export async function POST(request: NextRequest) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { clientId, currentMetrics, historicalData } = await request.json() as {
+    const { clientId, currentMetrics, historicalData, ecommerceData } = await request.json() as {
       clientId: string;
       currentMetrics: Record<string, unknown>;
       historicalData?: Array<{ periodStart: string; periodEnd: string; sectionType: string; metrics: string }>;
+      ecommerceData?: { totalRevenue: number; totalOrders: number; averageOrderValue: number; currency: string };
     };
 
     if (!clientId) return NextResponse.json({ error: "clientId is required" }, { status: 400 });
@@ -38,6 +39,7 @@ Client: ${client.name}
 
 Current Metrics:
 ${JSON.stringify(currentMetrics, null, 2)}
+${ecommerceData ? `\nE-COMMERCE DATA:\nRevenue: £${ecommerceData.totalRevenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, Orders: ${ecommerceData.totalOrders}, AOV: £${ecommerceData.averageOrderValue.toFixed(2)}` : ""}
 
 Historical Snapshots (recent ${snapshotsArr.length} periods):
 ${snapshotsArr.slice(0, 20).map(s => `${s.periodStart}–${s.periodEnd} [${s.sectionType}]: ${typeof s.metrics === 'string' ? s.metrics : JSON.stringify(s.metrics)}`).join("\n")}

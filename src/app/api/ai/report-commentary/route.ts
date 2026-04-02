@@ -14,6 +14,9 @@ const SECTION_LABELS: Record<string, string> = {
   paid_social: "Paid Social (Meta Ads)",
   meta: "Paid Social (Meta Ads)",
   searchconsole: "Google Search Console (Organic Search)",
+  ecommerce: "E-Commerce",
+  shopify: "E-Commerce (Shopify)",
+  woocommerce: "E-Commerce (WooCommerce)",
 };
 
 const LENGTH_INSTRUCTIONS: Record<string, string> = {

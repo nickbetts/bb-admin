@@ -741,6 +741,38 @@ One string per alert, in the same order. British English.`;
 
     const openai = await getOpenAiClient();
 
+    // Fetch competitor context for SEO/SemRush section types
+    let competitorContext = "";
+    if (clientId && (sectionType === "seo" || sectionType === "searchconsole")) {
+      try {
+        const competitors = await prisma.competitorSnapshot.findMany({
+          where: { clientId },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        });
+        // Deduplicate by domain (keep latest per domain)
+        const byDomain = new Map<string, typeof competitors[0]>();
+        for (const snap of competitors) {
+          if (!byDomain.has(snap.domain)) byDomain.set(snap.domain, snap);
+        }
+        const uniqueCompetitors = Array.from(byDomain.values());
+        if (uniqueCompetitors.length > 0) {
+          competitorContext = "\n\nCOMPETITOR LANDSCAPE:\n" + uniqueCompetitors.map(c => {
+            let metricsStr = "";
+            try {
+              const m = typeof c.metrics === "string" ? JSON.parse(c.metrics) : c.metrics;
+              const parts: string[] = [];
+              if (m.organicTraffic != null) parts.push(`${Number(m.organicTraffic).toLocaleString()} organic traffic`);
+              if (m.organicKeywords != null) parts.push(`${Number(m.organicKeywords).toLocaleString()} keywords`);
+              if (m.domainAuthority != null || m.authorityScore != null) parts.push(`DA ${m.domainAuthority ?? m.authorityScore}`);
+              metricsStr = parts.length ? ` — ${parts.join(", ")}` : "";
+            } catch { /* ignore parse errors */ }
+            return `• ${c.domain}${metricsStr}`;
+          }).join("\n");
+        }
+      } catch { /* ignore competitor fetch errors */ }
+    }
+
     // Fetch client-specific AI instructions if clientId provided
     let clientAiInstructions = "";
     if (clientId) {
@@ -878,6 +910,7 @@ Keep summaries punchy: aim for clarity over length.${clientAiInstructions ? `\n\
       extraContext ?? "",
       crossPlatformContext ? `\nCROSS-PLATFORM CONTEXT (from other channels — use to inform deeper analysis):\n${crossPlatformContext}` : "",
       goalsContext,
+      competitorContext,
     ].filter(Boolean);
 
     const userPrompt = `Analyse the following ${config.name} data and provide a comprehensive performance review.

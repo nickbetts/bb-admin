@@ -11,11 +11,12 @@ export async function POST(request: NextRequest) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { clientId, channelMetrics, periodStart, periodEnd } = await request.json() as {
+    const { clientId, channelMetrics, periodStart, periodEnd, ecommerceData } = await request.json() as {
       clientId: string;
       channelMetrics: Record<string, { spend: number; roas?: number; cpa?: number; impressionShare?: number; conversions?: number }>;
       periodStart?: string;
       periodEnd?: string;
+      ecommerceData?: { totalRevenue: number; totalOrders: number; averageOrderValue: number; currency: string };
     };
 
     if (!clientId) return NextResponse.json({ error: "clientId is required" }, { status: 400 });
@@ -33,6 +34,7 @@ Client: ${client.name}
 
 Channel Performance Data:
 ${JSON.stringify(channelMetrics, null, 2)}
+${ecommerceData ? `\nE-COMMERCE DATA:\nRevenue: £${ecommerceData.totalRevenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, Orders: ${ecommerceData.totalOrders}, AOV: £${ecommerceData.averageOrderValue.toFixed(2)}` : ""}
 
 Provide recommendations as JSON:
 {
