@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getShopifyStats } from "@/lib/shopify";
+import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +31,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Shopify not configured for this client" }, { status: 503 });
     }
 
-    const stats = await getShopifyStats(
-      client.shopifyStoreDomain,
-      client.shopifyAccessToken,
-      startDate,
-      endDate
+    const stats = await withApiCache(`shopify:${clientId}:${startDate}:${endDate}`, 4, () =>
+      getShopifyStats(client.shopifyStoreDomain!, client.shopifyAccessToken!, startDate, endDate)
     );
 
     return NextResponse.json(stats);

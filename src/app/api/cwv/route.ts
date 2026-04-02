@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { getCoreWebVitals } from "@/lib/core-web-vitals";
+import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,8 @@ export async function GET(request: NextRequest) {
     const url = request.nextUrl.searchParams.get("url");
     if (!url) return NextResponse.json({ error: "url parameter is required" }, { status: 400 });
 
-    const data = await getCoreWebVitals(url);
+    // CWV data doesn't change by date — 6h TTL is appropriate
+    const data = await withApiCache(`cwv:${url}`, 6, () => getCoreWebVitals(url));
     return NextResponse.json(data);
   } catch (error) {
     console.error("CWV GET error:", error);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getWooCommerceStats } from "@/lib/woocommerce";
+import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -30,12 +31,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "WooCommerce not configured for this client" }, { status: 503 });
     }
 
-    const stats = await getWooCommerceStats(
-      client.woocommerceUrl,
-      client.woocommerceKey,
-      client.woocommerceSecret,
-      startDate,
-      endDate
+    const stats = await withApiCache(`woocommerce:${clientId}:${startDate}:${endDate}`, 4, () =>
+      getWooCommerceStats(client.woocommerceUrl!, client.woocommerceKey!, client.woocommerceSecret!, startDate, endDate)
     );
 
     return NextResponse.json(stats);

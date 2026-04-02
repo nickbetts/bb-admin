@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getMicrosoftAdsOverview, getMicrosoftAdsCampaigns } from "@/lib/microsoft-ads";
+import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -28,12 +29,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Client Microsoft Ads not configured" }, { status: 404 });
     }
 
-    const [overview, campaigns] = await Promise.all([
-      getMicrosoftAdsOverview(client.microsoftAdsAccountId, startDate, endDate),
-      getMicrosoftAdsCampaigns(client.microsoftAdsAccountId, startDate, endDate),
-    ]);
+    const accountId = client.microsoftAdsAccountId;
+    const cacheKey = `msads:${clientId}:${startDate}:${endDate}`;
+    const data = await withApiCache(cacheKey, 4, async () => {
+      const [overview, campaigns] = await Promise.all([
+        getMicrosoftAdsOverview(accountId, startDate, endDate),
+        getMicrosoftAdsCampaigns(accountId, startDate, endDate),
+      ]);
+      return { overview, campaigns };
+    });
 
-    return NextResponse.json({ overview, campaigns });
+    return NextResponse.json(data);
   } catch (error) {
     console.error("Microsoft Ads GET error:", error);
     return NextResponse.json({ error: "Failed to fetch Microsoft Ads data" }, { status: 500 });

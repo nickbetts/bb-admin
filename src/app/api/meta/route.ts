@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { getMetaAdsOverview, getMetaCampaigns, getMetaCampaignsEnriched, getMetaDailyData, getMetaLandingPages, getMetaAdSets, getMetaAdCreatives, getMetaAdSetAudiences } from "@/lib/meta";
 import { prisma } from "@/lib/prisma";
+import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
+
+const META_CACHE_TTL_HOURS = 4;
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,40 +36,28 @@ export async function GET(request: NextRequest) {
     }
 
     const accessToken = client.metaAccessToken ?? process.env.META_ACCESS_TOKEN ?? "";
+    const accountId = client.metaAccountId;
+    const cacheKey = type === "audiences"
+      ? `meta:audiences:${clientId}`
+      : `meta:${type}:${clientId}:${startDate}:${endDate}`;
 
     switch (type) {
       case "overview":
-        return NextResponse.json(
-          await getMetaAdsOverview(client.metaAccountId, accessToken, startDate, endDate)
-        );
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaAdsOverview(accountId, accessToken, startDate, endDate)));
       case "campaigns":
-        return NextResponse.json(
-          await getMetaCampaigns(client.metaAccountId, accessToken, startDate, endDate)
-        );
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaCampaigns(accountId, accessToken, startDate, endDate)));
       case "campaigns-enriched":
-        return NextResponse.json(
-          await getMetaCampaignsEnriched(client.metaAccountId, accessToken, startDate, endDate)
-        );
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaCampaignsEnriched(accountId, accessToken, startDate, endDate)));
       case "daily":
-        return NextResponse.json(
-          await getMetaDailyData(client.metaAccountId, accessToken, startDate, endDate)
-        );
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaDailyData(accountId, accessToken, startDate, endDate)));
       case "landing-pages":
-        return NextResponse.json(
-          await getMetaLandingPages(client.metaAccountId, accessToken, startDate, endDate)
-        );
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaLandingPages(accountId, accessToken, startDate, endDate)));
       case "adsets":
-        return NextResponse.json(
-          await getMetaAdSets(client.metaAccountId, accessToken, startDate, endDate)
-        );
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaAdSets(accountId, accessToken, startDate, endDate)));
       case "creatives":
-        return NextResponse.json(
-          await getMetaAdCreatives(client.metaAccountId, accessToken, startDate, endDate)
-        );
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaAdCreatives(accountId, accessToken, startDate, endDate)));
       case "audiences":
-        return NextResponse.json(
-          await getMetaAdSetAudiences(client.metaAccountId, accessToken)
-        );
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaAdSetAudiences(accountId, accessToken)));
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }

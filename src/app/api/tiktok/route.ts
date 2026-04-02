@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getTikTokAdsOverview, getTikTokCampaigns, getTikTokDailyData } from "@/lib/tiktok-ads";
+import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -33,13 +34,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "TikTok access token not configured" }, { status: 503 });
     }
 
-    const [overview, campaigns, daily] = await Promise.all([
-      getTikTokAdsOverview(client.tiktokAdvertiserId, accessToken, startDate, endDate),
-      getTikTokCampaigns(client.tiktokAdvertiserId, accessToken, startDate, endDate),
-      getTikTokDailyData(client.tiktokAdvertiserId, accessToken, startDate, endDate),
-    ]);
+    const advertiserId = client.tiktokAdvertiserId;
+    const cacheKey = `tiktok:${clientId}:${startDate}:${endDate}`;
+    const data = await withApiCache(cacheKey, 4, async () => {
+      const [overview, campaigns, daily] = await Promise.all([
+        getTikTokAdsOverview(advertiserId, accessToken, startDate, endDate),
+        getTikTokCampaigns(advertiserId, accessToken, startDate, endDate),
+        getTikTokDailyData(advertiserId, accessToken, startDate, endDate),
+      ]);
+      return { overview, campaigns, daily };
+    });
 
-    return NextResponse.json({ overview, campaigns, daily });
+    return NextResponse.json(data);
   } catch (error) {
     console.error("TikTok GET error:", error);
     return NextResponse.json({ error: "Failed to fetch TikTok data" }, { status: 500 });
