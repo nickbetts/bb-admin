@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -93,6 +93,64 @@ interface ReportViewProps {
   report: Report;
 }
 
+// ── Sortable block item (inside sidebar expanded section) ───────────────────
+function SortableBlockItem({
+  block,
+  isVisible,
+  onToggle,
+}: {
+  block: { id: string; label: string };
+  isVisible: boolean;
+  onToggle: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+      }}
+    >
+      <button
+        {...listeners}
+        {...attributes}
+        style={{
+          flexShrink: 0, background: "none", border: "none",
+          cursor: isDragging ? "grabbing" : "grab",
+          padding: "2px 3px", color: "var(--text-4)",
+          display: "flex", alignItems: "center",
+          touchAction: "none",
+          opacity: 0.5,
+        }}
+        aria-label="Drag to reorder block"
+      >
+        <GripVertical size={12} />
+      </button>
+      <button
+        onClick={onToggle}
+        style={{
+          flex: 1, display: "flex", alignItems: "center", gap: 8,
+          padding: "7px 10px", borderRadius: "var(--r-sm)",
+          background: isVisible ? "var(--accent-bg)" : "var(--border-subtle)",
+          color: isVisible ? "var(--accent-text)" : "var(--text-3)",
+          border: "none", cursor: "pointer", textAlign: "left",
+          fontSize: 12, fontWeight: isVisible ? 500 : 400,
+          transition: "all 0.15s",
+        }}
+      >
+        {isVisible ? <Eye size={12} style={{ flexShrink: 0 }} /> : <EyeOff size={12} style={{ flexShrink: 0 }} />}
+        {block.label}
+      </button>
+    </div>
+  );
+}
+
 // ── Sortable sidebar item ───────────────────────────────────────────────────
 function SortableSectionItem({
   section,
@@ -101,9 +159,11 @@ function SortableSectionItem({
   meta,
   availableBlocks,
   visibleBlocks,
+  blockOrder,
   onToggleEnabled,
   onToggleExpand,
   onToggleBlock,
+  onReorderBlocks,
   onScrollTo,
 }: {
   section: Section;
@@ -112,18 +172,42 @@ function SortableSectionItem({
   meta: { icon: React.ReactNode; badge: string };
   availableBlocks: { id: string; label: string }[];
   visibleBlocks: string[] | undefined;
+  blockOrder: string[] | null;
   onToggleEnabled: () => void;
   onToggleExpand: () => void;
   onToggleBlock: (blockId: string) => void;
+  onReorderBlocks: (newOrder: string[]) => void;
   onScrollTo: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
+  const blockSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+
+  // Sort available blocks by user-defined order
+  const orderedBlocks = useMemo(() => {
+    if (!blockOrder || blockOrder.length === 0) return availableBlocks;
+    const orderMap = new Map(blockOrder.map((id, i) => [id, i]));
+    return [...availableBlocks].sort((a, b) => {
+      const ai = orderMap.get(a.id) ?? 9999;
+      const bi = orderMap.get(b.id) ?? 9999;
+      return ai - bi;
+    });
+  }, [availableBlocks, blockOrder]);
+
+  const handleBlockDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = orderedBlocks.findIndex((b) => b.id === active.id);
+    const newIndex = orderedBlocks.findIndex((b) => b.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(orderedBlocks, oldIndex, newIndex);
+    onReorderBlocks(reordered.map((b) => b.id));
+  }, [orderedBlocks, onReorderBlocks]);
 
   return (
     <div ref={setNodeRef} style={{ ...style, borderBottom: "1px solid var(--border-subtle)" }}>
@@ -197,29 +281,77 @@ function SortableSectionItem({
 
       {isExpanded && isEnabled && availableBlocks.length > 0 && (
         <div style={{ padding: "4px 16px 12px", display: "flex", flexDirection: "column", gap: 2 }}>
-          {availableBlocks.map((block) => {
-            const isVisible = !visibleBlocks || visibleBlocks.includes(block.id);
-            return (
-              <button
-                key={block.id}
-                onClick={() => onToggleBlock(block.id)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "7px 10px", borderRadius: "var(--r-sm)",
-                  background: isVisible ? "var(--accent-bg)" : "var(--border-subtle)",
-                  color: isVisible ? "var(--accent-text)" : "var(--text-3)",
-                  border: "none", cursor: "pointer", textAlign: "left",
-                  fontSize: 12, fontWeight: isVisible ? 500 : 400,
-                  transition: "all 0.15s",
-                }}
-              >
-                {isVisible ? <Eye size={12} style={{ flexShrink: 0 }} /> : <EyeOff size={12} style={{ flexShrink: 0 }} />}
-                {block.label}
-              </button>
-            );
-          })}
+          <DndContext sensors={blockSensors} collisionDetection={closestCenter} onDragEnd={handleBlockDragEnd}>
+            <SortableContext items={orderedBlocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+              {orderedBlocks.map((block) => {
+                const isVisible = !visibleBlocks || visibleBlocks.includes(block.id);
+                return (
+                  <SortableBlockItem
+                    key={block.id}
+                    block={block}
+                    isVisible={isVisible}
+                    onToggle={() => onToggleBlock(block.id)}
+                  />
+                );
+              })}
+            </SortableContext>
+          </DndContext>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Sortable main-content section wrapper ────────────────────────────────────
+function SortableMainSectionWrapper({
+  id,
+  children,
+}: {
+  id: string;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.45 : 1,
+        position: "relative",
+      }}
+    >
+      {/* Drag handle — floats in the left padding of the main content area */}
+      <button
+        {...listeners}
+        {...attributes}
+        className="print:hidden"
+        title="Drag to reorder section"
+        aria-label="Drag to reorder section"
+        style={{
+          position: "absolute",
+          left: -28,
+          top: 16,
+          background: "none",
+          border: "none",
+          cursor: isDragging ? "grabbing" : "grab",
+          padding: 4,
+          color: "var(--text-4)",
+          display: "flex",
+          alignItems: "center",
+          zIndex: 10,
+          borderRadius: "var(--r-sm)",
+          opacity: 0.3,
+          transition: "opacity 0.15s",
+          touchAction: "none",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.3"; }}
+      >
+        <GripVertical size={16} />
+      </button>
+      {children}
     </div>
   );
 }
@@ -301,6 +433,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
   // ── DnD sensors ────────────────────────────────────────────────────────────
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const mainContentSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -418,10 +551,38 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const getVisibleBlocks = (section: Section): string[] | undefined => {
     if (!section.cardConfig) return undefined;
     try {
-      const parsed = JSON.parse(section.cardConfig) as { visibleBlocks?: string[] };
+      const parsed = JSON.parse(section.cardConfig) as { visibleBlocks?: string[]; blockOrder?: string[] };
+      const allBlockIds = SECTION_BLOCKS[section.sectionType]?.map((b) => b.id) ?? [];
+
+      // Determine which blocks are visible
+      const visibleSet = parsed.visibleBlocks && parsed.visibleBlocks.length > 0
+        ? new Set(parsed.visibleBlocks)
+        : null; // null = all visible
+
+      // Apply user-defined block order if present
+      if (parsed.blockOrder && parsed.blockOrder.length > 0) {
+        // Blocks listed in blockOrder come first (in user's order), then remaining in default order
+        const ordered = parsed.blockOrder.filter((b) => !visibleSet || visibleSet.has(b));
+        const remaining = allBlockIds.filter((b) => !parsed.blockOrder!.includes(b) && (!visibleSet || visibleSet.has(b)));
+        const result = [...ordered, ...remaining];
+        // Only return if it differs from showing all in default order
+        if (result.length < allBlockIds.length || parsed.blockOrder.length > 0) return result;
+        return undefined;
+      }
+
       return parsed.visibleBlocks && parsed.visibleBlocks.length > 0 ? parsed.visibleBlocks : undefined;
     } catch {
       return undefined;
+    }
+  };
+
+  const getBlockOrder = (section: Section): string[] | null => {
+    if (!section.cardConfig) return null;
+    try {
+      const parsed = JSON.parse(section.cardConfig) as { visibleBlocks?: string[]; blockOrder?: string[] };
+      return parsed.blockOrder ?? null;
+    } catch {
+      return null;
     }
   };
 
@@ -443,13 +604,17 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const handleToggleBlock = async (sectionId: string, blockId: string) => {
     const section = report.sections.find((s) => s.id === sectionId);
     if (!section) return;
-    let currentBlocks = getVisibleBlocks(section);
     const allBlocks = SECTION_BLOCKS[section.sectionType]?.map((b) => b.id) ?? [];
-    if (!currentBlocks) currentBlocks = [...allBlocks];
+    // Determine current visible set (independent of order)
+    let existing: { visibleBlocks?: string[]; blockOrder?: string[] } = {};
+    try { if (section.cardConfig) existing = JSON.parse(section.cardConfig); } catch { /* ignore */ }
+    const currentBlocks = existing.visibleBlocks && existing.visibleBlocks.length > 0 ? [...existing.visibleBlocks] : [...allBlocks];
     const newBlocks = currentBlocks.includes(blockId)
       ? currentBlocks.filter((b) => b !== blockId)
       : [...currentBlocks, blockId];
-    const newCardConfig = newBlocks.length === allBlocks.length ? null : JSON.stringify({ visibleBlocks: newBlocks });
+    const newCardConfig = newBlocks.length === allBlocks.length && !existing.blockOrder
+      ? null
+      : JSON.stringify({ ...existing, visibleBlocks: newBlocks.length === allBlocks.length ? undefined : newBlocks });
     setReport((prev) => ({
       ...prev,
       sections: prev.sections.map((s) => s.id === sectionId ? { ...s, cardConfig: newCardConfig } : s),
@@ -460,6 +625,23 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       body: JSON.stringify({ sectionId, cardConfig: newCardConfig }),
     });
   };
+
+  const handleReorderBlocks = useCallback(async (sectionId: string, newBlockOrder: string[]) => {
+    const section = report.sections.find((s) => s.id === sectionId);
+    if (!section) return;
+    let existing: { visibleBlocks?: string[]; blockOrder?: string[] } = {};
+    try { if (section.cardConfig) existing = JSON.parse(section.cardConfig); } catch { /* ignore */ }
+    const newCardConfig = JSON.stringify({ ...existing, blockOrder: newBlockOrder });
+    setReport((prev) => ({
+      ...prev,
+      sections: prev.sections.map((s) => s.id === sectionId ? { ...s, cardConfig: newCardConfig } : s),
+    }));
+    await fetch(`/api/reports/${report.id}/sections`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sectionId, cardConfig: newCardConfig }),
+    });
+  }, [report.id, report.sections]);
 
   // ── Commentary ───────────────────────────────────────────────────────────────
   const handleEditSection = (section: Section) => {
@@ -1061,7 +1243,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           </div>
 
           {/* Sections */}
-          {enabledSections.map((section) => {
+          <DndContext sensors={mainContentSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={enabledSections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+              {enabledSections.map((section) => {
             const visibleBlocks = getVisibleBlocks(section);
             const meta = SECTION_META[section.sectionType] ?? { icon: <LayoutGrid size={14} />, badge: "badge-slate" };
 
@@ -1274,90 +1458,94 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             // Executive summary section — AI-generated TL;DR
             if (section.sectionType === "executive_summary") {
               return (
-                <div key={section.id} id={`section-${section.id}`} style={{ marginBottom: 56 }}>
-                  <div className="card">
-                    <div className="card-header">
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span className={`badge badge-amber`} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                          <Star size={14} />
-                          {section.title || "Executive Summary"}
-                        </span>
-                        {autosaveStatus[section.id] && (
-                          <span style={{ fontSize: 11, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3, color: autosaveStatus[section.id] === "saved" ? "#10b981" : "var(--text-4)" }}>
-                            {autosaveStatus[section.id] === "saved" ? <><CheckCircle2 size={12} /> Saved</> : "Autosaving…"}
+                <SortableMainSectionWrapper key={section.id} id={section.id}>
+                  <div id={`section-${section.id}`} style={{ marginBottom: 56 }}>
+                    <div className="card">
+                      <div className="card-header">
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span className={`badge badge-amber`} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                            <Star size={14} />
+                            {section.title || "Executive Summary"}
                           </span>
+                          {autosaveStatus[section.id] && (
+                            <span style={{ fontSize: 11, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3, color: autosaveStatus[section.id] === "saved" ? "#10b981" : "var(--text-4)" }}>
+                              {autosaveStatus[section.id] === "saved" ? <><CheckCircle2 size={12} /> Saved</> : "Autosaving…"}
+                            </span>
+                          )}
+                        </div>
+                        <div className="print:hidden" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <button
+                            onClick={() => handleGenerateExecutiveSummary(section.id)}
+                            disabled={generatingExecutiveSummary}
+                            className="btn btn-secondary btn-sm"
+                            style={{ gap: 6 }}
+                            title="AI-generate executive summary from all section commentaries"
+                          >
+                            <Sparkles size={13} />
+                            {generatingExecutiveSummary ? "Generating…" : "Generate Summary"}
+                          </button>
+                          <button
+                            onClick={() => editingSection === section.id ? setEditingSection(null) : handleEditSection(section)}
+                            className="btn btn-secondary btn-sm"
+                            style={{ gap: 6 }}
+                          >
+                            <MessageSquare size={13} />
+                            {editingSection === section.id ? "Cancel" : "Edit"}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="card-body" style={{ padding: "20px 28px" }}>
+                        {editingSection === section.id ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                            <textarea
+                              value={commentary[section.id] ?? ""}
+                              onChange={(e) => setCommentary((prev) => ({ ...prev, [section.id]: e.target.value }))}
+                              placeholder="Executive summary will appear here after generation…"
+                              rows={6}
+                              style={{ width: "100%", padding: "12px 16px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 14, lineHeight: 1.6, resize: "vertical", outline: "none", fontFamily: "inherit" }}
+                              onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+                              onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+                            />
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button onClick={() => handleSaveSection(section.id)} disabled={saving === section.id} className="btn btn-primary btn-sm">
+                                <Check size={13} />
+                                {saving === section.id ? "Saving…" : "Save & Close"}
+                              </button>
+                              <button onClick={() => setEditingSection(null)} className="btn btn-secondary btn-sm"><X size={13} /> Cancel</button>
+                            </div>
+                          </div>
+                        ) : section.commentary ? (
+                          <div style={{ background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r)", padding: "14px 18px" }}>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Executive Summary</p>
+                            <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{section.commentary}</p>
+                          </div>
+                        ) : (
+                          <p style={{ fontSize: 13, color: "var(--text-4)", fontStyle: "italic" }}>
+                            No executive summary yet — click &quot;Generate Summary&quot; to auto-create one from all section commentaries, or &quot;Edit&quot; to write manually.
+                          </p>
                         )}
                       </div>
-                      <div className="print:hidden" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <button
-                          onClick={() => handleGenerateExecutiveSummary(section.id)}
-                          disabled={generatingExecutiveSummary}
-                          className="btn btn-secondary btn-sm"
-                          style={{ gap: 6 }}
-                          title="AI-generate executive summary from all section commentaries"
-                        >
-                          <Sparkles size={13} />
-                          {generatingExecutiveSummary ? "Generating…" : "Generate Summary"}
-                        </button>
-                        <button
-                          onClick={() => editingSection === section.id ? setEditingSection(null) : handleEditSection(section)}
-                          className="btn btn-secondary btn-sm"
-                          style={{ gap: 6 }}
-                        >
-                          <MessageSquare size={13} />
-                          {editingSection === section.id ? "Cancel" : "Edit"}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="card-body" style={{ padding: "20px 28px" }}>
-                      {editingSection === section.id ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                          <textarea
-                            value={commentary[section.id] ?? ""}
-                            onChange={(e) => setCommentary((prev) => ({ ...prev, [section.id]: e.target.value }))}
-                            placeholder="Executive summary will appear here after generation…"
-                            rows={6}
-                            style={{ width: "100%", padding: "12px 16px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 14, lineHeight: 1.6, resize: "vertical", outline: "none", fontFamily: "inherit" }}
-                            onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
-                            onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
-                          />
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <button onClick={() => handleSaveSection(section.id)} disabled={saving === section.id} className="btn btn-primary btn-sm">
-                              <Check size={13} />
-                              {saving === section.id ? "Saving…" : "Save & Close"}
-                            </button>
-                            <button onClick={() => setEditingSection(null)} className="btn btn-secondary btn-sm"><X size={13} /> Cancel</button>
-                          </div>
-                        </div>
-                      ) : section.commentary ? (
-                        <div style={{ background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r)", padding: "14px 18px" }}>
-                          <p style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Executive Summary</p>
-                          <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{section.commentary}</p>
-                        </div>
-                      ) : (
-                        <p style={{ fontSize: 13, color: "var(--text-4)", fontStyle: "italic" }}>
-                          No executive summary yet — click &quot;Generate Summary&quot; to auto-create one from all section commentaries, or &quot;Edit&quot; to write manually.
-                        </p>
-                      )}
                     </div>
                   </div>
-                </div>
+                </SortableMainSectionWrapper>
               );
             }
 
             // Overview section — data + commentary
             if (section.sectionType === "overview") {
               return (
-                <div key={section.id} id={`section-${section.id}`} style={{ marginBottom: 56 }}>
-                  <OverviewSection
-                    client={report.client}
-                    startDate={startDate}
-                    endDate={endDate}
-                    reportMode
-                    visibleBlocks={visibleBlocks}
-                    afterHeader={commentaryCard}
-                  />
-                </div>
+                <SortableMainSectionWrapper key={section.id} id={section.id}>
+                  <div id={`section-${section.id}`} style={{ marginBottom: 56 }}>
+                    <OverviewSection
+                      client={report.client}
+                      startDate={startDate}
+                      endDate={endDate}
+                      reportMode
+                      visibleBlocks={visibleBlocks}
+                      afterHeader={commentaryCard}
+                    />
+                  </div>
+                </SortableMainSectionWrapper>
               );
             }
 
@@ -1365,25 +1553,29 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             if (isTextSection(section.sectionType)) {
               if (section.sectionType === "text_screenshots") {
                 return (
-                  <div key={section.id} id={`section-${section.id}`}>
-                    <ScreenshotsSection
-                      screenshots={report.screenshots.filter((s) => !s.sectionId)}
-                      title={TEXT_SECTION_LABELS[section.sectionType as TextSectionType] ?? section.title}
-                      onDelete={handleDeleteScreenshot}
-                    />
-                  </div>
+                  <SortableMainSectionWrapper key={section.id} id={section.id}>
+                    <div id={`section-${section.id}`}>
+                      <ScreenshotsSection
+                        screenshots={report.screenshots.filter((s) => !s.sectionId)}
+                        title={TEXT_SECTION_LABELS[section.sectionType as TextSectionType] ?? section.title}
+                        onDelete={handleDeleteScreenshot}
+                      />
+                    </div>
+                  </SortableMainSectionWrapper>
                 );
               }
               return (
-                <div key={section.id} id={`section-${section.id}`}>
-                  <TextSection
-                    sectionId={section.id}
-                    reportId={report.id}
-                    sectionType={section.sectionType}
-                    title={section.title}
-                    contentText={section.contentText ?? null}
-                  />
-                </div>
+                <SortableMainSectionWrapper key={section.id} id={section.id}>
+                  <div id={`section-${section.id}`}>
+                    <TextSection
+                      sectionId={section.id}
+                      reportId={report.id}
+                      sectionType={section.sectionType}
+                      title={section.title}
+                      contentText={section.contentText ?? null}
+                    />
+                  </div>
+                </SortableMainSectionWrapper>
               );
             }
 
@@ -1396,40 +1588,44 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             );
 
             return (
-              <div key={section.id} id={`section-${section.id}`} style={{ marginBottom: 56 }}>
-                {section.sectionType === "seo" && (
-                  report.client.semrushDomain
-                    ? <SemrushSection domain={report.client.semrushDomain} projectId={report.client.semrushProjectId} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
-                    : <>{commentaryCard}{unconfiguredNotice("No SEMrush domain connected — configure it in client settings to enable SEO data.")}</>
-                )}
-                {section.sectionType === "web" && (
-                  report.client.ga4PropertyId
-                    ? <GA4Section propertyId={report.client.ga4PropertyId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
-                    : <>{commentaryCard}{unconfiguredNotice("No GA4 property connected — configure it in client settings to enable web analytics.")}</>
-                )}
-                {section.sectionType === "paid_social" && (
-                  report.client.metaAccountId
-                    ? <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
-                    : <>{commentaryCard}{unconfiguredNotice("No Meta ad account connected — configure it in client settings to enable paid social data.")}</>
-                )}
-                {section.sectionType === "googleads" && (
-                  report.client.googleAdsCustomerId
-                    ? <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
-                    : <>{commentaryCard}{unconfiguredNotice("No Google Ads account connected — configure it in client settings to enable ads data.")}</>
-                )}
-                {section.sectionType === "searchconsole" && (
-                  report.client.searchConsoleSiteUrl
-                    ? <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
-                    : <>{commentaryCard}{unconfiguredNotice("No Search Console property connected — configure it in client settings to enable search data.")}</>
-                )}
-                {section.sectionType === "ecommerce" && (
-                  (report.client.woocommerceUrl || report.client.shopifyStoreDomain)
-                    ? <>{commentaryCard}<EcommerceSection clientId={report.client.id} platform={report.client.shopifyStoreDomain ? "shopify" : "woocommerce"} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} /></>
-                    : <>{commentaryCard}{unconfiguredNotice("No WooCommerce or Shopify store connected — configure it in client settings to enable e-commerce data.")}</>
-                )}
-              </div>
+              <SortableMainSectionWrapper key={section.id} id={section.id}>
+                <div id={`section-${section.id}`} style={{ marginBottom: 56 }}>
+                  {section.sectionType === "seo" && (
+                    report.client.semrushDomain
+                      ? <SemrushSection domain={report.client.semrushDomain} projectId={report.client.semrushProjectId} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      : <>{commentaryCard}{unconfiguredNotice("No SEMrush domain connected — configure it in client settings to enable SEO data.")}</>
+                  )}
+                  {section.sectionType === "web" && (
+                    report.client.ga4PropertyId
+                      ? <GA4Section propertyId={report.client.ga4PropertyId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      : <>{commentaryCard}{unconfiguredNotice("No GA4 property connected — configure it in client settings to enable web analytics.")}</>
+                  )}
+                  {section.sectionType === "paid_social" && (
+                    report.client.metaAccountId
+                      ? <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      : <>{commentaryCard}{unconfiguredNotice("No Meta ad account connected — configure it in client settings to enable paid social data.")}</>
+                  )}
+                  {section.sectionType === "googleads" && (
+                    report.client.googleAdsCustomerId
+                      ? <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      : <>{commentaryCard}{unconfiguredNotice("No Google Ads account connected — configure it in client settings to enable ads data.")}</>
+                  )}
+                  {section.sectionType === "searchconsole" && (
+                    report.client.searchConsoleSiteUrl
+                      ? <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      : <>{commentaryCard}{unconfiguredNotice("No Search Console property connected — configure it in client settings to enable search data.")}</>
+                  )}
+                  {section.sectionType === "ecommerce" && (
+                    (report.client.woocommerceUrl || report.client.shopifyStoreDomain)
+                      ? <>{commentaryCard}<EcommerceSection clientId={report.client.id} platform={report.client.shopifyStoreDomain ? "shopify" : "woocommerce"} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} /></>
+                      : <>{commentaryCard}{unconfiguredNotice("No WooCommerce or Shopify store connected — configure it in client settings to enable e-commerce data.")}</>
+                  )}
+                </div>
+              </SortableMainSectionWrapper>
             );
           })}
+            </SortableContext>
+          </DndContext>
 
           {/* Screenshots — report-level only */}
           {report.screenshots.filter((s) => !s.sectionId).length > 0 && (
@@ -1508,22 +1704,23 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           position: "sticky", top: 60, height: "calc(100vh - 60px)",
           alignSelf: "flex-start",
           background: "var(--surface)", borderLeft: "1px solid var(--border)",
-          display: "flex", flexDirection: "column", overflowY: "auto",
+          display: "flex", flexDirection: "column", overflow: "hidden",
         }}>
           {/* Sidebar header */}
-          <div style={{ padding: "20px 20px 14px", borderBottom: "1px solid var(--border-subtle)" }}>
+          <div style={{ padding: "20px 20px 14px", borderBottom: "1px solid var(--border-subtle)", flexShrink: 0 }}>
             <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: "var(--text-3)" }}>
               Report Sections
             </p>
           </div>
 
-          <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "8px 0", minHeight: 0 }}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={report.sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
                 {report.sections.map((section) => {
                   const isEnabled = section.enabled !== false;
                   const availableBlocks = SECTION_BLOCKS[section.sectionType] ?? [];
                   const visibleBlocks = getVisibleBlocks(section);
+                  const blockOrder = getBlockOrder(section);
                   const isExpanded = expandedSections[section.id] ?? false;
                   const meta = SECTION_META[section.sectionType] ?? { icon: <LayoutGrid size={14} />, badge: "badge-slate" };
 
@@ -1536,9 +1733,11 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       meta={meta}
                       availableBlocks={availableBlocks}
                       visibleBlocks={visibleBlocks}
+                      blockOrder={blockOrder}
                       onToggleEnabled={() => handleToggleSectionEnabled(section.id)}
                       onToggleExpand={() => setExpandedSections((prev) => ({ ...prev, [section.id]: !isExpanded }))}
                       onToggleBlock={(blockId) => handleToggleBlock(section.id, blockId)}
+                      onReorderBlocks={(newOrder) => handleReorderBlocks(section.id, newOrder)}
                       onScrollTo={() => {
                         document.getElementById(`section-${section.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
                       }}
