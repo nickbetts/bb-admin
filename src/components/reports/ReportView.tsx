@@ -563,11 +563,10 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       if (parsed.blockOrder && parsed.blockOrder.length > 0) {
         // Blocks listed in blockOrder come first (in user's order), then remaining in default order
         const ordered = parsed.blockOrder.filter((b) => !visibleSet || visibleSet.has(b));
-        const remaining = allBlockIds.filter((b) => !parsed.blockOrder!.includes(b) && (!visibleSet || visibleSet.has(b)));
+        const remaining = allBlockIds.filter((b) => !parsed.blockOrder?.includes(b) && (!visibleSet || visibleSet.has(b)));
         const result = [...ordered, ...remaining];
-        // Only return if it differs from showing all in default order
-        if (result.length < allBlockIds.length || parsed.blockOrder.length > 0) return result;
-        return undefined;
+        // Return the ordered result (blockOrder is set, so layout is customised)
+        return result;
       }
 
       return parsed.visibleBlocks && parsed.visibleBlocks.length > 0 ? parsed.visibleBlocks : undefined;
