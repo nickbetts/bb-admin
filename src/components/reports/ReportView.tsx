@@ -487,8 +487,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [contentHeight, setContentHeight] = useState(0);
   const mainContentRef = useRef<HTMLDivElement>(null);
 
-  // A4 content area height in screen pixels (297mm - 28mm margins × 3.78 px/mm)
-  // Puppeteer uses A4 with top/bottom margin 14mm each → 269mm content height
+  // A4 content area height in screen pixels.
+  // 1px = 1/96 inch = 25.4/96 mm → 1mm = 96/25.4 ≈ 3.7795275591 px.
+  // Puppeteer uses A4 (297mm) with top/bottom margins of 14mm each → 269mm content height.
   const A4_CONTENT_PX = Math.round(269 * 3.7795275591);
 
   // Track content height for page edge overlay
@@ -672,7 +673,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     let existing: Record<string, unknown> = {};
     try { if (section.cardConfig) existing = JSON.parse(section.cardConfig); } catch { /* ignore */ }
     const newBreak = !existing.pageBreakBefore;
-    const newCardConfig = JSON.stringify({ ...existing, pageBreakBefore: newBreak || undefined });
+    const newCardConfig = JSON.stringify({ ...existing, pageBreakBefore: newBreak ? true : undefined });
     setReport((prev) => ({
       ...prev,
       sections: prev.sections.map((s) => s.id === sectionId ? { ...s, cardConfig: newCardConfig } : s),
