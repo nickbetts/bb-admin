@@ -8,7 +8,7 @@ import {
   ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search,
   MessageSquare, LayoutGrid, FileText, Image, ShoppingCart, CalendarRange,
   LayoutTemplate, Save, GripVertical, Globe2, Link2, Link2Off, CheckCircle2,
-  Copy, Printer, Sparkles, Pencil, Star,
+  Copy, Printer, Sparkles, Pencil, Star, Scissors, FileStack,
 } from "lucide-react";
 import {
   DndContext,
@@ -160,10 +160,12 @@ function SortableSectionItem({
   availableBlocks,
   visibleBlocks,
   blockOrder,
+  pageBreakBefore,
   onToggleEnabled,
   onToggleExpand,
   onToggleBlock,
   onReorderBlocks,
+  onTogglePageBreak,
   onScrollTo,
 }: {
   section: Section;
@@ -173,10 +175,12 @@ function SortableSectionItem({
   availableBlocks: { id: string; label: string }[];
   visibleBlocks: string[] | undefined;
   blockOrder: string[] | null;
+  pageBreakBefore: boolean;
   onToggleEnabled: () => void;
   onToggleExpand: () => void;
   onToggleBlock: (blockId: string) => void;
   onReorderBlocks: (newOrder: string[]) => void;
+  onTogglePageBreak: () => void;
   onScrollTo: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
@@ -265,6 +269,23 @@ function SortableSectionItem({
           </span>
         </div>
 
+        {/* Page break toggle */}
+        {isEnabled && (
+          <button
+            onClick={onTogglePageBreak}
+            title={pageBreakBefore ? "Remove page break before this section" : "Insert page break before this section"}
+            style={{
+              flexShrink: 0, background: "none", border: "none", cursor: "pointer",
+              padding: 4, borderRadius: "var(--r-sm)",
+              color: pageBreakBefore ? "#e11d48" : "var(--text-4)",
+              display: "flex", alignItems: "center", transition: "color 0.15s",
+            }}
+            aria-label={pageBreakBefore ? "Remove page break" : "Add page break before section"}
+          >
+            <Scissors size={13} />
+          </button>
+        )}
+
         {availableBlocks.length > 0 && isEnabled && (
           <button
             onClick={onToggleExpand}
@@ -305,9 +326,11 @@ function SortableSectionItem({
 // ── Sortable main-content section wrapper ────────────────────────────────────
 function SortableMainSectionWrapper({
   id,
+  pageBreakBefore,
   children,
 }: {
   id: string;
+  pageBreakBefore: boolean;
   children: React.ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -320,8 +343,36 @@ function SortableMainSectionWrapper({
         transition,
         opacity: isDragging ? 0.45 : 1,
         position: "relative",
+        // Apply print page break when set
+        ...(pageBreakBefore ? { breakBefore: "page" as const } : {}),
       }}
     >
+      {/* Page break indicator — shown in screen mode when a break is set */}
+      {pageBreakBefore && (
+        <div
+          className="print:hidden"
+          style={{
+            display: "flex", alignItems: "center", gap: 8,
+            margin: "0 0 16px",
+            color: "#e11d48",
+          }}
+        >
+          <div style={{ flex: 1, borderTop: "2px dashed #fecdd3" }} />
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+            letterSpacing: "0.08em", color: "#e11d48",
+            background: "#fff1f2", border: "1px solid #fecdd3",
+            borderRadius: "var(--r-sm)", padding: "2px 8px",
+            flexShrink: 0,
+          }}>
+            <Scissors size={10} />
+            Page break
+          </span>
+          <div style={{ flex: 1, borderTop: "2px dashed #fecdd3" }} />
+        </div>
+      )}
+
       {/* Drag handle — floats in the left padding of the main content area */}
       <button
         {...listeners}
@@ -332,7 +383,7 @@ function SortableMainSectionWrapper({
         style={{
           position: "absolute",
           left: -28,
-          top: 16,
+          top: pageBreakBefore ? 44 : 16,
           background: "none",
           border: "none",
           cursor: isDragging ? "grabbing" : "grab",
@@ -430,6 +481,26 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
   // ── Duplicate state ─────────────────────────────────────────────────────────
   const [duplicating, setDuplicating] = useState(false);
+
+  // ── Page edge visualization state ──────────────────────────────────────────
+  const [showPageEdges, setShowPageEdges] = useState(false);
+  const [contentHeight, setContentHeight] = useState(0);
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
+  // A4 content area height in screen pixels (297mm - 28mm margins × 3.78 px/mm)
+  // Puppeteer uses A4 with top/bottom margin 14mm each → 269mm content height
+  const A4_CONTENT_PX = Math.round(269 * 3.7795275591);
+
+  // Track content height for page edge overlay
+  useEffect(() => {
+    if (!showPageEdges) return;
+    const el = mainContentRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setContentHeight(el.scrollHeight));
+    ro.observe(el);
+    setContentHeight(el.scrollHeight);
+    return () => ro.disconnect();
+  }, [showPageEdges]);
 
   // ── DnD sensors ────────────────────────────────────────────────────────────
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -584,6 +655,34 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       return null;
     }
   };
+
+  const getPageBreakBefore = (section: Section): boolean => {
+    if (!section.cardConfig) return false;
+    try {
+      const parsed = JSON.parse(section.cardConfig) as { pageBreakBefore?: boolean };
+      return parsed.pageBreakBefore === true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleTogglePageBreak = useCallback(async (sectionId: string) => {
+    const section = report.sections.find((s) => s.id === sectionId);
+    if (!section) return;
+    let existing: Record<string, unknown> = {};
+    try { if (section.cardConfig) existing = JSON.parse(section.cardConfig); } catch { /* ignore */ }
+    const newBreak = !existing.pageBreakBefore;
+    const newCardConfig = JSON.stringify({ ...existing, pageBreakBefore: newBreak || undefined });
+    setReport((prev) => ({
+      ...prev,
+      sections: prev.sections.map((s) => s.id === sectionId ? { ...s, cardConfig: newCardConfig } : s),
+    }));
+    await fetch(`/api/reports/${report.id}/sections`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sectionId, cardConfig: newCardConfig }),
+    });
+  }, [report.id, report.sections]);
 
   const handleToggleSectionEnabled = async (sectionId: string) => {
     const section = report.sections.find((s) => s.id === sectionId);
@@ -1180,6 +1279,15 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             <Printer size={13} />
             Print
           </button>
+          <button
+            onClick={() => setShowPageEdges((v) => !v)}
+            className="btn btn-secondary btn-sm"
+            title={showPageEdges ? "Hide A4 page edges" : "Show A4 page edges — visualise where pages will break in the PDF"}
+            style={{ gap: 5, color: showPageEdges ? "var(--accent)" : undefined, borderColor: showPageEdges ? "var(--accent)" : undefined }}
+          >
+            <FileStack size={13} />
+            Page Edges
+          </button>
           <button onClick={handleExportPdf} disabled={exportingPdf} className="btn btn-primary btn-sm">
             <Download size={13} />
             {exportingPdf ? "Generating…" : "Export PDF"}
@@ -1191,7 +1299,44 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       <div style={{ display: "flex", alignItems: "flex-start" }}>
 
         {/* Main content */}
-        <div style={{ flex: 1, minWidth: 0, padding: "36px 40px", maxWidth: 1000 }}>
+        <div
+          ref={mainContentRef}
+          style={{ flex: 1, minWidth: 0, padding: "36px 40px", maxWidth: 1000, position: "relative" }}
+        >
+          {/* Page edge overlay — A4 boundary lines */}
+          {showPageEdges && contentHeight > 0 && (
+            <div
+              className="print:hidden"
+              style={{ position: "absolute", top: 0, left: 0, right: 0, height: contentHeight, pointerEvents: "none", zIndex: 20 }}
+            >
+              {Array.from({ length: Math.ceil(contentHeight / A4_CONTENT_PX) - 1 }, (_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    position: "absolute",
+                    top: (i + 1) * A4_CONTENT_PX,
+                    left: 0,
+                    right: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <div style={{ flex: 1, borderTop: "2px dashed rgba(99,102,241,0.4)" }} />
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+                    letterSpacing: "0.07em", color: "#6366f1",
+                    background: "#eef2ff", border: "1px solid #c7d2fe",
+                    borderRadius: 4, padding: "2px 7px", flexShrink: 0,
+                    boxShadow: "0 1px 3px rgba(99,102,241,0.15)",
+                  }}>
+                    Page {i + 2}
+                  </span>
+                  <div style={{ flex: 1, borderTop: "2px dashed rgba(99,102,241,0.4)" }} />
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Cover card */}
           <div className="card" style={{ marginBottom: 36 }}>
@@ -1457,7 +1602,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             // Executive summary section — AI-generated TL;DR
             if (section.sectionType === "executive_summary") {
               return (
-                <SortableMainSectionWrapper key={section.id} id={section.id}>
+                <SortableMainSectionWrapper key={section.id} id={section.id} pageBreakBefore={getPageBreakBefore(section)}>
                   <div id={`section-${section.id}`} style={{ marginBottom: 56 }}>
                     <div className="card">
                       <div className="card-header">
@@ -1533,7 +1678,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             // Overview section — data + commentary
             if (section.sectionType === "overview") {
               return (
-                <SortableMainSectionWrapper key={section.id} id={section.id}>
+                <SortableMainSectionWrapper key={section.id} id={section.id} pageBreakBefore={getPageBreakBefore(section)}>
                   <div id={`section-${section.id}`} style={{ marginBottom: 56 }}>
                     <OverviewSection
                       client={report.client}
@@ -1552,7 +1697,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             if (isTextSection(section.sectionType)) {
               if (section.sectionType === "text_screenshots") {
                 return (
-                  <SortableMainSectionWrapper key={section.id} id={section.id}>
+                  <SortableMainSectionWrapper key={section.id} id={section.id} pageBreakBefore={getPageBreakBefore(section)}>
                     <div id={`section-${section.id}`}>
                       <ScreenshotsSection
                         screenshots={report.screenshots.filter((s) => !s.sectionId)}
@@ -1564,7 +1709,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 );
               }
               return (
-                <SortableMainSectionWrapper key={section.id} id={section.id}>
+                <SortableMainSectionWrapper key={section.id} id={section.id} pageBreakBefore={getPageBreakBefore(section)}>
                   <div id={`section-${section.id}`}>
                     <TextSection
                       sectionId={section.id}
@@ -1587,7 +1732,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             );
 
             return (
-              <SortableMainSectionWrapper key={section.id} id={section.id}>
+              <SortableMainSectionWrapper key={section.id} id={section.id} pageBreakBefore={getPageBreakBefore(section)}>
                 <div id={`section-${section.id}`} style={{ marginBottom: 56 }}>
                   {section.sectionType === "seo" && (
                     report.client.semrushDomain
@@ -1733,10 +1878,12 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       availableBlocks={availableBlocks}
                       visibleBlocks={visibleBlocks}
                       blockOrder={blockOrder}
+                      pageBreakBefore={getPageBreakBefore(section)}
                       onToggleEnabled={() => handleToggleSectionEnabled(section.id)}
                       onToggleExpand={() => setExpandedSections((prev) => ({ ...prev, [section.id]: !isExpanded }))}
                       onToggleBlock={(blockId) => handleToggleBlock(section.id, blockId)}
                       onReorderBlocks={(newOrder) => handleReorderBlocks(section.id, newOrder)}
+                      onTogglePageBreak={() => handleTogglePageBreak(section.id)}
                       onScrollTo={() => {
                         document.getElementById(`section-${section.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
                       }}
