@@ -299,3 +299,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Snapshot automation failed" }, { status: 500 });
   }
 }
+
+// Vercel Cron Jobs invoke endpoints with GET requests; alias GET → POST so
+// scheduled runs work in addition to admin-triggered POST calls.
+export { POST as GET };
