@@ -13,21 +13,26 @@ config({ path: resolve(__dirname, "../.env.local") });
 const url = process.env.DATABASE_URL;
 const authToken = process.env.TURSO_AUTH_TOKEN;
 const isVercelBuild = process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV);
+const isVercelProduction = process.env.VERCEL_ENV === "production";
 
 if (!url || !authToken) {
-  if (isVercelBuild) {
+  if (isVercelBuild && isVercelProduction) {
     console.error(
       "Missing DATABASE_URL or TURSO_AUTH_TOKEN for Vercel build. " +
         "Set both environment variables in Vercel and redeploy."
     );
     process.exit(1);
   }
+  if (isVercelBuild) {
+    console.log("No Turso credentials found — skipping prod migration (preview/dev Vercel build)");
+    process.exit(0);
+  }
   console.log("No Turso credentials found — skipping prod migration (local dev mode)");
   process.exit(0);
 }
 
 if (!url.startsWith("libsql://")) {
-  if (isVercelBuild) {
+  if (isVercelBuild && isVercelProduction) {
     console.error(
       "DATABASE_URL must be a remote libsql:// URL in Vercel builds. " +
         "Update DATABASE_URL and redeploy."
@@ -569,6 +574,22 @@ async function main() {
     console.log("✓ Created CronLog table");
   } else {
     console.log("✓ CronLog table already present");
+  }
+
+  // ── ServerLog table (in-platform log viewer) ──────────────────────────────
+  if (!(await tableExists("ServerLog"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "ServerLog" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "level" TEXT NOT NULL,
+      "message" TEXT NOT NULL,
+      "source" TEXT,
+      "details" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "ServerLog_level_createdAt_idx" ON "ServerLog"("level", "createdAt" DESC)`);
+    console.log("✓ Created ServerLog table");
+  } else {
+    console.log("✓ ServerLog table already present");
   }
 
   // ── Add future columns here in the same pattern ────────────────────────────
