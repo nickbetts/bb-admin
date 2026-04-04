@@ -576,6 +576,22 @@ async function main() {
     console.log("✓ CronLog table already present");
   }
 
+  // ── ServerLog table (in-platform log viewer) ──────────────────────────────
+  if (!(await tableExists("ServerLog"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "ServerLog" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "level" TEXT NOT NULL,
+      "message" TEXT NOT NULL,
+      "source" TEXT,
+      "details" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "ServerLog_level_createdAt_idx" ON "ServerLog"("level", "createdAt" DESC)`);
+    console.log("✓ Created ServerLog table");
+  } else {
+    console.log("✓ ServerLog table already present");
+  }
+
   // ── Add future columns here in the same pattern ────────────────────────────
 
   // ── Client.contactEmails (MS365 email sync) ────────────────────────────

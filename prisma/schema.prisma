@@ -244,6 +244,18 @@ model MetricSnapshot {
   @@unique([clientId, sectionType, periodStart, periodEnd])
 }
 
+// Server-side runtime log — captures console.error/warn from API routes for in-platform debugging
+model ServerLog {
+  id        String   @id @default(cuid())
+  level     String   // "error" | "warn"
+  message   String
+  source    String?  // route path or module context extracted from stack
+  details   String?  // JSON string of extra args / stack trace
+  createdAt DateTime @default(now())
+
+  @@index([level, createdAt])
+}
+
 // Audit log for each cron/manual snapshot run
 model CronLog {
   id               String    @id @default(cuid())
