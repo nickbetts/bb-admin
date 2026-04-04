@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Shield, ShieldAlert, MousePointerClick, DollarSign, Copy, Check, RefreshCw } from "lucide-react";
 import { SectionCard } from "@/components/ui/index";
 import { formatNumber, formatCurrency, formatPercent } from "@/lib/utils";
+import { getAppUrl } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -103,11 +104,9 @@ export function ClickFraudPanel({
   }
 
   // ── Snippet code ───────────────────────────────────────────────────────────
-  // Use NEXT_PUBLIC_APP_URL when available (works in SSR and CSR),
-  // fall back to window.location.origin for client-side only contexts.
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ??
-    (typeof window !== "undefined" ? window.location.origin : "");
+  // getAppUrl() validates the URL scheme and strips unsafe characters to prevent
+  // script injection when the value is embedded in the JS snippet string.
+  const appUrl = getAppUrl();
   const snippet = token
     ? `<!-- i3media Click Protection -->
 <script>

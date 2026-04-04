@@ -74,13 +74,26 @@ function hashIp(ip: string): string {
   return crypto.createHash("sha256").update(ip).digest("hex").slice(0, 16);
 }
 
-/** Resolve the real client IP in order of trustworthiness. */
+/**
+ * Strip ASCII control characters (null bytes, line feeds, carriage returns, etc.)
+ * from user-supplied strings before storing them in the database.
+ */
+function sanitiseInput(value: string): string {
+  // Remove control characters (U+0000–U+001F) except horizontal tab (U+0009)
+  return value.replace(/[\x00-\x08\x0A-\x1F\x7F]/g, "");
+}
+
+/**
+ * Resolve the real client IP in order of trustworthiness.
+ * NOTE: When x-real-ip is absent, x-forwarded-for is used as a fallback.
+ * This header can be spoofed, so the IP hash is best-effort and should not
+ * be used as a sole indicator of identity.
+ */
 function resolveClientIp(request: NextRequest): string {
   // x-real-ip is set by trusted reverse proxies (Vercel, nginx)
   const realIp = request.headers.get("x-real-ip");
   if (realIp) return realIp.trim();
-  // Fall back to the first entry in x-forwarded-for (can be spoofed,
-  // but is better than nothing when x-real-ip is absent)
+  // x-forwarded-for can be spoofed — used for informational purposes only
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0].trim();
   return "unknown";
@@ -112,22 +125,23 @@ export async function POST(
       // ignore parse errors
     }
 
-    const sessionId = String(body.sid ?? "").slice(0, 64);
+    const sessionId = sanitiseInput(String(body.sid ?? "").slice(0, 64));
     if (!sessionId) {
       return NextResponse.json({ ok: true }, { headers: { "Access-Control-Allow-Origin": "*" } });
     }
 
-    // Timestamp-based rate limit per session
+    // Timestamp-based, per-instance rate limit per session.
+    // In multi-instance serverless deployments this is a per-instance limit.
     if (!checkRateLimit(sessionId)) {
       return NextResponse.json({ ok: true }, { headers: { "Access-Control-Allow-Origin": "*" } });
     }
 
-    const userAgent = String(body.ua ?? "").slice(0, 512);
-    const referer = String(body.ref ?? "").slice(0, 512);
-    const utmSource = String(body.utmSource ?? "").slice(0, 128);
-    const utmMedium = String(body.utmMedium ?? "").slice(0, 128);
-    const utmCampaign = String(body.utmCampaign ?? "").slice(0, 128);
-    const reason = String(body.reason ?? "").slice(0, 64);
+    const userAgent = sanitiseInput(String(body.ua ?? "").slice(0, 512));
+    const referer = sanitiseInput(String(body.ref ?? "").slice(0, 512));
+    const utmSource = sanitiseInput(String(body.utmSource ?? "").slice(0, 128));
+    const utmMedium = sanitiseInput(String(body.utmMedium ?? "").slice(0, 128));
+    const utmCampaign = sanitiseInput(String(body.utmCampaign ?? "").slice(0, 128));
+    const reason = sanitiseInput(String(body.reason ?? "").slice(0, 64));
     const isSuspiciousFlag = body.suspicious === "1" || body.suspicious === "true";
 
     // Server-side bot detection from user agent

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Loader2, Upload, X, Plus, Trash2, Shield, Copy, Check, RefreshCw } from "lucide-react";
 import Image from "next/image";
+import { getAppUrl } from "@/lib/utils";
 
 interface Client {
   id: string;
@@ -1160,11 +1161,9 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
           </div>
 
           {clickFraudToken && (() => {
-            // Use NEXT_PUBLIC_APP_URL when available (works in SSR and CSR),
-            // fall back to window.location.origin for client-side only contexts.
-            const appUrl =
-              process.env.NEXT_PUBLIC_APP_URL ??
-              (typeof window !== "undefined" ? window.location.origin : "");
+            // getAppUrl() validates the URL scheme and strips unsafe characters to
+            // prevent script injection when the value is embedded in the JS snippet.
+            const appUrl = getAppUrl();
             const snippet = `<!-- i3media Click Protection -->
 <script>
 (function(){
