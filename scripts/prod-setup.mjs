@@ -592,6 +592,38 @@ async function main() {
     console.log("✓ ServerLog table already present");
   }
 
+  // ── Click fraud protection (added 2026-04-04) ─────────────────────────────
+  if (!(await columnExists("Client", "clickFraudToken"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "clickFraudToken" TEXT');
+    await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS "Client_clickFraudToken_key" ON "Client"("clickFraudToken")');
+    console.log("✓ Added Client.clickFraudToken");
+  } else {
+    console.log("✓ Client.clickFraudToken already present");
+  }
+
+  if (!(await tableExists("ClickFraudEvent"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "ClickFraudEvent" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "clientId" TEXT NOT NULL,
+      "sessionId" TEXT NOT NULL,
+      "userAgent" TEXT,
+      "ipHash" TEXT,
+      "referer" TEXT,
+      "utmSource" TEXT,
+      "utmMedium" TEXT,
+      "utmCampaign" TEXT,
+      "isSuspicious" INTEGER NOT NULL DEFAULT 0,
+      "reason" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE
+    )`);
+    await db.execute('CREATE INDEX IF NOT EXISTS "ClickFraudEvent_clientId_createdAt_idx" ON "ClickFraudEvent"("clientId", "createdAt")');
+    await db.execute('CREATE INDEX IF NOT EXISTS "ClickFraudEvent_clientId_isSuspicious_idx" ON "ClickFraudEvent"("clientId", "isSuspicious")');
+    console.log("✓ Created ClickFraudEvent table");
+  } else {
+    console.log("✓ ClickFraudEvent table already present");
+  }
+
   // ── Add future columns here in the same pattern ────────────────────────────
 
   // ── Client.contactEmails (MS365 email sync) ────────────────────────────
