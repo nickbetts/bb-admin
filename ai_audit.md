@@ -1,66 +1,36 @@
 # AI Audit — i3media Report Platform
 
-**Document version:** 1.1  
+**Document version:** 2.0  
 **Audit date:** April 2026  
 **Last updated:** April 2026  
-**Scope:** Every AI endpoint, AI UI component, prompt architecture, data flow, and latent opportunity across the platform
+**Scope:** Signals intelligence system re-audit — signal quality, deduplication, cross-channel awareness, recommendation specificity, and holistic game plan generation
 
 ---
 
-## Implementation Status
+## Executive Summary
 
-The following recommendations from this audit have been implemented:
+This is the second audit of the i3media AI system, focused specifically on the **Signals page intelligence**. The first audit (v1.1) identified 36 recommendations across all AI endpoints — all were implemented. This v2.0 audit re-examines the signals system with a fresh eye, asking: **"Is the AI as smart as it could be with all the data we actually have?"**
 
-### Priority 1 — Immediate ✅
+**The answer is: not yet.** The signals system detects anomalies well, but its recommendations are too generic, it produces duplicate signals, it treats each signal in isolation (missing cross-channel connections), and it fails to use available data like daily budgets and spend pacing to give specific, actionable advice.
 
-| Rec | Status | Notes |
-|-----|--------|-------|
-| **P1.1** Standardise API key resolution | ✅ Done | Created shared `getOpenAiKey()` / `getOpenAiClient()` in `src/lib/openai-client.ts`. All 18 endpoints updated to check `AppSetting` DB first, fall back to `OPENAI_API_KEY` env var. |
-| **P1.2** Inject `aiReportInstructions` into all endpoints | ✅ Done | Extended to: summary, super-summary, overview-narrative, strategy-document, root-cause, chat, budget-advisor, creative-intelligence (8 endpoints, previously only 2). |
-| **P1.3** Inject `ClientGoal` data | ✅ Done | Active goals with progress tracking now injected into summary, overview-narrative, and report-commentary prompts. |
-| **P1.4** YouTube, HubSpot, CallRail AI panels | ✅ Done | Added SECTION_CONFIGS, channel personas, and `AiInsightsPanel` to all three dashboard sections. `ClientDashboard` updated to pass `clientName` and `crossPlatformContext`. |
-
-### Priority 2 — High Impact ✅
-
-| Rec | Status | Notes |
-|-----|--------|-------|
-| **P2.1** Extend overview-narrative to all channels | ✅ Done | `PlatformMetrics` type now includes TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, and E-Commerce. Prompt builder generates context blocks for all active channels. `max_tokens` increased to 3500. |
-| **P2.2** Feed e-commerce revenue into AI | ✅ Done | E-commerce data (`totalRevenue`, `totalOrders`, `AOV`) added to overview-narrative, budget-advisor, forecast, and report-commentary (new section labels for ecommerce/shopify/woocommerce). |
-| **P2.3** Add streaming to long-running endpoints | ✅ Done | strategy-document, super-summary, root-cause, and overview-narrative now support `stream: true` parameter, returning SSE `text/event-stream` responses. Non-streaming mode preserved for backward compatibility. |
-| **P2.4** Improve forecast quality with pre-computed trends | ✅ Done | Added `computeTrendAnalysis()` helper that pre-computes MoM trends, variance coefficients, data quality signals, and YoY comparisons from all available snapshots before sending to GPT. `max_tokens` increased to 2000. |
-| **P2.5** Competitor context in dashboard AI | ✅ Done | SEO/SemRush AI insights now fetch `CompetitorSnapshot` records and include competitor landscape (organic traffic, keywords, DA) in the prompt context. |
-| **P2.6** Web search for contextual AI endpoints | ✅ Done | strategy-document, root-cause, and overview-narrative accept `enableWebSearch: true` — uses OpenAI Responses API with `web_search_preview` tool to pull industry benchmarks, algorithm updates, and market context. Streaming and non-streaming supported. Citations returned in response. |
-
-### Priority 3 — Innovate
-
-| Rec | Status | Notes |
-|-----|--------|-------|
-| **P3.1** AI-powered Goal Setting Assistant | ✅ Done | `POST /api/ai/goal-benchmark` — fetches 6 months of MetricSnapshot data, computes trends, uses GPT to suggest conservative/moderate/aggressive targets with confidence scores. |
-| **P3.2** Anomaly Memory + Pattern Learning | ✅ Done | New `DetectedAnomaly` model stores detected anomalies. Summary route persists high/medium anomalies. Root-cause route fetches prior anomaly history and includes it in the prompt. Root cause text stored back to anomaly records. |
-| **P3.3** Pre-Meeting Briefing Generator | ✅ Done | `POST /api/ai/meeting-briefing` — aggregates strategy docs, goals, actions, snapshots, and anomalies into a structured 1-page briefing. Saves as `StrategyDocument` with `type: "briefing"`. Supports SSE streaming. |
-| **P3.4** Intelligent Report Narrative Stitching | ✅ Done | `POST /api/ai/report-narrative` — receives all section commentaries, identifies cross-section stories, generates connection sentences per section, and produces a unified executive summary. |
-| **P3.5** Real-time anomaly push notifications | ✅ Done | Cron snapshot route now runs anomaly detection after each MetricSnapshot write. High-severity anomalies trigger a 2-sentence AI hypothesis and notify all admins via the Notification system. |
-| **P3.6** AI-powered Action Recommendations | ✅ Done | Report approval route now triggers `extractActionsFromReport()` on approval — AI extracts 3-8 concrete `ActionItem` records from report commentaries with priority and platform tagging. Admins notified. |
-| **P3.7** Blended Revenue Attribution | ✅ Done | `POST /api/ai/blended-revenue` — reconciles e-commerce, Klaviyo, Google Ads, Meta, Microsoft Ads, TikTok, LinkedIn revenue. De-duplicates cross-device/view-through overlap. Returns true ROAS per channel. |
-| **P3.8** AI Visibility (GEO) Monitoring | ✅ Done | `POST /api/ai/ai-visibility` — analyses AI referral traffic trends (ChatGPT, Claude, Perplexity, etc.), computes visibility score, cross-references with SEO data, generates 5 specific actions to improve AI search presence. |
-
-### Section 7 — Claude Integration (Out of Scope)
-
-Claude Sonnet/Opus integration recommendations are documented below but not implemented. The hybrid architecture proposal remains valid for future consideration.
-
----
+**Key changes implemented in this audit:**
+- Signal deduplication (merges duplicate/overlapping signals)
+- Budget-enriched signals (Google Ads daily budget + spend pacing in signal details)
+- Richer channel context (Meta/Google Ads budget data sent to AI for recommendations)
+- Improved recommendation prompts (demands specific £ amounts, campaign names, expected impact)
+- Cross-signal holistic game plan (single AI call synthesises ALL signals into a unified action plan)
 
 ---
 
 ## Table of Contents
 
-1. [AI Endpoint Inventory](#1-ai-endpoint-inventory)
-2. [Component-by-Component Audit](#2-component-by-component-audit)
-3. [Data Flow Architecture](#3-data-flow-architecture)
-4. [What Data Is Available vs What AI Actually Sees](#4-what-data-is-available-vs-what-ai-actually-sees)
-5. [Current Gaps & Weaknesses](#5-current-gaps--weaknesses)
-6. [Improvement Recommendations](#6-improvement-recommendations)
-7. [What If: Claude Sonnet / Opus Integration](#7-what-if-claude-sonnet--opus-integration)
+1. [What Was Wrong — Real Example Analysis](#1-what-was-wrong--real-example-analysis)
+2. [Signal Quality Problems](#2-signal-quality-problems)
+3. [What Data Is Available vs What AI Uses](#3-what-data-is-available-vs-what-ai-uses)
+4. [What Changed](#4-what-changed)
+5. [Remaining Gaps & Next Steps](#5-remaining-gaps--next-steps)
+6. [AI Endpoint Inventory (Updated)](#6-ai-endpoint-inventory-updated)
+7. [Architecture: How Signals Work](#7-architecture-how-signals-work)
 
 ---
 
