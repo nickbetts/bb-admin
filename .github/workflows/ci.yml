@@ -32,8 +32,36 @@ jobs:
         env:
           # Use a local SQLite file so prisma generate succeeds without a real DB
           DATABASE_URL: file:dev.db
-          # Dummy values so env validation passes during build.
-          # Using vars/secrets with explicit fallbacks via the supported
-          # ${{ secrets.X }} pattern; empty string is safe for Next.js build stubs.
+          # Stub values so env validation / module imports succeed during build.
+          # Real secrets are never needed for a static Next.js build.
           BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN != '' && secrets.BLOB_READ_WRITE_TOKEN || 'vercel_blob_rw_placeholder' }}
           SEMRUSH_API_KEY: ${{ secrets.SEMRUSH_API_KEY != '' && secrets.SEMRUSH_API_KEY || 'placeholder' }}
+          SESSION_SECRET: placeholder-session-secret-for-ci
+          CRON_SECRET: placeholder-cron-secret-for-ci
+          OPENAI_API_KEY: placeholder
+          GA4_CLIENT_EMAIL: placeholder@placeholder.iam.gserviceaccount.com
+          GA4_PRIVATE_KEY: placeholder
+          GOOGLE_CLIENT_ID: placeholder
+          GOOGLE_CLIENT_SECRET: placeholder
+          GOOGLE_API_KEY: placeholder
+          GOOGLE_CRUX_API_KEY: placeholder
+          GOOGLE_ADS_DEVELOPER_TOKEN: placeholder
+          GOOGLE_ADS_CLIENT_ID: placeholder
+          GOOGLE_ADS_CLIENT_SECRET: placeholder
+          GOOGLE_ADS_REFRESH_TOKEN: placeholder
+          GOOGLE_ADS_MANAGER_CUSTOMER_ID: "0"
+          META_ACCESS_TOKEN: placeholder
+          TIKTOK_ACCESS_TOKEN: placeholder
+          MICROSOFT_ADS_DEVELOPER_TOKEN: placeholder
+          MICROSOFT_ADS_CLIENT_ID: placeholder
+          MICROSOFT_ADS_CLIENT_SECRET: placeholder
+          MICROSOFT_ADS_REFRESH_TOKEN: placeholder
+          MICROSOFT_ADS_CUSTOMER_ID: placeholder
+          MOZ_ACCESS_ID: placeholder
+          MOZ_SECRET_KEY: placeholder
+          MS365_CLIENT_ID: placeholder
+          MS365_CLIENT_SECRET: placeholder
+          MS365_TENANT_ID: placeholder
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          APP_PASSWORD: placeholder
+

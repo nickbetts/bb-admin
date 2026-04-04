@@ -1,0 +1,52 @@
+version: 2
+updates:
+  # npm packages — weekly on Mondays
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Europe/London
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    groups:
+      # Group all non-breaking Next.js / React ecosystem updates together
+      nextjs-ecosystem:
+        patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+          - "eslint-config-next"
+      # Group all Prisma packages together
+      prisma:
+        patterns:
+          - "prisma"
+          - "@prisma/*"
+      # Group all OpenAI SDK updates
+      openai:
+        patterns:
+          - "openai"
+      # Group all Radix / UI primitives
+      ui-primitives:
+        patterns:
+          - "@radix-ui/*"
+          - "@dnd-kit/*"
+          - "recharts"
+          - "lucide-react"
+
+  # GitHub Actions — weekly on Mondays
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Europe/London
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - github-actions
