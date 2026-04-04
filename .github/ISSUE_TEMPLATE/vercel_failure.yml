@@ -1,0 +1,55 @@
+name: Vercel Deployment Failure
+description: Manually report or track a Vercel deployment failure (usually auto-created by the vercel-monitor workflow).
+title: "🚨 Vercel build failed — "
+labels: ["vercel-failure"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > **Note:** This issue type is normally created automatically by the `vercel-monitor` workflow when a deployment fails.
+        > Fill in the fields below if you are reporting a failure manually.
+        >
+        > Once this issue is open, post a comment containing `/fix` to get a GitHub Copilot-generated fix suggestion.
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "production / preview"
+    validations:
+      required: true
+
+  - type: input
+    id: branch
+    attributes:
+      label: Branch / ref
+      placeholder: "main"
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit SHA (short)
+      placeholder: "abc1234"
+
+  - type: input
+    id: vercel_url
+    attributes:
+      label: Vercel dashboard link
+      placeholder: "https://vercel.com/…"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Build output (last ~20 kB)
+      description: Paste the relevant build logs here. The workflow populates this automatically.
+      render: shell
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        > 💬 Reply `/fix` on this issue and GitHub Copilot will analyse the logs above and suggest a fix.

@@ -1,0 +1,72 @@
+name: Bug Report
+description: Report a bug or unexpected behaviour in the platform.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. Please fill in as much detail as you can.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: "When I do X, Y happens instead of Z."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Step-by-step instructions to reproduce the issue.
+      placeholder: |
+        1. Go to …
+        2. Click on …
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      placeholder: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      placeholder: What actually happened?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Production (Vercel)
+        - Preview (Vercel)
+        - Local development
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: |
+        Console errors, screenshots, relevant network requests, or any other context that might help.
+      placeholder: Paste error messages, screenshots, etc.
+
+  - type: textarea
+    id: channels
+    attributes:
+      label: Affected data channel(s)
+      description: Which marketing channel(s) or feature area is affected?
+      placeholder: "e.g. GA4, Meta Ads, report builder, AI commentary, proposals…"

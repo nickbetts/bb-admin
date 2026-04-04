@@ -1,6 +1,20 @@
 name: Vercel Build Monitor
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Model selection — change MODEL_NAME to swap the GitHub Models model used for
+# /fix suggestions. Must be a model available via GitHub Models
+# (https://github.com/marketplace/models). No external API key is required;
+# the built-in GITHUB_TOKEN is used.
+#
+# Current choice: gpt-4.1 — GitHub's latest flagship GPT model, optimised for
+# code-heavy tasks. Strong instruction following and large context window make
+# it ideal for analysing verbose Vercel build logs.
+# Other good options: o4-mini, gpt-4o, gpt-4.1-mini
+# ─────────────────────────────────────────────────────────────────────────────
+env:
+  MODEL_NAME: gpt-4.1
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Trigger 1 – deployment_status
 #   Vercel's GitHub app automatically creates/updates a GitHub deployment status
 #   for every build it runs. This event fires each time that status changes.
@@ -17,7 +31,7 @@ on:
 permissions:
   issues: write      # create/comment on issues
   contents: read     # checkout for context
-  models: read       # GitHub Models API (GPT-4o) for /fix suggestions
+  models: read       # GitHub Models API (Copilot) for /fix suggestions
 
 jobs:
   # ───────────────────────────────────────────────────────────────────────────
@@ -31,11 +45,27 @@ jobs:
       github.event.deployment_status.state == 'failure'
 
     steps:
+      - name: Ensure jq is available
+        run: |
+          if ! command -v jq &>/dev/null; then
+            echo "jq not found — installing…"
+            sudo apt-get update -qq && sudo apt-get install -y -qq jq
+          else
+            echo "jq $(jq --version) found."
+          fi
+
       - name: Fetch build logs from Vercel API
         id: vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
+          # ── Guard: missing VERCEL_TOKEN ──────────────────────────────────
+          if [[ -z "$VERCEL_TOKEN" ]]; then
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "has_token=true" >> "$GITHUB_OUTPUT"
+
           TARGET_URL="${{ github.event.deployment_status.target_url }}"
 
           # Strip the https:// so we can use the hostname as the Vercel API key
@@ -75,7 +105,36 @@ jobs:
             echo "ENDOFLOG"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Post missing-token notice
+        if: steps.vercel.outputs.has_token == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.payload.deployment.sha.slice(0, 7);
+            const ref = context.payload.deployment.ref;
+
+            await github.rest.issues.create({
+              owner:  context.repo.owner,
+              repo:   context.repo.repo,
+              title:  `🚨 Vercel build failed — ${ref} @ ${sha}`,
+              body: [
+                `## 🚨 Vercel deployment failed`,
+                ``,
+                `**Branch:** \`${ref}\`  **Commit:** \`${sha}\``,
+                ``,
+                `> ⚠️ Build logs could not be fetched because the \`VERCEL_TOKEN\` secret is not configured in this repository.`,
+                `>`,
+                `> **To fix:** Go to **Settings → Secrets and variables → Actions** and add a secret named \`VERCEL_TOKEN\` with a Vercel API token.`,
+                `> You can generate a token at https://vercel.com/account/tokens`,
+                ``,
+                `---`,
+                `> 💬 Once the secret is configured, future failures will include full build logs. You can still reply \`/fix\` and Copilot will do its best without logs.`,
+              ].join('\n'),
+              labels: ['vercel-failure'],
+            });
+
       - name: Open GitHub issue with build logs
+        if: steps.vercel.outputs.has_token == 'true'
         uses: actions/github-script@v7
         env:
           LOGS: ${{ steps.vercel.outputs.logs }}
@@ -119,7 +178,7 @@ jobs:
   # JOB 2 · "/fix" comment on a vercel-failure issue → AI fix suggestion
   # ───────────────────────────────────────────────────────────────────────────
   fix-on-request:
-    name: AI Fix Suggestion
+    name: AI Fix Suggestion (Copilot)
     runs-on: ubuntu-latest
     if: |
       github.event_name == 'issue_comment' &&
@@ -140,10 +199,58 @@ jobs:
               content:    'eyes',
             });
 
+      - name: Check for existing Copilot Fix Suggestion
+        id: dedup
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // List existing comments on this issue
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: context.payload.issue.number,
+              per_page:     100,
+            });
+
+            // Look for a recent "🤖 Copilot Fix Suggestion" comment (last 24 h)
+            const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+            const existing = comments.find(c =>
+              c.body?.startsWith('## 🤖 Copilot Fix Suggestion') &&
+              new Date(c.created_at).getTime() > cutoff
+            );
+
+            if (existing) {
+              core.setOutput('skip', 'true');
+              core.setOutput('existing_url', existing.html_url);
+            } else {
+              core.setOutput('skip', 'false');
+            }
+
+      - name: Note duplicate suggestion
+        if: steps.dedup.outputs.skip == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const existingUrl = '${{ steps.dedup.outputs.existing_url }}';
+            await github.rest.issues.createComment({
+              owner:        context.repo.owner,
+              repo:         context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: [
+                `ℹ️ A Copilot Fix Suggestion was already posted in the last 24 hours.`,
+                ``,
+                `→ [Jump to the existing suggestion](${existingUrl})`,
+                ``,
+                `If the problem has changed, close this issue and re-run the deployment to get fresh logs, then \`/fix\` again.`,
+              ].join('\n'),
+            });
+
       - name: Analyse logs and post fix suggestion
+        if: steps.dedup.outputs.skip != 'true'
         uses: actions/github-script@v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MODEL_NAME: ${{ env.MODEL_NAME }}
         with:
           script: |
             const issueBody = context.payload.issue.body ?? '';
@@ -152,7 +259,10 @@ jobs:
             const fenceMatch = issueBody.match(/```\n([\s\S]*?)\n```/);
             const logs = (fenceMatch ? fenceMatch[1] : issueBody).slice(0, 20000);
 
-            // Call GitHub Models (GPT-4o) using the built-in GITHUB_TOKEN
+            const model = process.env.MODEL_NAME || 'gpt-4.1';
+
+            // Call GitHub Models (Copilot) using the built-in GITHUB_TOKEN.
+            // No external API key required — models: read permission above is sufficient.
             const resp = await fetch(
               'https://models.inference.ai.azure.com/chat/completions',
               {
@@ -162,15 +272,18 @@ jobs:
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                  model: 'gpt-4o',
+                  model,
                   messages: [
                     {
                       role:    'system',
                       content: [
-                        'You are an expert Next.js 15 / TypeScript / Prisma developer.',
+                        'You are an expert Next.js 16 / TypeScript / Prisma developer.',
+                        'The project uses Next.js App Router, React 19, Tailwind CSS v4,',
+                        'Prisma with SQLite (local) / Turso libSQL (production), and OpenAI.',
                         'Analyse the provided Vercel build logs and give concise,',
                         'actionable fixes with exact file paths and code snippets.',
                         'Format your response in GitHub-flavoured Markdown.',
+                        'Structure: (1) Root cause, (2) Fix (file paths + code blocks), (3) Validation steps.',
                         'Keep your answer under 800 words.',
                       ].join(' '),
                     },
@@ -205,6 +318,6 @@ jobs:
                 suggestion,
                 ``,
                 `---`,
-                `_Generated by GitHub Models (GPT-4o) · [View run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})_`,
+                `_Generated by GitHub Models (\`${model}\`) · [View run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})_`,
               ].join('\n'),
             });
