@@ -4,13 +4,19 @@
 
 i3media Report is an internal agency platform built with **Next.js 16 (App Router) + React 19 + TypeScript + Prisma + Tailwind CSS v4**, deployed on **Vercel**. It aggregates data from 15 marketing channels (GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, SemRush, Search Console, Moz, WooCommerce, Shopify) and surfaces AI-powered insights via **OpenAI** (GPT-4o / GPT-4o-mini).
 
+> **Coding agents available:** Specialised sub-agent instructions live in `.github/agents/`:
+> - `channel-integration.md` — adding new marketing channel data integrations
+> - `ai-endpoint.md` — creating AI analysis API endpoints
+> - `report-component.md` — building dashboard/report section components
+> - `database.md` — Prisma schema changes and migrations
+
 ## Repository layout
 
 ```
 src/
   app/                  # Next.js App Router pages and API routes
-    api/                # ~100 API route handlers
-      ai/               # AI endpoints (summary, forecast, commentary, etc.)
+    api/                # ~120 API route handlers
+      ai/               # 19 AI endpoints (summary, forecast, commentary, chat, etc.)
       auth/             # Session-based auth (login/logout/session/Google OAuth)
       clients/          # Client CRUD, goals, actions, communications
       reports/          # Report CRUD, sections, PDF, share links
@@ -18,20 +24,24 @@ src/
       admin/            # User/role management
       settings/         # App configuration
       cron/             # Scheduled jobs (snapshots, auto-reports)
+      share/            # Public share links (reports, proposals, strategy docs)
+      portal/           # Client portal API (magic-link auth, dashboards)
     clients/            # Client dashboard pages
     reports/            # Report builder and viewer pages
-    tools/              # Agency tools pages
+    tools/              # Agency tools pages (keyword planner, proposals, media plans)
     portal/             # Client self-serve portal
     settings/           # Settings UI
     admin/              # Admin UI
   components/
     dashboard/          # Per-channel section components (GA4Section, MetaSection, etc.)
     reports/            # Report builder components (ReportView, etc.)
-    ui/                 # Shared UI primitives
+    ui/                 # Shared UI primitives (Card, Badge, LoadingSpinner, etc.)
   lib/                  # Shared helpers
-    prisma.ts           # Prisma client singleton
-    openai-client.ts    # OpenAI client (reads key from DB AppSetting or env)
-    auth.ts             # Session utilities
+    prisma.ts           # Prisma client singleton — ALWAYS import from here
+    openai-client.ts    # OpenAI client — ALWAYS use getOpenAiClient()
+    auth.ts             # Session utilities (getSession, requireAuth, getSessionOrCronAuth)
+    api-cache.ts        # withApiCache(key, ttlHours, fn) — wraps channel API calls
+    report-blocks.ts    # SECTION_BLOCKS registry — block visibility config per section type
     ga4.ts / meta.ts / google-ads.ts / etc.   # Per-channel API helpers
 prisma/
   schema.prisma         # Database schema (SQLite locally, Turso libSQL in prod)
@@ -43,11 +53,76 @@ prisma.config.ts        # Prisma CLI config — reads DATABASE_URL, falls back t
 
 - **App Router only** — no `pages/` directory. All pages and API routes live under `src/app/`.
 - **Client components** use `'use client'` directive; server components are the default.
-- **React 19 / Next 16**: dynamic-route params arrive as `Promise<{...}>` — unwrap with `use(params)` in client components.
+- **React 19 / Next.js 16**: dynamic-route params arrive as `Promise<{...}>` — unwrap with `use(params)` in client components. Never destructure params directly.
 - **OpenAI**: always call `getOpenAiClient()` from `src/lib/openai-client.ts`. Do not read `process.env.OPENAI_API_KEY` directly — the key may be stored in the DB `AppSetting` table under key `openaiApiKey`.
 - **Prisma**: use the singleton from `src/lib/prisma.ts`. Never instantiate `PrismaClient` directly in route files.
-- **Tailwind v4** — utility-first, no component library. Keep styles co-located with components.
+- **API caching**: wrap all external channel API calls with `withApiCache(key, ttlHours, fn)` from `src/lib/api-cache.ts`.
+- **Auth**: use `getSession()` for user-facing routes; `getSessionOrCronAuth(request)` for routes callable by cron jobs (also accepts `CRON_SECRET` bearer token).
+- **Tailwind v4** — utility-first, no component library. Keep styles co-located with components. No inline `style={{}}`.
 - **No test infrastructure** — there is currently no test runner. Validate changes with `npm run lint` and `npm run build`.
+- **British English** — all AI-generated text, comments, and UI copy should use British spellings.
+
+## Common code patterns
+
+### Channel API route
+
+```typescript
+// src/app/api/<channel>/route.ts
+export async function GET(request: NextRequest) {
+  const session = await getSessionOrCronAuth(request);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { searchParams } = new URL(request.url);
+  const type = searchParams.get("type") ?? "overview";
+  const cacheKey = `<channel>:${type}:${/* dimensions */}`;
+
+  switch (type) {
+    case "overview": return NextResponse.json(await withApiCache(cacheKey, 4, () => getChannelOverview(...)));
+    default: return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+  }
+}
+```
+
+### AI endpoint
+
+```typescript
+// src/app/api/ai/<endpoint>/route.ts
+export async function POST(request: NextRequest) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const openai = await getOpenAiClient(); // never new OpenAI()
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [{ role: "system", content: "..." }, { role: "user", content: "..." }],
+    temperature: 0.65,
+    max_tokens: 500,
+  });
+  return NextResponse.json({ result: response.choices[0]?.message?.content?.trim() ?? "" });
+}
+```
+
+### Error handling in API routes
+
+```typescript
+} catch (error) {
+  const message = error instanceof Error ? error.message : "Unknown error";
+  console.error("<context> error:", error);
+  return NextResponse.json({ error: message }, { status: 500 });
+}
+```
+
+### Client-specific AI instructions
+
+Many AI endpoints customise their prompts per client. Always check:
+
+```typescript
+const client = await prisma.client.findUnique({
+  where: { id: clientId },
+  select: { aiReportInstructions: true },
+});
+const extraInstructions = client?.aiReportInstructions ?? "";
+```
 
 ## Local development commands
 
@@ -99,16 +174,29 @@ There is no separate typecheck or test step in CI. TypeScript errors surface thr
 |---|---|---|
 | `DATABASE_URL` | ✅ | ✅ `file:dev.db` |
 | `TURSO_AUTH_TOKEN` | ✅ (prod only) | ✅ omit for local SQLite |
-| `BLOB_READ_WRITE_TOKEN` | ✅ | ✅ `vercel_blob_rw_placeholder` |
-| `SEMRUSH_API_KEY` | ✅ | ✅ `placeholder` |
-| `OPENAI_API_KEY` | ✅ | ✅ `placeholder` (AI features won't work) |
-| `GA4_ACCESS_TOKEN` | ✅ | ✅ `placeholder` |
-| `META_APP_ID` / `META_APP_SECRET` / `META_ACCESS_TOKEN` | ✅ | ✅ `placeholder` |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | ✅ | ✅ `placeholder` |
+| `SESSION_SECRET` | ✅ | ✅ any random string |
 | `NEXTAUTH_SECRET` | ✅ | ✅ any random string |
-| All other API keys | channel-dependent | ✅ `placeholder` |
+| `BLOB_READ_WRITE_TOKEN` | ✅ | ✅ `vercel_blob_rw_placeholder` |
+| `OPENAI_API_KEY` | ✅ | ✅ `placeholder` (AI features won't work) |
+| `SEMRUSH_API_KEY` | ✅ | ✅ `placeholder` |
+| `GA4_CLIENT_EMAIL` | ✅ | ✅ `placeholder` |
+| `GA4_PRIVATE_KEY` | ✅ | ✅ `placeholder` |
+| `META_ACCESS_TOKEN` | ✅ | ✅ `placeholder` |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | ✅ | ✅ `placeholder` |
+| `GOOGLE_ADS_DEVELOPER_TOKEN` / `GOOGLE_ADS_CLIENT_ID` / `GOOGLE_ADS_CLIENT_SECRET` / `GOOGLE_ADS_REFRESH_TOKEN` | ✅ | ✅ `placeholder` |
+| `GOOGLE_ADS_MANAGER_CUSTOMER_ID` | ✅ | ✅ `placeholder` |
+| `GOOGLE_API_KEY` | ✅ (YouTube) | ✅ `placeholder` |
+| `GOOGLE_CRUX_API_KEY` | ✅ (Core Web Vitals) | ✅ `placeholder` |
+| `MICROSOFT_ADS_CLIENT_ID` / `MICROSOFT_ADS_CLIENT_SECRET` / `MICROSOFT_ADS_DEVELOPER_TOKEN` / `MICROSOFT_ADS_REFRESH_TOKEN` | channel-dependent | ✅ `placeholder` |
+| `MICROSOFT_ADS_CUSTOMER_ID` | channel-dependent | ✅ `placeholder` |
+| `TIKTOK_ACCESS_TOKEN` | channel-dependent | ✅ `placeholder` |
+| `MOZ_ACCESS_ID` / `MOZ_SECRET_KEY` | channel-dependent | ✅ `placeholder` |
+| `MS365_CLIENT_ID` / `MS365_CLIENT_SECRET` / `MS365_TENANT_ID` | ✅ (email notifications) | ✅ `placeholder` |
+| `CRON_SECRET` | ✅ | ✅ `placeholder` |
+| `APP_PASSWORD` | ✅ (legacy login) | ✅ `placeholder` |
+| `NEXT_PUBLIC_APP_URL` | ✅ | ✅ `http://localhost:3000` |
 
-See `.env.local.example` for the full list.
+See `.env.local.example` for the full list and documentation.
 
 ## Preferred change style
 
