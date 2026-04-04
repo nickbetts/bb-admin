@@ -4,10 +4,27 @@ import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 
-// Rate-limit: at most 20 events per session per minute (stored in-memory per instance).
-// This is a lightweight guard; in production Vercel edge rate-limiting handles the rest.
-const recentSessions = new Map<string, number>();
-setInterval(() => recentSessions.clear(), 60_000);
+// Rate-limit: at most 20 events per session per 60-second window.
+// Uses timestamps rather than a setInterval clear so it works reliably in
+// short-lived serverless function instances (no cleanup needed).
+// NOTE: This is a per-instance limit; in multi-instance deployments the
+// effective rate limit is per-instance, not global.
+const recentSessions = new Map<string, { count: number; windowStart: number }>();
+
+const RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
+function checkRateLimit(sessionId: string): boolean {
+  const now = Date.now();
+  const entry = recentSessions.get(sessionId);
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    recentSessions.set(sessionId, { count: 1, windowStart: now });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count += 1;
+  return true;
+}
 
 // Known bot/crawler user-agent fragments (lower-cased)
 const BOT_UA_PATTERNS = [
@@ -57,6 +74,18 @@ function hashIp(ip: string): string {
   return crypto.createHash("sha256").update(ip).digest("hex").slice(0, 16);
 }
 
+/** Resolve the real client IP in order of trustworthiness. */
+function resolveClientIp(request: NextRequest): string {
+  // x-real-ip is set by trusted reverse proxies (Vercel, nginx)
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+  // Fall back to the first entry in x-forwarded-for (can be spoofed,
+  // but is better than nothing when x-real-ip is absent)
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return "unknown";
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
@@ -88,12 +117,10 @@ export async function POST(
       return NextResponse.json({ ok: true }, { headers: { "Access-Control-Allow-Origin": "*" } });
     }
 
-    // Simple in-process rate limit per session
-    const count = recentSessions.get(sessionId) ?? 0;
-    if (count >= 20) {
+    // Timestamp-based rate limit per session
+    if (!checkRateLimit(sessionId)) {
       return NextResponse.json({ ok: true }, { headers: { "Access-Control-Allow-Origin": "*" } });
     }
-    recentSessions.set(sessionId, count + 1);
 
     const userAgent = String(body.ua ?? "").slice(0, 512);
     const referer = String(body.ref ?? "").slice(0, 512);
@@ -110,9 +137,8 @@ export async function POST(
       ? (serverBotDetect ? "bot_ua" : reason) || "client_flag"
       : undefined;
 
-    // Privacy-safe IP hash
-    const forwarded = request.headers.get("x-forwarded-for");
-    const ip = forwarded ? forwarded.split(",")[0].trim() : "unknown";
+    // Privacy-safe IP hash using the most trusted available IP source
+    const ip = resolveClientIp(request);
     const ipHash = ip !== "unknown" ? hashIp(ip) : undefined;
 
     await prisma.clickFraudEvent.create({
@@ -151,3 +177,4 @@ export async function OPTIONS() {
     },
   });
 }
+

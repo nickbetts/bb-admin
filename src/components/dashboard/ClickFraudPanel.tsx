@@ -103,7 +103,11 @@ export function ClickFraudPanel({
   }
 
   // ── Snippet code ───────────────────────────────────────────────────────────
-  const appUrl = typeof window !== "undefined" ? window.location.origin : "";
+  // Use NEXT_PUBLIC_APP_URL when available (works in SSR and CSR),
+  // fall back to window.location.origin for client-side only contexts.
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (typeof window !== "undefined" ? window.location.origin : "");
   const snippet = token
     ? `<!-- i3media Click Protection -->
 <script>

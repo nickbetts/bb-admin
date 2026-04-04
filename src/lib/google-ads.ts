@@ -883,6 +883,12 @@ export async function getGoogleAdsInvalidClicks(
   startDate: string,
   endDate: string
 ): Promise<GoogleAdsInvalidClicks> {
+  // Validate date format to prevent injection into the GAQL query string
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+    throw new Error("Invalid date format — expected YYYY-MM-DD");
+  }
+
   const token = await getAccessToken();
   const mccId = await getMccId();
   const query = `
