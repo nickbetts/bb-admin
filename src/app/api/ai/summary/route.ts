@@ -805,8 +805,14 @@ AVAILABLE LEVERS: call routing rules and schedules, overflow and failover routin
       const recPrompt = `Client: ${clientName ?? "client"} | Period: ${dateRange ?? "selected period"}
 
 For each numbered alert below, write ONE specific, data-driven recommendation (1–2 sentences max).
-Base every recommendation only on the data provided — use the actual numbers from the alert and context below. Be concrete and actionable.
-Do NOT invent numbers, budgets, or metrics that are not present in the data. Do NOT use generic phrases like "consider reviewing" or "monitor closely".
+
+RULES:
+- Use the EXACT numbers from the alert and context. If a daily budget is £20.00/day and 27% IS is lost, state "Increase daily budget from £20.00 to approximately £27.00/day to recover the lost 27% impression share."
+- If budget data is present, calculate what the new budget should be. If spend pacing data is present, estimate when budget will exhaust.
+- Name specific campaigns, ad sets, or creatives by name. Never say "the campaign" when you have its name.
+- State the expected impact: "This should recover approximately X% of lost impressions" or "Reducing frequency from 4.1x to under 3x."
+- NEVER use vague phrases: "consider reviewing", "monitor closely", "evaluate performance", "assess the situation". Every recommendation must contain a concrete action.
+- Do NOT invent numbers, budgets, or metrics that are not in the data below.
 
 ${contextBlock ? `Channel data:\n${contextBlock}\n` : ""}
 Alerts:
@@ -818,17 +824,69 @@ One string per alert, in the same order. British English.`;
       const comp2 = await openai2.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: systemPrompt + "\nProvide specific, data-grounded, actionable recommendations. British English. Never fabricate numbers or metrics not present in the data." },
+          { role: "system", content: systemPrompt + "\nProvide specific, data-grounded, actionable recommendations. British English. Never fabricate numbers or metrics not present in the data. Always use exact campaign names and numbers from the data." },
           { role: "user", content: recPrompt },
         ],
         response_format: { type: "json_object" },
-        max_tokens: Math.max(1200, alerts.length * 130),
+        max_tokens: Math.max(1500, alerts.length * 180),
         temperature: 0.3,
       });
 
       let recs: { recommendations?: string[] } = {};
       try { recs = JSON.parse(comp2.choices[0]?.message?.content ?? "{}"); } catch { /* */ }
       return NextResponse.json({ recommendations: recs.recommendations ?? alerts.map(() => "") });
+    }
+
+    // ── Holistic Game Plan — cross-channel unified strategy ────────────────────
+    if (sectionType === "holistic_game_plan") {
+      const alerts = (body as unknown as {
+        alerts?: Array<{ platform: string; severity: string; level?: string; label?: string; metric?: string; detail: string; direction?: string; recommendation?: string }>;
+        crossPlatformContext?: string;
+      }).alerts ?? [];
+
+      if (!alerts.length) return NextResponse.json({ gamePlan: "" });
+
+      const openaiGP = await getOpenAiClient();
+
+      const signalSummary = alerts
+        .map((a, i) =>
+          `${i + 1}. [${(a.severity ?? "").toUpperCase()}] [${a.platform}]${a.level ? ` [${a.level}]` : ""} "${a.label ?? a.metric ?? ""}" — ${a.detail}${a.recommendation ? `\n   Current recommendation: ${a.recommendation}` : ""}`
+        )
+        .join("\n");
+
+      const crossCtx = (body as unknown as { crossPlatformContext?: string }).crossPlatformContext ?? "";
+
+      const gamePlanPrompt = `You are a senior digital marketing strategist at a UK performance marketing agency. You have been given ALL the signals detected across ALL channels for a client. Your job is to synthesise these into a single, unified game plan — NOT repeat each signal individually.
+
+Client: ${clientName ?? "client"} | Period: ${dateRange ?? "selected period"}
+
+${crossCtx ? `Cross-platform performance:\n${crossCtx}\n` : ""}
+ALL DETECTED SIGNALS:
+${signalSummary}
+
+INSTRUCTIONS:
+1. Group related signals together (e.g. multiple budget-constrained campaigns, multiple audience exclusion issues, related metric movements).
+2. Identify cross-channel connections (e.g. "Meta reach is down 42.7% but conversions are up 65.7% — the campaign is narrowing to higher-intent audiences, which is positive").
+3. Produce a PRIORITISED ACTION PLAN with 3–6 concrete actions, ordered by impact.
+4. Each action must include: WHAT to do, WHERE (specific campaign/channel names), WHY (link to the signal data), and EXPECTED IMPACT.
+5. Where budget changes are recommended, state the specific amount (e.g. "Increase from £20/day to £28/day") if the data supports it.
+6. Identify any signals that CONTRADICT each other and explain the trade-off.
+7. Do NOT repeat signals verbatim — synthesise them into a strategic narrative.
+
+Format as a numbered list. Be concise but specific. British English.`;
+
+      const gpResponse = await openaiGP.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "You are a senior cross-channel digital marketing strategist. Produce a unified, prioritised action plan that synthesises all detected signals into a coherent strategy. Be specific with numbers and campaign names. British English." },
+          { role: "user", content: gamePlanPrompt },
+        ],
+        max_tokens: 2000,
+        temperature: 0.35,
+      });
+
+      const gamePlan = gpResponse.choices[0]?.message?.content?.trim() ?? "";
+      return NextResponse.json({ gamePlan });
     }
     // ──────────────────────────────────────────────────────────────────────────
 
