@@ -10,6 +10,7 @@ import {
   getGoogleAdsLandingPages,
   getGoogleAdsAvgQualityScore,
   getGoogleAdsAudienceCriteria,
+  getGoogleAdsInvalidClicks,
 } from "@/lib/google-ads";
 import { withApiCache } from "@/lib/api-cache";
 
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
     const cacheKey = `googleads:${customerId}:${startDate}:${endDate}`;
 
     const data = await withApiCache(cacheKey, GADS_CACHE_TTL_HOURS, async () => {
-      const [overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, audienceCriteria] =
+      const [overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, audienceCriteria, invalidClicks] =
         await Promise.all([
           getGoogleAdsOverview(customerId, startDate, endDate),
           getGoogleAdsCampaigns(customerId, startDate, endDate),
@@ -56,8 +57,9 @@ export async function GET(request: NextRequest) {
           getGoogleAdsLandingPages(customerId, startDate, endDate),
           getGoogleAdsAvgQualityScore(customerId),
           getGoogleAdsAudienceCriteria(customerId),
+          getGoogleAdsInvalidClicks(customerId, startDate, endDate),
         ]);
-      return { overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, audienceCriteria };
+      return { overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, audienceCriteria, invalidClicks };
     });
 
     return NextResponse.json(data);

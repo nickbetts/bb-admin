@@ -18,6 +18,7 @@ import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { AiLandingPageAnalysis } from "@/components/ai/AiLandingPageAnalysis";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 import { CreativeIntelligencePanel } from "./CreativeIntelligencePanel";
+import { ClickFraudPanel } from "./ClickFraudPanel";
 
 interface GoogleAdsOverview {
   clicks: number;
@@ -103,6 +104,13 @@ interface GoogleAdsData {
     negative: boolean;
     bidModifier: number | null;
   }>;
+  invalidClicks?: {
+    invalidClicks: number;
+    invalidClickRate: number;
+    validClicks: number;
+    estimatedInvalidCostMicros: number;
+    totalCostMicros: number;
+  };
 }
 
 interface Props {
@@ -116,6 +124,7 @@ interface Props {
   hideAlerts?: boolean;
   hideAi?: boolean;
   reportMode?: boolean;
+  clickFraudToken?: string | null;
   onMetricsReady?: (metrics: Record<string, number>) => void;
   onPreviousMetricsReady?: (metrics: Record<string, number>) => void;
   afterHeader?: ReactNode;
@@ -150,7 +159,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
 
 type GAdsAlert = { severity: "high" | "medium"; label: string; level: string; detail: string; recommendation: string };
 
-export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, onMetricsReady, onPreviousMetricsReady, afterHeader }: Props) {
+export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, onMetricsReady, onPreviousMetricsReady, afterHeader }: Props) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
@@ -987,6 +996,16 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
             conversions: a.conversions,
             spend: a.costMicros / 1e6,
           })) ?? []}
+        />
+      )}
+
+      {/* Click Fraud Protection */}
+      {!loading && !error && show("click_fraud") && (
+        <ClickFraudPanel
+          platform="googleads"
+          googleAdsInvalidClicks={data?.invalidClicks}
+          clientId={clientId}
+          clickFraudToken={clickFraudToken}
         />
       )}
     </div>

@@ -71,12 +71,14 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "kpis", label: "Key Metrics" },
     { id: "chart", label: "Performance Trend" },
     { id: "campaigns", label: "Campaign Breakdown" },
+    { id: "click_fraud", label: "Click Fraud Protection" },
   ],
   googleads: [
     { id: "kpis", label: "Key Metrics" },
     { id: "chart", label: "Performance Trend" },
     { id: "campaigns", label: "Campaign Breakdown" },
     { id: "ad_groups", label: "Ad Groups" },
+    { id: "click_fraud", label: "Click Fraud Protection" },
   ],
   searchconsole: [
     { id: "kpis", label: "Key Metrics" },
