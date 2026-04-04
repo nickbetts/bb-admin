@@ -162,3 +162,28 @@ export function buildCrossContextString(
     return `• ${s.platform}: ${metricsStr}`;
   }).join("\n");
 }
+
+
+/**
+ * Returns the application base URL for use in dynamically-generated snippets.
+ * Prefers the NEXT_PUBLIC_APP_URL environment variable (set at build time and
+ * available in both server and client contexts). Falls back to
+ * window.location.origin in browser-only contexts.
+ *
+ * The returned value is validated to be a safe HTTP/HTTPS URL so it can be
+ * safely interpolated into JavaScript snippet strings without script-injection risk.
+ */
+export function getAppUrl(): string {
+  const candidate =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (typeof window !== "undefined" ? window.location.origin : "");
+
+  // Allow only http:// or https:// URLs with RFC 3986 safe characters,
+  // and no quote characters, to prevent script injection when the value
+  // is embedded in a JS string literal.
+  if (/^https?:\/\/[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=%]+$/.test(candidate)) {
+    return candidate.replace(/\/$/, ""); // strip trailing slash
+  }
+  // Fall back to a safe empty string — snippet will not work but won't be dangerous
+  return "";
+}

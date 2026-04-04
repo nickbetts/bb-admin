@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Loader2, Upload, X, Plus, Trash2 } from "lucide-react";
+import { Save, Loader2, Upload, X, Plus, Trash2, Shield, Copy, Check, RefreshCw } from "lucide-react";
 import Image from "next/image";
+import { getAppUrl } from "@/lib/utils";
 
 interface Client {
   id: string;
@@ -49,6 +50,7 @@ interface Client {
   callrailApiKey: string | null;
   competitorDomains: string | null;
   contactEmails?: string | null; // JSON: string[]
+  clickFraudToken?: string | null; // Click fraud protection snippet token
 }
 
 interface ClientSettingsFormProps {
@@ -171,6 +173,11 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       return client.contractedHours ? JSON.parse(client.contractedHours) as Array<{ service: string; hoursPerMonth: number }> : [];
     } catch { return []; }
   });
+
+  // Click fraud protection snippet token
+  const [clickFraudToken, setClickFraudToken] = useState<string | null>(client.clickFraudToken ?? null);
+  const [generatingToken, setGeneratingToken] = useState(false);
+  const [snippetCopied, setSnippetCopied] = useState(false);
 
   useEffect(() => {
     fetch("/api/ga4/properties")
@@ -1092,6 +1099,145 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
           )}
           <p className="text-xs text-slate-500" style={{ marginTop: 10 }}>
             These values are included in the AI prompt when generating a proposal from the Keyword Planner. The AI will calculate realistic deliverables based on hours and task benchmarks set in Settings.
+          </p>
+        </div>
+      </div>
+
+      {/* Click Fraud Protection Snippet */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-xs font-bold text-red-700">
+              <Shield size={15} />
+            </span>
+            <div>
+              <h2 className="card-title">Click Fraud Protection</h2>
+              <p className="card-subtitle">Generate a unique snippet to detect and log bot/invalid clicks on client landing pages. Stats appear in the Google Ads and Meta dashboards.</p>
+            </div>
+          </div>
+        </div>
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {clickFraudToken ? (
+              <>
+                <code style={{ fontSize: 12, background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 5, padding: "4px 10px", fontFamily: "monospace", color: "var(--text-2)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {clickFraudToken}
+                </code>
+                <button
+                  type="button"
+                  disabled={generatingToken}
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0 }}
+                  onClick={async () => {
+                    setGeneratingToken(true);
+                    const res = await fetch(`/api/clients/${client.id}/click-fraud-token`, { method: "POST" });
+                    const d = await res.json();
+                    if (d.token) setClickFraudToken(d.token);
+                    setGeneratingToken(false);
+                  }}
+                >
+                  <RefreshCw size={13} />
+                  {generatingToken ? "Regenerating…" : "Regenerate"}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                disabled={generatingToken}
+                className="btn btn-primary btn-sm"
+                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                onClick={async () => {
+                  setGeneratingToken(true);
+                  const res = await fetch(`/api/clients/${client.id}/click-fraud-token`, { method: "POST" });
+                  const d = await res.json();
+                  if (d.token) setClickFraudToken(d.token);
+                  setGeneratingToken(false);
+                }}
+              >
+                <Shield size={13} />
+                {generatingToken ? "Generating…" : "Generate Protection Snippet"}
+              </button>
+            )}
+          </div>
+
+          {clickFraudToken && (() => {
+            // getAppUrl() validates the URL scheme and strips unsafe characters to
+            // prevent script injection when the value is embedded in the JS snippet.
+            const appUrl = getAppUrl();
+            const snippet = `<!-- i3media Click Protection -->
+<script>
+(function(){
+  var sid=Math.random().toString(36).slice(2)+Date.now().toString(36);
+  var ua=navigator.userAgent||'';
+  var ref=document.referrer||'';
+  var sp=new URLSearchParams(location.search);
+  var botPat=/bot|crawler|spider|headless|phantom|selenium|puppeteer|playwright/i;
+  var suspicious=botPat.test(ua)||!window.history||typeof document.hidden==='undefined';
+  var reason=suspicious?(botPat.test(ua)?'bot_ua':'headless'):'';
+  fetch('${appUrl}/api/click-protection/${clickFraudToken}',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      sid:sid,ua:ua,ref:ref,
+      utmSource:sp.get('utm_source')||'',
+      utmMedium:sp.get('utm_medium')||'',
+      utmCampaign:sp.get('utm_campaign')||'',
+      suspicious:suspicious?'1':'0',
+      reason:reason
+    })
+  }).catch(function(){});
+})();
+</script>`;
+            return (
+              <div style={{ position: "relative" }}>
+                <pre style={{
+                  background: "#1e293b",
+                  color: "#e2e8f0",
+                  borderRadius: 8,
+                  padding: "16px 20px",
+                  fontSize: 11,
+                  lineHeight: 1.6,
+                  overflowX: "auto",
+                  fontFamily: "monospace",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-all",
+                }}>
+                  {snippet}
+                </pre>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(snippet).then(() => {
+                      setSnippetCopied(true);
+                      setTimeout(() => setSnippetCopied(false), 2000);
+                    });
+                  }}
+                  style={{
+                    position: "absolute",
+                    top: 10,
+                    right: 10,
+                    background: snippetCopied ? "#10b981" : "rgba(255,255,255,0.1)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 5,
+                    padding: "5px 10px",
+                    fontSize: 11,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                >
+                  {snippetCopied ? <Check size={11} /> : <Copy size={11} />}
+                  {snippetCopied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            );
+          })()}
+
+          <p className="text-xs text-slate-500">
+            Add this snippet to the <code>&lt;head&gt;</code> or just before <code>&lt;/body&gt;</code> on the client&apos;s paid ad landing pages.
+            It detects known bot user-agents and headless browsers, then logs visits to the dashboard. Stats are visible in the Google Ads and Meta sections under &ldquo;Click Fraud Protection&rdquo;.
           </p>
         </div>
       </div>

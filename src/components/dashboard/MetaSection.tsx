@@ -20,6 +20,7 @@ import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { AiLandingPageAnalysis } from "@/components/ai/AiLandingPageAnalysis";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 import { CreativeIntelligencePanel } from "./CreativeIntelligencePanel";
+import { ClickFraudPanel } from "./ClickFraudPanel";
 
 interface MetaSectionProps {
   clientId: string;
@@ -31,6 +32,7 @@ interface MetaSectionProps {
   hideAlerts?: boolean;
   hideAi?: boolean;
   reportMode?: boolean;
+  clickFraudToken?: string | null;
   onMetricsReady?: (metrics: Record<string, number>) => void;
   onPreviousMetricsReady?: (metrics: Record<string, number>) => void;
   afterHeader?: React.ReactNode;
@@ -214,7 +216,7 @@ interface AdSetAudience {
 
 type MetaAlert = { severity: "high" | "medium"; label: string; level: "Campaign" | "Ad Set" | "Creative"; detail: string; recommendation: string };
 
-export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, onMetricsReady, onPreviousMetricsReady, afterHeader }: MetaSectionProps) {
+export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, onMetricsReady, onPreviousMetricsReady, afterHeader }: MetaSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<MetaOverview | null>(null);
@@ -1217,6 +1219,21 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
             format: c.mediaType,
             headline: c.headline ?? undefined,
           }))}
+        />
+      )}
+
+      {/* Click Fraud Protection */}
+      {!loading && !error && overview && show("click_fraud") && (
+        <ClickFraudPanel
+          platform="meta"
+          metaBotEstimate={{
+            outboundClicks: overview.outboundClicks,
+            landingPageViews: overview.landingPageViews,
+            totalSpend: overview.totalSpend,
+            totalClicks: overview.totalClicks,
+          }}
+          clientId={clientId}
+          clickFraudToken={clickFraudToken}
         />
       )}
 

@@ -51,6 +51,7 @@ interface Client {
   youtubeChannelId?: string | null;
   callrailAccountId?: string | null;
   competitorDomains?: string | null;
+  clickFraudToken?: string | null;
 }
 
 interface ClientDashboardProps {
@@ -294,7 +295,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
       ) : null}
 
       {activeTab === "paid" && client.metaAccountId ? (
-        <MetaSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.meta} />
+        <MetaSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.meta} clickFraudToken={client.clickFraudToken} />
       ) : activeTab === "paid" ? (
         <NotConfigured
           name="Paid Social (Meta)"
@@ -304,7 +305,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
       ) : null}
 
       {activeTab === "googleads" && client.googleAdsCustomerId ? (
-        <GoogleAdsSection customerId={client.googleAdsCustomerId} clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.googleads} />
+        <GoogleAdsSection customerId={client.googleAdsCustomerId} clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.googleads} clickFraudToken={client.clickFraudToken} />
       ) : activeTab === "googleads" ? (
         <NotConfigured
           name="Paid Search (Google Ads)"

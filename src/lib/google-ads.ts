@@ -179,6 +179,20 @@ export interface GoogleAdsAccount {
   isManager: boolean;
 }
 
+/** Invalid / filtered click data reported by Google Ads at account level */
+export interface GoogleAdsInvalidClicks {
+  /** Total clicks Google detected as invalid (spam, accidental, etc.) */
+  invalidClicks: number;
+  /** invalid_clicks / (clicks + invalid_clicks) as a fraction 0–1 */
+  invalidClickRate: number;
+  /** Valid (billable) clicks for the period */
+  validClicks: number;
+  /** Estimated cost attributed to invalid clicks (micros) */
+  estimatedInvalidCostMicros: number;
+  /** Total cost for the period (micros), used to compute the estimate */
+  totalCostMicros: number;
+}
+
 export async function getGoogleAdsOverview(
   customerId: string,
   startDate: string,
@@ -857,4 +871,59 @@ export async function generateKeywordIdeas(
       })),
     };
   });
+}
+
+/**
+ * Fetch invalid-click metrics at account level for the given period.
+ * Google Ads automatically filters these clicks and typically refunds them,
+ * but surfacing them gives clients visibility into estimated wasted ad spend.
+ */
+export async function getGoogleAdsInvalidClicks(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsInvalidClicks> {
+  // Validate date format to prevent injection into the GAQL query string
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+    throw new Error("Invalid date format — expected YYYY-MM-DD");
+  }
+
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      metrics.clicks,
+      metrics.cost_micros,
+      metrics.invalid_clicks,
+      metrics.invalid_click_rate
+    FROM customer
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+  `;
+
+  const data = await searchGoogleAds(customerId, query, token, mccId);
+
+  let validClicks = 0;
+  let totalCostMicros = 0;
+  let invalidClicks = 0;
+  // invalid_click_rate is a weighted average across rows — we recalculate from totals
+  for (const row of data.results ?? []) {
+    const m = row.metrics ?? {};
+    validClicks += Number(m.clicks ?? 0);
+    totalCostMicros += Number(m.costMicros ?? 0);
+    invalidClicks += Number(m.invalidClicks ?? 0);
+  }
+
+  const totalClicks = validClicks + invalidClicks;
+  const invalidClickRate = totalClicks > 0 ? invalidClicks / totalClicks : 0;
+  // Estimate invalid cost proportionally to invalid click share
+  const estimatedInvalidCostMicros = Math.round(totalCostMicros * invalidClickRate);
+
+  return {
+    invalidClicks,
+    invalidClickRate,
+    validClicks,
+    estimatedInvalidCostMicros,
+    totalCostMicros,
+  };
 }
