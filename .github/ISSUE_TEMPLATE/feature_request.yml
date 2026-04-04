@@ -1,0 +1,58 @@
+name: Feature Request
+description: Suggest a new feature or improvement for the platform.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest an improvement. Please fill in as much detail as you can.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the problem or limitation you're running into.
+      placeholder: "As an account manager, I find it hard to do X because…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the feature or change you'd like to see.
+      placeholder: "I'd like a way to…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you considered any other approaches or workarounds?
+      placeholder: "I tried using X but it doesn't work because…"
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Feature area
+      options:
+        - Client dashboard / data channels
+        - AI insights / commentary
+        - Reports / PDF export
+        - Agency tools (keyword planner, proposals, etc.)
+        - Notifications
+        - Admin / user management
+        - Settings / integrations
+        - Client portal
+        - Vercel deployment / CI
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Mockups, screenshots, related issues, or any other context.

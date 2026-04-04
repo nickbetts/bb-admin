@@ -32,6 +32,8 @@ jobs:
         env:
           # Use a local SQLite file so prisma generate succeeds without a real DB
           DATABASE_URL: file:dev.db
-          # Dummy values so env validation passes during build
-          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN || 'vercel_blob_rw_placeholder' }}
-          SEMRUSH_API_KEY: ${{ secrets.SEMRUSH_API_KEY || 'placeholder' }}
+          # Dummy values so env validation passes during build.
+          # Using vars/secrets with explicit fallbacks via the supported
+          # ${{ secrets.X }} pattern; empty string is safe for Next.js build stubs.
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN != '' && secrets.BLOB_READ_WRITE_TOKEN || 'vercel_blob_rw_placeholder' }}
+          SEMRUSH_API_KEY: ${{ secrets.SEMRUSH_API_KEY != '' && secrets.SEMRUSH_API_KEY || 'placeholder' }}
