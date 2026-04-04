@@ -42,7 +42,8 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       github.event_name == 'deployment_status' &&
-      github.event.deployment_status.state == 'failure'
+      github.event.deployment_status.state == 'failure' &&
+      github.event.deployment.environment == 'Production'
 
     steps:
       - name: Ensure jq is available
