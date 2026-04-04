@@ -34,6 +34,34 @@ interface Signal {
   aiRec?: boolean;
 }
 
+// ─── Signal deduplication ──────────────────────────────────────────────────────
+// Merge signals that share the same platform + metric + detail (e.g. duplicate
+// impression share or audience exclusion signals).  Keeps the highest-severity
+// instance and rolls up labels into a single signal.
+function deduplicateSignals(signals: Signal[]): Signal[] {
+  const map = new Map<string, Signal & { labels: string[] }>();
+  for (const s of signals) {
+    // Key on platform + metric + core detail (strip label-specific text)
+    const key = `${s.platform}::${s.metric}::${s.detail}`;
+    const existing = map.get(key);
+    if (existing) {
+      // Keep higher severity
+      const sevOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+      if ((sevOrder[s.severity] ?? 3) < (sevOrder[existing.severity] ?? 3)) {
+        existing.severity = s.severity;
+      }
+      if (s.label && !existing.labels.includes(s.label)) existing.labels.push(s.label);
+    } else {
+      map.set(key, { ...s, labels: s.label ? [s.label] : [] });
+    }
+  }
+  return Array.from(map.values()).map(({ labels, ...s }) => ({
+    ...s,
+    label: labels.length > 1 ? labels.join(", ") : labels[0],
+    detail: labels.length > 1 ? `${s.detail} (affects ${labels.length} items: ${labels.join(", ")})` : s.detail,
+  }));
+}
+
 // ─── Styling maps ──────────────────────────────────────────────────────────────
 
 const PLATFORM_COLOURS: Record<string, { bg: string; text: string; border: string }> = {
@@ -100,6 +128,11 @@ interface SignalsCampaign {
   impressions: number;
   objective?: string;
   channelType?: string;
+  dailyBudget?: number | null;
+  lifetimeBudget?: number | null;
+  dailyBudgetMicros?: number;
+  biddingStrategyType?: string;
+  bidStrategy?: string;
   searchBudgetLostImpressionShare?: number | null;
   searchRankLostImpressionShare?: number | null;
   searchImpressionShare?: number | null;
@@ -252,12 +285,16 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
   const [loading, setLoading] = useState(true);
   // Track which platforms still have AI recommendation calls in-flight (for per-row spinners)
   const [aiLoadingPlatforms, setAiLoadingPlatforms] = useState<Set<string>>(new Set());
+  const [gamePlan, setGamePlan] = useState<string | null>(null);
+  const [gamePlanLoading, setGamePlanLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
   const fetchSignals = useCallback(async () => {
     setLoading(true);
     setAiLoadingPlatforms(new Set());
+    setGamePlan(null);
+    setGamePlanLoading(false);
     setError(null);
 
     const allSignals: Signal[] = [];
@@ -410,24 +447,34 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
           status?: string;
           channelType?: string;
           impressions: number;
+          costMicros?: number;
+          dailyBudgetMicros?: number;
+          biddingStrategyType?: string;
+          conversions?: number;
+          conversionsValue?: number;
           searchBudgetLostImpressionShare?: number | null;
           searchRankLostImpressionShare?: number | null;
           searchImpressionShare?: number | null;
         }>) {
           if (c.status && c.status !== "ENABLED") continue;
+          const dailyBudget = c.dailyBudgetMicros ? c.dailyBudgetMicros / 1_000_000 : null;
+          const totalSpend  = c.costMicros ? c.costMicros / 1_000_000 : null;
+          const budgetStr   = dailyBudget ? ` (daily budget: £${dailyBudget.toFixed(2)})` : "";
+          const spendStr    = totalSpend != null ? ` — £${totalSpend.toFixed(0)} spent this period` : "";
+
           if (c.searchBudgetLostImpressionShare != null && c.searchBudgetLostImpressionShare > 0.10) {
             const pct = Math.round(c.searchBudgetLostImpressionShare * 100);
-            allSignals.push({ platform: "Google Ads", source: "computed", severity: pct >= 30 ? "high" : "medium", level: "Campaign", metric: "Impression Share Lost (Budget)", label: c.name, detail: `Losing ${pct}% of eligible impressions due to budget constraints`, direction: "down", recommendation: pct >= 30 ? "Increase daily budget or narrow targeting to high-converting keywords/locations to recapture lost impression share." : "Consider increasing budget or restricting delivery to peak conversion windows. Review dayparting settings." });
+            allSignals.push({ platform: "Google Ads", source: "computed", severity: pct >= 30 ? "high" : "medium", level: "Campaign", metric: "Impression Share Lost (Budget)", label: c.name, detail: `Losing ${pct}% of eligible impressions due to budget constraints${budgetStr}${spendStr}`, direction: "down", recommendation: pct >= 30 ? "Increase daily budget or narrow targeting to high-converting keywords/locations to recapture lost impression share." : "Consider increasing budget or restricting delivery to peak conversion windows. Review dayparting settings." });
           }
 
           if (c.searchRankLostImpressionShare != null && c.searchRankLostImpressionShare > 0.15) {
             const pct = Math.round(c.searchRankLostImpressionShare * 100);
-            allSignals.push({ platform: "Google Ads", source: "computed", severity: pct >= 40 ? "high" : "medium", level: "Campaign", metric: "Impression Share Lost (Rank)", label: c.name, detail: `Losing ${pct}% of eligible impressions due to low ad rank`, direction: "down", recommendation: pct >= 40 ? "Raise bids on key terms and improve Quality Score by aligning keyword-to-ad-copy relevance and strengthening landing page experience." : "Review keyword bids and Quality Scores. Tighten ad group themes to improve relevance and reduce rank-driven losses." });
+            allSignals.push({ platform: "Google Ads", source: "computed", severity: pct >= 40 ? "high" : "medium", level: "Campaign", metric: "Impression Share Lost (Rank)", label: c.name, detail: `Losing ${pct}% of eligible impressions due to low ad rank${budgetStr}${spendStr}`, direction: "down", recommendation: pct >= 40 ? "Raise bids on key terms and improve Quality Score by aligning keyword-to-ad-copy relevance and strengthening landing page experience." : "Review keyword bids and Quality Scores. Tighten ad group themes to improve relevance and reduce rank-driven losses." });
           }
 
           if (c.searchImpressionShare != null && c.searchImpressionShare < 0.30 && c.impressions > 100 && (c.channelType === "SEARCH" || !c.channelType)) {
             const pct = Math.round(c.searchImpressionShare * 100);
-            allSignals.push({ platform: "Google Ads", source: "computed", severity: pct < 15 ? "high" : "medium", level: "Campaign", metric: "Search Impression Share", label: c.name, detail: `Only ${pct}% search impression share — significant room to capture more`, direction: "down", recommendation: "Increase budget or consolidate campaigns to improve Quality Scores. Prioritise highest-converting search terms to maximise impression share." });
+            allSignals.push({ platform: "Google Ads", source: "computed", severity: pct < 15 ? "high" : "medium", level: "Campaign", metric: "Search Impression Share", label: c.name, detail: `Only ${pct}% search impression share${budgetStr}${spendStr} — significant room to capture more`, direction: "down", recommendation: "Increase budget or consolidate campaigns to improve Quality Scores. Prioritise highest-converting search terms to maximise impression share." });
           }
 
           // Auction pressure combo: budget-constrained + low IS together
@@ -438,7 +485,7 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
           ) {
             const budgetPct = Math.round(c.searchBudgetLostImpressionShare * 100);
             const isPct = Math.round(c.searchImpressionShare * 100);
-            allSignals.push({ platform: "Google Ads", source: "computed", severity: "high", level: "Campaign", metric: "Auction Competitiveness", label: c.name, detail: `Budget-constrained (${budgetPct}% IS lost to budget) with only ${isPct}% impression share — increasing budget could significantly boost reach`, direction: "down", recommendation: "Increase daily budget as a priority action — budget is the binding constraint here. A budget increase will have outsized impression share impact compared to bid adjustments alone." });
+            allSignals.push({ platform: "Google Ads", source: "computed", severity: "high", level: "Campaign", metric: "Auction Competitiveness", label: c.name, detail: `Budget-constrained (${budgetPct}% IS lost to budget) with only ${isPct}% impression share${budgetStr}${spendStr} — increasing budget could significantly boost reach`, direction: "down", recommendation: "Increase daily budget as a priority action — budget is the binding constraint here. A budget increase will have outsized impression share impact compared to bid adjustments alone." });
           }
         }
       }
@@ -734,19 +781,25 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
         return a.source === "computed" ? -1 : 1;
       });
 
-      setSignals(allSignals);
+      // ── Deduplicate signals ─────────────────────────────────────────────────
+      const dedupedSignals = deduplicateSignals(allSignals);
+
+      setSignals(dedupedSignals);
 
       // ── Per-platform AI recommendation calls ─────────────────────────────────
       // Group sorted signals by platform so each call gets only its own channel's
       // signals, and receives real channel data as grounding context.
       const platformGroups = new Map<string, Array<{ signal: Signal; idx: number }>>();
-      allSignals.forEach((s, idx) => {
+      dedupedSignals.forEach((s, idx) => {
         if (!platformGroups.has(s.platform)) platformGroups.set(s.platform, []);
         platformGroups.get(s.platform)!.push({ signal: s, idx });
       });
 
       if (platformGroups.size > 0) {
         setAiLoadingPlatforms(new Set(platformGroups.keys()));
+
+        // Track when all platform recommendation calls finish to trigger game plan
+        let platformsRemaining = platformGroups.size;
 
         for (const [platform, entries] of platformGroups) {
           // Build a channel-specific context string so the AI only reasons over real data
@@ -786,20 +839,30 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
             if (pv) lines.push(`Previous: £${pv.totalSpend?.toFixed(0) ?? "n/a"} spend, ${pv.totalConversions ?? "n/a"} conversions, ROAS ${pv.avgRoas?.toFixed(2) ?? "n/a"}x`);
             if (camps?.length) {
               const activeCamps = camps.filter(c => c.status === "ACTIVE").slice(0, 5);
-              if (activeCamps.length) lines.push("Active campaigns: " + activeCamps.map(c => `"${c.name}" £${c.spend.toFixed(0)} spend, ROAS ${c.roas.toFixed(2)}x, freq ${c.frequency.toFixed(1)}x`).join(" | "));
+              if (activeCamps.length) lines.push("Active campaigns: " + activeCamps.map(c => {
+                const budgetInfo = c.dailyBudget ? ` budget £${c.dailyBudget.toFixed(0)}/day` : c.lifetimeBudget ? ` budget £${c.lifetimeBudget.toFixed(0)} lifetime` : "";
+                return `"${c.name}" £${c.spend.toFixed(0)} spend, ROAS ${c.roas.toFixed(2)}x, freq ${c.frequency.toFixed(1)}x${budgetInfo}`;
+              }).join(" | "));
             }
             if (metaCreativeContext) lines.push(metaCreativeContext);
             channelContext = lines.join("\n");
 
           } else if (platform === "Google Ads" && gadsData?.overview) {
             const ov = gadsData.overview as Record<string, number>;
-            const camps = (gadsData.campaignsEnriched ?? []) as Array<{ name: string; status?: string; searchImpressionShare?: number | null; searchBudgetLostImpressionShare?: number | null }>;
+            const camps = (gadsData.campaignsEnriched ?? []) as Array<{ name: string; status?: string; dailyBudgetMicros?: number; costMicros?: number; biddingStrategyType?: string; searchImpressionShare?: number | null; searchBudgetLostImpressionShare?: number | null }>;
             const lines = [
               "Channel: Google Ads (paid search/display)",
               `Overview: £${ov.totalCost?.toFixed(0) ?? "n/a"} spend, ${ov.totalImpressions?.toLocaleString() ?? "n/a"} impressions, ${ov.totalClicks?.toLocaleString() ?? "n/a"} clicks`,
             ];
             const enabledCamps = camps.filter(c => c.status === "ENABLED").slice(0, 5);
-            if (enabledCamps.length) lines.push("Active campaigns: " + enabledCamps.map(c => `"${c.name}" IS ${c.searchImpressionShare != null ? Math.round(c.searchImpressionShare * 100) + "%" : "n/a"}${c.searchBudgetLostImpressionShare != null && c.searchBudgetLostImpressionShare > 0.05 ? ` (IS lost budget: ${Math.round(c.searchBudgetLostImpressionShare * 100)}%)` : ""}`).join(" | "));
+            if (enabledCamps.length) lines.push("Active campaigns:\n" + enabledCamps.map(c => {
+              const budget = c.dailyBudgetMicros ? `£${(c.dailyBudgetMicros / 1_000_000).toFixed(2)}/day` : "n/a";
+              const spent  = c.costMicros ? `£${(c.costMicros / 1_000_000).toFixed(0)} spent` : "";
+              const bidStr = c.biddingStrategyType ? ` [${c.biddingStrategyType.replace(/_/g, " ").toLowerCase()}]` : "";
+              const isStr  = c.searchImpressionShare != null ? ` IS ${Math.round(c.searchImpressionShare * 100)}%` : "";
+              const islStr = c.searchBudgetLostImpressionShare != null && c.searchBudgetLostImpressionShare > 0.05 ? ` (IS lost budget: ${Math.round(c.searchBudgetLostImpressionShare * 100)}%)` : "";
+              return `  • "${c.name}" daily budget: ${budget}, ${spent}${bidStr}${isStr}${islStr}`;
+            }).join("\n"));
             channelContext = lines.join("\n");
 
           } else if (platform === "SEMrush" && semrushOverview) {
@@ -851,6 +914,35 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
                 next.delete(platform);
                 return next;
               });
+              // ── Trigger holistic game plan once ALL platform recs are done ──
+              platformsRemaining--;
+              if (platformsRemaining <= 0 && dedupedSignals.length >= 2) {
+                setGamePlanLoading(true);
+                fetch("/api/ai/summary", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    sectionType: "holistic_game_plan",
+                    clientName: client.name,
+                    dateRange: `${startDate} to ${endDate}`,
+                    crossPlatformContext,
+                    alerts: dedupedSignals.map(s => ({
+                      platform: s.platform,
+                      severity: s.severity,
+                      level: s.level ?? "",
+                      label: s.label ?? s.metric,
+                      metric: s.metric,
+                      detail: s.detail,
+                      direction: s.direction,
+                      recommendation: s.recommendation,
+                    })),
+                  }),
+                })
+                  .then(r => r.ok ? r.json() : null)
+                  .then(json => { if (json?.gamePlan) setGamePlan(json.gamePlan); })
+                  .catch(() => {})
+                  .finally(() => setGamePlanLoading(false));
+              }
             });
         }
       }
@@ -1075,6 +1167,40 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
           </div>
         );
       })}
+
+      {/* ── Holistic Game Plan ──────────────────────────────────────────────── */}
+      {(gamePlan || gamePlanLoading) && (
+        <div style={{
+          borderRadius: 12, border: "1px solid #6366f1",
+          background: "linear-gradient(135deg, #eef2ff, #f5f3ff)",
+          overflow: "hidden",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8, padding: "10px 16px",
+            background: "linear-gradient(135deg, #e0e7ff, #ede9fe)",
+            borderBottom: "1px solid #a5b4fc",
+          }}>
+            <Zap className="h-4 w-4 shrink-0" style={{ color: "#4f46e5" }} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#312e81" }}>
+              Cross-Channel Game Plan
+            </span>
+            {gamePlanLoading && (
+              <Loader2 style={{ width: 12, height: 12, marginLeft: "auto", opacity: 0.6, animation: "spin 1s linear infinite", color: "#4f46e5" }} />
+            )}
+          </div>
+          <div style={{ padding: "14px 16px" }}>
+            {gamePlanLoading && !gamePlan ? (
+              <p style={{ fontSize: 12, color: "#6366f1", margin: 0, fontStyle: "italic" }}>
+                Analysing all signals together to build a unified action plan&hellip;
+              </p>
+            ) : gamePlan ? (
+              <div style={{ fontSize: 12, color: "#1e1b4b", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                {gamePlan}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
