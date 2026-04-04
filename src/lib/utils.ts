@@ -178,9 +178,10 @@ export function getAppUrl(): string {
     process.env.NEXT_PUBLIC_APP_URL ??
     (typeof window !== "undefined" ? window.location.origin : "");
 
-  // Allow only http:// or https:// URLs with no quote characters to prevent
-  // script injection when the value is embedded in a JS string literal.
-  if (/^https?:\/\/[^\s'"<>]+$/.test(candidate)) {
+  // Allow only http:// or https:// URLs with RFC 3986 safe characters,
+  // and no quote characters, to prevent script injection when the value
+  // is embedded in a JS string literal.
+  if (/^https?:\/\/[a-zA-Z0-9\-._~:/?#[\]@!$&'()*+,;=%]+$/.test(candidate)) {
     return candidate.replace(/\/$/, ""); // strip trailing slash
   }
   // Fall back to a safe empty string — snippet will not work but won't be dangerous

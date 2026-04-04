@@ -75,12 +75,17 @@ function hashIp(ip: string): string {
 }
 
 /**
- * Strip ASCII control characters (null bytes, line feeds, carriage returns, etc.)
- * from user-supplied strings before storing them in the database.
+ * Strip ASCII control characters from user-supplied strings before storing
+ * them in the database. Removes U+0000–U+001F except horizontal tab (U+0009),
+ * and also removes DEL (U+007F).
  */
 function sanitiseInput(value: string): string {
-  // Remove control characters (U+0000–U+001F) except horizontal tab (U+0009)
   return value.replace(/[\x00-\x08\x0A-\x1F\x7F]/g, "");
+}
+
+/** Convenience wrapper: sanitise and truncate a raw body field. */
+function sanitiseField(raw: unknown, maxLength: number): string {
+  return sanitiseInput(String(raw ?? "").slice(0, maxLength));
 }
 
 /**
@@ -125,7 +130,7 @@ export async function POST(
       // ignore parse errors
     }
 
-    const sessionId = sanitiseInput(String(body.sid ?? "").slice(0, 64));
+    const sessionId = sanitiseField(body.sid, 64);
     if (!sessionId) {
       return NextResponse.json({ ok: true }, { headers: { "Access-Control-Allow-Origin": "*" } });
     }
@@ -136,12 +141,12 @@ export async function POST(
       return NextResponse.json({ ok: true }, { headers: { "Access-Control-Allow-Origin": "*" } });
     }
 
-    const userAgent = sanitiseInput(String(body.ua ?? "").slice(0, 512));
-    const referer = sanitiseInput(String(body.ref ?? "").slice(0, 512));
-    const utmSource = sanitiseInput(String(body.utmSource ?? "").slice(0, 128));
-    const utmMedium = sanitiseInput(String(body.utmMedium ?? "").slice(0, 128));
-    const utmCampaign = sanitiseInput(String(body.utmCampaign ?? "").slice(0, 128));
-    const reason = sanitiseInput(String(body.reason ?? "").slice(0, 64));
+    const userAgent = sanitiseField(body.ua, 512);
+    const referer = sanitiseField(body.ref, 512);
+    const utmSource = sanitiseField(body.utmSource, 128);
+    const utmMedium = sanitiseField(body.utmMedium, 128);
+    const utmCampaign = sanitiseField(body.utmCampaign, 128);
+    const reason = sanitiseField(body.reason, 64);
     const isSuspiciousFlag = body.suspicious === "1" || body.suspicious === "true";
 
     // Server-side bot detection from user agent
