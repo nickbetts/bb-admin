@@ -13,21 +13,26 @@ config({ path: resolve(__dirname, "../.env.local") });
 const url = process.env.DATABASE_URL;
 const authToken = process.env.TURSO_AUTH_TOKEN;
 const isVercelBuild = process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV);
+const isVercelProduction = process.env.VERCEL_ENV === "production";
 
 if (!url || !authToken) {
-  if (isVercelBuild) {
+  if (isVercelBuild && isVercelProduction) {
     console.error(
       "Missing DATABASE_URL or TURSO_AUTH_TOKEN for Vercel build. " +
         "Set both environment variables in Vercel and redeploy."
     );
     process.exit(1);
   }
+  if (isVercelBuild) {
+    console.log("No Turso credentials found — skipping prod migration (preview/dev Vercel build)");
+    process.exit(0);
+  }
   console.log("No Turso credentials found — skipping prod migration (local dev mode)");
   process.exit(0);
 }
 
 if (!url.startsWith("libsql://")) {
-  if (isVercelBuild) {
+  if (isVercelBuild && isVercelProduction) {
     console.error(
       "DATABASE_URL must be a remote libsql:// URL in Vercel builds. " +
         "Update DATABASE_URL and redeploy."
