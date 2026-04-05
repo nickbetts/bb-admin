@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch seniority demographic breakdown (LinkedIn's key differentiator for B2B targeting)
     // Seniority URNs: 1=Entry, 2=Senior, 3=Manager, 4=Director, 5=VP, 6=C-Suite, 7=Owner, 8=Partner
-    const senioritylabels: Record<string, string> = {
+    const seniorityLabels: Record<string, string> = {
       "1": "Entry",
       "2": "Senior",
       "3": "Manager",
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
           const urn = el.pivotValues?.[0] ?? "";
           const id = urn.split(":").pop() ?? "";
           return {
-            label: senioritylabels[id] ?? urn,
+            label: seniorityLabels[id] ?? urn,
             impressions: el.impressions ?? 0,
             clicks: el.clicks ?? 0,
             spend: parseFloat(el.costInLocalCurrency ?? "0"),
