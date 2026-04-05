@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { Shield, ShieldAlert, MousePointerClick, DollarSign, Copy, Check, RefreshCw } from "lucide-react";
 import { SectionCard } from "@/components/ui/index";
-import { formatNumber, formatCurrency, formatPercent } from "@/lib/utils";
-import { getAppUrl } from "@/lib/utils";
+import { formatNumber, formatCurrency, formatPercent, getAppUrl, buildClickProtectionSnippet } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -107,32 +106,7 @@ export function ClickFraudPanel({
   // getAppUrl() validates the URL scheme and strips unsafe characters to prevent
   // script injection when the value is embedded in the JS snippet string.
   const appUrl = getAppUrl();
-  const snippet = token
-    ? `<!-- i3media Click Protection -->
-<script>
-(function(){
-  var sid=Math.random().toString(36).slice(2)+Date.now().toString(36);
-  var ua=navigator.userAgent||'';
-  var ref=document.referrer||'';
-  var sp=new URLSearchParams(location.search);
-  var botPat=/bot|crawler|spider|headless|phantom|selenium|puppeteer|playwright/i;
-  var suspicious=botPat.test(ua)||!window.history||typeof document.hidden==='undefined';
-  var reason=suspicious?(botPat.test(ua)?'bot_ua':'headless'):'';
-  fetch('${appUrl}/api/click-protection/${token}',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      sid:sid,ua:ua,ref:ref,
-      utmSource:sp.get('utm_source')||'',
-      utmMedium:sp.get('utm_medium')||'',
-      utmCampaign:sp.get('utm_campaign')||'',
-      suspicious:suspicious?'1':'0',
-      reason:reason
-    })
-  }).catch(function(){});
-})();
-</script>`
-    : null;
+  const snippet = token ? buildClickProtectionSnippet(appUrl, token) : null;
 
   function handleCopy() {
     if (!snippet) return;
@@ -234,6 +208,43 @@ export function ClickFraudPanel({
                 : "Spend on clicks that didn't reach your landing page"}
             </div>
           </div>
+        </div>
+
+        {/* ── How it works ────────────────────────────────────────────────── */}
+        <div style={{ background: "var(--bg-2)", borderRadius: 8, padding: "14px 18px", border: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>
+            How {platformLabel} invalid click detection works for this client
+          </div>
+          {platform === "googleads" ? (
+            <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
+              Google Ads automatically detects and filters invalid clicks using its Traffic Quality systems — combining machine learning, rule-based filters, and manual review. Invalid clicks are excluded from your billing in real-time.
+              {googleAdsInvalidClicks ? (
+                <span>
+                  {" "}This period, Google recorded{" "}
+                  <strong style={{ color: "var(--text-1)" }}>{formatNumber(googleAdsInvalidClicks.invalidClicks + googleAdsInvalidClicks.validClicks)}</strong> total clicks,
+                  of which <strong style={{ color: gInvalidClicks > 0 ? "#c2410c" : "var(--text-1)" }}>{formatNumber(gInvalidClicks)}</strong> ({formatPercent(gInvalidRate)}) were identified as invalid.
+                  {gEstimatedWasted > 0 && (
+                    <span> The estimated wasted spend of <strong style={{ color: "#c2410c" }}>{formatCurrency(gEstimatedWasted)}</strong> is typically refunded automatically by Google.</span>
+                  )}
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
+              Meta does not natively report bot clicks. We estimate invalid traffic by comparing <strong style={{ color: "var(--text-1)" }}>outbound clicks</strong> (clicks recorded in Meta Ads that leave to your site) against <strong style={{ color: "var(--text-1)" }}>landing page views</strong> (actual page loads tracked on your website). The gap between the two indicates clicks that never reached your destination URL.
+              {metaBotEstimate ? (
+                <span>
+                  {" "}This period, Meta recorded{" "}
+                  <strong style={{ color: "var(--text-1)" }}>{formatNumber(metaBotEstimate.outboundClicks)}</strong> outbound clicks and your site recorded{" "}
+                  <strong style={{ color: "var(--text-1)" }}>{formatNumber(metaBotEstimate.landingPageViews)}</strong> landing page views — a gap of{" "}
+                  <strong style={{ color: mEstimatedBotClicks > 0 ? "#c2410c" : "var(--text-1)" }}>{formatNumber(mEstimatedBotClicks)}</strong> clicks ({formatPercent(mBotRate)}).
+                  {mEstimatedWasted > 0 && (
+                    <span> This translates to an estimated <strong style={{ color: "#c2410c" }}>{formatCurrency(mEstimatedWasted)}</strong> in spend on traffic that did not reach the landing page.</span>
+                  )}
+                </span>
+              ) : null}
+            </div>
+          )}
         </div>
 
         {/* ── Snippet stats (if token present) ────────────────────────────── */}
