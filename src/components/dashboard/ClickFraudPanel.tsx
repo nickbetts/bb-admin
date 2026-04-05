@@ -217,7 +217,7 @@ export function ClickFraudPanel({
           </div>
           {platform === "googleads" ? (
             <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
-              Google Ads automatically detects and filters invalid clicks using its Traffic Quality systems — combining machine learning, rule-based filters, and manual review. Invalid clicks are excluded from your billing in real time.
+              Google Ads automatically detects and filters invalid clicks using its Traffic Quality systems — combining machine learning, rule-based filters, and manual review. Invalid clicks are excluded from your billing in real-time.
               {googleAdsInvalidClicks ? (
                 <span>
                   {" "}This period, Google recorded{" "}
