@@ -479,6 +479,15 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [generateAllTotal, setGenerateAllTotal] = useState(0);
   const [generatingExecutiveSummary, setGeneratingExecutiveSummary] = useState(false);
 
+  // ── Report narrative ────────────────────────────────────────────────────────
+  const [generatingNarrative, setGeneratingNarrative] = useState(false);
+  const [narrativeResult, setNarrativeResult] = useState<{
+    executiveSummary?: string;
+    crossSectionStories?: { sections: string[]; narrative: string }[];
+    keyThemes?: string[];
+    goalProgressNarrative?: string;
+  } | null>(null);
+
   // ── Duplicate state ─────────────────────────────────────────────────────────
   const [duplicating, setDuplicating] = useState(false);
 
@@ -911,6 +920,35 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       }
     } finally {
       setGeneratingExecutiveSummary(false);
+    }
+  };
+
+  // ── Report narrative stitching ──────────────────────────────────────────────
+  const handleGenerateNarrative = async () => {
+    const commentaries: Record<string, string> = {};
+    for (const s of report.sections) {
+      if (s.enabled !== false && s.commentary?.trim()) {
+        commentaries[s.sectionType] = s.commentary;
+      }
+    }
+    if (Object.keys(commentaries).length < 2) return;
+    setGeneratingNarrative(true);
+    try {
+      const res = await fetch("/api/ai/report-narrative", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportId: report.id,
+          clientId: report.client.id,
+          sectionCommentaries: commentaries,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNarrativeResult(data);
+      }
+    } finally {
+      setGeneratingNarrative(false);
     }
   };
 
@@ -1386,6 +1424,48 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               </div>
             </div>
           </div>
+
+          {/* Report Narrative callout — shown once generated */}
+          {narrativeResult && (
+            <div className="print:block" style={{ marginBottom: 32, background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r)", padding: "20px 24px", position: "relative" }}>
+              <div className="print:hidden" style={{ position: "absolute", top: 12, right: 12 }}>
+                <button
+                  onClick={() => setNarrativeResult(null)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 4, display: "flex" }}
+                  title="Dismiss narrative"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <FileStack size={16} style={{ color: "var(--accent-text)", flexShrink: 0 }} />
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--accent-text)" }}>Report Narrative</p>
+              </div>
+              {narrativeResult.executiveSummary && (
+                <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, marginBottom: narrativeResult.keyThemes ? 14 : 0 }}>
+                  {narrativeResult.executiveSummary}
+                </p>
+              )}
+              {narrativeResult.keyThemes && narrativeResult.keyThemes.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: narrativeResult.crossSectionStories ? 14 : 0 }}>
+                  {narrativeResult.keyThemes.map((theme, i) => (
+                    <span key={i} style={{ fontSize: 11, fontWeight: 500, color: "var(--accent-text)", background: "rgba(99,102,241,0.12)", padding: "2px 10px", borderRadius: 99 }}>{theme}</span>
+                  ))}
+                </div>
+              )}
+              {narrativeResult.crossSectionStories && narrativeResult.crossSectionStories.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--accent-text)", opacity: 0.7 }}>Cross-channel stories</p>
+                  {narrativeResult.crossSectionStories.map((story, i) => (
+                    <div key={i} style={{ background: "rgba(255,255,255,0.6)", borderRadius: "var(--r-sm)", padding: "8px 12px" }}>
+                      <p style={{ fontSize: 11, fontWeight: 600, color: "var(--accent-text)", marginBottom: 3 }}>{story.sections.join(" + ")}</p>
+                      <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.55 }}>{story.narrative}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Sections */}
           <DndContext sensors={mainContentSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -1925,6 +2005,19 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                     }}
                   />
                 </div>
+              )}
+              {/* Generate Narrative — needs ≥2 sections with commentary */}
+              {report.sections.filter((s) => s.enabled !== false && s.commentary?.trim()).length >= 2 && (
+                <button
+                  onClick={() => void handleGenerateNarrative()}
+                  disabled={generatingNarrative}
+                  className="btn btn-secondary btn-sm"
+                  style={{ width: "100%", justifyContent: "center", gap: 6, marginTop: 4 }}
+                  title="Generate cross-section narrative that stitches all commentaries together"
+                >
+                  <FileStack size={13} />
+                  {generatingNarrative ? "Stitching narrative…" : "Generate Narrative"}
+                </button>
               )}
             </div>
 

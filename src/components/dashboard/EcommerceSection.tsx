@@ -18,6 +18,7 @@ import { SectionCard } from "@/components/ui/index";
 import { LoadingSpinner } from "@/components/ui/index";
 import { formatCurrency, formatNumber, formatDateDisplay } from "@/lib/utils";
 import { ShoppingCart, TrendingUp, Package } from "lucide-react";
+import { BlendedRevenuePanel } from "./BlendedRevenuePanel";
 
 interface EcStats {
   totalRevenue: number;
@@ -198,6 +199,13 @@ export function EcommerceSection({ clientId, platform, startDate, endDate, visib
               </ResponsiveContainer>
             </SectionCard>
           )}
+
+          {/* Blended Revenue Reconciliation */}
+          <BlendedRevenuePanel
+            clientId={clientId}
+            dateRange={`${startDate} – ${endDate}`}
+            ecommerceStats={stats ? { totalRevenue: stats.totalRevenue, totalOrders: stats.totalOrders, averageOrderValue: stats.averageOrderValue, source: platformLabel } : null}
+          />
         </>
       )}
     </div>
