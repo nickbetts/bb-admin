@@ -85,7 +85,7 @@ function formatMetrics(metrics: Record<string, number>): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { sectionType, metrics, previousMetrics, clientName, clientId, dateRange, length = "medium", tone = "professional", format = "prose" } =
+    const { sectionType, metrics, previousMetrics, clientName, clientId, dateRange, length = "medium", tone = "professional", format = "prose", previousCommentaries } =
       await req.json() as {
         sectionType: string;
         metrics: Record<string, number>;
@@ -96,6 +96,7 @@ export async function POST(req: NextRequest) {
         length?: "short" | "medium" | "long";
         tone?: "professional" | "friendly" | "technical" | "executive";
         format?: "prose" | "bullets" | "both";
+        previousCommentaries?: { sectionType: string; text: string }[];
       };
 
     if (!sectionType || !metrics || typeof metrics !== "object") {
@@ -162,6 +163,18 @@ CRITICAL rules:
 - When goals are provided, reference progress towards targets naturally (e.g. "We're now at 82% of our ROAS target").
 - Sound like a human account manager wrote it, not an AI.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
 
+    // Build the previous-commentaries context block to prevent repetition
+    let previousCommentariesContext = "";
+    if (previousCommentaries && previousCommentaries.length > 0) {
+      const summaries = previousCommentaries.map(
+        (c) => `[${SECTION_LABELS[c.sectionType] ?? c.sectionType}]\n${c.text}`
+      );
+      previousCommentariesContext = `\n\nOTHER SECTIONS ALREADY WRITTEN IN THIS REPORT:\n${summaries.join("\n\n")}\n\nIMPORTANT: You can see what has already been written above. Your commentary for this section MUST:
+- Not repeat any phrases, metaphors, adjectives, or observations already used in the sections above (e.g. if another section already said "strong performance" or "brilliant month", find fresh language).
+- Not repeat the same opening construction — vary how you start this section.
+- Be written as if you are aware of what the other sections say, so the overall report reads as a coherent document rather than a collection of independent pieces.
+- Where relevant, briefly acknowledge a cross-channel connection (e.g. "Aligned with the paid search growth we saw this month…") — but only if there is a genuine link.`;
+    }
     const isOverview = sectionType === "overview";
     const userPrompt = isOverview
       ? `Write a ${tone} ${length} ${format === "bullets" ? "bullet-point" : "prose"} introductory overview commentary for a digital marketing report.
@@ -169,7 +182,7 @@ CRITICAL rules:
 Client: ${clientName ?? "the client"}
 Period: ${dateRange ?? "the reporting period"}
 
-This is the opening section of the report. Write a warm, forward-looking introduction that sets the tone for the month, acknowledges the ongoing work across channels, and positions the rest of the report. Write as the agency (first person "we").`
+This is the opening section of the report. Write a warm, forward-looking introduction that sets the tone for the month, acknowledges the ongoing work across channels, and positions the rest of the report. Write as the agency (first person "we").${previousCommentariesContext}`
       : `Write a ${tone} ${length} ${format === "bullets" ? "bullet-point" : "prose"} commentary for the ${sectionLabel} section of a digital marketing report.
 
 Client: ${clientName ?? "the client"}
@@ -177,7 +190,7 @@ Period: ${dateRange ?? "the reporting period"}
 
 Current period metrics:
 ${currentMetricsText}
-${previousMetricsText ? `\nPrevious period metrics:\n${previousMetricsText}\n` : ""}${goalsContext}
+${previousMetricsText ? `\nPrevious period metrics:\n${previousMetricsText}\n` : ""}${goalsContext}${previousCommentariesContext}
 Write as the agency (first person "we"). Describe what the data shows, what we are working on, and what is performing well. Only reference metrics that are present and non-zero. Do not mention anything that is absent.`;
 
     const response = await openai.chat.completions.create({

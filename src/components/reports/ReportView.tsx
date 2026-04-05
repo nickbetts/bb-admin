@@ -853,6 +853,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     setGenerateAllProgress(0);
     setGenerateAllTotal(eligible.length);
 
+    // Accumulate commentaries as we go so each section can see what's already been written
+    const generatedSoFar: { sectionType: string; text: string }[] = [];
+
     for (const section of eligible) {
       try {
         const res = await fetch("/api/ai/report-commentary", {
@@ -868,10 +871,16 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             tone: aiTone,
             length: aiLength,
             format: aiFormat,
+            previousCommentaries: generatedSoFar.length > 0 ? generatedSoFar : undefined,
           }),
         });
         if (res.ok) {
           const { commentary: text } = await res.json();
+          // Add to context for subsequent sections
+          generatedSoFar.push({
+            sectionType: section.sectionType === "web" ? "ga4" : section.sectionType === "paid_social" ? "meta" : section.sectionType,
+            text,
+          });
           await fetch(`/api/reports/${report.id}/sections`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
