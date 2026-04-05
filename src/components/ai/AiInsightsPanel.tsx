@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, AlertTriangle, TrendingUp, Lightbulb, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Sparkles, AlertTriangle, TrendingUp, Lightbulb, ChevronDown, ChevronUp, Loader2, Search } from "lucide-react";
 
 interface Anomaly {
   metric: string;
@@ -73,32 +73,130 @@ const severityStyles: Record<string, { bg: string; border: string; badge: string
   },
 };
 
-function AnomalyCard({ anomaly }: { anomaly: Anomaly }) {
+function AnomalyCard({
+  anomaly,
+  clientId,
+  sectionType,
+  currentMetrics,
+  crossPlatformContext,
+}: {
+  anomaly: Anomaly;
+  clientId?: string;
+  sectionType?: string;
+  currentMetrics?: Record<string, number>;
+  crossPlatformContext?: string;
+}) {
+  const [rootCauseLoading, setRootCauseLoading] = useState(false);
+  const [rootCauseText, setRootCauseText] = useState<string | null>(null);
+  const [rootCauseError, setRootCauseError] = useState<string | null>(null);
+  const [rootCauseExpanded, setRootCauseExpanded] = useState(false);
+
   const styles = severityStyles[anomaly.severity] ?? severityStyles.low;
   const arrow = anomaly.direction === "up" ? "↑" : "↓";
   const changeColor = anomaly.direction === "up" ? "text-emerald-600" : "text-red-600";
 
+  async function analyseRootCause() {
+    if (!clientId) return;
+    setRootCauseLoading(true);
+    setRootCauseError(null);
+    try {
+      const res = await fetch("/api/ai/root-cause", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId,
+          anomaly: {
+            platform: sectionType ?? "unknown",
+            metric: anomaly.metric,
+            severity: anomaly.severity,
+            direction: anomaly.direction,
+            detail: anomaly.description,
+            value: typeof anomaly.value === "number" ? anomaly.value : undefined,
+            previousValue: typeof anomaly.previousValue === "number" ? anomaly.previousValue : undefined,
+            changePercent: anomaly.changePercent,
+          },
+          currentMetrics,
+          crossPlatformContext,
+        }),
+      });
+      const data = await res.json() as { analysis?: string; error?: string };
+      if (!res.ok) {
+        setRootCauseError(data.error ?? "Root cause analysis failed");
+        return;
+      }
+      setRootCauseText(data.analysis ?? null);
+      setRootCauseExpanded(true);
+    } catch {
+      setRootCauseError("Failed to connect to AI service.");
+    } finally {
+      setRootCauseLoading(false);
+    }
+  }
+
   return (
-    <div className={`flex items-start gap-3 p-3 rounded-lg border ${styles.bg} ${styles.border}`}>
-      <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${styles.dot}`} />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-xs font-semibold ${styles.text}`}>{anomaly.metric}</span>
-          {anomaly.changePercent != null && (
-            <span className={`text-xs font-bold ${changeColor}`}>
-              {arrow} {Math.abs(anomaly.changePercent).toFixed(1)}%
+    <div className={`rounded-lg border ${styles.bg} ${styles.border}`}>
+      <div className="flex items-start gap-3 p-3">
+        <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${styles.dot}`} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-xs font-semibold ${styles.text}`}>{anomaly.metric}</span>
+            {anomaly.changePercent != null && (
+              <span className={`text-xs font-bold ${changeColor}`}>
+                {arrow} {Math.abs(anomaly.changePercent).toFixed(1)}%
+              </span>
+            )}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${styles.badge}`}>
+              {anomaly.severity}
             </span>
-          )}
-          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${styles.badge}`}>
-            {anomaly.severity}
-          </span>
-          {anomaly.context && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium truncate max-w-[160px]">
-              {anomaly.context}
-            </span>
+            {anomaly.context && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium truncate max-w-[160px]">
+                {anomaly.context}
+              </span>
+            )}
+          </div>
+          <p className={`text-xs mt-0.5 ${styles.text} opacity-80`}>{anomaly.description}</p>
+
+          {/* Root cause analysis trigger */}
+          {clientId && (
+            <div className="mt-2">
+              {!rootCauseText && !rootCauseLoading && (
+                <button
+                  onClick={analyseRootCause}
+                  className="inline-flex items-center gap-1 text-[11px] text-violet-600 hover:text-violet-800 font-medium transition"
+                >
+                  <Search className="h-3 w-3" />
+                  Analyse root cause
+                </button>
+              )}
+              {rootCauseLoading && (
+                <div className="inline-flex items-center gap-1 text-[11px] text-slate-500">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Analysing…
+                </div>
+              )}
+              {rootCauseError && (
+                <p className="text-[11px] text-red-500 mt-0.5">{rootCauseError}</p>
+              )}
+              {rootCauseText && (
+                <div className="mt-1.5">
+                  <button
+                    onClick={() => setRootCauseExpanded(!rootCauseExpanded)}
+                    className="inline-flex items-center gap-1 text-[11px] text-violet-600 hover:text-violet-800 font-medium transition"
+                  >
+                    <Search className="h-3 w-3" />
+                    Root cause analysis
+                    {rootCauseExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  </button>
+                  {rootCauseExpanded && (
+                    <div className="mt-2 p-2.5 rounded-lg bg-white/80 border border-violet-100 text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">
+                      {rootCauseText}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
-        <p className={`text-xs mt-0.5 ${styles.text} opacity-80`}>{anomaly.description}</p>
       </div>
     </div>
   );
@@ -320,7 +418,14 @@ export function AiInsightsPanel({
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {result.anomalies.map((anomaly, i) => (
-                  <AnomalyCard key={i} anomaly={anomaly} />
+                  <AnomalyCard
+                    key={i}
+                    anomaly={anomaly}
+                    clientId={clientId}
+                    sectionType={sectionType}
+                    currentMetrics={metrics}
+                    crossPlatformContext={crossPlatformContext}
+                  />
                 ))}
               </div>
             </div>

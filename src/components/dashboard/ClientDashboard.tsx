@@ -22,6 +22,8 @@ import { CallRailSection } from "./CallRailSection";
 import { ActionsSection } from "./ActionsSection";
 import { CommunicationsSection } from "./CommunicationsSection";
 import { CompetitorIntelligenceSection } from "./CompetitorIntelligenceSection";
+import { StrategyDocumentPanel } from "./StrategyDocumentPanel";
+import { MeetingBriefingPanel } from "./MeetingBriefingPanel";
 import { getDateRange, buildCrossContextString } from "@/lib/utils";
 import type { PlatformSummary } from "@/lib/utils";
 import { Calendar } from "lucide-react";
@@ -68,7 +70,7 @@ const periods = [
   { value: "custom", label: "Custom" },
 ];
 
-type Tab = "signals" | "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole" | "ecommerce" | "tiktok" | "microsoftads" | "cwv" | "linkedin" | "klaviyo" | "goals" | "hubspot" | "youtube" | "callrail" | "actions" | "communications" | "competitors";
+type Tab = "signals" | "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole" | "ecommerce" | "tiktok" | "microsoftads" | "cwv" | "linkedin" | "klaviyo" | "goals" | "hubspot" | "youtube" | "callrail" | "actions" | "communications" | "competitors" | "strategy";
 
 function toDateInputValue(d: Date) {
   return d.toISOString().split("T")[0];
@@ -207,6 +209,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
     { id: "competitors", label: "Competitors", available: true },
     { id: "actions", label: "Actions", available: true },
     { id: "communications", label: "Communications", available: true },
+    { id: "strategy", label: "Strategy", available: true },
   ];
 
   return (
@@ -423,6 +426,20 @@ export function ClientDashboard({ client, period: initialPeriod, userRole }: Cli
 
       {activeTab === "communications" && (
         <CommunicationsSection clientId={client.id} />
+      )}
+
+      {activeTab === "strategy" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <StrategyDocumentPanel
+            clientId={client.id}
+            clientName={client.name}
+            crossPlatformData={crossCtx as Record<string, unknown>}
+          />
+          <MeetingBriefingPanel
+            clientId={client.id}
+            clientName={client.name}
+          />
+        </div>
       )}
 
       {/* AI Chat panel — always visible when any platform is connected */}

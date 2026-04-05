@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Target, Plus, Pencil, Trash2, Check, AlertTriangle, X, Loader2 } from "lucide-react";
+import { Target, Plus, Pencil, Trash2, Check, AlertTriangle, X, Loader2, Sparkles } from "lucide-react";
 
 interface ClientGoal {
   id: string;
@@ -110,6 +110,19 @@ export function GoalsSection({ clientId }: GoalsSectionProps) {
   const [error, setError] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
+  // ── Goal benchmark ─────────────────────────────────────────────────────────
+  const [benchmarkLoading, setBenchmarkLoading] = useState(false);
+  const [benchmarkResult, setBenchmarkResult] = useState<{
+    benchmarks: {
+      conservative: { value: number; deadline: string; confidence: number; rationale: string };
+      moderate: { value: number; deadline: string; confidence: number; rationale: string };
+      aggressive: { value: number; deadline: string; confidence: number; rationale: string };
+    };
+    currentTrend: string;
+    industryContext: string;
+  } | null>(null);
+  const [benchmarkError, setBenchmarkError] = useState("");
+
   const fetchGoals = useCallback(async () => {
     try {
       const res = await fetch(`/api/clients/${clientId}/goals`);
@@ -170,7 +183,30 @@ export function GoalsSection({ clientId }: GoalsSectionProps) {
     await fetchGoals();
   }
 
+  async function fetchBenchmark() {
+    if (!form.metric) return;
+    setBenchmarkLoading(true);
+    setBenchmarkError("");
+    setBenchmarkResult(null);
+    try {
+      const res = await fetch("/api/ai/goal-benchmark", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId, metric: form.metric, channel: form.channel || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setBenchmarkError((data as { error?: string }).error ?? "Failed to get benchmarks"); return; }
+      setBenchmarkResult(data);
+    } catch {
+      setBenchmarkError("Network error.");
+    } finally {
+      setBenchmarkLoading(false);
+    }
+  }
+
   function startEdit(goal: ClientGoal) {
+    setBenchmarkResult(null);
+    setBenchmarkError("");
     setForm({
       title: goal.title,
       description: goal.description ?? "",
@@ -199,7 +235,7 @@ export function GoalsSection({ clientId }: GoalsSectionProps) {
         </div>
         <button
           className="btn btn-primary btn-sm"
-          onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm); }}
+          onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm); setBenchmarkResult(null); setBenchmarkError(""); }}
         >
           <Plus style={{ width: 14, height: 14 }} /> Add Goal
         </button>
@@ -219,7 +255,7 @@ export function GoalsSection({ clientId }: GoalsSectionProps) {
               </div>
               <div>
                 <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Metric *</label>
-                <select className="form-input" value={form.metric} onChange={e => setForm(f => ({ ...f, metric: e.target.value }))}>
+                <select className="form-input" value={form.metric} onChange={e => setForm(f => ({ ...f, metric: e.target.value, }))}>
                   {metricOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
@@ -229,6 +265,62 @@ export function GoalsSection({ clientId }: GoalsSectionProps) {
                   {channelOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
+
+              {/* AI benchmark suggestion — spans full width */}
+              <div style={{ gridColumn: "1 / -1" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ gap: 5, fontSize: 12 }}
+                    onClick={() => void fetchBenchmark()}
+                    disabled={benchmarkLoading || !form.metric}
+                  >
+                    {benchmarkLoading ? (
+                      <><Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> Getting benchmarks…</>
+                    ) : (
+                      <><Sparkles style={{ width: 12, height: 12 }} /> Suggest targets</>
+                    )}
+                  </button>
+                  <span style={{ fontSize: 11, color: "var(--text-3)" }}>Get AI-suggested conservative / moderate / aggressive targets based on historical data</span>
+                </div>
+                {benchmarkError && <p style={{ fontSize: 12, color: "#b91c1c", marginTop: 6 }}>{benchmarkError}</p>}
+                {benchmarkResult && (
+                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {benchmarkResult.currentTrend && (
+                      <p style={{ fontSize: 11, color: "var(--text-3)" }}>{benchmarkResult.currentTrend}{benchmarkResult.industryContext ? ` · ${benchmarkResult.industryContext}` : ""}</p>
+                    )}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+                      {(["conservative", "moderate", "aggressive"] as const).map((level) => {
+                        const bm = benchmarkResult.benchmarks[level];
+                        const colors = { conservative: { bg: "#f0fdf4", border: "#bbf7d0", text: "#15803d" }, moderate: { bg: "#eff6ff", border: "#bfdbfe", text: "#1d4ed8" }, aggressive: { bg: "#faf5ff", border: "#ddd6fe", text: "#7c3aed" } };
+                        const c = colors[level];
+                        return (
+                          <button
+                            key={level}
+                            type="button"
+                            onClick={() => {
+                              setForm(f => ({
+                                ...f,
+                                targetValue: String(bm.value),
+                                targetDate: bm.deadline ? bm.deadline.slice(0, 10) : f.targetDate,
+                              }));
+                            }}
+                            style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: "var(--r-sm)", padding: "8px 10px", cursor: "pointer", textAlign: "left" }}
+                          >
+                            <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: c.text, marginBottom: 2 }}>{level}</p>
+                            <p style={{ fontSize: 14, fontWeight: 700, color: c.text }}>{bm.value}</p>
+                            <p style={{ fontSize: 10, color: c.text, opacity: 0.7 }}>{Math.round(bm.confidence * 100)}% confidence</p>
+                            <p style={{ fontSize: 10, color: c.text, marginTop: 3, lineHeight: 1.3 }}>{bm.rationale}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p style={{ fontSize: 11, color: "var(--text-3)" }}>Click a card to use that target value and deadline.</p>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Target Value *</label>
                 <input className="form-input" type="number" step="any" placeholder="e.g. 4" value={form.targetValue} onChange={e => setForm(f => ({ ...f, targetValue: e.target.value }))} />
@@ -257,7 +349,7 @@ export function GoalsSection({ clientId }: GoalsSectionProps) {
               <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving || !form.title || !form.targetValue || !form.targetDate}>
                 {saving ? <><Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> Saving…</> : "Save Goal"}
               </button>
-              <button className="btn btn-secondary btn-sm" onClick={() => { setShowForm(false); setEditingId(null); setError(""); }}>
+              <button className="btn btn-secondary btn-sm" onClick={() => { setShowForm(false); setEditingId(null); setError(""); setBenchmarkResult(null); setBenchmarkError(""); }}>
                 Cancel
               </button>
             </div>

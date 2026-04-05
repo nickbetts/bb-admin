@@ -84,9 +84,61 @@ export async function GET(request: NextRequest) {
       }
     } catch { /* non-critical */ }
 
+    // Fetch seniority demographic breakdown (LinkedIn's key differentiator for B2B targeting)
+    // Seniority URNs: 1=Entry, 2=Senior, 3=Manager, 4=Director, 5=VP, 6=C-Suite, 7=Owner, 8=Partner
+    const seniorityLabels: Record<string, string> = {
+      "1": "Entry",
+      "2": "Senior",
+      "3": "Manager",
+      "4": "Director",
+      "5": "VP",
+      "6": "C-Suite",
+      "7": "Owner",
+      "8": "Partner",
+    };
+
+    const demographics: {
+      seniority: Array<{ label: string; impressions: number; clicks: number; spend: number; conversions: number }>;
+    } = { seniority: [] };
+
+    try {
+      const demDateParams = `dateRange.start.year=${start.slice(0, 4)}&dateRange.start.month=${parseInt(start.slice(5, 7))}&dateRange.start.day=${parseInt(start.slice(8, 10))}&dateRange.end.year=${end.slice(0, 4)}&dateRange.end.month=${parseInt(end.slice(5, 7))}&dateRange.end.day=${parseInt(end.slice(8, 10))}`;
+      const seniorityUrl = `https://api.linkedin.com/v2/adAnalyticsV2?q=analytics&pivot=MEMBER_SENIORITY&${demDateParams}&accounts=urn:li:sponsoredAccount:${accountId}&fields=pivotValues,impressions,clicks,costInLocalCurrency,externalWebsiteConversions`;
+      const senRes = await fetch(seniorityUrl, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "LinkedIn-Version": "202401",
+          "X-Restli-Protocol-Version": "2.0.0",
+        },
+      });
+      if (senRes.ok) {
+        const senData = await senRes.json() as {
+          elements?: Array<{
+            pivotValues?: string[];
+            impressions?: number;
+            clicks?: number;
+            costInLocalCurrency?: string;
+            externalWebsiteConversions?: number;
+          }>;
+        };
+        demographics.seniority = (senData.elements ?? []).map((el) => {
+          const urn = el.pivotValues?.[0] ?? "";
+          const id = urn.split(":").pop() ?? "";
+          return {
+            label: seniorityLabels[id] ?? urn,
+            impressions: el.impressions ?? 0,
+            clicks: el.clicks ?? 0,
+            spend: parseFloat(el.costInLocalCurrency ?? "0"),
+            conversions: el.externalWebsiteConversions ?? 0,
+          };
+        }).filter((d) => d.impressions > 0).sort((a, b) => b.impressions - a.impressions);
+      }
+    } catch { /* non-critical */ }
+
     return NextResponse.json({
       overview: { ...overview, ctr, cpc, cpl },
       campaigns,
+      demographics,
     });
   } catch (error) {
     console.error("LinkedIn route error:", error);
