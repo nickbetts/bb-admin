@@ -187,3 +187,11 @@ export function getAppUrl(): string {
   // Fall back to a safe empty string — snippet will not work but won't be dangerous
   return "";
 }
+
+/**
+ * Builds the minified click-protection snippet for a client.
+ * The appUrl must already be validated via getAppUrl() before passing here.
+ */
+export function buildClickProtectionSnippet(appUrl: string, token: string): string {
+  return `<!-- i3media Click Protection -->\n<script>(function(){var s=Math.random().toString(36).slice(2)+Date.now().toString(36),u=navigator.userAgent||'',b=/bot|crawler|spider|headless|phantom|selenium|puppeteer|playwright/i,x=b.test(u)||!window.history||typeof document.hidden==='undefined',p=new URLSearchParams(location.search);fetch('${appUrl}/api/click-protection/${token}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sid:s,ua:u,ref:document.referrer||'',utmSource:p.get('utm_source')||'',utmMedium:p.get('utm_medium')||'',utmCampaign:p.get('utm_campaign')||'',suspicious:x?'1':'0',reason:x?(b.test(u)?'bot_ua':'headless'):''})}).catch(function(){});})();\n</script>`;
+}

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Loader2, Upload, X, Plus, Trash2, Shield, Copy, Check, RefreshCw } from "lucide-react";
 import Image from "next/image";
-import { getAppUrl } from "@/lib/utils";
+import { getAppUrl, buildClickProtectionSnippet } from "@/lib/utils";
 
 interface Client {
   id: string;
@@ -1164,30 +1164,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             // getAppUrl() validates the URL scheme and strips unsafe characters to
             // prevent script injection when the value is embedded in the JS snippet.
             const appUrl = getAppUrl();
-            const snippet = `<!-- i3media Click Protection -->
-<script>
-(function(){
-  var sid=Math.random().toString(36).slice(2)+Date.now().toString(36);
-  var ua=navigator.userAgent||'';
-  var ref=document.referrer||'';
-  var sp=new URLSearchParams(location.search);
-  var botPat=/bot|crawler|spider|headless|phantom|selenium|puppeteer|playwright/i;
-  var suspicious=botPat.test(ua)||!window.history||typeof document.hidden==='undefined';
-  var reason=suspicious?(botPat.test(ua)?'bot_ua':'headless'):'';
-  fetch('${appUrl}/api/click-protection/${clickFraudToken}',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      sid:sid,ua:ua,ref:ref,
-      utmSource:sp.get('utm_source')||'',
-      utmMedium:sp.get('utm_medium')||'',
-      utmCampaign:sp.get('utm_campaign')||'',
-      suspicious:suspicious?'1':'0',
-      reason:reason
-    })
-  }).catch(function(){});
-})();
-</script>`;
+            const snippet = buildClickProtectionSnippet(appUrl, clickFraudToken);
             return (
               <div style={{ position: "relative" }}>
                 <pre style={{
