@@ -53,7 +53,7 @@ function getCurrentQuarter(): string {
 
 export function StrategyDocumentPanel({ clientId, clientName, crossPlatformData }: StrategyDocumentPanelProps) {
   const [expanded, setExpanded] = useState(true);
-  const [period, setPeriod] = useState(getCurrentQuarter);
+  const [period, setPeriod] = useState(getCurrentQuarter());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<StrategyContent | null>(null);
