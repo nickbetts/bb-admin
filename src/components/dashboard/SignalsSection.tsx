@@ -280,6 +280,21 @@ function SignalCard({ signal, isLast, aiLoading }: { signal: Signal; isLast: boo
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
+/** Strip any dangerous HTML from AI-generated game plan output using the browser's DOM parser. */
+function sanitiseGamePlanHtml(html: string): string {
+  if (typeof document === "undefined") return "";
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  doc.querySelectorAll("script, style, iframe, object, embed, form, input, button").forEach((el) => el.remove());
+  doc.querySelectorAll("*").forEach((el) => {
+    Array.from(el.attributes).forEach((attr) => {
+      if (attr.name.startsWith("on") || /javascript\s*:/i.test(attr.value)) {
+        el.removeAttribute(attr.name);
+      }
+    });
+  });
+  return doc.body.innerHTML;
+}
+
 export function SignalsSection({ client, startDate, endDate }: SignalsSectionProps) {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1194,9 +1209,11 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
                 Analysing all signals together to build a unified action plan&hellip;
               </p>
             ) : gamePlan ? (
-              <div style={{ fontSize: 12, color: "#1e1b4b", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
-                {gamePlan}
-              </div>
+              <div
+                className="game-plan-html"
+                style={{ fontSize: 12, color: "#1e1b4b", lineHeight: 1.7 }}
+                dangerouslySetInnerHTML={{ __html: sanitiseGamePlanHtml(gamePlan) }}
+              />
             ) : null}
           </div>
         </div>

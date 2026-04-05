@@ -870,15 +870,18 @@ INSTRUCTIONS:
 3. Produce a PRIORITISED ACTION PLAN with 3–6 concrete actions, ordered by impact.
 4. Each action must include: WHAT to do, WHERE (specific campaign/channel names), WHY (link to the signal data), and EXPECTED IMPACT.
 5. Where budget changes are recommended, state the specific amount (e.g. "Increase from £20/day to £28/day") if the data supports it.
-6. Identify any signals that CONTRADICT each other and explain the trade-off.
-7. Do NOT repeat signals verbatim — synthesise them into a strategic narrative.
+6. For bid strategy changes, name the exact strategy to apply (e.g. "Switch to Target CPA at £18" or "Apply a +15% mobile bid adjustment") and the exact location in the platform (e.g. "Google Ads → Campaigns → [name] → Settings → Bidding").
+7. For audience changes, name the exact audience segments to create or exclude (e.g. "Create a custom audience of website visitors in the last 30 days and exclude them from the 'New Sales' ad set in Meta Ads Manager → Audiences").
+8. For landing page recommendations, list the specific page URL from the data, name the exact elements to improve (e.g. headline copy, CTA button text, form length, page load speed, trust signals above the fold), and reference the specific GA4 metrics that indicate the problem (e.g. bounce rate, session duration, conversion rate for that URL).
+9. Identify any signals that CONTRADICT each other and explain the trade-off.
+10. Do NOT repeat signals verbatim — synthesise them into a strategic narrative.
 
-Format as a numbered list. Be concise but specific. British English.`;
+Output the result as clean HTML only — no markdown, no code fences, no preamble. Use <h3> for the main heading, <ol> for the numbered action list, <strong> for the WHAT/WHERE/WHY/EXPECTED IMPACT labels, and <ul> with <li></li> items for sub-points within each action. Use a <h3> for the Contradictory Signals section if applicable. British English.`;
 
       const gpResponse = await openaiGP.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "You are a senior cross-channel digital marketing strategist. Produce a unified, prioritised action plan that synthesises all detected signals into a coherent strategy. Be specific with numbers and campaign names. British English." },
+          { role: "system", content: "You are a senior cross-channel digital marketing strategist. Produce a unified, prioritised action plan that synthesises all detected signals into a coherent strategy. Be specific with numbers, campaign names, exact platform settings, and concrete steps. Output clean HTML only — no markdown, no code fences. British English." },
           { role: "user", content: gamePlanPrompt },
         ],
         max_tokens: 2000,
