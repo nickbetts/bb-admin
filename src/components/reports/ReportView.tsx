@@ -857,12 +857,18 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     const generatedSoFar: { sectionType: string; text: string }[] = [];
 
     for (const section of eligible) {
+      // Normalise internal section type aliases to the canonical API names
+      const apiSectionType =
+        section.sectionType === "web" ? "ga4" :
+        section.sectionType === "paid_social" ? "meta" :
+        section.sectionType;
+
       try {
         const res = await fetch("/api/ai/report-commentary", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            sectionType: section.sectionType === "web" ? "ga4" : section.sectionType === "paid_social" ? "meta" : section.sectionType,
+            sectionType: apiSectionType,
             metrics: sectionMetrics[section.id] ?? {},
             previousMetrics: sectionPreviousMetrics[section.id] ?? undefined,
             clientName: report.client.name,
@@ -877,10 +883,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
         if (res.ok) {
           const { commentary: text } = await res.json();
           // Add to context for subsequent sections
-          generatedSoFar.push({
-            sectionType: section.sectionType === "web" ? "ga4" : section.sectionType === "paid_social" ? "meta" : section.sectionType,
-            text,
-          });
+          generatedSoFar.push({ sectionType: apiSectionType, text });
           await fetch(`/api/reports/${report.id}/sections`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },

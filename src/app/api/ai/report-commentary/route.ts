@@ -166,9 +166,13 @@ CRITICAL rules:
     // Build the previous-commentaries context block to prevent repetition
     let previousCommentariesContext = "";
     if (previousCommentaries && previousCommentaries.length > 0) {
-      const summaries = previousCommentaries.map(
-        (c) => `[${SECTION_LABELS[c.sectionType] ?? c.sectionType}]\n${c.text}`
-      );
+      const summaries = previousCommentaries.map((c) => {
+        const label = SECTION_LABELS[c.sectionType];
+        if (!label) {
+          console.warn(`report-commentary: unrecognised sectionType in previousCommentaries: "${c.sectionType}"`);
+        }
+        return `[${label ?? c.sectionType}]\n${c.text}`;
+      });
       previousCommentariesContext = `\n\nOTHER SECTIONS ALREADY WRITTEN IN THIS REPORT:\n${summaries.join("\n\n")}\n\nIMPORTANT: You can see what has already been written above. Your commentary for this section MUST:
 - Not repeat any phrases, metaphors, adjectives, or observations already used in the sections above (e.g. if another section already said "strong performance" or "brilliant month", find fresh language).
 - Not repeat the same opening construction — vary how you start this section.
