@@ -132,6 +132,97 @@ export async function GET(request: NextRequest) {
     const totalClicks = metricsResults.reduce((s, c) => s + c.clicks, 0);
     const totalRevenue = metricsResults.reduce((s, c) => s + c.revenue, 0);
 
+    // Fetch automated flow performance
+    type FlowResult = {
+      id: string;
+      name: string;
+      status: string;
+      sends: number;
+      opens: number;
+      clicks: number;
+      revenue: number;
+      openRate: number;
+      clickRate: number;
+    };
+    const flowResults: FlowResult[] = [];
+    try {
+      const flowsRes = await fetch(
+        "https://a.klaviyo.com/api/flows/?page[size]=30&sort=-updated",
+        {
+          headers: {
+            Authorization: `Klaviyo-API-Key ${apiKey}`,
+            revision: "2024-02-15",
+            accept: "application/json",
+          },
+        }
+      );
+      if (flowsRes.ok) {
+        const flowsData = await flowsRes.json() as {
+          data?: Array<{ id: string; attributes?: { name?: string; status?: string } }>;
+        };
+        const flows = (flowsData.data ?? []).slice(0, 10);
+        for (const flow of flows) {
+          const attrs = flow.attributes ?? {};
+          const metricsRes = await fetch(
+            "https://a.klaviyo.com/api/flow-values-reports/",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Klaviyo-API-Key ${apiKey}`,
+                revision: "2024-02-15",
+                "content-type": "application/json",
+                accept: "application/json",
+              },
+              body: JSON.stringify({
+                data: {
+                  type: "flow-values-report",
+                  attributes: {
+                    filter: `equals(flow_id,"${flow.id}")`,
+                    statistics: ["delivered", "open_rate", "click_rate", "revenue"],
+                    timeframe: { key: "last_12_months" },
+                  },
+                },
+              }),
+            }
+          );
+          let fSends = 0, fOpens = 0, fClicks = 0, fRevenue = 0, fOpenRate = 0, fClickRate = 0;
+          if (metricsRes.ok) {
+            try {
+              const mData = await metricsRes.json() as {
+                data?: {
+                  attributes?: {
+                    results?: Array<{
+                      statistics?: { delivered?: number; open_rate?: number; click_rate?: number; revenue?: number };
+                    }>;
+                  };
+                };
+              };
+              const stats = mData.data?.attributes?.results?.[0]?.statistics ?? {};
+              fSends = stats.delivered ?? 0;
+              fOpenRate = stats.open_rate ?? 0;
+              fClickRate = stats.click_rate ?? 0;
+              fOpens = Math.round(fSends * fOpenRate);
+              fClicks = Math.round(fSends * fClickRate);
+              fRevenue = stats.revenue ?? 0;
+            } catch { /* non-critical */ }
+          }
+          if (fSends > 0) {
+            flowResults.push({
+              id: flow.id,
+              name: attrs.name ?? "Unknown Flow",
+              status: attrs.status ?? "unknown",
+              sends: fSends,
+              opens: fOpens,
+              clicks: fClicks,
+              revenue: fRevenue,
+              openRate: fOpenRate,
+              clickRate: fClickRate,
+            });
+          }
+        }
+      }
+    } catch { /* non-critical */ }
+
     return NextResponse.json({
       overview: {
         sends: totalSends,
@@ -143,6 +234,7 @@ export async function GET(request: NextRequest) {
         campaignCount: metricsResults.length,
       },
       campaigns: metricsResults,
+      flows: flowResults,
     });
   } catch (error) {
     console.error("Klaviyo route error:", error);

@@ -927,3 +927,70 @@ export async function getGoogleAdsInvalidClicks(
     totalCostMicros,
   };
 }
+
+// ── Device performance breakdown ──────────────────────────────────────────
+
+/** Performance broken down by device type (DESKTOP / MOBILE / TABLET / CONNECTED_TV) */
+export interface GoogleAdsDeviceBreakdown {
+  device: string;
+  clicks: number;
+  costMicros: number;
+  impressions: number;
+  conversions: number;
+  conversionsValue: number;
+}
+
+/**
+ * Returns clicks, impressions, conversions and cost split by device type for
+ * the given date range.  Useful for AI bid-modifier and scheduling analysis.
+ */
+export async function getGoogleAdsDeviceBreakdown(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsDeviceBreakdown[]> {
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+    throw new Error("Invalid date format — expected YYYY-MM-DD");
+  }
+
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      segments.device,
+      metrics.clicks,
+      metrics.cost_micros,
+      metrics.impressions,
+      metrics.conversions,
+      metrics.conversions_value
+    FROM campaign
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+      AND campaign.status != 'REMOVED'
+  `;
+
+  const data = await searchGoogleAds(customerId, query, token, mccId);
+
+  // Aggregate per device across all campaigns
+  const deviceMap = new Map<string, GoogleAdsDeviceBreakdown>();
+  for (const row of data.results ?? []) {
+    const device = String((row as Record<string, Record<string, unknown>>).segments?.device ?? "UNKNOWN");
+    const m = (row as Record<string, Record<string, unknown>>).metrics ?? {};
+    const existing = deviceMap.get(device) ?? {
+      device,
+      clicks: 0,
+      costMicros: 0,
+      impressions: 0,
+      conversions: 0,
+      conversionsValue: 0,
+    };
+    existing.clicks += Number(m.clicks ?? 0);
+    existing.costMicros += Number(m.costMicros ?? 0);
+    existing.impressions += Number(m.impressions ?? 0);
+    existing.conversions += Number(m.conversions ?? 0);
+    existing.conversionsValue += Number(m.conversionsValue ?? 0);
+    deviceMap.set(device, existing);
+  }
+
+  return Array.from(deviceMap.values()).sort((a, b) => b.clicks - a.clicks);
+}

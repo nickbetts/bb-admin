@@ -1180,3 +1180,83 @@ export async function getMetaAdSetAudiences(
     return [];
   }
 }
+
+// ── Placement breakdown ───────────────────────────────────────────────────
+
+/** Performance broken down by publisher platform and placement */
+export interface MetaPlacementBreakdown {
+  /** facebook | instagram | messenger | audience_network */
+  publisherPlatform: string;
+  /** feed | story | video_feeds | reels | search | right_hand_column | instream_video | etc. */
+  placement: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  ctr: number;
+  cpc: number;
+  cpm: number;
+  conversions: number;
+  roas: number;
+}
+
+/**
+ * Returns account-level performance split by publisher platform × placement.
+ * Useful for AI to recommend pausing under-performing placements (e.g. Audience
+ * Network) or scaling winning ones (e.g. Reels).
+ */
+export async function getMetaPlacementBreakdown(
+  accountId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<MetaPlacementBreakdown[]> {
+  const params = new URLSearchParams({
+    access_token: getAccessToken(accessToken),
+    fields: "impressions,clicks,spend,ctr,cpc,cpm,actions,action_values,conversions,purchase_roas",
+    breakdowns: "publisher_platform,placement",
+    time_range: JSON.stringify({ since: startDate, until: endDate }),
+    level: "account",
+    limit: "100",
+  });
+
+  try {
+    const response = await fetch(
+      `${META_API_BASE}/act_${accountId}/insights?${params}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return (data.data ?? []).map((item: {
+      publisher_platform?: string;
+      placement?: string;
+      impressions?: string;
+      clicks?: string;
+      spend?: string;
+      ctr?: string;
+      cpc?: string;
+      cpm?: string;
+      actions?: ActionRow[];
+      action_values?: ActionRow[];
+      conversions?: { value: string }[];
+      purchase_roas?: { value: string }[];
+    }) => {
+      const spend = parseFloat(item.spend ?? "0");
+      const conv = resolveConversions(item.actions, item.action_values, item.conversions as { value: string }[] | undefined);
+      return {
+        publisherPlatform: item.publisher_platform ?? "unknown",
+        placement: item.placement ?? "unknown",
+        impressions: parseInt(item.impressions ?? "0"),
+        clicks: parseInt(item.clicks ?? "0"),
+        spend,
+        ctr: parseFloat(item.ctr ?? "0"),
+        cpc: parseFloat(item.cpc ?? "0"),
+        cpm: parseFloat(item.cpm ?? "0"),
+        conversions: conv.count,
+        roas: parseFloat(item.purchase_roas?.[0]?.value ?? "0"),
+      };
+    });
+  } catch {
+    return [];
+  }
+}
