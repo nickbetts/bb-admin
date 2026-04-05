@@ -749,6 +749,62 @@ body {
 @media (max-width: 640px)  { .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; } }
 
 /* =============================================
+   GAME PLAN HTML CONTENT
+   Styles for AI-generated HTML in the Cross-Channel Game Plan panel.
+============================================= */
+.game-plan-html h3 {
+  font-size: 12px;
+  font-weight: 700;
+  color: #312e81;
+  margin: 0 0 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #a5b4fc;
+}
+.game-plan-html h3:not(:first-child) {
+  margin-top: 16px;
+}
+.game-plan-html ol {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.game-plan-html ol > li {
+  font-size: 12px;
+  color: #1e1b4b;
+  line-height: 1.7;
+}
+.game-plan-html ol > li > strong:first-child {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.game-plan-html ul {
+  margin: 4px 0 0;
+  padding-left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: disc;
+}
+.game-plan-html ul > li {
+  font-size: 12px;
+  color: #312e81;
+  line-height: 1.7;
+}
+.game-plan-html strong {
+  font-weight: 700;
+  color: #1e1b4b;
+}
+.game-plan-html p {
+  font-size: 12px;
+  color: #1e1b4b;
+  margin: 6px 0 0;
+  line-height: 1.7;
+}
+
+/* =============================================
    PRINT / PDF EXPORT
 ============================================= */
 @media print {
