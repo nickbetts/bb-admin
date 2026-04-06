@@ -169,6 +169,8 @@ model Report {
   customEndDate    String?
   compareStartDate String?
   compareEndDate   String?
+  // AI-generated narrative (persisted so it shows in PDF export)
+  narrativeData    String?         // JSON: { executiveSummary, keyThemes, crossSectionStories, goalProgressNarrative }
   // Phase 3: Collaboration & approval
   approvalStatus   String?         // "pending" | "approved" | "changes_requested"
   approvalNotes    String?

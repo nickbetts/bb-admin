@@ -84,6 +84,7 @@ interface Report {
   customEndDate?: string | null;
   compareStartDate?: string | null;
   compareEndDate?: string | null;
+  narrativeData?: string | null;
   client: Client;
   sections: Section[];
   screenshots: Screenshot[];
@@ -486,7 +487,13 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     crossSectionStories?: { sections: string[]; narrative: string }[];
     keyThemes?: string[];
     goalProgressNarrative?: string;
-  } | null>(null);
+  } | null>(() => {
+    // Restore previously saved narrative from DB on first render.
+    if (initialReport.narrativeData) {
+      try { return JSON.parse(initialReport.narrativeData); } catch { /* ignore */ }
+    }
+    return null;
+  });
 
   // ── Duplicate state ─────────────────────────────────────────────────────────
   const [duplicating, setDuplicating] = useState(false);
@@ -958,6 +965,12 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       if (res.ok) {
         const data = await res.json();
         setNarrativeResult(data);
+        // Persist so it's available in the PDF export.
+        fetch(`/api/reports/${report.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ narrativeData: JSON.stringify(data) }),
+        }).catch(() => { /* non-critical */ });
       }
     } finally {
       setGeneratingNarrative(false);

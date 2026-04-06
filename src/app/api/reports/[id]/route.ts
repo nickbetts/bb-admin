@@ -70,6 +70,7 @@ export async function PATCH(
         customEndDate: data.customEndDate ?? undefined,
         compareStartDate: data.compareStartDate ?? undefined,
         compareEndDate: data.compareEndDate ?? undefined,
+        narrativeData: data.narrativeData !== undefined ? data.narrativeData : undefined,
       },
     });
 

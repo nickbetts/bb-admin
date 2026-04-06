@@ -56,6 +56,7 @@ interface Report {
   customEndDate?: string | null;
   compareStartDate?: string | null;
   compareEndDate?: string | null;
+  narrativeData?: string | null;
   client: Client;
   sections: Section[];
   screenshots: Screenshot[];
@@ -200,6 +201,65 @@ export function ReportPrintView({ report }: { report: Report }) {
           </span>
         </div>
       </div>
+
+      {/* Report Narrative (AI-generated, persisted to DB when generated in the editor) */}
+      {(() => {
+        if (!report.narrativeData) return null;
+        let narrative: {
+          executiveSummary?: string;
+          keyThemes?: string[];
+          crossSectionStories?: { sections: string[]; narrative: string }[];
+        } | null = null;
+        try { narrative = JSON.parse(report.narrativeData); } catch { return null; }
+        if (!narrative) return null;
+        return (
+          <div
+            style={{
+              marginBottom: 32,
+              background: "#eef2ff",
+              border: "1px solid #c7d2fe",
+              borderRadius: 10,
+              padding: "20px 24px",
+            }}
+          >
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.07em",
+                color: "#4f46e5",
+                marginBottom: 12,
+              }}
+            >
+              Report Narrative
+            </p>
+            {narrative.executiveSummary && (
+              <p style={{ fontSize: 14, color: "#1e293b", lineHeight: 1.7, marginBottom: narrative.keyThemes ? 12 : 0 }}>
+                {narrative.executiveSummary}
+              </p>
+            )}
+            {narrative.keyThemes && narrative.keyThemes.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: narrative.crossSectionStories ? 12 : 0 }}>
+                {narrative.keyThemes.map((theme, i) => (
+                  <span key={i} style={{ fontSize: 11, fontWeight: 500, color: "#4f46e5", background: "rgba(99,102,241,0.12)", padding: "2px 10px", borderRadius: 99 }}>{theme}</span>
+                ))}
+              </div>
+            )}
+            {narrative.crossSectionStories && narrative.crossSectionStories.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#4f46e5", opacity: 0.7, marginBottom: 4 }}>Cross-channel stories</p>
+                {narrative.crossSectionStories.map((story, i) => (
+                  <div key={i} style={{ background: "rgba(255,255,255,0.6)", borderRadius: 6, padding: "8px 12px" }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: "#4f46e5", marginBottom: 3 }}>{story.sections.join(" + ")}</p>
+                    <p style={{ fontSize: 13, color: "#1e293b", lineHeight: 1.55 }}>{story.narrative}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Sections */}
       {enabledSections.map((section) => {
