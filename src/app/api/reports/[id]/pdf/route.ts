@@ -80,8 +80,14 @@ export async function GET(
         { timeout: 10000 }
       );
 
-      // Short buffer for chart SVG rendering after data arrives.
-      await page.evaluate(() => new Promise((r) => setTimeout(r, 1500)));
+      // Section components (GA4, Meta, etc.) start their own API fetches
+      // AFTER React mounts, so data-print-ready firing early doesn't mean
+      // the data is on screen yet. Wait for network to go idle again to
+      // ensure all section data has loaded and charts have rendered.
+      await page.waitForNetworkIdle({ idleTime: 1000, timeout: 20000 });
+
+      // Short buffer for any remaining SVG/chart paint after data arrives.
+      await page.evaluate(() => new Promise((r) => setTimeout(r, 800)));
 
       // Measure the full rendered height so the PDF is one continuous page
       // with no content split across page breaks.

@@ -805,6 +805,30 @@ body {
 }
 
 /* =============================================
+   PDF EXPORT — screen-media class applied by ReportPrintView
+   Mirrors the @media print rules below but fires in screen mode
+   so Puppeteer (emulateMediaType screen) picks them up.
+============================================= */
+.pdf-print-view .app-shell {
+  display: block !important;
+  height: auto !important;
+}
+
+.pdf-print-view .sidebar {
+  display: none !important;
+}
+
+.pdf-print-view .app-main {
+  overflow: visible !important;
+  height: auto !important;
+  background: #ffffff !important;
+}
+
+.pdf-print-view .print\:hidden {
+  display: none !important;
+}
+
+/* =============================================
    PRINT / PDF EXPORT
 ============================================= */
 @media print {

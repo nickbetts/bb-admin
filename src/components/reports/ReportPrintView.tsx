@@ -70,11 +70,16 @@ export function ReportPrintView({ report }: { report: Report }) {
 
   const enabledSections = report.sections.filter((s) => s.enabled !== false);
 
-  // Signal Puppeteer that the React tree is fully rendered.
-  // networkidle0 in the PDF route will already have waited for all API calls
-  // to complete; this attribute gives an additional deterministic signal.
+  // Add class that hides the sidebar and resets the app-shell for screen-media
+  // PDF rendering (Puppeteer uses screen media, not print media).
+  // Signal Puppeteer via data-print-ready after the class is applied.
   useEffect(() => {
+    document.body.classList.add("pdf-print-view");
     document.body.setAttribute("data-print-ready", "true");
+    return () => {
+      document.body.classList.remove("pdf-print-view");
+      document.body.removeAttribute("data-print-ready");
+    };
   }, []);
 
   const commentaryBlock = (section: Section) =>
