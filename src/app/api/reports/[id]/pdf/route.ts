@@ -58,9 +58,13 @@ export async function GET(
         secure: baseUrl.startsWith("https"),
       });
 
-      // Print media ensures @media print styles are applied (hides any
-      // interactive chrome that might appear in the print layout).
-      await page.emulateMediaType("print");
+      // Use screen media so the full content renders at the viewport width.
+      // We generate a single long-page PDF (no page breaks) since reports
+      // are viewed on-screen, never physically printed.
+      await page.emulateMediaType("screen");
+
+      // Set viewport to a standard report width so layout is consistent.
+      await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 1 });
 
       // Navigate to the dedicated print page which renders the full section
       // components (charts, metrics) without sidebar or editing chrome.
@@ -79,9 +83,14 @@ export async function GET(
       // Short buffer for chart SVG rendering after data arrives.
       await page.evaluate(() => new Promise((r) => setTimeout(r, 1500)));
 
+      // Measure the full rendered height so the PDF is one continuous page
+      // with no content split across page breaks.
+      const fullHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+
       const pdfBuffer = await page.pdf({
-        format: "A4",
-        margin: { top: "12mm", right: "12mm", bottom: "12mm", left: "12mm" },
+        width: "1200px",
+        height: `${fullHeight}px`,
+        margin: { top: "0", right: "0", bottom: "0", left: "0" },
         printBackground: true,
       });
 
