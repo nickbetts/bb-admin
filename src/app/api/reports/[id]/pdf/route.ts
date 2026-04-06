@@ -58,21 +58,30 @@ export async function GET(
         secure: baseUrl.startsWith("https"),
       });
 
-      // Emulate print media so @media print CSS hides sidebar, buttons, etc.
+      // Print media ensures @media print styles are applied (hides any
+      // interactive chrome that might appear in the print layout).
       await page.emulateMediaType("print");
 
-      // Navigate to the actual report page (full metrics, charts, everything)
-      await page.goto(`${baseUrl}/reports/${id}`, {
+      // Navigate to the dedicated print page which renders the full section
+      // components (charts, metrics) without sidebar or editing chrome.
+      await page.goto(`${baseUrl}/reports/${id}/print`, {
         waitUntil: "networkidle0",
-        timeout: 20000,
+        timeout: 30000,
       });
 
-      // Extra wait for any client-side data fetching / chart rendering
-      await page.evaluate(() => new Promise((r) => setTimeout(r, 2000)));
+      // Wait for the React tree to signal it has finished mounting.
+      // ReportPrintView sets data-print-ready on document.body in a useEffect.
+      await page.waitForFunction(
+        () => document.body.getAttribute("data-print-ready") === "true",
+        { timeout: 10000 }
+      );
+
+      // Short buffer for chart SVG rendering after data arrives.
+      await page.evaluate(() => new Promise((r) => setTimeout(r, 1500)));
 
       const pdfBuffer = await page.pdf({
         format: "A4",
-        margin: { top: "14mm", right: "12mm", bottom: "14mm", left: "12mm" },
+        margin: { top: "12mm", right: "12mm", bottom: "12mm", left: "12mm" },
         printBackground: true,
       });
 

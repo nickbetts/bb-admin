@@ -886,4 +886,33 @@ body {
   .card, .metric-card, .stat-card {
     box-shadow: none !important;
   }
+
+  /* ── Report PDF layout fixes ──────────────────────────────────────────
+     The main content div has 36px/40px screen padding which stacks on top
+     of the PDF page margins — zero it out so only the page margins apply.
+     Also collapse the 56px inter-section gaps down to something tighter. */
+
+  /* Remove screen padding from the main content column */
+  .report-main-content {
+    padding: 0 !important;
+    max-width: 100% !important;
+    flex: none !important;
+    width: 100% !important;
+  }
+
+  /* Reduce the 56px gap between sections */
+  [id^="section-"] {
+    margin-bottom: 20px !important;
+  }
+
+  /* Tighten cover card margin-bottom */
+  .report-cover-card {
+    margin-bottom: 16px !important;
+  }
+
+  /* Footer: tighten top margin */
+  .report-footer {
+    margin-top: 24px !important;
+    padding-top: 16px !important;
+  }
 }

@@ -1352,6 +1352,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
         {/* Main content */}
         <div
           ref={mainContentRef}
+          className="report-main-content"
           style={{ flex: 1, minWidth: 0, padding: "36px 40px", maxWidth: 1000, position: "relative" }}
         >
           {/* Page edge overlay — A4 boundary lines */}
@@ -1390,7 +1391,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           )}
 
           {/* Cover card */}
-          <div className="card" style={{ marginBottom: 36 }}>
+          <div className="card report-cover-card" style={{ marginBottom: 36 }}>
             <div style={{
               background: "linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)",
               padding: "36px 40px",
@@ -1926,7 +1927,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           )}
 
           {/* Footer */}
-          <div style={{ marginTop: 48, paddingTop: 24, borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div className="report-footer" style={{ marginTop: 48, paddingTop: 24, borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/primary-logo.svg" alt="i3media" style={{ height: 28, filter: "brightness(0)" }} />
             <p style={{ fontSize: 12, color: "var(--text-4)" }}>

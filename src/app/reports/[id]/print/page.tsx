@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { PrintReportContent } from "@/components/reports/PrintReportContent";
+import { ReportPrintView } from "@/components/reports/ReportPrintView";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -16,7 +16,7 @@ export default async function ReportPrintPage({ params }: Props) {
   const report = await prisma.report.findUnique({
     where: { id },
     include: {
-      client: { select: { name: true, logoUrl: true, website: true } },
+      client: true,
       sections: { orderBy: { orderIndex: "asc" } },
       screenshots: { orderBy: { orderIndex: "asc" } },
     },
@@ -24,5 +24,5 @@ export default async function ReportPrintPage({ params }: Props) {
 
   if (!report) notFound();
 
-  return <PrintReportContent report={report} showToolbar />;
+  return <ReportPrintView report={report} />;
 }
