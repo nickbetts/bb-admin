@@ -26,8 +26,12 @@ interface UsersManagerProps {
   currentUserId: string;
 }
 
-function RoleBadge({ role }: { role: string }) {
+function RoleBadge({ role, userRole }: { role: string; userRole?: { id: string; name: string } | null }) {
   const isAdmin = role === "admin";
+  const displayName = userRole?.name ?? (isAdmin ? "Admin" : "User");
+  const isNamed = !!userRole?.name && userRole.name !== "User";
+  const bg = isAdmin ? "rgb(99 102 241 / 0.12)" : isNamed ? "rgb(168 85 247 / 0.12)" : "rgb(148 163 184 / 0.15)";
+  const color = isAdmin ? "#6366f1" : isNamed ? "#a855f7" : "var(--text-3)";
   return (
     <span
       style={{
@@ -37,11 +41,11 @@ function RoleBadge({ role }: { role: string }) {
         fontSize: 11,
         fontWeight: 600,
         letterSpacing: "0.02em",
-        background: isAdmin ? "rgb(99 102 241 / 0.12)" : "rgb(148 163 184 / 0.15)",
-        color: isAdmin ? "#6366f1" : "var(--text-3)",
+        background: bg,
+        color,
       }}
     >
-      {isAdmin ? "Admin" : "User"}
+      {displayName}
     </span>
   );
 }
@@ -364,7 +368,7 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
                       {user.email}
                     </td>
                     <td style={{ padding: "14px 20px" }}>
-                      <RoleBadge role={user.role} />
+                      <RoleBadge role={user.role} userRole={user.userRole} />
                     </td>
                     <td style={{ padding: "14px 20px", fontSize: 13, color: "var(--text-3)" }}>
                       {new Date(user.createdAt).toLocaleDateString()}

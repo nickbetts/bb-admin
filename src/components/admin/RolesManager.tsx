@@ -15,11 +15,21 @@ const PERMISSION_GROUPS = [
     ],
   },
   {
+    label: "Operations",
+    items: [
+      { key: "portfolio", label: "Portfolio Health" },
+      { key: "actions", label: "Actions" },
+      { key: "communications", label: "Communications" },
+    ],
+  },
+  {
     label: "Tools",
     items: [
       { key: "page_analyser", label: "Page Analyser" },
       { key: "proposal_generator", label: "Proposal Generator" },
       { key: "proposals", label: "Proposals" },
+      { key: "competitor_intelligence", label: "Competitor Intel" },
+      { key: "media_plan", label: "Media Planner" },
       { key: "pricing", label: "Pricing" },
       { key: "llm_generator", label: "LLM.txt Generator" },
     ],
