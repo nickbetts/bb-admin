@@ -44,13 +44,34 @@ export async function POST(request: NextRequest) {
       }).join("\n")}`
       : "";
 
+    // Fetch most recent previous strategy documents for continuity context
+    const prevDocs = await prisma.strategyDocument.findMany({
+      where: { clientId },
+      orderBy: { createdAt: "desc" },
+      take: 2,
+      select: { title: true, period: true, content: true, createdAt: true },
+    });
+    const prevDocsContext = prevDocs.length > 0
+      ? "\n\nPREVIOUS STRATEGY DOCUMENTS (for continuity — reference commitments and evaluate if they landed):\n" +
+        prevDocs.map((d) => {
+          let parsed: Record<string, unknown> = {};
+          try { parsed = JSON.parse(d.content); } catch { /* ignore */ }
+          const lines = [`  ${d.title} (generated ${d.createdAt.toISOString().split("T")[0]}):`];
+          if (parsed.performanceSummary) lines.push(`    Summary: ${String(parsed.performanceSummary).slice(0, 300)}`);
+          if (Array.isArray(parsed.kpiTargets) && parsed.kpiTargets.length > 0) {
+            lines.push(`    KPI targets set: ${(parsed.kpiTargets as { metric: string; target: string }[]).map((k) => `${k.metric} → ${k.target}`).join(", ")}`);
+          }
+          return lines.join("\n");
+        }).join("\n")
+      : "";
+
     const openai = await getOpenAiClient();
 
     const systemInstruction = `You are a senior digital marketing strategist. Create a comprehensive quarterly strategy document for the following client.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${enableWebSearch ? "\n\nYou have web search available. Use it to find current industry benchmarks, competitor insights, market trends, and platform updates that are relevant to this client's strategy. Cite sources where appropriate." : ""}`;
 
     const userPrompt = `Client: ${client.name}
 Website: ${client.website ?? "Not set"}
-Period: ${period}${goalsContext}
+Period: ${period}${goalsContext}${prevDocsContext}
 
 Cross-Platform Performance Data:
 ${JSON.stringify(crossPlatformData, null, 2)}

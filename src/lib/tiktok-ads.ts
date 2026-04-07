@@ -13,6 +13,8 @@ export interface TikTokAdsOverview {
   conversions: number;
   costPerConversion: number;
   videoViews: number;
+  /** Average seconds watched per video play — proxy for engagement/completion depth */
+  avgVideoPlaySeconds: number | null;
   reach: number;
   frequency: number;
 }
@@ -83,7 +85,7 @@ export async function getTikTokAdsOverview(
     report_type: "BASIC",
     data_level: "AUCTION_ADVERTISER",
     dimensions: '["advertiser_id"]',
-    metrics: '["spend","impressions","clicks","ctr","cpc","cpm","conversion","cost_per_conversion","video_play_actions","reach","frequency"]',
+    metrics: '["spend","impressions","clicks","ctr","cpc","cpm","conversion","cost_per_conversion","video_play_actions","average_video_play","reach","frequency"]',
     start_date: startDate,
     end_date: endDate,
   });
@@ -101,6 +103,7 @@ export async function getTikTokAdsOverview(
     conversions: row.conversion ?? 0,
     costPerConversion: row.cost_per_conversion ?? 0,
     videoViews: row.video_play_actions ?? 0,
+    avgVideoPlaySeconds: row.average_video_play != null ? Number(row.average_video_play) : null,
     reach: row.reach ?? 0,
     frequency: row.frequency ?? 0,
   };

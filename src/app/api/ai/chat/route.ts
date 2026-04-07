@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "clientId and message are required" }, { status: 400 });
     }
 
-    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, website: true, aiReportInstructions: true, ga4PropertyId: true, googleAdsCustomerId: true, metaAccountId: true, searchConsoleSiteUrl: true, semrushDomain: true, woocommerceUrl: true, shopifyStoreDomain: true, tiktokAdvertiserId: true, microsoftAdsAccountId: true } });
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, website: true, aiReportInstructions: true, contractedHours: true, ga4PropertyId: true, googleAdsCustomerId: true, metaAccountId: true, searchConsoleSiteUrl: true, semrushDomain: true, woocommerceUrl: true, shopifyStoreDomain: true, tiktokAdvertiserId: true, microsoftAdsAccountId: true } });
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
     const clientAiInstructions = client.aiReportInstructions ?? "";
@@ -57,6 +57,84 @@ export async function POST(request: NextRequest) {
       return `[${s.sectionType}] ${s.periodStart} to ${s.periodEnd}:\n${metricLines || "  (no numeric metrics)"}`;
     }).join("\n\n");
 
+    // Fetch open/in-progress actions for context
+    const actions = await prisma.actionItem.findMany({
+      where: { clientId, status: { in: ["open", "in_progress"] } },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: { title: true, description: true, status: true, priority: true, dueDate: true, assignedTo: true },
+    });
+    const actionsContext = actions.length > 0
+      ? "\n\nOPEN ACTIONS:\n" + actions.map((a) =>
+          `  [${a.priority.toUpperCase()}] ${a.title}${a.description ? ` — ${a.description}` : ""}${a.dueDate ? ` (due ${a.dueDate})` : ""}${a.assignedTo ? ` — assigned to ${a.assignedTo}` : ""}`
+        ).join("\n")
+      : "";
+
+    // Fetch recent communications for context
+    const comms = await prisma.clientCommunication.findMany({
+      where: { clientId },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: { type: true, direction: true, subject: true, sentAt: true, createdAt: true },
+    });
+    const commsContext = comms.length > 0
+      ? "\n\nRECENT COMMUNICATIONS:\n" + comms.map((c) => {
+          const date = (c.sentAt ?? c.createdAt).toISOString().split("T")[0];
+          return `  [${date}] ${c.direction} ${c.type}: "${c.subject}"`;
+        }).join("\n")
+      : "";
+
+    // Parse contracted hours if available
+    let contractsContext = "";
+    if (client.contractedHours) {
+      try {
+        const contracts = JSON.parse(client.contractedHours) as { service: string; hoursPerMonth: number }[];
+        if (contracts.length > 0) {
+          contractsContext = "\n\nCONTRACTED SERVICES:\n" +
+            contracts.map((c) => `  ${c.service}: ${c.hoursPerMonth}h/month`).join("\n");
+        }
+      } catch { /* ignore */ }
+    }
+
+    // Read most recently cached GA4 demographics and AI referrals (from ApiCache, written when those tabs are loaded)
+    let demographicsContext = "";
+    let aiReferralsContext = "";
+    if (client.ga4PropertyId) {
+      const [demoCache, aiRefCache] = await Promise.allSettled([
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (prisma as any).apiCache.findFirst({
+          where: { key: { startsWith: `ga4:demographics:${client.ga4PropertyId}:` } },
+          orderBy: { fetchedAt: "desc" },
+        }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (prisma as any).apiCache.findFirst({
+          where: { key: { startsWith: `ga4:ai-referrals:${client.ga4PropertyId}:` } },
+          orderBy: { fetchedAt: "desc" },
+        }),
+      ]);
+      if (demoCache.status === "fulfilled" && demoCache.value) {
+        try {
+          const d = JSON.parse(demoCache.value.data) as { ageGroups?: { range: string; users: number }[]; genderSplit?: { gender: string; users: number }[] };
+          const totalUsers = (d.ageGroups ?? []).reduce((s, g) => s + g.users, 0);
+          if (totalUsers > 0) {
+            demographicsContext = "\n\nAUDIENCE DEMOGRAPHICS (GA4):\n  Age: " +
+              (d.ageGroups ?? []).map((g) => `${g.range}: ${Math.round((g.users / totalUsers) * 100)}%`).join(", ") +
+              "\n  Gender: " + (d.genderSplit ?? []).map((g) => `${g.gender}: ${Math.round((g.users / totalUsers) * 100)}%`).join(", ");
+          }
+        } catch { /* ignore */ }
+      }
+      if (aiRefCache.status === "fulfilled" && aiRefCache.value) {
+        try {
+          const refs = JSON.parse(aiRefCache.value.data) as { source: string; sessions: number }[];
+          if (refs.length > 0) {
+            const total = refs.reduce((s, r) => s + r.sessions, 0);
+            aiReferralsContext = `\n\nAI SEARCH REFERRALS: ${total.toLocaleString()} sessions from AI tools (` +
+              refs.slice(0, 5).map((r) => `${r.source}: ${r.sessions}`).join(", ") + ")";
+          }
+        } catch { /* ignore */ }
+      }
+    }
+
     // Store user message
     await prisma.clientConversation.create({
       data: { clientId, userId: session.user.id, role: "user", content: message },
@@ -68,7 +146,7 @@ export async function POST(request: NextRequest) {
     const systemPrompt = `You are an expert digital marketing analyst for ${client.name}. You have access to their marketing performance data across multiple channels.
 
 Available data context:
-${snapshotContext || "No historical snapshots available yet. Answer based on general marketing knowledge."}
+${snapshotContext || "No historical snapshots available yet. Answer based on general marketing knowledge."}${demographicsContext}${aiReferralsContext}${actionsContext}${commsContext}${contractsContext}
 
 Client details:
 - Name: ${client.name}

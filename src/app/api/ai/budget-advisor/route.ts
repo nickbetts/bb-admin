@@ -41,6 +41,16 @@ export async function POST(request: NextRequest) {
     const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, aiReportInstructions: true } });
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
+    // Fetch most recent budget recommendation for historical continuity
+    const prevRec = await prisma.budgetRecommendation.findFirst({
+      where: { clientId },
+      orderBy: { createdAt: "desc" },
+      select: { periodStart: true, periodEnd: true, summary: true, createdAt: true },
+    });
+    const prevRecContext = prevRec
+      ? `\nPREVIOUS RECOMMENDATION (${prevRec.periodStart} to ${prevRec.periodEnd}, generated ${prevRec.createdAt.toISOString().split("T")[0]}):\n  Summary: ${prevRec.summary ?? "No summary recorded"}\n  Note: Where possible, comment on whether the current data suggests previous recommendations had positive effect.`
+      : "";
+
     const openai = await getOpenAiClient();
 
     // Format campaign data for the prompt
@@ -65,7 +75,7 @@ export async function POST(request: NextRequest) {
 
 Client: ${client.name}
 Period: ${periodStart ?? "unknown"} to ${periodEnd ?? "unknown"}
-${ecommerceData ? `\nSTORE PERFORMANCE CONTEXT:\n  Total revenue: £${ecommerceData.totalRevenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n  Total orders: ${ecommerceData.totalOrders}\n  Average order value: £${ecommerceData.averageOrderValue.toFixed(2)}\n  (Use store revenue as the north star when recommending budget changes — campaigns should be judged against their contribution to total store revenue.)` : ""}
+${ecommerceData ? `\nSTORE PERFORMANCE CONTEXT:\n  Total revenue: £${ecommerceData.totalRevenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n  Total orders: ${ecommerceData.totalOrders}\n  Average order value: £${ecommerceData.averageOrderValue.toFixed(2)}\n  (Use store revenue as the north star when recommending budget changes — campaigns should be judged against their contribution to total store revenue.)` : ""}${prevRecContext}
 
 CAMPAIGN DATA (real data from connected channels — ONLY recommend for these campaigns):
 ${campaignLines}

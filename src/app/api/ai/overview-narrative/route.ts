@@ -209,11 +209,16 @@ export async function POST(request: NextRequest) {
 
     // Fetch client-specific AI instructions if clientId provided
     let clientAiInstructions = "";
+    let clientGa4PropertyId: string | null = null;
+    let clientGadsCustomerId: string | null = null;
     if (clientId) {
-      const client = await prisma.client.findUnique({ where: { id: clientId }, select: { aiReportInstructions: true } });
-      if (client?.aiReportInstructions) {
-        clientAiInstructions = client.aiReportInstructions;
-      }
+      const client = await prisma.client.findUnique({
+        where: { id: clientId },
+        select: { aiReportInstructions: true, ga4PropertyId: true, googleAdsCustomerId: true },
+      });
+      if (client?.aiReportInstructions) clientAiInstructions = client.aiReportInstructions;
+      clientGa4PropertyId = client?.ga4PropertyId ?? null;
+      clientGadsCustomerId = client?.googleAdsCustomerId ?? null;
     }
 
     // Fetch active client goals if clientId provided
@@ -230,7 +235,97 @@ export async function POST(request: NextRequest) {
         }).join("\n");
       }
     }
+    // Fetch competitor snapshots (most recent per domain)
+    let competitorContext = "";
+    if (clientId) {
+      const competitors = await prisma.competitorSnapshot.findMany({
+        where: { clientId },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: { domain: true, metrics: true, insights: true, periodEnd: true },
+      });
+      // De-duplicate to latest snapshot per domain
+      const seen = new Set<string>();
+      const latest = competitors.filter((c) => {
+        if (seen.has(c.domain)) return false;
+        seen.add(c.domain);
+        return true;
+      }).slice(0, 5);
+      if (latest.length > 0) {
+        competitorContext = "\n\nCOMPETITOR INTELLIGENCE (SemRush data):\n" + latest.map((c) => {
+          let m: Record<string, unknown> = {};
+          try { m = JSON.parse(c.metrics); } catch { /* ignore */ }
+          const parts: string[] = [`  ${c.domain}:`];
+          if (m.organicTraffic) parts.push(`    Organic traffic: ${Number(m.organicTraffic).toLocaleString()}`);
+          if (m.organicKeywords) parts.push(`    Organic keywords: ${Number(m.organicKeywords).toLocaleString()}`);
+          if (m.backlinks) parts.push(`    Backlinks: ${Number(m.backlinks).toLocaleString()}`);
+          if (m.domainAuthority ?? m.authorityScore) parts.push(`    Authority score: ${m.domainAuthority ?? m.authorityScore}`);
+          if (c.insights) parts.push(`    Insight: ${c.insights}`);
+          return parts.join("\n");
+        }).join("\n");
+      }
+    }
 
+    // Read most recently cached GA4 demographics and AI referrals from ApiCache (written by /api/ga4 when those tabs are loaded)
+    let demographicsContext = "";
+    let aiReferralsContext = "";
+    let audienceContext = "";
+    if (clientGa4PropertyId) {
+      const [demoCache, aiRefCache] = await Promise.allSettled([
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (prisma as any).apiCache.findFirst({
+          where: { key: { startsWith: `ga4:demographics:${clientGa4PropertyId}:` } },
+          orderBy: { fetchedAt: "desc" },
+        }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (prisma as any).apiCache.findFirst({
+          where: { key: { startsWith: `ga4:ai-referrals:${clientGa4PropertyId}:` } },
+          orderBy: { fetchedAt: "desc" },
+        }),
+      ]);
+      if (demoCache.status === "fulfilled" && demoCache.value) {
+        try {
+          const d = JSON.parse(demoCache.value.data) as { ageGroups?: { range: string; users: number }[]; genderSplit?: { gender: string; users: number }[] };
+          const totalUsers = (d.ageGroups ?? []).reduce((s, g) => s + g.users, 0);
+          if (totalUsers > 0) {
+            demographicsContext = "\n\nAUDIENCE DEMOGRAPHICS (GA4):\n  Age: " +
+              (d.ageGroups ?? []).map((g) => `${g.range}: ${Math.round((g.users / totalUsers) * 100)}%`).join(", ") +
+              "\n  Gender: " + (d.genderSplit ?? []).map((g) => `${g.gender}: ${Math.round((g.users / totalUsers) * 100)}%`).join(", ");
+          }
+        } catch { /* ignore malformed */ }
+      }
+      if (aiRefCache.status === "fulfilled" && aiRefCache.value) {
+        try {
+          const refs = JSON.parse(aiRefCache.value.data) as { source: string; sessions: number; users: number }[];
+          if (refs.length > 0) {
+            const total = refs.reduce((s, r) => s + r.sessions, 0);
+            aiReferralsContext = `\n\nAI SEARCH REFERRALS (GA4 — sessions from ChatGPT, Perplexity, Copilot etc.):\n  Total AI-referred sessions: ${total.toLocaleString()}\n  ` +
+              refs.slice(0, 6).map((r) => `${r.source}: ${r.sessions.toLocaleString()} sessions`).join(", ");
+          }
+        } catch { /* ignore */ }
+      }
+    }
+    if (clientGadsCustomerId) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const gadsCache = await (prisma as any).apiCache.findFirst({
+          where: { key: { startsWith: `googleads:${clientGadsCustomerId}:` } },
+          orderBy: { fetchedAt: "desc" },
+        });
+        if (gadsCache) {
+          const gadsData = JSON.parse(gadsCache.data) as { audienceCriteria?: { criterionType: string; displayName: string; campaignName: string; negative: boolean }[] };
+          const audiences = (gadsData.audienceCriteria ?? []).filter((a) => !a.negative && a.displayName);
+          if (audiences.length > 0) {
+            const byType: Record<string, string[]> = {};
+            for (const a of audiences.slice(0, 20)) {
+              (byType[a.criterionType] ??= []).push(a.displayName);
+            }
+            audienceContext = "\n\nGOOGLE ADS AUDIENCE TARGETING:\n" +
+              Object.entries(byType).map(([type, names]) => `  ${type}: ${[...new Set(names)].join(", ")}`).join("\n");
+          }
+        }
+      } catch { /* ignore */ }
+    }
     // ── Build platform-by-platform context ───────────────────────────────────
     const sections: string[] = [];
     const activePlatforms: string[] = [];
@@ -417,7 +512,7 @@ CHANNEL-BY-CHANNEL DATA:
 ${sections.join("\n\n")}
 
 ${aggText}
-${campaignText}${alertsText}${channelMetricsText}${goalsContext}
+${campaignText}${alertsText}${channelMetricsText}${goalsContext}${competitorContext}${demographicsContext}${aiReferralsContext}${audienceContext}
 
 Produce a JSON object:
 {

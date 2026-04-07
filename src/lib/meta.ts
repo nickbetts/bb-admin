@@ -42,6 +42,10 @@ export interface MetaAdsOverview {
   frequency: number;
   outboundClicks: number;
   landingPageViews: number;
+  /** Total 3-second video views across all ads */
+  videoViews: number;
+  /** Percentage of video plays that reached 100% completion (null if no video content) */
+  videoCompletionRate: number | null;
 }
 
 export interface MetaAdsDailyData {
@@ -206,20 +210,10 @@ export async function getMetaAdsOverview(
 
   if (!insight) {
     return {
-      totalSpend: 0,
-      totalImpressions: 0,
-      totalClicks: 0,
-      avgCtr: 0,
-      avgCpc: 0,
-      avgCpm: 0,
-      totalConversions: 0,
-      conversionLabel: "Conversions",
-      totalConversionValue: 0,
-      avgRoas: 0,
-      reach: 0,
-      frequency: 0,
-      outboundClicks: 0,
-      landingPageViews: 0,
+      totalSpend: 0, totalImpressions: 0, totalClicks: 0, avgCtr: 0, avgCpc: 0, avgCpm: 0,
+      totalConversions: 0, conversionLabel: "Conversions", totalConversionValue: 0, avgRoas: 0,
+      reach: 0, frequency: 0, outboundClicks: 0, landingPageViews: 0,
+      videoViews: 0, videoCompletionRate: null,
     };
   }
 
@@ -249,6 +243,15 @@ export async function getMetaAdsOverview(
       ?.find((a) => a.action_type === "landing_page_view")?.value
       ? parseInt((insight.actions as ActionRow[]).find((a) => a.action_type === "landing_page_view")!.value)
       : 0,
+    videoViews: parseInt(
+      (insight.actions as ActionRow[] | undefined)?.find((a) => a.action_type === "video_view")?.value ?? "0"
+    ),
+    videoCompletionRate: (() => {
+      const acts = insight.actions as ActionRow[] | undefined;
+      const plays = parseInt(acts?.find((a) => a.action_type === "video_view")?.value ?? "0");
+      const completed = parseInt(acts?.find((a) => a.action_type === "video_p100_watched_actions")?.value ?? "0");
+      return plays > 0 ? Math.round((completed / plays) * 100) : null;
+    })(),
   };
 }
 

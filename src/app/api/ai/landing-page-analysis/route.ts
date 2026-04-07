@@ -3,6 +3,8 @@ import OpenAI from "openai";
 import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 import { fetchPageSignals, type PageSignals } from "@/lib/landing-page-analyzer";
+import { getCoreWebVitals } from "@/lib/core-web-vitals";
+import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -58,8 +60,28 @@ export async function POST(request: NextRequest) {
     // Fetch all pages in parallel
     const signals = await Promise.all(targetUrls.map((u) => fetchPageSignals(u)));
 
+    // Fetch Core Web Vitals for unique origins (cached 24h to avoid CrUX quota)
+    const origins = [...new Set(
+      targetUrls.flatMap((u) => { try { return [new URL(u).origin]; } catch { return []; } })
+    )];
+    const cwvMap = new Map<string, string>();
+    await Promise.allSettled(
+      origins.map(async (origin) => {
+        try {
+          const cwv = await withApiCache(`crux:${origin}`, 24, () => getCoreWebVitals(origin));
+          const parts = [
+            cwv.lcp ? `LCP ${cwv.lcp.p75}ms (${cwv.lcp.category})` : null,
+            cwv.cls ? `CLS ${cwv.cls.p75} (${cwv.cls.category})` : null,
+            cwv.inp ? `INP ${cwv.inp.p75}ms (${cwv.inp.category})` : null,
+            `Overall: ${cwv.overallCategory}`,
+          ].filter(Boolean);
+          cwvMap.set(origin, parts.join(", "));
+        } catch { /* no CrUX data for this origin */ }
+      })
+    );
+
     // Build the AI analysis for all pages in one request (batched)
-    const analyses = await analysePages(openai, signals, clientName, source);
+    const analyses = await analysePages(openai, signals, clientName, source, cwvMap);
 
     return NextResponse.json({ analyses });
   } catch (error) {
@@ -76,7 +98,8 @@ async function analysePages(
   openai: OpenAI,
   pages: PageSignals[],
   clientName?: string,
-  source?: string
+  source?: string,
+  cwvMap?: Map<string, string>
 ): Promise<LandingPageAnalysisResult[]> {
   // Split pages into those with HTML data and those that need web search
   const successPages = pages.filter((p) => !p.fetchError);
@@ -85,7 +108,7 @@ async function analysePages(
   // Run both groups in parallel
   const [successResults, failedResults] = await Promise.all([
     successPages.length > 0
-      ? analysePagesWithSignals(openai, successPages, clientName, source)
+      ? analysePagesWithSignals(openai, successPages, clientName, source, cwvMap)
       : Promise.resolve([]),
     failedPages.length > 0
       ? analysePagesWithWebSearch(openai, failedPages, clientName, source)
@@ -106,9 +129,10 @@ async function analysePagesWithSignals(
   openai: OpenAI,
   pages: PageSignals[],
   clientName?: string,
-  source?: string
+  source?: string,
+  cwvMap?: Map<string, string>
 ): Promise<LandingPageAnalysisResult[]> {
-  const pageDescriptions = pages.map((p) => buildSignalSummary(p));
+  const pageDescriptions = pages.map((p) => buildSignalSummary(p, cwvMap));
 
   const systemPrompt = `You are a senior CRO (Conversion Rate Optimisation) and SEO expert at i3media, a UK performance marketing agency.
 You review ${source === "meta" ? "Meta Ads" : "Google Ads"} landing pages for ${clientName ?? "a client"} and provide frank, actionable analysis.
@@ -261,8 +285,15 @@ function parseAnalysisResponse(raw: string, pages: PageSignals[]): LandingPageAn
   });
 }
 
-function buildSignalSummary(p: PageSignals): string {
+function buildSignalSummary(p: PageSignals, cwvMap?: Map<string, string>): string {
   const lines: string[] = [`URL: ${p.url}`];
+
+  // Prepend Core Web Vitals if available for this page's origin
+  try {
+    const origin = new URL(p.url).origin;
+    const cwv = cwvMap?.get(origin);
+    if (cwv) lines.push(`Core Web Vitals (real-user CrUX data): ${cwv}`);
+  } catch { /* ignore invalid URL */ }
 
   if (p.fetchError) {
     lines.push(`FETCH ERROR: ${p.fetchError} — analyse based on URL alone`);
