@@ -4,6 +4,24 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
+const inputStyle: React.CSSProperties = {
+  width: "100%", boxSizing: "border-box",
+  padding: "13px 16px", borderRadius: 12,
+  background: "rgba(255,255,255,0.05)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  color: "white", fontSize: 14,
+  outline: "none", transition: "border-color 0.15s, box-shadow 0.15s",
+};
+
+function onFocus(e: React.FocusEvent<HTMLInputElement>) {
+  e.target.style.borderColor = "rgba(99,102,241,0.7)";
+  e.target.style.boxShadow = "0 0 0 3px rgba(99,102,241,0.15)";
+}
+function onBlur(e: React.FocusEvent<HTMLInputElement>) {
+  e.target.style.borderColor = "rgba(255,255,255,0.1)";
+  e.target.style.boxShadow = "none";
+}
+
 export function ChangePasswordForm() {
   const router = useRouter();
   const [password, setPassword] = useState("");
@@ -47,12 +65,12 @@ export function ChangePasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+        <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>
           New password
         </label>
-        <div className="relative">
+        <div style={{ position: "relative" }}>
           <input
             type={showPassword ? "text" : "password"}
             value={password}
@@ -60,20 +78,29 @@ export function ChangePasswordForm() {
             placeholder="At least 8 characters"
             required
             autoComplete="new-password"
-            className="w-full px-4 py-3 pr-11 rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition text-sm shadow-sm"
+            style={{ ...inputStyle, paddingRight: 44 }}
+            onFocus={onFocus}
+            onBlur={onBlur}
           />
           <button
             type="button"
             onClick={() => setShowPassword((s) => !s)}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+            style={{
+              position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)",
+              background: "none", border: "none", cursor: "pointer",
+              color: "rgba(255,255,255,0.35)", padding: 0, display: "flex",
+              transition: "color 0.15s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.7)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.35)")}
           >
-            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {showPassword ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
           </button>
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+        <label style={{ display: "block", fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>
           Confirm password
         </label>
         <input
@@ -83,12 +110,18 @@ export function ChangePasswordForm() {
           placeholder="Repeat your new password"
           required
           autoComplete="new-password"
-          className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition text-sm shadow-sm"
+          style={inputStyle}
+          onFocus={onFocus}
+          onBlur={onBlur}
         />
       </div>
 
       {error && (
-        <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+        <div role="alert" style={{
+          padding: "12px 16px", borderRadius: 10,
+          background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
+          fontSize: 13, color: "#fca5a5",
+        }}>
           {error}
         </div>
       )}
@@ -96,9 +129,18 @@ export function ChangePasswordForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+        style={{
+          width: "100%", padding: "14px 20px", borderRadius: 12, marginTop: 4,
+          background: loading ? "rgba(99,102,241,0.5)" : "linear-gradient(135deg, #6366f1, #7c3aed)",
+          border: "none", color: "white", fontSize: 14, fontWeight: 600,
+          cursor: loading ? "not-allowed" : "pointer",
+          boxShadow: loading ? "none" : "0 0 32px rgba(99,102,241,0.4)",
+          transition: "opacity 0.15s, box-shadow 0.15s",
+        }}
+        onMouseEnter={(e) => { if (!loading) e.currentTarget.style.opacity = "0.9"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
       >
-        {loading ? "Saving…" : "Set password & continue"}
+        {loading ? "Saving…" : "Set password & continue →"}
       </button>
     </form>
   );
