@@ -35,11 +35,27 @@ export async function POST(request: NextRequest) {
       take: 30,
     });
 
-    // Build context from snapshots
+    // Build context from snapshots — format metrics as human-readable text rather than raw JSON
     const snapshotContext = snapshots.map((s) => {
-      const metrics = JSON.parse(s.metrics);
-      return `[${s.sectionType}] ${s.periodStart} to ${s.periodEnd}: ${JSON.stringify(metrics)}`;
-    }).join("\n");
+      let metrics: Record<string, unknown>;
+      try { metrics = JSON.parse(s.metrics); } catch { metrics = {}; }
+      const metricLines = Object.entries(metrics)
+        .filter(([, v]) => v !== null && v !== undefined && typeof v === "number")
+        .map(([k, v]) => {
+          const n = v as number;
+          const key = k.toLowerCase();
+          if (key.includes("rate") || key === "ctr" || key === "engagementrate" || key === "conversionrate" || key === "bouncerate") {
+            return `  ${k}: ${(n * (n <= 1 ? 100 : 1)).toFixed(2)}%`;
+          }
+          if (key === "roas") return `  ${k}: ${n.toFixed(2)}x`;
+          if (key.includes("spend") || key.includes("cost") || key.includes("revenue") || key.includes("value") || key === "cpa" || key === "cpm" || key === "cpc" || key === "aov" || key === "averageordervalue") {
+            return `  ${k}: £${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          }
+          return `  ${k}: ${n.toLocaleString("en-GB")}`;
+        })
+        .join("\n");
+      return `[${s.sectionType}] ${s.periodStart} to ${s.periodEnd}:\n${metricLines || "  (no numeric metrics)"}`;
+    }).join("\n\n");
 
     // Store user message
     await prisma.clientConversation.create({

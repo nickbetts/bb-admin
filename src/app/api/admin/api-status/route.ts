@@ -11,7 +11,6 @@ export async function GET() {
   // Env-var presence checks (server-side only — never expose the values)
   const env = {
     semrush:      Boolean(process.env.SEMRUSH_API_KEY),
-    openai:       Boolean(process.env.OPENAI_API_KEY),
     meta:         Boolean(process.env.META_ACCESS_TOKEN),
     googleOAuth:  Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
     microsoftAds: Boolean(

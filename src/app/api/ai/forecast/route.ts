@@ -101,8 +101,8 @@ ${JSON.stringify(currentMetrics, null, 2)}
 ${ecommerceData ? `\nE-COMMERCE DATA:\nRevenue: £${ecommerceData.totalRevenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, Orders: ${ecommerceData.totalOrders}, AOV: £${ecommerceData.averageOrderValue.toFixed(2)}` : ""}
 ${trendAnalysis}
 
-Historical Snapshots (recent ${snapshotsArr.length} periods):
-${snapshotsArr.slice(0, 20).map(s => `${s.periodStart}–${s.periodEnd} [${s.sectionType}]: ${typeof s.metrics === 'string' ? s.metrics : JSON.stringify(s.metrics)}`).join("\n")}
+Historical Snapshots (${Math.min(snapshotsArr.length, 40)} most recent periods):
+${snapshotsArr.slice(0, 40).map(s => `${s.periodStart}–${s.periodEnd} [${s.sectionType}]: ${typeof s.metrics === 'string' ? s.metrics : JSON.stringify(s.metrics)}`).join("\n")}
 
 Provide forecasts as JSON with this structure:
 {

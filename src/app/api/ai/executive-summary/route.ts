@@ -29,6 +29,24 @@ export async function POST(req: NextRequest) {
       if (client?.aiReportInstructions) clientAiInstructions = client.aiReportInstructions;
     }
 
+    // Fetch active goals so the executive summary can anchor to KPI progress
+    let goalsContext = "";
+    if (clientId) {
+      const goals = await prisma.clientGoal.findMany({
+        where: { clientId, status: { in: ["active", "at_risk"] } },
+        select: { metric: true, targetValue: true, currentValue: true, unit: true, status: true },
+      });
+      if (goals.length > 0) {
+        goalsContext = `\n\nACTIVE CLIENT GOALS (reference goal progress in the executive summary where relevant):\n${goals.map(g => {
+          const pct = g.targetValue > 0 ? Math.round((g.currentValue / g.targetValue) * 100) : 0;
+          return `• ${g.metric}: ${pct}% to target (${g.currentValue}${g.unit ? " " + g.unit : ""} of ${g.targetValue}${g.unit ? " " + g.unit : ""} — ${g.status.toUpperCase()})`;
+        }).join("\n")}`;
+      }
+    }
+
+    // Scale bullet count to number of active sections
+    const bulletRange = sections.length <= 3 ? "3–4" : sections.length <= 6 ? "4–5" : "5–7";
+
     const sectionSummaries = sections
       .filter((s) => s.commentary?.trim())
       .map((s) => `**${s.title}**: ${s.commentary.slice(0, 600)}`)
@@ -55,15 +73,16 @@ This summary is CLIENT-FACING and should be upbeat, clear, and strategic.${clien
 
 Client: ${clientName ?? "the client"}
 Period: ${period ?? "the reporting period"}
+${goalsContext}
 
 The report contains the following sections (summarised below):
 ${sectionSummaries}
 
-Write 4-6 impactful bullet points (each starting with '• ') that summarise the most important results across ALL channels. Focus on the headline wins and overall trajectory. Each bullet should be one punchy sentence. Do not repeat the section titles verbatim. Cover breadth (multiple channels) rather than depth on one.`,
+Write ${bulletRange} impactful bullet points (each starting with '• ') that summarise the most important results across ALL channels. If goals data is provided above, open with a bullet on overall goal progress. Focus on headline wins and overall trajectory. Each bullet should be one punchy sentence. Do not repeat the section titles verbatim. Cover breadth (multiple channels) rather than depth on one.`,
         },
       ],
       temperature: 0.65,
-      max_tokens: 450,
+      max_tokens: 700,
     });
 
     const commentary = response.choices[0]?.message?.content?.trim() ?? "";

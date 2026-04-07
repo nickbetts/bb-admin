@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getDomainOverview, getTopOrganicKeywords } from "@/lib/semrush";
 import { fetchPageSignals } from "@/lib/landing-page-analyzer";
-import OpenAI from "openai";
+import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -38,15 +38,6 @@ export async function POST(request: NextRequest) {
     const pageUrl = normaliseUrl(rawUrl);
     const domain = extractDomain(pageUrl);
 
-    // Resolve OpenAI key
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "OpenAI API key not configured. Add it in Settings." },
-        { status: 400 }
-      );
-    }
-
     // Run all fetches in parallel — SemRush failures are non-fatal
     const [pageSignals, semrushOverview, semrushKeywords] = await Promise.all([
       fetchPageSignals(pageUrl),
@@ -59,7 +50,7 @@ export async function POST(request: NextRequest) {
     ]);
 
     // Build AI prompt incorporating both page signals and SemRush data
-    const openai = new OpenAI({ apiKey });
+    const openai = await getOpenAiClient();
 
     const semrushContext = semrushOverview
       ? `\nSemRush domain data for ${domain}:

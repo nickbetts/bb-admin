@@ -27,11 +27,12 @@ export async function POST(request: NextRequest) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { clientId, campaigns, periodStart, periodEnd } = await request.json() as {
+    const { clientId, campaigns, periodStart, periodEnd, ecommerceData } = await request.json() as {
       clientId: string;
       campaigns: CampaignData[];
       periodStart?: string;
       periodEnd?: string;
+      ecommerceData?: { totalRevenue: number; totalOrders: number; averageOrderValue: number; currency: string };
     };
 
     if (!clientId) return NextResponse.json({ error: "clientId is required" }, { status: 400 });
@@ -64,6 +65,7 @@ export async function POST(request: NextRequest) {
 
 Client: ${client.name}
 Period: ${periodStart ?? "unknown"} to ${periodEnd ?? "unknown"}
+${ecommerceData ? `\nSTORE PERFORMANCE CONTEXT:\n  Total revenue: £${ecommerceData.totalRevenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n  Total orders: ${ecommerceData.totalOrders}\n  Average order value: £${ecommerceData.averageOrderValue.toFixed(2)}\n  (Use store revenue as the north star when recommending budget changes — campaigns should be judged against their contribution to total store revenue.)` : ""}
 
 CAMPAIGN DATA (real data from connected channels — ONLY recommend for these campaigns):
 ${campaignLines}

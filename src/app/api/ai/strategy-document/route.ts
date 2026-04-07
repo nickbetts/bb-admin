@@ -32,13 +32,25 @@ export async function POST(request: NextRequest) {
 
     const clientAiInstructions = client.aiReportInstructions ?? "";
 
+    // Fetch active client goals for KPI grounding
+    const clientGoals = await prisma.clientGoal.findMany({
+      where: { clientId, status: { in: ["active", "at_risk"] } },
+      select: { metric: true, targetValue: true, currentValue: true, unit: true, targetDate: true, status: true },
+    });
+    const goalsContext = clientGoals.length > 0
+      ? `\n\nACTIVE CLIENT GOALS (use these as the basis for kpiTargets — do NOT invent figures):\n${clientGoals.map(g => {
+        const pct = g.targetValue > 0 ? Math.round((g.currentValue / g.targetValue) * 100) : 0;
+        return `• ${g.metric}: current ${g.currentValue}${g.unit ? " " + g.unit : ""}, target ${g.targetValue}${g.unit ? " " + g.unit : ""} by ${g.targetDate ?? "ongoing"} (${pct}% to target, ${g.status.toUpperCase()})`;
+      }).join("\n")}`
+      : "";
+
     const openai = await getOpenAiClient();
 
     const systemInstruction = `You are a senior digital marketing strategist. Create a comprehensive quarterly strategy document for the following client.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${enableWebSearch ? "\n\nYou have web search available. Use it to find current industry benchmarks, competitor insights, market trends, and platform updates that are relevant to this client's strategy. Cite sources where appropriate." : ""}`;
 
     const userPrompt = `Client: ${client.name}
 Website: ${client.website ?? "Not set"}
-Period: ${period}
+Period: ${period}${goalsContext}
 
 Cross-Platform Performance Data:
 ${JSON.stringify(crossPlatformData, null, 2)}
@@ -59,7 +71,7 @@ Generate a strategy document as JSON:
     { "title": "Opportunity", "description": "Specific opportunity with rationale", "priority": "high|medium|low" }
   ],
   "channelStrategy": {
-    "only_include_channels_with_data": "Include ONLY channels that appear in the Cross-Platform Performance Data above. Use keys like paid_search, paid_social, seo, email, ecommerce as appropriate — but OMIT any channel not represented in the data. Do not invent performance figures or strategies for channels with no data."
+    "only_include_channels_with_data": "Include ONLY channels that appear in the Cross-Platform Performance Data above. Use keys matching the channel type — e.g. paid_search (Google/Microsoft Ads), paid_social (Meta/TikTok/LinkedIn), seo, email (Klaviyo), ecommerce, youtube, hubspot, callrail — but OMIT any channel not represented in the data. Do not invent performance figures or strategies for channels with no data."
   },
   "budgetRec": "Budget allocation recommendation for next quarter",
   "contentPriorities": [
@@ -71,7 +83,7 @@ Generate a strategy document as JSON:
     "Technical action item 2"
   ],
   "kpiTargets": [
-    { "metric": "KPI name", "current": "current value", "target": "target value", "timeline": "by when" }
+    { "metric": "Use active client goals from ACTIVE CLIENT GOALS section above as the basis. If no goals provided, infer from data.", "current": "current value with unit", "target": "target value with unit", "timeline": "deadline from goals or inferred" }
   ]
 }
 
@@ -84,7 +96,7 @@ Return only valid JSON.`;
           instructions: systemInstruction,
           input: userPrompt,
           temperature: 0.4,
-          maxOutputTokens: 3000,
+          maxOutputTokens: 6000,
           searchContextSize: "medium",
           userLocation: { type: "approximate", country: "GB" },
         });
@@ -97,7 +109,7 @@ Return only valid JSON.`;
         instructions: systemInstruction,
         input: userPrompt,
         temperature: 0.4,
-        maxOutputTokens: 3000,
+        maxOutputTokens: 6000,
         searchContextSize: "medium",
         userLocation: { type: "approximate", country: "GB" },
       });
@@ -126,9 +138,9 @@ Return only valid JSON.`;
 
     if (stream) {
       const streamResponse = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         temperature: 0.4,
-        max_tokens: 3000,
+        max_tokens: 6000,
         messages: [{ role: "user", content: prompt }],
         stream: true,
       });
@@ -162,9 +174,9 @@ Return only valid JSON.`;
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       temperature: 0.4,
-      max_tokens: 3000,
+      max_tokens: 6000,
       messages: [{ role: "user", content: prompt }],
     });
 

@@ -10,6 +10,12 @@ interface ChannelData {
   conversions: number;
   spend?: number;
   touchpoints?: number;
+  /** Explicit 1-based journey position (1 = first touch, higher = closer to conversion).
+   *  When provided this is used directly. When absent, position is estimated from
+   *  touchpoints (more touches → upper funnel) or spend as a fallback. */
+  journeyPosition?: number;
+  /** @deprecated avgPosition was previously misused as a journey proxy — it is now ignored.
+   *  Pass journeyPosition for explicit ordering. */
   avgPosition?: number;
 }
 
@@ -22,16 +28,29 @@ function computeAttributionModels(channelData: Record<string, ChannelData>) {
     return { lastClick: even, firstClick: even, linear: even, timeDecay: even, positionBased: even };
   }
 
-  // Last-click: 100% credit to last channel (by position descending)
-  const sortedByPosition = [...channels].sort((a, b) => (channelData[b].avgPosition ?? 0) - (channelData[a].avgPosition ?? 0));
+  // Determine channel order in customer journey.
+  // Priority: explicit journeyPosition > touchpoints (more = upper funnel) > spend (higher = broader reach = upper funnel)
+  // Lower journey position number = earlier in funnel (first touch); higher = closer to conversion (last touch).
+  const journeyScore = (c: string) => {
+    const d = channelData[c];
+    if (d.journeyPosition !== undefined) return d.journeyPosition;
+    // Invert touchpoints so that high-touchpoint (upper funnel) channels get a low score (early)
+    if (d.touchpoints !== undefined && d.touchpoints > 0) return 1 / d.touchpoints;
+    if (d.spend !== undefined && d.spend > 0) return 1 / d.spend;
+    return 0;
+  };
+  const sortedByJourney = [...channels].sort((a, b) => journeyScore(a) - journeyScore(b)); // ascending: first → last
+
+  // Last-click: 100% credit to last channel in journey (highest journeyScore)
+  const sortedByPosition = [...sortedByJourney].reverse();
   const lastClick: Record<string, number> = {};
   channels.forEach(c => { lastClick[c] = 0; });
   if (sortedByPosition[0]) lastClick[sortedByPosition[0]] = totalConversions;
 
-  // First-click: 100% credit to first channel
+  // First-click: 100% credit to first channel in journey
+  const sortedByFirst = sortedByJourney;
   const firstClick: Record<string, number> = {};
   channels.forEach(c => { firstClick[c] = 0; });
-  const sortedByFirst = [...channels].sort((a, b) => (channelData[a].avgPosition ?? 999) - (channelData[b].avgPosition ?? 999));
   if (sortedByFirst[0]) firstClick[sortedByFirst[0]] = totalConversions;
 
   // Linear: equal credit
@@ -86,23 +105,24 @@ export async function POST(request: NextRequest) {
 
     const prompt = `You are a digital marketing attribution expert. Explain the following multi-touch attribution model results for ${client.name} in plain English.
 
-Channel Data (conversions reported per channel):
+Channel Data (conversions reported per channel — journey order estimated from touchpoints/spend where explicit ordering was not provided):
 ${JSON.stringify(channelData, null, 2)}
 
 Attribution Model Results:
 ${JSON.stringify(models, null, 2)}
 
-Write a 3-4 sentence narrative explaining:
+Write a 4-5 sentence narrative explaining:
 1. Which channels appear overvalued or undervalued under last-click vs linear attribution
 2. What the position-based model reveals about the customer journey
-3. A practical recommendation for which model to use and why
+3. Whether the estimated channel ordering looks plausible given the data (and flag any uncertainty)
+4. A practical recommendation for which model to use and why
 
-Keep it concise and actionable.`;
+Keep it concise and actionable. Note any limitations in the analysis.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.3,
-      max_tokens: 600,
+      max_tokens: 800,
       messages: [{ role: "user", content: prompt }],
     });
 

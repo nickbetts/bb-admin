@@ -136,7 +136,7 @@ Be analytical and data-driven. Reference specific numbers where available. If da
           instructions: systemInstruction,
           input: userPrompt,
           temperature: 0.2,
-          maxOutputTokens: 2000,
+          maxOutputTokens: 4000,
           searchContextSize: "high",
           userLocation: { type: "approximate", country: "GB" },
         });
@@ -149,7 +149,7 @@ Be analytical and data-driven. Reference specific numbers where available. If da
         instructions: systemInstruction,
         input: userPrompt,
         temperature: 0.2,
-        maxOutputTokens: 2000,
+        maxOutputTokens: 4000,
         searchContextSize: "high",
         userLocation: { type: "approximate", country: "GB" },
       });
@@ -165,10 +165,10 @@ Be analytical and data-driven. Reference specific numbers where available. If da
 
     if (stream) {
       const streamResponse = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.2,
-        max_tokens: 2000,
+        max_tokens: 4000,
         stream: true,
       });
 
@@ -201,10 +201,10 @@ Be analytical and data-driven. Reference specific numbers where available. If da
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.2,
-      max_tokens: 2000,
+      max_tokens: 4000,
     });
 
     const analysis = completion.choices[0]?.message?.content ?? "Unable to generate root cause analysis.";
