@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FileText, ArrowRight, Trash2, Pencil, Check, X, Copy } from "lucide-react";
+import { FileText, ArrowRight, Trash2, Pencil, Check, X, Copy, Loader2 } from "lucide-react";
 import { SearchInput } from "@/components/ui/SearchInput";
 
 interface Report {
@@ -137,218 +137,228 @@ export default function ReportsPage() {
   });
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-10" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+    <div style={{ padding: "40px 48px", maxWidth: 1200, margin: "0 auto" }}>
+
+      {/* Page header */}
+      <div className="page-header">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Reports</h1>
-          <p className="text-slate-500 text-sm mt-1">
-            All performance reports across your clients
-          </p>
+          <h1 className="page-title">Reports</h1>
+          <p className="page-desc">All performance reports across your clients</p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <SearchInput value={search} onChange={setSearch} placeholder="Search reports..." />
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <SearchInput value={search} onChange={setSearch} placeholder="Search reports…" />
           {someSelected && (
             <button
               onClick={handleBulkDelete}
               disabled={bulkDeleting}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-sm font-medium transition border border-red-200"
+              className="btn btn-sm"
+              style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 style={{ width: 14, height: 14 }} />
               {bulkDeleting ? "Deleting…" : `Delete ${selected.size}`}
             </button>
           )}
         </div>
       </div>
 
-      {loading ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-16 text-center text-slate-400 text-sm">
-          Loading…
+      {/* Loading */}
+      {loading && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "80px 0", gap: 10, color: "var(--text-3)" }}>
+          <Loader2 style={{ width: 18, height: 18, animation: "spin 1s linear infinite" }} />
+          <span style={{ fontSize: 13 }}>Loading reports…</span>
         </div>
-      ) : reports.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 p-16 text-center">
-          <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-800 font-semibold">No reports yet</p>
-          <p className="text-slate-500 text-sm mt-1">
-            Go to a client and create your first report
-          </p>
-          <Link
-            href="/clients"
-            className="inline-flex items-center gap-2 mt-5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition shadow-sm"
-          >
+      )}
+
+      {/* Empty state */}
+      {!loading && reports.length === 0 && (
+        <div className="empty-state">
+          <div className="empty-state-icon">
+            <FileText style={{ width: 24, height: 24 }} />
+          </div>
+          <p className="empty-state-title">No reports yet</p>
+          <p className="empty-state-desc">Go to a client and create your first report</p>
+          <Link href="/clients" className="btn btn-primary" style={{ marginTop: 24 }}>
             Browse clients
           </Link>
         </div>
-      ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <table className="w-full">
+      )}
+
+      {/* Table */}
+      {!loading && reports.length > 0 && (
+        <div className="card">
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50">
-                <th className="px-5 py-4 w-10">
+              <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                <th style={{ width: 44, padding: "14px 16px 14px 20px" }}>
                   <input
                     type="checkbox"
                     checked={allSelected}
                     onChange={toggleAll}
-                    className="rounded border-slate-300 accent-indigo-600 cursor-pointer"
+                    style={{ accentColor: "var(--accent)", cursor: "pointer", width: 15, height: 15 }}
                   />
                 </th>
-                <th className="text-left px-5 py-4 text-xs font-semibold text-slate-500">Report</th>
-                <th className="text-left px-5 py-4 text-xs font-semibold text-slate-500">Client</th>
-                <th className="text-left px-5 py-4 text-xs font-semibold text-slate-500">Period</th>
-                <th className="text-left px-5 py-4 text-xs font-semibold text-slate-500">Status</th>
-                <th className="text-right px-5 py-4 text-xs font-semibold text-slate-500">Screenshots</th>
-                <th className="px-5 py-4" />
+                <th style={{ textAlign: "left", padding: "14px 16px", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Report</th>
+                <th style={{ textAlign: "left", padding: "14px 16px", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Client</th>
+                <th style={{ textAlign: "left", padding: "14px 16px", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Period</th>
+                <th style={{ textAlign: "left", padding: "14px 16px", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Status</th>
+                <th style={{ textAlign: "right", padding: "14px 16px", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em" }}>Screenshots</th>
+                <th style={{ padding: "14px 20px 14px 16px", width: 160 }} />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.map((report) => (
-                <tr
-                  key={report.id}
-                  className={`hover:bg-slate-50 transition ${selected.has(report.id) ? "bg-indigo-50/40" : ""}`}
-                >
-                  {/* Checkbox */}
-                  <td className="px-5 py-4 w-10">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(report.id)}
-                      onChange={() => toggleSelect(report.id)}
-                      className="rounded border-slate-300 accent-indigo-600 cursor-pointer"
-                    />
-                  </td>
+            <tbody>
+              {filtered.map((report, i) => {
+                const isSelected = selected.has(report.id);
+                const isLast = i === filtered.length - 1;
+                return (
+                  <tr
+                    key={report.id}
+                    style={{
+                      borderBottom: isLast ? "none" : "1px solid var(--border-subtle)",
+                      background: isSelected ? "var(--accent-bg)" : "transparent",
+                      transition: "background 0.1s",
+                    }}
+                    onMouseEnter={(e) => { if (!isSelected) (e.currentTarget as HTMLTableRowElement).style.background = "var(--border-subtle)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = isSelected ? "var(--accent-bg)" : "transparent"; }}
+                  >
+                    {/* Checkbox */}
+                    <td style={{ padding: "14px 16px 14px 20px", width: 44 }}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(report.id)}
+                        style={{ accentColor: "var(--accent)", cursor: "pointer", width: 15, height: 15 }}
+                      />
+                    </td>
 
-                  {/* Title — inline rename */}
-                  <td className="px-5 py-4">
-                    {renamingId === report.id ? (
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          handleRenameCommit(report.id);
-                        }}
-                        style={{ display: "flex", alignItems: "center", gap: 6 }}
-                      >
-                        <input
-                          ref={renameInputRef}
-                          value={renameValue}
-                          onChange={(e) => setRenameValue(e.target.value)}
-                          onBlur={() => handleRenameCommit(report.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Escape") setRenamingId(null);
-                          }}
-                          className="text-sm font-semibold text-slate-800 border-b border-indigo-400 outline-none bg-transparent w-full max-w-xs"
-                        />
-                        <button type="submit" className="text-indigo-600 hover:text-indigo-700">
-                          <Check className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setRenamingId(null)}
-                          className="text-slate-400 hover:text-slate-600"
+                    {/* Title — inline rename */}
+                    <td style={{ padding: "14px 16px" }}>
+                      {renamingId === report.id ? (
+                        <form
+                          onSubmit={(e) => { e.preventDefault(); void handleRenameCommit(report.id); }}
+                          style={{ display: "flex", alignItems: "center", gap: 6 }}
                         >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </form>
-                    ) : (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <p className="text-sm font-semibold text-slate-800">{report.title}</p>
-                        <button
-                          onClick={() => {
-                            setRenamingId(report.id);
-                            setRenameValue(report.title);
-                          }}
-                          className="text-slate-300 hover:text-slate-500 transition"
-                          title="Rename"
-                          aria-label="Rename report"
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-
-                  {/* Client */}
-                  <td className="px-5 py-4">
-                    <Link
-                      href={`/clients/${report.client.slug}`}
-                      className="text-sm text-indigo-600 hover:text-indigo-700 font-medium transition"
-                    >
-                      {report.client.name}
-                    </Link>
-                  </td>
-
-                  {/* Period */}
-                  <td className="px-5 py-4">
-                    <span className="text-sm text-slate-600">{report.period}</span>
-                  </td>
-
-                  {/* Status */}
-                  <td className="px-5 py-4">
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        report.status === "published"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-slate-100 text-slate-500"
-                      }`}
-                    >
-                      {report.status}
-                    </span>
-                  </td>
-
-                  {/* Screenshots count */}
-                  <td className="px-5 py-4 text-right">
-                    <span className="text-xs text-slate-400">{report._count.screenshots}</span>
-                  </td>
-
-                  {/* Actions */}
-                  <td className="px-5 py-4">
-                    <div className="flex items-center justify-end gap-2">
-                      <Link
-                        href={`/reports/${report.id}`}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-indigo-600 transition"
-                      >
-                        View
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                      <button
-                        onClick={() => handleDuplicate(report.id)}
-                        disabled={duplicatingId === report.id}
-                        className="text-slate-300 hover:text-indigo-500 transition ml-1"
-                        title="Duplicate report"
-                        aria-label="Duplicate report"
-                      >
-                        {duplicatingId === report.id ? <span className="text-xs text-slate-400">…</span> : <Copy className="h-3.5 w-3.5" />}
-                      </button>
-                      {deletingId === report.id ? (
-                        <div className="flex items-center gap-1.5 ml-2">
-                          <span className="text-xs text-red-600">Delete?</span>
-                          <button
-                            onClick={() => handleDelete(report.id)}
-                            disabled={deleteLoading}
-                            className="text-xs font-medium text-red-600 hover:text-red-700 transition"
-                          >
-                            {deleteLoading ? "…" : "Yes"}
+                          <input
+                            ref={renameInputRef}
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onBlur={() => void handleRenameCommit(report.id)}
+                            onKeyDown={(e) => { if (e.key === "Escape") setRenamingId(null); }}
+                            style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", borderBottom: "2px solid var(--accent)", outline: "none", background: "transparent", width: "100%", maxWidth: 320 }}
+                          />
+                          <button type="submit" style={{ color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: 2 }}>
+                            <Check style={{ width: 14, height: 14 }} />
                           </button>
+                          <button type="button" onClick={() => setRenamingId(null)} style={{ color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: 2 }}>
+                            <X style={{ width: 14, height: 14 }} />
+                          </button>
+                        </form>
+                      ) : (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{report.title}</span>
                           <button
-                            onClick={() => setDeletingId(null)}
-                            className="text-xs text-slate-400 hover:text-slate-600 transition"
+                            onClick={() => { setRenamingId(report.id); setRenameValue(report.title); }}
+                            style={{ color: "var(--text-4)", background: "none", border: "none", cursor: "pointer", padding: 2, lineHeight: 1 }}
+                            title="Rename"
                           >
-                            No
+                            <Pencil style={{ width: 12, height: 12 }} />
                           </button>
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => setDeletingId(report.id)}
-                          className="text-slate-300 hover:text-red-500 transition ml-2"
-                          title="Delete report"
-                          aria-label="Delete report"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+
+                    {/* Client */}
+                    <td style={{ padding: "14px 16px" }}>
+                      <Link
+                        href={`/clients/${report.client.slug}`}
+                        style={{ fontSize: 13, fontWeight: 500, color: "var(--accent)", textDecoration: "none" }}
+                      >
+                        {report.client.name}
+                      </Link>
+                    </td>
+
+                    {/* Period */}
+                    <td style={{ padding: "14px 16px" }}>
+                      <span style={{ fontSize: 13, color: "var(--text-2)" }}>{report.period}</span>
+                    </td>
+
+                    {/* Status */}
+                    <td style={{ padding: "14px 16px" }}>
+                      <span className={`badge ${report.status === "published" ? "badge-emerald" : "badge-slate"}`}>
+                        {report.status}
+                      </span>
+                    </td>
+
+                    {/* Screenshots */}
+                    <td style={{ padding: "14px 16px", textAlign: "right" }}>
+                      <span style={{ fontSize: 12, color: "var(--text-3)", fontVariantNumeric: "tabular-nums" }}>
+                        {report._count.screenshots}
+                      </span>
+                    </td>
+
+                    {/* Actions */}
+                    <td style={{ padding: "14px 20px 14px 16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4 }}>
+                        <Link
+                          href={`/reports/${report.id}`}
+                          className="btn btn-secondary btn-sm"
+                          style={{ gap: 6 }}
+                        >
+                          View
+                          <ArrowRight style={{ width: 13, height: 13 }} />
+                        </Link>
+                        <button
+                          onClick={() => void handleDuplicate(report.id)}
+                          disabled={duplicatingId === report.id}
+                          style={{ color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "6px 8px", borderRadius: "var(--r-sm)", transition: "all 0.15s", lineHeight: 1 }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--accent)"; (e.currentTarget as HTMLButtonElement).style.background = "var(--accent-bg)"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)"; (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+                          title="Duplicate"
+                        >
+                          {duplicatingId === report.id
+                            ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />
+                            : <Copy style={{ width: 14, height: 14 }} />}
+                        </button>
+                        {deletingId === report.id ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 12, color: "var(--danger)", fontWeight: 500 }}>Delete?</span>
+                            <button
+                              onClick={() => void handleDelete(report.id)}
+                              disabled={deleteLoading}
+                              style={{ fontSize: 12, fontWeight: 600, color: "var(--danger)", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }}
+                            >
+                              {deleteLoading ? "…" : "Yes"}
+                            </button>
+                            <button
+                              onClick={() => setDeletingId(null)}
+                              style={{ fontSize: 12, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "2px 4px" }}
+                            >
+                              No
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setDeletingId(report.id)}
+                            style={{ color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "6px 8px", borderRadius: "var(--r-sm)", transition: "all 0.15s", lineHeight: 1 }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--danger)"; (e.currentTarget as HTMLButtonElement).style.background = "#fef2f2"; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)"; (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+                            title="Delete"
+                          >
+                            <Trash2 style={{ width: 14, height: 14 }} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+
+          {filtered.length === 0 && search && (
+            <div style={{ padding: "48px 24px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+              No reports matching &ldquo;{search}&rdquo;
+            </div>
+          )}
         </div>
       )}
     </div>
