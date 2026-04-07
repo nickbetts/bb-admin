@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Activity, TrendingUp, Zap, FileText, MessageSquare, Users, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, ArrowRight } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -13,6 +13,23 @@ export default function LoginPage() {
   const router = useRouter();
 
   const [activeSection, setActiveSection] = useState("");
+  const [scrollPct, setScrollPct] = useState(0);
+  const [mouse, setMouse] = useState({ x: -999, y: -999 });
+
+  useEffect(() => {
+    const onScroll = () => {
+      const el = document.documentElement;
+      setScrollPct((el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const onMouse = (e: MouseEvent) => setMouse({ x: e.clientX, y: e.clientY });
+    window.addEventListener("mousemove", onMouse, { passive: true });
+    return () => window.removeEventListener("mousemove", onMouse);
+  }, []);
 
   useEffect(() => {
     const ids = ["problems", "channels", "stratum", "signals", "budget", "reports", "forecasting", "ai-analyst", "portal", "how-it-works", "about", "access"];
@@ -42,6 +59,16 @@ export default function LoginPage() {
     document.querySelectorAll<Element>(".reveal-section").forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, []);
+
+  const particles = Array.from({ length: 22 }, (_, i) => ({
+    id: i,
+    top: `${8 + (i * 4.1) % 82}%`,
+    left: `${3 + (i * 7.3) % 94}%`,
+    size: 1 + (i % 3),
+    dur: `${3.5 + (i % 6)}s`,
+    delay: `${-(i * 0.65)}s`,
+    opacity: 0.06 + (i % 5) * 0.05,
+  }));
 
   const channelList = [
     "Google Analytics 4", "Google Ads", "Google Search Console", "Meta Ads",
@@ -88,39 +115,6 @@ export default function LoginPage() {
     { q: "Is this account actually performing well?", a: "Without a cross-channel view, you're always looking at a piece of the puzzle. StratOS shows the whole board." },
   ];
 
-  const capabilities = [
-    {
-      icon: <Activity style={{ width: 18, height: 18 }} />,
-      title: "You'll know before your client does",
-      desc: "StratOS watches every channel automatically. The second ROAS drops, rankings slip, or spend spikes — you get the alert. No more finding out on a call.",
-    },
-    {
-      icon: <TrendingUp style={{ width: 18, height: 18 }} />,
-      title: "Stop guessing where to put the money",
-      desc: "The budget advisor compares performance across every paid channel and tells you exactly where a shift in spend would have the biggest impact — with projected numbers attached.",
-    },
-    {
-      icon: <Zap style={{ width: 18, height: 18 }} />,
-      title: "Reports that don't wreck your Wednesday",
-      desc: "Build the report, generate the commentary, reorder sections by dragging them, export to a branded PDF and share the link. The whole thing in under 20 minutes.",
-    },
-    {
-      icon: <FileText style={{ width: 18, height: 18 }} />,
-      title: "See 90 days ahead, not just last month",
-      desc: "Forecasting uses your actual historical data to project 30, 60 and 90 days forward — with best, expected and worst-case bands so you can plan with real confidence.",
-    },
-    {
-      icon: <MessageSquare style={{ width: 18, height: 18 }} />,
-      title: "Just ask it",
-      desc: "Every client dashboard has an AI analyst built in. Ask why sessions are down, which campaign to pause, or what you should focus on this week. It reads the data. It answers.",
-    },
-    {
-      icon: <Users style={{ width: 18, height: 18 }} />,
-      title: "Clients get a view that makes sense",
-      desc: "The client portal shows each client their goals, reports and key numbers — nothing overwhelming. They get a magic link. They log in. No extra accounts to manage.",
-    },
-  ];
-
   const steps = [
     {
       n: "01",
@@ -146,6 +140,24 @@ export default function LoginPage() {
 
   return (
     <div style={{ background: "#09090f", color: "white", fontFamily: "inherit" }}>
+
+      {/* Scroll progress bar */}
+      <div style={{
+        position: "fixed", top: 0, left: 0, height: 2,
+        width: `${scrollPct}%`,
+        background: "linear-gradient(90deg, #6366f1, #a855f7, #ec4899)",
+        zIndex: 200, pointerEvents: "none",
+        transition: "width 0.1s linear",
+      }} />
+
+      {/* Cursor glow */}
+      <div style={{
+        position: "fixed", pointerEvents: "none", zIndex: 1,
+        width: 600, height: 600, borderRadius: "50%",
+        left: mouse.x - 300, top: mouse.y - 300,
+        background: "radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 65%)",
+        transition: "left 0.2s ease-out, top 0.2s ease-out",
+      }} />
 
       {/* ── STICKY SIDE NAV ── */}
       <nav
@@ -234,20 +246,41 @@ export default function LoginPage() {
         display: "flex", alignItems: "center",
       }}>
         <div className="login-orb-1" style={{
-          position: "absolute", width: "65%", paddingBottom: "65%",
-          top: "-15%", left: "-15%", pointerEvents: "none", borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(99,102,241,0.32) 0%, transparent 65%)",
+          position: "absolute", width: "70%", paddingBottom: "70%",
+          top: "-20%", left: "-18%", pointerEvents: "none", borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(99,102,241,0.42) 0%, transparent 65%)",
         }} />
         <div className="login-orb-2" style={{
-          position: "absolute", width: "55%", paddingBottom: "55%",
-          bottom: "-20%", right: "-10%", pointerEvents: "none", borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(168,85,247,0.25) 0%, transparent 65%)",
+          position: "absolute", width: "60%", paddingBottom: "60%",
+          bottom: "-20%", right: "-12%", pointerEvents: "none", borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(168,85,247,0.35) 0%, transparent 65%)",
+        }} />
+        <div className="login-orb-3" style={{
+          position: "absolute", width: "45%", paddingBottom: "45%",
+          top: "30%", left: "30%", pointerEvents: "none", borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 65%)",
         }} />
         <div style={{
-          position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.03,
-          backgroundImage: "linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)",
+          position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.022,
+          backgroundImage: "linear-gradient(rgba(255,255,255,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.9) 1px, transparent 1px)",
           backgroundSize: "40px 40px",
         }} />
+        {/* Vignette */}
+        <div style={{
+          position: "absolute", inset: 0, pointerEvents: "none",
+          background: "radial-gradient(ellipse 80% 70% at 50% 50%, transparent 40%, rgba(9,9,15,0.6) 100%)",
+        }} />
+        {/* Floating particles */}
+        {particles.map((p) => (
+          <div key={p.id} className="hero-particle" style={{
+            position: "absolute", top: p.top, left: p.left, pointerEvents: "none",
+            width: p.size, height: p.size, borderRadius: "50%",
+            background: p.id % 3 === 0 ? "rgba(168,85,247,0.9)" : p.id % 3 === 1 ? "rgba(99,102,241,0.9)" : "rgba(255,255,255,0.8)",
+            opacity: p.opacity,
+            animationDuration: p.dur,
+            animationDelay: p.delay,
+          }} />
+        ))}
 
         <div style={{
           maxWidth: 1200, margin: "0 auto", padding: "80px 40px",
@@ -272,7 +305,13 @@ export default function LoginPage() {
               fontSize: 64, fontWeight: 900, lineHeight: 1.0,
               letterSpacing: "-0.04em", marginBottom: 28, color: "white",
             }} className="hero-headline">
-              We got tired<br />of it too.
+              <span className="hw hw1">We</span>{" "}
+              <span className="hw hw2">got</span>{" "}
+              <span className="hw hw3">tired</span>
+              <br />
+              <span className="hw hw4">of</span>{" "}
+              <span className="hw hw5">it</span>{" "}
+              <span className="hw hw6">too.</span>
             </h1>
             <p style={{
               fontSize: 18, color: "rgba(255,255,255,0.55)", lineHeight: 1.75,
@@ -420,6 +459,11 @@ export default function LoginPage() {
             </p>
           </div>
         </div>
+        {/* Scroll hint */}
+        <div style={{ position: "absolute", bottom: 32, left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.18)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Scroll</span>
+          <div className="scroll-chevron" style={{ width: 16, height: 16, borderRight: "1.5px solid rgba(255,255,255,0.18)", borderBottom: "1.5px solid rgba(255,255,255,0.18)", transform: "rotate(45deg)" }} />
+        </div>
       </section>
 
       {/* ── SECTION 2: PAIN POINTS ── */}
@@ -439,7 +483,7 @@ export default function LoginPage() {
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="pains-grid">
             {pains.map((p) => (
-              <div key={p.q} style={{
+              <div key={p.q} className="pain-card" style={{
                 background: "rgba(255,255,255,0.025)",
                 border: "1px solid rgba(255,255,255,0.06)",
                 borderRadius: 16, padding: "28px 28px 32px",
@@ -472,7 +516,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div style={{ overflow: "hidden", margin: "0 -40px", padding: "8px 0" }}>
+          <div className="marquee-wrap" style={{ overflow: "hidden", margin: "0 -40px", padding: "8px 0", position: "relative" }}>
             <div className="marquee-row" style={{ display: "flex", gap: 14 }}>
               {[...channelList, ...channelList, ...channelList].map((ch, i) => (
                 <span key={i} style={{
@@ -502,8 +546,9 @@ export default function LoginPage() {
 
       {/* ── SECTION 4: STRATUM ── */}
       <section id="stratum" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden", background: "rgba(99,102,241,0.015)" }}>
-        <div style={{
-          position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.035,
+        <div className="stratum-grid-bg" style={
+          {
+          position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.04,
           backgroundImage: "linear-gradient(rgba(99,102,241,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.9) 1px, transparent 1px)",
           backgroundSize: "28px 28px",
         }} />
@@ -520,7 +565,7 @@ export default function LoginPage() {
             <span style={{ fontSize: 11, fontWeight: 800, color: "#a5b4fc", letterSpacing: "0.12em", textTransform: "uppercase" }}>Proprietary technology · i3MEDIA</span>
           </div>
 
-          <h2 style={{ fontSize: 72, fontWeight: 900, letterSpacing: "-0.05em", lineHeight: 0.9, marginBottom: 20, color: "white" }}>
+          <h2 className="stratum-shimmer" style={{ fontSize: 72, fontWeight: 900, letterSpacing: "-0.05em", lineHeight: 0.9, marginBottom: 20 }}>
             Stratum
           </h2>
           <p style={{ fontSize: 18, color: "rgba(99,102,241,0.75)", fontWeight: 700, letterSpacing: "0.04em", marginBottom: 32, textTransform: "uppercase" }}>
@@ -580,7 +625,7 @@ export default function LoginPage() {
                 ))}
               </div>
             </div>
-            <div style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
+            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
               <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
@@ -594,8 +639,8 @@ export default function LoginPage() {
                   { color: "#f59e0b", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.18)", ch: "Google Ads", metric: "CPC +18%", detail: "Brand campaigns · Warning · 4 hrs ago" },
                   { color: "#10b981", bg: "rgba(16,185,129,0.07)", border: "rgba(16,185,129,0.2)", ch: "Organic Search", metric: "Sessions +22%", detail: "Week on week · Positive · 8 hrs ago" },
                   { color: "#f59e0b", bg: "rgba(245,158,11,0.06)", border: "rgba(245,158,11,0.12)", ch: "LinkedIn Ads", metric: "CTR −12%", detail: "All campaigns · Warning · 6 hrs ago" },
-                ] as { color: string; bg: string; border: string; ch: string; metric: string; detail: string }[]).map((a) => (
-                  <div key={a.ch} style={{ padding: "11px 14px", borderRadius: 10, background: a.bg, border: `1px solid ${a.border}`, display: "flex", alignItems: "center", gap: 12 }}>
+                ] as { color: string; bg: string; border: string; ch: string; metric: string; detail: string }[]).map((a, si) => (
+                  <div key={a.ch} className={`signal-card sc${si + 1}`} style={{ padding: "11px 14px", borderRadius: 10, background: a.bg, border: `1px solid ${a.border}`, display: "flex", alignItems: "center", gap: 12 }}>
                     <div style={{ width: 7, height: 7, borderRadius: "50%", background: a.color, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
@@ -620,7 +665,7 @@ export default function LoginPage() {
       <section id="budget" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
-            <div style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
+            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
               <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
@@ -635,7 +680,7 @@ export default function LoginPage() {
                     { ch: "Google Shopping", spend: "£1,400", roas: "4.8×", width: "68%", color: "#6366f1", tag: "Stable" },
                     { ch: "Meta Ads", spend: "£3,200", roas: "1.9×", width: "27%", color: "#ef4444", tag: "Underperforming" },
                     { ch: "LinkedIn Ads", spend: "£800", roas: "2.1×", width: "30%", color: "#f59e0b", tag: "Low volume" },
-                  ] as { ch: string; spend: string; roas: string; width: string; color: string; tag: string }[]).map((c) => (
+                  ] as { ch: string; spend: string; roas: string; width: string; color: string; tag: string }[]).map((c, ci) => (
                     <div key={c.ch}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -648,7 +693,7 @@ export default function LoginPage() {
                         </div>
                       </div>
                       <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 3 }}>
-                        <div style={{ height: 6, width: c.width, background: c.color, borderRadius: 3, opacity: 0.65 }} />
+                        <div className={`b-bar b${ci + 1}`} style={{ height: 6, width: c.width, background: c.color, borderRadius: 3, opacity: 0.7 }} />
                       </div>
                     </div>
                   ))}
@@ -713,7 +758,7 @@ export default function LoginPage() {
                 ))}
               </div>
             </div>
-            <div style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
+            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
               <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
@@ -760,7 +805,7 @@ export default function LoginPage() {
       <section id="forecasting" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
-            <div style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
+            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
               <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
@@ -786,12 +831,12 @@ export default function LoginPage() {
                     <line x1="0" y1="80" x2="440" y2="80" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
                     <line x1="0" y1="120" x2="440" y2="120" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
                     <line x1="190" y1="0" x2="190" y2="150" stroke="rgba(99,102,241,0.25)" strokeWidth="1" strokeDasharray="4,3" />
-                    <path d="M190,90 L250,78 L310,64 L370,48 L430,36 L430,116 L370,106 L310,100 L250,98 L190,90Z" fill="rgba(99,102,241,0.1)" />
-                    <polyline points="20,138 65,124 110,110 150,100 190,90" fill="none" stroke="rgba(129,140,248,0.4)" strokeWidth="2" strokeLinecap="round" />
-                    <polyline points="190,90 250,86 310,80 370,74 430,66" fill="none" stroke="#818cf8" strokeWidth="2.5" strokeDasharray="7,3" strokeLinecap="round" />
-                    <polyline points="190,90 250,78 310,64 370,48 430,36" fill="none" stroke="rgba(16,185,129,0.5)" strokeWidth="1.5" strokeDasharray="4,4" />
-                    <polyline points="190,90 250,98 310,100 370,106 430,116" fill="none" stroke="rgba(239,68,68,0.38)" strokeWidth="1.5" strokeDasharray="4,4" />
-                    <circle cx="190" cy="90" r="4" fill="#818cf8" />
+                    <path className="fc-fill" d="M190,90 L250,78 L310,64 L370,48 L430,36 L430,116 L370,106 L310,100 L250,98 L190,90Z" fill="rgba(99,102,241,0.1)" />
+                    <polyline className="fc-hist" points="20,138 65,124 110,110 150,100 190,90" fill="none" stroke="rgba(129,140,248,0.55)" strokeWidth="2.5" strokeLinecap="round" />
+                    <polyline className="fc-exp" points="190,90 250,86 310,80 370,74 430,66" fill="none" stroke="#818cf8" strokeWidth="2.5" strokeDasharray="7,3" strokeLinecap="round" />
+                    <polyline className="fc-best" points="190,90 250,78 310,64 370,48 430,36" fill="none" stroke="rgba(16,185,129,0.6)" strokeWidth="1.5" strokeDasharray="4,4" />
+                    <polyline className="fc-worst" points="190,90 250,98 310,100 370,106 430,116" fill="none" stroke="rgba(239,68,68,0.45)" strokeWidth="1.5" strokeDasharray="4,4" />
+                    <circle className="fc-fill" cx="190" cy="90" r="4" fill="#818cf8" />
                     <text x="95" y="154" textAnchor="middle" fill="rgba(255,255,255,0.18)" fontSize="9" fontFamily="sans-serif">Historical</text>
                     <text x="190" y="154" textAnchor="middle" fill="rgba(99,102,241,0.55)" fontSize="9" fontFamily="sans-serif">Now</text>
                     <text x="315" y="154" textAnchor="middle" fill="rgba(99,102,241,0.6)" fontSize="9" fontFamily="sans-serif">90-day forecast</text>
@@ -865,7 +910,7 @@ export default function LoginPage() {
                 ))}
               </div>
             </div>
-            <div style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
+            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
               <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
@@ -907,7 +952,7 @@ export default function LoginPage() {
       <section id="portal" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
-            <div style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
+            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
               <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
@@ -937,14 +982,14 @@ export default function LoginPage() {
                   {([
                     { label: "Monthly revenue target", pct: 78 },
                     { label: "Lead volume target", pct: 91 },
-                  ] as { label: string; pct: number }[]).map((g) => (
+                  ] as { label: string; pct: number }[]).map((g, gi) => (
                     <div key={g.label} style={{ marginBottom: 10 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                         <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>{g.label}</span>
                         <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(129,140,248,0.8)" }}>{g.pct}%</span>
                       </div>
                       <div style={{ height: 5, background: "rgba(255,255,255,0.06)", borderRadius: 3 }}>
-                        <div style={{ height: 5, width: `${g.pct}%`, background: "rgba(99,102,241,0.55)", borderRadius: 3 }} />
+                        <div className={`goal-bar g${gi + 1}`} style={{ height: 5, width: `${g.pct}%`, background: "rgba(99,102,241,0.65)", borderRadius: 3 }} />
                       </div>
                     </div>
                   ))}
@@ -1101,38 +1146,44 @@ export default function LoginPage() {
       </section>
 
       {/* ── BOTTOM CTA ── */}
-      <section id="access" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ maxWidth: 680, margin: "0 auto", textAlign: "center" }}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 24 }}>
-            Right then
-          </p>
-          <h2 style={{ fontSize: 52, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.0, marginBottom: 20, color: "white" }}>
+      <section id="access" className="reveal-section" style={{ padding: "140px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
+        {/* CTA orbs */}
+        <div className="login-orb-1" style={{ position: "absolute", width: "55%", paddingBottom: "55%", top: "-30%", right: "-15%", pointerEvents: "none", borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 65%)" }} />
+        <div className="login-orb-2" style={{ position: "absolute", width: "45%", paddingBottom: "45%", bottom: "-20%", left: "-10%", pointerEvents: "none", borderRadius: "50%", background: "radial-gradient(circle, rgba(168,85,247,0.25) 0%, transparent 65%)" }} />
+        <div style={{ maxWidth: 680, margin: "0 auto", textAlign: "center", position: "relative" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 28, padding: "6px 16px", borderRadius: 20, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.3)" }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 8px rgba(16,185,129,0.8)" }} className="stratum-pulse" />
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.1em", textTransform: "uppercase" }}>Right then</span>
+          </div>
+          <h2 style={{ fontSize: 60, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.0, marginBottom: 24, color: "white" }}>
             Ready to stop<br />flying blind?
           </h2>
-          <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", lineHeight: 1.7, maxWidth: 460, margin: "0 auto 40px" }}>
+          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.45)", lineHeight: 1.75, maxWidth: 480, margin: "0 auto 48px" }}>
             Already have a StratOS account? Sign in above. Want to get set up? Drop us a line — we&apos;re a real team and we actually reply.
           </p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
             <a
               href="#login-form"
+              className="cta-primary"
               style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "14px 28px", borderRadius: 12,
+                display: "inline-flex", alignItems: "center", gap: 10,
+                padding: "16px 32px", borderRadius: 14,
                 background: "linear-gradient(135deg, #6366f1, #7c3aed)",
-                color: "white", fontSize: 15, fontWeight: 700,
+                color: "white", fontSize: 16, fontWeight: 700,
                 textDecoration: "none",
-                boxShadow: "0 0 32px rgba(99,102,241,0.4)",
+                boxShadow: "0 0 40px rgba(99,102,241,0.5), 0 0 0 1px rgba(99,102,241,0.3)",
               }}
             >
-              Sign in to StratOS <ArrowRight style={{ width: 16, height: 16 }} />
+              Sign in to StratOS <ArrowRight style={{ width: 18, height: 18 }} />
             </a>
             <a
               href="mailto:hello@i3media.net"
+              className="cta-secondary"
               style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "14px 28px", borderRadius: 12,
-                background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-                color: "rgba(255,255,255,0.7)", fontSize: 15, fontWeight: 600,
+                display: "inline-flex", alignItems: "center", gap: 10,
+                padding: "16px 32px", borderRadius: 14,
+                background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+                color: "rgba(255,255,255,0.75)", fontSize: 16, fontWeight: 600,
                 textDecoration: "none",
               }}
             >
@@ -1161,43 +1212,80 @@ export default function LoginPage() {
 
       <style>{`
         input::placeholder { color: rgba(255,255,255,0.2); }
+
+        /* ─── ORB ANIMATIONS ─── */
         @keyframes orb1 {
           0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(40px, -30px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.95); }
+          33% { transform: translate(50px, -40px) scale(1.12); }
+          66% { transform: translate(-30px, 25px) scale(0.93); }
         }
         @keyframes orb2 {
           0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(-30px, 20px) scale(0.9); }
-          66% { transform: translate(25px, -40px) scale(1.1); }
+          33% { transform: translate(-40px, 30px) scale(0.88); }
+          66% { transform: translate(35px, -50px) scale(1.14); }
+        }
+        @keyframes orb3 {
+          0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+          50% { transform: translate(20px, -20px) scale(1.1); opacity: 1; }
         }
         .login-orb-1 { animation: orb1 12s ease-in-out infinite; }
-        .login-orb-2 { animation: orb2 15s ease-in-out infinite; }
+        .login-orb-2 { animation: orb2 16s ease-in-out infinite; }
+        .login-orb-3 { animation: orb3 20s ease-in-out infinite; }
+
+        /* ─── DOTS / STRATUM PULSE ─── */
         @keyframes stratum-pulse {
           0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(129,140,248,0.9); }
-          50% { opacity: 0.45; box-shadow: 0 0 20px rgba(129,140,248,0.3); }
+          50% { opacity: 0.4; box-shadow: 0 0 24px rgba(129,140,248,0.25); }
         }
         .stratum-pulse { animation: stratum-pulse 2.5s ease-in-out infinite; }
-        @media (max-width: 960px) {
-          .hero-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
-          .hero-headline { font-size: 48px !important; }
-          .pains-grid { grid-template-columns: 1fr 1fr !important; }
-          .channels-grid { grid-template-columns: 1fr 1fr !important; }
-          .capabilities-grid { grid-template-columns: 1fr 1fr !important; }
-          .stratum-grid { grid-template-columns: 1fr 1fr !important; }
-          .steps-grid { grid-template-columns: 1fr 1fr !important; }
-          .steps-line { display: none !important; }
-          .depth-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+
+        /* ─── HERO WORD STAGGER ─── */
+        @keyframes hw-in {
+          from { opacity: 0; transform: translateY(24px) rotate(-1.5deg); filter: blur(4px); }
+          to   { opacity: 1; transform: translateY(0) rotate(0deg); filter: blur(0); }
         }
-        @media (max-width: 600px) {
-          .hero-headline { font-size: 40px !important; }
-          .pains-grid { grid-template-columns: 1fr !important; }
-          .channels-grid { grid-template-columns: 1fr !important; }
-          .capabilities-grid { grid-template-columns: 1fr !important; }
-          .stratum-grid { grid-template-columns: 1fr 1fr !important; }
-          .steps-grid { grid-template-columns: 1fr !important; }
+        .hw { display: inline-block; animation: hw-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .hw1 { animation-delay: 0.05s; }
+        .hw2 { animation-delay: 0.15s; }
+        .hw3 { animation-delay: 0.25s; }
+        .hw4 { animation-delay: 0.38s; }
+        .hw5 { animation-delay: 0.48s; }
+        .hw6 { animation-delay: 0.58s; }
+
+        /* ─── HERO PARTICLES ─── */
+        @keyframes particle-float {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-22px) scale(1.4); }
+        }
+        .hero-particle { animation: particle-float linear infinite; }
+
+        /* ─── SCROLL CHEVRON BOUNCE ─── */
+        @keyframes chevron-bounce {
+          0%, 100% { transform: rotate(45deg) translateY(0); opacity: 0.4; }
+          50% { transform: rotate(45deg) translateY(5px); opacity: 0.8; }
+        }
+        .scroll-chevron { animation: chevron-bounce 1.8s ease-in-out infinite; }
+
+        /* ─── PAIN CARDS HOVER ─── */
+        .pain-card {
+          transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.28s ease, box-shadow 0.28s ease;
+          cursor: default;
+        }
+        .pain-card:hover {
+          transform: translateY(-6px) scale(1.015);
+          border-color: rgba(99,102,241,0.3) !important;
+          box-shadow: 0 12px 40px rgba(99,102,241,0.15), 0 0 0 1px rgba(99,102,241,0.1);
         }
 
+        /* ─── CHANNEL MARQUEE FADE MASKS ─── */
+        .marquee-wrap::before, .marquee-wrap::after {
+          content: ''; position: absolute; top: 0; bottom: 0; width: 140px; z-index: 2; pointer-events: none;
+        }
+        .marquee-wrap::before { left: 0; background: linear-gradient(90deg, #09090f 20%, transparent); }
+        .marquee-wrap::after  { right: 0; background: linear-gradient(-90deg, #09090f 20%, transparent); }
+        .marquee-row:hover, .marquee-row-rev:hover { animation-play-state: paused; }
+
+        /* ─── MARQUEE ─── */
         @keyframes marquee {
           0% { transform: translateX(0); }
           100% { transform: translateX(-33.333%); }
@@ -1209,21 +1297,134 @@ export default function LoginPage() {
         .marquee-row { animation: marquee 30s linear infinite; }
         .marquee-row-rev { animation: marqueeRev 36s linear infinite; }
 
-        .reveal-section { opacity: 0; transform: translateY(28px); transition: opacity 0.65s ease, transform 0.65s ease; }
+        /* ─── STRATUM SHIMMER TEXT ─── */
+        @keyframes shimmer-sweep {
+          0%   { background-position: -300% center; }
+          100% { background-position: 300% center; }
+        }
+        .stratum-shimmer {
+          background: linear-gradient(
+            90deg,
+            rgba(255,255,255,0.9) 0%,
+            rgba(255,255,255,0.9) 35%,
+            rgba(165,180,252,1) 50%,
+            rgba(255,255,255,0.9) 65%,
+            rgba(255,255,255,0.9) 100%
+          );
+          background-size: 300% auto;
+          -webkit-background-clip: text; background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: shimmer-sweep 5s linear infinite;
+        }
+
+        /* ─── STRATUM GRID SCROLL ─── */
+        @keyframes grid-drift {
+          0%   { transform: translate(0, 0); }
+          100% { transform: translate(28px, 28px); }
+        }
+        .stratum-grid-bg { animation: grid-drift 12s linear infinite; }
+
+        /* ─── MOCKUP CARD: FLOAT + GLOW + SCAN LINE ─── */
+        @keyframes card-float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+        @keyframes card-glow {
+          0%, 100% { box-shadow: 0 4px 32px rgba(99,102,241,0.12), 0 0 0 1px rgba(99,102,241,0.1); }
+          50% { box-shadow: 0 8px 48px rgba(99,102,241,0.28), 0 0 0 1px rgba(99,102,241,0.22); }
+        }
+        @keyframes scan-line {
+          0%   { transform: translateY(-2px); opacity: 0; }
+          5%   { opacity: 1; }
+          92%  { opacity: 0.5; }
+          100% { transform: translateY(550px); opacity: 0; }
+        }
+        .mockup-card {
+          animation: card-float 6s ease-in-out infinite, card-glow 4s ease-in-out infinite;
+        }
+        .mockup-card::after {
+          content: '';
+          position: absolute; left: 0; right: 0; top: 0; height: 1px;
+          background: linear-gradient(90deg, transparent 0%, rgba(165,180,252,0.6) 40%, rgba(99,102,241,0.8) 50%, rgba(165,180,252,0.6) 60%, transparent 100%);
+          animation: scan-line 8s ease-in-out infinite;
+          pointer-events: none;
+        }
+
+        /* ─── SCROLL REVEAL ─── */
+        .reveal-section { opacity: 0; transform: translateY(32px); transition: opacity 0.7s ease, transform 0.7s ease; }
         .reveal-section.section-visible { opacity: 1; transform: translateY(0); }
 
-        .side-nav { display: flex; }
+        /* ─── SIGNALS: STAGGER IN ─── */
+        .signal-card { opacity: 0; transform: translateX(20px); transition: opacity 0.5s ease, transform 0.5s ease; }
+        .section-visible .sc1 { opacity: 1; transform: none; transition-delay: 0.35s; }
+        .section-visible .sc2 { opacity: 1; transform: none; transition-delay: 0.55s; }
+        .section-visible .sc3 { opacity: 1; transform: none; transition-delay: 0.75s; }
+        .section-visible .sc4 { opacity: 1; transform: none; transition-delay: 0.95s; }
+
+        /* ─── BUDGET BARS: ANIMATE WIDTH ─── */
+        .b-bar { width: 0 !important; transition: width 1.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .section-visible .b1 { width: 88% !important; transition-delay: 0.45s; }
+        .section-visible .b2 { width: 68% !important; transition-delay: 0.65s; }
+        .section-visible .b3 { width: 27% !important; transition-delay: 0.85s; }
+        .section-visible .b4 { width: 30% !important; transition-delay: 1.05s; }
+
+        /* ─── FORECASTING SVG ─── */
+        .fc-hist { stroke-dasharray: 320; stroke-dashoffset: 320; transition: stroke-dashoffset 1.8s cubic-bezier(0.4, 0, 0.2, 1) 0.3s; }
+        .section-visible .fc-hist { stroke-dashoffset: 0; }
+        .fc-fill  { opacity: 0; transition: opacity 1s ease 0.6s; }
+        .section-visible .fc-fill  { opacity: 1; }
+        .fc-exp   { opacity: 0; transition: opacity 0.8s ease 1.0s; }
+        .section-visible .fc-exp   { opacity: 1; }
+        .fc-best  { opacity: 0; transition: opacity 0.8s ease 1.3s; }
+        .section-visible .fc-best  { opacity: 1; }
+        .fc-worst { opacity: 0; transition: opacity 0.8s ease 1.5s; }
+        .section-visible .fc-worst { opacity: 1; }
+
+        /* ─── PORTAL GOAL BARS ─── */
+        .goal-bar { width: 0 !important; transition: width 1.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .section-visible .g1 { width: 78% !important; transition-delay: 0.5s; }
+        .section-visible .g2 { width: 91% !important; transition-delay: 0.7s; }
+
+        /* ─── CTA BUTTONS ─── */
+        .cta-primary  { transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease; }
+        .cta-primary:hover  { transform: translateY(-2px) scale(1.02); box-shadow: 0 0 56px rgba(99,102,241,0.65), 0 0 0 1px rgba(99,102,241,0.4) !important; }
+        .cta-secondary { transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease; }
+        .cta-secondary:hover { transform: translateY(-2px); background: rgba(255,255,255,0.1) !important; border-color: rgba(255,255,255,0.2) !important; }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 960px) {
+          .hero-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
+          .hero-headline { font-size: 48px !important; }
+          .pains-grid { grid-template-columns: 1fr 1fr !important; }
+          .stratum-grid { grid-template-columns: 1fr 1fr !important; }
+          .steps-grid { grid-template-columns: 1fr 1fr !important; }
+          .steps-line { display: none !important; }
+        }
         @media (max-width: 1200px) {
           .side-nav { display: none !important; }
         }
         @media (max-width: 1000px) {
           .feature-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+          .mockup-card { animation: card-glow 4s ease-in-out infinite; }
           .marquee-row { animation-duration: 20s !important; }
           .marquee-row-rev { animation-duration: 24s !important; }
         }
         @media (max-width: 700px) {
+          .hero-headline { font-size: 40px !important; }
+          .pains-grid { grid-template-columns: 1fr !important; }
           .also-grid { grid-template-columns: 1fr !important; }
+          .steps-grid { grid-template-columns: 1fr !important; }
+          .stratum-grid { grid-template-columns: 1fr 1fr !important; }
         }
+        @media (prefers-reduced-motion: reduce) {
+          .mockup-card { animation: none !important; }
+          .mockup-card::after { display: none !important; }
+          .hero-particle { animation: none !important; }
+          .stratum-shimmer { animation: none !important; -webkit-text-fill-color: white; }
+          .hw { animation: none !important; }
+        }
+
+        .side-nav { display: flex; }
       `}</style>
     </div>
   );
