@@ -57,9 +57,15 @@ export default function LoginPage() {
         className="login-panel"
       >
         {/* Gradient orbs */}
-        <div style={{
-          position: "absolute", inset: 0, pointerEvents: "none",
-          background: "radial-gradient(ellipse 80% 60% at 20% 30%, rgba(99,102,241,0.35) 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 80% 80%, rgba(168,85,247,0.25) 0%, transparent 60%)",
+        <div className="login-orb-1" style={{
+          position: "absolute", width: "70%", paddingBottom: "70%", top: "-10%", left: "-10%", pointerEvents: "none",
+          background: "radial-gradient(circle, rgba(99,102,241,0.4) 0%, transparent 70%)",
+          borderRadius: "50%",
+        }} />
+        <div className="login-orb-2" style={{
+          position: "absolute", width: "60%", paddingBottom: "60%", bottom: "-15%", right: "-5%", pointerEvents: "none",
+          background: "radial-gradient(circle, rgba(168,85,247,0.35) 0%, transparent 70%)",
+          borderRadius: "50%",
         }} />
         {/* Subtle grid */}
         <div style={{
@@ -91,14 +97,14 @@ export default function LoginPage() {
             Every channel.<br />One dashboard.
           </h2>
           <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, maxWidth: 320 }}>
-            Unified performance reporting for GA4, Google Ads, Meta, TikTok, and 11 more channels — with AI-powered insights.
+            Unified performance reporting across GA4, Google Ads, Meta, TikTok, and 11 more channels. Insights powered by AI trained on years of real-world marketing playbooks.
           </p>
 
           {/* Feature pills */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 40 }}>
             {[
               { icon: <TrendingUp style={{ width: 14, height: 14 }} />, text: "15 marketing channels in one place" },
-              { icon: <Zap style={{ width: 14, height: 14 }} />, text: "AI-generated insights & commentary" },
+              { icon: <Zap style={{ width: 14, height: 14 }} />, text: "AI insights trained on proven marketing playbooks" },
               { icon: <Shield style={{ width: 14, height: 14 }} />, text: "Role-based access for your whole team" },
             ].map((f) => (
               <div key={f.text} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -249,6 +255,18 @@ export default function LoginPage() {
           .login-panel { display: none !important; }
         }
         input::placeholder { color: rgba(255,255,255,0.2); }
+        @keyframes orb1 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(40px, -30px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.95); }
+        }
+        @keyframes orb2 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(-30px, 20px) scale(0.9); }
+          66% { transform: translate(25px, -40px) scale(1.1); }
+        }
+        .login-orb-1 { animation: orb1 12s ease-in-out infinite; }
+        .login-orb-2 { animation: orb2 15s ease-in-out infinite; }
       `}</style>
     </div>
   );
