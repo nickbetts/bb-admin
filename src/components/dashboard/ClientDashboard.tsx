@@ -219,7 +219,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
     ...tab,
     // If the role has tab restrictions, hide tabs not in the allowed set (core tabs always stay visible)
     available: tab.available && (!hasTabRestrictions || tabPermissions.includes(tab.id)),
-  }));
+  })) as { id: Tab; label: string; available: boolean }[];
 
   return (
     <div>
