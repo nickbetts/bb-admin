@@ -11,13 +11,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!process.env.MOZ_ACCESS_ID || !process.env.MOZ_SECRET_KEY) {
-      return NextResponse.json(
-        { error: "Domain Authority is not configured. Set MOZ_ACCESS_ID and MOZ_SECRET_KEY." },
-        { status: 503 }
-      );
-    }
-
     const domain = new URL(request.url).searchParams.get("domain");
     if (!domain) {
       return NextResponse.json({ error: "domain is required" }, { status: 400 });

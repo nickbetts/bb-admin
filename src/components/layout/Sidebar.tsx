@@ -26,6 +26,7 @@ import {
   LayoutGrid,
   TrendingUp,
   PieChart,
+  Search,
 } from "lucide-react";
 
 interface NavItem {
@@ -63,6 +64,91 @@ const toolsNavItems: NavItem[] = [
 interface SidebarProps {
   user: { name?: string | null; email: string };
   permissions: string[];
+}
+
+function DaChecker() {
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{ da: number; pa: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function check(e: React.FormEvent) {
+    e.preventDefault();
+    if (!url.trim()) return;
+    setLoading(true);
+    setResult(null);
+    setError(null);
+    try {
+      const domain = url.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+      const res = await fetch(`/api/seo/domain-authority?domain=${encodeURIComponent(domain)}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed");
+      setResult({ da: json.domainAuthority, pa: json.pageAuthority });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ padding: "12px 12px 0" }}>
+      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-3)", marginBottom: 8 }}>DA Checker</p>
+      <form onSubmit={check} style={{ display: "flex", gap: 6 }}>
+        <input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="example.com"
+          style={{
+            flex: 1,
+            fontSize: 12,
+            padding: "5px 8px",
+            borderRadius: 6,
+            border: "1px solid var(--border)",
+            background: "var(--bg-2, #f8f9fa)",
+            color: "var(--text)",
+            outline: "none",
+            minWidth: 0,
+          }}
+          disabled={loading}
+        />
+        <button
+          type="submit"
+          disabled={loading || !url.trim()}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 28,
+            height: 28,
+            borderRadius: 6,
+            border: "none",
+            background: "var(--primary, #6366f1)",
+            color: "#fff",
+            cursor: loading || !url.trim() ? "not-allowed" : "pointer",
+            opacity: loading || !url.trim() ? 0.5 : 1,
+            flexShrink: 0,
+          }}
+          aria-label="Check DA"
+        >
+          <Search style={{ width: 12, height: 12 }} />
+        </button>
+      </form>
+      {result && (
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <div style={{ flex: 1, background: "var(--bg-2, #f0f1ff)", borderRadius: 6, padding: "6px 8px", textAlign: "center" }}>
+            <p style={{ fontSize: 18, fontWeight: 700, color: "var(--primary, #6366f1)", lineHeight: 1 }}>{result.da}</p>
+            <p style={{ fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)", marginTop: 2 }}>DA</p>
+          </div>
+          <div style={{ flex: 1, background: "var(--bg-2, #f0f1ff)", borderRadius: 6, padding: "6px 8px", textAlign: "center" }}>
+            <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-2)", lineHeight: 1 }}>{result.pa}</p>
+            <p style={{ fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)", marginTop: 2 }}>PA</p>
+          </div>
+        </div>
+      )}
+      {error && <p style={{ fontSize: 11, color: "#ef4444", marginTop: 6 }}>{error}</p>}
+    </div>
+  );
 }
 
 export function Sidebar({ user, permissions }: SidebarProps) {
@@ -233,6 +319,8 @@ export function Sidebar({ user, permissions }: SidebarProps) {
 
           {renderNavLinks()}
 
+          <DaChecker />
+
           <div className="sidebar-footer">
             <div className="sidebar-user">
               <div className="sidebar-avatar">{initials}</div>
@@ -288,6 +376,8 @@ export function Sidebar({ user, permissions }: SidebarProps) {
       )}
 
       {renderNavLinks()}
+
+      {!collapsed && <DaChecker />}
 
       <div className="sidebar-footer">
         {!collapsed && (

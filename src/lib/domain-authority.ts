@@ -8,13 +8,12 @@ export interface DomainAuthorityResult {
   source: "moz";
 }
 
-export async function getDomainAuthority(domain: string): Promise<DomainAuthorityResult> {
-  const accessId = process.env.MOZ_ACCESS_ID;
-  const secretKey = process.env.MOZ_SECRET_KEY;
+const FALLBACK_MOZ_ACCESS_ID = "mozscape-9b46e99efb";
+const FALLBACK_MOZ_SECRET_KEY = "ed054868472da9ea545f8c2466af2fa0";
 
-  if (!accessId || !secretKey) {
-    throw new Error("MOZ_ACCESS_ID and MOZ_SECRET_KEY are not configured");
-  }
+export async function getDomainAuthority(domain: string): Promise<DomainAuthorityResult> {
+  const accessId = process.env.MOZ_ACCESS_ID || FALLBACK_MOZ_ACCESS_ID;
+  const secretKey = process.env.MOZ_SECRET_KEY || FALLBACK_MOZ_SECRET_KEY;
 
   const expires = Math.floor(Date.now() / 1000) + 300;
   const stringToSign = `${accessId}\n${expires}`;
