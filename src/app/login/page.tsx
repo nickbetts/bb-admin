@@ -42,6 +42,15 @@ export default function LoginPage() {
     }
   }
 
+  const pains = [
+    { q: "\"Why did traffic drop last week?\"", a: "Every account manager's least favourite question. You know the answer is in there somewhere. It just takes 45 minutes to find it." },
+    { q: "Reporting day. Again.", a: "Block out Tuesday afternoon, open 11 tabs, copy numbers into a spreadsheet, write the same commentary you wrote last month. There's got to be a better way." },
+    { q: "ROAS is tanking. When did that happen?", a: "The worst version of this is your client telling you before you've noticed. StratOS spots these shifts automatically and puts them front and centre." },
+    { q: "Where should we move the budget?", a: "You know Meta's underperforming and Google Ads is flying. But without hard numbers side by side, it's still a gut-feel conversation." },
+    { q: "Three platforms. Three numbers. None of them match.", a: "GA4 says one thing. Google Ads says another. Meta has its own view. Someone has to reconcile all of this. Every. Single. Week." },
+    { q: "Is this account actually performing well?", a: "Without a cross-channel view, you're always looking at a piece of the puzzle. StratOS shows the whole board." },
+  ];
+
   const channels = [
     { group: "Web & Analytics", items: ["Google Analytics 4", "Google Search Console", "Core Web Vitals"] },
     { group: "Paid Search", items: ["Google Ads", "Microsoft Advertising"] },
@@ -54,33 +63,33 @@ export default function LoginPage() {
   const capabilities = [
     {
       icon: <Activity style={{ width: 18, height: 18 }} />,
-      title: "Catch problems before your client does",
-      desc: "Automatic anomaly detection runs across every channel. The moment something shifts — ROAS drops, rankings fall, bounce rate spikes — you know about it.",
+      title: "You'll know before your client does",
+      desc: "StratOS watches every channel automatically. The second ROAS drops, rankings slip, or spend spikes — you get the alert. No more finding out on a call.",
     },
     {
       icon: <TrendingUp style={{ width: 18, height: 18 }} />,
-      title: "See 90 days ahead",
-      desc: "Predictive forecasting builds 30, 60 and 90-day projections from real historical data, with best, expected and worst-case confidence bands per metric.",
+      title: "Stop guessing where to put the money",
+      desc: "The budget advisor compares performance across every paid channel and tells you exactly where a shift in spend would have the biggest impact — with projected numbers attached.",
     },
     {
       icon: <Zap style={{ width: 18, height: 18 }} />,
-      title: "Move budget to where it works",
-      desc: "The budget advisor looks across all your paid channels and tells you exactly where to shift spend for better returns — with projected revenue impact.",
+      title: "Reports that don't wreck your Wednesday",
+      desc: "Build the report, generate the commentary, reorder sections by dragging them, export to a branded PDF and share the link. The whole thing in under 20 minutes.",
     },
     {
       icon: <FileText style={{ width: 18, height: 18 }} />,
-      title: "Reports that practically write themselves",
-      desc: "Generate full commentary per section, drag and drop to reorder, export to PDF with branding, and share with a link. The whole thing in minutes.",
+      title: "See 90 days ahead, not just last month",
+      desc: "Forecasting uses your actual historical data to project 30, 60 and 90 days forward — with best, expected and worst-case bands so you can plan with real confidence.",
     },
     {
       icon: <MessageSquare style={{ width: 18, height: 18 }} />,
-      title: "Just ask it a question",
-      desc: "Every client dashboard has a built-in AI analyst. Ask why sessions dropped, which campaign to pause, or where to focus — it reads all the data and answers.",
+      title: "Just ask it",
+      desc: "Every client dashboard has an AI analyst built in. Ask why sessions are down, which campaign to pause, or what you should focus on this week. It reads the data. It answers.",
     },
     {
       icon: <Users style={{ width: 18, height: 18 }} />,
-      title: "Clients see exactly what they need",
-      desc: "The client portal gives each client their own view — goals, reports, key metrics. No extra logins to manage. They get a magic link and it works.",
+      title: "Clients get a view that makes sense",
+      desc: "The client portal shows each client their goals, reports and key numbers — nothing overwhelming. They get a magic link. They log in. No extra accounts to manage.",
     },
   ];
 
@@ -88,22 +97,22 @@ export default function LoginPage() {
     {
       n: "01",
       title: "Connect your channels",
-      desc: "Add credentials once. GA4, Google Ads, Meta, TikTok — everything starts pulling in. Most clients are live in under 30 minutes.",
+      desc: "Add your credentials once. GA4, Google Ads, Meta, TikTok, LinkedIn — everything starts pulling in. Most clients are live in under half an hour.",
     },
     {
       n: "02",
-      title: "See what changed overnight",
-      desc: "The Signals tab surfaces every anomaly across all channels automatically. High-severity issues first, with context-aware explanations attached.",
+      title: "See what moved overnight",
+      desc: "Open Signals first thing. Every anomaly across every channel is already surfaced, sorted by severity, with context attached. The important stuff is at the top.",
     },
     {
       n: "03",
-      title: "Dig into what matters",
-      desc: "Every channel tab has full data: campaigns, creatives, landing pages, goals. Analysis runs with context from every other connected channel.",
+      title: "Dig in with all the context",
+      desc: "Every channel tab has the full picture — campaigns, creatives, landing pages, goals. The AI reads data from all other channels before it gives you an insight.",
     },
     {
       n: "04",
-      title: "Act and share",
-      desc: "Assign actions to the team, generate a client report, share a strategy document. From anomaly to presentation — all in one place.",
+      title: "Act, report, repeat",
+      desc: "Assign actions to the team, generate a client report with a click, share a strategy document. From spotting the issue to presenting the solution — all in one place.",
     },
   ];
 
@@ -114,13 +123,17 @@ export default function LoginPage() {
       <nav style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
         backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-        background: "rgba(9,9,15,0.85)",
+        background: "rgba(9,9,15,0.88)",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
         height: 64,
         display: "flex", alignItems: "center",
         padding: "0 40px", justifyContent: "space-between",
       }}>
-        <img src="/primary-logo.svg" style={{ height: 28, width: "auto" }} alt="i3media" />
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <img src="/primary-logo.svg" style={{ height: 26, width: "auto" }} alt="i3MEDIA" />
+          <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.12)" }} />
+          <span style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "0.02em" }}>StratOS</span>
+        </div>
         <a
           href="#login-form"
           style={{
@@ -139,7 +152,6 @@ export default function LoginPage() {
         position: "relative", overflow: "hidden",
         display: "flex", alignItems: "center",
       }}>
-        {/* Background orbs */}
         <div className="login-orb-1" style={{
           position: "absolute", width: "65%", paddingBottom: "65%",
           top: "-15%", left: "-15%", pointerEvents: "none", borderRadius: "50%",
@@ -165,39 +177,43 @@ export default function LoginPage() {
 
           {/* Left */}
           <div>
-            <p style={{
-              fontSize: 12, fontWeight: 700, color: "#818cf8",
-              letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 24,
-            }}>
-              Agency performance platform
-            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28, flexWrap: "wrap" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 20, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)" }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#818cf8" }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.08em", textTransform: "uppercase" }}>Built by i3MEDIA · 20 years in the game</span>
+              </div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 14px", borderRadius: 20, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(255,255,255,0.25)", boxShadow: "0 0 6px rgba(255,255,255,0.3)" }} className="stratum-pulse" />
+                <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Powered by Stratum</span>
+              </div>
+            </div>
             <h1 style={{
-              fontSize: 62, fontWeight: 900, lineHeight: 1.03,
-              letterSpacing: "-0.04em", marginBottom: 24, color: "white",
+              fontSize: 64, fontWeight: 900, lineHeight: 1.0,
+              letterSpacing: "-0.04em", marginBottom: 28, color: "white",
             }} className="hero-headline">
-              Stop living<br />in 15 tabs.
+              We got tired<br />of it too.
             </h1>
             <p style={{
-              fontSize: 18, color: "rgba(255,255,255,0.5)", lineHeight: 1.75,
-              maxWidth: 500, marginBottom: 44,
+              fontSize: 18, color: "rgba(255,255,255,0.55)", lineHeight: 1.75,
+              maxWidth: 520, marginBottom: 40,
             }}>
-              i3media connects every marketing channel into one place — then automatically spots what is wrong, tells you why, and shows you exactly what to do next.
+              After 20 years managing campaigns for ambitious brands, i3MEDIA built StratOS because we were sick of the same problem — too much data, spread across too many platforms, taking too long to do anything useful with.
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {[
-                "15 channels unified — GA4, Google Ads, Meta, TikTok, LinkedIn and more",
-                "Automatic anomaly detection across every platform, every day",
-                "30/60/90-day forecasts, budget advisor and multi-touch attribution",
-                "AI reports with full commentary — generated and exported in minutes",
+                "15 channels pulled into one view — no more tab-switching",
+                "Automatic anomaly detection so you know before your client does",
+                "Reports with full commentary generated in minutes, not hours",
+                "Ask the AI analyst anything — it reads every connected channel",
               ].map((f) => (
                 <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                   <div style={{
-                    width: 18, height: 18, borderRadius: "50%", flexShrink: 0, marginTop: 2,
+                    width: 18, height: 18, borderRadius: "50%", flexShrink: 0, marginTop: 3,
                     background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.4)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     color: "#818cf8", fontSize: 10, fontWeight: 900,
                   }}>✓</div>
-                  <span style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>{f}</span>
+                  <span style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.55 }}>{f}</span>
                 </div>
               ))}
             </div>
@@ -215,10 +231,10 @@ export default function LoginPage() {
           >
             <div style={{ marginBottom: 28 }}>
               <h2 style={{ fontSize: 22, fontWeight: 700, color: "white", letterSpacing: "-0.02em", marginBottom: 6 }}>
-                Welcome back
+                Back to work
               </h2>
               <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>
-                Access your dashboard and latest insights
+                Your accounts are waiting. Let&apos;s see what happened.
               </p>
             </div>
 
@@ -232,7 +248,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@i3media.co.uk"
+                  placeholder="you@youragency.com"
                   required
                   autoComplete="email"
                   style={{
@@ -314,18 +330,53 @@ export default function LoginPage() {
                 onMouseEnter={(e) => { if (!loading) e.currentTarget.style.opacity = "0.9"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
               >
-                {loading ? "Signing in…" : "Access i3media →"}
+                {loading ? "Signing in…" : "Access StratOS →"}
               </button>
             </form>
 
             <p style={{ marginTop: 20, textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.2)" }}>
-              No account? Contact your account manager.
+              Don&apos;t have access? <a href="mailto:hello@i3media.net" style={{ color: "rgba(99,102,241,0.7)", textDecoration: "none" }}>Get in touch</a>.
             </p>
           </div>
         </div>
       </section>
 
-      {/* ── SECTION 2: CHANNELS ── */}
+      {/* ── SECTION 2: PAIN POINTS ── */}
+      <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 64 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
+              Sound familiar?
+            </p>
+            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
+              We&apos;ve been there.<br />Got the t-shirt.
+            </h2>
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
+              These are the conversations we were having at i3MEDIA before we built StratOS. If any of them land, you&apos;re in the right place.
+            </p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="pains-grid">
+            {pains.map((p) => (
+              <div key={p.q} style={{
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                borderRadius: 16, padding: "28px 28px 32px",
+                display: "flex", flexDirection: "column", gap: 12,
+              }}>
+                <p style={{ fontSize: 15, fontWeight: 700, color: "rgba(255,255,255,0.85)", lineHeight: 1.35, fontStyle: "italic" }}>
+                  {p.q}
+                </p>
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.65 }}>
+                  {p.a}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── SECTION 3: CHANNELS ── */}
       <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
@@ -333,10 +384,10 @@ export default function LoginPage() {
               Integrations
             </p>
             <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
-              Every channel. One place.
+              All your platforms. Finally in one place.
             </h2>
             <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
-              Stop bouncing between platforms. Connect everything and see the full picture in one view.
+              Connect once, read everything. No manual exports, no copy-pasting, no version-control nightmares.
             </p>
           </div>
 
@@ -361,14 +412,67 @@ export default function LoginPage() {
               </div>
             ))}
           </div>
-
-          <p style={{ textAlign: "center", marginTop: 32, fontSize: 13, color: "rgba(255,255,255,0.25)" }}>
-            15 platforms. One login. Updated every few hours.
+          <p style={{ textAlign: "center", marginTop: 32, fontSize: 13, color: "rgba(255,255,255,0.22)" }}>
+            15 platforms. One login. Updated automatically — no Monday morning setup ritual.
           </p>
         </div>
       </section>
 
-      {/* ── SECTION 3: CAPABILITIES ── */}
+      {/* ── SECTION 4: STRATUM ── */}
+      <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden", background: "rgba(99,102,241,0.015)" }}>
+        <div style={{
+          position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.035,
+          backgroundImage: "linear-gradient(rgba(99,102,241,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.9) 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
+        }} />
+        <div style={{
+          position: "absolute", width: "60%", paddingBottom: "60%",
+          top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+          pointerEvents: "none", borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 60%)",
+        }} />
+
+        <div style={{ maxWidth: 880, margin: "0 auto", position: "relative", textAlign: "center" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 28, padding: "6px 16px", borderRadius: 20, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.3)" }}>
+            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#818cf8", boxShadow: "0 0 10px rgba(129,140,248,0.9)" }} className="stratum-pulse" />
+            <span style={{ fontSize: 11, fontWeight: 800, color: "#a5b4fc", letterSpacing: "0.12em", textTransform: "uppercase" }}>Proprietary technology · i3MEDIA</span>
+          </div>
+
+          <h2 style={{ fontSize: 72, fontWeight: 900, letterSpacing: "-0.05em", lineHeight: 0.9, marginBottom: 20, color: "white" }}>
+            Stratum
+          </h2>
+          <p style={{ fontSize: 18, color: "rgba(99,102,241,0.75)", fontWeight: 700, letterSpacing: "0.04em", marginBottom: 32, textTransform: "uppercase" }}>
+            Cross-channel intelligence framework
+          </p>
+          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 640, margin: "0 auto 52px" }}>
+            Stratum is the intelligence layer beneath everything you see in StratOS. It works across all 15 connected channels simultaneously — reading signals, finding correlations, and surfacing insights that only emerge when you stop looking at platforms in isolation. We&apos;ve spent years building it. You won&apos;t find it anywhere else.
+          </p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 52 }} className="stratum-grid">
+            {[
+              "Cross-channel signal weighting",
+              "Continuous model refinement",
+              "Anomaly correlation engine",
+              "Predictive pattern extraction",
+            ].map((label) => (
+              <div key={label} style={{
+                padding: "18px 16px", borderRadius: 12,
+                background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)",
+                fontSize: 12, color: "rgba(129,140,248,0.9)", fontWeight: 700,
+                letterSpacing: "0.03em", lineHeight: 1.45, textAlign: "center",
+              }}>
+                {label}
+              </div>
+            ))}
+          </div>
+
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.18)", fontStyle: "italic", letterSpacing: "0.02em" }}>
+            We could explain exactly how it works. We just choose not to.
+          </p>
+        </div>
+      </section>
+
+      {/* ── SECTION 5: CAPABILITIES ── */}
       <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
         <div style={{
           position: "absolute", width: "50%", paddingBottom: "30%",
@@ -378,13 +482,13 @@ export default function LoginPage() {
         <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative" }}>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
-              What you get
+              What StratOS does
             </p>
             <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
-              Built for agencies that move fast
+              Less firefighting.<br />More deciding.
             </h2>
             <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
-              The features your team actually needs. Not a bloated tool no-one logs into.
+              Everything you wish your reporting stack did. Built by people who spent years frustrated that it didn&apos;t.
             </p>
           </div>
 
@@ -421,19 +525,19 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ── SECTION 4: MORE DEPTH ── */}
+      {/* ── SECTION 5: MORE DEPTH ── */}
       <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="depth-grid">
             <div>
               <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 20 }}>
-                Go deeper
+                Under the bonnet
               </p>
               <h2 style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.15, marginBottom: 20, color: "white" }}>
-                There is a lot more under the hood
+                There&apos;s a lot going on underneath
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.75, marginBottom: 32 }}>
-                Beyond the day-to-day dashboards, i3media has a full agency operations layer — proposal building, media planning, competitor monitoring, keyword research, and a client communication hub.
+                Beyond the day-to-day dashboards, StratOS has a full operations layer — proposal building, media planning, competitive monitoring, keyword research, and a client communication hub. It&apos;s the whole agency in one tool.
               </p>
               <a
                 href="#login-form"
@@ -444,17 +548,17 @@ export default function LoginPage() {
                   color: "#a5b4fc", fontSize: 14, fontWeight: 600, textDecoration: "none",
                 }}
               >
-                Sign in and explore <ArrowRight style={{ width: 14, height: 14 }} />
+                Sign in and see for yourself <ArrowRight style={{ width: 14, height: 14 }} />
               </a>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {[
-                { title: "Multi-touch attribution", desc: "Compare last-click, first-click, linear, time-decay and position-based models side by side." },
-                { title: "Seasonality intelligence", desc: "Automatic pattern detection from historical snapshots surfaces trends before they catch you out." },
-                { title: "Share of voice", desc: "Track your organic and paid competitive position against rivals using live SemRush data." },
-                { title: "Competitor monitoring", desc: "Ongoing competitive snapshots with commentary — updated regularly and saved to history." },
-                { title: "Strategy documents", desc: "Quarterly forward-looking strategy documents per client, generated and shareable with a link." },
-                { title: "Role-based access", desc: "11 granular permissions. Give each team member exactly the access they need, nothing more." },
+                { title: "Multi-touch attribution", desc: "Five models side by side — last-click, first-click, linear, time-decay, position-based. See who actually gets the credit." },
+                { title: "90-day performance forecasting", desc: "Real projections from real historical data. Best, expected and worst case — so you can plan with actual confidence." },
+                { title: "Seasonality intelligence", desc: "Automatic pattern detection from historical snapshots. Catch seasonal trends before they catch you out." },
+                { title: "Share of voice tracking", desc: "Organic and paid competitive position against your rivals, updated with live SemRush data." },
+                { title: "Quarterly strategy documents", desc: "Forward-looking strategy docs per client, generated and shareable via link. No more building decks from scratch." },
+                { title: "Competitor monitoring", desc: "Ongoing competitive snapshots with AI commentary, saved to history so you can see how the landscape is shifting." },
               ].map((item) => (
                 <div key={item.title} style={{
                   display: "flex", gap: 14,
@@ -474,7 +578,7 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ── SECTION 5: HOW IT WORKS ── */}
+      {/* ── SECTION 6: HOW IT WORKS ── */}
       <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
@@ -482,7 +586,7 @@ export default function LoginPage() {
               How it works
             </p>
             <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
-              From setup to insights in minutes
+              You&apos;re up and running faster than you&apos;d expect
             </h2>
           </div>
 
@@ -514,63 +618,51 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ── SECTION 6: OUTCOMES ── */}
+      {/* ── SECTION 7: BUILT BY i3MEDIA ── */}
       <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
         <div style={{
           position: "absolute", width: "60%", paddingBottom: "40%",
           bottom: "-20%", left: "-10%", pointerEvents: "none", borderRadius: "50%",
           background: "radial-gradient(circle, rgba(168,85,247,0.1) 0%, transparent 70%)",
         }} />
-        <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative" }}>
-          <div style={{ textAlign: "center", marginBottom: 64 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
-              The difference
-            </p>
-            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
-              What changes when you use it
-            </h2>
-            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 480, margin: "0 auto", lineHeight: 1.7 }}>
-              Not another dashboard. A system that actually changes how your team operates day to day.
-            </p>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }} className="outcomes-grid">
+        <div style={{ maxWidth: 900, margin: "0 auto", position: "relative", textAlign: "center" }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 24 }}>
+            The story behind it
+          </p>
+          <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.15, marginBottom: 28, color: "white" }}>
+            We&apos;re not a startup.<br />We&apos;re an agency that got fed up.
+          </h2>
+          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 680, margin: "0 auto 20px" }}>
+            i3MEDIA has been running digital campaigns for ambitious brands for over 20 years. Websites, SEO, paid social, PPC — we&apos;ve done it all, for clients of all shapes and sizes, across two continents.
+          </p>
+          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 680, margin: "0 auto 20px" }}>
+            And for 20 years, we had the same problem every other agency has. Too many platforms. Too much time pulling data. Not enough time actually using it. So we built StratOS — for ourselves first, and now for the wider world.
+          </p>
+          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 680, margin: "0 auto 44px" }}>
+            It&apos;s opinionated because we&apos;ve made every mistake in the book. It&apos;s fast because slow tools don&apos;t get used. And it&apos;s honest because that&apos;s how we work.
+          </p>
+          <a
+            href="https://i3media.net"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "12px 22px", borderRadius: 10,
+              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+              color: "rgba(255,255,255,0.6)", fontSize: 14, fontWeight: 600, textDecoration: "none",
+            }}
+          >
+            Learn more about i3MEDIA <ArrowRight style={{ width: 14, height: 14 }} />
+          </a>
+          <div style={{ display: "flex", justifyContent: "center", gap: 48, marginTop: 64 }}>
             {[
-              {
-                label: "Clarity",
-                stat: "15",
-                unit: "channels in one view",
-                body: "Know exactly what is happening across every account, every day. No more tab-switching before you can answer a client.",
-                color: "#818cf8",
-              },
-              {
-                label: "Speed",
-                stat: "→ 20min",
-                unit: "weekly account review",
-                body: "Accounts that used to take the best part of a morning to review now take 20 minutes. Spend the time doing things that actually move the needle.",
-                color: "#a78bfa",
-              },
-              {
-                label: "Confidence",
-                stat: "5",
-                unit: "attribution models",
-                body: "Multi-touch attribution, 90-day forecasting and a cross-channel budget advisor mean every spend decision has real data behind it.",
-                color: "#c084fc",
-              },
-            ].map((o) => (
-              <div key={o.label} style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 20, padding: "36px 32px",
-              }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: o.color, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 20 }}>
-                  {o.label}
-                </p>
-                <div style={{ marginBottom: 6 }}>
-                  <span style={{ fontSize: 52, fontWeight: 900, color: "white", letterSpacing: "-0.04em", lineHeight: 1 }}>{o.stat}</span>
-                </div>
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", marginBottom: 20, fontWeight: 500 }}>{o.unit}</p>
-                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.65 }}>{o.body}</p>
+              { stat: "20+", label: "Years in marketing" },
+              { stat: "52", label: "In-house team members" },
+              { stat: "15", label: "Channels connected" },
+            ].map((s) => (
+              <div key={s.label} style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 44, fontWeight: 900, color: "white", letterSpacing: "-0.04em", lineHeight: 1 }}>{s.stat}</div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", marginTop: 8, fontWeight: 500 }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -581,13 +673,13 @@ export default function LoginPage() {
       <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 680, margin: "0 auto", textAlign: "center" }}>
           <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 24 }}>
-            Get started
+            Right then
           </p>
-          <h2 style={{ fontSize: 48, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.05, marginBottom: 20, color: "white" }}>
-            Ready to stop tab-switching?
+          <h2 style={{ fontSize: 52, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.0, marginBottom: 20, color: "white" }}>
+            Ready to stop<br />flying blind?
           </h2>
           <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", lineHeight: 1.7, maxWidth: 460, margin: "0 auto 40px" }}>
-            Already have an account? Sign in at the top. New to i3media? Get in touch and we will get you set up.
+            Already have a StratOS account? Sign in above. Want to get set up? Drop us a line — we&apos;re a real team and we actually reply.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <a
@@ -601,10 +693,10 @@ export default function LoginPage() {
                 boxShadow: "0 0 32px rgba(99,102,241,0.4)",
               }}
             >
-              Sign in <ArrowRight style={{ width: 16, height: 16 }} />
+              Sign in to StratOS <ArrowRight style={{ width: 16, height: 16 }} />
             </a>
             <a
-              href="mailto:hello@i3media.co.uk"
+              href="mailto:hello@i3media.net"
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "14px 28px", borderRadius: 12,
@@ -624,10 +716,15 @@ export default function LoginPage() {
         padding: "28px 40px",
         borderTop: "1px solid rgba(255,255,255,0.06)",
         display: "flex", alignItems: "center", justifyContent: "space-between",
+        flexWrap: "wrap", gap: 12,
       }}>
-        <img src="/primary-logo.svg" style={{ height: 22, opacity: 0.4 }} alt="i3media" />
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.18)" }}>
-          © {new Date().getFullYear()} i3media. All rights reserved.
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <img src="/primary-logo.svg" style={{ height: 20, opacity: 0.35 }} alt="i3MEDIA" />
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", fontWeight: 500 }}>StratOS</span>
+        </div>
+        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.15)" }}>
+          © {new Date().getFullYear()} i3MEDIA Ltd. All rights reserved. &nbsp;·&nbsp;{" "}
+          <a href="https://i3media.net" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,0.25)", textDecoration: "none" }}>i3media.net</a>
         </p>
       </footer>
 
@@ -645,24 +742,31 @@ export default function LoginPage() {
         }
         .login-orb-1 { animation: orb1 12s ease-in-out infinite; }
         .login-orb-2 { animation: orb2 15s ease-in-out infinite; }
+        @keyframes stratum-pulse {
+          0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(129,140,248,0.9); }
+          50% { opacity: 0.45; box-shadow: 0 0 20px rgba(129,140,248,0.3); }
+        }
+        .stratum-pulse { animation: stratum-pulse 2.5s ease-in-out infinite; }
         @media (max-width: 960px) {
           .hero-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
           .hero-headline { font-size: 48px !important; }
+          .pains-grid { grid-template-columns: 1fr 1fr !important; }
           .channels-grid { grid-template-columns: 1fr 1fr !important; }
           .capabilities-grid { grid-template-columns: 1fr 1fr !important; }
+          .stratum-grid { grid-template-columns: 1fr 1fr !important; }
           .steps-grid { grid-template-columns: 1fr 1fr !important; }
           .steps-line { display: none !important; }
-          .outcomes-grid { grid-template-columns: 1fr !important; }
           .depth-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
         }
         @media (max-width: 600px) {
-          .hero-headline { font-size: 38px !important; }
+          .hero-headline { font-size: 40px !important; }
+          .pains-grid { grid-template-columns: 1fr !important; }
           .channels-grid { grid-template-columns: 1fr !important; }
           .capabilities-grid { grid-template-columns: 1fr !important; }
+          .stratum-grid { grid-template-columns: 1fr 1fr !important; }
           .steps-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>
   );
 }
-
