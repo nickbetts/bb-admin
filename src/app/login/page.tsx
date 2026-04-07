@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, Eye, EyeOff } from "lucide-react";
+import { BarChart3, Eye, EyeOff, TrendingUp, Zap, Shield } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -43,39 +43,112 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-100/50 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-100/50 rounded-full blur-3xl" />
-      </div>
+    <div style={{ minHeight: "100vh", display: "flex", background: "#0f0f15" }}>
+      {/* ── Left panel — branding ── */}
+      <div style={{
+        flex: "0 0 45%",
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        padding: "48px 56px",
+        overflow: "hidden",
+      }}
+        className="login-panel"
+      >
+        {/* Gradient orbs */}
+        <div style={{
+          position: "absolute", inset: 0, pointerEvents: "none",
+          background: "radial-gradient(ellipse 80% 60% at 20% 30%, rgba(99,102,241,0.35) 0%, transparent 60%), radial-gradient(ellipse 60% 80% at 80% 80%, rgba(168,85,247,0.25) 0%, transparent 60%)",
+        }} />
+        {/* Subtle grid */}
+        <div style={{
+          position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.04,
+          backgroundImage: "linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }} />
 
-      <div className="relative w-full max-w-md">
-        {/* Card */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-10 shadow-xl">
-          {/* Logo */}
-          <div className="flex items-center justify-center mb-8">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-                <BarChart3 className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-slate-900">i3media</h1>
-                <p className="text-xs text-slate-400">Performance Dashboard</p>
-              </div>
-            </div>
+        {/* Logo */}
+        <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 12,
+            background: "linear-gradient(135deg, #6366f1, #a855f7)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 0 32px rgba(99,102,241,0.5)",
+          }}>
+            <BarChart3 style={{ width: 22, height: 22, color: "white" }} />
           </div>
+          <div>
+            <span style={{ fontSize: 18, fontWeight: 700, color: "white", letterSpacing: "-0.02em" }}>i3media</span>
+            <span style={{ display: "block", fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 1 }}>Reports Platform</span>
+          </div>
+        </div>
 
-          <h2 className="text-lg font-semibold text-slate-900 text-center mb-1">
-            Welcome back
+        {/* Hero text */}
+        <div style={{ position: "relative" }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: "#818cf8", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 20 }}>Agency Intelligence</p>
+          <h2 style={{ fontSize: 40, fontWeight: 800, color: "white", lineHeight: 1.15, letterSpacing: "-0.03em", marginBottom: 20 }}>
+            Every channel.<br />One dashboard.
           </h2>
-          <p className="text-sm text-slate-500 text-center mb-8">
-            Sign in to your account to access the client dashboards
+          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, maxWidth: 320 }}>
+            Unified performance reporting for GA4, Google Ads, Meta, TikTok, and 11 more channels — with AI-powered insights.
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Feature pills */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 40 }}>
+            {[
+              { icon: <TrendingUp style={{ width: 14, height: 14 }} />, text: "15 marketing channels in one place" },
+              { icon: <Zap style={{ width: 14, height: 14 }} />, text: "AI-generated insights & commentary" },
+              { icon: <Shield style={{ width: 14, height: 14 }} />, text: "Role-based access for your whole team" },
+            ].map((f) => (
+              <div key={f.text} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{
+                  width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                  background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "#818cf8",
+                }}>
+                  {f.icon}
+                </div>
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>{f.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <p style={{ position: "relative", fontSize: 12, color: "rgba(255,255,255,0.2)" }}>
+          © {new Date().getFullYear()} i3media. All rights reserved.
+        </p>
+      </div>
+
+      {/* ── Right panel — form ── */}
+      <div style={{
+        flex: 1,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "48px 40px",
+        position: "relative",
+      }}>
+        {/* Subtle right-side glow */}
+        <div style={{
+          position: "absolute", inset: 0, pointerEvents: "none",
+          background: "radial-gradient(ellipse 70% 50% at 80% 50%, rgba(99,102,241,0.06) 0%, transparent 70%)",
+        }} />
+
+        <div style={{ position: "relative", width: "100%", maxWidth: 400 }}>
+          <div style={{ marginBottom: 40 }}>
+            <h1 style={{ fontSize: 26, fontWeight: 700, color: "white", letterSpacing: "-0.02em", marginBottom: 8 }}>
+              Welcome back
+            </h1>
+            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)" }}>
+              Sign in to access your dashboard
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div>
-              <label htmlFor="login-email" className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label htmlFor="login-email" style={{ display: "block", fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>
                 Email address
               </label>
               <input
@@ -86,15 +159,24 @@ export default function LoginPage() {
                 placeholder="you@i3media.co.uk"
                 required
                 autoComplete="email"
-                className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition text-sm shadow-sm"
+                style={{
+                  width: "100%", boxSizing: "border-box",
+                  padding: "13px 16px", borderRadius: 12,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  color: "white", fontSize: 14,
+                  outline: "none", transition: "border-color 0.15s, box-shadow 0.15s",
+                }}
+                onFocus={(e) => { e.target.style.borderColor = "rgba(99,102,241,0.7)"; e.target.style.boxShadow = "0 0 0 3px rgba(99,102,241,0.15)"; }}
+                onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }}
               />
             </div>
 
             <div>
-              <label htmlFor="login-password" className="block text-sm font-medium text-slate-700 mb-1.5">
+              <label htmlFor="login-password" style={{ display: "block", fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>
                 Password
               </label>
-              <div className="relative">
+              <div style={{ position: "relative" }}>
                 <input
                   id="login-password"
                   type={showPassword ? "text" : "password"}
@@ -103,25 +185,41 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   required
                   autoComplete="current-password"
-                  className="w-full px-4 py-3 pr-11 rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition text-sm shadow-sm"
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    padding: "13px 44px 13px 16px", borderRadius: 12,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "white", fontSize: 14,
+                    outline: "none", transition: "border-color 0.15s, box-shadow 0.15s",
+                  }}
+                  onFocus={(e) => { e.target.style.borderColor = "rgba(99,102,241,0.7)"; e.target.style.boxShadow = "0 0 0 3px rgba(99,102,241,0.15)"; }}
+                  onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                  style={{
+                    position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)",
+                    background: "none", border: "none", cursor: "pointer",
+                    color: "rgba(255,255,255,0.35)", padding: 0, display: "flex",
+                    transition: "color 0.15s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.7)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.35)")}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
+                  {showPassword ? <EyeOff style={{ width: 16, height: 16 }} /> : <Eye style={{ width: 16, height: 16 }} />}
                 </button>
               </div>
             </div>
 
             {error && (
-              <div role="alert" className="px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+              <div role="alert" style={{
+                padding: "12px 16px", borderRadius: 10,
+                background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
+                fontSize: 13, color: "#fca5a5",
+              }}>
                 {error}
               </div>
             )}
@@ -129,13 +227,29 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              style={{
+                width: "100%", padding: "14px 20px", borderRadius: 12, marginTop: 4,
+                background: loading ? "rgba(99,102,241,0.5)" : "linear-gradient(135deg, #6366f1, #7c3aed)",
+                border: "none", color: "white", fontSize: 14, fontWeight: 600,
+                cursor: loading ? "not-allowed" : "pointer",
+                boxShadow: loading ? "none" : "0 0 32px rgba(99,102,241,0.4)",
+                transition: "opacity 0.15s, box-shadow 0.15s",
+              }}
+              onMouseEnter={(e) => { if (!loading) e.currentTarget.style.opacity = "0.9"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
             >
-              {loading ? "Signing in..." : "Sign in"}
+              {loading ? "Signing in…" : "Sign in →"}
             </button>
           </form>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .login-panel { display: none !important; }
+        }
+        input::placeholder { color: rgba(255,255,255,0.2); }
+      `}</style>
     </div>
   );
 }
