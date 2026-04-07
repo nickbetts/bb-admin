@@ -752,56 +752,103 @@ body {
    GAME PLAN HTML CONTENT
    Styles for AI-generated HTML in the Cross-Channel Game Plan panel.
 ============================================= */
+
+/* Main heading (e.g. "Unified Action Plan for…") */
 .game-plan-html h3 {
   font-size: 12px;
   font-weight: 700;
-  color: #312e81;
-  margin: 0 0 10px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid #a5b4fc;
+  color: #4338ca;
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e0e7ff;
+  letter-spacing: 0.01em;
 }
 .game-plan-html h3:not(:first-child) {
-  margin-top: 16px;
+  margin-top: 20px;
 }
+
+/* Numbered action list — each <li> becomes a card */
 .game-plan-html ol {
   margin: 0;
-  padding-left: 18px;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  counter-reset: action-counter;
 }
 .game-plan-html ol > li {
+  counter-increment: action-counter;
+  position: relative;
+  padding: 12px 14px 12px 42px;
+  background: #ffffff;
+  border: 1px solid #e0e7ff;
+  border-radius: 10px;
   font-size: 12px;
-  color: #1e1b4b;
-  line-height: 1.7;
+  color: #374151;
+  line-height: 1.65;
 }
-.game-plan-html ol > li > strong:first-child {
-  display: block;
+.game-plan-html ol > li::before {
+  content: counter(action-counter);
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  color: white;
+  font-size: 10px;
   font-weight: 700;
-  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  text-align: center;
 }
+
+/* WHAT / WHERE / WHY / EXPECTED IMPACT labels */
+.game-plan-html ol > li > strong:first-child {
+  display: inline;
+}
+.game-plan-html ol > li strong {
+  font-weight: 700;
+  color: #1e1b4b;
+}
+
+/* Sub-bullet points within an action */
 .game-plan-html ul {
-  margin: 4px 0 0;
-  padding-left: 14px;
+  margin: 6px 0 0;
+  padding-left: 16px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   list-style: disc;
 }
 .game-plan-html ul > li {
   font-size: 12px;
-  color: #312e81;
-  line-height: 1.7;
+  color: #4b5563;
+  line-height: 1.6;
 }
-.game-plan-html strong {
-  font-weight: 700;
-  color: #1e1b4b;
-}
+
+/* Paragraph fallback */
 .game-plan-html p {
   font-size: 12px;
-  color: #1e1b4b;
+  color: #4b5563;
   margin: 6px 0 0;
-  line-height: 1.7;
+  line-height: 1.65;
+}
+
+/* Contradictory signals section — visually distinct */
+.game-plan-html h3:last-of-type {
+  color: #92400e;
+  border-bottom-color: #fde68a;
+}
+.game-plan-html h3:last-of-type ~ ol > li,
+.game-plan-html h3:last-of-type ~ p {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #78350f;
 }
 
 /* =============================================

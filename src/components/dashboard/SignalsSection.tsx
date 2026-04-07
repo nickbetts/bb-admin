@@ -35,20 +35,34 @@ interface Signal {
 }
 
 // ─── Signal deduplication ──────────────────────────────────────────────────────
-// Merge signals that share the same platform + metric + detail (e.g. duplicate
-// impression share or audience exclusion signals).  Keeps the highest-severity
-// instance and rolls up labels into a single signal.
+// Merge signals that share the same platform + metric + label (campaign/entity name).
+// Computed signals and AI signals often describe the same issue with different
+// detail text, but reference the same campaign — keying on label catches those.
+// Falls back to detail text for signals with no label.
+// Keeps computed source over ai (computed has exact numbers); ai duplicate is dropped.
 function deduplicateSignals(signals: Signal[]): Signal[] {
   const map = new Map<string, Signal & { labels: string[] }>();
   for (const s of signals) {
-    // Key on platform + metric + core detail (strip label-specific text)
-    const key = `${s.platform}::${s.metric}::${s.detail}`;
+    const labelKey = (s.label ?? "").toLowerCase().trim();
+    const key = labelKey
+      ? `${s.platform}::${s.metric}::${labelKey}`
+      : `${s.platform}::${s.metric}::${s.detail}`;
     const existing = map.get(key);
     if (existing) {
       // Keep higher severity
       const sevOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
       if ((sevOrder[s.severity] ?? 3) < (sevOrder[existing.severity] ?? 3)) {
         existing.severity = s.severity;
+      }
+      // Prefer computed: it has exact numbers. Keep its detail/level but inherit
+      // any recommendation from the ai version if computed has none.
+      if (s.source === "computed" && existing.source === "ai") {
+        existing.source = "computed";
+        existing.detail = s.detail;
+        existing.level = s.level ?? existing.level;
+        existing.recommendation = s.recommendation ?? existing.recommendation;
+      } else if (s.source === "ai" && existing.source === "computed") {
+        if (!existing.recommendation && s.recommendation) existing.recommendation = s.recommendation;
       }
       if (s.label && !existing.labels.includes(s.label)) existing.labels.push(s.label);
     } else {
@@ -1186,32 +1200,47 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
       {/* ── Holistic Game Plan ──────────────────────────────────────────────── */}
       {(gamePlan || gamePlanLoading) && (
         <div style={{
-          borderRadius: 12, border: "1px solid #6366f1",
-          background: "linear-gradient(135deg, #eef2ff, #f5f3ff)",
+          borderRadius: 14, border: "1px solid #c7d2fe",
+          background: "#fafbff",
           overflow: "hidden",
+          boxShadow: "0 1px 3px rgba(99,102,241,0.08)",
         }}>
+          {/* Header */}
           <div style={{
-            display: "flex", alignItems: "center", gap: 8, padding: "10px 16px",
-            background: "linear-gradient(135deg, #e0e7ff, #ede9fe)",
-            borderBottom: "1px solid #a5b4fc",
+            display: "flex", alignItems: "center", gap: 10, padding: "14px 20px",
+            background: "linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%)",
+            borderBottom: "1px solid #c7d2fe",
           }}>
-            <Zap className="h-4 w-4 shrink-0" style={{ color: "#4f46e5" }} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#312e81" }}>
-              Cross-Channel Game Plan
-            </span>
+            <div style={{
+              width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+              background: "linear-gradient(135deg, #6366f1, #7c3aed)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Zap style={{ width: 14, height: 14, color: "white" }} />
+            </div>
+            <div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#312e81", display: "block", lineHeight: 1 }}>
+                Cross-Channel Game Plan
+              </span>
+              <span style={{ fontSize: 11, color: "#6366f1", marginTop: 2, display: "block" }}>
+                AI-synthesised action plan across all signals
+              </span>
+            </div>
             {gamePlanLoading && (
-              <Loader2 style={{ width: 12, height: 12, marginLeft: "auto", opacity: 0.6, animation: "spin 1s linear infinite", color: "#4f46e5" }} />
+              <Loader2 style={{ width: 14, height: 14, marginLeft: "auto", color: "#6366f1", animation: "spin 1s linear infinite" }} />
             )}
           </div>
-          <div style={{ padding: "14px 16px" }}>
+          <div style={{ padding: "16px 20px" }}>
             {gamePlanLoading && !gamePlan ? (
-              <p style={{ fontSize: 12, color: "#6366f1", margin: 0, fontStyle: "italic" }}>
-                Analysing all signals together to build a unified action plan&hellip;
-              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
+                <Loader2 style={{ width: 14, height: 14, color: "#6366f1", flexShrink: 0, animation: "spin 1s linear infinite" }} />
+                <p style={{ fontSize: 12, color: "#6366f1", margin: 0, fontStyle: "italic" }}>
+                  Analysing all signals together to build a unified action plan&hellip;
+                </p>
+              </div>
             ) : gamePlan ? (
               <div
                 className="game-plan-html"
-                style={{ fontSize: 12, color: "#1e1b4b", lineHeight: 1.7 }}
                 dangerouslySetInnerHTML={{ __html: sanitiseGamePlanHtml(gamePlan) }}
               />
             ) : null}
