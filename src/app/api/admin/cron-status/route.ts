@@ -16,6 +16,7 @@ interface CronLogRow {
 type SnapshotGroup = Prisma.MetricSnapshotGroupByOutputType & {
   _count: { id: number };
   _max: { periodEnd: string | null; createdAt: Date | null };
+  _min: { periodStart: string | null };
 };
 
 type ClientRow = {
@@ -55,6 +56,7 @@ export async function GET() {
       by: ["clientId", "sectionType"],
       _count: { id: true },
       _max: { periodEnd: true, createdAt: true },
+      _min: { periodStart: true },
     }),
 
     prisma.client.findMany({
@@ -77,11 +79,12 @@ export async function GET() {
     woocommerce: "WooCommerce", shopify: "Shopify", cwv: "Core Web Vitals",
   };
 
-  const groupMap = new Map<string, { count: number; latestPeriod: string; lastFetched: string }>();
+  const groupMap = new Map<string, { count: number; latestPeriod: string; oldestPeriod: string; lastFetched: string }>();
   for (const row of snapshotGroups) {
     groupMap.set(`${row.clientId}|${row.sectionType}`, {
       count: row._count.id,
       latestPeriod: row._max.periodEnd ?? "",
+      oldestPeriod: row._min.periodStart ?? "",
       lastFetched: row._max.createdAt?.toISOString() ?? "",
     });
   }
@@ -102,7 +105,7 @@ export async function GET() {
       { key: "cwv",           configured: Boolean(client.cwvUrl) },
     ];
 
-    const platforms: Record<string, { label: string; configured: boolean; count: number; latestPeriod: string; lastFetched: string }> = {};
+    const platforms: Record<string, { label: string; configured: boolean; count: number; latestPeriod: string; oldestPeriod: string; lastFetched: string }> = {};
     for (const { key, configured } of platformKeys) {
       const entry = groupMap.get(`${client.id}|${key}`);
       platforms[key] = {
@@ -110,6 +113,7 @@ export async function GET() {
         configured,
         count: entry?.count ?? 0,
         latestPeriod: entry?.latestPeriod ?? "",
+        oldestPeriod: entry?.oldestPeriod ?? "",
         lastFetched: entry?.lastFetched ?? "",
       };
     }

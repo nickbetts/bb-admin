@@ -23,6 +23,7 @@ interface PlatformCoverage {
   configured: boolean;
   count: number;
   latestPeriod: string;
+  oldestPeriod: string;
   lastFetched: string;
 }
 
@@ -106,6 +107,13 @@ export function CronDashboard() {
   const [countdown, setCountdown] = useState(0);
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
 
+  // Backfill controls
+  const [backfillMonths, setBackfillMonths] = useState(12);
+  const [backfillClientId, setBackfillClientId] = useState("");
+  const [backfillSkipExisting, setBackfillSkipExisting] = useState(true);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -147,6 +155,31 @@ export function CronDashboard() {
       setRunResult(`Error: ${e instanceof Error ? e.message : "Unknown"}`);
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function handleBackfill() {
+    setBackfilling(true);
+    setBackfillResult(null);
+    try {
+      const body: Record<string, unknown> = { months: backfillMonths, skipExisting: backfillSkipExisting };
+      if (backfillClientId) body.clientId = backfillClientId;
+      const res = await fetch("/api/admin/run-snapshots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error ?? "Backfill failed");
+      const clientLabel = backfillClientId
+        ? (data?.coverage.find((c) => c.clientId === backfillClientId)?.clientName ?? "selected client")
+        : "all clients";
+      setBackfillResult(`Done for ${clientLabel} — ${d.totalSnapshots} new, ${d.totalSkipped} skipped, ${d.totalErrors} errors across ${d.periodsProcessed} months`);
+      await load();
+    } catch (e) {
+      setBackfillResult(`Error: ${e instanceof Error ? e.message : "Unknown"}`);
+    } finally {
+      setBackfilling(false);
     }
   }
 
@@ -363,8 +396,10 @@ export function CronDashboard() {
                     return (
                       <td key={key} style={{ textAlign: "center", padding: "7px 8px" }}>
                         <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-                          <span style={{ fontWeight: 600, color }}>{p.count}</span>
-                          <span style={{ fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{p.latestPeriod.slice(0, 7)}</span>
+                          <span style={{ fontWeight: 600, color }}>{p.count} <span style={{ fontSize: 10, fontWeight: 400, color: "var(--text-3)" }}>mo</span></span>
+                          <span style={{ fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>
+                            {p.oldestPeriod ? p.oldestPeriod.slice(0, 7) : "—"} → {p.latestPeriod.slice(0, 7)}
+                          </span>
                         </span>
                       </td>
                     );

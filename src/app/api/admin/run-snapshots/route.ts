@@ -107,11 +107,13 @@ export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await request.json().catch(() => ({})) as { months?: number; skipExisting?: boolean };
+  const body = await request.json().catch(() => ({})) as { months?: number; skipExisting?: boolean; clientId?: string };
   const months = Math.min(Math.max(1, body.months ?? 1), 60);
   const skipExisting = body.skipExisting !== false; // default true — skip already-fetched periods
+  const filterClientId = body.clientId ?? null; // optional: only run for one client
 
   const clients = await prisma.client.findMany({
+    where: filterClientId ? { id: filterClientId } : undefined,
     select: {
       id: true, name: true,
       ga4PropertyId: true,
