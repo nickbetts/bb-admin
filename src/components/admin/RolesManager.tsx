@@ -42,6 +42,7 @@ const PERMISSION_GROUPS = [
     label: "Client Dashboard Tabs",
     note: "Leave all unchecked to show every tab. Check specific tabs to restrict this role to only those tabs.",
     items: [
+      { key: "tab:signals", label: "Signals" },
       { key: "tab:overview", label: "Overview" },
       { key: "tab:seo", label: "SEO / SemRush" },
       { key: "tab:web", label: "Web Analytics (GA4)" },

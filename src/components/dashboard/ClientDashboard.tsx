@@ -194,7 +194,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
   }, [client, startDate, endDate]);
 
   const tabs: { id: Tab; label: string; available: boolean }[] = [
-    { id: "signals", label: "Signals", available: userRole === "admin" },
+    { id: "signals", label: "Signals", available: true },
     { id: "overview", label: "Overview", available: true },
     { id: "seo", label: "SEO / SemRush", available: !!client.semrushDomain },
     { id: "web", label: "Web Analytics (GA4)", available: !!client.ga4PropertyId },
@@ -219,7 +219,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
     ...tab,
     // If the role has tab restrictions, hide tabs not in the allowed set (core tabs always stay visible)
     available: tab.available && (!hasTabRestrictions || tabPermissions.includes(tab.id)),
-  })) as { id: Tab; label: string; available: boolean }[];
+  })).filter((tab) => tab.available) as { id: Tab; label: string; available: boolean }[];
 
   return (
     <div>
@@ -229,11 +229,10 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => tab.available && setActiveTab(tab.id)}
-              disabled={!tab.available}
+              onClick={() => setActiveTab(tab.id)}
               role="tab"
-              aria-selected={activeTab === tab.id && tab.available}
-              className={cn("tab-btn", activeTab === tab.id && tab.available && "active")}
+              aria-selected={activeTab === tab.id}
+              className={cn("tab-btn", activeTab === tab.id && "active")}
             >
               {tab.label}
             </button>
