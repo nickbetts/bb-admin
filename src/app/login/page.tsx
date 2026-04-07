@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Activity, TrendingUp, Zap, FileText, MessageSquare, Users, ArrowRight } from "lucide-react";
 
@@ -11,6 +11,43 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  const [activeSection, setActiveSection] = useState("");
+
+  useEffect(() => {
+    const ids = ["problems", "channels", "stratum", "signals", "budget", "reports", "forecasting", "ai-analyst", "portal", "how-it-works", "about", "access"];
+    const observers: IntersectionObserver[] = [];
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
+        { rootMargin: "-35% 0px -60% 0px" }
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+    return () => observers.forEach((obs) => obs.disconnect());
+  }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) entry.target.classList.add("section-visible");
+        });
+      },
+      { threshold: 0.07 }
+    );
+    document.querySelectorAll<Element>(".reveal-section").forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
+  const channelList = [
+    "Google Analytics 4", "Google Ads", "Google Search Console", "Meta Ads",
+    "Microsoft Advertising", "TikTok Ads", "LinkedIn Ads", "SemRush", "Moz",
+    "Klaviyo", "HubSpot", "CallRail", "WooCommerce", "Shopify", "YouTube Analytics", "Core Web Vitals",
+  ];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,15 +86,6 @@ export default function LoginPage() {
     { q: "Where should we move the budget?", a: "You know Meta's underperforming and Google Ads is flying. But without hard numbers side by side, it's still a gut-feel conversation." },
     { q: "Three platforms. Three numbers. None of them match.", a: "GA4 says one thing. Google Ads says another. Meta has its own view. Someone has to reconcile all of this. Every. Single. Week." },
     { q: "Is this account actually performing well?", a: "Without a cross-channel view, you're always looking at a piece of the puzzle. StratOS shows the whole board." },
-  ];
-
-  const channels = [
-    { group: "Web & Analytics", items: ["Google Analytics 4", "Google Search Console", "Core Web Vitals"] },
-    { group: "Paid Search", items: ["Google Ads", "Microsoft Advertising"] },
-    { group: "Paid Social", items: ["Meta Ads", "TikTok Ads", "LinkedIn Ads"] },
-    { group: "SEO", items: ["SemRush", "Moz"] },
-    { group: "Email & CRM", items: ["Klaviyo", "HubSpot", "CallRail"] },
-    { group: "E-Commerce & Video", items: ["WooCommerce", "Shopify", "YouTube Analytics"] },
   ];
 
   const capabilities = [
@@ -118,6 +146,59 @@ export default function LoginPage() {
 
   return (
     <div style={{ background: "#09090f", color: "white", fontFamily: "inherit" }}>
+
+      {/* ── STICKY SIDE NAV ── */}
+      <nav
+        className="side-nav"
+        style={{
+          position: "fixed", right: 24, top: "50%", transform: "translateY(-50%)",
+          zIndex: 40,
+          display: "flex", flexDirection: "column", gap: 1,
+          background: "rgba(9,9,15,0.88)",
+          border: "1px solid rgba(255,255,255,0.07)",
+          borderRadius: 14, padding: "10px 6px",
+          backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+        }}
+      >
+        {([
+          { id: "problems", label: "Problems" },
+          { id: "channels", label: "Channels" },
+          { id: "stratum", label: "Stratum" },
+          { id: "signals", label: "Signals" },
+          { id: "budget", label: "Budget" },
+          { id: "reports", label: "Reports" },
+          { id: "forecasting", label: "Forecasting" },
+          { id: "ai-analyst", label: "AI Analyst" },
+          { id: "portal", label: "Portal" },
+          { id: "how-it-works", label: "How it works" },
+          { id: "about", label: "About" },
+          { id: "access", label: "Get access" },
+        ] as { id: string; label: string }[]).map(({ id, label }) => (
+          <a
+            key={id}
+            href={`#${id}`}
+            onClick={(e) => {
+              e.preventDefault();
+              document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+            }}
+            style={{
+              display: "block",
+              padding: "5px 12px",
+              borderRadius: 8,
+              fontSize: 11,
+              fontWeight: 600,
+              color: activeSection === id ? "#a5b4fc" : "rgba(255,255,255,0.2)",
+              textDecoration: "none",
+              borderLeft: activeSection === id ? "2px solid #6366f1" : "2px solid transparent",
+              whiteSpace: "nowrap",
+              transition: "color 0.15s, border-color 0.15s",
+              letterSpacing: "0.01em",
+            }}
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
 
       {/* ── NAV ── */}
       <nav style={{
@@ -342,7 +423,7 @@ export default function LoginPage() {
       </section>
 
       {/* ── SECTION 2: PAIN POINTS ── */}
-      <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      <section id="problems" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
@@ -377,7 +458,7 @@ export default function LoginPage() {
       </section>
 
       {/* ── SECTION 3: CHANNELS ── */}
-      <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      <section id="channels" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
@@ -391,26 +472,27 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }} className="channels-grid">
-            {channels.map((group) => (
-              <div key={group.group} style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 16, padding: "24px 28px",
-              }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16 }}>
-                  {group.group}
-                </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {group.items.map((ch) => (
-                    <div key={ch} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(99,102,241,0.5)", flexShrink: 0 }} />
-                      <span style={{ fontSize: 14, color: "rgba(255,255,255,0.65)", fontWeight: 500 }}>{ch}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div style={{ overflow: "hidden", margin: "0 -40px", padding: "8px 0" }}>
+            <div className="marquee-row" style={{ display: "flex", gap: 14 }}>
+              {[...channelList, ...channelList, ...channelList].map((ch, i) => (
+                <span key={i} style={{
+                  whiteSpace: "nowrap", flexShrink: 0,
+                  padding: "10px 22px", borderRadius: 100,
+                  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+                  fontSize: 13, color: "rgba(255,255,255,0.6)", fontWeight: 500,
+                }}>{ch}</span>
+              ))}
+            </div>
+            <div className="marquee-row-rev" style={{ display: "flex", gap: 14, marginTop: 14 }}>
+              {[...channelList, ...channelList, ...channelList].reverse().map((ch, i) => (
+                <span key={i} style={{
+                  whiteSpace: "nowrap", flexShrink: 0,
+                  padding: "10px 22px", borderRadius: 100,
+                  background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)",
+                  fontSize: 13, color: "rgba(255,255,255,0.45)", fontWeight: 500,
+                }}>{ch}</span>
+              ))}
+            </div>
           </div>
           <p style={{ textAlign: "center", marginTop: 32, fontSize: 13, color: "rgba(255,255,255,0.22)" }}>
             15 platforms. One login. Updated automatically — no Monday morning setup ritual.
@@ -419,7 +501,7 @@ export default function LoginPage() {
       </section>
 
       {/* ── SECTION 4: STRATUM ── */}
-      <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden", background: "rgba(99,102,241,0.015)" }}>
+      <section id="stratum" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden", background: "rgba(99,102,241,0.015)" }}>
         <div style={{
           position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.035,
           backgroundImage: "linear-gradient(rgba(99,102,241,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.9) 1px, transparent 1px)",
@@ -472,114 +554,463 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ── SECTION 5: CAPABILITIES ── */}
-      <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
-        <div style={{
-          position: "absolute", width: "50%", paddingBottom: "30%",
-          top: "10%", right: "-15%", pointerEvents: "none", borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%)",
-        }} />
-        <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative" }}>
-          <div style={{ textAlign: "center", marginBottom: 64 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
-              What StratOS does
-            </p>
-            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
-              Less firefighting.<br />More deciding.
-            </h2>
-            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
-              Everything you wish your reporting stack did. Built by people who spent years frustrated that it didn&apos;t.
-            </p>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="capabilities-grid">
-            {capabilities.map((cap, i) => (
-              <div
-                key={i}
-                style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  borderRadius: 16, padding: "28px 28px 32px",
-                  transition: "border-color 0.2s",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(99,102,241,0.3)")}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)")}
-              >
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10, marginBottom: 20,
-                  background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.25)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: "#818cf8",
-                }}>
-                  {cap.icon}
+      {/* ── FEATURE: SIGNALS ── */}
+      <section id="signals" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Early warning</p>
+              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
+                You&apos;ll know before<br />your client does
+              </h2>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
+                StratOS watches every connected channel around the clock. The moment ROAS tanks, a campaign breaks, spend spikes unexpectedly, or rankings slip — you get the alert, with context, before anyone else sees it.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  "Automatic anomaly detection across all 15 channels simultaneously",
+                  "Severity-ranked feed — critical finds always surface to the top",
+                  "Context attached: what changed, by how much, and when it started",
+                  "Powered by Stratum's cross-channel correlation engine",
+                ].map((b) => (
+                  <div key={b} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>Signals · Acme Corp · Live</span>
+                <div style={{ marginLeft: "auto", width: 7, height: 7, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 8px rgba(16,185,129,0.6)" }} className="stratum-pulse" />
+              </div>
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+                {([
+                  { color: "#ef4444", bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.2)", ch: "Meta Ads", metric: "ROAS −34%", detail: "vs 7-day avg · Critical · 2 hrs ago" },
+                  { color: "#f59e0b", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.18)", ch: "Google Ads", metric: "CPC +18%", detail: "Brand campaigns · Warning · 4 hrs ago" },
+                  { color: "#10b981", bg: "rgba(16,185,129,0.07)", border: "rgba(16,185,129,0.2)", ch: "Organic Search", metric: "Sessions +22%", detail: "Week on week · Positive · 8 hrs ago" },
+                  { color: "#f59e0b", bg: "rgba(245,158,11,0.06)", border: "rgba(245,158,11,0.12)", ch: "LinkedIn Ads", metric: "CTR −12%", detail: "All campaigns · Warning · 6 hrs ago" },
+                ] as { color: string; bg: string; border: string; ch: string; metric: string; detail: string }[]).map((a) => (
+                  <div key={a.ch} style={{ padding: "11px 14px", borderRadius: 10, background: a.bg, border: `1px solid ${a.border}`, display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: a.color, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: a.color }}>{a.ch}</span>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: "white" }}>{a.metric}</span>
+                      </div>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)" }}>{a.detail}</span>
+                    </div>
+                  </div>
+                ))}
+                <div style={{ marginTop: 4, padding: "10px 14px", borderRadius: 10, background: "rgba(99,102,241,0.07)", border: "1px solid rgba(99,102,241,0.15)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 11, color: "rgba(129,140,248,0.7)", fontWeight: 600 }}>4 signals detected today</span>
+                  <span style={{ fontSize: 11, color: "rgba(129,140,248,0.45)" }}>View all →</span>
                 </div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "white", marginBottom: 10, lineHeight: 1.3 }}>
-                  {cap.title}
-                </h3>
-                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>
-                  {cap.desc}
-                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURE: BUDGET ADVISOR ── */}
+      <section id="budget" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
+            <div style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>Budget Advisor · This week</span>
+              </div>
+              <div style={{ padding: 20 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14 }}>Channel efficiency · ROAS by spend</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {([
+                    { ch: "Google Search", spend: "£2,800", roas: "6.2×", width: "88%", color: "#10b981", tag: "Best performer" },
+                    { ch: "Google Shopping", spend: "£1,400", roas: "4.8×", width: "68%", color: "#6366f1", tag: "Stable" },
+                    { ch: "Meta Ads", spend: "£3,200", roas: "1.9×", width: "27%", color: "#ef4444", tag: "Underperforming" },
+                    { ch: "LinkedIn Ads", spend: "£800", roas: "2.1×", width: "30%", color: "#f59e0b", tag: "Low volume" },
+                  ] as { ch: string; spend: string; roas: string; width: string; color: string; tag: string }[]).map((c) => (
+                    <div key={c.ch}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>{c.ch}</span>
+                          <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, background: `${c.color}20`, color: c.color, fontWeight: 700 }}>{c.tag}</span>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: "white" }}>{c.roas}</span>
+                          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginLeft: 6 }}>{c.spend}</span>
+                        </div>
+                      </div>
+                      <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 3 }}>
+                        <div style={{ height: 6, width: c.width, background: c.color, borderRadius: 3, opacity: 0.65 }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 20, padding: "14px 16px", borderRadius: 12, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)" }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", marginBottom: 5 }}>Recommendation</p>
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.55 }}>
+                    Move <strong style={{ color: "white" }}>£1,200</strong> from Meta Ads to Google Search. Projected improvement: <strong style={{ color: "#10b981" }}>+£7,400 ROAS/mo</strong>
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Budget advisor</p>
+              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
+                Stop guessing where<br />to put the money
+              </h2>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
+                Every paid channel laid out side by side — ROAS, spend, efficiency — with a clear recommendation on where a budget shift would have the biggest return. It shows you the projected numbers. You make the call.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  "Compares every active paid channel in the same view",
+                  "ROAS, CPA and efficiency scores updated daily from live data",
+                  "Projected £/$ impact shown before you move a penny",
+                  "Pairs with 90-day forecasting to model the downstream effect",
+                ].map((b) => (
+                  <div key={b} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURE: REPORTS ── */}
+      <section id="reports" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Reporting</p>
+              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
+                Reports that don&apos;t<br />wreck your Wednesday
+              </h2>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
+                Pull data from every connected channel, drag the sections into the order you want, generate AI commentary in one click, and share a live link or export a branded PDF. The whole thing takes under 20 minutes.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  "Data pulled directly from each channel — no copy-pasting required",
+                  "AI writes the commentary: what moved, why, what to do about it",
+                  "Drag-to-reorder sections, add custom text, include screenshots",
+                  "Share as a live link or export as a branded PDF",
+                ].map((b) => (
+                  <div key={b} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>Report Builder · Acme Corp · March 2026</span>
+              </div>
+              <div style={{ padding: 16 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
+                  {([
+                    { label: "Executive Summary", tag: "AI generated", tagColor: "#10b981" },
+                    { label: "GA4 — Website Performance", tag: "Live data", tagColor: "#6366f1" },
+                    { label: "Google Ads — Paid Search", tag: "Live data", tagColor: "#6366f1" },
+                    { label: "Meta Ads — Paid Social", tag: "Live data", tagColor: "#6366f1" },
+                    { label: "SEO Overview", tag: "Live data", tagColor: "#6366f1" },
+                  ] as { label: string; tag: string; tagColor: string }[]).map((s) => (
+                    <div key={s.label} style={{ padding: "9px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2.5, flexShrink: 0 }}>
+                        <div style={{ width: 12, height: 1.5, background: "rgba(255,255,255,0.15)", borderRadius: 1 }} />
+                        <div style={{ width: 12, height: 1.5, background: "rgba(255,255,255,0.15)", borderRadius: 1 }} />
+                        <div style={{ width: 12, height: 1.5, background: "rgba(255,255,255,0.15)", borderRadius: 1 }} />
+                      </div>
+                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", flex: 1, fontWeight: 500 }}>{s.label}</span>
+                      <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, background: `${s.tagColor}18`, color: s.tagColor, fontWeight: 700, whiteSpace: "nowrap" }}>{s.tag}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(99,102,241,0.07)", border: "1px solid rgba(99,102,241,0.15)", marginBottom: 12 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", marginBottom: 5 }}>AI Commentary — Executive Summary</p>
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
+                    &ldquo;Sessions were up 14% on the previous period, driven primarily by organic (+22%) and paid search (+9%). ROAS across paid channels averaged 4.2×, though Meta underperformed expectations…&rdquo;
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <div style={{ flex: 1, padding: "8px 12px", borderRadius: 8, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.3)", textAlign: "center", fontSize: 11, color: "#a5b4fc", fontWeight: 700 }}>Share link →</div>
+                  <div style={{ flex: 1, padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", textAlign: "center", fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>Export PDF</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURE: FORECASTING ── */}
+      <section id="forecasting" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
+            <div style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>90-Day Forecast · Revenue · Acme Corp</span>
+              </div>
+              <div style={{ padding: 20 }}>
+                <div style={{ display: "flex", gap: 20, marginBottom: 20 }}>
+                  {[
+                    { val: "£48,200", label: "Expected · 90 days", color: "#a5b4fc" },
+                    { val: "£58,400", label: "Best case", color: "#10b981" },
+                    { val: "£36,100", label: "Worst case", color: "rgba(239,68,68,0.75)" },
+                  ].map((s) => (
+                    <div key={s.label} style={{ textAlign: "center", flex: 1 }}>
+                      <div style={{ fontSize: 18, fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.val}</div>
+                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 4, fontWeight: 600 }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 10, padding: "16px 8px 8px" }}>
+                  <svg viewBox="0 0 440 160" style={{ width: "100%", height: "auto", display: "block" }}>
+                    <line x1="0" y1="40" x2="440" y2="40" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                    <line x1="0" y1="80" x2="440" y2="80" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                    <line x1="0" y1="120" x2="440" y2="120" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                    <line x1="190" y1="0" x2="190" y2="150" stroke="rgba(99,102,241,0.25)" strokeWidth="1" strokeDasharray="4,3" />
+                    <path d="M190,90 L250,78 L310,64 L370,48 L430,36 L430,116 L370,106 L310,100 L250,98 L190,90Z" fill="rgba(99,102,241,0.1)" />
+                    <polyline points="20,138 65,124 110,110 150,100 190,90" fill="none" stroke="rgba(129,140,248,0.4)" strokeWidth="2" strokeLinecap="round" />
+                    <polyline points="190,90 250,86 310,80 370,74 430,66" fill="none" stroke="#818cf8" strokeWidth="2.5" strokeDasharray="7,3" strokeLinecap="round" />
+                    <polyline points="190,90 250,78 310,64 370,48 430,36" fill="none" stroke="rgba(16,185,129,0.5)" strokeWidth="1.5" strokeDasharray="4,4" />
+                    <polyline points="190,90 250,98 310,100 370,106 430,116" fill="none" stroke="rgba(239,68,68,0.38)" strokeWidth="1.5" strokeDasharray="4,4" />
+                    <circle cx="190" cy="90" r="4" fill="#818cf8" />
+                    <text x="95" y="154" textAnchor="middle" fill="rgba(255,255,255,0.18)" fontSize="9" fontFamily="sans-serif">Historical</text>
+                    <text x="190" y="154" textAnchor="middle" fill="rgba(99,102,241,0.55)" fontSize="9" fontFamily="sans-serif">Now</text>
+                    <text x="315" y="154" textAnchor="middle" fill="rgba(99,102,241,0.6)" fontSize="9" fontFamily="sans-serif">90-day forecast</text>
+                  </svg>
+                </div>
+                <div style={{ display: "flex", gap: 16, marginTop: 10, justifyContent: "flex-end" }}>
+                  {([
+                    { label: "Best", color: "rgba(16,185,129,0.5)", dash: "4,4" },
+                    { label: "Expected", color: "#818cf8", dash: "7,3" },
+                    { label: "Worst", color: "rgba(239,68,68,0.38)", dash: "4,4" },
+                  ] as { label: string; color: string; dash: string }[]).map((l) => (
+                    <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <svg width="18" height="3" style={{ display: "block" }}>
+                        <line x1="0" y1="1.5" x2="18" y2="1.5" stroke={l.color} strokeWidth="2" strokeDasharray={l.dash} />
+                      </svg>
+                      <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>{l.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Forecasting</p>
+              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
+                See 90 days ahead,<br />not just last month
+              </h2>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
+                Real projections built from your actual historical data — not generic benchmarks. Best, expected, and worst-case bands for 30, 60 and 90 days out. The kind of forward visibility that turns account reviews into genuine strategic conversations.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  "Built from your own historical data, not industry averages",
+                  "30, 60 and 90-day projections with confidence bands",
+                  "Seasonality patterns detected and factored in automatically",
+                  "Per-channel and rolled-up cross-channel forecasting",
+                ].map((b) => (
+                  <div key={b} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURE: AI ANALYST ── */}
+      <section id="ai-analyst" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>AI Analyst</p>
+              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
+                Just ask it
+              </h2>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
+                Every client dashboard has a conversational AI analyst built in. It&apos;s read all the data from every connected channel, knows the account&apos;s history, and can answer questions you&apos;d normally spend an hour digging for answers to yourself.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  "Full cross-channel context — not just one platform at a time",
+                  "Ask in plain English — it handles the analysis, not you",
+                  "Every answer links back to the underlying data",
+                  "Powered by Stratum — surfaces insights invisible to single-channel views",
+                ].map((b) => (
+                  <div key={b} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>AI Analyst · Acme Corp</span>
+              </div>
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <div style={{ padding: "10px 14px", borderRadius: "12px 12px 4px 12px", background: "rgba(99,102,241,0.18)", border: "1px solid rgba(99,102,241,0.28)", maxWidth: "80%", fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>
+                    Why did sessions drop on Thursday?
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.35)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, color: "#818cf8", marginTop: 2 }}>S</div>
+                  <div style={{ padding: "12px 14px", borderRadius: "4px 12px 12px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", flex: 1, fontSize: 12, color: "rgba(255,255,255,0.62)", lineHeight: 1.7 }}>
+                    Thursday saw a <span style={{ color: "#ef4444", fontWeight: 700 }}>−31% drop</span> in organic sessions (1,247 vs 7-day avg of 1,803). Cross-referencing Search Console, avg. position for non-brand terms fell from <strong style={{ color: "white" }}>4.2 → 6.8</strong> — consistent with a broad core update. Paid traffic was unaffected (+3%). <span style={{ color: "rgba(129,140,248,0.8)" }}>Recommend refreshing content on your 3 highest-traffic landing pages.</span>
+                  </div>
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <div style={{ padding: "10px 14px", borderRadius: "12px 12px 4px 12px", background: "rgba(99,102,241,0.18)", border: "1px solid rgba(99,102,241,0.28)", maxWidth: "80%", fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>
+                    Which campaign should we pause?
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.35)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, color: "#818cf8", marginTop: 2 }}>S</div>
+                  <div style={{ padding: "12px 16px", borderRadius: "4px 12px 12px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", gap: 5, alignItems: "center" }}>
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#818cf8" }} className="stratum-pulse" />
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#818cf8", opacity: 0.6 }} className="stratum-pulse" />
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#818cf8", opacity: 0.35 }} className="stratum-pulse" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURE: CLIENT PORTAL ── */}
+      <section id="portal" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
+            <div style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>Client Portal · Riverside Fitness</span>
+              </div>
+              <div style={{ padding: 20 }}>
+                <div style={{ marginBottom: 18 }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.6)", marginBottom: 3 }}>Good morning, Sarah</p>
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>Here&apos;s how your marketing is performing this month.</p>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
+                  {([
+                    { label: "Sessions", value: "24,831", change: "+8%", up: true },
+                    { label: "ROAS", value: "4.2×", change: "+0.3", up: true },
+                    { label: "Conversions", value: "842", change: "+12%", up: true },
+                  ] as { label: string; value: string; change: string; up: boolean }[]).map((m) => (
+                    <div key={m.label} style={{ padding: "12px 10px", borderRadius: 10, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: "white", marginBottom: 2 }}>{m.value}</div>
+                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>{m.label}</div>
+                      <div style={{ fontSize: 10, color: m.up ? "#10b981" : "#ef4444", fontWeight: 700, marginTop: 3 }}>{m.change}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginBottom: 14 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Goals this month</p>
+                  {([
+                    { label: "Monthly revenue target", pct: 78 },
+                    { label: "Lead volume target", pct: 91 },
+                  ] as { label: string; pct: number }[]).map((g) => (
+                    <div key={g.label} style={{ marginBottom: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>{g.label}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(129,140,248,0.8)" }}>{g.pct}%</span>
+                      </div>
+                      <div style={{ height: 5, background: "rgba(255,255,255,0.06)", borderRadius: 3 }}>
+                        <div style={{ height: 5, width: `${g.pct}%`, background: "rgba(99,102,241,0.55)", borderRadius: 3 }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.6)" }}>March 2026 Report</p>
+                    <p style={{ fontSize: 10, color: "rgba(255,255,255,0.22)" }}>Shared 2 Apr 2026</p>
+                  </div>
+                  <span style={{ fontSize: 11, color: "#a5b4fc", fontWeight: 600 }}>View →</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Client portal</p>
+              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
+                Clients get a view<br />that makes sense
+              </h2>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
+                Each client gets their own portal — goals, reports, and the key numbers that matter to them. Not raw data. Not 15 different platform logins. Just a clean view that keeps them informed and out of your hair.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  "Magic link login — no extra account to manage for your client",
+                  "Customised to show only the metrics that matter for that account",
+                  "Reports shared directly — clients read them here, not in email threads",
+                  "Goals and targets tracked with progress bars so progress is always visible",
+                ].map((b) => (
+                  <div key={b} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── ALSO IN STRATOS ── */}
+      <section className="reveal-section" style={{ padding: "80px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.01)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 48 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 12 }}>Also in StratOS</p>
+            <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", color: "white", lineHeight: 1.15 }}>There&apos;s a lot more under the bonnet</h2>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }} className="also-grid">
+            {[
+              { title: "Multi-touch attribution", desc: "Five models side by side — last-click, first-click, linear, time-decay, position-based. See who actually gets the credit." },
+              { title: "Seasonality intelligence", desc: "Automatic pattern detection across historical snapshots. Catch seasonal trends before they catch you out." },
+              { title: "Share of voice tracking", desc: "Organic and paid competitive position against your rivals, updated with live SemRush data." },
+              { title: "Quarterly strategy documents", desc: "Forward-looking strategy docs per client, generated by AI and shareable via link. No more building decks from scratch." },
+              { title: "Competitor monitoring", desc: "Ongoing competitive snapshots with AI commentary, saved to history so you can see how the landscape is shifting." },
+              { title: "Keyword planning & proposals", desc: "Research keywords, build proposals with projected traffic and value, and share them with link-tracked engagement." },
+            ].map((item) => (
+              <div key={item.title} style={{ padding: "20px 22px", borderRadius: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <p style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.72)", marginBottom: 6 }}>{item.title}</p>
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>{item.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── SECTION 5: MORE DEPTH ── */}
-      <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="depth-grid">
-            <div>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 20 }}>
-                Under the bonnet
-              </p>
-              <h2 style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.15, marginBottom: 20, color: "white" }}>
-                There&apos;s a lot going on underneath
-              </h2>
-              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", lineHeight: 1.75, marginBottom: 32 }}>
-                Beyond the day-to-day dashboards, StratOS has a full operations layer — proposal building, media planning, competitive monitoring, keyword research, and a client communication hub. It&apos;s the whole agency in one tool.
-              </p>
-              <a
-                href="#login-form"
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 8,
-                  padding: "12px 22px", borderRadius: 10,
-                  background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)",
-                  color: "#a5b4fc", fontSize: 14, fontWeight: 600, textDecoration: "none",
-                }}
-              >
-                Sign in and see for yourself <ArrowRight style={{ width: 14, height: 14 }} />
-              </a>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {[
-                { title: "Multi-touch attribution", desc: "Five models side by side — last-click, first-click, linear, time-decay, position-based. See who actually gets the credit." },
-                { title: "90-day performance forecasting", desc: "Real projections from real historical data. Best, expected and worst case — so you can plan with actual confidence." },
-                { title: "Seasonality intelligence", desc: "Automatic pattern detection from historical snapshots. Catch seasonal trends before they catch you out." },
-                { title: "Share of voice tracking", desc: "Organic and paid competitive position against your rivals, updated with live SemRush data." },
-                { title: "Quarterly strategy documents", desc: "Forward-looking strategy docs per client, generated and shareable via link. No more building decks from scratch." },
-                { title: "Competitor monitoring", desc: "Ongoing competitive snapshots with AI commentary, saved to history so you can see how the landscape is shifting." },
-              ].map((item) => (
-                <div key={item.title} style={{
-                  display: "flex", gap: 14,
-                  padding: "16px 20px", borderRadius: 12,
-                  background: "rgba(255,255,255,0.025)",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.8)", marginBottom: 3 }}>{item.title}</p>
-                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.55 }}>{item.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── SECTION 6: HOW IT WORKS ── */}
-      <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      <section id="how-it-works" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
@@ -619,7 +1050,7 @@ export default function LoginPage() {
       </section>
 
       {/* ── SECTION 7: BUILT BY i3MEDIA ── */}
-      <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
+      <section id="about" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
         <div style={{
           position: "absolute", width: "60%", paddingBottom: "40%",
           bottom: "-20%", left: "-10%", pointerEvents: "none", borderRadius: "50%",
@@ -670,7 +1101,7 @@ export default function LoginPage() {
       </section>
 
       {/* ── BOTTOM CTA ── */}
-      <section style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      <section id="access" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 680, margin: "0 auto", textAlign: "center" }}>
           <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 24 }}>
             Right then
@@ -765,6 +1196,33 @@ export default function LoginPage() {
           .capabilities-grid { grid-template-columns: 1fr !important; }
           .stratum-grid { grid-template-columns: 1fr 1fr !important; }
           .steps-grid { grid-template-columns: 1fr !important; }
+        }
+
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-33.333%); }
+        }
+        @keyframes marqueeRev {
+          0% { transform: translateX(-33.333%); }
+          100% { transform: translateX(0); }
+        }
+        .marquee-row { animation: marquee 30s linear infinite; }
+        .marquee-row-rev { animation: marqueeRev 36s linear infinite; }
+
+        .reveal-section { opacity: 0; transform: translateY(28px); transition: opacity 0.65s ease, transform 0.65s ease; }
+        .reveal-section.section-visible { opacity: 1; transform: translateY(0); }
+
+        .side-nav { display: flex; }
+        @media (max-width: 1200px) {
+          .side-nav { display: none !important; }
+        }
+        @media (max-width: 1000px) {
+          .feature-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+          .marquee-row { animation-duration: 20s !important; }
+          .marquee-row-rev { animation-duration: 24s !important; }
+        }
+        @media (max-width: 700px) {
+          .also-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>
