@@ -215,6 +215,8 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         alerts.push({ severity: "medium", label: "Paid vs Organic CVR", detail: `Organic CVR (${(orgCVR * 100).toFixed(1)}%) is ${(orgCVR / paidCVR).toFixed(1)}× higher than paid CVR (${(paidCVR * 100).toFixed(1)}%)`, recommendation: "Paid traffic is converting at a much lower rate than organic. Review ad targeting quality, landing page experience for paid visitors, and consider reallocating budget to higher-converting campaigns." });
     }
 
+    const sevOrder: Record<string, number> = { high: 0, medium: 1 };
+    alerts.sort((a, b) => (sevOrder[a.severity] ?? 2) - (sevOrder[b.severity] ?? 2));
     return alerts;
   }, [overview, prevOverview, sources]);
 

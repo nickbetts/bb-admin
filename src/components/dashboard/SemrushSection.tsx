@@ -255,6 +255,8 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
     if (overview && overview.organicCost > 5000 && overview.organicTraffic < 1000)
       alerts.push({ severity: "medium", label: "High Organic Value", detail: `Organic keyword portfolio valued at ${formatCurrency(overview.organicCost)} but only ${formatNumber(overview.organicTraffic)} monthly visits`, recommendation: "The keyword portfolio has high CPC value. Focus on improving rankings for high-CPC keywords already in positions 5\u201320 to capture more of this traffic value." });
 
+    const sevOrder: Record<string, number> = { high: 0, medium: 1 };
+    alerts.sort((a, b) => (sevOrder[a.severity] ?? 2) - (sevOrder[b.severity] ?? 2));
     return alerts;
   }, [history, keywords, overview, competitors]);
 

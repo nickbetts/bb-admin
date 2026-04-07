@@ -237,6 +237,8 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
         });
       }
     }
+    const sevOrder: Record<string, number> = { high: 0, medium: 1 };
+    alerts.sort((a, b) => (sevOrder[a.severity] ?? 2) - (sevOrder[b.severity] ?? 2));
     return alerts;
   }, [data]);
 
