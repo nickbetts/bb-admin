@@ -119,7 +119,7 @@ export default function LoginPage() {
     {
       n: "01",
       title: "Connect your channels",
-      desc: "Add your credentials once. GA4, Google Ads, Meta, TikTok, LinkedIn — everything starts pulling in. Most clients are live in under half an hour.",
+      desc: "Add your credentials once. GA4, Google Ads, Meta, TikTok, LinkedIn: everything starts pulling in. Most clients are live in under half an hour.",
     },
     {
       n: "02",
@@ -129,12 +129,12 @@ export default function LoginPage() {
     {
       n: "03",
       title: "Dig in with all the context",
-      desc: "Every channel tab has the full picture — campaigns, creatives, landing pages, goals. The AI reads data from all other channels before it gives you an insight.",
+      desc: "Every channel tab has the full picture: campaigns, creatives, landing pages, goals. Stratum™ reads data from all other channels before it gives you an insight.",
     },
     {
       n: "04",
       title: "Act, report, repeat",
-      desc: "Assign actions to the team, generate a client report with a click, share a strategy document. From spotting the issue to presenting the solution — all in one place.",
+      desc: "Assign actions to the team, generate a client report with a click, share a strategy document. From spotting the issue to presenting the solution, all in one place.",
     },
   ];
 
@@ -180,7 +180,7 @@ export default function LoginPage() {
           { id: "budget", label: "Budget" },
           { id: "reports", label: "Reports" },
           { id: "forecasting", label: "Forecasting" },
-          { id: "ai-analyst", label: "AI Analyst" },
+          { id: "ai-analyst", label: "Stratum™" },
           { id: "portal", label: "Portal" },
           { id: "how-it-works", label: "How it works" },
           { id: "about", label: "About" },
@@ -298,42 +298,60 @@ export default function LoginPage() {
               </div>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 14px", borderRadius: 20, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(255,255,255,0.25)", boxShadow: "0 0 6px rgba(255,255,255,0.3)" }} className="stratum-pulse" />
-                <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Powered by Stratum</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Powered by Stratum™</span>
               </div>
             </div>
             <h1 style={{
               fontSize: 64, fontWeight: 900, lineHeight: 1.0,
               letterSpacing: "-0.04em", marginBottom: 28, color: "white",
             }} className="hero-headline">
-              <span className="hw hw1">We</span>{" "}
-              <span className="hw hw2">got</span>{" "}
-              <span className="hw hw3">tired</span>
+              <span className="hw hw1">Every</span>{" "}
+              <span className="hw hw2">channel.</span>
               <br />
-              <span className="hw hw4">of</span>{" "}
-              <span className="hw hw5">it</span>{" "}
-              <span className="hw hw6">too.</span>
+              <span className="hw hw4">One</span>{" "}
+              <span className="hw hw5">platform.</span>
+              <br />
+              <span style={{ background: "linear-gradient(90deg, #818cf8, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                <span className="hw hw3">Finally.</span>
+              </span>
             </h1>
             <p style={{
               fontSize: 18, color: "rgba(255,255,255,0.55)", lineHeight: 1.75,
               maxWidth: 520, marginBottom: 40,
             }}>
-              After 20 years managing campaigns for ambitious brands, i3MEDIA built StratOS because we were sick of the same problem — too much data, spread across too many platforms, taking too long to do anything useful with.
+              After 20 years running campaigns for ambitious brands, we built what we always wanted: 15 marketing channels in one place, anomalies flagged before your client notices, and client reports that write themselves.
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
               {[
-                "15 channels pulled into one view — no more tab-switching",
-                "Automatic anomaly detection so you know before your client does",
-                "Reports with full commentary generated in minutes, not hours",
-                "Ask the AI analyst anything — it reads every connected channel",
+                "15 channels connected. Fully live, no manual exports.",
+                "Stratum™ flags issues before your client ever notices.",
+                "Reports with commentary done in minutes, not an afternoon.",
+                "Ask Stratum™ anything. It reads every connected channel at once.",
+                "90-day forecasting built from your own data, not benchmarks.",
+                "Budget advisor shows exactly where to move the spend and why.",
+                "Branded client portals with live goals and key metrics.",
               ].map((f) => (
-                <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
                   <div style={{
-                    width: 18, height: 18, borderRadius: "50%", flexShrink: 0, marginTop: 3,
-                    background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.4)",
+                    width: 17, height: 17, borderRadius: "50%", flexShrink: 0, marginTop: 2,
+                    background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.35)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#818cf8", fontSize: 10, fontWeight: 900,
+                    color: "#818cf8", fontSize: 9, fontWeight: 900,
                   }}>✓</div>
-                  <span style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", lineHeight: 1.55 }}>{f}</span>
+                  <span style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>{f}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", marginTop: 28, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+              {[
+                { val: "15", label: "channels" },
+                { val: "<30m", label: "onboarding" },
+                { val: "90 days", label: "forecasting" },
+                { val: "20+", label: "years\u2019 experience" },
+              ].map((s, i) => (
+                <div key={s.label} style={{ flex: 1, textAlign: "center", paddingLeft: i === 0 ? 0 : 8, borderLeft: i === 0 ? "none" : "1px solid rgba(255,255,255,0.07)" }}>
+                  <div style={{ fontSize: 19, fontWeight: 900, color: "white", letterSpacing: "-0.03em", lineHeight: 1 }}>{s.val}</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.28)", marginTop: 4, fontWeight: 500 }}>{s.label}</div>
                 </div>
               ))}
             </div>
@@ -539,7 +557,7 @@ export default function LoginPage() {
             </div>
           </div>
           <p style={{ textAlign: "center", marginTop: 32, fontSize: 13, color: "rgba(255,255,255,0.22)" }}>
-            15 platforms. One login. Updated automatically — no Monday morning setup ritual.
+            15 platforms. One login. Updated automatically, no Monday morning setup ritual.
           </p>
         </div>
       </section>
@@ -566,13 +584,13 @@ export default function LoginPage() {
           </div>
 
           <h2 className="stratum-shimmer" style={{ fontSize: 72, fontWeight: 900, letterSpacing: "-0.05em", lineHeight: 0.9, marginBottom: 20 }}>
-            Stratum
+            Stratum<sup style={{ fontSize: "0.28em", verticalAlign: "super", letterSpacing: 0 }}>™</sup>
           </h2>
           <p style={{ fontSize: 18, color: "rgba(99,102,241,0.75)", fontWeight: 700, letterSpacing: "0.04em", marginBottom: 32, textTransform: "uppercase" }}>
             Cross-channel intelligence framework
           </p>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 640, margin: "0 auto 52px" }}>
-            Stratum is the intelligence layer beneath everything you see in StratOS. It works across all 15 connected channels simultaneously — reading signals, finding correlations, and surfacing insights that only emerge when you stop looking at platforms in isolation. We&apos;ve spent years building it. You won&apos;t find it anywhere else.
+            Stratum is the intelligence layer beneath everything you see in StratOS. It works across all 15 connected channels simultaneously, reading signals, finding correlations, and surfacing insights that only emerge when you stop looking at platforms in isolation. We&apos;ve spent years building it. You won&apos;t find it anywhere else.
           </p>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 52 }} className="stratum-grid">
@@ -609,12 +627,12 @@ export default function LoginPage() {
                 You&apos;ll know before<br />your client does
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                StratOS watches every connected channel around the clock. The moment ROAS tanks, a campaign breaks, spend spikes unexpectedly, or rankings slip — you get the alert, with context, before anyone else sees it.
+                StratOS watches every connected channel around the clock. The moment ROAS tanks, a campaign breaks, spend spikes unexpectedly, or rankings slip, you get the alert with context before anyone else sees it.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {[
                   "Automatic anomaly detection across all 15 channels simultaneously",
-                  "Severity-ranked feed — critical finds always surface to the top",
+                  "Severity-ranked feed: critical finds always surface to the top",
                   "Context attached: what changed, by how much, and when it started",
                   "Powered by Stratum's cross-channel correlation engine",
                 ].map((b) => (
@@ -712,7 +730,7 @@ export default function LoginPage() {
                 Stop guessing where<br />to put the money
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                Every paid channel laid out side by side — ROAS, spend, efficiency — with a clear recommendation on where a budget shift would have the biggest return. It shows you the projected numbers. You make the call.
+                Every paid channel laid out side by side: ROAS, spend and efficiency, with a clear recommendation on where a budget shift would have the biggest return. It shows you the projected numbers. You make the call.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {[
@@ -742,12 +760,12 @@ export default function LoginPage() {
                 Reports that don&apos;t<br />wreck your Wednesday
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                Pull data from every connected channel, drag the sections into the order you want, generate AI commentary in one click, and share a live link or export a branded PDF. The whole thing takes under 20 minutes.
+                Pull data from every connected channel, drag the sections into the order you want, generate Stratum™ commentary in one click, and share a live link or export a branded PDF. The whole thing takes under 20 minutes.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {[
-                  "Data pulled directly from each channel — no copy-pasting required",
-                  "AI writes the commentary: what moved, why, what to do about it",
+                  "Data pulled directly from each channel, no copy-pasting required",
+                  "Stratum™ writes the commentary: what moved, why, what to do about it",
                   "Drag-to-reorder sections, add custom text, include screenshots",
                   "Share as a live link or export as a branded PDF",
                 ].map((b) => (
@@ -768,10 +786,10 @@ export default function LoginPage() {
               <div style={{ padding: 16 }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
                   {([
-                    { label: "Executive Summary", tag: "AI generated", tagColor: "#10b981" },
-                    { label: "GA4 — Website Performance", tag: "Live data", tagColor: "#6366f1" },
-                    { label: "Google Ads — Paid Search", tag: "Live data", tagColor: "#6366f1" },
-                    { label: "Meta Ads — Paid Social", tag: "Live data", tagColor: "#6366f1" },
+                    { label: "Executive Summary", tag: "Stratum™", tagColor: "#10b981" },
+                    { label: "GA4: Website Performance", tag: "Live data", tagColor: "#6366f1" },
+                    { label: "Google Ads: Paid Search", tag: "Live data", tagColor: "#6366f1" },
+                    { label: "Meta Ads: Paid Social", tag: "Live data", tagColor: "#6366f1" },
                     { label: "SEO Overview", tag: "Live data", tagColor: "#6366f1" },
                   ] as { label: string; tag: string; tagColor: string }[]).map((s) => (
                     <div key={s.label} style={{ padding: "9px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10 }}>
@@ -786,7 +804,7 @@ export default function LoginPage() {
                   ))}
                 </div>
                 <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(99,102,241,0.07)", border: "1px solid rgba(99,102,241,0.15)", marginBottom: 12 }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", marginBottom: 5 }}>AI Commentary — Executive Summary</p>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", marginBottom: 5 }}>Stratum<sup style={{ fontSize: "0.7em", verticalAlign: "super" }}>™</sup> Commentary: Executive Summary</p>
                   <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
                     &ldquo;Sessions were up 14% on the previous period, driven primarily by organic (+22%) and paid search (+9%). ROAS across paid channels averaged 4.2×, though Meta underperformed expectations…&rdquo;
                   </p>
@@ -864,7 +882,7 @@ export default function LoginPage() {
                 See 90 days ahead,<br />not just last month
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                Real projections built from your actual historical data — not generic benchmarks. Best, expected, and worst-case bands for 30, 60 and 90 days out. The kind of forward visibility that turns account reviews into genuine strategic conversations.
+                Real projections built from your actual historical data, not generic benchmarks. Best, expected, and worst-case bands for 30, 60 and 90 days out. The kind of forward visibility that turns account reviews into genuine strategic conversations.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {[
@@ -884,24 +902,24 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ── FEATURE: AI ANALYST ── */}
+      {/* ── FEATURE: STRATUM ANALYST ── */}
       <section id="ai-analyst" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
             <div>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>AI Analyst</p>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Stratum<sup style={{ fontSize: "0.7em", verticalAlign: "super" }}>™</sup> Analyst</p>
               <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
                 Just ask it
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                Every client dashboard has a conversational AI analyst built in. It&apos;s read all the data from every connected channel, knows the account&apos;s history, and can answer questions you&apos;d normally spend an hour digging for answers to yourself.
+                Every client dashboard has a conversational Stratum<sup style={{ fontSize: "0.65em", verticalAlign: "super" }}>™</sup> analyst built in. It&apos;s read all the data from every connected channel, knows the account&apos;s history, and can answer questions you&apos;d normally spend an hour digging for answers to yourself.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {[
-                  "Full cross-channel context — not just one platform at a time",
-                  "Ask in plain English — it handles the analysis, not you",
+                  "Full cross-channel context, not just one platform at a time",
+                  "Ask in plain English. It handles the analysis, not you.",
                   "Every answer links back to the underlying data",
-                  "Powered by Stratum — surfaces insights invisible to single-channel views",
+                  "Powered by Stratum: surfaces insights invisible to single-channel views",
                 ].map((b) => (
                   <div key={b} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />
@@ -915,7 +933,7 @@ export default function LoginPage() {
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>AI Analyst · Acme Corp</span>
+                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>Stratum™ · Acme Corp</span>
               </div>
               <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -926,7 +944,7 @@ export default function LoginPage() {
                 <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                   <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.35)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, color: "#818cf8", marginTop: 2 }}>S</div>
                   <div style={{ padding: "12px 14px", borderRadius: "4px 12px 12px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", flex: 1, fontSize: 12, color: "rgba(255,255,255,0.62)", lineHeight: 1.7 }}>
-                    Thursday saw a <span style={{ color: "#ef4444", fontWeight: 700 }}>−31% drop</span> in organic sessions (1,247 vs 7-day avg of 1,803). Cross-referencing Search Console, avg. position for non-brand terms fell from <strong style={{ color: "white" }}>4.2 → 6.8</strong> — consistent with a broad core update. Paid traffic was unaffected (+3%). <span style={{ color: "rgba(129,140,248,0.8)" }}>Recommend refreshing content on your 3 highest-traffic landing pages.</span>
+                    Thursday saw a <span style={{ color: "#ef4444", fontWeight: 700 }}>−31% drop</span> in organic sessions (1,247 vs 7-day avg of 1,803). Cross-referencing Search Console, avg. position for non-brand terms fell from <strong style={{ color: "white" }}>4.2 to 6.8</strong>, consistent with a broad core update. Paid traffic was unaffected (+3%). <span style={{ color: "rgba(129,140,248,0.8)" }}>Recommend refreshing content on your 3 highest-traffic landing pages.</span>
                   </div>
                 </div>
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -1009,13 +1027,13 @@ export default function LoginPage() {
                 Clients get a view<br />that makes sense
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                Each client gets their own portal — goals, reports, and the key numbers that matter to them. Not raw data. Not 15 different platform logins. Just a clean view that keeps them informed and out of your hair.
+                Each client gets their own portal: goals, reports, and the key numbers that matter to them. Not raw data. Not 15 different platform logins. Just a clean view that keeps them informed and out of your hair.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {[
-                  "Magic link login — no extra account to manage for your client",
+                  "Magic link login, no extra account to manage for your client",
                   "Customised to show only the metrics that matter for that account",
-                  "Reports shared directly — clients read them here, not in email threads",
+                  "Reports shared directly: clients read them here, not in email threads",
                   "Goals and targets tracked with progress bars so progress is always visible",
                 ].map((b) => (
                   <div key={b} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -1038,11 +1056,11 @@ export default function LoginPage() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }} className="also-grid">
             {[
-              { title: "Multi-touch attribution", desc: "Five models side by side — last-click, first-click, linear, time-decay, position-based. See who actually gets the credit." },
+              { title: "Multi-touch attribution", desc: "Five models side by side: last-click, first-click, linear, time-decay, position-based. See who actually gets the credit." },
               { title: "Seasonality intelligence", desc: "Automatic pattern detection across historical snapshots. Catch seasonal trends before they catch you out." },
               { title: "Share of voice tracking", desc: "Organic and paid competitive position against your rivals, updated with live SemRush data." },
-              { title: "Quarterly strategy documents", desc: "Forward-looking strategy docs per client, generated by AI and shareable via link. No more building decks from scratch." },
-              { title: "Competitor monitoring", desc: "Ongoing competitive snapshots with AI commentary, saved to history so you can see how the landscape is shifting." },
+              { title: "Quarterly strategy documents", desc: "Forward-looking strategy docs per client, generated by Stratum™ and shareable via link. No more building decks from scratch." },
+              { title: "Competitor monitoring", desc: "Ongoing competitive snapshots with Stratum™ commentary, saved to history so you can see how the landscape is shifting." },
               { title: "Keyword planning & proposals", desc: "Research keywords, build proposals with projected traffic and value, and share them with link-tracked engagement." },
             ].map((item) => (
               <div key={item.title} style={{ padding: "20px 22px", borderRadius: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
@@ -1109,10 +1127,10 @@ export default function LoginPage() {
             We&apos;re not a startup.<br />We&apos;re an agency that got fed up.
           </h2>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 680, margin: "0 auto 20px" }}>
-            i3MEDIA has been running digital campaigns for ambitious brands for over 20 years. Websites, SEO, paid social, PPC — we&apos;ve done it all, for clients of all shapes and sizes, across two continents.
+            i3MEDIA has been running digital campaigns for ambitious brands for over 20 years. Websites, SEO, paid social, PPC: we&apos;ve done it all, for clients of all shapes and sizes, across two continents.
           </p>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 680, margin: "0 auto 20px" }}>
-            And for 20 years, we had the same problem every other agency has. Too many platforms. Too much time pulling data. Not enough time actually using it. So we built StratOS — for ourselves first, and now for the wider world.
+            And for 20 years, we had the same problem every other agency has. Too many platforms. Too much time pulling data. Not enough time actually using it. So we built StratOS: for ourselves first, and now for the wider world.
           </p>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 680, margin: "0 auto 44px" }}>
             It&apos;s opinionated because we&apos;ve made every mistake in the book. It&apos;s fast because slow tools don&apos;t get used. And it&apos;s honest because that&apos;s how we work.
@@ -1159,7 +1177,7 @@ export default function LoginPage() {
             Ready to stop<br />flying blind?
           </h2>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.45)", lineHeight: 1.75, maxWidth: 480, margin: "0 auto 48px" }}>
-            Already have a StratOS account? Sign in above. Want to get set up? Drop us a line — we&apos;re a real team and we actually reply.
+            Already have a StratOS account? Sign in above. Want to get set up? Drop us a line. We&apos;re a real team and we actually reply.
           </p>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
             <a
