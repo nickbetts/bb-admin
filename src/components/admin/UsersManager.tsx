@@ -3,11 +3,21 @@
 import { useState, useEffect, useCallback } from "react";
 import { Pencil, Trash2, Plus, X, Check, Eye, EyeOff } from "lucide-react";
 
+interface Role {
+  id: string;
+  name: string;
+  permissions: string[];
+  isSystem: boolean;
+  userCount: number;
+}
+
 interface AdminUser {
   id: string;
   email: string;
   name: string;
   role: string;
+  roleId?: string | null;
+  userRole?: { id: string; name: string } | null;
   mustChangePassword: boolean;
   createdAt: string;
 }
@@ -82,20 +92,21 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [roles, setRoles] = useState<Role[]>([]);
 
   // Add user form
   const [showAdd, setShowAdd] = useState(false);
   const [addName, setAddName] = useState("");
   const [addEmail, setAddEmail] = useState("");
   const [addPassword, setAddPassword] = useState("");
-  const [addRole, setAddRole] = useState<"user" | "admin">("user");
+  const [addRoleId, setAddRoleId] = useState<string>("");
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
   // Edit
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [editRole, setEditRole] = useState<"user" | "admin">("user");
+  const [editRoleId, setEditRoleId] = useState<string>("");
   const [editPassword, setEditPassword] = useState("");
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -119,9 +130,20 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
     }
   }, []);
 
+  const fetchRoles = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/roles");
+      if (!res.ok) return;
+      const data: Role[] = await res.json();
+      setRoles(data);
+      setAddRoleId((prev) => prev || data[0]?.id || "");
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+    fetchRoles();
+  }, [fetchUsers, fetchRoles]);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -131,7 +153,7 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: addEmail, name: addName, password: addPassword, role: addRole }),
+        body: JSON.stringify({ email: addEmail, name: addName, password: addPassword, roleId: addRoleId }),
       });
       if (!res.ok) {
         const d = await res.json();
@@ -141,7 +163,7 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
       setAddName("");
       setAddEmail("");
       setAddPassword("");
-      setAddRole("user");
+      setAddRoleId(roles[0]?.id ?? "");
       await fetchUsers();
     } catch (err) {
       setAddError(err instanceof Error ? err.message : "Failed to create user");
@@ -153,7 +175,7 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
   function startEdit(user: AdminUser) {
     setEditingId(user.id);
     setEditName(user.name);
-    setEditRole(user.role as "user" | "admin");
+    setEditRoleId(user.roleId ?? "");
     setEditPassword("");
     setEditError(null);
   }
@@ -164,7 +186,7 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
     setEditLoading(true);
     setEditError(null);
     try {
-      const body: Record<string, string> = { name: editName, role: editRole };
+      const body: Record<string, string> = { name: editName, roleId: editRoleId };
       if (editPassword) body.password = editPassword;
       const res = await fetch(`/api/admin/users/${editingId}`, {
         method: "PATCH",
@@ -254,11 +276,12 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
                 <label className="form-label">Role</label>
                 <select
                   className="input"
-                  value={addRole}
-                  onChange={(e) => setAddRole(e.target.value as "user" | "admin")}
+                  value={addRoleId}
+                  onChange={(e) => setAddRoleId(e.target.value)}
                 >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
+                  {roles.map((r) => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -412,11 +435,12 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
                               <label className="form-label">Role</label>
                               <select
                                 className="input"
-                                value={editRole}
-                                onChange={(e) => setEditRole(e.target.value as "user" | "admin")}
+                                value={editRoleId}
+                                onChange={(e) => setEditRoleId(e.target.value)}
                               >
-                                <option value="user">User</option>
-                                <option value="admin">Admin</option>
+                                {roles.map((r) => (
+                                  <option key={r.id} value={r.id}>{r.name}</option>
+                                ))}
                               </select>
                             </div>
                             <div style={{ display: "flex", gap: 8 }}>
