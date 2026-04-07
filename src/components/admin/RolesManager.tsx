@@ -28,6 +28,26 @@ const PERMISSION_GROUPS = [
     label: "Admin",
     items: [{ key: "users", label: "User Management" }],
   },
+  {
+    label: "Client Dashboard Tabs",
+    note: "Leave all unchecked to show every tab. Check specific tabs to restrict this role to only those tabs (plus Overview, Goals, Actions, Communications, Strategy and Competitors which are always visible).",
+    items: [
+      { key: "tab:seo", label: "SEO / SemRush" },
+      { key: "tab:web", label: "Web Analytics (GA4)" },
+      { key: "tab:searchconsole", label: "Search Console" },
+      { key: "tab:paid", label: "Paid Social (Meta)" },
+      { key: "tab:googleads", label: "Paid Search (Google Ads)" },
+      { key: "tab:tiktok", label: "TikTok Ads" },
+      { key: "tab:microsoftads", label: "Microsoft Ads" },
+      { key: "tab:ecommerce", label: "E-Commerce" },
+      { key: "tab:cwv", label: "Core Web Vitals" },
+      { key: "tab:linkedin", label: "LinkedIn Ads" },
+      { key: "tab:klaviyo", label: "Email (Klaviyo)" },
+      { key: "tab:hubspot", label: "HubSpot CRM" },
+      { key: "tab:youtube", label: "YouTube" },
+      { key: "tab:callrail", label: "CallRail" },
+    ],
+  },
 ];
 
 interface Role {
@@ -56,6 +76,9 @@ function PermissionChecklist({
           <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.06em", marginBottom: 8, textTransform: "uppercase" }}>
             {group.label}
           </p>
+          {"note" in group && group.note && (
+            <p style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 10, fontStyle: "italic" }}>{group.note}</p>
+          )}
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px" }}>
             {group.items.map((item) => (
               <label

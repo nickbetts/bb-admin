@@ -135,7 +135,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
       </div>
 
       {/* Dashboard tabs */}
-      <ClientDashboard client={client} period={period} userRole={session.user.role} />
+      <ClientDashboard client={client} period={period} userRole={session.user.role} permissions={session.user.permissions} />
 
       {/* Recent Reports */}
       {client.reports.length > 0 && (

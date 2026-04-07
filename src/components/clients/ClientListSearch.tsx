@@ -13,6 +13,17 @@ interface ClientItem {
   semrushDomain: string | null;
   ga4PropertyId: string | null;
   metaAccountId: string | null;
+  googleAdsCustomerId: string | null;
+  searchConsoleSiteUrl: string | null;
+  tiktokAdvertiserId: string | null;
+  microsoftAdsAccountId: string | null;
+  linkedinAccountId: string | null;
+  klaviyoApiKey: string | null;
+  woocommerceUrl: string | null;
+  shopifyStoreDomain: string | null;
+  hubspotAccessToken: string | null;
+  youtubeChannelId: string | null;
+  callrailAccountId: string | null;
   reportCount: number;
 }
 
@@ -64,7 +75,21 @@ export function ClientListSearch({ clients }: { clients: ClientItem[] }) {
                 {client.semrushDomain && <span className="badge badge-orange">SemRush</span>}
                 {client.ga4PropertyId && <span className="badge badge-blue">GA4</span>}
                 {client.metaAccountId && <span className="badge badge-indigo">Meta Ads</span>}
-                {!client.semrushDomain && !client.ga4PropertyId && !client.metaAccountId && (
+                {client.googleAdsCustomerId && <span className="badge badge-green">Google Ads</span>}
+                {client.searchConsoleSiteUrl && <span className="badge badge-purple">Search Console</span>}
+                {client.tiktokAdvertiserId && <span className="badge badge-slate">TikTok</span>}
+                {client.microsoftAdsAccountId && <span className="badge badge-slate">Microsoft Ads</span>}
+                {client.linkedinAccountId && <span className="badge badge-blue">LinkedIn</span>}
+                {client.klaviyoApiKey && <span className="badge badge-orange">Klaviyo</span>}
+                {(client.woocommerceUrl || client.shopifyStoreDomain) && <span className="badge badge-green">E-Commerce</span>}
+                {client.hubspotAccessToken && <span className="badge badge-orange">HubSpot</span>}
+                {client.youtubeChannelId && <span className="badge badge-slate">YouTube</span>}
+                {client.callrailAccountId && <span className="badge badge-slate">CallRail</span>}
+                {!client.semrushDomain && !client.ga4PropertyId && !client.metaAccountId &&
+                  !client.googleAdsCustomerId && !client.searchConsoleSiteUrl && !client.tiktokAdvertiserId &&
+                  !client.microsoftAdsAccountId && !client.linkedinAccountId && !client.klaviyoApiKey &&
+                  !client.woocommerceUrl && !client.shopifyStoreDomain && !client.hubspotAccessToken &&
+                  !client.youtubeChannelId && !client.callrailAccountId && (
                   <span style={{ fontSize: 12, color: "var(--text-4)" }}>No integrations</span>
                 )}
               </div>

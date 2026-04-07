@@ -45,6 +45,17 @@ export default async function ClientsPage() {
           semrushDomain: c.semrushDomain,
           ga4PropertyId: c.ga4PropertyId,
           metaAccountId: c.metaAccountId,
+          googleAdsCustomerId: c.googleAdsCustomerId,
+          searchConsoleSiteUrl: c.searchConsoleSiteUrl,
+          tiktokAdvertiserId: c.tiktokAdvertiserId,
+          microsoftAdsAccountId: c.microsoftAdsAccountId,
+          linkedinAccountId: c.linkedinAccountId,
+          klaviyoApiKey: c.klaviyoApiKey,
+          woocommerceUrl: c.woocommerceUrl,
+          shopifyStoreDomain: c.shopifyStoreDomain,
+          hubspotAccessToken: c.hubspotAccessToken,
+          youtubeChannelId: c.youtubeChannelId,
+          callrailAccountId: c.callrailAccountId,
           reportCount: c._count.reports,
         }))} />
       )}
