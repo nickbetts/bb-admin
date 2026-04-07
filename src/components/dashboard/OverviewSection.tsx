@@ -1645,7 +1645,7 @@ export function OverviewSection({ client, startDate, endDate, reportMode, visibl
       {!reportMode && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 16 }}>
           <ForecastSection clientId={client.id} />
-          <BudgetAdvisorPanel clientId={client.id} />
+          <BudgetAdvisorPanel client={client} startDate={startDate} endDate={endDate} />
           <AttributionPanel clientId={client.id} />
           <SeasonalityPanel clientId={client.id} />
         </div>

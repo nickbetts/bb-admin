@@ -6,63 +6,102 @@ import { getOpenAiClient } from "@/lib/openai-client";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+interface CampaignData {
+  channel: string;
+  name: string;
+  dailyBudget: number | null;
+  periodSpend: number;
+  conversions: number;
+  roas: number | null;
+  impressionShare: number | null;
+  budgetLostIS: number | null;
+  rankLostIS: number | null;
+  clicks: number;
+  cpa: number | null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { clientId, channelMetrics, periodStart, periodEnd, ecommerceData } = await request.json() as {
+    const { clientId, campaigns, periodStart, periodEnd } = await request.json() as {
       clientId: string;
-      channelMetrics: Record<string, { spend: number; roas?: number; cpa?: number; impressionShare?: number; conversions?: number }>;
+      campaigns: CampaignData[];
       periodStart?: string;
       periodEnd?: string;
-      ecommerceData?: { totalRevenue: number; totalOrders: number; averageOrderValue: number; currency: string };
     };
 
     if (!clientId) return NextResponse.json({ error: "clientId is required" }, { status: 400 });
+    if (!campaigns?.length) return NextResponse.json({ error: "No campaign data provided" }, { status: 400 });
 
     const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, aiReportInstructions: true } });
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
 
-    const clientAiInstructions = client.aiReportInstructions ?? "";
-
     const openai = await getOpenAiClient();
 
-    const prompt = `You are an expert media buyer and budget optimisation specialist. Analyse the following cross-channel performance data and provide specific, actionable budget reallocation recommendations.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}
+    // Format campaign data for the prompt
+    const campaignLines = campaigns.map(c => {
+      const parts: string[] = [
+        `Campaign: "${c.name}" (${c.channel})`,
+        `  Daily budget: ${c.dailyBudget != null ? `£${c.dailyBudget.toFixed(2)}` : "unknown (lifetime/shared budget)"}`,
+        `  Period spend: £${c.periodSpend.toFixed(2)}`,
+        `  Clicks: ${c.clicks.toLocaleString()}`,
+        `  Conversions: ${c.conversions}`,
+        `  ROAS: ${c.roas != null ? c.roas.toFixed(2) + "×" : "n/a (no conversion value tracked)"}`,
+        `  CPA: ${c.cpa != null ? "£" + c.cpa.toFixed(2) : "n/a"}`,
+      ];
+      if (c.impressionShare != null) parts.push(`  Search impression share: ${(c.impressionShare * 100).toFixed(1)}%`);
+      if (c.budgetLostIS != null && c.budgetLostIS > 0) parts.push(`  IS lost to budget: ${(c.budgetLostIS * 100).toFixed(1)}% (campaign is budget-constrained)`);
+      if (c.rankLostIS != null && c.rankLostIS > 0) parts.push(`  IS lost to rank: ${(c.rankLostIS * 100).toFixed(1)}%`);
+      return parts.join("\n");
+    }).join("\n\n");
+
+    const prompt = `You are an expert PPC and media buying specialist at a UK performance marketing agency. Analyse the following real campaign data and provide specific, actionable daily budget recommendations for each campaign.${client.aiReportInstructions ? `\n\nClient instructions: ${client.aiReportInstructions}` : ""}
 
 Client: ${client.name}
+Period: ${periodStart ?? "unknown"} to ${periodEnd ?? "unknown"}
 
-Channel Performance Data:
-${JSON.stringify(channelMetrics, null, 2)}
-${ecommerceData ? `\nE-COMMERCE DATA:\nRevenue: £${ecommerceData.totalRevenue.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, Orders: ${ecommerceData.totalOrders}, AOV: £${ecommerceData.averageOrderValue.toFixed(2)}` : ""}
+CAMPAIGN DATA (real data from connected channels — ONLY recommend for these campaigns):
+${campaignLines}
 
-Provide recommendations as JSON:
+INSTRUCTIONS:
+- Only recommend budgets for the campaigns listed above. Do NOT invent other channels or campaigns.
+- Use the "IS lost to budget" signal to identify campaigns where increasing the daily budget will directly recover missed impressions.
+- For campaigns with no conversions and significant spend, recommend a budget reduction or pause.
+- For campaigns with good ROAS, recommend a budget increase with a specific target amount.
+- State each recommendation as a specific daily budget change (e.g. "Increase daily budget from £17.00 to £32.00").
+- The "currentBudget" field must use the actual "Daily budget" from the data above (not period spend). If daily budget is unknown, use period_spend / number_of_days as an estimate.
+- Be concise. One recommendation per campaign.
+
+Respond with JSON only — no markdown, no code fences:
 {
   "recommendations": [
     {
-      "channel": "channel_name",
-      "suggestion": "specific action to take",
-      "currentBudget": number,
-      "recommendedBudget": number,
-      "projectedImpact": "description of expected outcome",
+      "channel": "channel name",
+      "campaign": "exact campaign name from data",
+      "suggestion": "specific action, e.g. Increase daily budget from £17.00 to £32.00",
+      "currentBudget": <daily budget number>,
+      "recommendedBudget": <recommended daily budget number>,
+      "projectedImpact": "brief expected outcome tied to the data",
       "priority": "high|medium|low",
-      "rationale": "brief reason"
+      "rationale": "one sentence explaining why, referencing the specific metric"
     }
   ],
-  "summary": "2-3 sentence executive summary of the budget strategy",
-  "totalCurrentBudget": number,
-  "totalRecommendedBudget": number,
-  "projectedROASImprovement": "X%"
-}
-
-Focus on channels with poor ROAS for reduction and high-performing channels for increased investment.
-Return only valid JSON.`;
+  "summary": "2-sentence summary of the overall strategy",
+  "totalCurrentBudget": <sum of all current daily budgets>,
+  "totalRecommendedBudget": <sum of all recommended daily budgets>,
+  "projectedROASImprovement": "e.g. +20-30% projected ROAS improvement or null"
+}`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.3,
-      max_tokens: 1500,
-      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+      max_tokens: 2000,
+      messages: [
+        { role: "system", content: "You are a PPC specialist. Respond with valid JSON only — no markdown, no code fences, no preamble. British English." },
+        { role: "user", content: prompt },
+      ],
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
