@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, Eye, EyeOff, TrendingUp, Zap, Shield } from "lucide-react";
+import { Eye, EyeOff, TrendingUp, Zap, Shield } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -75,19 +75,8 @@ export default function LoginPage() {
         }} />
 
         {/* Logo */}
-        <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 12,
-            background: "linear-gradient(135deg, #6366f1, #a855f7)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 0 32px rgba(99,102,241,0.5)",
-          }}>
-            <BarChart3 style={{ width: 22, height: 22, color: "white" }} />
-          </div>
-          <div>
-            <span style={{ fontSize: 18, fontWeight: 700, color: "white", letterSpacing: "-0.02em" }}>i3media</span>
-            <span style={{ display: "block", fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 1 }}>Reports Platform</span>
-          </div>
+        <div style={{ position: "relative" }}>
+          <img src="/primary-logo.svg" style={{ height: 36, width: "auto" }} alt="i3media" />
         </div>
 
         {/* Hero text */}

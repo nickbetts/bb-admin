@@ -12,7 +12,6 @@ import {
   LogOut,
   ChevronLeft,
   Menu,
-  BarChart3,
   ScanSearch,
   ShieldCheck,
   LayoutTemplate,
@@ -304,13 +303,7 @@ export function Sidebar({ user, permissions }: SidebarProps) {
         <aside className={cn("sidebar sidebar-mobile", mobileOpen && "open")} aria-label="Main navigation">
           <div className="sidebar-logo">
             <div className="sidebar-logo-inner">
-              <div className="sidebar-logo-icon">
-                <BarChart3 style={{ width: 20, height: 20, color: "white" }} />
-              </div>
-              <div className="min-w-0">
-                <p className="sidebar-logo-name">i3media</p>
-                <p className="sidebar-logo-tag">Reporting</p>
-              </div>
+              <img src="/primary-logo-dark.svg" style={{ height: 28, width: "auto" }} alt="i3media" />
             </div>
             <button onClick={() => setMobileOpen(false)} className="btn btn-ghost btn-sm" style={{ padding: "6px 8px" }} aria-label="Close navigation menu">
               <X style={{ width: 16, height: 16 }} />
@@ -350,14 +343,12 @@ export function Sidebar({ user, permissions }: SidebarProps) {
     <aside className={cn("sidebar", collapsed && "collapsed")} aria-label="Main navigation">
       <div className="sidebar-logo">
         <div className="sidebar-logo-inner">
-          <div className="sidebar-logo-icon">
-            <BarChart3 style={{ width: 20, height: 20, color: "white" }} />
-          </div>
-          {!collapsed && (
-            <div className="min-w-0">
-              <p className="sidebar-logo-name">i3media</p>
-              <p className="sidebar-logo-tag">Reporting</p>
+          {collapsed ? (
+            <div className="sidebar-logo-icon">
+              <img src="/logo-mark.svg" style={{ width: 20, height: 20 }} alt="" />
             </div>
+          ) : (
+            <img src="/primary-logo-dark.svg" style={{ height: 28, width: "auto" }} alt="i3media" />
           )}
         </div>
         {!collapsed && (

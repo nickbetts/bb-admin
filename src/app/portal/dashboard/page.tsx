@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { BarChart3, FileText, Target, MessageSquare, LogOut, Loader2, ExternalLink } from "lucide-react";
+import { FileText, Target, MessageSquare, LogOut, Loader2, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 interface PortalUser {
@@ -97,9 +97,7 @@ export default function PortalDashboardPage() {
       {/* Header */}
       <header style={{ background: "var(--card)", borderBottom: "1px solid var(--border)", padding: "0 32px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg,#6366f1,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <BarChart3 style={{ width: 16, height: 16, color: "white" }} />
-          </div>
+          <img src="/primary-logo-dark.svg" style={{ height: 22, width: "auto" }} alt="i3media" />
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{user.client.name}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

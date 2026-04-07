@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { ChangePasswordForm } from "./ChangePasswordForm";
-import { BarChart3 } from "lucide-react";
 
 export default async function ChangePasswordPage() {
   const session = await getSession();
@@ -29,19 +28,8 @@ export default async function ChangePasswordPage() {
 
       <div style={{ position: "relative", width: "100%", maxWidth: 420 }}>
         {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 40 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 12,
-            background: "linear-gradient(135deg, #6366f1, #a855f7)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 0 32px rgba(99,102,241,0.5)",
-          }}>
-            <BarChart3 style={{ width: 22, height: 22, color: "white" }} />
-          </div>
-          <div>
-            <span style={{ fontSize: 18, fontWeight: 700, color: "white", letterSpacing: "-0.02em" }}>i3media</span>
-            <span style={{ display: "block", fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 1 }}>Reports Platform</span>
-          </div>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 40 }}>
+          <img src="/primary-logo.svg" style={{ height: 36, width: "auto" }} alt="i3media" />
         </div>
 
         <div style={{ marginBottom: 32, textAlign: "center" }}>

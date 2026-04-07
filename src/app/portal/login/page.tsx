@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BarChart3, Mail, Loader2, CheckCircle } from "lucide-react";
+import { Mail, Loader2, CheckCircle } from "lucide-react";
 import { Suspense } from "react";
 
 function PortalLoginInner() {
@@ -52,14 +52,9 @@ function PortalLoginInner() {
       <div style={{ width: "100%", maxWidth: 400 }}>
         {/* Logo */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#6366f1,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <BarChart3 style={{ width: 20, height: 20, color: "white" }} />
-            </div>
-            <div>
-              <p style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Client Portal</p>
-              <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Powered by i3media</p>
-            </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <img src="/primary-logo-dark.svg" style={{ height: 28, width: "auto" }} alt="i3media" />
+            <p style={{ fontSize: 12, color: "var(--text-3)", letterSpacing: "0.05em", textTransform: "uppercase", margin: 0 }}>Client Portal</p>
           </div>
         </div>
 
