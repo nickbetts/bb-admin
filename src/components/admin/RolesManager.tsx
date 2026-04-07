@@ -30,8 +30,9 @@ const PERMISSION_GROUPS = [
   },
   {
     label: "Client Dashboard Tabs",
-    note: "Leave all unchecked to show every tab. Check specific tabs to restrict this role to only those tabs (plus Overview, Goals, Actions, Communications, Strategy and Competitors which are always visible).",
+    note: "Leave all unchecked to show every tab. Check specific tabs to restrict this role to only those tabs.",
     items: [
+      { key: "tab:overview", label: "Overview" },
       { key: "tab:seo", label: "SEO / SemRush" },
       { key: "tab:web", label: "Web Analytics (GA4)" },
       { key: "tab:searchconsole", label: "Search Console" },
@@ -46,6 +47,11 @@ const PERMISSION_GROUPS = [
       { key: "tab:hubspot", label: "HubSpot CRM" },
       { key: "tab:youtube", label: "YouTube" },
       { key: "tab:callrail", label: "CallRail" },
+      { key: "tab:goals", label: "Goals & KPIs" },
+      { key: "tab:competitors", label: "Competitors" },
+      { key: "tab:actions", label: "Actions" },
+      { key: "tab:communications", label: "Communications" },
+      { key: "tab:strategy", label: "Strategy" },
     ],
   },
 ];

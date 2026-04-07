@@ -85,10 +85,9 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
   const [period, setPeriod] = useState(initialPeriod);
   const [activeTab, setActiveTab] = useState<Tab>(() => getDefaultTab(client));
 
-  // Tab visibility: if the role has any "tab:" permissions, restrict to those + always-visible tabs
+  // Tab visibility: if the role has any "tab:" permissions, restrict to only those tabs
   const tabPermissions = permissions.filter(p => p.startsWith("tab:")).map(p => p.slice(4));
   const hasTabRestrictions = tabPermissions.length > 0;
-  const ALWAYS_VISIBLE_TABS = new Set(["overview", "goals", "actions", "communications", "strategy", "competitors"]);
 
   const today = toDateInputValue(new Date());
   const [customStart, setCustomStart] = useState(() => {
@@ -219,7 +218,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
   ].map((tab) => ({
     ...tab,
     // If the role has tab restrictions, hide tabs not in the allowed set (core tabs always stay visible)
-    available: tab.available && (!hasTabRestrictions || ALWAYS_VISIBLE_TABS.has(tab.id) || tabPermissions.includes(tab.id)),
+    available: tab.available && (!hasTabRestrictions || tabPermissions.includes(tab.id)),
   }));
 
   return (
