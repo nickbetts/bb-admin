@@ -46,9 +46,10 @@ export async function GET(request: NextRequest) {
       orderBy: { name: "asc" },
     });
 
-    // All unresolved anomalies in the period across all clients
+    // All unresolved anomalies created within the period across all clients
+    // Use createdAt (when detected) not periodStart (which is the data comparison window start)
     const allAnomalies = await prisma.detectedAnomaly.findMany({
-      where: { periodStart: { gte: startDateStr }, resolvedAt: null },
+      where: { createdAt: { gte: startDate }, resolvedAt: null },
       select: {
         clientId: true, platform: true, metric: true,
         severity: true, direction: true, changePercent: true,
