@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getBrowser } from "@/lib/puppeteer";
+import { PDFDocument } from "pdf-lib";
 
 export const maxDuration = 30;
 
@@ -89,10 +90,44 @@ export async function GET(
       // Short buffer for any remaining SVG/chart paint after data arrives.
       await page.evaluate(() => new Promise((r) => setTimeout(r, 800)));
 
-      // Measure the full rendered height so the PDF is one continuous page
-      // with no content split across page breaks.
-      const fullHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+      // Measure the full rendered height and collect per-section bounding boxes
+      // so we can crop the PDF into variable-height pages after generation.
+      const { fullHeight, regions } = await page.evaluate(() => {
+        const scrollH = document.documentElement.scrollHeight;
 
+        const sectionEls = Array.from(
+          document.querySelectorAll<HTMLElement>("[id^='section-']")
+        );
+
+        const rects: { id: string; y: number; height: number }[] = [];
+
+        // Cover block: from top of page to the top of the first section
+        const firstSection = sectionEls[0];
+        if (firstSection) {
+          const firstTop = firstSection.getBoundingClientRect().top + window.scrollY;
+          if (firstTop > 10) {
+            rects.push({ id: "cover", y: 0, height: firstTop });
+          }
+        }
+
+        // Each section block
+        for (const el of sectionEls) {
+          const rect = el.getBoundingClientRect();
+          const y = rect.top + window.scrollY;
+          if (rect.height > 10) {
+            rects.push({ id: el.id, y, height: rect.height });
+          }
+        }
+
+        // Fallback: if no sections found, one page for everything
+        if (rects.length === 0) {
+          rects.push({ id: "full", y: 0, height: scrollH });
+        }
+
+        return { fullHeight: scrollH, regions: rects };
+      });
+
+      // Generate one giant single-page PDF at full scroll height (vector quality).
       const pdfBuffer = await page.pdf({
         width: "1200px",
         height: `${fullHeight}px`,
@@ -100,12 +135,39 @@ export async function GET(
         printBackground: true,
       });
 
+      // Post-process with pdf-lib: crop the single-page PDF into per-section pages,
+      // each page being exactly the height of its section content.
+      const sourceDoc = await PDFDocument.load(pdfBuffer);
+      const sourcePage = sourceDoc.getPage(0);
+      const { width: pdfWidth, height: pdfHeight } = sourcePage.getSize();
+
+      // Scale factor to convert CSS pixels → PDF points
+      const scale = pdfHeight / fullHeight;
+
+      const outputDoc = await PDFDocument.create();
+
+      for (const region of regions) {
+        const regionHeightPt = region.height * scale;
+        // PDF coordinate system: y=0 is bottom-left, so flip the y axis
+        const yBottomPt = pdfHeight - (region.y + region.height) * scale;
+        const yTopPt = yBottomPt + regionHeightPt;
+
+        const [embedded] = await outputDoc.embedPages([sourcePage], [
+          { left: 0, bottom: yBottomPt, right: pdfWidth, top: yTopPt },
+        ]);
+
+        const newPage = outputDoc.addPage([pdfWidth, regionHeightPt]);
+        newPage.drawPage(embedded, { x: 0, y: 0, width: pdfWidth, height: regionHeightPt });
+      }
+
+      const finalPdfBuffer = await outputDoc.save();
+
       const filename = `${report.client.name}-${report.period}-report.pdf`
         .toLowerCase()
         .replace(/\s+/g, "-")
         .replace(/[^a-z0-9._-]/g, "");
 
-      return new NextResponse(Buffer.from(pdfBuffer), {
+      return new NextResponse(Buffer.from(finalPdfBuffer), {
         status: 200,
         headers: {
           "Content-Type": "application/pdf",
