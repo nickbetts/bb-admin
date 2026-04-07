@@ -394,12 +394,6 @@ function HealthGauge({ score }: { score: number }) {
   );
 }
 
-function TrendIcon({ dir }: { dir: "up" | "down" | "stable" }) {
-  if (dir === "up") return <TrendingUp style={{ width: 14, height: 14, color: "#22c55e" }} />;
-  if (dir === "down") return <TrendingDown style={{ width: 14, height: 14, color: "#ef4444" }} />;
-  return <Minus style={{ width: 14, height: 14, color: "#9ca3af" }} />;
-}
-
 function timeAgo(dateStr: string): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
