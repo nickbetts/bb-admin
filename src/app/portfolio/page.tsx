@@ -372,28 +372,6 @@ interface ClientHealth {
 const churnColors = { low: "#22c55e", medium: "#f59e0b", high: "#ef4444" };
 const churnLabels = { low: "Low Risk", medium: "Medium Risk", high: "High Risk" };
 
-function HealthGauge({ score }: { score: number }) {
-  const color = score >= 70 ? "#22c55e" : score >= 40 ? "#f59e0b" : "#ef4444";
-  const circumference = 2 * Math.PI * 20;
-  const dash = (score / 100) * circumference;
-  return (
-    <div style={{ position: "relative", width: 56, height: 56, flexShrink: 0 }}>
-      <svg width={56} height={56} style={{ transform: "rotate(-90deg)" }}>
-        <circle cx={28} cy={28} r={20} fill="none" stroke="var(--border)" strokeWidth={5} />
-        <circle
-          cx={28} cy={28} r={20} fill="none" stroke={color} strokeWidth={5}
-          strokeDasharray={`${dash} ${circumference}`}
-          strokeLinecap="round"
-          style={{ transition: "stroke-dasharray 0.5s ease" }}
-        />
-      </svg>
-      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color }}>{score}</span>
-      </div>
-    </div>
-  );
-}
-
 function timeAgo(dateStr: string): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
