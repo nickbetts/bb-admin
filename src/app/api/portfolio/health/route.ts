@@ -94,6 +94,15 @@ export async function GET(request: NextRequest) {
       const platforms = clientPlatforms.get(client.id) ?? new Set<string>();
       const hasSomeData = platforms.size > 0;
 
+      // A meaningful health score requires either anomaly records from the selected period
+      // OR at least one platform with 2+ MetricSnapshots (enabling trend comparison).
+      // Clients with only 1 snapshot and no anomaly history cannot be meaningfully assessed
+      // and should NOT show as "Healthy" — that would be a false positive.
+      const platformsWithTrendData = [...platforms].filter(
+        p => (snapshotsByKey.get(`${client.id}::${p}`)?.length ?? 0) >= 2
+      );
+      const hasAnalysisSignal = anomalies.length > 0 || platformsWithTrendData.length > 0;
+
       // ── Score calculation ─────────────────────────────────────────────────
       let score = 100;
 
@@ -192,10 +201,10 @@ export async function GET(request: NextRequest) {
 
       return {
         client,
-        healthScore: hasSomeData ? score : null,
+        healthScore: (hasSomeData && hasAnalysisSignal) ? score : null,
         trendDirection,
         churnRisk,
-        insufficientData: !hasSomeData,
+        insufficientData: !hasSomeData || !hasAnalysisSignal,
         latestSnapshotDate,
         breakdown,
       };
