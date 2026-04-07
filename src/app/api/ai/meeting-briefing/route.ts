@@ -124,13 +124,14 @@ Your output MUST be valid JSON matching this exact schema:
 }
 
 Rules:
-- wins: exactly 3 biggest wins from the latest snapshot period
-- decisionsNeeded: exactly 3 most important decisions the client needs to make
-- actionStatus.outstanding: summarise every open action item's current status
-- actionStatus.proposed: exactly 3 new recommended actions with priority (high/medium/low)
-- risks: upcoming risks including seasonality, budget pacing, competitor activity
-- goalStatus: one-line status for EACH active goal
-- talkingPoints: 3-5 key points to open the meeting with
+- wins: up to 3 biggest wins from the latest snapshot period — ONLY include wins directly supported by metric snapshot data. If no snapshot data is available, return an empty array and do NOT fabricate wins.
+- decisionsNeeded: up to 3 most important decisions — base only on actual goals, actions, or anomalies present in the data. If none exist, return an empty array.
+- actionStatus.outstanding: summarise every open action item's current status (may be empty if none)
+- actionStatus.proposed: up to 3 new recommended actions — only propose actions grounded in data or anomalies present. Do not invent performance figures or channel-specific claims.
+- risks: upcoming risks only where evidence exists in the data (budget pacing anomalies, at-risk goals, etc.)
+- goalStatus: one-line status for EACH active goal (may be empty if none)
+- talkingPoints: 3-5 key points to open the meeting with — if insufficient data, honestly note what data is still needed
+- NEVER invent metrics, channel names, or performance figures that are not in the data provided
 - Be concise, data-driven, and actionable`;
 
     const userPrompt = `## Briefing Date: ${today}

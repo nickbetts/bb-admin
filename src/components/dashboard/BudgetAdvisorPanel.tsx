@@ -22,6 +22,8 @@ interface Campaign {
   rankLostIS: number | null;
   clicks: number;
   cpa: number | null;
+  /** Ad group (Google Ads) or ad set (Meta) context for sub-level insight */
+  adGroupNote?: string;
 }
 
 interface Recommendation {
@@ -71,7 +73,8 @@ export function BudgetAdvisorPanel({ client, startDate, endDate }: BudgetAdvisor
 
     try {
       const campaigns: Campaign[] = [];
-      const channelsScanned: string[] = [];
+
+      const channelsScannedSet = new Set<string>();
 
       // ── Google Ads ────────────────────────────────────────────────────────
       if (client.googleAdsCustomerId) {
@@ -80,8 +83,21 @@ export function BudgetAdvisorPanel({ client, startDate, endDate }: BudgetAdvisor
             `/api/google-ads?customerId=${client.googleAdsCustomerId}&startDate=${startDate}&endDate=${endDate}`
           );
           if (res.ok) {
-            const data = await res.json() as { campaignsEnriched?: Record<string, unknown>[] };
-            channelsScanned.push("Google Ads");
+            type AdGroupRow = { name: string; campaignName: string; clicks: number; costMicros: number; conversions: number; conversionsValue: number };
+            const data = await res.json() as { campaignsEnriched?: Record<string, unknown>[]; adGroups?: AdGroupRow[] };
+            channelsScannedSet.add("Google Ads");
+
+            // Build ad group context per campaign (Google Ads budgets are campaign-level only)
+            const adGroupByCampaign = new Map<string, string[]>();
+            for (const ag of data.adGroups ?? []) {
+              const agSpend = ag.costMicros / 1_000_000;
+              const agCpa = ag.conversions > 0 && agSpend > 0 ? agSpend / ag.conversions : null;
+              const note = `"${ag.name}": ${ag.clicks} clicks, ${ag.conversions} conv${agCpa != null ? `, £${agCpa.toFixed(2)} CPA` : ", no conv"}`;
+              const arr = adGroupByCampaign.get(ag.campaignName) ?? [];
+              arr.push(note);
+              adGroupByCampaign.set(ag.campaignName, arr);
+            }
+
             for (const c of data.campaignsEnriched ?? []) {
               const spend = Number(c.costMicros) / 1_000_000;
               if (spend === 0 && Number(c.impressions) === 0) continue;
@@ -89,9 +105,11 @@ export function BudgetAdvisorPanel({ client, startDate, endDate }: BudgetAdvisor
               const conv = Number(c.conversions ?? 0);
               const roas = convValue > 0 && spend > 0 ? convValue / spend : null;
               const cpa  = conv > 0 && spend > 0 ? spend / conv : null;
+              const campName = String(c.name ?? "");
+              const adGroupNotes = adGroupByCampaign.get(campName);
               campaigns.push({
                 channel: "Google Ads",
-                name: String(c.name ?? ""),
+                name: campName,
                 dailyBudget: Number(c.dailyBudgetMicros) > 0 ? Number(c.dailyBudgetMicros) / 1_000_000 : null,
                 periodSpend: spend,
                 conversions: conv,
@@ -101,6 +119,7 @@ export function BudgetAdvisorPanel({ client, startDate, endDate }: BudgetAdvisor
                 rankLostIS: c.searchRankLostImpressionShare != null ? Number(c.searchRankLostImpressionShare) : null,
                 clicks: Number(c.clicks ?? 0),
                 cpa,
+                adGroupNote: adGroupNotes?.length ? adGroupNotes.join(" | ") : undefined,
               });
             }
           }
@@ -110,35 +129,80 @@ export function BudgetAdvisorPanel({ client, startDate, endDate }: BudgetAdvisor
       // ── Meta Ads ──────────────────────────────────────────────────────────
       if (client.metaAccountId) {
         try {
-          const res = await fetch(
-            `/api/meta?accountId=${client.metaAccountId}&startDate=${startDate}&endDate=${endDate}&type=campaigns-enriched`
-          );
-          if (res.ok) {
-            const data = await res.json() as Record<string, unknown>[];
-            channelsScanned.push("Meta Ads");
-            for (const c of data) {
+          const [campaignsRes, adSetsRes] = await Promise.all([
+            fetch(`/api/meta?accountId=${client.metaAccountId}&startDate=${startDate}&endDate=${endDate}&type=campaigns-enriched`),
+            fetch(`/api/meta?accountId=${client.metaAccountId}&startDate=${startDate}&endDate=${endDate}&type=adsets`),
+          ]);
+
+          if (campaignsRes.ok) {
+            type MetaAdSet = { id: string; name: string; campaignId: string; spend: number; clicks: number; conversions: number; roas: number; dailyBudget: number | null };
+            const campaignsData = await campaignsRes.json() as Record<string, unknown>[];
+            const adSetsData: MetaAdSet[] = adSetsRes.ok ? (await adSetsRes.json() as MetaAdSet[]) : [];
+
+            channelsScannedSet.add("Meta Ads");
+
+            // Group ad sets by campaign ID
+            const adSetsByCampaign = new Map<string, MetaAdSet[]>();
+            for (const s of adSetsData) {
+              const arr = adSetsByCampaign.get(s.campaignId) ?? [];
+              arr.push(s);
+              adSetsByCampaign.set(s.campaignId, arr);
+            }
+
+            for (const c of campaignsData) {
+              const campId = String(c.id ?? "");
               const spend = Number(c.spend ?? 0);
               if (spend === 0 && Number(c.impressions ?? 0) === 0) continue;
               const conv = Number(c.conversions ?? 0);
-              campaigns.push({
-                channel: "Meta Ads",
-                name: String(c.name ?? ""),
-                dailyBudget: c.dailyBudget != null ? Number(c.dailyBudget) : null,
-                periodSpend: spend,
-                conversions: conv,
-                roas: Number(c.roas ?? 0) > 0 ? Number(c.roas) : null,
-                impressionShare: null,
-                budgetLostIS: null,
-                rankLostIS: null,
-                clicks: Number(c.clicks ?? 0),
-                cpa: conv > 0 && spend > 0 ? spend / conv : null,
-              });
+              const adSets = adSetsByCampaign.get(campId) ?? [];
+
+              // Non-CBO: ad sets have their own daily budgets — add each as a separate entry
+              const adSetsWithBudget = adSets.filter(s => s.dailyBudget != null && s.dailyBudget > 0);
+              if (adSetsWithBudget.length > 0) {
+                channelsScannedSet.add("Meta Ad Sets");
+                for (const s of adSetsWithBudget) {
+                  campaigns.push({
+                    channel: "Meta Ad Set",
+                    name: `${String(c.name ?? "")} → ${s.name}`,
+                    dailyBudget: s.dailyBudget,
+                    periodSpend: s.spend,
+                    conversions: s.conversions,
+                    roas: s.roas > 0 ? s.roas : null,
+                    impressionShare: null,
+                    budgetLostIS: null,
+                    rankLostIS: null,
+                    clicks: s.clicks,
+                    cpa: s.conversions > 0 && s.spend > 0 ? s.spend / s.conversions : null,
+                  });
+                }
+              } else {
+                // CBO: budget controlled at campaign level — add campaign with ad set context
+                const adSetNote = adSets.length > 0
+                  ? adSets.map(s => `"${s.name}": £${s.spend.toFixed(0)} spend, ${s.conversions} conv`).join(" | ")
+                  : undefined;
+                campaigns.push({
+                  channel: "Meta Ads",
+                  name: String(c.name ?? ""),
+                  dailyBudget: c.dailyBudget != null ? Number(c.dailyBudget) : null,
+                  periodSpend: spend,
+                  conversions: conv,
+                  roas: Number(c.roas ?? 0) > 0 ? Number(c.roas) : null,
+                  impressionShare: null,
+                  budgetLostIS: null,
+                  rankLostIS: null,
+                  clicks: Number(c.clicks ?? 0),
+                  cpa: conv > 0 && spend > 0 ? spend / conv : null,
+                  adGroupNote: adSetNote,
+                });
+              }
             }
           }
         } catch { /* channel may be unavailable */ }
       }
 
-      setScannedChannels(channelsScanned);
+      const channelsScanned2 = Array.from(channelsScannedSet);
+
+      setScannedChannels(channelsScanned2);
 
       if (campaigns.length === 0) {
         setError("No campaign data found for the connected channels in this date range.");
@@ -170,7 +234,7 @@ export function BudgetAdvisorPanel({ client, startDate, endDate }: BudgetAdvisor
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <DollarSign style={{ width: 18, height: 18, color: "#22c55e" }} />
           <span style={{ fontWeight: 600, fontSize: 15, color: "var(--text)" }}>Budget Optimisation Advisor</span>
-          <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--border)", padding: "2px 8px", borderRadius: 99 }}>campaign-level analysis</span>
+          <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--border)", padding: "2px 8px", borderRadius: 99 }}>campaign &amp; ad set analysis</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {!result && !loading && (

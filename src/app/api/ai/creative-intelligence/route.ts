@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
     };
 
     if (!clientId || !platform) return NextResponse.json({ error: "clientId and platform are required" }, { status: 400 });
+    if (!creativeData || creativeData.length === 0) return NextResponse.json({ error: "No creative data provided — cannot analyse without real creative metrics." }, { status: 400 });
 
     const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, aiReportInstructions: true } });
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });

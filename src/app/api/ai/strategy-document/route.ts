@@ -23,6 +23,9 @@ export async function POST(request: NextRequest) {
     const enableWebSearch = requestBody.enableWebSearch === true;
 
     if (!clientId || !period) return NextResponse.json({ error: "clientId and period are required" }, { status: 400 });
+    if (!crossPlatformData || Object.keys(crossPlatformData).length === 0) {
+      return NextResponse.json({ error: "No channel performance data provided — connect at least one channel and run reports before generating a strategy document." }, { status: 400 });
+    }
 
     const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, website: true, aiReportInstructions: true } });
     if (!client) return NextResponse.json({ error: "Client not found" }, { status: 404 });
@@ -40,6 +43,8 @@ Period: ${period}
 Cross-Platform Performance Data:
 ${JSON.stringify(crossPlatformData, null, 2)}
 
+IMPORTANT: Base all analysis exclusively on the data above. Do NOT invent wins, metrics, ROAS figures, or performance claims that are not present in the data. If a channel is not represented in the data, do not include it in channelStrategy.
+
 Generate a strategy document as JSON:
 {
   "performanceSummary": "3-4 sentence overview of the quarter's performance across all channels",
@@ -54,11 +59,7 @@ Generate a strategy document as JSON:
     { "title": "Opportunity", "description": "Specific opportunity with rationale", "priority": "high|medium|low" }
   ],
   "channelStrategy": {
-    "paid_search": "Strategy recommendation for Google Ads",
-    "paid_social": "Strategy for Meta/social paid",
-    "seo": "Organic search strategy",
-    "email": "Email/CRM strategy",
-    "overall": "Overarching cross-channel strategy"
+    "only_include_channels_with_data": "Include ONLY channels that appear in the Cross-Platform Performance Data above. Use keys like paid_search, paid_social, seo, email, ecommerce as appropriate — but OMIT any channel not represented in the data. Do not invent performance figures or strategies for channels with no data."
   },
   "budgetRec": "Budget allocation recommendation for next quarter",
   "contentPriorities": [

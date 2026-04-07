@@ -18,6 +18,8 @@ interface CampaignData {
   rankLostIS: number | null;
   clicks: number;
   cpa: number | null;
+  /** Ad group performance context (Google Ads) or ad set context (Meta CBO) */
+  adGroupNote?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -54,6 +56,7 @@ export async function POST(request: NextRequest) {
       if (c.impressionShare != null) parts.push(`  Search impression share: ${(c.impressionShare * 100).toFixed(1)}%`);
       if (c.budgetLostIS != null && c.budgetLostIS > 0) parts.push(`  IS lost to budget: ${(c.budgetLostIS * 100).toFixed(1)}% (campaign is budget-constrained)`);
       if (c.rankLostIS != null && c.rankLostIS > 0) parts.push(`  IS lost to rank: ${(c.rankLostIS * 100).toFixed(1)}%`);
+      if (c.adGroupNote) parts.push(`  Sub-level breakdown: ${c.adGroupNote}`);
       return parts.join("\n");
     }).join("\n\n");
 
@@ -72,7 +75,9 @@ INSTRUCTIONS:
 - For campaigns with good ROAS, recommend a budget increase with a specific target amount.
 - State each recommendation as a specific daily budget change (e.g. "Increase daily budget from £17.00 to £32.00").
 - The "currentBudget" field must use the actual "Daily budget" from the data above (not period spend). If daily budget is unknown, use period_spend / number_of_days as an estimate.
-- Be concise. One recommendation per campaign.
+- GOOGLE ADS: budgets are set at campaign level only. Ad group data in "Sub-level breakdown" is for context — use it to identify underperforming ad groups and include a pause recommendation in the rationale field, but the budget change itself is always at campaign level.
+- META AD SETS: entries with channel "Meta Ad Set" have their own daily budgets that can be changed independently. Recommend at this level where data is shown.
+- Be concise. One recommendation per campaign/ad set entry.
 
 Respond with JSON only — no markdown, no code fences:
 {

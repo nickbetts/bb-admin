@@ -212,7 +212,7 @@ Guidelines:
 - Conservative targets should be highly achievable (confidence ≥ 0.8).
 - Moderate targets should be realistic but challenging (confidence 0.5-0.7).
 - Aggressive targets should be stretch goals (confidence 0.2-0.5).
-- If no historical data is available, provide reasonable industry-standard benchmarks and note the lack of data in rationale.
+- If no historical data is available, do NOT invent industry benchmarks or fabricate values. Instead, return benchmarks with value: 0, confidence: 0, and rationale explaining that there is no data to base a target on — ask the user to run reports first to build a data baseline.
 - Use competitor data for additional context if available.`;
 
     const openai = await getOpenAiClient();
