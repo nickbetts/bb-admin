@@ -1,17 +1,27 @@
 # AI Audit — i3media Report Platform
 
-**Document version:** 3.2  
+**Document version:** 3.3  
 **Audit date:** April 2026  
 **Last updated:** April 2026  
-**Scope:** All data gaps resolved; prompt quality improvements; Super-Summary token increase; report approval notes wired
+**Scope:** Full codebase audit pass — corrected stale weaknesses in Sections 2.2, 2.3, 2.10; Section 6 rewritten to reflect all implemented work; two undocumented AI features added to inventory; Section 8 (Remaining Tasks) added
 
 ---
 
 ## Executive Summary
 
-v3.2 closes the final data gaps (Google Ads RSA assets, Meta audience demographics), improves prompt quality in 4 endpoints, increases Super-Summary token budget to 3,000, and wires report approval notes into `report-commentary` and `executive-summary`. The Section 4 table now has zero ❌ items.
+v3.3 is a full codebase audit pass. All stale ❌ weaknesses in Sections 2.2, 2.3, and 2.10 have been corrected to reflect what is actually in the code. Section 6 (Improvement Recommendations) has been rewritten — all P1, P2, and P3 items were already implemented. Two previously undocumented AI features have been added to the inventory. A new Section 8 (Remaining Tasks) consolidates every genuinely open gap.
+
+v3.2 closed the final data gaps (Google Ads RSA assets, Meta audience demographics), improved prompt quality in 4 endpoints, increased Super-Summary token budget to 3,000, and wired report approval notes into `report-commentary` and `executive-summary`. The Section 4 table now has zero ❌ items.
 
 v3.1 closed all data pipeline gaps.
+
+**New in v3.3 (Audit pass):**
+- Section 2.2 corrected: `super-summary` max_tokens weakness marked as FIXED (raised to 3,000 in v3.2)
+- Section 2.3 corrected: all three stale ❌ weaknesses about `overview-narrative` channel coverage, e-commerce data, and `PlatformMetrics` type marked FIXED (done in v3.0)
+- Section 2.10 corrected: four stale ❌ weaknesses about `strategy-document` model, KPI targets, previous docs context, and hard-coded channel keys all marked FIXED (done in v3.0/v3.1)
+- Section 1 (AI Endpoint Inventory): two undocumented AI features added — `cron/snapshots` anomaly hypothesis generation and `reports/[id]/approve` action extraction
+- Section 6 (Improvement Recommendations): completely rewritten — all P1, P2, and P3 items from previous versions were already implemented in code
+- Section 8 (Remaining Tasks) added: consolidated list of every genuinely open gap
 
 **New in v3.2:**
 - `getGoogleAdsRSAAssets()` added to `google-ads.ts` — GAQL query fetches top 50 RSAs with headlines, descriptions, and ad-level performance (clicks, conversions, spend); included in Google Ads route cache and injected into `overview-narrative` via ApiCache lookup
@@ -54,13 +64,14 @@ v3.1 closed all data pipeline gaps.
 
 ## Table of Contents
 
-1. [What Was Wrong — Real Example Analysis](#1-what-was-wrong--real-example-analysis)
-2. [Signal Quality Problems](#2-signal-quality-problems)
-3. [What Data Is Available vs What AI Uses](#3-what-data-is-available-vs-what-ai-uses)
-4. [What Changed](#4-what-changed)
-5. [Remaining Gaps & Next Steps](#5-remaining-gaps--next-steps)
-6. [AI Endpoint Inventory (Updated)](#6-ai-endpoint-inventory-updated)
-7. [Architecture: How Signals Work](#7-architecture-how-signals-work)
+1. [AI Endpoint Inventory](#1-ai-endpoint-inventory)
+2. [Component-by-Component Audit](#2-component-by-component-audit)
+3. [Data Flow Architecture](#3-data-flow-architecture)
+4. [What Data Is Available vs What AI Actually Sees](#4-what-data-is-available-vs-what-ai-actually-sees)
+5. [Current Gaps & Weaknesses](#5-current-gaps--weaknesses)
+6. [Improvement Recommendations — Status](#6-improvement-recommendations--status)
+7. [What If: Claude Sonnet / Opus Integration](#7-what-if-claude-sonnet--opus-integration)
+8. [Remaining Tasks](#8-remaining-tasks)
 
 ---
 
@@ -95,6 +106,13 @@ v3.1 closed all data pipeline gaps.
 **Total AI endpoints: 23**  
 **Models:** `gpt-4o` for strategy-document and root-cause; `gpt-4o-mini` for all others  
 **Key management:** All 23 endpoints use `getOpenAiClient()` from `src/lib/openai-client.ts` (checks DB `AppSetting` first, falls back to `OPENAI_API_KEY` env var).
+
+### 1.1 Additional AI-Using Routes (not exposed as standalone endpoints)
+
+| Route | AI task | Trigger | Notes |
+|-------|---------|---------|-------|
+| `POST /api/cron/snapshots` | Anomaly hypothesis generation — when a high-severity anomaly is detected, generates a 2-sentence likely cause and attaches it to the notification | Vercel cron (daily 02:00 UTC) or admin "Run Now" | gpt-4o-mini, max_tokens 150; non-critical (catch silenced) |
+| `POST /api/reports/[id]/approve` | Action extraction — when a report is approved, extracts 3–8 concrete `ClientAction` records from the approved section commentaries | Called by the report approval UI | gpt-4o-mini, `response_format: json_object`, max_tokens 1500 |
 
 ---
 
@@ -154,7 +172,7 @@ This is the most sophisticated component — it bridges ad performance data with
 **Weaknesses:**
 - ❌ Only covers `ga4`, `googleads`, `meta`, `seo`, `searchconsole` section types — not TikTok, LinkedIn, Microsoft Ads, Klaviyo, YouTube, HubSpot, CallRail
 - ❌ Page crawl can fail silently (HTTPS-only sites, bot-blocking) — no fallback web search (unlike `landing-page-analysis` which uses OpenAI web_search for failed fetches)
-- ❌ gpt-4o-mini has 128k context but `max_tokens` is capped at 2,000 — very tight for 5-page crawls + campaign data + cross-platform context
+- ❌ ~~gpt-4o-mini has 128k context but `max_tokens` is capped at 2,000 — very tight for 5-page crawls + campaign data + cross-platform context~~ ✅ FIXED (v3.2) — raised to 3,000 tokens in both streaming and non-streaming paths
 - ❌ Landing page scoring gives one number (0–100) but doesn't drill into WHY (no CRO/SEO/Mobile/Forms breakdown like the dedicated `landing-page-analysis` endpoint does)
 - ❌ No awareness of client goals — can't say "you're 60% of the way to your ROAS target"
 - ❌ No Core Web Vitals data fed in — Google's actual field data on page performance not used here
@@ -174,12 +192,11 @@ Produces a strategic marketing narrative across ALL active channels simultaneous
 - ✅ Provides `channelScores` (per-channel 0-100) + `overallScore` + `crossChannelInsights` + `budgetRecommendation`
 
 **Weaknesses:**
-- ❌ Hard-coded to 5 channels: googleads, meta, ga4, seo, searchconsole. TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube **not included in cross-channel analysis**
-- ❌ No e-commerce revenue data (WooCommerce/Shopify orders, revenue, AOV) — a client's actual business revenue is invisible to the cross-channel AI
-- ❌ `PlatformMetrics` type is defined but only those 5 channels are explicitly typed
+- ❌ ~~Hard-coded to 5 channels: googleads, meta, ga4, seo, searchconsole. TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube **not included in cross-channel analysis**~~ ✅ FIXED (v3.0) — `PlatformMetrics` type now covers all 12 channel types; `overview-narrative` route handles TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, and ecommerce as optional blocks
+- ❌ ~~No e-commerce revenue data (WooCommerce/Shopify orders, revenue, AOV) — a client's actual business revenue is invisible to the cross-channel AI~~ ✅ FIXED (v3.0) — `ecommerce` field added to `PlatformMetrics`; revenue/orders/AOV injected into context; `channelScores` key `ecommerce` supported
+- ❌ ~~`PlatformMetrics` type is defined but only those 5 channels are explicitly typed~~ ✅ FIXED (v3.0) — all channels explicitly typed with per-channel metric shapes
 - ❌ No seasonality context — the AI doesn't know if it's Christmas, Black Friday, or back-to-school
-- ❌ No call volume / offline conversion data (CallRail)
-- ❌ No email revenue contribution (Klaviyo) included in blended totals
+- ❌ Blended totals (totalAdSpend, totalPaidClicks, blendedRoas) are caller-assembled by the frontend — whether CallRail and Klaviyo are included in the blended numbers depends on what the client component passes in; there is no server-side guarantee
 
 ---
 
@@ -306,11 +323,11 @@ Generates a 10-section quarterly strategy document per client.
 - ✅ Accepts `crossPlatformData` payload — can receive everything
 
 **Weaknesses:**
-- ❌ Prompt uses `gpt-4o-mini` with `max_tokens: 3000` — a 10-section strategy document at this budget will inevitably be shallow, generic, and templated
-- ❌ `crossPlatformData` is `Record<string, unknown>` — the caller must know what to send. The endpoint itself doesn't fetch any data from the DB; it relies entirely on the client to assemble the payload
-- ❌ KPI targets in the output use "current" and "target" as strings — completely invented by the AI rather than pulled from the actual `ClientGoal` records
-- ❌ No previous strategy documents context — each document is generated in isolation; it cannot say "last quarter we committed to X, here's how we did"
-- ❌ `channelStrategy` in the output has hard-coded keys: `paid_search`, `paid_social`, `seo`, `email`, `overall` — other channels (TikTok, LinkedIn, YouTube, Display) get ignored
+- ❌ ~~Prompt uses `gpt-4o-mini` with `max_tokens: 3000` — a 10-section strategy document at this budget will inevitably be shallow, generic, and templated~~ ✅ FIXED (v3.0) — upgraded to `gpt-4o` with `max_tokens: 6000`
+- ❌ `crossPlatformData` is `Record<string, unknown>` — the endpoint does not fetch live channel data itself; it relies on the caller to assemble the cross-platform payload. This is an architectural limitation — if a channel section hasn't been loaded by the user, its data won't be present.
+- ❌ ~~KPI targets in the output use "current" and "target" as strings — completely invented by the AI rather than pulled from the actual `ClientGoal` records~~ ✅ FIXED (v3.0) — `ClientGoal` records are fetched and injected as `ACTIVE CLIENT GOALS (use these as the basis for kpiTargets — do NOT invent figures)`
+- ❌ ~~No previous strategy documents context — each document is generated in isolation; it cannot say "last quarter we committed to X, here's how we did"~~ ✅ FIXED (v3.1) — last 2 `StrategyDocument` records (title, performanceSummary, kpiTargets) are injected as `PREVIOUS STRATEGY DOCUMENTS`
+- ❌ ~~`channelStrategy` in the output has hard-coded keys: `paid_search`, `paid_social`, `seo`, `email`, `overall` — other channels (TikTok, LinkedIn, YouTube, Display) get ignored~~ ✅ FIXED (v3.0) — prompt now uses dynamic keys based on channels actually present in `crossPlatformData`; prompt explicitly says "OMIT any channel not represented in the data"
 
 ---
 
@@ -544,140 +561,41 @@ Every button press fires a fresh API call. Identical requests (same client, same
 
 ---
 
-## 6. Improvement Recommendations
+## 6. Improvement Recommendations — Status
 
-### Priority 1 — Immediate (1–2 weeks)
+> **All items from the original P1, P2, and P3 recommendation lists have been implemented.** This section is retained as a historical reference. See **[Section 8 — Remaining Tasks](#8-remaining-tasks)** for what is genuinely still to do.
 
-**P1.1: Standardise API key resolution across all 18 endpoints**  
-Create a shared `getOpenAiKey()` utility that checks `AppSetting` first, then falls back to `OPENAI_API_KEY`. Apply to all 18 endpoints. Currently only 4 endpoints use the DB-first pattern.
+### Priority 1 — All Done ✅
 
-```typescript
-// lib/openai-client.ts
-export async function getOpenAiKey(): Promise<string> {
-  const setting = await prisma.appSetting.findUnique({ where: { key: "openaiApiKey" } });
-  const key = setting?.value || process.env.OPENAI_API_KEY;
-  if (!key) throw new Error("OpenAI API key not configured. Please add it in Settings.");
-  return key;
-}
-```
+| Item | What it was | Status |
+|------|-------------|--------|
+| P1.1 | Standardise API key resolution — `getOpenAiClient()` everywhere | ✅ All 23 endpoints + 2 auxiliary routes use `getOpenAiClient()` |
+| P1.2 | Inject `client.aiReportInstructions` into all endpoints | ✅ Wired into all relevant endpoints |
+| P1.3 | Inject `ClientGoal` data into AI prompts | ✅ Done in overview-narrative, executive-summary, strategy-document, summary, report-commentary |
+| P1.4 | Add YouTube, HubSpot, CallRail AI insights panels | ✅ All have `AiInsightsPanel`; SECTION_CONFIGS has personas for all 13 channel types |
 
-**P1.2: Inject `client.aiReportInstructions` into all remaining AI endpoints**  
-Currently only 2 endpoints use per-client instructions. Extend to: `summary`, `super-summary`, `overview-narrative`, `strategy-document`, `root-cause`, `chat`, `budget-advisor`, `creative-intelligence`. This is the highest-leverage personalisation feature already built — it just needs to be wired up.
+### Priority 2 — All Done ✅
 
-**P1.3: Inject `ClientGoal` data into summary, overview-narrative, and report-commentary**  
-Fetch the client's active goals at the start of each AI request and append them to the prompt:
+| Item | What it was | Status |
+|------|-------------|--------|
+| P2.1 | Extend `overview-narrative` to all 10+ channels | ✅ `PlatformMetrics` covers all 12 channels; route handles TikTok, MS Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, ecommerce |
+| P2.2 | Feed e-commerce revenue into AI | ✅ `ecommerce` object in `PlatformMetrics`; injected into overview-narrative and budget-advisor |
+| P2.3 | Streaming for strategy-document, super-summary, root-cause, overview-narrative | ✅ All four support `stream: true` SSE |
+| P2.4 | Improve forecast with pre-computed trends | ✅ `computeTrendAnalysis()` pre-processes MoM/YoY/volatility before prompt |
+| P2.5 | Competitor context in SEO/SemRush `AiInsightsPanel` | ✅ `summary` route fetches `CompetitorSnapshot` for SEO section type and appends competitor landscape |
 
-```
-ACTIVE CLIENT GOALS:
-• Achieve ROAS ≥ 4.0x by 31 March (currently: 3.2x — 80% to target, AT RISK)
-• Grow organic sessions to 5,000/month by 30 June (currently: 3,842 — 77%, ON TRACK)
-```
+### Priority 3 — All Done ✅
 
-This transforms generic commentary into progress-oriented reporting that clients actually care about.
-
-**P1.4: Add YouTube, HubSpot, and CallRail AI insights panels**  
-`AiInsightsPanel` works for any `sectionType` as long as metrics and section config are provided. Add entries to `SECTION_CONFIGS` in `/api/ai/summary/route.ts` for `youtube`, `hubspot`, and `callrail`, and render `AiInsightsPanel` on those dashboard tabs.
-
----
-
-### Priority 2 — High Impact (2–4 weeks)
-
-**P2.1: Extend `overview-narrative` to include all 10+ channels**  
-Refactor `PlatformMetrics` type to accept TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, and CallRail. Update the prompt builder to include their data blocks. Update `channelScores` output to include all active channels.
-
-**P2.2: Feed e-commerce revenue into AI**  
-WooCommerce/Shopify order data is available. Pass `{ orders, revenue, aov, topProducts }` to: `overview-narrative`, `budget-advisor`, `forecast`, and `report-commentary`. A marketer's primary metric is revenue — the AI currently cannot discuss it.
-
-**P2.3: Add streaming to long-running endpoints**  
-Convert `strategy-document`, `super-summary`, `root-cause`, and `overview-narrative` to use `openai.chat.completions.create({ stream: true })` and return `ReadableStream`. Use `useChat` or a custom hook on the frontend. This eliminates the 10-20 second blank loading state.
-
-**P2.4: Improve forecast quality with pre-computed trends**  
-Instead of dumping raw JSON snapshots, pre-compute:
-- Month-over-month trend (mean %)
-- Season index per month (if 12+ months of data)
-- YoY comparison if available
-- Variance coefficient (data quality signal)
-
-Pass these computations to GPT rather than raw numbers — it will produce far more accurate narratives and confidence levels.
-
-**P2.5: Competitor context in dashboard AI**  
-The `CompetitorSnapshot` table holds SemRush metrics for competitor domains. When generating `AiInsightsPanel` for the SEO/SemRush tab, fetch the latest competitor snapshots and append:
-
-```
-COMPETITOR LANDSCAPE:
-• competitor.com: 45,000 organic traffic (+12% MoM), 8,200 keywords, DA 52
-• rival.co.uk: 28,000 organic traffic (-3% MoM), 5,100 keywords, DA 41
-Your organic traffic: 12,400 (+8% MoM)
-```
-
-This makes SEO AI insights genuinely competitive rather than just describing the client's own numbers.
-
----
-
-### Priority 3 — Innovate (1–3 months)
-
-**P3.1: AI-powered Goal Setting Assistant**  
-When an agency creates a new goal, offer an AI "benchmark" button that:
-1. Looks at the last 6 months of `MetricSnapshot` data for that metric
-2. Computes realistic growth trajectories (conservative/moderate/aggressive)
-3. Benchmarks against industry averages (from prompt knowledge or SemRush competitive data)
-4. Suggests a target and deadline with confidence scoring
-
-This prevents both under-ambitious goals and unrealistic ones.
-
-**P3.2: Anomaly Memory + Pattern Learning**  
-Store detected anomalies in a `DetectedAnomaly` model (clientId, platform, metric, severity, period, rootCauseText). When a new anomaly is detected:
-- Check if the same metric on the same platform had an anomaly in prior periods
-- If yes, include that history in the root-cause prompt: "This is the 3rd consecutive month CPA has risen >20%. The previous root cause analyses identified [X] and [Y]."
-- Track which recommended actions were taken via the `ClientAction` model
-
-This creates a learning system rather than goldfish-memory one-shot analysis.
-
-**P3.3: Pre-Meeting Briefing Generator**  
-A one-click "Generate briefing" button on any client dashboard that produces a 1-page concise brief specifically for agency-client meetings:
-- 3 biggest wins since last meeting
-- 3 most important decisions needed
-- 3 action items agreed vs 3 new items proposed
-- Upcoming risks (seasonality, budget pacing, competitor moves)
-- One-line status on each active goal
-
-Uses a structured prompt with `StrategyDocument` + `ClientAction` + `MetricSnapshot` + `ClientGoal` context. Output saved as a `StrategyDocument` variant with `type: "briefing"`.
-
-**P3.4: Intelligent Report Narrative stitching**  
-Currently each report section is generated independently. Add a `POST /api/ai/report-narrative` endpoint that:
-1. Receives ALL section commentaries + ALL metrics
-2. Identifies cross-section stories (e.g. "Google Ads CTR improved because we refreshed creatives last month, which is also why GA4 engagement rate lifted")
-3. Injects cross-section connection sentences into the appropriate commentaries
-4. Rewrites the executive summary last, once the full picture is assembled
-
-**P3.5: Real-time anomaly push notifications with AI context**  
-The daily cron snapshot job already runs at 2:00 UTC. After writing each `MetricSnapshot`, run anomaly detection logic in the cron worker. For any `high` severity anomaly:
-1. Generate a 2-sentence AI root cause hypothesis (fast, low-token)
-2. Create a `Notification` record of type `anomaly`
-3. Send email/Slack alert with the AI hypothesis included
-
-This means the marketer wakes up to "Sessions dropped 40% overnight. Likely cause: Google algorithm update affecting [category] pages — 3 similar pattern detected in March 2025."
-
-**P3.6: AI-powered Action Recommendations from Reports**  
-When a report is approved (`approvalStatus === "approved"`), automatically trigger an AI call that:
-1. Reviews the approved report commentary and AI insights
-2. Extracts concrete action items
-3. Creates `ClientAction` records with priority, description, and assigned platform
-4. Notifies the assigned team member
-
-The report-to-action loop currently requires manual copy-paste.
-
-**P3.7: Blended Revenue Attribution**  
-Combine e-commerce revenue (WooCommerce/Shopify orders) + Klaviyo revenue + Google Ads conversion value + Meta conversion value to produce a single reconciled revenue picture. Feed this into the budget advisor as "true" business revenue rather than platform-reported conversion values (which double-count cross-device and view-through). This is the #1 data quality problem that undermines every ROAS calculation.
-
-**P3.8: AI Visibility (GEO) Monitoring**  
-The GA4 section already detects traffic from ChatGPT, Claude, Perplexity, Gemini, and Copilot (AI referrals). Extend this into a dedicated "AI Visibility" score:
-- Track month-over-month trend of AI referral traffic
-- Cross-reference with SemRush keyword rankings for "zero-click" queries
-- Use the LLM Generator's content structure as a signal of AI-search readiness
-- AI-generated recommendation: "Your ChatGPT referral traffic grew 40% — here are 5 actions to accelerate your AI search presence"
-
-This is an emerging channel that clients are increasingly asking about.
+| Item | What it was | Status |
+|------|-------------|--------|
+| P3.1 | AI Goal Setting Assistant | ✅ Implemented as `POST /api/ai/goal-benchmark` — generates conservative/moderate/aggressive targets with confidence scores |
+| P3.2 | Anomaly Memory + Pattern Learning | ✅ `DetectedAnomaly` model exists; `root-cause` route fetches prior anomalies for same client/platform/metric and injects history (`rootCauseText` + `actionsTaken`) into prompt |
+| P3.3 | Pre-Meeting Briefing Generator | ✅ Implemented as `POST /api/ai/meeting-briefing` — streaming; uses MetricSnapshot + ClientAction + ClientCommunication + ClientGoal context |
+| P3.4 | Intelligent Report Narrative stitching | ✅ Implemented as `POST /api/ai/report-narrative` — streaming; stitches all section commentaries into a cohesive executive narrative |
+| P3.5 | Real-time anomaly push notifications with AI context | ✅ Implemented in `POST /api/cron/snapshots` — generates 2-sentence AI hypothesis for high-severity anomalies and attaches to notification |
+| P3.6 | AI-powered Action Recommendations from Reports | ✅ Implemented in `POST /api/reports/[id]/approve` — on approval, extracts 3–8 `ClientAction` records from commentary using AI |
+| P3.7 | Blended Revenue Attribution | ✅ Implemented as `POST /api/ai/blended-revenue` — reconciles e-commerce + Klaviyo + Google Ads + Meta revenue |
+| P3.8 | AI Visibility (GEO) Monitoring | ✅ Implemented as `POST /api/ai/ai-visibility` — analyses GA4 AI referral traffic (ChatGPT, Perplexity, Gemini, Claude, Copilot); tracks MoM trend |
 
 ---
 
@@ -842,3 +760,122 @@ If the agency invested in Claude Opus for its highest-stakes prompts, the follow
 ---
 
 *This document should be reviewed and updated quarterly. Prompt quality improvements should be version-controlled alongside code changes. AI output quality metrics should be tracked systematically once a rating mechanism is implemented.*
+
+---
+
+## 8. Remaining Tasks
+
+> This section combines every genuinely open gap across the entire platform as of v3.3. Items are grouped by theme and prioritised. "Quick wins" are ≤ 1 day of dev effort; "medium" are 2–5 days; "large" are 1–3 weeks.
+
+---
+
+### 8.1 Feedback & Quality
+
+**RT-01 — AI output quality feedback loop** *(Large)*  
+No mechanism exists for users to mark AI output as useful, wrong, or edited. Without this signal, prompt tuning is blind. Required: new `AiOutputFeedback` DB model (endpointName, clientId, rating, editedOutput, createdAt), a thumbs up/down + optional text UI component, and an admin analytics view showing rating trends per endpoint.
+
+**RT-02 — Prompt output caching / deduplication** *(Medium)*  
+Every button press fires a fresh OpenAI API call even if the same client + period + data has been requested before. A hash of the serialised prompt context stored in `ApiCache` with a short TTL (e.g. 1h) would cut costs and improve perceived performance. Particularly high value for `overview-narrative` and `strategy-document` which are expensive to generate.
+
+---
+
+### 8.2 Data & Context Gaps
+
+**RT-03 — Budget Advisor: no ClientGoal awareness** *(Quick win)*  
+`budget-advisor` fetches client name and instructions but never queries `ClientGoal`. Adding a goals context block (same pattern as overview-narrative and strategy-document) would orient budget recommendations around hitting the client's actual CPA/ROAS targets rather than generic efficiency improvements.
+
+**RT-04 — Budget Advisor: no total budget / contracted spend** *(Quick win)*  
+The endpoint recommends specific daily budgets with no knowledge of the client's total available budget or contracted media spend. Passing `client.contractedHours` (which contains service/hours JSON) and any future `totalMediaBudget` field from the client record would prevent nonsensical recommendations (e.g. "double Meta budget" when the client has a fixed £2k/month).
+
+**RT-05 — EcommerceSection: no AiInsightsPanel** *(Quick win)*  
+`woocommerce`, `shopify`, and `ecommerce` personas exist in `SECTION_CONFIGS` in `summary/route.ts` but `EcommerceSection.tsx` does not render `AiInsightsPanel`. Wiring it in follows the same pattern as KlaviyoSection, LinkedInSection, etc. — import `AiInsightsPanel`, pass `sectionType="ecommerce"` and the loaded stats as `metrics`.
+
+**RT-06 — Seasonality context in AI prompts** *(Medium)*  
+No endpoint currently tells the AI what time of year it is or what seasonal events are upcoming. Adding a lightweight seasonality context block (current month, upcoming retail events for the client's sector, YoY comparison flag) to `overview-narrative`, `forecast`, and `report-commentary` would improve the quality of all time-sensitive outputs.
+
+**RT-07 — SuperSummary: missing channel coverage** *(Medium)*  
+`SECTION_NAMES` and `METRIC_LABELS` in `super-summary/route.ts` only define entries for `ga4`, `googleads`, `meta`, `seo`, `searchconsole`. Clients using TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, or CallRail cannot use SuperSummary on those tabs. Adding entries to `SECTION_NAMES`/`METRIC_LABELS` and rendering `<SuperSummary>` in the relevant section components (TikTokSection, MicrosoftAdsSection, etc.) would complete coverage.
+
+**RT-08 — SuperSummary: no Core Web Vitals data** *(Quick win)*  
+`landing-page-analysis` already uses `getCoreWebVitals()` from `src/lib/core-web-vitals.ts` with 24h cache. SuperSummary crawls landing pages but never pulls CrUX/CWV data despite it being available. Injecting the CWV scores (LCP, CLS, INP) per URL into the SuperSummary page signals would make the page health scoring more grounded in real user data.
+
+**RT-09 — SuperSummary: no ClientGoal awareness** *(Quick win)*  
+SuperSummary is the most comprehensive per-channel analysis tool but it never references the client's active goals. Adding a goals context block (same pattern as other endpoints) would let it say "you are 60% of the way to your ROAS target — here is what the landing page data suggests is holding you back."
+
+**RT-10 — Overview-narrative: blended totals not server-guaranteed** *(Medium)*  
+The `aggregated` object (blended ROAS, total spend, etc.) is assembled by the frontend and passed to `overview-narrative`. If a channel section hasn't been loaded on the dashboard, its data is absent from the totals. Moving the blended totals calculation server-side (reading from `ApiCache`) would make the numbers deterministic and complete regardless of which tabs the user visited.
+
+---
+
+### 8.3 Model & Output Quality
+
+**RT-11 — Forecast: no per-channel breakdown** *(Medium)*  
+The forecast endpoint projects sessions/conversions/revenue as single aggregated numbers. A marketer reviewing the forecast needs "Google Ads conversions: +8%, Meta spend efficiency: -5% (seasonal CPM increase)" rather than a blended total. Refactoring the prompt to loop over available `MetricSnapshot` section types and produce per-channel projections would make forecasts operationally useful.
+
+**RT-12 — Forecast: results not persisted** *(Quick win)*  
+Every forecast is ephemeral — generated on demand, never stored. Saving each `forecast` response to `MetricSnapshot` (or a new `ForecastRecord` model) with the period it covers would enable: (a) comparing previous forecasts to actuals, (b) showing forecast vs actual charts, and (c) calibrating confidence bands over time.
+
+**RT-13 — Attribution: no Data-Driven Attribution model** *(Large)*  
+The 5 attribution models (Last Click, First Click, Linear, Time Decay, Position-Based) are algorithmically correct but none of them is Data-Driven (DDA). DDA is what Google and Meta now default to and what clients are increasingly being quoted by platforms. Adding a DDA approximation (Shapley value across touchpoints) would make the attribution module more credible.
+
+**RT-14 — Attribution: results not saved to DB** *(Quick win)*  
+Attribution model results are computed on demand and discarded. Saving each run to a `AttributionResult` model (similar to `BudgetRecommendation`) would enable trend tracking — "this month Google Ads' DDA share dropped 8 points, suggesting declining upper-funnel effectiveness".
+
+**RT-15 — Root cause: plain Markdown output** *(Medium)*  
+`root-cause` returns a plain Markdown string. The frontend renders it as raw text, making it impossible to build interactive components (expandable hypothesis sections, confidence badges, one-click "create action from this" buttons). Migrating the output to structured JSON (same approach as `strategy-document`) would unlock a significantly better UI.
+
+**RT-16 — Creative Intelligence: no video performance metrics** *(Medium)*  
+The `creative` data shape (`name, spend, impressions, clicks, ctr, conversions, roas, format, headline, description`) has no video metrics. For Meta Reels and TikTok ads, the critical signals are thumb-stop rate, 3-second view rate, video completion rate, and hook watch time — none of which are fed in. These are available from the Meta and TikTok APIs already fetched by the platform.
+
+**RT-17 — Creative Intelligence: no TikTok-specific analysis** *(Medium)*  
+The `creative-intelligence` endpoint accepts a `platform` parameter but there is no dedicated TikTok creative path. TikTok creative analysis requires different vocabulary (hooks, sounds, effects, UGC vs polished) and TikTok-specific fatigue signals. Creating a separate system prompt branch for `platform === "tiktok"` (or a separate endpoint) would significantly improve the quality of TikTok creative recommendations.
+
+---
+
+### 8.4 Chat & Conversational AI
+
+**RT-18 — Chat: context limited to MetricSnapshot only** *(Large)*  
+The chat AI can only reference historical snapshots. Live questions like "what were my conversions yesterday?" or "which campaign is overspending today?" cannot be answered. Adding function calling (`tools`) that can call `/api/ga4`, `/api/google-ads`, and `/api/meta` on demand would transform the chat from a historical analysis tool into a genuine real-time assistant.
+
+**RT-19 — Chat: no suggested follow-up questions** *(Quick win)*  
+The UI shows static prompt suggestions that never adapt to the data. After each AI response, generating 2–3 contextual follow-up questions (a small secondary completion call using the conversation and last response as context) would significantly improve engagement and discoverability of insights.
+
+---
+
+### 8.5 AiInsightsPanel (summary endpoint)
+
+**RT-20 — AiInsightsPanel: no demographic/audience breakdown** *(Medium)*  
+The per-channel `AiInsightsPanel` (`/api/ai/summary`) receives account-level and campaign-level metrics but no audience/demographic breakdown (age, gender, device split, placement). Meta age×gender data now exists via `getMetaAudienceDemographics()` (v3.2) but it is only fed into `overview-narrative`, not into the per-channel AiInsightsPanel where campaign-level creative decisions are made.
+
+**RT-21 — AiInsightsPanel: no goal progress** *(Quick win)*  
+Each channel's AiInsightsPanel prompt does not include the client's active goals. Adding a goals context block (same as other endpoints) would let the AI say "Google Ads ROAS is 3.2x — you need 4.0x by March to hit your target."
+
+**RT-22 — AiInsightsPanel: no historical anomaly pattern** *(Quick win)*  
+When anomaly detection flags a metric change, the AI doesn't know whether this is a first-time occurrence or a recurring pattern. Querying `DetectedAnomaly` for the same client/platform/metric (read pattern from root-cause route) and injecting "this metric has anomalied X times in the last 6 months" would improve insight quality.
+
+---
+
+### 8.6 Report & Document Workflow
+
+**RT-23 — Report Commentary: no previous-period context for intro sections** *(Quick win)*  
+The `overview` / `intro` section type in `report-commentary` does not receive previous-period metrics even though they are stored. For the executive overview commentary, a MoM/YoY comparison block injected into the prompt would make the opening narrative measurably more useful to clients.
+
+**RT-24 — Report Commentary: no seasonal context** *(Quick win)*  
+Same gap as RT-06 but specifically in the report commentary context. Commentary generated in December could say "given the upcoming Christmas trading peak" only if the AI knows the current date and client sector. A `{ currentMonth, clientSector, upcomingEvents }` block would address this.
+
+---
+
+### 8.7 Architecture & Infrastructure
+
+**RT-25 — Claude Sonnet/Opus model routing** *(Large)*  
+See Section 7 for full analysis. The highest-leverage targets for model upgrades are: `strategy-document` (long-form coherence), `root-cause` (causal reasoning), `overview-narrative` (multi-constraint instruction following), and `forecast` (numerical reasoning). Implementation via a `createAICompletion()` abstraction in `src/lib/ai-client.ts` that routes based on task type and a per-task `AppSetting`.
+
+**RT-26 — Media Plan Forecast: no historical benchmarks** *(Medium)*  
+`/api/tools/media-plan/[id]/forecast` generates projections with no knowledge of the client's actual historical CTRs, CPMs, or CPAs. Querying `MetricSnapshot` for the channels in the media plan and injecting "your last 3-month average Google Ads CTR is 4.2%" would make media plan forecasts substantially more credible.
+
+**RT-27 — Keyword-overlap endpoint not surfaced in AI** *(Quick win)*  
+`/api/cross/keyword-overlap` identifies paid/organic cannibilisation (queries where you're paying for clicks you'd get organically). This data is currently only shown in a UI panel. Injecting the high-risk cannibilisation pairs into the SEO `AiInsightsPanel` prompt would make it a much stronger strategic insight.
+
+---
+
+*Last updated: April 2026 (v3.3 audit)*
