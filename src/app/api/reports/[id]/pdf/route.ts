@@ -113,16 +113,7 @@ export async function GET(
 
         const raw: { id: string; y: number; height: number; isText: boolean }[] = [];
 
-        // Cover block: from top of page to the top of the first section
-        const firstSection = sectionEls[0];
-        if (firstSection) {
-          const firstTop = firstSection.getBoundingClientRect().top + window.scrollY;
-          if (firstTop > 10) {
-            raw.push({ id: "cover", y: 0, height: firstTop, isText: false });
-          }
-        }
-
-        // Each section block
+        // Each section block (cover is merged into the first section below)
         for (const el of sectionEls) {
           const rect = el.getBoundingClientRect();
           const y = rect.top + window.scrollY;
@@ -130,6 +121,13 @@ export async function GET(
           if (rect.height > 10) {
             raw.push({ id: el.id, y, height: rect.height, isText: TEXT_SECTION_TYPES.includes(sectionType) });
           }
+        }
+
+        // Extend the first region back to the top of the page so the cover
+        // card is on the same page as the overview section.
+        if (raw.length > 0 && raw[0].y > 0) {
+          raw[0].height = raw[0].height + raw[0].y;
+          raw[0].y = 0;
         }
 
         // Merge text sections into the preceding region (they become sub-sections

@@ -32,13 +32,13 @@ const FORMAT_INSTRUCTIONS: Record<string, string> = {
 };
 
 const SPIN_INSTRUCTIONS: Record<string, string> = {
-  positive: "This commentary is CLIENT-FACING. Only write about what IS present in the data — wins, progress, and things we are actively working on or monitoring. Frame everything positively and constructively. When metrics have declined, acknowledge them briefly but always provide reassuring context and frame them as temporary or part of ongoing optimisation. Never leave the client feeling concerned — always end constructively.",
-  balanced: "This commentary is CLIENT-FACING. Be balanced and honest in your assessment. Highlight strong results clearly, but also acknowledge areas where metrics declined or fell short — explain what actions are being taken in response. You can be constructive and professional without being relentlessly positive. The client should come away with an accurate picture of performance alongside confidence that the account is being actively managed.",
+  positive: "This commentary is CLIENT-FACING. Only write about what IS present in the data — wins, progress, and things being actively worked on or monitored. Frame everything positively and constructively. When metrics have declined, acknowledge them briefly but always provide reassuring context and frame them as temporary or part of ongoing optimisation. Never leave the client feeling concerned — always end constructively.",
+  balanced: "This commentary is CLIENT-FACING. Be balanced and honest in your assessment. Highlight strong results clearly, but also acknowledge areas where metrics declined or fell short — explain what actions are being taken in response. The writing can be constructive and professional without being relentlessly positive. The client should come away with an accurate picture of performance alongside confidence that the account is being actively managed.",
   neutral: "This commentary is CLIENT-FACING. Be factual and transparent. Report the data as it is — including declines and underperformance — clearly and directly. Do not spin results. The client values transparency and accurate reporting over a positive gloss. Be professional and informative throughout, but do not soften or contextualise negative results beyond stating what they are.",
 };
 
 const SPIN_RULES: Record<string, string> = {
-  positive: `- Never use words like "however", "unfortunately", "missed opportunity", "underutilised", or anything implying failure. If a metric has declined, still mention it factually but frame it with context and what we are doing about it (e.g. "Sessions dipped 8% as we restructured campaigns for stronger Q2 performance" rather than "Sessions dropped significantly").`,
+  positive: `- Never use words like "however", "unfortunately", "missed opportunity", "underutilised", or anything implying failure. If a metric has declined, still mention it factually but frame it with context and what is being done about it (e.g. "Sessions dipped 8% as the campaigns were restructured for stronger Q2 performance" rather than "Sessions dropped significantly").`,
   balanced: `- You may acknowledge challenges directly (e.g. "Conversions dipped this month...") but always follow with what action is being taken. Avoid excessively negative language, but don't shy away from honest assessment.`,
   neutral: `- Report metrics factually. You may state declines directly without softening them. Be professional but do not feel required to reframe every negative metric as a positive.`,
 };
@@ -172,7 +172,7 @@ Always write in British English — use British spellings (e.g. optimise, analys
 ${toneInstruction}
 ${lengthInstruction}
 ${formatInstruction}
-Write in the first person as the agency — use "we" and "our" (e.g. "We saw strong growth in...", "Our focus this month was...").
+Write from the agency's perspective addressing the client. Use "the" for campaigns and channels (e.g. "The SEO campaign delivered strong growth...", "The audience responded well..."). Use "your" for the client's own assets (e.g. "your website", "your brand"). Do NOT use first person ("we", "our").
 ${spinInstruction}
 
 SECTION-SPECIFIC GUIDANCE:
@@ -190,8 +190,9 @@ CRITICAL rules:
 - Never include recommendations, suggestions, or areas for improvement — that is handled separately.
 ${spinRule}
 - Do not start with "This section" or "In this section". Start with a substantive observation about the data.
-- When goals are provided, reference progress towards targets naturally (e.g. "We're now at 82% of our ROAS target").
-- Sound like a human account manager wrote it, not an AI.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${approvalContext}`;
+- When goals are provided, reference progress towards targets naturally (e.g. "The ROAS is now at 82% of the target").
+- Sound like a human account manager wrote it, not an AI.
+- Never use em dashes (—). Use commas, full stops, or semicolons instead.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${approvalContext}`;
 
     // Build the previous-commentaries context block to prevent repetition
     let previousCommentariesContext = "";
@@ -207,7 +208,7 @@ ${spinRule}
 - Not repeat any phrases, metaphors, adjectives, or observations already used in the sections above (e.g. if another section already said "strong performance" or "brilliant month", find fresh language).
 - Not repeat the same opening construction — vary how you start this section.
 - Be written as if you are aware of what the other sections say, so the overall report reads as a coherent document rather than a collection of independent pieces.
-- Where relevant, briefly acknowledge a cross-channel connection (e.g. "Aligned with the paid search growth we saw this month…") — but only if there is a genuine link.`;
+- Where relevant, briefly acknowledge a cross-channel connection (e.g. "Aligned with the paid search growth this month…") — but only if there is a genuine link.`;
     }
     const isOverview = sectionType === "overview";
     const userPrompt = isOverview
@@ -216,7 +217,7 @@ ${spinRule}
 Client: ${clientName ?? "the client"}
 Period: ${dateRange ?? "the reporting period"}
 
-This is the opening section of the report. Write a warm, forward-looking introduction that sets the tone for the month, acknowledges the ongoing work across channels, and positions the rest of the report. Write as the agency (first person "we").${previousCommentariesContext}`
+This is the opening section of the report. Write a warm, forward-looking introduction that sets the tone for the month, acknowledges the ongoing work across channels, and positions the rest of the report. Address the client directly using "the" for campaigns/channels and "your" for the client's assets. Do not use first person ("we", "our").${previousCommentariesContext}`
       : `Write a ${tone} ${length} ${format === "bullets" ? "bullet-point" : "prose"} commentary for the ${sectionLabel} section of a digital marketing report.
 
 Client: ${clientName ?? "the client"}
@@ -225,7 +226,7 @@ Period: ${dateRange ?? "the reporting period"}
 Current period metrics:
 ${currentMetricsText}
 ${previousMetricsText ? `\nPrevious period metrics:\n${previousMetricsText}\n` : ""}${goalsContext}${previousCommentariesContext}
-Write as the agency (first person "we"). Describe what the data shows, what we are working on, and what is performing well. Only reference metrics that are present and non-zero. Do not mention anything that is absent.`;
+Address the client directly using "the" for campaigns/channels and "your" for the client's assets. Do not use first person ("we", "our"). Describe what the data shows, what is being worked on, and what is performing well. Only reference metrics that are present and non-zero. Do not mention anything that is absent.`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",

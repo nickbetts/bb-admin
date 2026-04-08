@@ -1235,7 +1235,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
             totalClicks: overview.totalClicks,
           }}
           clientId={clientId}
+          clientName={clientName}
           clickFraudToken={clickFraudToken}
+          reportMode={reportMode}
         />
       )}
 

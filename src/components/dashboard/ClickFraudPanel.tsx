@@ -41,8 +41,12 @@ interface ClickFraudPanelProps {
   };
   /** Client ID — used to load snippet stats and manage the token */
   clientId?: string;
+  /** Client name — shown in report mode instead of "this client" */
+  clientName?: string;
   /** The current click-fraud token for this client (if set) */
   clickFraudToken?: string | null;
+  /** When true, hide snippet/token management sections (for PDF/report views) */
+  reportMode?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -66,7 +70,9 @@ export function ClickFraudPanel({
   googleAdsInvalidClicks,
   metaBotEstimate,
   clientId,
+  clientName,
   clickFraudToken: initialToken,
+  reportMode,
 }: ClickFraudPanelProps) {
   const [token, setToken] = useState<string | null>(initialToken ?? null);
   const [stats, setStats] = useState<SnippetStats | null>(null);
@@ -184,7 +190,7 @@ export function ClickFraudPanel({
             </div>
             <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
               {invalidRate > 0.10
-                ? "⚠ Above industry average — consider adding your protection snippet"
+                ? "⚠ Above industry average. Consider adding your protection snippet"
                 : invalidRate > 0
                 ? "Within normal range"
                 : "No invalid clicks detected"}
@@ -213,11 +219,11 @@ export function ClickFraudPanel({
         {/* ── How it works ────────────────────────────────────────────────── */}
         <div style={{ background: "var(--bg-2)", borderRadius: 8, padding: "14px 18px", border: "1px solid var(--border)" }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>
-            How {platformLabel} invalid click detection works for this client
+            How {platformLabel} invalid click detection works for {clientName || "this client"}
           </div>
           {platform === "googleads" ? (
             <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
-              Google Ads automatically detects and filters invalid clicks using its Traffic Quality systems — combining machine learning, rule-based filters, and manual review. Invalid clicks are excluded from your billing in real-time.
+              Google Ads automatically detects and filters invalid clicks using its Traffic Quality systems, combining machine learning, rule-based filters, and manual review. Invalid clicks are excluded from your billing in real-time.
               {googleAdsInvalidClicks ? (
                 <span>
                   {" "}This period, Google recorded{" "}
@@ -236,7 +242,7 @@ export function ClickFraudPanel({
                 <span>
                   {" "}This period, Meta recorded{" "}
                   <strong style={{ color: "var(--text-1)" }}>{formatNumber(metaBotEstimate.outboundClicks)}</strong> outbound clicks and your site recorded{" "}
-                  <strong style={{ color: "var(--text-1)" }}>{formatNumber(metaBotEstimate.landingPageViews)}</strong> landing page views — a gap of{" "}
+                  <strong style={{ color: "var(--text-1)" }}>{formatNumber(metaBotEstimate.landingPageViews)}</strong> landing page views, a gap of{" "}
                   <strong style={{ color: mEstimatedBotClicks > 0 ? "#c2410c" : "var(--text-1)" }}>{formatNumber(mEstimatedBotClicks)}</strong> clicks ({formatPercent(mBotRate)}).
                   {mEstimatedWasted > 0 && (
                     <span> This translates to an estimated <strong style={{ color: "#c2410c" }}>{formatCurrency(mEstimatedWasted)}</strong> in spend on traffic that did not reach the landing page.</span>
@@ -248,11 +254,11 @@ export function ClickFraudPanel({
         </div>
 
         {/* ── Snippet stats (if token present) ────────────────────────────── */}
-        {token && (
+        {!reportMode && token && (
           <div style={{ background: "var(--bg-2)", borderRadius: 8, padding: "16px 20px", border: "1px solid var(--border)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
               <Shield size={15} color="#6366f1" />
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>Website Protection Snippet — Last 30 Days</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-1)" }}>Website Protection Snippet: Last 30 Days</span>
             </div>
             {statsLoading ? (
               <div style={{ fontSize: 13, color: "var(--text-3)" }}>Loading stats…</div>
@@ -290,7 +296,7 @@ export function ClickFraudPanel({
         )}
 
         {/* ── Snippet section ──────────────────────────────────────────────── */}
-        {clientId && (
+        {!reportMode && clientId && (
           <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <div>

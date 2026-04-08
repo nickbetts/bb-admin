@@ -13,6 +13,28 @@ import { EcommerceSection } from "@/components/dashboard/EcommerceSection";
 import { TextSection } from "@/components/reports/TextSection";
 import { ScreenshotsSection } from "@/components/reports/ScreenshotsSection";
 
+const SECTION_LABEL_MAP: Record<string, string> = {
+  seo: "SEO", web: "Web", ga4: "GA4", paid_social: "Paid Social", meta: "Meta",
+  googleads: "Google Ads", searchconsole: "Search Console", ecommerce: "E-Commerce",
+  shopify: "Shopify", woocommerce: "WooCommerce", overview: "Overview",
+  youtube: "YouTube", hubspot: "HubSpot", callrail: "CallRail", klaviyo: "Klaviyo",
+  linkedin: "LinkedIn", tiktok: "TikTok", microsoft_ads: "Microsoft Ads",
+};
+function formatSectionLabel(key: string): string {
+  return SECTION_LABEL_MAP[key] ?? key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, " ");
+}
+
+const SECTION_SUBTITLES: Record<string, string> = {
+  overview: "High-level performance snapshot across all channels",
+  seo: "Organic search visibility via SEMrush",
+  web: "Site traffic data via Google Analytics 4",
+  paid_social: "Paid social advertising via Meta Ads",
+  googleads: "Paid search advertising via Google Ads",
+  searchconsole: "Organic search performance via Google Search Console",
+  ecommerce: "Online store revenue and order performance",
+  executive_summary: "AI-generated summary of the full report",
+};
+
 interface Section {
   id: string;
   sectionType: string;
@@ -111,7 +133,7 @@ export function ReportPrintView({ report }: { report: Report }) {
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#4f46e5", opacity: 0.7, marginBottom: 4 }}>Cross-channel stories</p>
           {narrativeResult.crossSectionStories.map((story, i) => (
             <div key={i} style={{ background: "rgba(255,255,255,0.6)", borderRadius: 6, padding: "8px 12px" }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: "#4f46e5", marginBottom: 3 }}>{story.sections.join(" + ")}</p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: "#4f46e5", marginBottom: 3 }}>{story.sections.map(formatSectionLabel).join(" + ")}</p>
               <p style={{ fontSize: 13, color: "#1e293b", lineHeight: 1.55 }}>{story.narrative}</p>
             </div>
           ))}
@@ -191,6 +213,8 @@ export function ReportPrintView({ report }: { report: Report }) {
         >
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
             <div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/primary-logo.svg" alt="i3media" style={{ height: 32, marginBottom: 20 }} />
               <p
                 style={{
                   fontSize: 11,
@@ -303,8 +327,12 @@ export function ReportPrintView({ report }: { report: Report }) {
         // When a report narrative is generated it replaces the overview commentary.
         // Show narrativeBlock for the overview section, fall back to commentaryBlock
         // for non-overview sections (or overview without a narrative).
+        const sectionSubtitle = SECTION_SUBTITLES[section.sectionType];
         const afterHeader = (
           <>
+            {sectionSubtitle && (
+              <p style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>{sectionSubtitle}</p>
+            )}
             {section.sectionType === "overview"
               ? (narrativeBlock ?? commentaryBlock(section))
               : commentaryBlock(section)}

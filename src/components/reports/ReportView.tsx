@@ -4,6 +4,17 @@ import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+const SECTION_LABEL_MAP: Record<string, string> = {
+  seo: "SEO", web: "Web", ga4: "GA4", paid_social: "Paid Social", meta: "Meta",
+  googleads: "Google Ads", searchconsole: "Search Console", ecommerce: "E-Commerce",
+  shopify: "Shopify", woocommerce: "WooCommerce", overview: "Overview",
+  youtube: "YouTube", hubspot: "HubSpot", callrail: "CallRail", klaviyo: "Klaviyo",
+  linkedin: "LinkedIn", tiktok: "TikTok", microsoft_ads: "Microsoft Ads",
+};
+function formatSectionLabel(key: string): string {
+  return SECTION_LABEL_MAP[key] ?? key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, " ");
+}
+
 // Compress an image file client-side using Canvas before upload.
 // Resizes to a max of 1920px on the longest side and re-encodes as JPEG at 82%
 // quality. Keeps the result well under 400 KB for typical screenshots.
@@ -1144,21 +1155,21 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
   const enabledSections = report.sections.filter((s) => s.enabled !== false);
 
-  const SECTION_META: Record<string, { icon: React.ReactNode; badge: string }> = {
-    overview:                    { icon: <LayoutGrid size={14} />, badge: "badge-slate" },
-    executive_summary:           { icon: <Star size={14} />, badge: "badge-amber" },
-    seo:                         { icon: <TrendingUp size={14} />, badge: "badge-indigo" },
-    web:                         { icon: <Globe size={14} />, badge: "badge-blue" },
-    paid_social:                 { icon: <BarChart2 size={14} />, badge: "badge-orange" },
-    googleads:                   { icon: <Search size={14} />, badge: "badge-green" },
-    searchconsole:               { icon: <Search size={14} />, badge: "badge-purple" },
+  const SECTION_META: Record<string, { icon: React.ReactNode; badge: string; subtitle?: string }> = {
+    overview:                    { icon: <LayoutGrid size={14} />, badge: "badge-slate", subtitle: "High-level performance snapshot across all channels" },
+    executive_summary:           { icon: <Star size={14} />, badge: "badge-amber", subtitle: "AI-generated summary of the full report" },
+    seo:                         { icon: <TrendingUp size={14} />, badge: "badge-indigo", subtitle: "Organic search visibility via SEMrush" },
+    web:                         { icon: <Globe size={14} />, badge: "badge-blue", subtitle: "Site traffic data via Google Analytics 4" },
+    paid_social:                 { icon: <BarChart2 size={14} />, badge: "badge-orange", subtitle: "Paid social advertising via Meta Ads" },
+    googleads:                   { icon: <Search size={14} />, badge: "badge-green", subtitle: "Paid search advertising via Google Ads" },
+    searchconsole:               { icon: <Search size={14} />, badge: "badge-purple", subtitle: "Organic search performance via Google Search Console" },
     text_notable_achievements:   { icon: <FileText size={14} />, badge: "badge-slate" },
     text_screenshots:            { icon: <Image size={14} />, badge: "badge-slate" },
     text_work_complete:          { icon: <FileText size={14} />, badge: "badge-slate" },
     text_content_done:           { icon: <FileText size={14} />, badge: "badge-slate" },
     text_technical_update:       { icon: <FileText size={14} />, badge: "badge-slate" },
     text_ppc_update:             { icon: <FileText size={14} />, badge: "badge-slate" },
-    ecommerce:                   { icon: <ShoppingCart size={14} />, badge: "badge-emerald" },
+    ecommerce:                   { icon: <ShoppingCart size={14} />, badge: "badge-emerald", subtitle: "Online store revenue and order performance" },
   };
 
   const isPublished = report.status === "published";
@@ -1486,6 +1497,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       {meta.icon}
                       {section.title}
                     </span>
+                    {meta.subtitle && (
+                      <span style={{ fontSize: 12, color: "var(--text-3)" }}>{meta.subtitle}</span>
+                    )}
                     {autosaveStatus[section.id] && (
                       <span style={{ fontSize: 11, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3, color: autosaveStatus[section.id] === "saved" ? "#10b981" : "var(--text-4)" }}>
                         {autosaveStatus[section.id] === "saved" ? <><CheckCircle2 size={12} /> Saved</> : "Autosaving…"}
@@ -1638,7 +1652,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--accent-text)", opacity: 0.7 }}>Cross-channel stories</p>
                                 {narrativeResult.crossSectionStories.map((story, i) => (
                                   <div key={i} style={{ background: "rgba(255,255,255,0.6)", borderRadius: "var(--r-sm)", padding: "8px 12px" }}>
-                                    <p style={{ fontSize: 11, fontWeight: 600, color: "var(--accent-text)", marginBottom: 3 }}>{story.sections.join(" + ")}</p>
+                                    <p style={{ fontSize: 11, fontWeight: 600, color: "var(--accent-text)", marginBottom: 3 }}>{story.sections.map(formatSectionLabel).join(" + ")}</p>
                                     <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.55 }}>{story.narrative}</p>
                                   </div>
                                 ))}

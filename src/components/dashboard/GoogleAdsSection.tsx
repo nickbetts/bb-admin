@@ -1007,7 +1007,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           platform="googleads"
           googleAdsInvalidClicks={data?.invalidClicks}
           clientId={clientId}
+          clientName={clientName}
           clickFraudToken={clickFraudToken}
+          reportMode={reportMode}
         />
       )}
     </div>
