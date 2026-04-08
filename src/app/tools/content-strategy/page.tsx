@@ -16,6 +16,7 @@ import {
   X,
   Calendar,
   Users,
+  Plus,
 } from "lucide-react";
 
 interface ContentStrategyItem {
@@ -51,6 +52,7 @@ export default function ContentStrategyPage() {
     new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })
   );
   const [dragOver, setDragOver] = useState(false);
+  const [creatingClient, setCreatingClient] = useState(false);
 
   // Preview state
   const [previewHtml, setPreviewHtml] = useState("");
@@ -79,7 +81,9 @@ export default function ContentStrategyPage() {
     try {
       const res = await fetch("/api/clients");
       const data = await res.json();
-      if (data.clients) setClients(data.clients);
+      // API returns flat array, not { clients: [...] }
+      if (Array.isArray(data)) setClients(data);
+      else if (data.clients) setClients(data.clients);
     } catch {
       console.error("Failed to load clients");
     }
@@ -331,8 +335,16 @@ export default function ContentStrategyPage() {
                   className="form-input"
                   value={clientId}
                   onChange={(e) => {
-                    const selectedClient = clients.find((c) => c.id === e.target.value);
-                    setClientId(e.target.value);
+                    const val = e.target.value;
+                    if (val === "__new__") {
+                      setClientId("");
+                      setClientName("");
+                      setCreatingClient(true);
+                      return;
+                    }
+                    setCreatingClient(false);
+                    const selectedClient = clients.find((c) => c.id === val);
+                    setClientId(val);
                     if (selectedClient) setClientName(selectedClient.name);
                     else setClientName("");
                   }}
@@ -341,8 +353,51 @@ export default function ContentStrategyPage() {
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
+                  <option value="__new__">➕ Create new client…</option>
                 </select>
-                {!clientId && (
+                {creatingClient && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)}
+                      placeholder="New client name"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      disabled={!clientName.trim() || generating}
+                      className="btn btn-secondary btn-sm"
+                      style={{ flexShrink: 0, height: 42 }}
+                      onClick={async () => {
+                        if (!clientName.trim()) return;
+                        try {
+                          const res = await fetch("/api/clients", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ name: clientName.trim() }),
+                          });
+                          const newClient = await res.json();
+                          if (newClient.error) {
+                            setError(newClient.error);
+                            return;
+                          }
+                          setClients((prev) => [...prev, { id: newClient.id, name: newClient.name }].sort((a, b) => a.name.localeCompare(b.name)));
+                          setClientId(newClient.id);
+                          setClientName(newClient.name);
+                          setCreatingClient(false);
+                          setSuccess(`Client "${newClient.name}" created`);
+                        } catch {
+                          setError("Failed to create client");
+                        }
+                      }}
+                    >
+                      <Plus style={{ width: 14, height: 14 }} /> Create
+                    </button>
+                  </div>
+                )}
+                {!clientId && !creatingClient && (
                   <input
                     type="text"
                     className="form-input"
