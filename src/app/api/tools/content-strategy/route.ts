@@ -316,13 +316,20 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
     isFirst = false;
   }
 
-  // Calculate total keyword volumes for the summary bar
-  const allOptKws = pageOptimisations.flatMap(p => p.keywords);
-  const allLandingKws = allLandingPages.flatMap(p => p.keywords);
-  const allBlogKws = blogPosts.flatMap(p => p.keywords);
-  const topOptVol = allOptKws.reduce((sum, k) => sum + k.volume, 0);
-  const topLandingVol = allLandingKws.reduce((sum, k) => sum + k.volume, 0);
-  const topBlogVol = allBlogKws.reduce((sum, k) => sum + k.volume, 0);
+  // Calculate total keyword volumes for the summary bar (deduplicated per section)
+  function dedupeVolume(keywords: ParsedKeyword[]): number {
+    const best = new Map<string, number>();
+    for (const k of keywords) {
+      const key = k.keyword.toLowerCase();
+      best.set(key, Math.max(best.get(key) ?? 0, k.volume));
+    }
+    let total = 0;
+    best.forEach(v => { total += v; });
+    return total;
+  }
+  const topOptVol = dedupeVolume(pageOptimisations.flatMap(p => p.keywords));
+  const topLandingVol = dedupeVolume(allLandingPages.flatMap(p => p.keywords));
+  const topBlogVol = dedupeVolume(blogPosts.flatMap(p => p.keywords));
   const totalVol = topOptVol + topLandingVol + topBlogVol;
 
   // Overview descriptions from AI
