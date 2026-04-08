@@ -534,27 +534,30 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
     isFirst = false;
   }
 
-  // Calculate total keyword volumes for the summary bar (deduplicated per section)
-  function dedupeVolume(keywords: ParsedKeyword[]): number {
-    const best = new Map<string, number>();
-    for (const k of keywords) {
-      const key = k.keyword.toLowerCase();
-      best.set(key, Math.max(best.get(key) ?? 0, k.volume));
+  // Find the top 4 unique keywords across all sections (for the summary bar)
+  const allKeywords = [
+    ...pageOptimisations.flatMap(p => p.keywords),
+    ...allLandingPages.flatMap(p => p.keywords),
+    ...blogPosts.flatMap(p => p.keywords),
+  ];
+  const bestByKeyword = new Map<string, { keyword: string; volume: number }>();
+  for (const k of allKeywords) {
+    const key = k.keyword.toLowerCase();
+    const existing = bestByKeyword.get(key);
+    if (!existing || k.volume > existing.volume) {
+      bestByKeyword.set(key, { keyword: k.keyword, volume: k.volume });
     }
-    let total = 0;
-    best.forEach(v => { total += v; });
-    return total;
   }
-  const topOptVol = dedupeVolume(pageOptimisations.flatMap(p => p.keywords));
-  const topLandingVol = dedupeVolume(allLandingPages.flatMap(p => p.keywords));
-  const topBlogVol = dedupeVolume(blogPosts.flatMap(p => p.keywords));
-  const totalVol = topOptVol + topLandingVol + topBlogVol;
+  const topKeywords = [...bestByKeyword.values()]
+    .filter(k => k.volume > 0)
+    .sort((a, b) => b.volume - a.volume)
+    .slice(0, 4);
 
   // Overview descriptions from AI
   const overviewOpportunity = aiContent.overviewOpportunity || "A comprehensive content strategy targeting high-value keyword opportunities.";
   const overviewPlan = aiContent.overviewPlan || "The strategy covers page optimisations, new landing pages, blog content, and link building.";
   const overviewPriority = aiContent.overviewPriority || "Focus on the highest-volume keyword clusters and priority pages first.";
-  const overviewScope = aiContent.overviewScope || `Targeting ${formatNum(totalVol)} combined monthly searches across all content types.`;
+  const overviewScope = aiContent.overviewScope || `Targeting ${bestByKeyword.size} unique keywords across all content types.`;
   const sectionDescOpts = aiContent.sectionDescOpts || "These are existing pages on the site that need a content refresh. Updating them improves rankings for terms they already appear for while letting us pick up new keyword opportunities in the same topic cluster.";
   const sectionDescLanding = aiContent.sectionDescLanding || "New pages we will write and publish. Each targets a keyword cluster not currently served by existing content.";
   const sectionDescBlog = aiContent.sectionDescBlog || "New informational articles targeting high-volume awareness queries. These drive organic traffic at the top of the funnel and internally link to donation pages, building site authority.";
@@ -653,10 +656,10 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 .intro-card { background: var(--bg); border-radius: var(--radius); padding: 1.25rem; }
 .intro-card h4 { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); margin-bottom: .35rem; }
 .intro-card p { font-size: .85rem; color: var(--muted); }
-.kw-summary { display: flex; flex-wrap: wrap; gap: 1.5rem; background: #1e293b; color: #fff; border-radius: var(--radius); padding: 1rem 1.5rem; align-items: center; }
-.kw-summary .ks-item { flex: 1; min-width: 100px; text-align: center; }
-.kw-summary .ks-num { font-size: 1.15rem; font-weight: 800; }
-.kw-summary .ks-label { font-size: .6rem; text-transform: uppercase; letter-spacing: .06em; color: rgba(255,255,255,.5); margin-top: .1rem; }
+.kw-summary { background: #0f172a; border-radius: 10px; padding: 1.4rem 1.75rem; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; text-align: center; }
+.kw-summary-num { font-size: 2rem; font-weight: 800; color: #fff; line-height: 1; margin-bottom: .3rem; }
+.kw-summary-num span { color: #c4b5fd; }
+.kw-summary-lbl { font-size: 11px; color: rgba(255,255,255,.4); line-height: 1.4; }
 
 /* -- Optimisation blocks -- */
 .opt-table-wrap { display: flex; flex-direction: column; gap: 1.25rem; }
@@ -802,12 +805,12 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
           <div class="intro-card"><h4>Priority period</h4><p>${esc(overviewPriority)}</p></div>
           <div class="intro-card"><h4>Keyword scope</h4><p>${esc(overviewScope)}</p></div>
         </div>
-        <div class="kw-summary">
-          <div class="ks-item"><div class="ks-num">${formatNum(totalVol)}</div><div class="ks-label">Total monthly searches</div></div>
-          <div class="ks-item"><div class="ks-num">${formatNum(topOptVol)}</div><div class="ks-label">Page optimisations</div></div>
-          <div class="ks-item"><div class="ks-num">${formatNum(topLandingVol)}</div><div class="ks-label">New pages</div></div>
-          <div class="ks-item"><div class="ks-num">${formatNum(topBlogVol)}</div><div class="ks-label">Blog content</div></div>
-        </div>
+        ${topKeywords.length > 0 ? `<div class="kw-summary">
+          ${topKeywords.map(k => `<div class="kw-summary-item">
+            <div class="kw-summary-num"><span>${formatNum(k.volume)}</span></div>
+            <div class="kw-summary-lbl">monthly searches<br>\u201c${esc(k.keyword)}\u201d</div>
+          </div>`).join("\n          ")}
+        </div>` : ''}
       </div>
     </div>
 
