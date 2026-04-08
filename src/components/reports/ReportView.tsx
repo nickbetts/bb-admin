@@ -1663,7 +1663,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                         {sectionScreenshots.length > 0 && (
                           <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
                             {sectionScreenshots.map((ss) => (
-                              <div key={ss.id} style={{ position: "relative", borderRadius: "var(--r)", overflow: "hidden", border: "1px solid var(--border-subtle)" }}>
+                              <div key={ss.id} className="group" style={{ position: "relative", borderRadius: "var(--r)", overflow: "hidden", border: "1px solid var(--border-subtle)" }}>
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src={ss.url} alt={ss.caption ?? ss.filename} style={{ width: "100%", display: "block", objectFit: "cover" }} />
                                 <div style={{ background: "var(--surface)", borderTop: "1px solid var(--border-subtle)" }}>
@@ -1700,15 +1700,13 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                                 </div>
                                 <button
                                   onClick={() => handleDeleteScreenshot(ss.id)}
-                                  className="print:hidden"
+                                  className="print:hidden opacity-0 group-hover:opacity-100 transition-opacity"
                                   style={{
                                     position: "absolute", top: 8, right: 8,
                                     background: "rgba(239,68,68,0.85)", color: "#fff",
                                     border: "none", borderRadius: "var(--r-sm)", padding: 6,
-                                    cursor: "pointer", display: "flex", opacity: 0, transition: "opacity 0.15s",
+                                    cursor: "pointer", display: "flex",
                                   }}
-                                  onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-                                  onMouseLeave={(e) => { e.currentTarget.style.opacity = "0"; }}
                                 >
                                   <Trash2 size={13} />
                                 </button>
@@ -1890,7 +1888,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               <p className="card-title" style={{ marginBottom: 16 }}>Additional Screenshots</p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 16 }}>
                 {report.screenshots.filter((s) => !s.sectionId).map((screenshot) => (
-                  <div key={screenshot.id} className="card" style={{ overflow: "hidden", position: "relative" }}>
+                  <div key={screenshot.id} className="card group" style={{ overflow: "hidden", position: "relative" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={screenshot.url} alt={screenshot.caption ?? screenshot.filename} style={{ width: "100%", display: "block", objectFit: "cover" }} />
                     <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
@@ -1927,15 +1925,13 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                     </div>
                     <button
                       onClick={() => handleDeleteScreenshot(screenshot.id)}
-                      className="print:hidden"
+                      className="print:hidden opacity-0 group-hover:opacity-100 transition-opacity"
                       style={{
                         position: "absolute", top: 8, right: 8,
                         background: "rgba(239,68,68,0.85)", color: "#fff",
                         border: "none", borderRadius: "var(--r-sm)", padding: 6,
-                        cursor: "pointer", display: "flex", opacity: 0, transition: "opacity 0.15s",
+                        cursor: "pointer", display: "flex",
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.opacity = "0"; }}
                     >
                       <Trash2 size={14} />
                     </button>
