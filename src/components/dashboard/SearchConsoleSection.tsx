@@ -459,15 +459,22 @@ export function SearchConsoleSection({
           {queries.length === 0 ? (
             <p className="text-sm text-slate-400 py-6 text-center">No query data</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <div style={{ overflowX: "visible" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "42%" }} />
+                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "16%" }} />
+                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "14%" }} />
+                </colgroup>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <th style={{ textAlign: "left", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Query</th>
-                    <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                    <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
-                    <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
-                    <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Pos.</th>
+                    <th style={{ textAlign: "left", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Query</th>
+                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
+                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
+                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Pos.</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -475,20 +482,20 @@ export function SearchConsoleSection({
                     const prevQ = prevQueriesMap.get(q.query);
                     return (
                     <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                      <td style={{ padding: "10px 16px", color: "var(--text)", maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.query}</td>
-                      <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>
+                      <td style={{ padding: "10px 12px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.query}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>
                         <div>{formatNumber(q.clicks)}</div>
                         <Delta current={q.clicks} previous={prevQ?.clicks} format="count" />
                       </td>
-                      <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>
+                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>
                         <div>{formatNumber(q.impressions)}</div>
                         <Delta current={q.impressions} previous={prevQ?.impressions} format="count" />
                       </td>
-                      <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>
+                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>
                         <div>{(q.ctr * 100).toFixed(1)}%</div>
                         <Delta current={q.ctr} previous={prevQ?.ctr} format="none" />
                       </td>
-                      <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                      <td style={{ padding: "10px 12px", textAlign: "right" }}>
                         <div><span className={positionBadgeClass(q.position)}>{q.position.toFixed(1)}</span></div>
                         <Delta current={q.position} previous={prevQ?.position} format="count" invert />
                       </td>
@@ -508,15 +515,22 @@ export function SearchConsoleSection({
           {pages.length === 0 ? (
             <p className="text-sm text-slate-400 py-6 text-center">No page data</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <div style={{ overflowX: "visible" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "42%" }} />
+                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "16%" }} />
+                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "14%" }} />
+                </colgroup>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <th style={{ textAlign: "left", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Page</th>
-                    <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                    <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
-                    <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
-                    <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Pos.</th>
+                    <th style={{ textAlign: "left", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Page</th>
+                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
+                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
+                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Pos.</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -529,24 +543,24 @@ export function SearchConsoleSection({
                     const prevP = prevPagesMap.get(p.page);
                     return (
                       <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                        <td style={{ padding: "10px 16px", color: "var(--text)", maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <td style={{ padding: "10px 12px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           <a href={p.page} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text)", textDecoration: "none" }}>
                             {displayPage}
                           </a>
                         </td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>
+                        <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>
                           <div>{formatNumber(p.clicks)}</div>
                           <Delta current={p.clicks} previous={prevP?.clicks} format="count" />
                         </td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>
+                        <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>
                           <div>{formatNumber(p.impressions)}</div>
                           <Delta current={p.impressions} previous={prevP?.impressions} format="count" />
                         </td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>
+                        <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>
                           <div>{(p.ctr * 100).toFixed(1)}%</div>
                           <Delta current={p.ctr} previous={prevP?.ctr} format="none" />
                         </td>
-                        <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                        <td style={{ padding: "10px 12px", textAlign: "right" }}>
                           <div><span className={positionBadgeClass(p.position)}>{p.position.toFixed(1)}</span></div>
                           <Delta current={p.position} previous={prevP?.position} format="count" invert />
                         </td>
@@ -579,34 +593,42 @@ export function SearchConsoleSection({
         if (!movers.length) return null;
         return (
           <SectionCard title="Position Movers" subtitle="Queries with biggest rank improvements vs previous period">
-            <div className="overflow-x-auto">
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <div style={{ overflowX: "visible" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "40%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                </colgroup>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <th style={{ textAlign: "left", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Query</th>
-                    <th style={{ textAlign: "center", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Current</th>
-                    <th style={{ textAlign: "center", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Previous</th>
-                    <th style={{ textAlign: "center", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Gain</th>
-                    <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                    <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
+                    <th style={{ textAlign: "left", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Query</th>
+                    <th style={{ textAlign: "center", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Current</th>
+                    <th style={{ textAlign: "center", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Previous</th>
+                    <th style={{ textAlign: "center", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Gain</th>
+                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
                   </tr>
                 </thead>
                 <tbody>
                   {movers.map((q, i) => (
                     <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                      <td style={{ padding: "10px 16px", color: "var(--text)", maxWidth: 360, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.query}</td>
-                      <td style={{ padding: "10px 16px", textAlign: "center" }}>
+                      <td style={{ padding: "10px 12px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.query}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "center" }}>
                         <span className={positionBadgeClass(q.position)}>{q.position.toFixed(1)}</span>
                       </td>
-                      <td style={{ padding: "10px 16px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>{q.prevPosition.toFixed(1)}</td>
-                      <td style={{ padding: "10px 16px", textAlign: "center" }}>
+                      <td style={{ padding: "10px 12px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>{q.prevPosition.toFixed(1)}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "center" }}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: "#ecfdf5", color: "#065f46" }}>
                           <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "3.5px solid transparent", borderRight: "3.5px solid transparent", borderBottom: "5px solid currentColor" }} />
                           +{q.gain.toFixed(1)}
                         </span>
                       </td>
-                      <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>{formatNumber(q.clicks)}</td>
-                      <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(q.impressions)}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>{formatNumber(q.clicks)}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(q.impressions)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -664,29 +686,35 @@ export function SearchConsoleSection({
           {/* Top countries table */}
           {show("countries") && countries.length > 0 && (
             <SectionCard title="Top Countries" subtitle="Ranked by clicks">
-              <div className="overflow-x-auto">
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <div style={{ overflowX: "visible" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, tableLayout: "fixed" }}>
+                  <colgroup>
+                    <col style={{ width: "46%" }} />
+                    <col style={{ width: "18%" }} />
+                    <col style={{ width: "18%" }} />
+                    <col style={{ width: "18%" }} />
+                  </colgroup>
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                      <th style={{ textAlign: "left", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Country</th>
-                      <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                      <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
-                      <th style={{ textAlign: "right", padding: "8px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
+                      <th style={{ textAlign: "left", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Country</th>
+                      <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                      <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
+                      <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
                     </tr>
                   </thead>
                   <tbody>
                     {countries.map((c, i) => (
                       <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                        <td style={{ padding: "10px 16px", color: "var(--text)", textTransform: "capitalize" }}>
+                        <td style={{ padding: "10px 12px", color: "var(--text)", textTransform: "capitalize", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {c.country.toLowerCase()}
                         </td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>
+                        <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>
                           {formatNumber(c.clicks)}
                         </td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>
+                        <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>
                           {formatNumber(c.impressions)}
                         </td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>
+                        <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>
                           {(c.ctr * 100).toFixed(1)}%
                         </td>
                       </tr>
