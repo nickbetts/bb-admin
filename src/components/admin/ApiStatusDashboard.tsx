@@ -33,7 +33,11 @@ interface ApiStatusData {
   platformCounts: Record<string, number>;
   totalClients: number;
   googleConnections: { count: number; accounts: Array<{ email: string; label: string | null }> };
-  semrush: { configured: boolean; units: number | null };
+  semrush: {
+    configured: boolean;
+    units: number | null;
+    history: Array<{ date: string; balance: number }>;
+  };
   openai: { configured: boolean; usage: OpenAiUsage | null };
   platformErrors: Record<string, number>;
   cronStats: {
@@ -483,34 +487,129 @@ export function ApiStatusDashboard() {
                         </div>
                       )}
 
-                      {/* SEMrush units breakdown */}
-                      {integration.id === "semrush" && data.semrush.configured && data.semrush.units !== null && (
-                        <div style={{ marginTop: 12 }}>
-                          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                            {[
-                              {
-                                label: "Units remaining",
-                                value: data.semrush.units.toLocaleString(),
-                                colour: data.semrush.units === 0 ? "#b91c1c" : data.semrush.units < 1000 ? "#d97706" : "#15803d",
-                                bg: data.semrush.units === 0 ? "#fef2f2" : data.semrush.units < 1000 ? "#fffbeb" : "#f0fdf4",
-                              },
-                              { label: "Clients configured", value: (data.platformCounts.seo ?? 0).toString(), colour: "var(--text)", bg: "var(--bg-2, #f8f8f8)" },
-                            ].map((s) => (
-                              <div
-                                key={s.label}
-                                style={{ padding: "8px 14px", borderRadius: 8, background: s.bg, border: "1px solid var(--border)", minWidth: 120 }}
-                              >
-                                <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>{s.label}</p>
-                                <p style={{ fontSize: 18, fontWeight: 700, color: s.colour }}>{s.value}</p>
+                      {/* SEMrush units breakdown — used vs remaining */}
+                      {integration.id === "semrush" && data.semrush.configured && data.semrush.units !== null && (() => {
+                        const remaining = data.semrush.units;
+                        const history = data.semrush.history ?? [];
+                        // "Used" = highest recorded balance minus current balance (tracks consumption since we started measuring)
+                        const highWater = history.reduce((m, e) => Math.max(m, e.balance), remaining);
+                        const used = highWater - remaining;
+                        const total = highWater; // best proxy for plan total we have
+                        const usedPct = total > 0 ? Math.round((used / total) * 100) : 0;
+                        const lowBalance = remaining < 1000;
+                        const noBalance = remaining === 0;
+
+                        return (
+                          <div style={{ marginTop: 14 }}>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
+                              Credit usage
+                            </p>
+
+                            {/* Stat cards row */}
+                            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                              {[
+                                {
+                                  label: "Units remaining",
+                                  value: remaining.toLocaleString(),
+                                  colour: noBalance ? "#b91c1c" : lowBalance ? "#d97706" : "#15803d",
+                                  bg: noBalance ? "#fef2f2" : lowBalance ? "#fffbeb" : "#f0fdf4",
+                                  highlight: true,
+                                },
+                                used > 0 ? {
+                                  label: "Units used",
+                                  value: used.toLocaleString(),
+                                  colour: "var(--text)",
+                                  bg: "var(--bg-2, #f8f8f8)",
+                                  highlight: false,
+                                } : null,
+                                {
+                                  label: "Clients configured",
+                                  value: (data.platformCounts.seo ?? 0).toString(),
+                                  colour: "var(--text)",
+                                  bg: "var(--bg-2, #f8f8f8)",
+                                  highlight: false,
+                                },
+                                history.length >= 2 ? {
+                                  label: "Tracking since",
+                                  value: history[0].date,
+                                  colour: "var(--text-3)",
+                                  bg: "var(--bg-2, #f8f8f8)",
+                                  highlight: false,
+                                } : null,
+                              ].filter(Boolean).map((s) => s && (
+                                <div
+                                  key={s.label}
+                                  style={{ padding: "8px 14px", borderRadius: 8, background: s.bg, border: "1px solid var(--border)", minWidth: 120 }}
+                                >
+                                  <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>{s.label}</p>
+                                  <p style={{ fontSize: s.label === "Tracking since" ? 13 : 18, fontWeight: 700, color: s.colour }}>{s.value}</p>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Progress bar (used vs remaining) */}
+                            {used > 0 && (
+                              <div style={{ marginBottom: 10 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>
+                                  <span>{used.toLocaleString()} used ({usedPct}%)</span>
+                                  <span>{remaining.toLocaleString()} remaining</span>
+                                </div>
+                                <div style={{ height: 8, borderRadius: 4, background: "var(--border)", overflow: "hidden" }}>
+                                  <div
+                                    style={{
+                                      height: "100%",
+                                      borderRadius: 4,
+                                      width: `${Math.min(100, usedPct)}%`,
+                                      background: noBalance ? "#ef4444" : lowBalance ? "#f59e0b" : "#22c55e",
+                                      transition: "width 0.5s ease",
+                                    }}
+                                  />
+                                </div>
                               </div>
-                            ))}
+                            )}
+
+                            {/* Balance history spark-line (SVG) */}
+                            {history.length >= 2 && (() => {
+                              const vals = history.map((e) => e.balance);
+                              const minV = Math.min(...vals);
+                              const maxV = Math.max(...vals);
+                              const W = 280;
+                              const H = 40;
+                              const pts = vals.map((v, i) => {
+                                const x = (i / (vals.length - 1)) * W;
+                                const y = maxV === minV ? H / 2 : H - ((v - minV) / (maxV - minV)) * H;
+                                return `${x.toFixed(1)},${y.toFixed(1)}`;
+                              }).join(" ");
+                              return (
+                                <div style={{ marginBottom: 8 }}>
+                                  <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 4 }}>
+                                    Balance history ({history.length} readings)
+                                  </p>
+                                  <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", maxWidth: W, height: H, display: "block" }}>
+                                    <polyline points={pts} fill="none" stroke="#22c55e" strokeWidth="2" strokeLinejoin="round" />
+                                    {vals.map((v, i) => {
+                                      const x = (i / (vals.length - 1)) * W;
+                                      const y = maxV === minV ? H / 2 : H - ((v - minV) / (maxV - minV)) * H;
+                                      return <circle key={i} cx={x.toFixed(1)} cy={y.toFixed(1)} r="3" fill="#22c55e" />;
+                                    })}
+                                  </svg>
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-3)" }}>
+                                    <span>{history[0].date}</span>
+                                    <span>{history[history.length - 1].date}</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
+                              {used === 0
+                                ? "Usage tracking starts from today — check back tomorrow to see consumption."
+                                : "Usage calculated from highest recorded balance. Typical cost: ~10 units/overview · ~40 units/keyword report."}
+                              {" "}Top up at <a href="https://www.semrush.com/billing/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--primary, #6366f1)" }}>semrush.com/billing</a>.
+                            </p>
                           </div>
-                          <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8 }}>
-                            Typical cost: ~10 units/overview call · ~10 units/keyword report · ~1 unit/backlink row.
-                            Top up at <a href="https://www.semrush.com/billing/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--primary, #6366f1)" }}>semrush.com/billing</a>.
-                          </p>
-                        </div>
-                      )}
+                        );
+                      })()}
                     </div>
 
                     {/* Right: rate limits + links */}

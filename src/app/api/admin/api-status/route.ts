@@ -178,9 +178,20 @@ export async function GET() {
     cwv:          clients.filter((c) => c.cwvUrl).length,
   };
 
-  // SEMrush live units balance
+  // SEMrush live units balance + usage history tracking
   let semrushUnits: number | null = null;
+  let semrushHistory: Array<{ date: string; balance: number }> = [];
+
   if (env.semrush) {
+    // Load existing balance history from AppSetting
+    try {
+      const historySetting = await prisma.appSetting.findUnique({ where: { key: "semrushBalanceHistory" } });
+      if (historySetting?.value) {
+        semrushHistory = JSON.parse(historySetting.value) as Array<{ date: string; balance: number }>;
+      }
+    } catch { /* non-fatal */ }
+
+    // Fetch current balance from SEMrush API
     try {
       const r = await fetch(
         `https://api.semrush.com/?type=units_budget_info&key=${process.env.SEMRUSH_API_KEY}`,
@@ -191,6 +202,24 @@ export async function GET() {
       const match = text.match(/BUDGET::(\d+)/);
       if (match) semrushUnits = parseInt(match[1]);
     } catch { /* non-fatal */ }
+
+    // Store today's balance snapshot (one per day, max 90 entries)
+    if (semrushUnits !== null) {
+      const today = new Date().toISOString().split("T")[0];
+      // Remove any existing entry for today then add the fresh reading
+      semrushHistory = semrushHistory.filter((e) => e.date !== today);
+      semrushHistory.push({ date: today, balance: semrushUnits });
+      // Keep only the most recent 90 days, sorted oldest first
+      semrushHistory = semrushHistory
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .slice(-90);
+      // Persist back to AppSetting (fire-and-forget)
+      prisma.appSetting.upsert({
+        where: { key: "semrushBalanceHistory" },
+        create: { key: "semrushBalanceHistory", value: JSON.stringify(semrushHistory) },
+        update: { value: JSON.stringify(semrushHistory) },
+      }).catch(() => { /* non-fatal */ });
+    }
   }
 
   // OpenAI configured status (DB key overrides env)
@@ -233,7 +262,7 @@ export async function GET() {
     platformCounts,
     totalClients: clients.length,
     googleConnections: { count: connections.length, accounts: connections.map((c) => ({ email: c.email, label: c.label })) },
-    semrush: { configured: env.semrush, units: semrushUnits },
+    semrush: { configured: env.semrush, units: semrushUnits, history: semrushHistory },
     openai: { configured: openAiConfigured, usage: openAiUsage },
     platformErrors,
     cronStats,
