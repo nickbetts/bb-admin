@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       });
       if (goals.length > 0) {
         goalsContext = `\n\nACTIVE CLIENT GOALS (reference goal progress in the executive summary where relevant):\n${goals.map(g => {
-          const pct = g.targetValue > 0 ? Math.round((g.currentValue / g.targetValue) * 100) : 0;
+          const pct = g.targetValue > 0 && g.currentValue != null ? Math.round((g.currentValue / g.targetValue) * 100) : 0;
           return `• ${g.metric}: ${pct}% to target (${g.currentValue}${g.unit ? " " + g.unit : ""} of ${g.targetValue}${g.unit ? " " + g.unit : ""} — ${g.status.toUpperCase()})`;
         }).join("\n")}`;
       }
