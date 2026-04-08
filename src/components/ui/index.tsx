@@ -72,12 +72,11 @@ export function Delta({ current, previous, format = "none", invert = false }: De
   const pctVal = (diff / previous) * 100;
   if (!isFinite(pctVal)) return null;
   if (Math.abs(pctVal) < 0.05) {
-    return <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500, whiteSpace: "nowrap" }}>→</span>;
+    return <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500, whiteSpace: "nowrap" }}>–</span>;
   }
   const isUp = diff > 0;
   const isGood = invert ? !isUp : isUp;
   const color = isGood ? "#10b981" : "#ef4444";
-  const arrow = isUp ? "▲" : "▼";
   const pctStr = `${isUp ? "+" : ""}${pctVal.toFixed(1)}%`;
   let numPart = "";
   if (format === "count") {
@@ -87,9 +86,12 @@ export function Delta({ current, previous, format = "none", invert = false }: De
   } else if (format === "currency") {
     numPart = `${isUp ? "+" : "-"}${formatCurrency(Math.abs(diff))} `;
   }
+  const ArrowShape = isUp
+    ? <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "3.5px solid transparent", borderRight: "3.5px solid transparent", borderBottom: "5px solid currentColor", verticalAlign: "middle", marginRight: 2 }} />
+    : <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "3.5px solid transparent", borderRight: "3.5px solid transparent", borderTop: "5px solid currentColor", verticalAlign: "middle", marginRight: 2 }} />;
   return (
     <span style={{ display: "block", fontSize: 11, fontWeight: 500, color, whiteSpace: "nowrap", marginTop: 2 }}>
-      {arrow} {numPart}({pctStr})
+      {ArrowShape} {numPart}({pctStr})
     </span>
   );
 }

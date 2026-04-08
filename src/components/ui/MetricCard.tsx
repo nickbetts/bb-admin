@@ -2,6 +2,13 @@
 
 import { cn } from "@/lib/utils";
 
+const CssArrowUp = () => (
+  <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "3.5px solid transparent", borderRight: "3.5px solid transparent", borderBottom: "5px solid currentColor", verticalAlign: "middle", marginRight: 3 }} />
+);
+const CssArrowDown = () => (
+  <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "3.5px solid transparent", borderRight: "3.5px solid transparent", borderTop: "5px solid currentColor", verticalAlign: "middle", marginRight: 3 }} />
+);
+
 interface MetricCardProps {
   title: string;
   value: string | number;
@@ -60,7 +67,7 @@ export function MetricCard({
           <div className="metric-footer-row">
             {change !== undefined && (
               <span className={cn("metric-badge", isPositive ? "up" : "down")}>
-                {isPositive ? "+" : ""}{change.toFixed(1)}%
+                {isPositive ? <CssArrowUp /> : <CssArrowDown />}{isPositive ? "+" : ""}{change.toFixed(1)}%
               </span>
             )}
             {changeDiff !== undefined && change !== undefined && (
