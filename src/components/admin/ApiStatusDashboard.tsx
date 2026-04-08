@@ -123,8 +123,7 @@ const INTEGRATIONS: Integration[] = [
     rateLimits: [
       "GPT-4o: 500 RPM / 30,000 TPM (Tier 1)",
       "GPT-4o-mini: 500 RPM / 200,000 TPM (Tier 1)",
-      "Cost: ~$0.005/1K input tokens (gpt-4o)",
-      "Cost: ~$0.00015/1K input tokens (gpt-4o-mini)",
+      "Live cost shown below when usage.read scope is enabled",
     ],
     configured: (d) => d.openai.configured,
     clientCount: () => 0,

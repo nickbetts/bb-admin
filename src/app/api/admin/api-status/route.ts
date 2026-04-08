@@ -28,7 +28,7 @@ interface OpenAiUsageResponse {
   next_page?: string;
 }
 
-// Pricing per 1K tokens (USD) — approximate, updated 2025
+// Pricing per 1K tokens (USD) — approximate list prices; verify at platform.openai.com/pricing
 const OPENAI_PRICING: Record<string, { input: number; output: number }> = {
   "gpt-4o":               { input: 0.005,    output: 0.015 },
   "gpt-4o-mini":          { input: 0.00015,  output: 0.0006 },

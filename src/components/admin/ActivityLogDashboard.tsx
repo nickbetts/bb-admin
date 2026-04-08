@@ -345,12 +345,14 @@ export function ActivityLogDashboard() {
                     <p style={{ fontSize: 13, color: "var(--text)", margin: 0, lineHeight: 1.4 }}>{log.description}</p>
                     {log.metadata && (() => {
                       try {
-                        const meta = JSON.parse(log.metadata) as Record<string, unknown>;
-                        const parts = [];
-                        if (meta.model) parts.push(`Model: ${meta.model}`);
-                        if (meta.inputTokens) parts.push(`${Number(meta.inputTokens).toLocaleString()} input tokens`);
-                        if (meta.outputTokens) parts.push(`${Number(meta.outputTokens).toLocaleString()} output tokens`);
-                        if (meta.webSearch) parts.push("web search");
+                        const meta = JSON.parse(log.metadata);
+                        if (!meta || typeof meta !== "object" || Array.isArray(meta)) return null;
+                        const m = meta as Record<string, unknown>;
+                        const parts: string[] = [];
+                        if (typeof m.model === "string") parts.push(`Model: ${m.model}`);
+                        if (typeof m.inputTokens === "number") parts.push(`${m.inputTokens.toLocaleString()} input tokens`);
+                        if (typeof m.outputTokens === "number") parts.push(`${m.outputTokens.toLocaleString()} output tokens`);
+                        if (m.webSearch === true) parts.push("web search");
                         if (parts.length === 0) return null;
                         return <p style={{ fontSize: 11, color: "var(--text-3)", margin: "3px 0 0", fontStyle: "italic" }}>{parts.join(" · ")}</p>;
                       } catch { return null; }
