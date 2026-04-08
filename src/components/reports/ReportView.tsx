@@ -484,6 +484,17 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
   // ── Report narrative ────────────────────────────────────────────────────────
   const [generatingNarrative, setGeneratingNarrative] = useState(false);
+  const [narrativeResult, setNarrativeResult] = useState<{
+    executiveSummary?: string;
+    crossSectionStories?: { sections: string[]; narrative: string }[];
+    keyThemes?: string[];
+    goalProgressNarrative?: string;
+  } | null>(() => {
+    if (initialReport.narrativeData) {
+      try { return JSON.parse(initialReport.narrativeData); } catch { /* ignore */ }
+    }
+    return null;
+  });
 
   // ── DnD sensors ────────────────────────────────────────────────────────────
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -995,6 +1006,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
         });
         if (res.ok) {
           const data = await res.json();
+          setNarrativeResult(data);
           // Persist narrative for PDF export.
           fetch(`/api/reports/${report.id}`, {
             method: "PATCH",
@@ -1451,6 +1463,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 <div className="card-body" style={{ padding: "20px 28px" }}>
                   {editingSection === section.id ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <select
                           value={aiTone}
@@ -1550,7 +1563,34 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                     const sectionScreenshots = report.screenshots.filter((s) => s.sectionId === section.id);
                     return (
                       <>
-                        {section.commentary ? (
+                        {section.sectionType === "overview" && narrativeResult ? (
+                          <div style={{ background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r)", padding: "14px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                              Report Narrative
+                            </p>
+                            {narrativeResult.executiveSummary && (
+                              <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7 }}>{narrativeResult.executiveSummary}</p>
+                            )}
+                            {narrativeResult.keyThemes && narrativeResult.keyThemes.length > 0 && (
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                {narrativeResult.keyThemes.map((theme, i) => (
+                                  <span key={i} style={{ fontSize: 11, fontWeight: 500, color: "var(--accent-text)", background: "rgba(99,102,241,0.12)", padding: "2px 10px", borderRadius: 99 }}>{theme}</span>
+                                ))}
+                              </div>
+                            )}
+                            {narrativeResult.crossSectionStories && narrativeResult.crossSectionStories.length > 0 && (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--accent-text)", opacity: 0.7 }}>Cross-channel stories</p>
+                                {narrativeResult.crossSectionStories.map((story, i) => (
+                                  <div key={i} style={{ background: "rgba(255,255,255,0.6)", borderRadius: "var(--r-sm)", padding: "8px 12px" }}>
+                                    <p style={{ fontSize: 11, fontWeight: 600, color: "var(--accent-text)", marginBottom: 3 }}>{story.sections.join(" + ")}</p>
+                                    <p style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.55 }}>{story.narrative}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : section.commentary ? (
                           <div style={{
                             background: "var(--accent-bg)", border: "1px solid #c7d2fe",
                             borderRadius: "var(--r)", padding: "14px 18px",
