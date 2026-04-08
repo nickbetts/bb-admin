@@ -161,10 +161,13 @@ function SortableSectionItem({
   availableBlocks,
   visibleBlocks,
   blockOrder,
+  subSections,
   onToggleEnabled,
   onToggleExpand,
   onToggleBlock,
   onReorderBlocks,
+  onToggleSubSection,
+  onReorderSubSections,
   onScrollTo,
 }: {
   section: Section;
@@ -174,10 +177,13 @@ function SortableSectionItem({
   availableBlocks: { id: string; label: string }[];
   visibleBlocks: string[] | undefined;
   blockOrder: string[] | null;
+  subSections?: Array<{ id: string; sectionType: string; title: string; enabled: boolean | null }>;
   onToggleEnabled: () => void;
   onToggleExpand: () => void;
   onToggleBlock: (blockId: string) => void;
   onReorderBlocks: (newOrder: string[]) => void;
+  onToggleSubSection?: (id: string) => void;
+  onReorderSubSections?: (newOrder: string[]) => void;
   onScrollTo: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
@@ -209,6 +215,17 @@ function SortableSectionItem({
     const reordered = arrayMove(orderedBlocks, oldIndex, newIndex);
     onReorderBlocks(reordered.map((b) => b.id));
   }, [orderedBlocks, onReorderBlocks]);
+
+  const handleSubSectionDragEnd = useCallback((event: DragEndEvent) => {
+    if (!subSections || !onReorderSubSections) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = subSections.findIndex((s) => s.id === active.id);
+    const newIndex = subSections.findIndex((s) => s.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(subSections, oldIndex, newIndex);
+    onReorderSubSections(reordered.map((s) => s.id));
+  }, [subSections, onReorderSubSections]);
 
   return (
     <div ref={setNodeRef} style={{ ...style, borderBottom: "1px solid var(--border-subtle)" }}>
@@ -266,7 +283,7 @@ function SortableSectionItem({
           </span>
         </div>
 
-        {availableBlocks.length > 0 && isEnabled && (
+        {(availableBlocks.length > 0 || (subSections && subSections.length > 0)) && isEnabled && (
           <button
             onClick={onToggleExpand}
             style={{
@@ -280,23 +297,39 @@ function SortableSectionItem({
         )}
       </div>
 
-      {isExpanded && isEnabled && availableBlocks.length > 0 && (
+      {isExpanded && isEnabled && (
         <div style={{ padding: "4px 16px 12px", display: "flex", flexDirection: "column", gap: 2 }}>
-          <DndContext sensors={blockSensors} collisionDetection={closestCenter} onDragEnd={handleBlockDragEnd}>
-            <SortableContext items={orderedBlocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
-              {orderedBlocks.map((block) => {
-                const isVisible = !visibleBlocks || visibleBlocks.includes(block.id);
-                return (
+          {availableBlocks.length > 0 && (
+            <DndContext sensors={blockSensors} collisionDetection={closestCenter} onDragEnd={handleBlockDragEnd}>
+              <SortableContext items={orderedBlocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+                {orderedBlocks.map((block) => {
+                  const isVisible = !visibleBlocks || visibleBlocks.includes(block.id);
+                  return (
+                    <SortableBlockItem
+                      key={block.id}
+                      block={block}
+                      isVisible={isVisible}
+                      onToggle={() => onToggleBlock(block.id)}
+                    />
+                  );
+                })}
+              </SortableContext>
+            </DndContext>
+          )}
+          {subSections && subSections.length > 0 && (
+            <DndContext sensors={blockSensors} collisionDetection={closestCenter} onDragEnd={handleSubSectionDragEnd}>
+              <SortableContext items={subSections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                {subSections.map((sub) => (
                   <SortableBlockItem
-                    key={block.id}
-                    block={block}
-                    isVisible={isVisible}
-                    onToggle={() => onToggleBlock(block.id)}
+                    key={sub.id}
+                    block={{ id: sub.id, label: TEXT_SECTION_LABELS[sub.sectionType as TextSectionType] ?? sub.title }}
+                    isVisible={sub.enabled !== false}
+                    onToggle={() => onToggleSubSection?.(sub.id)}
                   />
-                );
-              })}
-            </SortableContext>
-          </DndContext>
+                ))}
+              </SortableContext>
+            </DndContext>
+          )}
         </div>
       )}
     </div>
@@ -470,6 +503,23 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ order: reordered.map((s) => s.id) }),
+    });
+  }, [report.id, report.sections]);
+
+  const handleReorderSubSections = useCallback(async (newOrderIds: string[]) => {
+    const subIdSet = new Set(newOrderIds);
+    const sections = report.sections;
+    const subPositions: number[] = [];
+    sections.forEach((s, i) => { if (subIdSet.has(s.id)) subPositions.push(i); });
+    const reorderedSubs = newOrderIds.map((id) => sections.find((s) => s.id === id)!);
+    const updated = [...sections];
+    subPositions.forEach((pos, i) => { updated[pos] = reorderedSubs[i]; });
+    const withIndex = updated.map((s, i) => ({ ...s, orderIndex: i }));
+    setReport((prev) => ({ ...prev, sections: withIndex }));
+    await fetch(`/api/reports/${report.id}/sections/reorder`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: withIndex.map((s) => s.id) }),
     });
   }, [report.id, report.sections]);
 
@@ -1892,36 +1942,17 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                         availableBlocks={availableBlocks}
                         visibleBlocks={visibleBlocks}
                         blockOrder={blockOrder}
+                        subSections={textSubItems.length > 0 ? textSubItems : undefined}
                         onToggleEnabled={() => handleToggleSectionEnabled(section.id)}
                         onToggleExpand={() => setExpandedSections((prev) => ({ ...prev, [section.id]: !isExpanded }))}
                         onToggleBlock={(blockId) => handleToggleBlock(section.id, blockId)}
                         onReorderBlocks={(newOrder) => handleReorderBlocks(section.id, newOrder)}
+                        onToggleSubSection={(id) => handleToggleSectionEnabled(id)}
+                        onReorderSubSections={handleReorderSubSections}
                         onScrollTo={() => {
                           document.getElementById(`section-${section.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
                         }}
                       />
-                      {textSubItems.map((sub) => {
-                        const subMeta = SECTION_META[sub.sectionType] ?? { icon: <LayoutGrid size={14} />, badge: "badge-slate" };
-                        const subEnabled = sub.enabled !== false;
-                        return (
-                          <div key={sub.id} style={{ borderBottom: "1px solid var(--border-subtle)", paddingLeft: 32, opacity: subEnabled ? 1 : 0.45 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px 7px 0" }}>
-                              <button
-                                onClick={() => handleToggleSectionEnabled(sub.id)}
-                                title={subEnabled ? "Hide section" : "Show section"}
-                                style={{ flexShrink: 0, background: "none", border: "none", cursor: "pointer", padding: 4, borderRadius: "var(--r-sm)", color: subEnabled ? "var(--accent)" : "var(--text-4)", display: "flex", alignItems: "center" }}
-                                aria-label={subEnabled ? "Hide section" : "Show section"}
-                              >
-                                {subEnabled ? <Eye size={14} /> : <EyeOff size={14} />}
-                              </button>
-                              <span style={{ color: "var(--text-3)", flexShrink: 0 }}>{subMeta.icon}</span>
-                              <span style={{ fontSize: 12, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-                                {TEXT_SECTION_LABELS[sub.sectionType as TextSectionType] ?? sub.title}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
                     </>
                   );
                 })}
