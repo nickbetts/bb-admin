@@ -616,7 +616,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 
 /* stat row */
 .stat-row { display: flex; flex-wrap: wrap; gap: 1rem; }
-.stat-card { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 1rem 1.25rem; flex: 1; min-width: 140px; }
+.stat-card { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius); padding: 1rem 1.25rem; min-width: 120px; display: inline-flex; flex-direction: column; }
 .stat-num { font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em; }
 .stat-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: rgba(255,255,255,.5); margin-top: .15rem; }
 
@@ -782,11 +782,6 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
       ${stats.totalBlogPosts > 0 ? '<a class="nav-link" href="#blog-pages">Blog Posts</a>' : ""}
       ${linkTargets.length > 0 ? '<a class="nav-link" href="#link-targets">Link Building</a>' : ""}
     </nav>
-    <div class="contact-card">
-      <div class="cc-label">Your strategist</div>
-      <div class="cc-name">i3MEDIA</div>
-      <a class="cc-btn" href="mailto:hello@i3.media">Get in touch</a>
-    </div>
   </aside>
 
   <main>
@@ -881,10 +876,7 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
             </tbody>
           </table>
         </div>
-        <div class="link-note">
-          <div class="link-note-icon">&#9432;</div>
-          <p>We will vary anchor text across placements. Not every link will use an exact match anchor. In practice we aim for roughly 30% exact, 50% broad/natural, and 20% brand anchors across the total backlink profile for each page.</p>
-        </div>
+        ${(() => { const types = new Set(linkTargets.map(t => t.anchorType.toLowerCase())); return types.size > 1 || !types.has('exact') ? `<div class="link-note"><div class="link-note-icon">&#9432;</div><p>We will vary anchor text across placements. Not every link will use an exact match anchor. In practice we aim for roughly 30% exact, 50% broad/natural, and 20% brand anchors across the total backlink profile for each page.</p></div>` : ''; })()}
       </div>
     </div>` : ""}
 
