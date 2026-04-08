@@ -34,7 +34,6 @@ import { OverviewSection } from "@/components/dashboard/OverviewSection";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { EcommerceSection } from "@/components/dashboard/EcommerceSection";
 import { TextSection } from "@/components/reports/TextSection";
-import { ScreenshotsSection } from "@/components/reports/ScreenshotsSection";
 import { ScreenshotCaptionDialog } from "@/components/reports/ScreenshotCaptionDialog";
 import { parsePeriodToDateRange } from "@/lib/utils";
 import { SECTION_BLOCKS, isTextSection, TEXT_SECTION_LABELS, type TextSectionType } from "@/lib/report-blocks";
@@ -450,6 +449,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [templateName, setTemplateName] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateSaved, setTemplateSaved] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sectionFileInputRef = useRef<HTMLInputElement>(null);
@@ -1009,6 +1009,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
   // ── Screenshots ──────────────────────────────────────────────────────────────
   const handleUploadScreenshot = async (file: File, caption: string, sectionId?: string | null) => {
+    setUploadError(null);
     if (sectionId) {
       setUploadingSectionId(sectionId);
     } else {
@@ -1023,7 +1024,12 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       if (res.ok) {
         const screenshot = await res.json();
         setReport((prev) => ({ ...prev, screenshots: [...prev.screenshots, screenshot] }));
+      } else {
+        const json = await res.json().catch(() => ({}));
+        setUploadError(json.error ?? "Upload failed — please try again.");
       }
+    } catch {
+      setUploadError("Upload failed — check your connection and try again.");
     } finally {
       if (sectionId) {
         setUploadingSectionId(null);
@@ -1132,6 +1138,30 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           onUpload={(caption) => handleUploadScreenshot(pendingUpload.file, caption, pendingUpload.sectionId)}
           onCancel={() => setPendingUpload(null)}
         />
+      )}
+
+      {/* Upload error toast */}
+      {uploadError && (
+        <div
+          className="print:hidden"
+          style={{
+            position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+            zIndex: 1000, background: "#ef4444", color: "#fff",
+            padding: "10px 18px", borderRadius: "var(--r)",
+            fontSize: 13, fontWeight: 500,
+            display: "flex", alignItems: "center", gap: 10,
+            boxShadow: "var(--shadow-lg)",
+          }}
+        >
+          {uploadError}
+          <button
+            onClick={() => setUploadError(null)}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "#fff", padding: 2, display: "flex" }}
+            aria-label="Dismiss"
+          >
+            <X size={14} />
+          </button>
+        </div>
       )}
 
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
@@ -1764,20 +1794,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
             // Text-only sections
             if (isTextSection(section.sectionType)) {
-              if (section.sectionType === "text_screenshots") {
-                return (
-                  <SortableMainSectionWrapper key={section.id} id={section.id} pageBreakBefore={getPageBreakBefore(section)}>
-                    <div id={`section-${section.id}`}>
-                      <ScreenshotsSection
-                        screenshots={report.screenshots.filter((s) => !s.sectionId)}
-                        title={TEXT_SECTION_LABELS[section.sectionType as TextSectionType] ?? section.title}
-                        onDelete={handleDeleteScreenshot}
-                      />
-                    </div>
-                  </SortableMainSectionWrapper>
-                );
-              }
-              // Other text sub-sections render nested under the overview section
+              // All text sub-sections (including screenshots) render nested under the overview section
               return null;
             }
 
@@ -1917,8 +1934,8 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
           <div style={{ flex: 1, overflowY: "auto", padding: "8px 0", minHeight: 0 }}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={report.sections.filter((s) => !isTextSection(s.sectionType) || s.sectionType === "text_screenshots").map((s) => s.id)} strategy={verticalListSortingStrategy}>
-                {report.sections.filter((s) => !isTextSection(s.sectionType) || s.sectionType === "text_screenshots").map((section) => {
+              <SortableContext items={report.sections.filter((s) => !isTextSection(s.sectionType)).map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                {report.sections.filter((s) => !isTextSection(s.sectionType)).map((section) => {
                   const isEnabled = section.enabled !== false;
                   const availableBlocks = SECTION_BLOCKS[section.sectionType] ?? [];
                   const visibleBlocks = getVisibleBlocks(section);
@@ -1928,7 +1945,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
                   // After the overview item, render text sub-sections as indented non-draggable items
                   const textSubItems = section.sectionType === "overview"
-                    ? report.sections.filter((s) => isTextSection(s.sectionType) && s.sectionType !== "text_screenshots")
+                    ? report.sections.filter((s) => isTextSection(s.sectionType))
                     : [];
 
                   return (
