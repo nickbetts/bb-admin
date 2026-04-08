@@ -66,6 +66,10 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
     let currentUrl = "";
     let currentNotes = "";
     let currentKws: ParsedKeyword[] = [];
+    // Common header strings to skip (case-insensitive)
+    const headerStrings = new Set(["link", "keyword", "keywords", "url", "page", "page title", "title", "search volume", "monthly searches", "volume", "notes", "anchor", "anchor text", "anchor type", "type"]);
+    function isHeader(s: string): boolean { return headerStrings.has(s.toLowerCase()); }
+
     // Skip header rows (rows 0-5), data starts at row 6 (index 6)
     for (let i = 6; i < rows.length; i++) {
       const row = rows[i];
@@ -74,6 +78,11 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
       const keyword = String(row[2] || "").replace(/\u200b/g, "").trim();
       const volume = Number(row[3]) || 0;
       const notes = String(row[4] || "").trim();
+
+      // Skip rows that are repeated headers or placeholder text
+      if (isHeader(link) || isHeader(keyword)) continue;
+      // Skip rows with no meaningful keyword content
+      if (!keyword || keyword.length < 2) continue;
 
       if (link && keyword) {
         // New URL group
@@ -104,6 +113,9 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
     let currentNotes = "";
     let currentKws: ParsedKeyword[] = [];
 
+    const headerStringsP = new Set(["link", "keyword", "keywords", "url", "page", "page title", "title", "search volume", "monthly searches", "volume", "notes", "anchor", "anchor text", "anchor type", "type"]);
+    function isHeaderP(s: string): boolean { return headerStringsP.has(s.toLowerCase()); }
+
     for (let i = 6; i < rows.length; i++) {
       const row = rows[i];
       if (!row || row.length < 4) continue;
@@ -112,17 +124,20 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
       const volume = Number(row[3]) || 0;
       const notes = String(row[4] || "").trim();
 
-      if (link && keyword) {
+      // Skip rows that are repeated headers or placeholder text
+      if (isHeaderP(link) || isHeaderP(keyword)) continue;
+
+      if (link && keyword && keyword.length >= 2) {
         if (currentTitle && currentKws.length > 0) {
           pages.push({ title: currentTitle, keywords: currentKws, notes: currentNotes, priority: false });
         }
         currentTitle = link;
         currentKws = [{ keyword, volume }];
         currentNotes = notes;
-      } else if (keyword && !link) {
+      } else if (keyword && keyword.length >= 2 && !link) {
         currentKws.push({ keyword, volume });
         if (notes) currentNotes = notes;
-      } else if (link && !keyword && notes) {
+      } else if (link && !isHeaderP(link) && !keyword && notes) {
         // Title-only row with notes (description row)
         if (currentTitle && currentKws.length > 0) {
           pages.push({ title: currentTitle, keywords: currentKws, notes: currentNotes, priority: false });
@@ -154,12 +169,17 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
   const linkSheet = wb.Sheets["Link Targets"];
   if (linkSheet) {
     const rows = XLSX.utils.sheet_to_json<unknown[]>(linkSheet, { header: 1, defval: "" });
+    const headerStringsL = new Set(["link", "keyword", "keywords", "url", "page", "page title", "title", "search volume", "monthly searches", "volume", "notes", "anchor", "anchor text", "anchor type", "type", "target page"]);
+    function isHeaderL(s: string): boolean { return headerStringsL.has(s.toLowerCase()); }
+
     for (let i = 6; i < rows.length; i++) {
       const row = rows[i];
       if (!row || row.length < 4) continue;
       const url = String(row[1] || "").trim();
       const anchor = String(row[2] || "").trim();
       const anchorType = String(row[3] || "").trim();
+      // Skip header/placeholder rows
+      if (isHeaderL(url) || isHeaderL(anchor)) continue;
       if (url && anchor) {
         linkTargets.push({
           url: url.replace(/^https?:\/\//, "").replace(/^www\./, ""),
