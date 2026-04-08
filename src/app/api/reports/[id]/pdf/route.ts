@@ -178,13 +178,22 @@ export async function GET(
       const scale = pdfHeight / fullHeight;
 
       // Padding (in CSS pixels) to add above and below each cropped section page.
-      const PAD_PX = 100;
+      // We cap each side to the actual gap between adjacent regions so we never
+      // bleed content from a neighbouring section onto this page.
+      const DESIRED_PAD_PX = 40;
 
       const outputDoc = await PDFDocument.create();
 
-      for (const region of regions) {
-        const paddedY = Math.max(0, region.y - PAD_PX);
-        const paddedHeight = Math.min(region.height + PAD_PX * 2, fullHeight - paddedY);
+      for (let idx = 0; idx < regions.length; idx++) {
+        const region = regions[idx];
+        const prevEnd = idx > 0 ? regions[idx - 1].y + regions[idx - 1].height : 0;
+        const nextStart = idx < regions.length - 1 ? regions[idx + 1].y : fullHeight;
+
+        const topPad = Math.min(DESIRED_PAD_PX, region.y - prevEnd);
+        const bottomPad = Math.min(DESIRED_PAD_PX, nextStart - (region.y + region.height));
+
+        const paddedY = region.y - topPad;
+        const paddedHeight = region.height + topPad + bottomPad;
 
         const regionHeightPt = paddedHeight * scale;
         // PDF coordinate system: y=0 is bottom-left, so flip the y axis
