@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     });
     const goalsContext = clientGoals.length > 0
       ? `\n\nACTIVE CLIENT GOALS (use these as the basis for kpiTargets — do NOT invent figures):\n${clientGoals.map(g => {
-        const pct = g.targetValue > 0 ? Math.round((g.currentValue / g.targetValue) * 100) : 0;
+        const pct = g.targetValue > 0 && g.currentValue != null ? Math.round((g.currentValue / g.targetValue) * 100) : 0;
         return `• ${g.metric}: current ${g.currentValue}${g.unit ? " " + g.unit : ""}, target ${g.targetValue}${g.unit ? " " + g.unit : ""} by ${g.targetDate ?? "ongoing"} (${pct}% to target, ${g.status.toUpperCase()})`;
       }).join("\n")}`
       : "";
