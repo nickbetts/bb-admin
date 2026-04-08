@@ -1345,7 +1345,50 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 </div>
 
                 <p style={{ fontWeight: 600, fontSize: 13, color: "var(--text)", marginBottom: 4 }}>Comparison Period <span style={{ fontWeight: 400, color: "var(--text-4)", fontSize: 12 }}>(optional)</span></p>
-                <p style={{ fontSize: 12, color: "var(--text-4)", marginBottom: 12 }}>Leave blank to use previous period automatically.</p>
+                <p style={{ fontSize: 12, color: "var(--text-4)", marginBottom: 10 }}>Leave blank to use previous period automatically.</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                  {(() => {
+                    const s = new Date(dpStart);
+                    const e = new Date(dpEnd);
+                    const diffMs = e.getTime() - s.getTime();
+                    const fmt = (d: Date) => d.toISOString().split("T")[0];
+                    const presets: { label: string; from: string; to: string }[] = [];
+                    if (dpStart && dpEnd && !isNaN(s.getTime()) && !isNaN(e.getTime())) {
+                      // Previous period (same length, immediately before)
+                      const prevEnd = new Date(s.getTime() - 86400000);
+                      const prevStart = new Date(prevEnd.getTime() - diffMs);
+                      presets.push({ label: "Previous period", from: fmt(prevStart), to: fmt(prevEnd) });
+                      // Same period last year
+                      const lyStart = new Date(s); lyStart.setFullYear(lyStart.getFullYear() - 1);
+                      const lyEnd = new Date(e); lyEnd.setFullYear(lyEnd.getFullYear() - 1);
+                      presets.push({ label: "Same period last year", from: fmt(lyStart), to: fmt(lyEnd) });
+                      // Same month last year (calendar month)
+                      const mlyStart = new Date(s.getFullYear() - 1, s.getMonth(), 1);
+                      const mlyEnd = new Date(s.getFullYear() - 1, s.getMonth() + 1, 0);
+                      if (mlyStart.getTime() !== lyStart.getTime() || mlyEnd.getTime() !== lyEnd.getTime()) {
+                        presets.push({ label: "Same month last year", from: fmt(mlyStart), to: fmt(mlyEnd) });
+                      }
+                    }
+                    // Clear option
+                    const isSet = dpCompareStart || dpCompareEnd;
+                    return (
+                      <>
+                        {presets.map((p) => (
+                          <button key={p.label} type="button" onClick={() => { setDpCompareStart(p.from); setDpCompareEnd(p.to); }}
+                            className="btn btn-secondary" style={{ fontSize: 11, padding: "3px 10px", borderRadius: 99 }}>
+                            {p.label}
+                          </button>
+                        ))}
+                        {isSet && (
+                          <button type="button" onClick={() => { setDpCompareStart(""); setDpCompareEnd(""); }}
+                            className="btn btn-secondary" style={{ fontSize: 11, padding: "3px 10px", borderRadius: 99, color: "var(--text-4)" }}>
+                            Clear
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
                   <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Compare from</span>
