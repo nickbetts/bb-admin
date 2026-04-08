@@ -178,7 +178,7 @@ export async function GET(
       const scale = pdfHeight / fullHeight;
 
       // Padding (in CSS pixels) to add above and below each cropped section page.
-      const PAD_PX = 24;
+      const PAD_PX = 100;
 
       const outputDoc = await PDFDocument.create();
 
