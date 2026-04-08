@@ -5,13 +5,15 @@ import { ReportPrintView } from "@/components/reports/ReportPrintView";
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ showDescriptions?: string }>;
 }
 
-export default async function ReportPrintPage({ params }: Props) {
+export default async function ReportPrintPage({ params, searchParams }: Props) {
   const session = await getSession();
   if (!session) redirect("/login");
 
   const { id } = await params;
+  const { showDescriptions } = await searchParams;
 
   const report = await prisma.report.findUnique({
     where: { id },
@@ -24,5 +26,5 @@ export default async function ReportPrintPage({ params }: Props) {
 
   if (!report) notFound();
 
-  return <ReportPrintView report={report} />;
+  return <ReportPrintView report={report} showDescriptions={showDescriptions !== "0"} />;
 }

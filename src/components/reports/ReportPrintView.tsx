@@ -84,7 +84,7 @@ interface Report {
   screenshots: Screenshot[];
 }
 
-export function ReportPrintView({ report }: { report: Report }) {
+export function ReportPrintView({ report, showDescriptions = true }: { report: Report; showDescriptions?: boolean }) {
   const derived = parsePeriodToDateRange(report.period);
   const startDate = report.customStartDate || derived.startDate;
   const endDate = report.customEndDate || derived.endDate;
@@ -340,7 +340,7 @@ export function ReportPrintView({ report }: { report: Report }) {
         const sectionSubtitle = SECTION_SUBTITLES[section.sectionType];
         const afterHeader = (
           <>
-            {sectionSubtitle && (
+            {showDescriptions && sectionSubtitle && (
               <p style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>{sectionSubtitle}</p>
             )}
             <p style={{ fontSize: 11, color: "#94a3b8", marginBottom: 12 }}>

@@ -485,6 +485,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [pendingUpload, setPendingUpload] = useState<{ file: File; sectionId: string | null } | null>(null);
 
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [showDescriptions, setShowDescriptions] = useState(true);
   const [aiLength, setAiLength] = useState<"short" | "medium" | "long">("medium");
   const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive" | "roadman">("professional");
   const [aiFormat, setAiFormat] = useState<"prose" | "bullets" | "both">("prose");
@@ -1128,7 +1129,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const handleExportPdf = useCallback(async () => {
     setExportingPdf(true);
     try {
-      const res = await fetch(`/api/reports/${report.id}/pdf`);
+      const res = await fetch(`/api/reports/${report.id}/pdf?showDescriptions=${showDescriptions ? "1" : "0"}`);
       if (!res.ok) {
         const errData = await res.json().catch(() => null);
         throw new Error(errData?.error ?? `PDF generation failed (${res.status})`);
@@ -1151,7 +1152,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     } finally {
       setExportingPdf(false);
     }
-  }, [report.id, report.client.name, report.period]);
+  }, [report.id, report.client.name, report.period, showDescriptions]);
 
   const enabledSections = report.sections.filter((s) => s.enabled !== false);
 
@@ -1461,6 +1462,15 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               e.target.value = "";
             }}
           />
+          <button
+            onClick={() => setShowDescriptions((v) => !v)}
+            className="btn btn-secondary btn-sm"
+            style={{ gap: 5 }}
+            title={showDescriptions ? "Hide section descriptions" : "Show section descriptions"}
+          >
+            {showDescriptions ? <EyeOff size={13} /> : <Eye size={13} />}
+            {showDescriptions ? "Hide descriptions" : "Show descriptions"}
+          </button>
           <button onClick={handleExportPdf} disabled={exportingPdf} className="btn btn-primary btn-sm">
             <Download size={13} />
             {exportingPdf ? "Generating…" : "Export PDF"}
@@ -1550,9 +1560,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       {meta.icon}
                       {section.title}
                     </span>
-                    {meta.subtitle && (
-                      <span style={{ fontSize: 12, color: "var(--text-3)" }}>{meta.subtitle}</span>
-                    )}
                     <span style={{ fontSize: 11, color: "var(--text-4)" }}>
                       {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
                     </span>
@@ -1584,6 +1591,12 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                     </button>
                   </div>
                 </div>
+
+                {showDescriptions && meta.subtitle && (
+                  <div style={{ padding: "8px 28px 0", borderTop: "1px solid var(--border-subtle)" }}>
+                    <p style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.5 }}>{meta.subtitle}</p>
+                  </div>
+                )}
 
                 <div className="card-body" style={{ padding: "20px 28px" }}>
                   {editingSection === section.id ? (

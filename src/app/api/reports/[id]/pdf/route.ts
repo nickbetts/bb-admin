@@ -18,6 +18,7 @@ export async function GET(
     }
 
     const { id } = await params;
+    const showDescriptions = _request.nextUrl.searchParams.get("showDescriptions") ?? "1";
 
     const report = await prisma.report.findUnique({
       where: { id },
@@ -69,7 +70,7 @@ export async function GET(
 
       // Navigate to the dedicated print page which renders the full section
       // components (charts, metrics) without sidebar or editing chrome.
-      await page.goto(`${baseUrl}/reports/${id}/print`, {
+      await page.goto(`${baseUrl}/reports/${id}/print?showDescriptions=${showDescriptions}`, {
         waitUntil: "networkidle0",
         timeout: 45000,
       });

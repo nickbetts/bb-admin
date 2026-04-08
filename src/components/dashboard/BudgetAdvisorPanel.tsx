@@ -360,7 +360,11 @@ export function BudgetAdvisorPanel({ client, startDate, endDate }: BudgetAdvisor
                           <span style={{ color: "var(--text-3)" }}>£{fmt(rec.currentBudget)}/day</span>
                           <ArrowRight style={{ width: 13, height: 13, color: "var(--text-3)" }} />
                           <span style={{ fontWeight: 700, color: isUnchanged ? "var(--text-3)" : isIncrease ? "#15803d" : "#dc2626", display: "flex", alignItems: "center", gap: 3 }}>
-                            {isIncrease ? <TrendingUp style={{ width: 12, height: 12 }} /> : !isUnchanged ? <TrendingDown style={{ width: 12, height: 12 }} /> : null}
+                            {isIncrease
+                              ? <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "4px solid transparent", borderRight: "4px solid transparent", borderBottom: "5px solid currentColor" }} />
+                              : !isUnchanged
+                              ? <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "4px solid transparent", borderRight: "4px solid transparent", borderTop: "5px solid currentColor" }} />
+                              : null}
                             £{fmt(rec.recommendedBudget)}/day
                           </span>
                           {!isUnchanged && (

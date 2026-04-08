@@ -19,7 +19,19 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard } from "@/components/ui/index";
 import { LoadingSpinner } from "@/components/ui/index";
 import { formatNumber, formatCurrency, formatDateDisplay, pctChange } from "@/lib/utils";
-import { TrendingUp, Search, ArrowUp, ArrowDown, Minus, AlertTriangle } from "lucide-react";
+import { TrendingUp, Search, AlertTriangle } from "lucide-react";
+
+/* CSS-only directional indicators — render reliably in Puppeteer PDF exports
+   (lucide SVG icons can appear as invalid chars in headless Chromium PDFs). */
+const CssArrowUp = () => (
+  <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "3.5px solid transparent", borderRight: "3.5px solid transparent", borderBottom: "5px solid currentColor", verticalAlign: "middle" }} />
+);
+const CssArrowDown = () => (
+  <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "3.5px solid transparent", borderRight: "3.5px solid transparent", borderTop: "5px solid currentColor", verticalAlign: "middle" }} />
+);
+const CssMinus = () => (
+  <span style={{ display: "inline-block", width: 8, height: 2, background: "currentColor", borderRadius: 1, verticalAlign: "middle" }} />
+);
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 import { ShareOfVoicePanel } from "./ShareOfVoicePanel";
@@ -613,17 +625,17 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
                       <td className="py-2.5 px-3 text-center">
                         {change > 0 ? (
                           <span className="flex items-center justify-center gap-0.5 text-xs text-emerald-600">
-                            <ArrowUp className="h-3 w-3" />
+                            <CssArrowUp />
                             {change}
                           </span>
                         ) : change < 0 ? (
                           <span className="flex items-center justify-center gap-0.5 text-xs text-red-600">
-                            <ArrowDown className="h-3 w-3" />
+                            <CssArrowDown />
                             {Math.abs(change)}
                           </span>
                         ) : (
-                          <span className="flex items-center justify-center">
-                            <Minus className="h-3 w-3 text-slate-500" />
+                          <span className="flex items-center justify-center text-slate-500">
+                            <CssMinus />
                           </span>
                         )}
                       </td>
@@ -681,7 +693,7 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
                         <td className="py-2.5 px-3 text-center text-slate-500 text-xs">{kw.previousPosition}</td>
                         <td className="py-2.5 px-3 text-center">
                           <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
-                            <ArrowUp className="h-3 w-3" />+{gain}
+                            <CssArrowUp />+{gain}
                           </span>
                         </td>
                         <td className="py-2.5 px-3 text-right text-slate-600 text-xs">{formatNumber(kw.searchVolume)}</td>
@@ -752,7 +764,7 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
                               change > 0 ? "bg-emerald-50 text-emerald-700" :
                               change < 0 ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-500"
                             }`}>
-                              {change > 0 ? <ArrowUp className="h-3 w-3" /> : change < 0 ? <ArrowDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+                              {change > 0 ? <CssArrowUp /> : change < 0 ? <CssArrowDown /> : <CssMinus />}
                               {change > 0 ? `+${change}` : change < 0 ? `${change}` : "="}
                             </span>
                           )}

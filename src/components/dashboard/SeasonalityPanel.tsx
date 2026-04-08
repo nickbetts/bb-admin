@@ -182,8 +182,8 @@ export function SeasonalityPanel({ clientId }: SeasonalityPanelProps) {
                         <div style={{ fontSize: 13, fontWeight: 700, color: isHigh ? "#166534" : isLow ? "#b91c1c" : "var(--text)" }}>
                           {d.avgIndex.toFixed(2)}×
                         </div>
-                        {d.trend === "up" && <div style={{ fontSize: 9, color: "#22c55e" }}>↑</div>}
-                        {d.trend === "down" && <div style={{ fontSize: 9, color: "#ef4444" }}>↓</div>}
+                        {d.trend === "up" && <div style={{ fontSize: 9, color: "#22c55e", display: "inline-block", width: 0, height: 0, borderLeft: "3px solid transparent", borderRight: "3px solid transparent", borderBottom: "4px solid #22c55e", margin: "0 auto" }} />}
+                        {d.trend === "down" && <div style={{ fontSize: 9, color: "#ef4444", display: "inline-block", width: 0, height: 0, borderLeft: "3px solid transparent", borderRight: "3px solid transparent", borderTop: "4px solid #ef4444", margin: "0 auto" }} />}
                       </>
                     )}
                   </div>
