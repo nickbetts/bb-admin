@@ -525,7 +525,7 @@ model ClickFraudEvent {
 
 model ContentStrategy {
   id              String   @id @default(cuid())
-  clientId        String
+  clientId        String?
   title           String
   period          String
   spreadsheetData String   // JSON: parsed spreadsheet data
@@ -536,7 +536,7 @@ model ContentStrategy {
   lastViewedAt    DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client          Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, createdAt])
 }

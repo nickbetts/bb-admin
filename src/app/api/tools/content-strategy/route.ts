@@ -776,7 +776,7 @@ Return your response as valid JSON with the following keys:
     const title = `${clientName} Content Strategy (${period})`;
     const record = await prisma.contentStrategy.create({
       data: {
-        clientId: clientId || "",
+        clientId: clientId || null,
         title,
         period,
         spreadsheetData: JSON.stringify(spreadsheetData),
