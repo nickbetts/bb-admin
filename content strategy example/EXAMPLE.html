@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orphans In Need — Content Strategy | i3</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:           #f1f5f9;
+  --white:        #ffffff;
+  --border:       #e2e8f0;
+  --text:         #334155;
+  --text-light:   #64748b;
+  --mid:          #94a3b8;
+  --heading:      #0f172a;
+  --accent:       #7c3aed;
+  --accent-light: #ede9fe;
+  --accent-mid:   #c4b5fd;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.65;
+  font-size: 15px;
+}
+
+/* ── HEADER ─────────────────────────────────────────────── */
+.site-hdr {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #0f172a;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.hdr-inner {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo-link { display: flex; align-items: center; text-decoration: none; }
+.logo-link svg { height: 28px; }
+.hdr-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.hdr-client-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.45);
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.1);
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+.hdr-back {
+  font-size: 12px;
+  color: rgba(255,255,255,.45);
+  text-decoration: none;
+  transition: color .12s;
+}
+.hdr-back:hover { color: #fff; }
+
+/* ── HERO ────────────────────────────────────────────────── */
+.hero {
+  background: linear-gradient(135deg, #0f172a 0%, #1e1035 50%, #2e1065 100%);
+  padding: 4.5rem 2rem 4rem;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 70% at 80% 50%, rgba(124,58,237,.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-inner {
+  max-width: 1320px;
+  margin: 0 auto;
+  position: relative;
+}
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  background: rgba(124,58,237,.25);
+  border: 1px solid rgba(167,139,250,.35);
+  color: #c4b5fd;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: .3rem .85rem;
+  border-radius: 20px;
+  margin-bottom: 1.5rem;
+}
+.hero-tag .dot {
+  width: 6px; height: 6px;
+  background: #a78bfa;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .5; transform: scale(.8); }
+}
+.hero h1 {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+  letter-spacing: -.03em;
+  margin-bottom: 1rem;
+}
+.hero h1 span { color: #c4b5fd; }
+.hero-sub {
+  font-size: 1.08rem;
+  color: rgba(255,255,255,.6);
+  max-width: 680px;
+  line-height: 1.7;
+  margin-bottom: 2.5rem;
+}
+.hero-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2.5rem;
+}
+.hero-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+}
+.hero-meta-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.35);
+}
+.hero-meta-value {
+  font-size: .92rem;
+  font-weight: 600;
+  color: rgba(255,255,255,.8);
+}
+.hero-divider {
+  width: 1px;
+  height: 36px;
+  background: rgba(255,255,255,.12);
+  align-self: center;
+}
+.hero-stat-row {
+  margin-top: 3rem;
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+.hero-stat {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  padding: 1.1rem 1.5rem;
+  min-width: 140px;
+}
+.hero-stat-num {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: .25rem;
+}
+.hero-stat-lbl {
+  font-size: 11.5px;
+  color: rgba(255,255,255,.45);
+  line-height: 1.4;
+}
+
+/* ── PAGE LAYOUT ─────────────────────────────────────────── */
+.page-wrap {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 2.5rem 2rem 5rem;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 2.5rem;
+  align-items: start;
+}
+
+/* ── SIDEBAR ─────────────────────────────────────────────── */
+.sidebar {
+  position: sticky;
+  top: 74px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.sidebar-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem;
+}
+.sidebar-card-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--mid);
+  margin-bottom: .85rem;
+}
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .82rem;
+  color: var(--text-light);
+  text-decoration: none;
+  padding: .38rem .5rem;
+  border-radius: 6px;
+  border-left: 2px solid transparent;
+  transition: all .12s;
+  line-height: 1.35;
+}
+.nav-link:hover {
+  color: var(--heading);
+  background: var(--bg);
+}
+.nav-link.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  background: var(--accent-light);
+  font-weight: 600;
+}
+.nav-link .nav-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--mid);
+  flex-shrink: 0;
+}
+.nav-link.active .nav-dot { background: var(--accent); }
+
+.sidebar-contact {
+  background: #0f172a;
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+.sidebar-contact .sidebar-card-title { color: rgba(255,255,255,.3); }
+.sidebar-contact h4 {
+  font-size: .88rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: .4rem;
+  line-height: 1.4;
+}
+.sidebar-contact p {
+  font-size: .76rem;
+  color: rgba(255,255,255,.45);
+  line-height: 1.55;
+  margin-bottom: .9rem;
+}
+.sidebar-contact a {
+  display: block;
+  background: var(--accent);
+  color: #fff;
+  text-align: center;
+  font-size: .8rem;
+  font-weight: 700;
+  padding: .55rem 1rem;
+  border-radius: 7px;
+  text-decoration: none;
+  transition: background .15s;
+}
+.sidebar-contact a:hover { background: #6d28d9; }
+
+/* ── MAIN CONTENT ────────────────────────────────────────── */
+.main-content { min-width: 0; }
+
+.section {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+.section-hdr {
+  padding: 1.5rem 1.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.section-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: .22rem .7rem;
+  border-radius: 20px;
+  margin-bottom: .75rem;
+}
+.tag-purple { background: var(--accent-light); color: var(--accent); }
+.tag-blue   { background: #dbeafe; color: #1e40af; }
+.tag-green  { background: #d1fae5; color: #065f46; }
+.tag-amber  { background: #fef3c7; color: #92400e; }
+.tag-slate  { background: #f1f5f9; color: #475569; }
+
+.section-hdr h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--heading);
+  letter-spacing: -.02em;
+  margin-bottom: .4rem;
+}
+.section-hdr p {
+  font-size: .88rem;
+  color: var(--text-light);
+  line-height: 1.65;
+  max-width: 680px;
+}
+.section-body { padding: 1.75rem; }
+
+/* ── INTRO SECTION ───────────────────────────────────────── */
+.intro-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.75rem;
+}
+.intro-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem 1.4rem;
+}
+.intro-card h3 {
+  font-size: .88rem;
+  font-weight: 700;
+  color: var(--heading);
+  margin-bottom: .5rem;
+}
+.intro-card p {
+  font-size: .83rem;
+  color: var(--text-light);
+  line-height: 1.65;
+}
+.intro-card.highlight {
+  background: var(--accent-light);
+  border-color: var(--accent-mid);
+}
+.intro-card.highlight h3 { color: var(--accent); }
+.intro-card.highlight p { color: #5b21b6; }
+
+.kw-summary {
+  background: #0f172a;
+  border-radius: 10px;
+  padding: 1.4rem 1.75rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  text-align: center;
+}
+.kw-summary-num {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: .3rem;
+}
+.kw-summary-num span { color: #c4b5fd; }
+.kw-summary-lbl {
+  font-size: 11px;
+  color: rgba(255,255,255,.4);
+  line-height: 1.4;
+}
+
+/* ── OPT BLOCKS ──────────────────────────────────────────── */
+.opt-table-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.opt-block {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.opt-block-hdr {
+  background: var(--bg);
+  padding: .7rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.opt-block-url a {
+  font-size: .78rem;
+  font-weight: 600;
+  color: #1e40af;
+  text-decoration: none;
+  word-break: break-all;
+}
+.opt-block-url a:hover { text-decoration: underline; }
+.priority-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: #fef3c7;
+  color: #92400e;
+  padding: .2rem .6rem;
+  border-radius: 20px;
+}
+.kw-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .83rem;
+}
+.kw-table thead tr {
+  background: #f8fafc;
+}
+.kw-table th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--mid);
+  padding: .55rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.kw-table th:last-child { text-align: right; }
+.kw-table td {
+  padding: .52rem 1rem;
+  color: var(--text);
+  border-bottom: 1px solid #f1f5f9;
+}
+.kw-table td:last-child { text-align: right; color: var(--text-light); font-variant-numeric: tabular-nums; }
+.kw-table tr:last-child td { border-bottom: none; }
+.kw-table tr.kw-top td { font-weight: 700; color: var(--heading); }
+.kw-table tr.kw-top td:last-child { color: var(--accent); }
+.kw-table tbody tr:hover { background: #fafbff; }
+
+/* ── NEW PAGE CARDS ──────────────────────────────────────── */
+.new-pages-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+.new-page-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem 1.4rem;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+}
+.new-page-card.priority {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.new-page-card-hdr {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+}
+.new-page-title {
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--heading);
+  line-height: 1.35;
+}
+.new-page-card.priority .new-page-title { color: #065f46; }
+.new-page-desc {
+  font-size: .82rem;
+  color: var(--text-light);
+  line-height: 1.65;
+}
+.new-page-kws {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-top: auto;
+}
+.kw-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .75rem;
+  color: var(--text-light);
+  background: var(--white);
+  border: 1px solid var(--border);
+  padding: .22rem .65rem;
+  border-radius: 20px;
+}
+.kw-pill span {
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--mid);
+  font-variant-numeric: tabular-nums;
+}
+.kw-pill.kw-pill-high {
+  background: #ede9fe;
+  border-color: #c4b5fd;
+  color: #5b21b6;
+}
+.kw-pill.kw-pill-high span { color: var(--accent); }
+
+/* ── BLOG LIST ───────────────────────────────────────────── */
+.blog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+.blog-item {
+  display: flex;
+  gap: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.35rem 1.5rem;
+  background: var(--bg);
+}
+.blog-item.priority {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.blog-item-left {
+  flex-shrink: 0;
+}
+.blog-num {
+  width: 36px;
+  height: 36px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .78rem;
+  font-weight: 800;
+  color: var(--mid);
+  letter-spacing: .03em;
+}
+.blog-item.priority .blog-num {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #92400e;
+}
+.blog-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+.blog-item-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+}
+.blog-title {
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--heading);
+  line-height: 1.35;
+}
+.blog-desc {
+  font-size: .83rem;
+  color: var(--text-light);
+  line-height: 1.65;
+}
+.blog-kw-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-top: .2rem;
+}
+.blog-kw-item {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .22rem .65rem;
+}
+.blog-kw-item.top {
+  background: #fef3c7;
+  border-color: #fde68a;
+}
+.bk-word {
+  font-size: .75rem;
+  color: var(--text);
+}
+.blog-kw-item.top .bk-word { color: #92400e; font-weight: 600; }
+.bk-vol {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--mid);
+  font-variant-numeric: tabular-nums;
+}
+.blog-kw-item.top .bk-vol { color: #b45309; }
+
+/* ── LINK TABLE ──────────────────────────────────────────── */
+.link-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 1.25rem;
+}
+.link-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .84rem;
+}
+.link-table thead tr {
+  background: #f8fafc;
+}
+.link-table th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--mid);
+  padding: .6rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.link-table td {
+  padding: .6rem 1rem;
+  color: var(--text);
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+.link-table tr.lt-sep td {
+  border-top: 2px solid var(--bg);
+}
+.lt-url {
+  vertical-align: top;
+  padding-top: .75rem;
+}
+.lt-url a {
+  font-size: .8rem;
+  font-weight: 600;
+  color: #1e40af;
+  text-decoration: none;
+  word-break: break-all;
+  display: block;
+  margin-bottom: .3rem;
+}
+.lt-url a:hover { text-decoration: underline; }
+.lt-priority {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  background: var(--accent-light);
+  color: var(--accent);
+  padding: .15rem .5rem;
+  border-radius: 20px;
+}
+.anchor-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: .2rem .65rem;
+  border-radius: 20px;
+}
+.anchor-exact  { background: #d1fae5; color: #065f46; }
+.anchor-broad  { background: #dbeafe; color: #1e40af; }
+.anchor-brand  { background: var(--accent-light); color: var(--accent); }
+
+.link-note {
+  display: flex;
+  gap: .85rem;
+  align-items: flex-start;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+}
+.link-note-icon {
+  font-size: 1.1rem;
+  color: var(--mid);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.link-note p {
+  font-size: .82rem;
+  color: var(--text-light);
+  line-height: 1.65;
+}
+
+/* ── FOOTER CTA ──────────────────────────────────────────── */
+.footer-cta {
+  background: #0f172a;
+  border-radius: 14px;
+  padding: 2rem 2rem 1.5rem;
+  margin-top: .5rem;
+}
+.footer-cta-inner {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.footer-cta-logo { flex-shrink: 0; }
+.footer-cta-text { flex: 1; min-width: 200px; }
+.footer-cta-text h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: .3rem;
+}
+.footer-cta-text p {
+  font-size: .82rem;
+  color: rgba(255,255,255,.45);
+  line-height: 1.6;
+}
+.footer-cta-btn {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  font-size: .85rem;
+  font-weight: 700;
+  padding: .65rem 1.5rem;
+  border-radius: 8px;
+  transition: background .15s;
+}
+.footer-cta-btn:hover { background: #6d28d9; }
+.footer-small {
+  font-size: .74rem;
+  color: rgba(255,255,255,.22);
+  text-align: center;
+  border-top: 1px solid rgba(255,255,255,.07);
+  padding-top: 1rem;
+}
+
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-hdr">
+  <div class="hdr-inner">
+    <div class="logo-link">
+      <svg viewBox="0 0 161 53" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M26.0013 0.853516C11.6413 0.853516 0 12.4947 0 26.8538C0 41.2136 11.6413 52.8535 26.0013 52.8535C40.362 52.8535 52.0033 41.2136 52.0033 26.8538C52.0033 12.4947 40.362 0.853516 26.0013 0.853516ZM17.6309 21.0628C18.8643 21.0598 19.8647 22.0577 19.8702 23.2935C19.8781 24.5225 18.8722 25.5247 17.6467 25.5247C16.4078 25.5278 15.4074 24.5353 15.4074 23.3044C15.3995 22.0711 16.3944 21.0683 17.6309 21.0628ZM40.3455 21.0598C39.7898 24.7824 38.4423 31.4889 38.4423 31.4889C38.4423 31.4889 37.7451 35.841 31.3004 35.8569C24.8539 35.8734 20.019 35.8868 20.019 35.8868C20.019 35.8868 19.5475 39.9833 13.7805 39.9943L16.6787 29.1662C16.6787 29.1662 17.5491 26.2896 22.5536 26.0804L21.2305 31.1638L31.1424 31.1394C31.1424 31.1394 33.5287 30.6783 33.7209 28.5477L23.2106 28.5776C23.2106 28.5776 23.7962 24.8281 28.1717 24.0773L33.6215 24.0584C33.6215 24.0584 34.8195 23.7192 34.8146 22.811V22.2443C34.8146 22.2443 34.7817 21.6155 33.9008 21.3337L23.6742 21.3666C23.6742 21.3666 20.3234 21.5453 20.307 16.6571L36.4439 16.6083C36.4439 16.6083 40.9067 17.3353 40.3455 21.0598Z" fill="white"/>
+        <path d="M144.133 35.8645L149.848 19.3218H154.486L160.201 35.8645H156.742L152.355 21.8533H152.004L147.567 35.8645H144.133ZM147.166 32.4557V30.225H157.594V32.4557H147.166Z" fill="white"/>
+        <path d="M138.913 35.8645V19.3218H142.122V35.8645H138.913Z" fill="white"/>
+        <path d="M123.563 35.8645V33.2578H128.401C129.403 33.2578 130.231 33.0322 130.882 32.581C131.551 32.1299 132.044 31.4866 132.361 30.6511C132.696 29.8156 132.863 28.813 132.863 27.6433C132.863 26.6574 132.754 25.8052 132.537 25.0867C132.336 24.3682 132.027 23.7833 131.609 23.3321C131.192 22.8643 130.665 22.5134 130.03 22.2794C129.395 22.0455 128.651 21.9285 127.799 21.9285H123.563V19.3218H127.699C129.654 19.3218 131.25 19.6476 132.487 20.2993C133.74 20.951 134.659 21.8867 135.244 23.1066C135.846 24.3097 136.147 25.7634 136.147 27.4678C136.147 28.6709 136.005 29.7404 135.721 30.6761C135.436 31.5952 135.052 32.3889 134.567 33.0573C134.083 33.709 133.515 34.2437 132.863 34.6614C132.211 35.0792 131.509 35.3883 130.757 35.5888C130.022 35.7726 129.261 35.8645 128.476 35.8645H123.563ZM122.008 35.8645V19.3218H125.167V35.8645H122.008Z" fill="white"/>
+        <path d="M107.208 35.8645V19.3218H110.392V35.8645H107.208ZM109.264 35.8645V33.2578H119.567V35.8645H109.264ZM109.264 28.6709V26.2647H118.338V28.6709H109.264ZM109.264 21.9285V19.3218H119.517V21.9285H109.264Z" fill="white"/>
+        <path d="M84.55 35.8645V19.3218H89.338L94.2514 32.3304H94.3767L99.2149 19.3218H103.802V35.8645H100.794L100.995 22.5301H100.744L95.5048 35.8645H92.7473L87.5833 22.5301H87.3326L87.5331 35.8645H84.55Z" fill="white"/>
+        <path d="M75.2092 36.2156C74.1396 36.2156 73.2121 36.0986 72.4266 35.8647C71.6412 35.6475 70.981 35.3383 70.4462 34.9373C69.9282 34.5196 69.5271 34.0099 69.243 33.4084C68.9589 32.8068 68.7834 32.1384 68.7166 31.4032L71.6244 30.5008C71.6412 31.0857 71.7498 31.5786 71.9503 31.9797C72.1509 32.3807 72.4183 32.7149 72.7525 32.9822C73.0868 33.2329 73.4711 33.4167 73.9056 33.5337C74.3402 33.6506 74.7914 33.7091 75.2593 33.7091C75.9445 33.7091 76.5545 33.6172 77.0893 33.4334C77.6241 33.2329 78.0502 32.9321 78.3678 32.5311C78.6853 32.1133 78.8441 31.5786 78.8441 30.9269C78.8441 30.1249 78.5767 29.4815 78.0419 28.9969C77.5238 28.4957 76.7634 28.1531 75.7607 27.9693C74.758 27.7855 73.538 27.7437 72.1007 27.844V25.9641L77.7661 22.054V21.8535L69.4937 21.9036V19.2969H80.9498V22.3798L75.6604 26.1396V26.3651C77.2313 26.2983 78.4764 26.4738 79.3956 26.8915C80.3147 27.3093 80.9748 27.8774 81.3759 28.5959C81.777 29.3144 81.9776 30.1165 81.9776 31.0021C81.9776 32.0549 81.7269 32.9739 81.2255 33.7593C80.7409 34.5446 79.9972 35.1545 78.9945 35.589C77.9917 36.0067 76.73 36.2156 75.2092 36.2156Z" fill="white"/>
+        <path d="M63.6388 35.8647V22.7558H66.797V35.8647H63.6388ZM65.2179 20.7005C64.5829 20.7005 64.09 20.5668 63.7391 20.2994C63.4049 20.0154 63.2378 19.6143 63.2378 19.0963C63.2378 18.5783 63.4049 18.1856 63.7391 17.9183C64.09 17.6342 64.5829 17.4922 65.2179 17.4922C65.8863 17.4922 66.3876 17.6259 66.7218 17.8932C67.056 18.1606 67.2231 18.5616 67.2231 19.0963C67.2231 19.6143 67.0476 20.0154 66.6967 20.2994C66.3625 20.5668 65.8696 20.7005 65.2179 20.7005Z" fill="white"/>
+      </svg>
+    </div>
+    <div class="hdr-right">
+      <span class="hdr-client-badge">Orphans In Need</span>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-tag">
+      <span class="dot"></span>
+      Content Strategy — March 2026
+    </div>
+    <h1>Content &amp; SEO Strategy<br><span>Orphans In Need</span></h1>
+    <p class="hero-sub">A structured plan to expand organic visibility, capture high-intent search traffic around Qurbani and Dhul Hijjah, and grow donor acquisition beyond Ramadan. This document covers page optimisations, new landing pages, new blog content, and link building targets.</p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Client</span>
+        <span class="hero-meta-value">Orphans In Need</span>
+      </div>
+      <div class="hero-divider"></div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Prepared by</span>
+        <span class="hero-meta-value">i3MEDIA</span>
+      </div>
+      <div class="hero-divider"></div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Date</span>
+        <span class="hero-meta-value">March 2026</span>
+      </div>
+      <div class="hero-divider"></div>
+      <div class="hero-meta-item">
+        <span class="hero-meta-label">Domain</span>
+        <span class="hero-meta-value">orphansinneed.org.uk</span>
+      </div>
+    </div>
+    <div class="hero-stat-row">
+      <div class="hero-stat">
+        <div class="hero-stat-num">18</div>
+        <div class="hero-stat-lbl">Page optimisations</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">12</div>
+        <div class="hero-stat-lbl">New landing pages</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">5</div>
+        <div class="hero-stat-lbl">New blog posts</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">13</div>
+        <div class="hero-stat-lbl">Link building targets</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGE LAYOUT -->
+<div class="page-wrap">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-card">
+      <div class="sidebar-card-title">On this page</div>
+      <a href="#overview" class="nav-link active"><span class="nav-dot"></span>Overview</a>
+      <a href="#page-optimisations" class="nav-link"><span class="nav-dot"></span>Page Optimisations</a>
+      <a href="#landing-pages" class="nav-link"><span class="nav-dot"></span>New Landing Pages</a>
+      <a href="#blog-pages" class="nav-link"><span class="nav-dot"></span>New Blog Posts</a>
+      <a href="#link-targets" class="nav-link"><span class="nav-dot"></span>Link Building</a>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content" id="main">
+
+    <!-- OVERVIEW -->
+    <div class="section" id="overview">
+      <div class="section-hdr">
+        <span class="section-tag tag-purple">Overview</span>
+        <h2>What this strategy covers</h2>
+        <p>This plan targets the keyword opportunities with the highest relevance and search volume for Orphans In Need, focusing on Qurbani, Dhul Hijjah, and evergreen Islamic content that drives year-round donor traffic.</p>
+      </div>
+      <div class="section-body">
+        <div class="intro-grid">
+          <div class="intro-card highlight">
+            <h3>The opportunity</h3>
+            <p>The site already ranks for a large number of Qurbani and seasonal Islamic terms. With targeted content refreshes and new pages, we will push those rankings higher and capture a significant volume of high-intent searches in the run-up to Eid al-Adha 2026.</p>
+          </div>
+          <div class="intro-card">
+            <h3>How the plan is structured</h3>
+            <p>Content is split into four types: existing pages to optimise, new donation-focused landing pages, blog content targeting informational queries, and a link building outreach plan targeting the site's key conversion pages.</p>
+          </div>
+          <div class="intro-card">
+            <h3>Priority period</h3>
+            <p>Dhul Hijjah 2026 begins around late May. All Qurbani-related content and optimisations will be live by the start of May to allow Google sufficient time to crawl, index, and rank the updated pages before peak search volume hits.</p>
+          </div>
+          <div class="intro-card">
+            <h3>Keyword scope</h3>
+            <p>The strategy targets a mix of high-volume brand terms (Orphans In Need, orphansinneed), commercial intent Qurbani keywords, and informational Islamic content queries that build authority and drive organic traffic year-round.</p>
+          </div>
+        </div>
+        <div class="kw-summary">
+          <div class="kw-summary-item">
+            <div class="kw-summary-num"><span>27,100</span></div>
+            <div class="kw-summary-lbl">monthly searches<br>"when is eid al adha 2026"</div>
+          </div>
+          <div class="kw-summary-item">
+            <div class="kw-summary-num"><span>3,600</span></div>
+            <div class="kw-summary-lbl">monthly searches<br>"qurbani eid 2026"</div>
+          </div>
+          <div class="kw-summary-item">
+            <div class="kw-summary-num"><span>2,400</span></div>
+            <div class="kw-summary-lbl">monthly searches<br>"dhul hijjah"</div>
+          </div>
+          <div class="kw-summary-item">
+            <div class="kw-summary-num"><span>1,000</span></div>
+            <div class="kw-summary-lbl">monthly searches<br>"qurbani donation"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE OPTIMISATIONS -->
+    <div class="section" id="page-optimisations">
+      <div class="section-hdr">
+        <span class="section-tag tag-blue">Existing content</span>
+        <h2>Page Optimisations</h2>
+        <p>These are existing pages on the site that need a content refresh. Updating them improves rankings for terms they already appear for while letting us pick up new keyword opportunities in the same topic cluster.</p>
+      </div>
+      <div class="section-body">
+        <div class="opt-table-wrap">
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/news/why-is-qurbani-so-important-in-islam/" target="_blank" rel="noopener">orphansinneed.org.uk/news/why-is-qurbani-so-important-in-islam/</a></div>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>qurbani donation</td><td>1,000</td></tr>
+                <tr><td>qurbani uk</td><td>320</td></tr>
+                <tr><td>significance of qurbani</td><td>30</td></tr>
+                <tr><td>importance of qurbani</td><td>20</td></tr>
+                <tr><td>why is qurbani important</td><td>20</td></tr>
+                <tr><td>why qurbani is important in islam</td><td>20</td></tr>
+                <tr><td>qurbani for needy</td><td>5</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/qurbani/" target="_blank" rel="noopener">orphansinneed.org.uk/qurbani/</a></div>
+              <span class="priority-badge">Priority</span>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>qurbani eid 2026</td><td>3,600</td></tr>
+                <tr><td>how much is qurbani</td><td>260</td></tr>
+                <tr><td>when is qurbani eid 2026</td><td>260</td></tr>
+                <tr><td>qurbani appeal</td><td>170</td></tr>
+                <tr><td>eid al adha qurbani</td><td>170</td></tr>
+                <tr><td>orphans in need qurbani</td><td>140</td></tr>
+                <tr><td>qurbani charity</td><td>110</td></tr>
+                <tr><td>when to give qurbani</td><td>90</td></tr>
+                <tr><td>donate qurbani</td><td>70</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/news/how-to-pay-qurbani-online/" target="_blank" rel="noopener">orphansinneed.org.uk/news/how-to-pay-qurbani-online/</a></div>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>qurbani online</td><td>210</td></tr>
+                <tr><td>qurbani donation online</td><td>110</td></tr>
+                <tr><td>online qurbani 2026</td><td>90</td></tr>
+                <tr><td>online qurbani</td><td>70</td></tr>
+                <tr><td>give qurbani online</td><td>50</td></tr>
+                <tr><td>donate qurbani online</td><td>40</td></tr>
+                <tr><td>islamic donation online</td><td>20</td></tr>
+                <tr><td>qurbani website</td><td>10</td></tr>
+                <tr><td>how to donate qurbani online</td><td>5</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/qurbani/qurbani-in-the-uk/" target="_blank" rel="noopener">orphansinneed.org.uk/qurbani/qurbani-in-the-uk/</a></div>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>qurbani uk</td><td>480</td></tr>
+                <tr><td>qurbani in uk</td><td>260</td></tr>
+                <tr><td>uk qurbani</td><td>110</td></tr>
+                <tr><td>qurbani eid 2026 uk</td><td>90</td></tr>
+                <tr><td>give qurbani uk</td><td>50</td></tr>
+                <tr><td>giving qurbani in uk</td><td>20</td></tr>
+                <tr><td>how to give qurbani in uk</td><td>20</td></tr>
+                <tr><td>qurbani meat uk</td><td>20</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/qurbani/qurbani-2026/" target="_blank" rel="noopener">orphansinneed.org.uk/qurbani/qurbani-2026/</a></div>
+              <span class="priority-badge">Priority</span>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>qurbani eid 2026</td><td>140</td></tr>
+                <tr><td>qurbani 2026</td><td>70</td></tr>
+                <tr><td>online qurbani 2026</td><td>90</td></tr>
+                <tr><td>qurbani donation 2026</td><td>90</td></tr>
+                <tr><td>qurbani uk 2026</td><td>50</td></tr>
+                <tr><td>qurbani prices 2026</td><td>40</td></tr>
+                <tr><td>qurbani in 2026</td><td>10</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/qurbani/qurbani-2026" target="_blank" rel="noopener">orphansinneed.org.uk/qurbani/qurbani-2026</a></div>
+              <span class="priority-badge">Priority</span>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>when is eid al qurban</td><td>27,100</td></tr>
+                <tr><td>eid ul adha qurbani</td><td>170</td></tr>
+                <tr><td>qurbani eid 2026</td><td>140</td></tr>
+                <tr><td>when to give qurbani</td><td>110</td></tr>
+                <tr><td>qurbani donation 2026</td><td>90</td></tr>
+                <tr><td>qurbani 2026</td><td>70</td></tr>
+                <tr><td>when is qurbani</td><td>50</td></tr>
+                <tr><td>when does qurbani need to be done</td><td>40</td></tr>
+                <tr><td>donate qurbani 2026</td><td>10</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/qurbani/qurbani-donation/" target="_blank" rel="noopener">orphansinneed.org.uk/qurbani/qurbani-donation/</a></div>
+              <span class="priority-badge">Priority</span>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>qurbani donation</td><td>1,000</td></tr>
+                <tr><td>donate qurbani</td><td>390</td></tr>
+                <tr><td>give qurbani</td><td>260</td></tr>
+                <tr><td>how much is qurbani</td><td>260</td></tr>
+                <tr><td>pay qurbani</td><td>210</td></tr>
+                <tr><td>how much is qurbani per person</td><td>210</td></tr>
+                <tr><td>qurbani charity</td><td>170</td></tr>
+                <tr><td>qurbani donation online</td><td>110</td></tr>
+                <tr><td>how much qurbani should you give</td><td>10</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/qurbani/eid-al-adha-faqs/" target="_blank" rel="noopener">orphansinneed.org.uk/qurbani/eid-al-adha-faqs/</a></div>
+              <span class="priority-badge">Priority</span>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>when is eid al adha 2026</td><td>27,100</td></tr>
+                <tr><td>how long is eid al adha</td><td>260</td></tr>
+                <tr><td>how is eid al adha celebrated</td><td>170</td></tr>
+                <tr><td>why we celebrate eid al adha</td><td>170</td></tr>
+                <tr><td>what happens at eid al-adha</td><td>110</td></tr>
+                <tr><td>why is eid al adha important</td><td>70</td></tr>
+                <tr><td>how is eid al adha determined</td><td>40</td></tr>
+                <tr><td>what is eid al adha in islam</td><td>40</td></tr>
+                <tr><td>do muslims fast for eid al adha</td><td>30</td></tr>
+                <tr><td>can you eat before eid al adha prayer</td><td>30</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/prophetic-qurbani/" target="_blank" rel="noopener">orphansinneed.org.uk/prophetic-qurbani/</a></div>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>prophetic qurbani</td><td>110</td></tr>
+                <tr><td>what is prophetic qurbani</td><td>70</td></tr>
+                <tr><td>can you give qurbani on behalf of prophet</td><td>20</td></tr>
+                <tr><td>giving qurbani on behalf of prophet</td><td>5</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/qurbani/great-value-qurbani" target="_blank" rel="noopener">orphansinneed.org.uk/qurbani/great-value-qurbani</a></div>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>cheap qurbani</td><td>140</td></tr>
+                <tr><td>cheap qurbani 2026</td><td>110</td></tr>
+                <tr><td>cheap qurbani uk</td><td>30</td></tr>
+                <tr><td>what if you can't afford qurbani</td><td>20</td></tr>
+                <tr><td>affordable qurbani</td><td>5</td></tr>
+                <tr><td>affordable qurbani for eid</td><td>5</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/news/when-is-dhul-hijjah/" target="_blank" rel="noopener">orphansinneed.org.uk/news/when-is-dhul-hijjah/</a></div>
+              <span class="priority-badge">Priority</span>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>dhul hijjah</td><td>2,400</td></tr>
+                <tr><td>dhul hijjah 2026</td><td>1,900</td></tr>
+                <tr><td>when is dhul hijjah 2026</td><td>590</td></tr>
+                <tr><td>when does dhul hijjah start</td><td>320</td></tr>
+                <tr><td>what is dhul hijjah</td><td>210</td></tr>
+                <tr><td>1st dhul hijjah 2026</td><td>170</td></tr>
+                <tr><td>month of dhul hijjah</td><td>90</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/news/the-10-days-of-dhul-hijjah-and-its-virtues/" target="_blank" rel="noopener">orphansinneed.org.uk/news/the-10-days-of-dhul-hijjah-and-its-virtues/</a></div>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>10 days of dhul hijjah 2026</td><td>390</td></tr>
+                <tr><td>10 days of dhul hijjah</td><td>210</td></tr>
+                <tr><td>first 10 days of dhul hijjah</td><td>110</td></tr>
+                <tr><td>10 days of dhul hijjah fasting</td><td>50</td></tr>
+                <tr><td>10 days of dhul hijjah quotes</td><td>40</td></tr>
+                <tr><td>when is the first 10 days of dhul hijjah</td><td>30</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/news/what-is-dhul-hijjah-and-why-is-it-important/" target="_blank" rel="noopener">orphansinneed.org.uk/news/what-is-dhul-hijjah-and-why-is-it-important/</a></div>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>what is dhul hijjah</td><td>210</td></tr>
+                <tr><td>dhul hijjah importance</td><td>50</td></tr>
+                <tr><td>importance of dhul hijjah</td><td>50</td></tr>
+                <tr><td>10 days of dhul hijjah importance</td><td>20</td></tr>
+                <tr><td>important events in dhul hijjah</td><td>10</td></tr>
+                <tr><td>the importance of dhul hijjah</td><td>10</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/news/who-is-qurbani-compulsory-on" target="_blank" rel="noopener">orphansinneed.org.uk/news/who-is-qurbani-compulsory-on</a></div>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>is qurbani compulsory</td><td>210</td></tr>
+                <tr><td>who is qurbani compulsory on</td><td>110</td></tr>
+                <tr><td>at what age is qurbani farz</td><td>110</td></tr>
+                <tr><td>is it compulsory to give qurbani</td><td>30</td></tr>
+                <tr><td>when is qurbani mandatory</td><td>5</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/qurbani/qurbani-rules-and-faqs" target="_blank" rel="noopener">orphansinneed.org.uk/qurbani/qurbani-rules-and-faqs</a></div>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>qurbani rules</td><td>390</td></tr>
+                <tr><td>qurbani rules for husband and wife</td><td>320</td></tr>
+                <tr><td>how much is qurbani</td><td>210</td></tr>
+                <tr><td>qurbani rules for family</td><td>140</td></tr>
+                <tr><td>how much qurbani per person</td><td>110</td></tr>
+                <tr><td>hanafi ruling on qurbani</td><td>90</td></tr>
+                <tr><td>qurbani meat distribution rules</td><td>20</td></tr>
+                <tr><td>qurbani sacrifice rules</td><td>20</td></tr>
+                <tr><td>rules of qurbani in islam</td><td>20</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/news/why-do-muslims-give-qurbani" target="_blank" rel="noopener">orphansinneed.org.uk/news/why-do-muslims-give-qurbani</a></div>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>why do muslims do qurbani</td><td>40</td></tr>
+                <tr><td>why do we do qurbani</td><td>40</td></tr>
+                <tr><td>qurbani sacrifice</td><td>40</td></tr>
+                <tr><td>why do we give qurbani</td><td>30</td></tr>
+                <tr><td>prophet ibrahim qurbani</td><td>20</td></tr>
+                <tr><td>story of ibrahim sacrifice</td><td>10</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/qurbani/india" target="_blank" rel="noopener">orphansinneed.org.uk/qurbani/india</a></div>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>qurbani india</td><td>70</td></tr>
+                <tr><td>qurbani in india</td><td>40</td></tr>
+                <tr><td>india qurbani</td><td>30</td></tr>
+                <tr><td>qurbani donation india</td><td>30</td></tr>
+                <tr><td>qurbani in india 2026</td><td>30</td></tr>
+                <tr><td>india qurbani 2026</td><td>10</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="opt-block">
+            <div class="opt-block-hdr">
+              <div class="opt-block-url"><a href="https://www.orphansinneed.org.uk/qurbani/kashmir" target="_blank" rel="noopener">orphansinneed.org.uk/qurbani/kashmir</a></div>
+            </div>
+            <table class="kw-table">
+              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <tbody>
+                <tr class="kw-top"><td>qurbani kashmir</td><td>10</td></tr>
+                <tr><td>kashmir qurbani</td><td>5</td></tr>
+                <tr><td>qurbani donation kashmir</td><td>5</td></tr>
+                <tr><td>qurbani in kashmir</td><td>5</td></tr>
+                <tr><td>qurbani shares kashmir</td><td>5</td></tr>
+                <tr><td>qurbani to kashmir</td><td>5</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div><!-- /opt-table-wrap -->
+      </div>
+    </div><!-- /page-optimisations -->
+
+    <!-- NEW LANDING PAGES -->
+    <div class="section" id="landing-pages">
+      <div class="section-hdr">
+        <span class="section-tag tag-green">New content</span>
+        <h2>Proposed Landing Pages</h2>
+        <p>New pages we will write and publish. Each targets a keyword cluster not currently served by existing content, with a focus on donation intent and Qurbani education.</p>
+      </div>
+      <div class="section-body">
+        <div class="new-pages-grid">
+
+          <div class="new-page-card priority">
+            <div class="new-page-card-hdr">
+              <div class="new-page-title">Qurbani Guide (Mega Page)</div>
+              <span class="priority-badge">Priority</span>
+            </div>
+            <p class="new-page-desc">Covers everything a donor needs to know about Qurbani in one place. This single page will rank for high-volume head terms and funnel visitors through to the donation page.</p>
+            <div class="new-page-kws">
+              <div class="kw-pill kw-pill-high">when is eid al adha 2026 <span>27,100</span></div>
+              <div class="kw-pill kw-pill-high">what is qurbani <span>390</span></div>
+              <div class="kw-pill">how much is qurbani <span>260</span></div>
+              <div class="kw-pill">how much qurbani should i give <span>140</span></div>
+              <div class="kw-pill">how does qurbani work <span>110</span></div>
+              <div class="kw-pill">who needs to give qurbani <span>90</span></div>
+              <div class="kw-pill">qurbani cost <span>70</span></div>
+              <div class="kw-pill">cost of qurbani <span>10</span></div>
+            </div>
+          </div>
+
+          <div class="new-page-card">
+            <div class="new-page-card-hdr">
+              <div class="new-page-title">Qurbani Cost 2026</div>
+            </div>
+            <p class="new-page-desc">A dedicated cost page that answers the most common pre-donation question. It will explain pricing tiers, what affects cost, and link directly to the donation flow.</p>
+            <div class="new-page-kws">
+              <div class="kw-pill kw-pill-high">how much is qurbani <span>260</span></div>
+              <div class="kw-pill">how much qurbani should i give <span>140</span></div>
+              <div class="kw-pill">qurbani cost <span>70</span></div>
+              <div class="kw-pill">how much does qurbani cost <span>30</span></div>
+              <div class="kw-pill">qurbani cost 2026 <span>10</span></div>
+            </div>
+          </div>
+
+          <div class="new-page-card">
+            <div class="new-page-card-hdr">
+              <div class="new-page-title">Where Qurbani Meat Goes</div>
+            </div>
+            <p class="new-page-desc">A page that explains exactly where Qurbani meat goes once a donor gives through Orphans In Need. We will answer who receives it, how it is divided, the Islamic rules on distribution, and whether non-Muslims can receive a share. Good for donor reassurance and a natural internal link target from the rules and distribution pages.</p>
+            <div class="new-page-kws">
+              <div class="kw-pill">qurbani meat distribution <span>20</span></div>
+              <div class="kw-pill">can you give qurbani meat to non muslim <span>20</span></div>
+              <div class="kw-pill">qurbani meat distribution rules <span>20</span></div>
+              <div class="kw-pill">distributing qurbani meat <span>10</span></div>
+              <div class="kw-pill">where to donate qurbani meat <span>10</span></div>
+              <div class="kw-pill">where does qurbani meat go <span>5</span></div>
+            </div>
+          </div>
+
+          <div class="new-page-card priority">
+            <div class="new-page-card-hdr">
+              <div class="new-page-title">Qurbani &amp; The Story of Ibrahim's Sacrifice</div>
+              <span class="priority-badge">Priority</span>
+            </div>
+            <p class="new-page-desc">A content-led page covering the story of Prophet Ibrahim and how it connects to Qurbani today. High volume on "story of ibrahim" terms. Builds authority and drives internal links to donation pages.</p>
+            <div class="new-page-kws">
+              <div class="kw-pill kw-pill-high">story of ibrahim <span>260</span></div>
+              <div class="kw-pill">story of prophet ibrahim <span>50</span></div>
+              <div class="kw-pill">qurbani in islam <span>50</span></div>
+              <div class="kw-pill">why did ibrahim sacrifice his son <span>30</span></div>
+              <div class="kw-pill">the sacrifice of ibrahim <span>20</span></div>
+              <div class="kw-pill">prophet ibrahim qurbani <span>20</span></div>
+            </div>
+          </div>
+
+          <div class="new-page-card">
+            <div class="new-page-card-hdr">
+              <div class="new-page-title">Qurbani Shares Explained</div>
+            </div>
+            <p class="new-page-desc">Explains how Qurbani shares work, the rules around how many are required, and how to give a share through Orphans In Need. Useful for donors giving on behalf of family members.</p>
+            <div class="new-page-kws">
+              <div class="kw-pill kw-pill-high">qurbani share <span>110</span></div>
+              <div class="kw-pill">share of qurbani <span>20</span></div>
+              <div class="kw-pill">qurbani share rules <span>30</span></div>
+              <div class="kw-pill">how does qurbani shares work <span>10</span></div>
+              <div class="kw-pill">how much is one qurbani share <span>10</span></div>
+            </div>
+          </div>
+
+          <div class="new-page-card">
+            <div class="new-page-card-hdr">
+              <div class="new-page-title">How Online Qurbani Works</div>
+            </div>
+            <p class="new-page-desc">Addresses donor hesitancy around giving Qurbani through a charity online. We will cover the common questions about legitimacy, how the sacrifice is carried out, and what the Islamically accepted process is.</p>
+            <div class="new-page-kws">
+              <div class="kw-pill kw-pill-high">qurbani online <span>210</span></div>
+              <div class="kw-pill">qurbani donation online <span>110</span></div>
+              <div class="kw-pill">online qurbani 2025 <span>90</span></div>
+              <div class="kw-pill">give qurbani online <span>50</span></div>
+              <div class="kw-pill">can you give qurbani online <span>20</span></div>
+              <div class="kw-pill">is online qurbani allowed <span>10</span></div>
+            </div>
+          </div>
+
+          <div class="new-page-card">
+            <div class="new-page-card-hdr">
+              <div class="new-page-title">How Qurbani Meat Is Distributed</div>
+            </div>
+            <p class="new-page-desc">Explains the process and Islamic rules governing how Qurbani meat is distributed. For donors who want to understand exactly where their donation goes.</p>
+            <div class="new-page-kws">
+              <div class="kw-pill">qurbani meat distribution rules in quran <span>20</span></div>
+              <div class="kw-pill">how is qurbani distributed <span>20</span></div>
+              <div class="kw-pill">qurbani meat distribution rules <span>20</span></div>
+              <div class="kw-pill">how should qurbani meat be distributed <span>10</span></div>
+              <div class="kw-pill">distribution of qurbani <span>5</span></div>
+            </div>
+          </div>
+
+          <div class="new-page-card">
+            <div class="new-page-card-hdr">
+              <div class="new-page-title">Who Is Eligible for Qurbani?</div>
+            </div>
+            <p class="new-page-desc">Clarifies who has to give Qurbani, who is exempt, and where children stand. A decision-stage page that links through to the donation flow.</p>
+            <div class="new-page-kws">
+              <div class="kw-pill kw-pill-high">who is eligible for qurbani <span>90</span></div>
+              <div class="kw-pill kw-pill-high">who needs to give qurbani <span>90</span></div>
+              <div class="kw-pill kw-pill-high">who pays qurbani <span>90</span></div>
+              <div class="kw-pill">what is the threshold for qurbani <span>5</span></div>
+            </div>
+          </div>
+
+          <div class="new-page-card">
+            <div class="new-page-card-hdr">
+              <div class="new-page-title">Qurbani Impact: Case Studies</div>
+            </div>
+            <p class="new-page-desc">Shows the impact of Qurbani donations through case studies: families fed, communities supported. Aimed at building trust with returning donors.</p>
+            <div class="new-page-kws">
+              <div class="kw-pill kw-pill-high">qurbani donations <span>90</span></div>
+              <div class="kw-pill">importance of qurbani <span>40</span></div>
+              <div class="kw-pill">when is qurbani given <span>10</span></div>
+            </div>
+          </div>
+
+          <div class="new-page-card">
+            <div class="new-page-card-hdr">
+              <div class="new-page-title">How Qurbani Helps the Poor</div>
+            </div>
+            <p class="new-page-desc">A short but important page that connects the act of giving Qurbani to direct poverty alleviation. Good for donors seeking reassurance their Qurbani is reaching those who need it most.</p>
+            <div class="new-page-kws">
+              <div class="kw-pill">qurbani for poor <span>20</span></div>
+              <div class="kw-pill">can we give money to poor instead of qurbani <span>10</span></div>
+              <div class="kw-pill">orphan help qurbani <span>5</span></div>
+            </div>
+          </div>
+
+          <div class="new-page-card">
+            <div class="new-page-card-hdr">
+              <div class="new-page-title">Families Helped By Qurbani</div>
+            </div>
+            <p class="new-page-desc">Donor-facing impact page for donors who give on behalf of their household. Good internal linking target from the rules and eligibility pages.</p>
+            <div class="new-page-kws">
+              <div class="kw-pill">qurbani for family <span>20</span></div>
+              <div class="kw-pill">how much qurbani per family <span>10</span></div>
+              <div class="kw-pill">qurbani for a family <span>5</span></div>
+              <div class="kw-pill">qurbani for whole family <span>5</span></div>
+            </div>
+          </div>
+
+          <div class="new-page-card priority">
+            <div class="new-page-card-hdr">
+              <div class="new-page-title">Dhul Hijjah Automated Donations</div>
+              <span class="priority-badge">Priority</span>
+            </div>
+            <p class="new-page-desc">Targeting a growing behaviour: donors who want to automate their giving across the 10 days of Dhul Hijjah. Lower-competition keyword with clear commercial intent and a unique product angle for OIN to own.</p>
+            <div class="new-page-kws">
+              <div class="kw-pill kw-pill-high">dhul hijjah automated donation <span>50</span></div>
+              <div class="kw-pill">automate dhul hijjah <span>30</span></div>
+              <div class="kw-pill">automated donation dhul hijjah <span>10</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div><!-- /landing-pages -->
+
+    <!-- BLOG POSTS -->
+    <div class="section" id="blog-pages">
+      <div class="section-hdr">
+        <span class="section-tag tag-amber">Blog content</span>
+        <h2>Proposed Blog Posts</h2>
+        <p>New informational articles targeting high-volume awareness queries. These drive organic traffic at the top of the funnel and internally link to donation pages, building site authority around Qurbani and Dhul Hijjah.</p>
+      </div>
+      <div class="section-body">
+        <div class="blog-list">
+
+          <div class="blog-item priority">
+            <div class="blog-item-left">
+              <div class="blog-num">01</div>
+            </div>
+            <div class="blog-item-body">
+              <div class="blog-item-top">
+                <div class="blog-title">What Happens on Eid ul-Adha? How to Prepare &amp; What to Expect</div>
+                <span class="priority-badge">Priority</span>
+              </div>
+              <p class="blog-desc">The biggest volume opportunity in this strategy. Targets the "eid ul adha festival of sacrifice" cluster (14,800 monthly searches) with content that explains the significance of the day, how Muslims celebrate, and how Qurbani fits in. The internal link from this page to the Qurbani donation page matters.</p>
+              <div class="blog-kw-row">
+                <div class="blog-kw-item top">
+                  <span class="bk-word">eid ul adha festival of sacrifice</span>
+                  <span class="bk-vol">14,800</span>
+                </div>
+                <div class="blog-kw-item top">
+                  <span class="bk-word">when is eid ul adha 2026</span>
+                  <span class="bk-vol">5,400</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">how is eid ul adha celebrated</span>
+                  <span class="bk-vol">210</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">celebration of eid ul adha</span>
+                  <span class="bk-vol">170</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">what happens on eid ul adha</span>
+                  <span class="bk-vol">30</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">preparation for eid ul adha</span>
+                  <span class="bk-vol">10</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="blog-item">
+            <div class="blog-item-left">
+              <div class="blog-num">02</div>
+            </div>
+            <div class="blog-item-body">
+              <div class="blog-item-top">
+                <div class="blog-title">The History of Eid ul-Adha</div>
+              </div>
+              <p class="blog-desc">Covers the origins and significance of Eid ul-Adha from the story of Ibrahim through to its modern observance. An evergreen authority piece that links to the Ibrahim story landing page and Qurbani donation page.</p>
+              <div class="blog-kw-row">
+                <div class="blog-kw-item top">
+                  <span class="bk-word">eid adha story</span>
+                  <span class="bk-vol">170</span>
+                </div>
+                <div class="blog-kw-item top">
+                  <span class="bk-word">story of eid ul adha</span>
+                  <span class="bk-vol">110</span>
+                </div>
+                <div class="blog-kw-item top">
+                  <span class="bk-word">story of qurbani</span>
+                  <span class="bk-vol">110</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">eid ul adha history</span>
+                  <span class="bk-vol">40</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">eid al adha history</span>
+                  <span class="bk-vol">30</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">history of qurbani</span>
+                  <span class="bk-vol">10</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="blog-item">
+            <div class="blog-item-left">
+              <div class="blog-num">03</div>
+            </div>
+            <div class="blog-item-body">
+              <div class="blog-item-top">
+                <div class="blog-title">Who Is Qurbani Mandatory For?</div>
+              </div>
+              <p class="blog-desc">Answers the specific question of who is required to give Qurbani in Islam, covering Hanafi and other madhab rulings, nisab threshold, and exemptions. Links through to the eligibility landing page and the donation flow.</p>
+              <div class="blog-kw-row">
+                <div class="blog-kw-item top">
+                  <span class="bk-word">is qurbani mandatory</span>
+                  <span class="bk-vol">210</span>
+                </div>
+                <div class="blog-kw-item top">
+                  <span class="bk-word">who has to give qurbani</span>
+                  <span class="bk-vol">140</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">is qurbani mandatory in islam</span>
+                  <span class="bk-vol">70</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">who must give qurbani</span>
+                  <span class="bk-vol">50</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">qurbani compulsory</span>
+                  <span class="bk-vol">30</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="blog-item">
+            <div class="blog-item-left">
+              <div class="blog-num">04</div>
+            </div>
+            <div class="blog-item-body">
+              <div class="blog-item-top">
+                <div class="blog-title">When Should You Fast During Dhul Hijjah?</div>
+              </div>
+              <p class="blog-desc">A practical guide to fasting during the first nine days of Dhul Hijjah, with specific focus on the day of Arafah. Targets a cluster of fasting-related queries that sit alongside the Qurbani topic and drive relevant Islamic audience traffic.</p>
+              <div class="blog-kw-row">
+                <div class="blog-kw-item top">
+                  <span class="bk-word">dhul hijjah fasting</span>
+                  <span class="bk-vol">170</span>
+                </div>
+                <div class="blog-kw-item top">
+                  <span class="bk-word">fasting in dhul hijjah</span>
+                  <span class="bk-vol">110</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">dhul hijjah 2026 fasting</span>
+                  <span class="bk-vol">70</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">dhul hijjah fasts</span>
+                  <span class="bk-vol">30</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">when to fast in dhul hijjah</span>
+                  <span class="bk-vol">30</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="blog-item priority">
+            <div class="blog-item-left">
+              <div class="blog-num">05</div>
+            </div>
+            <div class="blog-item-body">
+              <div class="blog-item-top">
+                <div class="blog-title">A Guide to Prayer in Islam</div>
+                <span class="priority-badge">Priority</span>
+              </div>
+              <p class="blog-desc">Targets exceptionally high-volume informational queries around Islamic prayer times and how to pray. This is a top-of-funnel authority piece designed to bring new Muslim audiences to the OIN site. The combined keyword volume across this cluster is one of the highest in the strategy. Important note: this page also targets AI-featured snippet opportunities on Google.</p>
+              <div class="blog-kw-row">
+                <div class="blog-kw-item top">
+                  <span class="bk-word">islam prayer times</span>
+                  <span class="bk-vol">2,400</span>
+                </div>
+                <div class="blog-kw-item top">
+                  <span class="bk-word">how to pray in islam</span>
+                  <span class="bk-vol">1,600</span>
+                </div>
+                <div class="blog-kw-item top">
+                  <span class="bk-word">prayer in islam</span>
+                  <span class="bk-vol">1,600</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">how many times a day must muslims pray</span>
+                  <span class="bk-vol">590</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">where do muslims pray</span>
+                  <span class="bk-vol">320</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">why is salah important</span>
+                  <span class="bk-vol">170</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">importance of salah</span>
+                  <span class="bk-vol">140</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">why is prayer important in islam</span>
+                  <span class="bk-vol">90</span>
+                </div>
+                <div class="blog-kw-item">
+                  <span class="bk-word">salah pillar of islam</span>
+                  <span class="bk-vol">90</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div><!-- /blog-pages -->
+
+    <!-- LINK TARGETS -->
+    <div class="section" id="link-targets">
+      <div class="section-hdr">
+        <span class="section-tag tag-slate">Link building</span>
+        <h2>Link Building Targets</h2>
+        <p>These are the pages on the site that our outreach campaign will target backlinks towards. Earning links to these specific URLs improves their individual authority and strengthens the site's overall ability to rank for competitive terms.</p>
+      </div>
+      <div class="section-body">
+        <div class="link-table-wrap">
+          <table class="link-table">
+            <thead>
+              <tr>
+                <th>Target page</th>
+                <th>Anchor text</th>
+                <th>Anchor type</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="lt-url" rowspan="2"><a href="https://www.orphansinneed.org.uk/qurbani/" target="_blank" rel="noopener">orphansinneed.org.uk/qurbani/</a><span class="lt-priority">Primary target</span></td>
+                <td>qurbani</td>
+                <td><span class="anchor-badge anchor-exact">Exact</span></td>
+              </tr>
+              <tr>
+                <td>qurbani</td>
+                <td><span class="anchor-badge anchor-broad">Broad</span></td>
+              </tr>
+              <tr class="lt-sep">
+                <td class="lt-url" rowspan="2"><a href="https://www.orphansinneed.org.uk/qurbani/" target="_blank" rel="noopener">orphansinneed.org.uk/qurbani/</a></td>
+                <td>donate qurbani</td>
+                <td><span class="anchor-badge anchor-exact">Exact</span></td>
+              </tr>
+              <tr>
+                <td>donate qurbani</td>
+                <td><span class="anchor-badge anchor-broad">Broad</span></td>
+              </tr>
+              <tr class="lt-sep">
+                <td class="lt-url" rowspan="2"><a href="https://www.orphansinneed.org.uk/qurbani/qurbani-2026" target="_blank" rel="noopener">orphansinneed.org.uk/qurbani/qurbani-2026</a><span class="lt-priority">Priority</span></td>
+                <td>qurbani 2026</td>
+                <td><span class="anchor-badge anchor-exact">Exact</span></td>
+              </tr>
+              <tr>
+                <td>qurbani 2026</td>
+                <td><span class="anchor-badge anchor-broad">Broad</span></td>
+              </tr>
+              <tr class="lt-sep">
+                <td class="lt-url" rowspan="2"><a href="https://www.orphansinneed.org.uk/news/how-to-celebrate-eid-al-adha-in-2026" target="_blank" rel="noopener">orphansinneed.org.uk/news/how-to-celebrate-eid-al-adha-in-2026</a></td>
+                <td>eid al adha celebration</td>
+                <td><span class="anchor-badge anchor-exact">Exact</span></td>
+              </tr>
+              <tr>
+                <td>eid al adha celebration</td>
+                <td><span class="anchor-badge anchor-broad">Broad</span></td>
+              </tr>
+              <tr class="lt-sep">
+                <td class="lt-url" rowspan="2"><a href="https://www.orphansinneed.org.uk/appeals/great-value-qurbani" target="_blank" rel="noopener">orphansinneed.org.uk/appeals/great-value-qurbani</a></td>
+                <td>cheap qurbani</td>
+                <td><span class="anchor-badge anchor-exact">Exact</span></td>
+              </tr>
+              <tr>
+                <td>cheap qurbani</td>
+                <td><span class="anchor-badge anchor-broad">Broad</span></td>
+              </tr>
+              <tr class="lt-sep">
+                <td class="lt-url" rowspan="3"><a href="https://www.orphansinneed.org.uk/" target="_blank" rel="noopener">orphansinneed.org.uk/</a><span class="lt-priority">Homepage</span></td>
+                <td>orphan charity</td>
+                <td><span class="anchor-badge anchor-exact">Exact</span></td>
+              </tr>
+              <tr>
+                <td>orphan charity</td>
+                <td><span class="anchor-badge anchor-broad">Broad</span></td>
+              </tr>
+              <tr>
+                <td>orphans in need</td>
+                <td><span class="anchor-badge anchor-brand">Brand</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="link-note">
+          <div class="link-note-icon">&#9432;</div>
+          <p>We will vary anchor text across placements. Not every link will use an exact match anchor. The split above reflects our targeting. In practice we will aim for roughly 30% exact, 50% broad/natural, and 20% brand anchors across the total backlink profile for each page.</p>
+        </div>
+      </div>
+    </div><!-- /link-targets -->
+
+    <!-- FOOTER CTA -->
+    <div class="footer-cta">
+      <div class="footer-cta-inner">
+        <div class="footer-cta-logo">
+          <svg viewBox="0 0 161 53" fill="none" xmlns="http://www.w3.org/2000/svg" height="24">
+            <path d="M26.0013 0.853516C11.6413 0.853516 0 12.4947 0 26.8538C0 41.2136 11.6413 52.8535 26.0013 52.8535C40.362 52.8535 52.0033 41.2136 52.0033 26.8538C52.0033 12.4947 40.362 0.853516 26.0013 0.853516ZM17.6309 21.0628C18.8643 21.0598 19.8647 22.0577 19.8702 23.2935C19.8781 24.5225 18.8722 25.5247 17.6467 25.5247C16.4078 25.5278 15.4074 24.5353 15.4074 23.3044C15.3995 22.0711 16.3944 21.0683 17.6309 21.0628ZM40.3455 21.0598C39.7898 24.7824 38.4423 31.4889 38.4423 31.4889C38.4423 31.4889 37.7451 35.841 31.3004 35.8569C24.8539 35.8734 20.019 35.8868 20.019 35.8868C20.019 35.8868 19.5475 39.9833 13.7805 39.9943L16.6787 29.1662C16.6787 29.1662 17.5491 26.2896 22.5536 26.0804L21.2305 31.1638L31.1424 31.1394C31.1424 31.1394 33.5287 30.6783 33.7209 28.5477L23.2106 28.5776C23.2106 28.5776 23.7962 24.8281 28.1717 24.0773L33.6215 24.0584C33.6215 24.0584 34.8195 23.7192 34.8146 22.811V22.2443C34.8146 22.2443 34.7817 21.6155 33.9008 21.3337L23.6742 21.3666C23.6742 21.3666 20.3234 21.5453 20.307 16.6571L36.4439 16.6083C36.4439 16.6083 40.9067 17.3353 40.3455 21.0598Z" fill="white"/>
+            <path d="M144.133 35.8645L149.848 19.3218H154.486L160.201 35.8645H156.742L152.355 21.8533H152.004L147.567 35.8645H144.133ZM147.166 32.4557V30.225H157.594V32.4557H147.166Z" fill="white"/>
+            <path d="M138.913 35.8645V19.3218H142.122V35.8645H138.913Z" fill="white"/>
+            <path d="M123.563 35.8645V33.2578H128.401C129.403 33.2578 130.231 33.0322 130.882 32.581C131.551 32.1299 132.044 31.4866 132.361 30.6511C132.696 29.8156 132.863 28.813 132.863 27.6433C132.863 26.6574 132.754 25.8052 132.537 25.0867C132.336 24.3682 132.027 23.7833 131.609 23.3321C131.192 22.8643 130.665 22.5134 130.03 22.2794C129.395 22.0455 128.651 21.9285 127.799 21.9285H123.563V19.3218H127.699C129.654 19.3218 131.25 19.6476 132.487 20.2993C133.74 20.951 134.659 21.8867 135.244 23.1066C135.846 24.3097 136.147 25.7634 136.147 27.4678C136.147 28.6709 136.005 29.7404 135.721 30.6761C135.436 31.5952 135.052 32.3889 134.567 33.0573C134.083 33.709 133.515 34.2437 132.863 34.6614C132.211 35.0792 131.509 35.3883 130.757 35.5888C130.022 35.7726 129.261 35.8645 128.476 35.8645H123.563ZM122.008 35.8645V19.3218H125.167V35.8645H122.008Z" fill="white"/>
+            <path d="M107.208 35.8645V19.3218H110.392V35.8645H107.208ZM109.264 35.8645V33.2578H119.567V35.8645H109.264ZM109.264 28.6709V26.2647H118.338V28.6709H109.264ZM109.264 21.9285V19.3218H119.517V21.9285H109.264Z" fill="white"/>
+            <path d="M84.55 35.8645V19.3218H89.338L94.2514 32.3304H94.3767L99.2149 19.3218H103.802V35.8645H100.794L100.995 22.5301H100.744L95.5048 35.8645H92.7473L87.5833 22.5301H87.3326L87.5331 35.8645H84.55Z" fill="white"/>
+            <path d="M75.2092 36.2156C74.1396 36.2156 73.2121 36.0986 72.4266 35.8647C71.6412 35.6475 70.981 35.3383 70.4462 34.9373C69.9282 34.5196 69.5271 34.0099 69.243 33.4084C68.9589 32.8068 68.7834 32.1384 68.7166 31.4032L71.6244 30.5008C71.6412 31.0857 71.7498 31.5786 71.9503 31.9797C72.1509 32.3807 72.4183 32.7149 72.7525 32.9822C73.0868 33.2329 73.4711 33.4167 73.9056 33.5337C74.3402 33.6506 74.7914 33.7091 75.2593 33.7091C75.9445 33.7091 76.5545 33.6172 77.0893 33.4334C77.6241 33.2329 78.0502 32.9321 78.3678 32.5311C78.6853 32.1133 78.8441 31.5786 78.8441 30.9269C78.8441 30.1249 78.5767 29.4815 78.0419 28.9969C77.5238 28.4957 76.7634 28.1531 75.7607 27.9693C74.758 27.7855 73.538 27.7437 72.1007 27.844V25.9641L77.7661 22.054V21.8535L69.4937 21.9036V19.2969H80.9498V22.3798L75.6604 26.1396V26.3651C77.2313 26.2983 78.4764 26.4738 79.3956 26.8915C80.3147 27.3093 80.9748 27.8774 81.3759 28.5959C81.777 29.3144 81.9776 30.1165 81.9776 31.0021C81.9776 32.0549 81.7269 32.9739 81.2255 33.7593C80.7409 34.5446 79.9972 35.1545 78.9945 35.589C77.9917 36.0067 76.73 36.2156 75.2092 36.2156Z" fill="white"/>
+            <path d="M63.6388 35.8647V22.7558H66.797V35.8647H63.6388ZM65.2179 20.7005C64.5829 20.7005 64.09 20.5668 63.7391 20.2994C63.4049 20.0154 63.2378 19.6143 63.2378 19.0963C63.2378 18.5783 63.4049 18.1856 63.7391 17.9183C64.09 17.6342 64.5829 17.4922 65.2179 17.4922C65.8863 17.4922 66.3876 17.6259 66.7218 17.8932C67.056 18.1606 67.2231 18.5616 67.2231 19.0963C67.2231 19.6143 67.0476 20.0154 66.6967 20.2994C66.3625 20.5668 65.8696 20.7005 65.2179 20.7005Z" fill="white"/>
+          </svg>
+        </div>
+      </div>
+      <div class="footer-small">Prepared by i3MEDIA &nbsp;&middot;&nbsp; March 2026 &nbsp;&middot;&nbsp; Confidential — for Orphans In Need internal use only</div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── ACTIVE NAV ────────────────────────────────────────────
+const navLinks = document.querySelectorAll('.nav-link');
+const sectionIds = ['overview','page-optimisations','landing-pages','blog-pages','link-targets'];
+
+function setActive(id) {
+  navLinks.forEach(link => {
+    link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+  });
+}
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) setActive(entry.target.id);
+  });
+}, { rootMargin: '-58px 0px -55% 0px', threshold: 0 });
+
+sectionIds.forEach(id => {
+  const el = document.getElementById(id);
+  if (el) observer.observe(el);
+});
+</script>
+</body>
+</html>

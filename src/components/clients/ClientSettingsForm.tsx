@@ -14,6 +14,7 @@ interface Client {
   logoUrl: string | null;
   semrushDomain: string | null;
   semrushProjectId: number | null;
+  semrushCampaignIds: string | null; // JSON: string[]
   ga4PropertyId: string | null;
   ga4PropertyName: string | null;
   metaAccountId: string | null;
@@ -74,6 +75,14 @@ interface SemrushProject {
   domain: string;
 }
 
+interface SemrushCampaign {
+  id: string;
+  label: string;
+  device: string;
+  location: string;
+  keywordsCount: number;
+}
+
 interface GoogleAdsAccount {
   id: string;
   name: string;
@@ -105,6 +114,12 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
   const [gscEmailCopied, setGscEmailCopied] = useState(false);
   const [metaAccounts, setMetaAccounts] = useState<MetaAccount[]>([]);
   const [semrushProjects, setSemrushProjects] = useState<SemrushProject[]>([]);
+  const [semrushCampaigns, setSemrushCampaigns] = useState<SemrushCampaign[]>([]);
+  const [semrushCampaignIds, setSemrushCampaignIds] = useState<string[]>(() => {
+    try { return JSON.parse(client.semrushCampaignIds ?? "[]") as string[]; }
+    catch { return []; }
+  });
+  const [campaignsLoading, setCampaignsLoading] = useState(false);
   const [googleAdsAccounts, setGoogleAdsAccounts] = useState<GoogleAdsAccount[]>([]);
   const [gscSites, setGscSites] = useState<GSCSite[]>([]);
   const [ga4Loading, setGa4Loading] = useState(true);
@@ -115,6 +130,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
   const [ga4FetchError, setGa4FetchError] = useState("");
   const [metaFetchError, setMetaFetchError] = useState("");
   const [semrushFetchError, setSemrushFetchError] = useState("");
+  const [campaignsFetchError, setCampaignsFetchError] = useState("");
   const [googleAdsFetchError, setGoogleAdsFetchError] = useState("");
   const [gscFetchError, setGscFetchError] = useState("");
 
@@ -217,15 +233,21 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
         else {
           setSemrushProjects(data);
           // Auto-populate projectId if domain already set but projectId not yet saved
+          let resolvedProjectId: number | null = client.semrushProjectId;
           setForm((prev) => {
             if (prev.semrushDomain && !prev.semrushProjectId) {
               const match = (data as { projectId: number; domain: string }[]).find(
                 (p) => p.domain === prev.semrushDomain
               );
-              if (match) return { ...prev, semrushProjectId: match.projectId };
+              if (match) {
+                resolvedProjectId = match.projectId;
+                return { ...prev, semrushProjectId: match.projectId };
+              }
             }
             return prev;
           });
+          // Auto-load campaigns for the already-selected project
+          if (resolvedProjectId) fetchCampaignsForProject(resolvedProjectId);
         }
       })
       .catch(() => setSemrushFetchError("Failed to load SEMrush projects"))
@@ -250,6 +272,26 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       .finally(() => setGscLoading(false));
   }, []);
 
+  async function fetchCampaignsForProject(projectId: number) {
+    setCampaignsLoading(true);
+    setCampaignsFetchError("");
+    try {
+      const res = await fetch(`/api/semrush/campaigns?projectId=${projectId}`);
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setCampaignsFetchError(data.error ?? "Failed to load campaigns");
+        setSemrushCampaigns([]);
+      } else {
+        setSemrushCampaigns(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      setCampaignsFetchError("Failed to load campaigns");
+      setSemrushCampaigns([]);
+    } finally {
+      setCampaignsLoading(false);
+    }
+  }
+
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) {
@@ -268,6 +310,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          semrushCampaignIds: semrushCampaignIds.length > 0 ? JSON.stringify(semrushCampaignIds) : null,
           contractedHours: contractedHours.length > 0 ? JSON.stringify(contractedHours) : null,
           // Transform competitorDomains textarea to JSON array
           competitorDomains: form.competitorDomains.trim()
@@ -391,7 +434,11 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             ) : (
               <select name="semrushDomain" value={form.semrushDomain} onChange={(e) => {
                 const selected = semrushProjects.find(p => p.domain === e.target.value);
-                setForm(prev => ({ ...prev, semrushDomain: e.target.value, semrushProjectId: selected?.projectId ?? null }));
+                const newProjectId = selected?.projectId ?? null;
+                setForm(prev => ({ ...prev, semrushDomain: e.target.value, semrushProjectId: newProjectId }));
+                setSemrushCampaignIds([]);
+                setSemrushCampaigns([]);
+                if (newProjectId) fetchCampaignsForProject(newProjectId);
               }} className="form-input">
                 <option value="">— Select a project —</option>
                 {semrushProjects.map((p) => (
@@ -400,6 +447,48 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
               </select>
             )}
           </div>
+          {/* Campaign selector — shown after a project is selected */}
+          {form.semrushProjectId && (
+            <div style={{ marginTop: 16 }}>
+              <label className="form-label">Position Tracking Campaigns</label>
+              <p className="text-xs" style={{ color: "var(--text-4)", marginBottom: 8 }}>
+                Select the campaign(s) to use for tracked keyword position data. If you have multiple campaigns, select the one matching this client&apos;s primary target market.
+              </p>
+              {campaignsLoading ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)", fontSize: 13 }}>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading campaigns…
+                </div>
+              ) : campaignsFetchError ? (
+                <p className="text-xs text-red-600">{campaignsFetchError}</p>
+              ) : semrushCampaigns.length === 0 ? (
+                <p className="text-xs" style={{ color: "var(--text-4)" }}>No Position Tracking campaigns found for this project.</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {semrushCampaigns.map((c) => (
+                    <label key={c.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", padding: "10px 12px", borderRadius: "var(--r)", border: `1px solid ${semrushCampaignIds.includes(c.id) ? "#f97316" : "var(--border)"}`, background: semrushCampaignIds.includes(c.id) ? "#fff7ed" : "var(--surface-2)" }}>
+                      <input
+                        type="checkbox"
+                        checked={semrushCampaignIds.includes(c.id)}
+                        onChange={(e) => {
+                          setSemrushCampaignIds(prev =>
+                            e.target.checked ? [...prev, c.id] : prev.filter(id => id !== c.id)
+                          );
+                        }}
+                        style={{ marginTop: 2, flexShrink: 0 }}
+                      />
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-1)" }}>{c.label || c.id}</p>
+                        <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 2 }}>
+                          {c.device} · {c.location} · {c.keywordsCount} keyword{c.keywordsCount !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

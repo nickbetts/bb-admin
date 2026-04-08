@@ -62,6 +62,7 @@ interface Client {
   logoUrl: string | null;
   semrushDomain: string | null;
   semrushProjectId?: number | null;
+  semrushCampaignIds?: string | null;
   ga4PropertyId: string | null;
   metaAccountId: string | null;
   googleAdsCustomerId: string | null;
@@ -487,6 +488,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                 <SemrushSection
                   domain={report.client.semrushDomain}
                   projectId={report.client.semrushProjectId}
+                  campaignIds={(() => { try { return JSON.parse(report.client.semrushCampaignIds ?? "[]") as string[]; } catch { return []; } })()}
                   startDate={startDate}
                   endDate={endDate}
                   visibleBlocks={visibleBlocks}

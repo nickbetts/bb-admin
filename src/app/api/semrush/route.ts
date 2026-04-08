@@ -31,8 +31,11 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get("type") ?? "overview";
     const database = searchParams.get("database") ?? "uk";
     const projectId = searchParams.get("projectId");
+    // campaignId is the Position Tracking campaign ID (format: "{projectId}_{campaignNum}")
+    // It takes priority over projectId for position-tracking endpoints.
+    const campaignId = searchParams.get("campaignId");
 
-    if (!domain && type !== "project-keywords") {
+    if (!domain && type !== "project-keywords" && type !== "ai-visibility") {
       return NextResponse.json({ error: "domain is required" }, { status: 400 });
     }
 
@@ -62,16 +65,25 @@ export async function GET(request: NextRequest) {
       case "backlinks":
         return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getBacklinks(domain!, 10)));
       case "ai-visibility": {
-        if (!projectId) {
-          return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+        if (!campaignId && !projectId) {
+          return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
         }
-        return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getSemrushAIVisibility(parseInt(projectId), database)));
+        // campaignId takes priority; fall back to legacy projectId path (returns empty)
+        if (!campaignId) {
+          return NextResponse.json({ totalTracked: 0, aiOverviewKeywords: 0, brandCitations: 0, aiVisibilityScore: 0, keywords: [] });
+        }
+        const aiCacheKey = `semrush:ai-visibility:${campaignId}`;
+        return NextResponse.json(await withApiCache(aiCacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getSemrushAIVisibility(campaignId)));
       }
       case "project-keywords": {
-        if (!projectId) {
-          return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+        if (!campaignId && !projectId) {
+          return NextResponse.json({ error: "campaignId is required" }, { status: 400 });
         }
-        return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getSemrushTrackedKeywords(parseInt(projectId), database)));
+        if (!campaignId) {
+          return NextResponse.json([]);
+        }
+        const kwCacheKey = `semrush:project-keywords:${campaignId}`;
+        return NextResponse.json(await withApiCache(kwCacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getSemrushTrackedKeywords(campaignId)));
       }
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });

@@ -36,6 +36,7 @@ interface Client {
   website?: string | null;
   semrushDomain: string | null;
   semrushProjectId?: number | null;
+  semrushCampaignIds?: string | null;
   ga4PropertyId: string | null;
   metaAccountId: string | null;
   googleAdsCustomerId: string | null;
@@ -286,7 +287,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
       )}
 
       {activeTab === "seo" && client.semrushDomain ? (
-        <SemrushSection domain={client.semrushDomain} projectId={client.semrushProjectId} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.semrush} />
+        <SemrushSection domain={client.semrushDomain} projectId={client.semrushProjectId} campaignIds={(() => { try { return JSON.parse(client.semrushCampaignIds ?? "[]") as string[]; } catch { return []; } })()} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.semrush} />
       ) : activeTab === "seo" ? (
         <NotConfigured
           name="SEO / SemRush"

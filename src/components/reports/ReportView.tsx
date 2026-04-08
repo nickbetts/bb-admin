@@ -112,6 +112,7 @@ interface Client {
   logoUrl: string | null;
   semrushDomain: string | null;
   semrushProjectId?: number | null;
+  semrushCampaignIds?: string | null;
   ga4PropertyId: string | null;
   metaAccountId: string | null;
   googleAdsCustomerId: string | null;
@@ -1961,7 +1962,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 <div id={`section-${section.id}`} style={{ marginBottom: 56 }}>
                   {section.sectionType === "seo" && (
                     report.client.semrushDomain
-                      ? <SemrushSection domain={report.client.semrushDomain} projectId={report.client.semrushProjectId} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      ? <SemrushSection domain={report.client.semrushDomain} projectId={report.client.semrushProjectId} campaignIds={(() => { try { return JSON.parse(report.client.semrushCampaignIds ?? "[]") as string[]; } catch { return []; } })()} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
                       : <>{commentaryCard}{unconfiguredNotice("No SEMrush domain connected — configure it in client settings to enable SEO data.")}</>
                   )}
                   {section.sectionType === "web" && (

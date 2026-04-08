@@ -54,6 +54,7 @@ export async function PATCH(
         website: data.website,
         semrushDomain: data.semrushDomain,
         semrushProjectId: data.semrushProjectId != null ? Number(data.semrushProjectId) : null,
+        semrushCampaignIds: data.semrushCampaignIds !== undefined ? data.semrushCampaignIds : undefined,
         ga4PropertyId: data.ga4PropertyId,
         ga4PropertyName: data.ga4PropertyName,
         metaAccountId: data.metaAccountId,

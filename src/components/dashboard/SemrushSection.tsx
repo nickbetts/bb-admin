@@ -39,6 +39,7 @@ import { ShareOfVoicePanel } from "./ShareOfVoicePanel";
 interface SemrushSectionProps {
   domain: string;
   projectId?: number | null;
+  campaignIds?: string[] | null;
   startDate: string;
   endDate: string;
   crossPlatformContext?: string;
@@ -131,7 +132,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
   return sign + (fmt === "currency" ? formatCurrency(Math.abs(d)) : formatNumber(Math.abs(d)));
 }
 
-export function SemrushSection({ domain, projectId, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady, afterHeader }: SemrushSectionProps) {
+export function SemrushSection({ domain, projectId, campaignIds, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady, afterHeader }: SemrushSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
@@ -165,9 +166,14 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=competitors`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=backlinks`, { signal: controller.signal }),
         ];
-        if (projectId) {
-          fetchList.push(fetch(`/api/semrush?type=project-keywords&projectId=${projectId}`, { signal: controller.signal }));
-          fetchList.push(fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=ai-visibility&projectId=${projectId}`, { signal: controller.signal }));
+        const activeCampaignId = campaignIds?.[0] ?? null;
+        if (activeCampaignId) {
+          fetchList.push(fetch(`/api/semrush?type=project-keywords&campaignId=${encodeURIComponent(activeCampaignId)}`, { signal: controller.signal }));
+          fetchList.push(fetch(`/api/semrush?type=ai-visibility&campaignId=${encodeURIComponent(activeCampaignId)}`, { signal: controller.signal }));
+        } else if (projectId) {
+          // Legacy fallback — no campaign ID configured, show empty tracked data
+          fetchList.push(Promise.resolve(new Response(JSON.stringify([]), { status: 200 })));
+          fetchList.push(Promise.resolve(new Response(JSON.stringify({ totalTracked: 0, aiOverviewKeywords: 0, brandCitations: 0, aiVisibilityScore: 0, keywords: [] }), { status: 200 })));
         }
         const [overviewRes, keywordsRes, rankMoversRes, historyRes, distRes, competitorsRes, backlinksRes, trackedRes, aiVisRes] = await Promise.all(fetchList);
 
@@ -228,7 +234,7 @@ export function SemrushSection({ domain, projectId, startDate, endDate, crossPla
     }
     fetchData();
     return () => controller.abort();
-  }, [domain, projectId, startDate, endDate]);
+  }, [domain, projectId, campaignIds, startDate, endDate]);
 
   // Compute anomaly alerts from SEMrush data
   const semrushAlerts = useMemo<SemrushAlert[]>(() => {

@@ -62,6 +62,7 @@ model Client {
   ga4PropertyName       String?
   semrushDomain         String?
   semrushProjectId      Int?
+  semrushCampaignIds    String?   // JSON: string[] — campaign IDs for Position Tracking (format: "{projectId}_{campaignNum}")
   metaAccountId         String?
   metaAccountName       String?
   metaAccessToken       String?

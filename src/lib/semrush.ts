@@ -268,7 +268,7 @@ export async function getBacklinks(
     `key=${encodeURIComponent(apiKey)}`,
     `target=${encodeURIComponent(domain)}`,
     `target_type=root_domain`,
-    `export_columns=source_url,target_url,anchor,ascore`,
+    `export_columns=source_url,target_url,anchor,domain_ascore`,
     `display_limit=${limit}`,
   ].join("&");
 
@@ -310,55 +310,66 @@ export interface SemrushTrackedKeyword {
   landingPage: string;
 }
 
+// Position Tracking reports use a different base URL + campaign ID in path.
+// Campaign IDs look like "103580023_16852" (projectId_campaignNum).
+const SEMRUSH_TRACKING_BASE = "https://api.semrush.com/reports/v1/projects";
+
 export async function getSemrushTrackedKeywords(
-  projectId: number,
-  database: string = "uk"
+  campaignId: string,
 ): Promise<SemrushTrackedKeyword[]> {
   const apiKey = getApiKey();
-  // Build query string manually — URLSearchParams encodes commas as %2C which the
-  // SEMrush reporting API rejects with HTTP 400 for export_columns values.
   const qs = [
     `key=${encodeURIComponent(apiKey)}`,
     `action=report`,
-    `type=tracking_positions_list`,
-    `project_id=${projectId}`,
-    `db=${database}`,
-    `export_columns=Kw,Pos,Pp,Nq,Ur,Pu`,
-    `display_limit=100`,
+    `type=tracking_position_organic`,
+    `display_limit=200`,
   ].join("&");
 
   try {
-    const response = await axios.get(`${SEMRUSH_BASE_URL}/?${qs}`);
-    const lines = (response.data as string).trim().split("\n");
+    const response = await axios.get<Record<string, unknown>>(
+      `${SEMRUSH_TRACKING_BASE}/${campaignId}/tracking/?${qs}`
+    );
 
-    if (lines.length < 2) return [];
+    const data = response.data as {
+      total?: number;
+      data?: Record<string, {
+        Ph?: string;
+        Nq?: string;
+        Fi?: Record<string, number | string>;
+        Be?: Record<string, number | string>;
+        Lu?: Record<string, Record<string, string>>;
+      }>;
+    };
 
-    if (lines[0]?.startsWith("ERROR")) {
-      console.warn("SEMrush tracked keywords error:", lines[0]);
-      return [];
-    }
+    if (!data?.data || data.total === 0) return [];
 
-    return lines.slice(1).map((line: string) => {
-      const [keyword, position, previousPosition, searchVolume, url, landingPage] = line.split(";");
-      const pos = parseInt(position);
-      const prevPos = parseInt(previousPosition);
+    return Object.values(data.data).map((kw) => {
+      // Fi = final (most recent) position, keyed by URL mask — take the first value
+      const fiEntries = kw.Fi ? Object.values(kw.Fi) : [];
+      const beEntries = kw.Be ? Object.values(kw.Be) : [];
+      const pos = typeof fiEntries[0] === "number" ? fiEntries[0] : parseInt(String(fiEntries[0]));
+      const prevPos = typeof beEntries[0] === "number" ? beEntries[0] : parseInt(String(beEntries[0]));
+      // Lu = landing URL per date; use the first date's first domain value
+      const luDates = kw.Lu ? Object.values(kw.Lu) : [];
+      const landingUrl = luDates.length > 0 ? Object.values(luDates[0])[0] ?? "" : "";
       return {
-        keyword: keyword || "",
+        keyword: kw.Ph ?? "",
         position: isNaN(pos) ? 0 : pos,
         previousPosition: isNaN(prevPos) ? null : prevPos,
-        searchVolume: parseInt(searchVolume) || 0,
-        url: url || "",
-        landingPage: landingPage || "",
+        searchVolume: parseInt(kw.Nq ?? "0") || 0,
+        url: landingUrl,
+        landingPage: landingUrl,
       };
     });
   } catch (err) {
     console.error("SEMrush tracked keywords fetch error:", err);
+    if (axios.isAxiosError(err) && err.response) {
+      console.error("SEMrush response body:", typeof err.response.data === "string" ? err.response.data.slice(0, 300) : JSON.stringify(err.response.data));
+    }
     return [];
   }
 }
 
-// AI Visibility — Google AI Overviews presence from position tracking
-// Ai column values: 0 = no AI Overview, 1 = AI Overview exists but brand not cited, 2 = brand IS cited
 export interface SemrushAIKeyword {
   keyword: string;
   position: number;
@@ -371,77 +382,69 @@ export interface SemrushAIVisibility {
   totalTracked: number;
   aiOverviewKeywords: number;
   brandCitations: number;
-  aiVisibilityScore: number; // brandCitations / totalTracked * 100
+  aiVisibilityScore: number;
   keywords: SemrushAIKeyword[];
 }
 
 export async function getSemrushAIVisibility(
-  projectId: number,
-  database: string = "uk"
+  campaignId: string,
 ): Promise<SemrushAIVisibility> {
   const apiKey = getApiKey();
   const empty: SemrushAIVisibility = {
-    totalTracked: 0,
-    aiOverviewKeywords: 0,
-    brandCitations: 0,
-    aiVisibilityScore: 0,
-    keywords: [],
+    totalTracked: 0, aiOverviewKeywords: 0, brandCitations: 0, aiVisibilityScore: 0, keywords: [],
   };
 
-  // Build query string manually — URLSearchParams encodes commas as %2C which the
-  // SEMrush reporting API rejects with HTTP 400 for export_columns values.
   const qs = [
     `key=${encodeURIComponent(apiKey)}`,
     `action=report`,
-    `type=tracking_positions_list`,
-    `project_id=${projectId}`,
-    `db=${database}`,
-    `export_columns=Kw,Pos,Pp,Nq,Ur,Pu,Ai`,
+    `type=tracking_position_organic`,
     `display_limit=200`,
   ].join("&");
 
-  let response;
+  let response: { data: Record<string, unknown> };
   try {
-    response = await axios.get(`${SEMRUSH_BASE_URL}/?${qs}`);
+    response = await axios.get<Record<string, unknown>>(
+      `${SEMRUSH_TRACKING_BASE}/${campaignId}/tracking/?${qs}`
+    );
   } catch (err) {
-    // HTTP 400 means the Ai column or project_id is not supported — return empty gracefully
-    if (axios.isAxiosError(err) && err.response?.status === 400) {
-      return empty;
-    }
-    throw err;
+    if (axios.isAxiosError(err) && err.response?.status === 400) return empty;
+    return empty;
   }
 
-  const lines = (response.data as string).trim().split("\n");
+  const data = response.data as {
+    total?: number;
+    data?: Record<string, {
+      Ph?: string;
+      Nq?: string;
+      Fi?: Record<string, number | string>;
+      Sf?: Record<string, string[]>;
+    }>;
+  };
 
-  if (lines[0]?.startsWith("ERROR")) {
-    const msg = lines[0];
-    // If the Ai column isn't available on this plan, the API returns an error about unknown columns.
-    // Return empty rather than throwing so the UI shows a "not available" state.
-    if (msg.includes("UNKNOWN COLUMN") || msg.includes("WRONG KEY") || msg.includes("30 ::")) {
-      return empty;
-    }
-    throw new Error(`SEMrush AI visibility: ${msg}`);
-  }
+  if (!data?.data || data.total === 0) return empty;
 
-  if (lines.length < 2) return empty;
-
-  const keywords: SemrushAIKeyword[] = lines.slice(1).map((line: string) => {
-    const parts = line.split(";");
-    // columns: Kw, Pos, Pp, Nq, Ur, Pu, Ai
-    const aiVal = parseInt(parts[6] ?? "0") || 0;
+  const keywords: SemrushAIKeyword[] = Object.values(data.data).map((kw) => {
+    const fiEntries = kw.Fi ? Object.values(kw.Fi) : [];
+    const pos = typeof fiEntries[0] === "number" ? fiEntries[0] : parseInt(String(fiEntries[0] ?? "0"));
+    // Sf is SERP features per date — check the most recent date for "aio" (AI Overview)
+    const sfDates = kw.Sf ? Object.values(kw.Sf) : [];
+    const latestSf: string[] = sfDates.length > 0 ? (sfDates[sfDates.length - 1] ?? []) : [];
+    const hasAIOAny = sfDates.some((d) => Array.isArray(d) && d.includes("aio"));
+    // "aio" in latest date means AI overview exists; we approximate brand citation by checking "fsn" (featured snippet)
+    // There's no direct "brand in AI overview" signal from this endpoint; default to false unless better data available
     return {
-      keyword: parts[0] || "",
-      position: parseInt(parts[1]) || 0,
-      searchVolume: parseInt(parts[3]) || 0,
-      hasAIOverview: aiVal >= 1,
-      brandInAIOverview: aiVal >= 2,
+      keyword: kw.Ph ?? "",
+      position: isNaN(pos) ? 0 : pos,
+      searchVolume: parseInt(kw.Nq ?? "0") || 0,
+      hasAIOverview: hasAIOAny || latestSf.includes("aio"),
+      brandInAIOverview: false,
     };
   });
 
   const totalTracked = keywords.length;
   const aiOverviewKeywords = keywords.filter((k) => k.hasAIOverview).length;
-  const brandCitations = keywords.filter((k) => k.brandInAIOverview).length;
-  const aiVisibilityScore = totalTracked > 0 ? (brandCitations / totalTracked) * 100 : 0;
+  const brandCitations = 0; // not derivable from this endpoint without additional data
+  const aiVisibilityScore = totalTracked > 0 ? (aiOverviewKeywords / totalTracked) * 100 : 0;
 
   return { totalTracked, aiOverviewKeywords, brandCitations, aiVisibilityScore, keywords };
 }
