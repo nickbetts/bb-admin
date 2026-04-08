@@ -227,9 +227,16 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
     return n.toLocaleString("en-GB");
   }
 
+  // Sort priority items first (any keyword >= 1000 vol)
+  const sortedPageOpts = [...pageOptimisations].sort((a, b) => {
+    const aPri = a.keywords.some(k => k.volume >= 1000) ? 1 : 0;
+    const bPri = b.keywords.some(k => k.volume >= 1000) ? 1 : 0;
+    return bPri - aPri;
+  });
+
   // Build page optimisations HTML
   let pageOptsHtml = "";
-  for (const opt of pageOptimisations) {
+  for (const opt of sortedPageOpts) {
     const isPriority = opt.keywords.some(k => k.volume >= 1000);
     pageOptsHtml += `
           <div class="opt-block">
@@ -248,7 +255,11 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
 
   // Build landing pages HTML
   let landingPagesHtml = "";
-  const allLandingPages = [...landingPages, ...categoryPages];
+  const allLandingPages = [...landingPages, ...categoryPages].sort((a, b) => {
+    const aPri = a.keywords.some(k => k.volume >= 500) ? 1 : 0;
+    const bPri = b.keywords.some(k => k.volume >= 500) ? 1 : 0;
+    return bPri - aPri;
+  });
   for (const page of allLandingPages) {
     const isPriority = page.keywords.some(k => k.volume >= 500);
     const desc = aiContent[`landing_${page.title}`] || page.notes || "";
@@ -265,10 +276,15 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
           </div>`;
   }
 
-  // Build blog posts HTML
+  // Build blog posts HTML — sort priority first
+  const sortedBlogPosts = [...blogPosts].sort((a, b) => {
+    const aPri = a.keywords.some(k => k.volume >= 1000) ? 1 : 0;
+    const bPri = b.keywords.some(k => k.volume >= 1000) ? 1 : 0;
+    return bPri - aPri;
+  });
   let blogPostsHtml = "";
-  for (let i = 0; i < blogPosts.length; i++) {
-    const post = blogPosts[i];
+  for (let i = 0; i < sortedBlogPosts.length; i++) {
+    const post = sortedBlogPosts[i];
     const isPriority = post.keywords.some(k => k.volume >= 1000);
     const desc = aiContent[`blog_${post.title}`] || post.notes || "";
     blogPostsHtml += `
@@ -450,9 +466,13 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 .priority-badge { font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; background: #fef3c7; color: #92400e; padding: .2rem .55rem; border-radius: 4px; white-space: nowrap; }
 .kw-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
 .kw-table th { text-align: left; padding: .55rem 1rem; background: #f8fafc; color: var(--muted); font-weight: 600; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); }
+.kw-table th:last-child { text-align: right; }
 .kw-table td { padding: .5rem 1rem; border-bottom: 1px solid #f1f5f9; }
+.kw-table td:last-child { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
 .kw-table tr:last-child td { border-bottom: none; }
+.kw-table tbody tr:hover { background: #fafbff; }
 .kw-top td { font-weight: 700; background: #fafafa; }
+.kw-top td:last-child { color: var(--accent); }
 
 /* -- New page cards -- */
 .new-pages-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
