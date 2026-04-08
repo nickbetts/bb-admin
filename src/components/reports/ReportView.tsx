@@ -1164,18 +1164,18 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const SECTION_META: Record<string, { icon: React.ReactNode; badge: string; subtitle?: string }> = {
     overview:                    { icon: <LayoutGrid size={14} />, badge: "badge-slate", subtitle: "A high-level snapshot of performance across all active channels for the period, highlighting key wins, areas of concern and overall trajectory." },
     executive_summary:           { icon: <Star size={14} />, badge: "badge-amber", subtitle: "An AI-generated summary of the full report, pulling together the key takeaways from every channel into a concise overview for stakeholders." },
-    seo:                         { icon: <TrendingUp size={14} />, badge: "badge-indigo", subtitle: "Covers your domain authority score, referring domains, organic traffic metrics and keyword rankings — plus trend graphs showing how visibility and traffic have moved over the period. Data sourced from SEMrush." },
-    web:                         { icon: <Globe size={14} />, badge: "badge-blue", subtitle: "Shows website traffic performance including sessions, users, engagement rate, average session duration and conversions — alongside channel breakdowns and a sessions-over-time chart. Data sourced from Google Analytics 4." },
-    paid_social:                 { icon: <BarChart2 size={14} />, badge: "badge-orange", subtitle: "Covers paid social advertising performance including spend, impressions, reach, clicks, conversions and cost metrics — with trend charts and campaign-level breakdowns. Data sourced from Meta Ads." },
-    googleads:                   { icon: <Search size={14} />, badge: "badge-green", subtitle: "Shows paid search performance including spend, impressions, clicks, conversions and cost metrics — with trend charts and campaign-level breakdowns. Data sourced from Google Ads." },
-    searchconsole:               { icon: <Search size={14} />, badge: "badge-purple", subtitle: "Covers organic search performance including clicks, impressions, click-through rate and average position — plus top pages, top queries, position movers and device breakdowns. Data sourced from Google Search Console." },
+    seo:                         { icon: <TrendingUp size={14} />, badge: "badge-indigo", subtitle: "Covers your domain authority score, referring domains, organic traffic metrics and keyword rankings, plus trend graphs showing how visibility and traffic have moved over the period." },
+    web:                         { icon: <Globe size={14} />, badge: "badge-blue", subtitle: "Shows website traffic performance including sessions, users, engagement rate, average session duration and conversions, alongside channel breakdowns and a sessions-over-time chart." },
+    paid_social:                 { icon: <BarChart2 size={14} />, badge: "badge-orange", subtitle: "Covers paid social advertising performance including spend, impressions, reach, clicks, conversions and cost metrics, with trend charts and campaign-level breakdowns." },
+    googleads:                   { icon: <Search size={14} />, badge: "badge-green", subtitle: "Shows paid search performance including spend, impressions, clicks, conversions and cost metrics, with trend charts and campaign-level breakdowns." },
+    searchconsole:               { icon: <Search size={14} />, badge: "badge-purple", subtitle: "Covers organic search performance including clicks, impressions, click-through rate and average position, plus top pages, top queries, position movers and device breakdowns." },
     text_notable_achievements:   { icon: <FileText size={14} />, badge: "badge-slate" },
     text_screenshots:            { icon: <Image size={14} />, badge: "badge-slate" },
     text_work_complete:          { icon: <FileText size={14} />, badge: "badge-slate" },
     text_content_done:           { icon: <FileText size={14} />, badge: "badge-slate" },
     text_technical_update:       { icon: <FileText size={14} />, badge: "badge-slate" },
     text_ppc_update:             { icon: <FileText size={14} />, badge: "badge-slate" },
-    ecommerce:                   { icon: <ShoppingCart size={14} />, badge: "badge-emerald", subtitle: "Shows online store performance including revenue, orders, average order value and conversion rate — with breakdowns by product and channel." },
+    ecommerce:                   { icon: <ShoppingCart size={14} />, badge: "badge-emerald", subtitle: "Shows online store performance including revenue, orders, average order value and conversion rate, with breakdowns by product and channel." },
   };
 
   const isPublished = report.status === "published";
