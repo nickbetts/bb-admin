@@ -291,6 +291,9 @@ function SettingsPanelInner() {
   } | null>(null);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
 
+  const [rowRunning, setRowRunning] = useState<Record<string, boolean>>({});
+  const [rowResult, setRowResult] = useState<Record<string, { snapshots: number; errors: number } | null>>({});
+
   const [snapshotInventory, setSnapshotInventory] = useState<Array<{
     clientId: string;
     clientName: string;
@@ -329,6 +332,26 @@ function SettingsPanelInner() {
       setSnapshotError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setSnapshotRunning(false);
+    }
+  }
+
+  async function handleRunClientSnapshot(clientId: string) {
+    setRowRunning((prev) => ({ ...prev, [clientId]: true }));
+    setRowResult((prev) => ({ ...prev, [clientId]: null }));
+    try {
+      const res = await fetch("/api/admin/run-snapshots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ months: snapshotMonths, skipExisting: true, clientId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed");
+      setRowResult((prev) => ({ ...prev, [clientId]: { snapshots: data.totalSnapshots ?? 0, errors: data.totalErrors ?? 0 } }));
+      loadSnapshotInventory();
+    } catch {
+      setRowResult((prev) => ({ ...prev, [clientId]: { snapshots: 0, errors: 1 } }));
+    } finally {
+      setRowRunning((prev) => ({ ...prev, [clientId]: false }));
     }
   }
 
@@ -721,6 +744,7 @@ function SettingsPanelInner() {
                         {platforms.map((p) => <th key={p} style={{ textAlign: "center", padding: "8px 8px", fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>{LABELS[p] ?? p}</th>)}
                         <th style={{ textAlign: "center", padding: "8px 12px", fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>Total</th>
                         <th style={{ textAlign: "center", padding: "8px 12px", fontWeight: 600, color: "var(--text-2)", whiteSpace: "nowrap" }}>Seasonality</th>
+                        <th style={{ padding: "8px 12px" }}></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -749,6 +773,20 @@ function SettingsPanelInner() {
                               {seasonalityReady
                                 ? <span style={{ color: "#16a34a", fontWeight: 600 }} title={`${ga4Count} GA4 months`}>✓ {ga4Count}mo</span>
                                 : <span style={{ color: ga4Count > 0 ? "#d97706" : "var(--text-3)", fontSize: 11 }}>{ga4Count > 0 ? `${ga4Count}/3 mo` : "No GA4"}</span>}
+                            </td>
+                            <td style={{ padding: "7px 12px", textAlign: "right", whiteSpace: "nowrap" }}>
+                              {rowResult[client.clientId] && (
+                                <span style={{ fontSize: 11, marginRight: 6, color: rowResult[client.clientId]!.errors > 0 ? "var(--danger)" : "#16a34a" }}>
+                                  {rowResult[client.clientId]!.errors > 0 ? `✗ ${rowResult[client.clientId]!.errors} err` : `+${rowResult[client.clientId]!.snapshots}`}
+                                </span>
+                              )}
+                              <button
+                                onClick={() => handleRunClientSnapshot(client.clientId)}
+                                disabled={rowRunning[client.clientId] || snapshotRunning}
+                                style={{ fontSize: 11, padding: "3px 10px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-2)", cursor: rowRunning[client.clientId] || snapshotRunning ? "not-allowed" : "pointer", opacity: rowRunning[client.clientId] || snapshotRunning ? 0.5 : 1 }}
+                              >
+                                {rowRunning[client.clientId] ? "…" : "Run"}
+                              </button>
                             </td>
                           </tr>
                         );
