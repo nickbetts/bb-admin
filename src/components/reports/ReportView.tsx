@@ -487,9 +487,14 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [showDescriptions, setShowDescriptions] = useState(true);
   const [aiLength, setAiLength] = useState<"short" | "medium" | "long">("medium");
-  const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive" | "roadman">("professional");
+  const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive" | "roadman" | "uwu_anime" | "patronising" | "toxic" | "gaslighty" | "cuck">("professional");
   const [aiFormat, setAiFormat] = useState<"prose" | "bullets" | "both">("prose");
   const [aiSpin, setAiSpin] = useState<"positive" | "balanced" | "neutral">("positive");
+
+  // Chaos tones are for internal preview only — disable export & sharing when active
+  const CHAOS_TONES = ["roadman", "uwu_anime", "patronising", "toxic", "gaslighty", "cuck"] as const;
+  const isChaosTone = (CHAOS_TONES as readonly string[]).includes(aiTone);
+
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [sectionMetrics, setSectionMetrics] = useState<Record<string, Record<string, number>>>({});
   const [sectionPreviousMetrics, setSectionPreviousMetrics] = useState<Record<string, Record<string, number>>>({});
@@ -1280,10 +1285,11 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           {report.shareToken ? (
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <button
-                onClick={handleCopyShareLink}
+                onClick={isChaosTone ? undefined : handleCopyShareLink}
                 className="btn btn-secondary btn-sm"
-                style={{ gap: 5, color: shareCopied ? "#10b981" : undefined }}
-                title="Copy client share link"
+                disabled={isChaosTone}
+                style={{ gap: 5, color: shareCopied ? "#10b981" : undefined, ...(isChaosTone ? { opacity: 0.4, cursor: "not-allowed" } : {}) }}
+                title={isChaosTone ? "🚫 Sharing disabled — imagine sending THIS to a client" : "Copy client share link"}
               >
                 {shareCopied ? <CheckCircle2 size={13} /> : <Link2 size={13} />}
                 {shareCopied ? "Copied!" : "Copy link"}
@@ -1301,11 +1307,11 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             </div>
           ) : (
             <button
-              onClick={handleGenerateShareToken}
-              disabled={shareLoading}
+              onClick={isChaosTone ? undefined : handleGenerateShareToken}
+              disabled={shareLoading || isChaosTone}
               className="btn btn-secondary btn-sm"
-              style={{ gap: 5 }}
-              title="Generate a client share link"
+              style={{ gap: 5, ...(isChaosTone ? { opacity: 0.4, cursor: "not-allowed" } : {}) }}
+              title={isChaosTone ? "🚫 Sharing disabled — imagine sending THIS to a client" : "Generate a client share link"}
             >
               <Link2 size={13} />
               {shareLoading ? "…" : "Share"}
@@ -1471,7 +1477,13 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             {showDescriptions ? <EyeOff size={13} /> : <Eye size={13} />}
             {showDescriptions ? "Hide descriptions" : "Show descriptions"}
           </button>
-          <button onClick={handleExportPdf} disabled={exportingPdf} className="btn btn-primary btn-sm">
+          <button
+            onClick={handleExportPdf}
+            disabled={exportingPdf || isChaosTone}
+            className="btn btn-primary btn-sm"
+            title={isChaosTone ? "🚫 Export disabled — switch to a sensible tone first, yeah?" : undefined}
+            style={isChaosTone ? { opacity: 0.4, cursor: "not-allowed" } : undefined}
+          >
             <Download size={13} />
             {exportingPdf ? "Generating…" : "Export PDF"}
           </button>
@@ -1479,6 +1491,14 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       </div>
 
       {/* ── Body ────────────────────────────────────────────────────────── */}
+      {isChaosTone && (
+        <div style={{ background: "#fef3c7", borderBottom: "1px solid #fbbf24", padding: "8px 40px", display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 16 }}>⚠️</span>
+          <p style={{ fontSize: 12, fontWeight: 600, color: "#92400e" }}>
+            INTERNAL PREVIEW ONLY — chaos tone active. Export PDF and Share are disabled until you switch back to a sensible tone.
+          </p>
+        </div>
+      )}
       <div style={{ display: "flex", alignItems: "flex-start" }}>
 
         {/* Main content */}
@@ -1613,7 +1633,13 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                           <option value="friendly">Friendly</option>
                           <option value="technical">Technical</option>
                           <option value="executive">Executive</option>
+                          <option disabled>── For your eyes only ──</option>
                           <option value="roadman">Roadman 🎤</option>
+                          <option value="uwu_anime">UwU Anime Simp 🌸</option>
+                          <option value="patronising">Mad Patronising 🙄</option>
+                          <option value="toxic">Toxic Manager ☠️</option>
+                          <option value="gaslighty">Gaslighter 🕯️</option>
+                          <option value="cuck">Absolute Cuck 🥄</option>
                         </select>
                         <select
                           value={aiLength}
@@ -2176,7 +2202,13 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                         <option value="friendly">Friendly</option>
                         <option value="technical">Technical</option>
                         <option value="executive">Executive</option>
+                        <option disabled>── Eyes only ──</option>
                         <option value="roadman">Roadman 🎤</option>
+                        <option value="uwu_anime">UwU Anime Simp 🌸</option>
+                        <option value="patronising">Mad Patronising 🙄</option>
+                        <option value="toxic">Toxic Manager ☠️</option>
+                        <option value="gaslighty">Gaslighter 🕯️</option>
+                        <option value="cuck">Absolute Cuck 🥄</option>
                       </select>
                       <select value={aiLength} onChange={(e) => setAiLength(e.target.value as typeof aiLength)} className="btn btn-secondary btn-sm" style={{ flex: 1, cursor: "pointer", paddingRight: 4, fontSize: 11 }}>
                         <option value="short">Short</option>
