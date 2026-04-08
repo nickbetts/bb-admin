@@ -27,6 +27,8 @@ interface MetaSectionProps {
   clientName?: string;
   startDate: string;
   endDate: string;
+  compareStartDate?: string;
+  compareEndDate?: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
   hideAlerts?: boolean;
@@ -216,7 +218,7 @@ interface AdSetAudience {
 
 type MetaAlert = { severity: "high" | "medium"; label: string; level: "Campaign" | "Ad Set" | "Creative"; detail: string; recommendation: string };
 
-export function MetaSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, onMetricsReady, onPreviousMetricsReady, afterHeader }: MetaSectionProps) {
+export function MetaSection({ clientId, clientName, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, onMetricsReady, onPreviousMetricsReady, afterHeader }: MetaSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<MetaOverview | null>(null);
@@ -372,7 +374,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
       setError(null);
       try {
         const base = `/api/meta?clientId=${encodeURIComponent(clientId)}&startDate=${startDate}&endDate=${endDate}`;
-        const prev = getPreviousPeriod(startDate, endDate);
+        const prev = (compareStartDate && compareEndDate)
+          ? { startDate: compareStartDate, endDate: compareEndDate }
+          : getPreviousPeriod(startDate, endDate);
         const prevBase = `/api/meta?clientId=${encodeURIComponent(clientId)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
 
         const [ovRes, campRes, enrichedRes, dailyRes, lpRes, prevOvRes, prevCampRes, adSetsRes, creativesRes, audiencesRes] = await Promise.all([
@@ -437,7 +441,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, crossPla
     }
     fetchData();
     return () => controller.abort();
-  }, [clientId, startDate, endDate]);
+  }, [clientId, startDate, endDate, compareStartDate, compareEndDate]);
 
   // Auto-save a metric snapshot for historical trending (non-critical, fire-and-forget)
   useEffect(() => {

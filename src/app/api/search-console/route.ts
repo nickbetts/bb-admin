@@ -41,6 +41,8 @@ export async function GET(request: NextRequest) {
     }
 
     const cacheKey = `gsc:${type}:${siteUrl}:${startDate}:${endDate}`;
+    const compareStart = searchParams.get("compareStartDate");
+    const compareEnd = searchParams.get("compareEndDate");
 
     switch (type) {
       case "overview":
@@ -58,8 +60,11 @@ export async function GET(request: NextRequest) {
 
       // Fetches current + previous period overview in one invocation to avoid timeout issues
       case "compare": {
-        const prev = getPreviousPeriod(startDate, endDate);
-        return NextResponse.json(await withApiCache(cacheKey, GSC_CACHE_TTL_HOURS, async () => {
+        const prev = (compareStart && compareEnd)
+          ? { startDate: compareStart, endDate: compareEnd }
+          : getPreviousPeriod(startDate, endDate);
+        const compareCacheKey = `gsc:compare:${siteUrl}:${startDate}:${endDate}:${prev.startDate}:${prev.endDate}`;
+        return NextResponse.json(await withApiCache(compareCacheKey, GSC_CACHE_TTL_HOURS, async () => {
           const [current, previous] = await Promise.all([
             getGSCOverview(siteUrl, startDate, endDate),
             getGSCOverview(siteUrl, prev.startDate, prev.endDate).catch(() => null),
@@ -70,8 +75,11 @@ export async function GET(request: NextRequest) {
 
       // Fetches all current-period data + previous overview/queries/pages in one invocation
       case "bulk": {
-        const prev = getPreviousPeriod(startDate, endDate);
-        return NextResponse.json(await withApiCache(cacheKey, GSC_CACHE_TTL_HOURS, async () => {
+        const prev = (compareStart && compareEnd)
+          ? { startDate: compareStart, endDate: compareEnd }
+          : getPreviousPeriod(startDate, endDate);
+        const bulkCacheKey = `gsc:bulk:${siteUrl}:${startDate}:${endDate}:${prev.startDate}:${prev.endDate}`;
+        return NextResponse.json(await withApiCache(bulkCacheKey, GSC_CACHE_TTL_HOURS, async () => {
           const [overview, queries, pages, daily, devices, countries, prevOverview, prevQueries, prevPages] =
             await Promise.all([
               getGSCOverview(siteUrl, startDate, endDate),

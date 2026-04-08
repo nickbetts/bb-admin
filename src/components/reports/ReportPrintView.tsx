@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { parsePeriodToDateRange } from "@/lib/utils";
+import { parsePeriodToDateRange, formatDateDisplay, getPreviousPeriod } from "@/lib/utils";
 import { isTextSection, TEXT_SECTION_LABELS, type TextSectionType } from "@/lib/report-blocks";
 import { SemrushSection } from "@/components/dashboard/SemrushSection";
 import { GA4Section } from "@/components/dashboard/GA4Section";
@@ -240,6 +240,16 @@ export function ReportPrintView({ report }: { report: Report }) {
                 {report.title}
               </h1>
               <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>{report.period}</p>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>
+                {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
+                {" · vs "}
+                {(() => {
+                  const prev = (compareStartDate && compareEndDate)
+                    ? { startDate: compareStartDate, endDate: compareEndDate }
+                    : getPreviousPeriod(startDate, endDate);
+                  return `${formatDateDisplay(prev.startDate)} – ${formatDateDisplay(prev.endDate)}`;
+                })()}
+              </p>
             </div>
             {report.client.logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -331,8 +341,18 @@ export function ReportPrintView({ report }: { report: Report }) {
         const afterHeader = (
           <>
             {sectionSubtitle && (
-              <p style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>{sectionSubtitle}</p>
+              <p style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>{sectionSubtitle}</p>
             )}
+            <p style={{ fontSize: 11, color: "#94a3b8", marginBottom: 12 }}>
+              {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
+              {" · vs "}
+              {(() => {
+                const prev = (compareStartDate && compareEndDate)
+                  ? { startDate: compareStartDate, endDate: compareEndDate }
+                  : getPreviousPeriod(startDate, endDate);
+                return `${formatDateDisplay(prev.startDate)} – ${formatDateDisplay(prev.endDate)}`;
+              })()}
+            </p>
             {section.sectionType === "overview"
               ? (narrativeBlock ?? commentaryBlock(section))
               : commentaryBlock(section)}
@@ -455,6 +475,8 @@ export function ReportPrintView({ report }: { report: Report }) {
                 client={report.client}
                 startDate={startDate}
                 endDate={endDate}
+                compareStartDate={compareStartDate ?? undefined}
+                compareEndDate={compareEndDate ?? undefined}
                 reportMode
                 visibleBlocks={visibleBlocks}
                 afterHeader={afterHeader}
@@ -506,6 +528,8 @@ export function ReportPrintView({ report }: { report: Report }) {
                   clientName={report.client.name}
                   startDate={startDate}
                   endDate={endDate}
+                  compareStartDate={compareStartDate ?? undefined}
+                  compareEndDate={compareEndDate ?? undefined}
                   visibleBlocks={visibleBlocks}
                   hideAlerts
                   hideAi
@@ -526,6 +550,8 @@ export function ReportPrintView({ report }: { report: Report }) {
                   clientName={report.client.name}
                   startDate={startDate}
                   endDate={endDate}
+                  compareStartDate={compareStartDate ?? undefined}
+                  compareEndDate={compareEndDate ?? undefined}
                   visibleBlocks={visibleBlocks}
                   hideAlerts
                   hideAi
@@ -544,6 +570,8 @@ export function ReportPrintView({ report }: { report: Report }) {
                   siteUrl={report.client.searchConsoleSiteUrl}
                   startDate={startDate}
                   endDate={endDate}
+                  compareStartDate={compareStartDate ?? undefined}
+                  compareEndDate={compareEndDate ?? undefined}
                   visibleBlocks={visibleBlocks}
                   hideAlerts
                   hideAi

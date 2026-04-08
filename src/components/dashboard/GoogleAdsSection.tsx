@@ -119,6 +119,8 @@ interface Props {
   clientName?: string;
   startDate: string;
   endDate: string;
+  compareStartDate?: string;
+  compareEndDate?: string;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
   hideAlerts?: boolean;
@@ -159,7 +161,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
 
 type GAdsAlert = { severity: "high" | "medium"; label: string; level: string; detail: string; recommendation: string };
 
-export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, onMetricsReady, onPreviousMetricsReady, afterHeader }: Props) {
+export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, onMetricsReady, onPreviousMetricsReady, afterHeader }: Props) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
@@ -278,7 +280,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       setPrevData(null);
 
       const params = new URLSearchParams({ customerId, startDate, endDate });
-      const prev = getPreviousPeriod(startDate, endDate);
+      const prev = (compareStartDate && compareEndDate)
+        ? { startDate: compareStartDate, endDate: compareEndDate }
+        : getPreviousPeriod(startDate, endDate);
       const prevParams = new URLSearchParams({ customerId, startDate: prev.startDate, endDate: prev.endDate });
 
       try {
@@ -323,7 +327,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
 
     load();
     return () => controller.abort();
-  }, [customerId, startDate, endDate]);
+  }, [customerId, startDate, endDate, compareStartDate, compareEndDate]);
 
   // Auto-save a metric snapshot for historical trending (non-critical, fire-and-forget)
   useEffect(() => {

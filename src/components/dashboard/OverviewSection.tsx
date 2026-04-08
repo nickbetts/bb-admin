@@ -53,6 +53,8 @@ interface Props {
   client: Client;
   startDate: string;
   endDate: string;
+  compareStartDate?: string;
+  compareEndDate?: string;
   reportMode?: boolean;
   visibleBlocks?: string[];
   afterHeader?: ReactNode;
@@ -208,7 +210,7 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 
-export function OverviewSection({ client, startDate, endDate, reportMode, visibleBlocks, afterHeader }: Props) {
+export function OverviewSection({ client, startDate, endDate, compareStartDate, compareEndDate, reportMode, visibleBlocks, afterHeader }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [data, setData] = useState<PlatformData>({});
@@ -240,7 +242,9 @@ export function OverviewSection({ client, startDate, endDate, reportMode, visibl
       setCampaigns([]);
       setAiResult(null);
 
-      const prev = getPreviousPeriod(startDate, endDate);
+      const prev = (compareStartDate && compareEndDate)
+        ? { startDate: compareStartDate, endDate: compareEndDate }
+        : getPreviousPeriod(startDate, endDate);
       const result: PlatformData = {};
       const prevResult: PlatformData = {};
       const campaignList: CampaignHighlight[] = [];
@@ -408,7 +412,7 @@ export function OverviewSection({ client, startDate, endDate, reportMode, visibl
 
     load();
     return () => controller.abort();
-  }, [client, startDate, endDate]);
+  }, [client, startDate, endDate, compareStartDate, compareEndDate]);
 
   // ─── Aggregation ───────────────────────────────────────────────────────────
 

@@ -25,6 +25,8 @@ interface SearchConsoleSectionProps {
   siteUrl: string;
   startDate: string;
   endDate: string;
+  compareStartDate?: string;
+  compareEndDate?: string;
   googleAdsCustomerId?: string | null;
   crossPlatformContext?: string;
   visibleBlocks?: string[];
@@ -100,6 +102,8 @@ export function SearchConsoleSection({
   siteUrl,
   startDate,
   endDate,
+  compareStartDate,
+  compareEndDate,
   googleAdsCustomerId,
   crossPlatformContext,
   visibleBlocks,
@@ -135,7 +139,7 @@ export function SearchConsoleSection({
       setPrevPagesMap(new Map());
       try {
         // Single bulk call — fetches all current + previous period data in one serverless invocation
-        const bulkUrl = `/api/search-console?siteUrl=${encodeURIComponent(siteUrl)}&startDate=${startDate}&endDate=${endDate}&type=bulk`;
+        const bulkUrl = `/api/search-console?siteUrl=${encodeURIComponent(siteUrl)}&startDate=${startDate}&endDate=${endDate}&type=bulk${compareStartDate && compareEndDate ? `&compareStartDate=${compareStartDate}&compareEndDate=${compareEndDate}` : ""}`;
         const bulkRes = await fetch(bulkUrl, { signal: controller.signal });
 
         if (!bulkRes.ok) {
@@ -166,7 +170,7 @@ export function SearchConsoleSection({
 
     fetchData();
     return () => controller.abort();
-  }, [siteUrl, startDate, endDate]);
+  }, [siteUrl, startDate, endDate, compareStartDate, compareEndDate]);
 
   // Compute anomaly alerts from GSC data
   const gscAlerts = useMemo<GSCAlert[]>(() => {

@@ -82,7 +82,7 @@ import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { EcommerceSection } from "@/components/dashboard/EcommerceSection";
 import { TextSection } from "@/components/reports/TextSection";
 import { ScreenshotCaptionDialog } from "@/components/reports/ScreenshotCaptionDialog";
-import { parsePeriodToDateRange } from "@/lib/utils";
+import { parsePeriodToDateRange, formatDateDisplay, getPreviousPeriod } from "@/lib/utils";
 import { SECTION_BLOCKS, isTextSection, TEXT_SECTION_LABELS, type TextSectionType } from "@/lib/report-blocks";
 
 interface Section {
@@ -1491,6 +1491,16 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                     {report.title}
                   </h1>
                   <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>Digital Performance Report · {report.period} · {report.client.name}</p>
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 6 }}>
+                    {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
+                    {" · vs "}
+                    {(() => {
+                      const prev = (compareStartDate && compareEndDate)
+                        ? { startDate: compareStartDate, endDate: compareEndDate }
+                        : getPreviousPeriod(startDate, endDate);
+                      return `${formatDateDisplay(prev.startDate)} – ${formatDateDisplay(prev.endDate)}`;
+                    })()}
+                  </p>
                 </div>
                 {report.client.logoUrl && (
                   <div style={{ flexShrink: 0, marginLeft: 24 }}>
@@ -1543,6 +1553,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                     {meta.subtitle && (
                       <span style={{ fontSize: 12, color: "var(--text-3)" }}>{meta.subtitle}</span>
                     )}
+                    <span style={{ fontSize: 11, color: "var(--text-4)" }}>
+                      {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
+                    </span>
                     {autosaveStatus[section.id] && (
                       <span style={{ fontSize: 11, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3, color: autosaveStatus[section.id] === "saved" ? "#10b981" : "var(--text-4)" }}>
                         {autosaveStatus[section.id] === "saved" ? <><CheckCircle2 size={12} /> Saved</> : "Autosaving…"}
@@ -1866,6 +1879,8 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       client={report.client}
                       startDate={startDate}
                       endDate={endDate}
+                      compareStartDate={compareStartDate ?? undefined}
+                      compareEndDate={compareEndDate ?? undefined}
                       reportMode
                       visibleBlocks={visibleBlocks}
                       afterHeader={commentaryCard}
@@ -1914,17 +1929,17 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   )}
                   {section.sectionType === "paid_social" && (
                     report.client.metaAccountId
-                      ? <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      ? <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
                       : <>{commentaryCard}{unconfiguredNotice("No Meta ad account connected — configure it in client settings to enable paid social data.")}</>
                   )}
                   {section.sectionType === "googleads" && (
                     report.client.googleAdsCustomerId
-                      ? <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      ? <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
                       : <>{commentaryCard}{unconfiguredNotice("No Google Ads account connected — configure it in client settings to enable ads data.")}</>
                   )}
                   {section.sectionType === "searchconsole" && (
                     report.client.searchConsoleSiteUrl
-                      ? <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      ? <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
                       : <>{commentaryCard}{unconfiguredNotice("No Search Console property connected — configure it in client settings to enable search data.")}</>
                   )}
                   {section.sectionType === "ecommerce" && (
