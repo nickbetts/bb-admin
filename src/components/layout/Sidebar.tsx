@@ -27,6 +27,8 @@ import {
   PieChart,
   Search,
   FileSpreadsheet,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 interface NavItem {
@@ -65,6 +67,180 @@ const toolsNavItems: NavItem[] = [
 interface SidebarProps {
   user: { name?: string | null; email: string };
   permissions: string[];
+  isAdmin?: boolean;
+  previewRoleId?: string | null;
+  previewRoleName?: string | null;
+}
+
+interface RoleOption {
+  id: string;
+  name: string;
+}
+
+function RolePreviewSection({
+  collapsed,
+  previewRoleId,
+  previewRoleName,
+}: {
+  collapsed: boolean;
+  previewRoleId: string | null;
+  previewRoleName: string | null;
+}) {
+  const [roles, setRoles] = useState<RoleOption[]>([]);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/admin/roles")
+      .then((r) => r.json())
+      .then((data: RoleOption[]) => { if (Array.isArray(data)) setRoles(data); })
+      .catch(() => {});
+  }, []);
+
+  async function handleChange(roleId: string) {
+    setLoading(true);
+    try {
+      await fetch("/api/admin/preview-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roleId: roleId === "none" ? null : roleId }),
+      });
+      router.refresh();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function clearPreview() {
+    setLoading(true);
+    try {
+      await fetch("/api/admin/preview-role", { method: "DELETE" });
+      router.refresh();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const isActive = !!previewRoleId;
+
+  // Collapsed: just show a coloured dot indicator
+  if (collapsed) {
+    return (
+      <div
+        title={isActive ? `Previewing: ${previewRoleName}` : "Role Preview"}
+        style={{
+          margin: "8px 12px 0",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: 28,
+          borderRadius: 6,
+          background: isActive ? "rgba(245,158,11,0.15)" : "transparent",
+          cursor: isActive ? "pointer" : "default",
+          position: "relative",
+        }}
+        onClick={isActive ? clearPreview : undefined}
+      >
+        {isActive ? (
+          <EyeOff style={{ width: 14, height: 14, color: "#d97706" }} />
+        ) : (
+          <Eye style={{ width: 14, height: 14, color: "var(--text-3)" }} />
+        )}
+        {isActive && (
+          <span
+            style={{
+              position: "absolute",
+              top: 4,
+              right: 4,
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: "#f59e0b",
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        margin: "8px 12px 0",
+        borderRadius: 8,
+        border: isActive
+          ? "1px solid rgba(245,158,11,0.4)"
+          : "1px solid var(--border)",
+        background: isActive ? "rgba(245,158,11,0.08)" : "var(--bg-2, #f8f9fa)",
+        padding: "8px 10px",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
+        <Eye style={{ width: 11, height: 11, color: isActive ? "#d97706" : "var(--text-3)", flexShrink: 0 }} />
+        <p
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: isActive ? "#d97706" : "var(--text-3)",
+            flex: 1,
+          }}
+        >
+          Role Preview
+        </p>
+        {isActive && (
+          <button
+            onClick={clearPreview}
+            disabled={loading}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+              fontSize: 10,
+              color: "#d97706",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              opacity: loading ? 0.5 : 1,
+            }}
+            aria-label="Exit role preview"
+          >
+            <X style={{ width: 10, height: 10 }} /> Exit
+          </button>
+        )}
+      </div>
+      <select
+        value={previewRoleId ?? "none"}
+        onChange={(e) => handleChange(e.target.value)}
+        disabled={loading || roles.length === 0}
+        style={{
+          width: "100%",
+          fontSize: 12,
+          padding: "4px 6px",
+          borderRadius: 5,
+          border: "1px solid var(--border)",
+          background: "var(--bg, #fff)",
+          color: "var(--text)",
+          outline: "none",
+          cursor: "pointer",
+          opacity: loading ? 0.5 : 1,
+        }}
+        aria-label="Preview role"
+      >
+        <option value="none">{roles.length === 0 ? "Loading…" : "Your actual role"}</option>
+        {roles.map((r) => (
+          <option key={r.id} value={r.id}>{r.name}</option>
+        ))}
+      </select>
+      {isActive && (
+        <p style={{ fontSize: 10, color: "#d97706", marginTop: 5, lineHeight: 1.4 }}>
+          Previewing <strong>{previewRoleName}</strong> — nav and pages reflect this role.
+        </p>
+      )}
+    </div>
+  );
 }
 
 function DaChecker() {
@@ -152,7 +328,7 @@ function DaChecker() {
   );
 }
 
-export function Sidebar({ user, permissions }: SidebarProps) {
+export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = null, previewRoleName = null }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -312,6 +488,14 @@ export function Sidebar({ user, permissions }: SidebarProps) {
             </button>
           </div>
 
+          {isAdmin && (
+            <RolePreviewSection
+              collapsed={false}
+              previewRoleId={previewRoleId}
+              previewRoleName={previewRoleName}
+            />
+          )}
+
           {renderNavLinks()}
 
           <DaChecker />
@@ -366,6 +550,14 @@ export function Sidebar({ user, permissions }: SidebarProps) {
             <Menu style={{ width: 18, height: 18 }} />
           </button>
         </div>
+      )}
+
+      {isAdmin && (
+        <RolePreviewSection
+          collapsed={collapsed}
+          previewRoleId={previewRoleId}
+          previewRoleName={previewRoleName}
+        />
       )}
 
       {renderNavLinks()}
