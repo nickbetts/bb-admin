@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { put, del } from "@vercel/blob";
-
-const VERCEL_BLOB_HOSTNAME = "public.blob.vercel-storage.com";
 
 export async function POST(
   request: NextRequest,
@@ -34,47 +31,37 @@ export async function POST(
       );
     }
 
-    // Validate file size (max 10MB)
-    const MAX_SIZE = 10 * 1024 * 1024;
+    // Validate file size (4 MB — client should compress before sending)
+    const MAX_SIZE = 4 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       return NextResponse.json(
-        { error: "File size must be under 10MB" },
+        { error: "File size must be under 4 MB. Please use a smaller or compressed image." },
         { status: 400 }
       );
     }
 
-    // Upload file to Vercel Blob
-    const filename = `uploads/${id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-    const blob = await put(filename, file, { access: "public" });
+    // Convert to base64 data URL and store directly in the database
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    const dataUrl = `data:${file.type};base64,${base64}`;
 
-    // Use timestamp as orderIndex — avoids collision when two uploads arrive concurrently
     const orderIndex = Date.now();
-
-    let screenshot;
-    try {
-      screenshot = await prisma.screenshot.create({
-        data: {
-          reportId: id,
-          sectionId,
-          filename: blob.pathname,
-          url: blob.url,
-          caption,
-          orderIndex,
-        },
-      });
-    } catch (dbError) {
-      // DB write failed — remove the uploaded blob so it doesn't become orphaned storage
-      try { await del(blob.url); } catch { /* ignore blob cleanup errors */ }
-      throw dbError;
-    }
+    const screenshot = await prisma.screenshot.create({
+      data: {
+        reportId: id,
+        sectionId,
+        filename: file.name.replace(/[^a-zA-Z0-9._-]/g, "_"),
+        url: dataUrl,
+        caption,
+        orderIndex,
+      },
+    });
 
     return NextResponse.json(screenshot, { status: 201 });
   } catch (error) {
     console.error("Upload screenshot error:", error);
-    return NextResponse.json(
-      { error: "Failed to upload screenshot" },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Failed to upload screenshot";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -127,14 +114,6 @@ export async function DELETE(
     });
 
     if (screenshot) {
-      // Delete from Vercel Blob if it's a blob URL
-      if (new URL(screenshot.url).hostname.endsWith(VERCEL_BLOB_HOSTNAME)) {
-        try {
-          await del(screenshot.url);
-        } catch {
-          // Ignore blob deletion errors
-        }
-      }
       await prisma.screenshot.delete({ where: { id: screenshotId } });
     }
 

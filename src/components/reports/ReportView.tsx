@@ -3,6 +3,42 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+
+// Compress an image file client-side using Canvas before upload.
+// Resizes to a max of 1920px on the longest side and re-encodes as JPEG at 82%
+// quality. Keeps the result well under 400 KB for typical screenshots.
+async function compressImage(file: File, maxPx = 1920, quality = 0.82): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width >= height) {
+          height = Math.round((height * maxPx) / width);
+          width = maxPx;
+        } else {
+          width = Math.round((width * maxPx) / height);
+          height = maxPx;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { resolve(file); return; }
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => resolve(blob ? new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }) : file),
+        "image/jpeg",
+        quality
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(file); };
+    img.src = objectUrl;
+  });
+}
 import {
   ArrowLeft, Download, Trash2, Check, X, Eye, EyeOff,
   ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search,
@@ -1346,10 +1382,11 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(e) => {
+            onChange={async (e) => {
               const file = e.target.files?.[0];
               if (file) {
-                setPendingUpload({ file, sectionId: null });
+                const compressed = await compressImage(file);
+                setPendingUpload({ file: compressed, sectionId: null });
               }
               e.target.value = "";
             }}
@@ -1359,11 +1396,12 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(e) => {
+            onChange={async (e) => {
               const file = e.target.files?.[0];
               const sid = pendingSectionIdRef.current;
               if (file) {
-                setPendingUpload({ file, sectionId: sid });
+                const compressed = await compressImage(file);
+                setPendingUpload({ file: compressed, sectionId: sid });
                 pendingSectionIdRef.current = null;
               }
               e.target.value = "";
