@@ -8,7 +8,7 @@ import {
   ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search,
   MessageSquare, LayoutGrid, FileText, Image, ShoppingCart, CalendarRange,
   LayoutTemplate, Save, GripVertical, Globe2, Link2, Link2Off, CheckCircle2,
-  Sparkles, Pencil, Star, Scissors,
+  Sparkles, Pencil, Star,
 } from "lucide-react";
 import {
   DndContext,
@@ -161,12 +161,10 @@ function SortableSectionItem({
   availableBlocks,
   visibleBlocks,
   blockOrder,
-  pageBreakBefore,
   onToggleEnabled,
   onToggleExpand,
   onToggleBlock,
   onReorderBlocks,
-  onTogglePageBreak,
   onScrollTo,
 }: {
   section: Section;
@@ -176,12 +174,10 @@ function SortableSectionItem({
   availableBlocks: { id: string; label: string }[];
   visibleBlocks: string[] | undefined;
   blockOrder: string[] | null;
-  pageBreakBefore: boolean;
   onToggleEnabled: () => void;
   onToggleExpand: () => void;
   onToggleBlock: (blockId: string) => void;
   onReorderBlocks: (newOrder: string[]) => void;
-  onTogglePageBreak: () => void;
   onScrollTo: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
@@ -270,23 +266,6 @@ function SortableSectionItem({
           </span>
         </div>
 
-        {/* Page break toggle */}
-        {isEnabled && (
-          <button
-            onClick={onTogglePageBreak}
-            title={pageBreakBefore ? "Remove page break before this section" : "Insert page break before this section"}
-            style={{
-              flexShrink: 0, background: "none", border: "none", cursor: "pointer",
-              padding: 4, borderRadius: "var(--r-sm)",
-              color: pageBreakBefore ? "#e11d48" : "var(--text-4)",
-              display: "flex", alignItems: "center", transition: "color 0.15s",
-            }}
-            aria-label={pageBreakBefore ? "Remove page break" : "Add page break before section"}
-          >
-            <Scissors size={13} />
-          </button>
-        )}
-
         {availableBlocks.length > 0 && isEnabled && (
           <button
             onClick={onToggleExpand}
@@ -348,31 +327,7 @@ function SortableMainSectionWrapper({
         ...(pageBreakBefore ? { breakBefore: "page" as const } : {}),
       }}
     >
-      {/* Page break indicator — shown in screen mode when a break is set */}
-      {pageBreakBefore && (
-        <div
-          className="print:hidden"
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            margin: "0 0 16px",
-            color: "#e11d48",
-          }}
-        >
-          <div style={{ flex: 1, borderTop: "2px dashed #fecdd3" }} />
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: 5,
-            fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-            letterSpacing: "0.08em", color: "#e11d48",
-            background: "#fff1f2", border: "1px solid #fecdd3",
-            borderRadius: "var(--r-sm)", padding: "2px 8px",
-            flexShrink: 0,
-          }}>
-            <Scissors size={10} />
-            Page break
-          </span>
-          <div style={{ flex: 1, borderTop: "2px dashed #fecdd3" }} />
-        </div>
-      )}
+
 
       {/* Drag handle — floats in the left padding of the main content area */}
       <button
@@ -659,24 +614,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       return false;
     }
   };
-
-  const handleTogglePageBreak = useCallback(async (sectionId: string) => {
-    const section = report.sections.find((s) => s.id === sectionId);
-    if (!section) return;
-    let existing: Record<string, unknown> = {};
-    try { if (section.cardConfig) existing = JSON.parse(section.cardConfig); } catch { /* ignore */ }
-    const newBreak = !existing.pageBreakBefore;
-    const newCardConfig = JSON.stringify({ ...existing, pageBreakBefore: newBreak ? true : undefined });
-    setReport((prev) => ({
-      ...prev,
-      sections: prev.sections.map((s) => s.id === sectionId ? { ...s, cardConfig: newCardConfig } : s),
-    }));
-    await fetch(`/api/reports/${report.id}/sections`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sectionId, cardConfig: newCardConfig }),
-    });
-  }, [report.id, report.sections]);
 
   const handleToggleSectionEnabled = async (sectionId: string) => {
     const section = report.sections.find((s) => s.id === sectionId);
@@ -1930,8 +1867,8 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
           <div style={{ flex: 1, overflowY: "auto", padding: "8px 0", minHeight: 0 }}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={report.sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-                {report.sections.map((section) => {
+              <SortableContext items={report.sections.filter((s) => !isTextSection(s.sectionType) || s.sectionType === "text_screenshots").map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                {report.sections.filter((s) => !isTextSection(s.sectionType) || s.sectionType === "text_screenshots").map((section) => {
                   const isEnabled = section.enabled !== false;
                   const availableBlocks = SECTION_BLOCKS[section.sectionType] ?? [];
                   const visibleBlocks = getVisibleBlocks(section);
@@ -1939,26 +1876,53 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   const isExpanded = expandedSections[section.id] ?? false;
                   const meta = SECTION_META[section.sectionType] ?? { icon: <LayoutGrid size={14} />, badge: "badge-slate" };
 
+                  // After the overview item, render text sub-sections as indented non-draggable items
+                  const textSubItems = section.sectionType === "overview"
+                    ? report.sections.filter((s) => isTextSection(s.sectionType) && s.sectionType !== "text_screenshots")
+                    : [];
+
                   return (
-                    <SortableSectionItem
-                      key={section.id}
-                      section={section}
-                      isEnabled={isEnabled}
-                      isExpanded={isExpanded}
-                      meta={meta}
-                      availableBlocks={availableBlocks}
-                      visibleBlocks={visibleBlocks}
-                      blockOrder={blockOrder}
-                      pageBreakBefore={getPageBreakBefore(section)}
-                      onToggleEnabled={() => handleToggleSectionEnabled(section.id)}
-                      onToggleExpand={() => setExpandedSections((prev) => ({ ...prev, [section.id]: !isExpanded }))}
-                      onToggleBlock={(blockId) => handleToggleBlock(section.id, blockId)}
-                      onReorderBlocks={(newOrder) => handleReorderBlocks(section.id, newOrder)}
-                      onTogglePageBreak={() => handleTogglePageBreak(section.id)}
-                      onScrollTo={() => {
-                        document.getElementById(`section-${section.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }}
-                    />
+                    <>
+                      <SortableSectionItem
+                        key={section.id}
+                        section={section}
+                        isEnabled={isEnabled}
+                        isExpanded={isExpanded}
+                        meta={meta}
+                        availableBlocks={availableBlocks}
+                        visibleBlocks={visibleBlocks}
+                        blockOrder={blockOrder}
+                        onToggleEnabled={() => handleToggleSectionEnabled(section.id)}
+                        onToggleExpand={() => setExpandedSections((prev) => ({ ...prev, [section.id]: !isExpanded }))}
+                        onToggleBlock={(blockId) => handleToggleBlock(section.id, blockId)}
+                        onReorderBlocks={(newOrder) => handleReorderBlocks(section.id, newOrder)}
+                        onScrollTo={() => {
+                          document.getElementById(`section-${section.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }}
+                      />
+                      {textSubItems.map((sub) => {
+                        const subMeta = SECTION_META[sub.sectionType] ?? { icon: <LayoutGrid size={14} />, badge: "badge-slate" };
+                        const subEnabled = sub.enabled !== false;
+                        return (
+                          <div key={sub.id} style={{ borderBottom: "1px solid var(--border-subtle)", paddingLeft: 32, opacity: subEnabled ? 1 : 0.45 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px 7px 0" }}>
+                              <button
+                                onClick={() => handleToggleSectionEnabled(sub.id)}
+                                title={subEnabled ? "Hide section" : "Show section"}
+                                style={{ flexShrink: 0, background: "none", border: "none", cursor: "pointer", padding: 4, borderRadius: "var(--r-sm)", color: subEnabled ? "var(--accent)" : "var(--text-4)", display: "flex", alignItems: "center" }}
+                                aria-label={subEnabled ? "Hide section" : "Show section"}
+                              >
+                                {subEnabled ? <Eye size={14} /> : <EyeOff size={14} />}
+                              </button>
+                              <span style={{ color: "var(--text-3)", flexShrink: 0 }}>{subMeta.icon}</span>
+                              <span style={{ fontSize: 12, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                                {TEXT_SECTION_LABELS[sub.sectionType as TextSectionType] ?? sub.title}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
                   );
                 })}
               </SortableContext>
