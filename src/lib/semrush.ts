@@ -315,21 +315,28 @@ export async function getSemrushTrackedKeywords(
   database: string = "uk"
 ): Promise<SemrushTrackedKeyword[]> {
   const apiKey = getApiKey();
-  const params = new URLSearchParams({
-    key: apiKey,
-    action: "report",
-    type: "tracking_positions_list",
-    project_id: projectId.toString(),
-    db: database,
-    export_columns: "Kw,Pos,Pp,Nq,Ur,Pu",
-    display_limit: "100",
-  });
+  // Build query string manually — URLSearchParams encodes commas as %2C which the
+  // SEMrush reporting API rejects with HTTP 400 for export_columns values.
+  const qs = [
+    `key=${encodeURIComponent(apiKey)}`,
+    `action=report`,
+    `type=tracking_positions_list`,
+    `project_id=${projectId}`,
+    `db=${database}`,
+    `export_columns=Kw,Pos,Pp,Nq,Ur,Pu`,
+    `display_limit=100`,
+  ].join("&");
 
   try {
-    const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+    const response = await axios.get(`${SEMRUSH_BASE_URL}/?${qs}`);
     const lines = (response.data as string).trim().split("\n");
 
     if (lines.length < 2) return [];
+
+    if (lines[0]?.startsWith("ERROR")) {
+      console.warn("SEMrush tracked keywords error:", lines[0]);
+      return [];
+    }
 
     return lines.slice(1).map((line: string) => {
       const [keyword, position, previousPosition, searchVolume, url, landingPage] = line.split(";");
@@ -344,7 +351,8 @@ export async function getSemrushTrackedKeywords(
         landingPage: landingPage || "",
       };
     });
-  } catch {
+  } catch (err) {
+    console.error("SEMrush tracked keywords fetch error:", err);
     return [];
   }
 }
@@ -380,19 +388,21 @@ export async function getSemrushAIVisibility(
     keywords: [],
   };
 
-  const params = new URLSearchParams({
-    key: apiKey,
-    action: "report",
-    type: "tracking_positions_list",
-    project_id: projectId.toString(),
-    db: database,
-    export_columns: "Kw,Pos,Pp,Nq,Ur,Pu,Ai",
-    display_limit: "200",
-  });
+  // Build query string manually — URLSearchParams encodes commas as %2C which the
+  // SEMrush reporting API rejects with HTTP 400 for export_columns values.
+  const qs = [
+    `key=${encodeURIComponent(apiKey)}`,
+    `action=report`,
+    `type=tracking_positions_list`,
+    `project_id=${projectId}`,
+    `db=${database}`,
+    `export_columns=Kw,Pos,Pp,Nq,Ur,Pu,Ai`,
+    `display_limit=200`,
+  ].join("&");
 
   let response;
   try {
-    response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+    response = await axios.get(`${SEMRUSH_BASE_URL}/?${qs}`);
   } catch (err) {
     // HTTP 400 means the Ai column or project_id is not supported — return empty gracefully
     if (axios.isAxiosError(err) && err.response?.status === 400) {
