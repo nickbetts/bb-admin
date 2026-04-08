@@ -726,7 +726,7 @@ export async function POST(request: NextRequest) {
       const dataSummary = buildDataSummary(spreadsheetData);
 
       const response = await anthropic.messages.create({
-        model: "claude-opus-4-0-20250514",
+        model: "claude-opus-4-6",
         max_tokens: 4000,
         system: `You are an expert SEO content strategist at a digital marketing agency. You write in British English. You are creating descriptions for a content strategy document for a client called "${clientName}".
 
