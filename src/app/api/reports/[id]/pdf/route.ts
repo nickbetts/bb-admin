@@ -149,6 +149,15 @@ export async function GET(
           rects.push({ id: "full", y: 0, height: scrollH });
         }
 
+        // Extend the last region to the bottom of the document so the footer
+        // (rendered after all section elements) is included on the last page.
+        if (rects.length > 0) {
+          const last = rects[rects.length - 1];
+          if (last.y + last.height < scrollH) {
+            last.height = scrollH - last.y;
+          }
+        }
+
         return { fullHeight: scrollH, regions: rects };
       });
 

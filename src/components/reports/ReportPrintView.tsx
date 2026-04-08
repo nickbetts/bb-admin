@@ -310,9 +310,13 @@ export function ReportPrintView({ report }: { report: Report }) {
             </div>
           ) : null;
 
+        // When a report narrative is generated it lives on the cover page and
+        // replaces the overview-section commentary. Skip commentary for the
+        // overview section only when narrativeData is present so it isn't
+        // shown twice (once on the cover page, once on the overview page).
         const afterHeader = (
           <>
-            {commentaryBlock(section)}
+            {!(section.sectionType === "overview" && !!report.narrativeData) && commentaryBlock(section)}
             {screenshotsBlock}
           </>
         );
