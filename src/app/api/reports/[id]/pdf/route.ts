@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getBrowser } from "@/lib/puppeteer";
 import { PDFDocument } from "pdf-lib";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function GET(
   _request: NextRequest,
@@ -71,14 +71,14 @@ export async function GET(
       // components (charts, metrics) without sidebar or editing chrome.
       await page.goto(`${baseUrl}/reports/${id}/print`, {
         waitUntil: "networkidle0",
-        timeout: 30000,
+        timeout: 45000,
       });
 
       // Wait for the React tree to signal it has finished mounting.
       // ReportPrintView sets data-print-ready on document.body in a useEffect.
       await page.waitForFunction(
         () => document.body.getAttribute("data-print-ready") === "true",
-        { timeout: 10000 }
+        { timeout: 15000 }
       );
 
       // Section components (GA4, Meta, etc.) start their own API fetches
@@ -88,7 +88,7 @@ export async function GET(
       await page.waitForNetworkIdle({ idleTime: 1000, timeout: 20000 });
 
       // Short buffer for any remaining SVG/chart paint after data arrives.
-      await page.evaluate(() => new Promise((r) => setTimeout(r, 800)));
+      await page.evaluate(() => new Promise((r) => setTimeout(r, 500)));
 
       // Measure the full rendered height and collect per-section bounding boxes
       // so we can crop the PDF into variable-height pages after generation.
