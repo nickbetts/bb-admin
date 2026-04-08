@@ -548,10 +548,9 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
       bestByKeyword.set(key, { keyword: k.keyword, volume: k.volume });
     }
   }
-  const topKeywords = [...bestByKeyword.values()]
-    .filter(k => k.volume > 0)
-    .sort((a, b) => b.volume - a.volume)
-    .slice(0, 4);
+  let totalDeduplicatedVol = 0;
+  bestByKeyword.forEach(k => { totalDeduplicatedVol += k.volume; });
+  const totalAnchorLinks = linkTargets.length;
 
   // Overview descriptions from AI
   const overviewOpportunity = aiContent.overviewOpportunity || "A comprehensive content strategy targeting high-value keyword opportunities.";
@@ -765,10 +764,10 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
       <div class="meta-item"><strong>Period</strong> ${esc(period)}</div>
     </div>
     <div class="stat-row">
-      <div class="stat-card"><div class="stat-num">${stats.totalPageOptimisations}</div><div class="stat-label">Page optimisations</div></div>
-      <div class="stat-card"><div class="stat-num">${stats.totalLandingPages}</div><div class="stat-label">New landing pages</div></div>
-      <div class="stat-card"><div class="stat-num">${stats.totalBlogPosts}</div><div class="stat-label">Blog posts</div></div>
-      <div class="stat-card"><div class="stat-num">${new Set(linkTargets.map(t => t.url)).size}</div><div class="stat-label">Link building targets</div></div>
+      ${stats.totalPageOptimisations > 0 ? `<div class="stat-card"><div class="stat-num">${stats.totalPageOptimisations}</div><div class="stat-label">Page optimisations</div></div>` : ''}
+      ${stats.totalLandingPages > 0 ? `<div class="stat-card"><div class="stat-num">${stats.totalLandingPages}</div><div class="stat-label">New landing pages</div></div>` : ''}
+      ${stats.totalBlogPosts > 0 ? `<div class="stat-card"><div class="stat-num">${stats.totalBlogPosts}</div><div class="stat-label">Blog posts</div></div>` : ''}
+      ${totalAnchorLinks > 0 ? `<div class="stat-card"><div class="stat-num">${totalAnchorLinks}</div><div class="stat-label">Link building targets</div></div>` : ''}
     </div>
   </div>
 </div>
@@ -805,11 +804,11 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
           <div class="intro-card"><h4>Priority period</h4><p>${esc(overviewPriority)}</p></div>
           <div class="intro-card"><h4>Keyword scope</h4><p>${esc(overviewScope)}</p></div>
         </div>
-        ${topKeywords.length > 0 ? `<div class="kw-summary">
-          ${topKeywords.map(k => `<div class="kw-summary-item">
-            <div class="kw-summary-num"><span>${formatNum(k.volume)}</span></div>
-            <div class="kw-summary-lbl">monthly searches<br>\u201c${esc(k.keyword)}\u201d</div>
-          </div>`).join("\n          ")}
+        ${totalDeduplicatedVol > 0 ? `<div class="kw-summary" style="grid-template-columns:1fr">
+          <div class="kw-summary-item">
+            <div class="kw-summary-num"><span>${formatNum(totalDeduplicatedVol)}</span></div>
+            <div class="kw-summary-lbl">Total monthly searches across all keywords</div>
+          </div>
         </div>` : ''}
       </div>
     </div>
