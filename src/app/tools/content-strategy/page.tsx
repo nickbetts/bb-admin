@@ -331,32 +331,8 @@ export default function ContentStrategyPage() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 16, alignItems: "end" }}>
               <div>
                 <label className="form-label">Client <span style={{ color: "var(--danger)" }}>*</span></label>
-                <select
-                  className="form-input"
-                  value={clientId}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === "__new__") {
-                      setClientId("");
-                      setClientName("");
-                      setCreatingClient(true);
-                      return;
-                    }
-                    setCreatingClient(false);
-                    const selectedClient = clients.find((c) => c.id === val);
-                    setClientId(val);
-                    if (selectedClient) setClientName(selectedClient.name);
-                    else setClientName("");
-                  }}
-                >
-                  <option value="">Select client…</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                  <option value="__new__">➕ Create new client…</option>
-                </select>
-                {creatingClient && (
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                {creatingClient ? (
+                  <div style={{ display: "flex", gap: 8 }}>
                     <input
                       type="text"
                       className="form-input"
@@ -368,7 +344,7 @@ export default function ContentStrategyPage() {
                     <button
                       type="button"
                       disabled={!clientName.trim() || generating}
-                      className="btn btn-secondary btn-sm"
+                      className="btn btn-primary btn-sm"
                       style={{ flexShrink: 0, height: 42 }}
                       onClick={async () => {
                         if (!clientName.trim()) return;
@@ -395,17 +371,42 @@ export default function ContentStrategyPage() {
                     >
                       <Plus style={{ width: 14, height: 14 }} /> Create
                     </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      style={{ flexShrink: 0, height: 42 }}
+                      onClick={() => { setCreatingClient(false); setClientName(""); }}
+                    >
+                      Cancel
+                    </button>
                   </div>
-                )}
-                {!clientId && !creatingClient && (
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    placeholder="Or type client name"
-                    style={{ marginTop: 8 }}
-                  />
+                ) : (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <select
+                      className="form-input"
+                      value={clientId}
+                      onChange={(e) => {
+                        const selectedClient = clients.find((c) => c.id === e.target.value);
+                        setClientId(e.target.value);
+                        if (selectedClient) setClientName(selectedClient.name);
+                        else setClientName("");
+                      }}
+                      style={{ flex: 1 }}
+                    >
+                      <option value="">Select client…</option>
+                      {clients.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      style={{ flexShrink: 0, height: 42 }}
+                      onClick={() => setCreatingClient(true)}
+                    >
+                      <Plus style={{ width: 14, height: 14 }} /> New
+                    </button>
+                  </div>
                 )}
               </div>
               <div>
@@ -421,7 +422,7 @@ export default function ContentStrategyPage() {
               <div>
                 <button
                   type="submit"
-                  disabled={generating || !file || (!clientName.trim() && !clientId)}
+                  disabled={generating || !file || !clientId}
                   className="btn btn-primary"
                   style={{ whiteSpace: "nowrap", height: 42 }}
                 >
