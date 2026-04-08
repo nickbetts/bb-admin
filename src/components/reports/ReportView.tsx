@@ -177,7 +177,7 @@ function SortableSectionItem({
   availableBlocks: { id: string; label: string }[];
   visibleBlocks: string[] | undefined;
   blockOrder: string[] | null;
-  subSections?: Array<{ id: string; sectionType: string; title: string; enabled: boolean | null | undefined }>;
+  subSections?: Array<{ id: string; sectionType: string; title: string; enabled?: boolean | null | undefined }>;
   onToggleEnabled: () => void;
   onToggleExpand: () => void;
   onToggleBlock: (blockId: string) => void;
