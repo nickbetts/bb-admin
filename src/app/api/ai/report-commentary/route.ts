@@ -172,6 +172,39 @@ export async function POST(req: NextRequest) {
     const currentMetricsText = formatMetrics(metrics);
     const previousMetricsText = previousMetrics ? formatMetrics(previousMetrics) : null;
 
+    // ── Chaos mode ─────────────────────────────────────────────────────────────
+    // For chaos tones (roadman, uwu_anime, patronising, toxic, gaslighty, cuck):
+    // throw out ALL structure, constraints, format rules, spin rules, templates —
+    // just drop the raw numbers in and let the AI go completely off-piste.
+    const CHAOS_TONES = ["roadman", "uwu_anime", "patronising", "toxic", "gaslighty", "cuck"];
+    if (CHAOS_TONES.includes(tone)) {
+      const chaosSystemPrompt = `${toneInstruction}
+
+You are writing a section of a marketing performance report. You have been given the raw numbers below. Do whatever feels right with them. There is literally no template. No format rules. No spin rules. No word count target. No structure required. You don't even have to write in prose. You just have to embody the tone described above to an absolutely unhinged degree. Go fully off script. Improvise. Be unpredictable. The only non-negotiable is that you reference the actual numbers somewhere in there — even if it's buried in chaos.`;
+
+      const chaosUserPrompt = `Section: ${sectionLabel}
+Client: ${clientName ?? "some client"}
+Period: ${dateRange ?? "recently"}
+
+Numbers:
+${currentMetricsText}${previousMetricsText ? `\n\nPrevious period:\n${previousMetricsText}` : ""}
+
+Go.`;
+
+      const chaosResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: chaosSystemPrompt },
+          { role: "user", content: chaosUserPrompt },
+        ],
+        temperature: 1.3,
+        max_tokens: 900,
+      });
+      const commentary = chaosResponse.choices[0]?.message?.content?.trim() ?? "";
+      return NextResponse.json({ commentary });
+    }
+    // ── End chaos mode ─────────────────────────────────────────────────────────
+
     const systemPrompt = `You are a digital marketing account manager at i3media writing a section of a monthly performance report to send to a client.
 Always write in British English — use British spellings (e.g. optimise, analyse, behaviour, colour, centre) and British phrasing throughout.
 ${toneInstruction}
