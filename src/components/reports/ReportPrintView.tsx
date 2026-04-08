@@ -334,6 +334,7 @@ export function ReportPrintView({ report }: { report: Report }) {
             <div
               key={section.id}
               id={`section-${section.id}`}
+              data-section-type={section.sectionType}
               style={{ marginBottom: 32, pageBreakInside: "avoid" }}
             >
               <div
@@ -387,7 +388,7 @@ export function ReportPrintView({ report }: { report: Report }) {
         if (isTextSection(section.sectionType)) {
           if (section.sectionType === "text_screenshots") {
             return (
-              <div key={section.id} id={`section-${section.id}`} style={{ marginBottom: 32 }}>
+              <div key={section.id} id={`section-${section.id}`} data-section-type={section.sectionType} style={{ marginBottom: 32 }}>
                 <ScreenshotsSection
                   screenshots={report.screenshots.filter((s) => !s.sectionId)}
                   title={TEXT_SECTION_LABELS[section.sectionType as TextSectionType] ?? section.title}
@@ -397,7 +398,7 @@ export function ReportPrintView({ report }: { report: Report }) {
             );
           }
           return (
-            <div key={section.id} id={`section-${section.id}`} style={{ marginBottom: 32 }}>
+            <div key={section.id} id={`section-${section.id}`} data-section-type={section.sectionType} style={{ marginBottom: 32 }}>
               <TextSection
                 sectionId={section.id}
                 reportId={report.id}
@@ -425,7 +426,7 @@ export function ReportPrintView({ report }: { report: Report }) {
         );
 
         return (
-          <div key={section.id} id={`section-${section.id}`} style={{ marginBottom: 32 }}>
+          <div key={section.id} id={`section-${section.id}`} data-section-type={section.sectionType} style={{ marginBottom: 32 }}>
             {section.sectionType === "overview" && (
               <OverviewSection
                 client={report.client}

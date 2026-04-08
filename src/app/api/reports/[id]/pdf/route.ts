@@ -92,21 +92,33 @@ export async function GET(
 
       // Measure the full rendered height and collect per-section bounding boxes
       // so we can crop the PDF into variable-height pages after generation.
+      // Text-only sub-sections (Notable Achievements, Work Complete, etc.) are
+      // merged into the preceding region so they share a page rather than each
+      // appearing as a solo page.
       const { fullHeight, regions } = await page.evaluate(() => {
+        const TEXT_SECTION_TYPES = [
+          "text_notable_achievements",
+          "text_screenshots",
+          "text_work_complete",
+          "text_content_done",
+          "text_technical_update",
+          "text_ppc_update",
+        ];
+
         const scrollH = document.documentElement.scrollHeight;
 
         const sectionEls = Array.from(
           document.querySelectorAll<HTMLElement>("[id^='section-']")
         );
 
-        const rects: { id: string; y: number; height: number }[] = [];
+        const raw: { id: string; y: number; height: number; isText: boolean }[] = [];
 
         // Cover block: from top of page to the top of the first section
         const firstSection = sectionEls[0];
         if (firstSection) {
           const firstTop = firstSection.getBoundingClientRect().top + window.scrollY;
           if (firstTop > 10) {
-            rects.push({ id: "cover", y: 0, height: firstTop });
+            raw.push({ id: "cover", y: 0, height: firstTop, isText: false });
           }
         }
 
@@ -114,8 +126,21 @@ export async function GET(
         for (const el of sectionEls) {
           const rect = el.getBoundingClientRect();
           const y = rect.top + window.scrollY;
+          const sectionType = el.getAttribute("data-section-type") ?? "";
           if (rect.height > 10) {
-            rects.push({ id: el.id, y, height: rect.height });
+            raw.push({ id: el.id, y, height: rect.height, isText: TEXT_SECTION_TYPES.includes(sectionType) });
+          }
+        }
+
+        // Merge text sections into the preceding region (they become sub-sections
+        // on the same page instead of getting their own PDF page).
+        const rects: { id: string; y: number; height: number }[] = [];
+        for (const r of raw) {
+          if (r.isText && rects.length > 0) {
+            const last = rects[rects.length - 1];
+            last.height = (r.y + r.height) - last.y;
+          } else {
+            rects.push({ id: r.id, y: r.y, height: r.height });
           }
         }
 
@@ -144,12 +169,18 @@ export async function GET(
       // Scale factor to convert CSS pixels → PDF points
       const scale = pdfHeight / fullHeight;
 
+      // Padding (in CSS pixels) to add above and below each cropped section page.
+      const PAD_PX = 24;
+
       const outputDoc = await PDFDocument.create();
 
       for (const region of regions) {
-        const regionHeightPt = region.height * scale;
+        const paddedY = Math.max(0, region.y - PAD_PX);
+        const paddedHeight = Math.min(region.height + PAD_PX * 2, fullHeight - paddedY);
+
+        const regionHeightPt = paddedHeight * scale;
         // PDF coordinate system: y=0 is bottom-left, so flip the y axis
-        const yBottomPt = pdfHeight - (region.y + region.height) * scale;
+        const yBottomPt = pdfHeight - (paddedY + paddedHeight) * scale;
         const yTopPt = yBottomPt + regionHeightPt;
 
         const [embedded] = await outputDoc.embedPages([sourcePage], [
