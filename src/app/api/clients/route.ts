@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activity-logger";
 
 export async function GET() {
   try {
@@ -71,6 +72,18 @@ export async function POST(request: NextRequest) {
         searchConsoleSiteUrl: searchConsoleSiteUrl || null,
         aiReportInstructions: aiReportInstructions || null,
       },
+    });
+
+    logActivity({
+      userId: session.user.id,
+      userEmail: session.user.email,
+      userName: session.user.name ?? undefined,
+      action: "client_created",
+      resourceType: "client",
+      resourceId: client.id,
+      clientId: client.id,
+      clientName: client.name,
+      description: `Created client "${client.name}"`,
     });
 
     return NextResponse.json(client, { status: 201 });

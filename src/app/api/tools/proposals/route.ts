@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,17 @@ export async function POST(request: NextRequest) {
       timelineJson: JSON.stringify(timeline ?? []),
       researchId: researchId ?? null,
     },
+  });
+
+  logActivity({
+    userId: session.user.id,
+    userEmail: session.user.email,
+    userName: session.user.name ?? undefined,
+    action: "proposal_created",
+    resourceType: "proposal",
+    resourceId: proposal.id,
+    clientName,
+    description: `Generated proposal "${title}" for ${clientName}`,
   });
 
   return NextResponse.json({ proposal });

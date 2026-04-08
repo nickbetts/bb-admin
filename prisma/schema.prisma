@@ -542,3 +542,24 @@ model ContentStrategy {
 
   @@index([clientId, createdAt])
 }
+
+// User activity log — tracks key actions for an audit trail / changelog
+model UserActivityLog {
+  id           String   @id @default(cuid())
+  userId       String?  // null for system/cron-triggered actions
+  userEmail    String?  // denormalised so display works even if user is deleted
+  userName     String?  // display name at time of action
+  action       String   // e.g. "report_created" | "report_published" | "ai_summary" | "client_created"
+  resourceType String?  // "report" | "client" | "proposal" | "strategy_document" | "snapshot"
+  resourceId   String?  // ID of the affected resource
+  clientId     String?  // which client this relates to (if any)
+  clientName   String?  // denormalised client name
+  description  String   // human-readable: "Generated report 'April 2025' for Acme Corp"
+  metadata     String?  // JSON: extra context (model, tokens, etc.)
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([clientId, createdAt])
+  @@index([action, createdAt])
+}
