@@ -23,6 +23,7 @@ interface ContentStrategyItem {
   title: string;
   period: string;
   clientId: string;
+  createdBy: string | null;
   shareToken: string | null;
   viewCount: number;
   createdAt: string;
@@ -54,6 +55,7 @@ export default function ContentStrategyPage() {
   // Preview state
   const [previewHtml, setPreviewHtml] = useState("");
   const [previewTitle, setPreviewTitle] = useState("");
+  const [previewStrategyId, setPreviewStrategyId] = useState<string | null>(null);
 
   // Share state
   const [sharingId, setSharingId] = useState<string | null>(null);
@@ -139,6 +141,7 @@ export default function ContentStrategyPage() {
       if (data.strategy) {
         setPreviewHtml(data.strategy.generatedHtml);
         setPreviewTitle(data.strategy.title);
+        setPreviewStrategyId(id);
       }
     } catch {
       setError("Failed to load preview");
@@ -434,7 +437,16 @@ export default function ContentStrategyPage() {
                     <Calendar style={{ width: 11, height: 11, color: "var(--text-4)" }} />
                     <span style={{ fontSize: 12, color: "var(--text-3)" }}>{s.period}</span>
                     <span style={{ color: "var(--text-4)" }}>·</span>
-                    <span style={{ fontSize: 12, color: "var(--text-3)" }}>{new Date(s.createdAt).toLocaleDateString("en-GB")}</span>
+                    <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                      {new Date(s.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}{" "}
+                      {new Date(s.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    {s.createdBy && (
+                      <>
+                        <span style={{ color: "var(--text-4)" }}>·</span>
+                        <span style={{ fontSize: 12, color: "var(--text-3)" }}>by {s.createdBy}</span>
+                      </>
+                    )}
                     {s.viewCount > 0 && (
                       <>
                         <span style={{ color: "var(--text-4)" }}>·</span>
@@ -541,6 +553,19 @@ export default function ContentStrategyPage() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button
                   onClick={() => {
+                    if (previewStrategyId) {
+                      setPreviewHtml("");
+                      setPreviewTitle("");
+                      setPreviewStrategyId(null);
+                      handleShare(previewStrategyId);
+                    }
+                  }}
+                  className="btn btn-secondary btn-sm"
+                >
+                  <Share2 style={{ width: 14, height: 14 }} /> Share
+                </button>
+                <button
+                  onClick={() => {
                     const blob = new Blob([previewHtml], { type: "text/html" });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement("a");
@@ -553,7 +578,7 @@ export default function ContentStrategyPage() {
                 >
                   <Download style={{ width: 14, height: 14 }} /> Download
                 </button>
-                <button onClick={() => { setPreviewHtml(""); setPreviewTitle(""); }} className="btn btn-ghost btn-sm" style={{ padding: 6 }}>
+                <button onClick={() => { setPreviewHtml(""); setPreviewTitle(""); setPreviewStrategyId(null); }} className="btn btn-ghost btn-sm" style={{ padding: 6 }}>
                   <X style={{ width: 18, height: 18 }} />
                 </button>
               </div>

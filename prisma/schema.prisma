@@ -528,6 +528,7 @@ model ContentStrategy {
   clientId        String?
   title           String
   period          String
+  createdBy       String?
   spreadsheetData String   // JSON: parsed spreadsheet data
   generatedHtml   String   // Full standalone HTML output
   shareToken      String?  @unique
