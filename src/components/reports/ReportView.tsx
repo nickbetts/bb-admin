@@ -454,6 +454,8 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [aiLength, setAiLength] = useState<"short" | "medium" | "long">("medium");
   const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive" | "roadman">("professional");
   const [aiFormat, setAiFormat] = useState<"prose" | "bullets" | "both">("prose");
+  const [aiSpin, setAiSpin] = useState<"positive" | "balanced" | "neutral">("positive");
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [sectionMetrics, setSectionMetrics] = useState<Record<string, Record<string, number>>>({});
   const [sectionPreviousMetrics, setSectionPreviousMetrics] = useState<Record<string, Record<string, number>>>({});
   const [templateSaveOpen, setTemplateSaveOpen] = useState(false);
@@ -860,6 +862,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             tone: aiTone,
             length: aiLength,
             format: aiFormat,
+            spin: aiSpin,
             previousCommentaries: generatedSoFar.length > 0 ? generatedSoFar : undefined,
           }),
         });
@@ -950,6 +953,105 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       }
     } finally {
       setGeneratingNarrative(false);
+    }
+  };
+
+  // ── Combined: generate all commentary then narrative ────────────────────────
+  const handleGenerateCombined = async () => {
+    setGenerateDialogOpen(false);
+
+    // Step 1: generate section commentary, collecting results locally
+    const eligible = report.sections.filter(
+      (s) => s.enabled !== false && (s.sectionType === "overview" || sectionMetrics[s.id])
+    );
+
+    const allCommentaries: Record<string, string> = {};
+
+    if (eligible.length > 0) {
+      setGeneratingAll(true);
+      setGenerateAllProgress(0);
+      setGenerateAllTotal(eligible.length);
+
+      const generatedSoFar: { sectionType: string; text: string }[] = [];
+
+      for (const section of eligible) {
+        const apiSectionType =
+          section.sectionType === "web" ? "ga4" :
+          section.sectionType === "paid_social" ? "meta" :
+          section.sectionType;
+
+        try {
+          const res = await fetch("/api/ai/report-commentary", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sectionType: apiSectionType,
+              metrics: sectionMetrics[section.id] ?? {},
+              previousMetrics: sectionPreviousMetrics[section.id] ?? undefined,
+              clientName: report.client.name,
+              clientId: report.client.id,
+              dateRange: report.period,
+              tone: aiTone,
+              length: aiLength,
+              format: aiFormat,
+              spin: aiSpin,
+              previousCommentaries: generatedSoFar.length > 0 ? generatedSoFar : undefined,
+            }),
+          });
+          if (res.ok) {
+            const { commentary: text } = await res.json();
+            generatedSoFar.push({ sectionType: apiSectionType, text });
+            allCommentaries[section.sectionType] = text;
+            await fetch(`/api/reports/${report.id}/sections`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sectionId: section.id, commentary: text }),
+            });
+            setReport((prev) => ({
+              ...prev,
+              sections: prev.sections.map((s) => s.id === section.id ? { ...s, commentary: text } : s),
+            }));
+          }
+        } catch { /* continue */ }
+        setGenerateAllProgress((p) => p + 1);
+      }
+      setGeneratingAll(false);
+    }
+
+    // Step 2: generate narrative using locally collected commentaries
+    // (avoids reading from potentially stale React state)
+    const narrativeCommentaries: Record<string, string> = {};
+    for (const s of report.sections) {
+      if (s.enabled !== false) {
+        const text = allCommentaries[s.sectionType] ?? (s.commentary?.trim() ? s.commentary : undefined);
+        if (text) narrativeCommentaries[s.sectionType] = text;
+      }
+    }
+
+    if (Object.keys(narrativeCommentaries).length >= 2) {
+      setGeneratingNarrative(true);
+      try {
+        const res = await fetch("/api/ai/report-narrative", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reportId: report.id,
+            clientId: report.client.id,
+            sectionCommentaries: narrativeCommentaries,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setNarrativeResult(data);
+          fetch(`/api/reports/${report.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ narrativeData: JSON.stringify(data) }),
+          }).catch(() => { /* non-critical */ });
+        }
+      } finally {
+        setGeneratingNarrative(false);
+      }
     }
   };
 
@@ -1471,6 +1573,16 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                           <option value="bullets">Bullet Points</option>
                           <option value="both">Both</option>
                         </select>
+                        <select
+                          value={aiSpin}
+                          onChange={(e) => setAiSpin(e.target.value as typeof aiSpin)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ cursor: "pointer", paddingRight: 8 }}
+                        >
+                          <option value="positive">Positive framing</option>
+                          <option value="balanced">Balanced</option>
+                          <option value="neutral">Neutral</option>
+                        </select>
                       </div>
 
                       {(sectionMetrics[section.id] || section.sectionType === "overview") ? (
@@ -1485,6 +1597,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                           tone={aiTone}
                           length={aiLength}
                           format={aiFormat}
+                          spin={aiSpin}
                           onInsightsGenerated={(text) =>
                             setCommentary((prev) => ({ ...prev, [section.id]: text }))
                           }
@@ -1899,49 +2012,120 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             </DndContext>
           </div>
 
-          {/* Sidebar footer — Generate All + Save as Template */}
+          {/* Sidebar footer — Generate Narrative & Commentary + Save as Template */}
           <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "12px 16px", flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}>
 
-            {/* Generate All AI */}
+            {/* Generate Narrative & Commentary */}
             <div style={{ paddingBottom: 4 }}>
               <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-4)", marginBottom: 6 }}>AI Commentary</p>
-              <button
-                onClick={handleGenerateAll}
-                disabled={generatingAll}
-                className="btn btn-secondary btn-sm"
-                style={{ width: "100%", justifyContent: "center", gap: 6, marginBottom: 6 }}
-                title="Generate AI commentary for all data sections at once"
-              >
-                <Sparkles size={13} />
-                {generatingAll
-                  ? `Generating ${generateAllProgress}/${generateAllTotal}…`
-                  : "Generate All Commentary"}
-              </button>
-              {generatingAll && (
-                <div style={{ background: "var(--border-subtle)", borderRadius: "var(--r-sm)", height: 3 }}>
-                  <div
-                    style={{
-                      background: "var(--accent)",
-                      height: 3,
-                      borderRadius: "var(--r-sm)",
-                      width: generateAllTotal > 0 ? `${(generateAllProgress / generateAllTotal) * 100}%` : "0%",
-                      transition: "width 0.3s ease",
-                    }}
-                  />
+
+              {!generateDialogOpen ? (
+                <>
+                  <button
+                    onClick={() => setGenerateDialogOpen(true)}
+                    disabled={generatingAll || generatingNarrative}
+                    className="btn btn-secondary btn-sm"
+                    style={{ width: "100%", justifyContent: "center", gap: 6, marginBottom: (generatingAll || generatingNarrative) ? 6 : 0 }}
+                    title="Configure and generate AI commentary for all sections plus a cross-section narrative"
+                  >
+                    <Sparkles size={13} />
+                    {generatingAll
+                      ? `Generating ${generateAllProgress}/${generateAllTotal}…`
+                      : generatingNarrative
+                        ? "Stitching narrative…"
+                        : "Generate Narrative & Commentary"}
+                  </button>
+                  {generatingAll && (
+                    <div style={{ background: "var(--border-subtle)", borderRadius: "var(--r-sm)", height: 3 }}>
+                      <div
+                        style={{
+                          background: "var(--accent)",
+                          height: 3,
+                          borderRadius: "var(--r-sm)",
+                          width: generateAllTotal > 0 ? `${(generateAllProgress / generateAllTotal) * 100}%` : "0%",
+                          transition: "width 0.3s ease",
+                        }}
+                      />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--surface-2)", borderRadius: "var(--r)", padding: "12px 10px", border: "1px solid var(--border-subtle)" }}>
+                  {/* Framing (spin) */}
+                  <div>
+                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-4)", marginBottom: 5 }}>Framing</p>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {(["positive", "balanced", "neutral"] as const).map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => setAiSpin(s)}
+                          style={{
+                            flex: 1, justifyContent: "center", fontSize: 11,
+                            background: aiSpin === s ? "var(--accent)" : "var(--surface)",
+                            color: aiSpin === s ? "#fff" : "var(--text-3)",
+                            border: `1px solid ${aiSpin === s ? "var(--accent)" : "var(--border)"}`,
+                            borderRadius: "var(--r-sm)",
+                            padding: "5px 2px",
+                            fontWeight: aiSpin === s ? 700 : 500,
+                            cursor: "pointer",
+                            transition: "all 0.15s",
+                          }}
+                        >
+                          {s === "positive" ? "Positive" : s === "balanced" ? "Balanced" : "Neutral"}
+                        </button>
+                      ))}
+                    </div>
+                    <p style={{ fontSize: 10, color: "var(--text-4)", marginTop: 4, lineHeight: 1.4 }}>
+                      {aiSpin === "positive"
+                        ? "Results framed optimistically, dips given reassuring context"
+                        : aiSpin === "balanced"
+                          ? "Honest and fair — admits challenges, shows action taken"
+                          : "Factual and transparent — no spin on declining metrics"}
+                    </p>
+                  </div>
+
+                  {/* Style, Length, Format */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ display: "flex", gap: 5 }}>
+                      <select value={aiTone} onChange={(e) => setAiTone(e.target.value as typeof aiTone)} className="btn btn-secondary btn-sm" style={{ flex: 1, cursor: "pointer", paddingRight: 4, fontSize: 11 }}>
+                        <option value="professional">Professional</option>
+                        <option value="friendly">Friendly</option>
+                        <option value="technical">Technical</option>
+                        <option value="executive">Executive</option>
+                        <option value="roadman">Roadman 🎤</option>
+                      </select>
+                      <select value={aiLength} onChange={(e) => setAiLength(e.target.value as typeof aiLength)} className="btn btn-secondary btn-sm" style={{ flex: 1, cursor: "pointer", paddingRight: 4, fontSize: 11 }}>
+                        <option value="short">Short</option>
+                        <option value="medium">Medium</option>
+                        <option value="long">Long</option>
+                      </select>
+                    </div>
+                    <select value={aiFormat} onChange={(e) => setAiFormat(e.target.value as typeof aiFormat)} className="btn btn-secondary btn-sm" style={{ width: "100%", cursor: "pointer", paddingRight: 4, fontSize: 11 }}>
+                      <option value="prose">Prose</option>
+                      <option value="bullets">Bullet Points</option>
+                      <option value="both">Both</option>
+                    </select>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      onClick={() => void handleGenerateCombined()}
+                      className="btn btn-primary btn-sm"
+                      style={{ flex: 1, justifyContent: "center", gap: 5 }}
+                    >
+                      <Sparkles size={12} />
+                      Generate
+                    </button>
+                    <button
+                      onClick={() => setGenerateDialogOpen(false)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ gap: 5 }}
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
                 </div>
-              )}
-              {/* Generate Narrative — needs ≥2 sections with commentary */}
-              {report.sections.filter((s) => s.enabled !== false && s.commentary?.trim()).length >= 2 && (
-                <button
-                  onClick={() => void handleGenerateNarrative()}
-                  disabled={generatingNarrative}
-                  className="btn btn-secondary btn-sm"
-                  style={{ width: "100%", justifyContent: "center", gap: 6, marginTop: 4 }}
-                  title="Generate cross-section narrative that stitches all commentaries together"
-                >
-                  <FileStack size={13} />
-                  {generatingNarrative ? "Stitching narrative…" : "Generate Narrative"}
-                </button>
               )}
             </div>
 

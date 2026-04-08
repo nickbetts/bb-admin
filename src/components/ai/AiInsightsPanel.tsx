@@ -47,6 +47,8 @@ interface AiInsightsPanelProps {
   length?: "short" | "medium" | "long";
   /** Format of the AI output (prose / bullets / both) */
   format?: "prose" | "bullets" | "both";
+  /** Framing / spin for the AI output (positive / balanced / neutral) */
+  spin?: "positive" | "balanced" | "neutral";
 }
 
 const severityStyles: Record<string, { bg: string; border: string; badge: string; text: string; dot: string }> = {
@@ -218,6 +220,7 @@ export function AiInsightsPanel({
   tone,
   length,
   format,
+  spin,
 }: AiInsightsPanelProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AiInsightsResult | null>(null);
@@ -243,6 +246,7 @@ export function AiInsightsPanel({
             tone: tone ?? undefined,
             length: length ?? undefined,
             format: format ?? undefined,
+            spin: spin ?? undefined,
           }),
         });
         const data = await res.json() as { commentary?: string; error?: string };

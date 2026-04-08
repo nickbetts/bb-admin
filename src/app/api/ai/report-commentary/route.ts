@@ -31,6 +31,18 @@ const FORMAT_INSTRUCTIONS: Record<string, string> = {
   both: "Write a short introductory sentence, then follow with bullet points (each starting with '• ').",
 };
 
+const SPIN_INSTRUCTIONS: Record<string, string> = {
+  positive: "This commentary is CLIENT-FACING. Only write about what IS present in the data — wins, progress, and things we are actively working on or monitoring. Frame everything positively and constructively. When metrics have declined, acknowledge them briefly but always provide reassuring context and frame them as temporary or part of ongoing optimisation. Never leave the client feeling concerned — always end constructively.",
+  balanced: "This commentary is CLIENT-FACING. Be balanced and honest in your assessment. Highlight strong results clearly, but also acknowledge areas where metrics declined or fell short — explain what actions are being taken in response. You can be constructive and professional without being relentlessly positive. The client should come away with an accurate picture of performance alongside confidence that the account is being actively managed.",
+  neutral: "This commentary is CLIENT-FACING. Be factual and transparent. Report the data as it is — including declines and underperformance — clearly and directly. Do not spin results. The client values transparency and accurate reporting over a positive gloss. Be professional and informative throughout, but do not soften or contextualise negative results beyond stating what they are.",
+};
+
+const SPIN_RULES: Record<string, string> = {
+  positive: `- Never use words like "however", "unfortunately", "missed opportunity", "underutilised", or anything implying failure. If a metric has declined, still mention it factually but frame it with context and what we are doing about it (e.g. "Sessions dipped 8% as we restructured campaigns for stronger Q2 performance" rather than "Sessions dropped significantly").`,
+  balanced: `- You may acknowledge challenges directly (e.g. "Conversions dipped this month...") but always follow with what action is being taken. Avoid excessively negative language, but don't shy away from honest assessment.`,
+  neutral: `- Report metrics factually. You may state declines directly without softening them. Be professional but do not feel required to reframe every negative metric as a positive.`,
+};
+
 const TONE_INSTRUCTIONS: Record<string, string> = {
   professional: "Use formal, professional business language suitable for a client report.",
   friendly: "Use approachable, conversational language — warm but still informative.",
@@ -85,7 +97,7 @@ function formatMetrics(metrics: Record<string, number>): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { sectionType, metrics, previousMetrics, clientName, clientId, reportId, dateRange, length = "medium", tone = "professional", format = "prose", previousCommentaries } =
+    const { sectionType, metrics, previousMetrics, clientName, clientId, reportId, dateRange, length = "medium", tone = "professional", format = "prose", spin = "positive", previousCommentaries } =
       await req.json() as {
         sectionType: string;
         metrics: Record<string, number>;
@@ -97,6 +109,7 @@ export async function POST(req: NextRequest) {
         length?: "short" | "medium" | "long";
         tone?: "professional" | "friendly" | "technical" | "executive";
         format?: "prose" | "bullets" | "both";
+        spin?: "positive" | "balanced" | "neutral";
         previousCommentaries?: { sectionType: string; text: string }[];
       };
 
@@ -148,6 +161,8 @@ export async function POST(req: NextRequest) {
     const lengthInstruction = LENGTH_INSTRUCTIONS[length] ?? LENGTH_INSTRUCTIONS.medium;
     const toneInstruction = TONE_INSTRUCTIONS[tone] ?? TONE_INSTRUCTIONS.professional;
     const formatInstruction = FORMAT_INSTRUCTIONS[format] ?? FORMAT_INSTRUCTIONS.prose;
+    const spinInstruction = SPIN_INSTRUCTIONS[spin] ?? SPIN_INSTRUCTIONS.positive;
+    const spinRule = SPIN_RULES[spin] ?? SPIN_RULES.positive;
 
     const currentMetricsText = formatMetrics(metrics);
     const previousMetricsText = previousMetrics ? formatMetrics(previousMetrics) : null;
@@ -158,7 +173,7 @@ ${toneInstruction}
 ${lengthInstruction}
 ${formatInstruction}
 Write in the first person as the agency — use "we" and "our" (e.g. "We saw strong growth in...", "Our focus this month was...").
-This commentary is CLIENT-FACING. Only write about what IS present in the data — wins, progress, and things we are actively working on or monitoring. Frame everything positively and constructively.
+${spinInstruction}
 
 SECTION-SPECIFIC GUIDANCE:
 - For paid channels (Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn): reference spend efficiency, ROAS/CPA trends, and conversion performance. Mention specific campaigns or ads by name if campaign data is provided. Note any optimisation work underway.
@@ -173,7 +188,7 @@ SECTION-SPECIFIC GUIDANCE:
 CRITICAL rules:
 - Never mention the absence of a channel, campaign type, or service the client isn't using (e.g. do NOT say "there is no paid traffic" or "absence of paid search").
 - Never include recommendations, suggestions, or areas for improvement — that is handled separately.
-- Never use words like "however", "unfortunately", "missed opportunity", "underutilised", or anything implying failure. If a metric has declined, still mention it factually but frame it with context and what we are doing about it (e.g. "Sessions dipped 8% as we restructured campaigns for stronger Q2 performance" rather than "Unfortunately sessions dropped").
+${spinRule}
 - Do not start with "This section" or "In this section". Start with a substantive observation about the data.
 - When goals are provided, reference progress towards targets naturally (e.g. "We're now at 82% of our ROAS target").
 - Sound like a human account manager wrote it, not an AI.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${approvalContext}`;
