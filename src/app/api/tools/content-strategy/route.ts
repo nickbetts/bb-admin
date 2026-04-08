@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAnthropicClient } from "@/lib/anthropic-client";
 import * as XLSX from "xlsx";
+import mammoth from "mammoth";
 import crypto from "crypto";
 
 // ─── Spreadsheet parsing ────────────────────────────────────────────────────
@@ -54,6 +55,207 @@ interface SpreadsheetData {
     totalLinkTargets: number;
   };
 }
+
+// ─── Text extraction from various file formats ─────────────────────────────
+
+async function extractTextFromFile(buffer: ArrayBuffer, fileName: string): Promise<string> {
+  const ext = fileName.toLowerCase().split(".").pop() || "";
+
+  if (ext === "xlsx" || ext === "xls") {
+    return extractTextFromSpreadsheet(buffer);
+  }
+  if (ext === "docx") {
+    const result = await mammoth.extractRawText({ buffer: Buffer.from(buffer) });
+    return result.value;
+  }
+  if (ext === "csv" || ext === "txt") {
+    return new TextDecoder("utf-8").decode(buffer);
+  }
+  throw new Error(`Unsupported file format: .${ext}`);
+}
+
+function extractTextFromSpreadsheet(buffer: ArrayBuffer): string {
+  const wb = XLSX.read(buffer, { type: "array" });
+  const lines: string[] = [];
+  for (const sheetName of wb.SheetNames) {
+    lines.push(`=== SHEET: ${sheetName} ===`);
+    const sheet = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" });
+    for (const row of rows) {
+      if (!Array.isArray(row)) continue;
+      const cells = row.map(c => String(c ?? "").trim()).filter(Boolean);
+      if (cells.length > 0) lines.push(cells.join("\t"));
+    }
+    lines.push("");
+  }
+  return lines.join("\n");
+}
+
+// ─── Claude-based structured data extraction ────────────────────────────────
+
+const EXTRACTION_PROMPT = `You are a data extraction assistant. Your job is to extract structured content strategy data from the document provided.
+
+CRITICAL RULES:
+1. ONLY extract data that is explicitly present in the document. NEVER invent, guess, or hallucinate keywords, URLs, volumes, or any other data.
+2. If a field is not present in the document, omit it or use an empty array.
+3. Search volumes must be exact numbers found in the document. If no volume is shown for a keyword, use 0.
+4. URLs must be copied exactly as they appear in the document.
+5. Keyword text must be copied exactly as it appears in the document.
+6. If the document structure is unclear, extract what you can and skip what is ambiguous.
+
+Extract the data into this exact JSON structure:
+{
+  "pageOptimisations": [
+    {
+      "url": "example.com/page",
+      "keywords": [{"keyword": "example term", "volume": 1000}],
+      "notes": ""
+    }
+  ],
+  "landingPages": [
+    {
+      "title": "Page Title",
+      "keywords": [{"keyword": "example term", "volume": 500}],
+      "notes": ""
+    }
+  ],
+  "categoryPages": [],
+  "blogPosts": [
+    {
+      "title": "Blog Post Title",
+      "keywords": [{"keyword": "example term", "volume": 200}],
+      "notes": ""
+    }
+  ],
+  "linkTargets": [
+    {
+      "url": "example.com/page",
+      "anchorKeyword": "anchor text",
+      "anchorType": "Exact"
+    }
+  ]
+}
+
+Notes:
+- "pageOptimisations" = existing pages that need content updates/improvements
+- "landingPages" = new pages to be created (service pages, product pages, category pages)  
+- "categoryPages" = if there is a separate category pages section, otherwise put them in landingPages
+- "blogPosts" = new blog articles to be written
+- "linkTargets" = pages that need backlinks built, with anchor text and type (Exact/Broad/Brand)
+- Strip "https://" and "www." prefixes from URLs
+- If the document groups keywords under a URL or page title, keep that grouping
+- anchorType should be one of: "Exact", "Broad", or "Brand"
+
+Return ONLY the JSON object, no markdown formatting, no explanation.`;
+
+async function extractWithClaude(fileText: string, clientName: string): Promise<SpreadsheetData> {
+  const anthropic = await getAnthropicClient();
+
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 8000,
+    system: EXTRACTION_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: `Extract the content strategy data from this document for client "${clientName}":\n\n${fileText.slice(0, 80000)}`,
+      },
+    ],
+  });
+
+  const textBlock = response.content.find(b => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    throw new Error("No text response from extraction model");
+  }
+
+  let jsonStr = textBlock.text.trim();
+  // Strip markdown code fences if present
+  const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonMatch) jsonStr = jsonMatch[1].trim();
+
+  const raw = JSON.parse(jsonStr);
+  return validateExtractedData(raw);
+}
+
+function validateExtractedData(raw: Record<string, unknown>): SpreadsheetData {
+  function validateKeyword(k: unknown): ParsedKeyword | null {
+    if (!k || typeof k !== "object") return null;
+    const obj = k as Record<string, unknown>;
+    const keyword = String(obj.keyword || "").trim();
+    if (!keyword || keyword.length < 2) return null;
+    const volume = Math.max(0, Math.round(Number(obj.volume) || 0));
+    return { keyword, volume };
+  }
+
+  function validatePageOpt(p: unknown): PageOptimisation | null {
+    if (!p || typeof p !== "object") return null;
+    const obj = p as Record<string, unknown>;
+    const url = String(obj.url || "").trim().replace(/^https?:\/\//, "").replace(/^www\./, "");
+    if (!url || url.length < 3) return null;
+    const keywords = (Array.isArray(obj.keywords) ? obj.keywords : [])
+      .map(validateKeyword).filter((k): k is ParsedKeyword => k !== null);
+    if (keywords.length === 0) return null;
+    return { url, keywords, notes: String(obj.notes || ""), priority: false };
+  }
+
+  function validateProposedPage(p: unknown): ProposedPage | null {
+    if (!p || typeof p !== "object") return null;
+    const obj = p as Record<string, unknown>;
+    const title = String(obj.title || "").trim();
+    if (!title || title.length < 2) return null;
+    const keywords = (Array.isArray(obj.keywords) ? obj.keywords : [])
+      .map(validateKeyword).filter((k): k is ParsedKeyword => k !== null);
+    if (keywords.length === 0) return null;
+    return { title, keywords, notes: String(obj.notes || ""), priority: false };
+  }
+
+  function validateLinkTarget(t: unknown): LinkTarget | null {
+    if (!t || typeof t !== "object") return null;
+    const obj = t as Record<string, unknown>;
+    const url = String(obj.url || "").trim().replace(/^https?:\/\//, "").replace(/^www\./, "");
+    const anchorKeyword = String(obj.anchorKeyword || "").trim();
+    if (!url || !anchorKeyword) return null;
+    const validTypes = ["exact", "broad", "brand"];
+    const anchorType = validTypes.includes(String(obj.anchorType || "").toLowerCase())
+      ? String(obj.anchorType) : "Broad";
+    return { url, anchorKeyword, anchorType };
+  }
+
+  const pageOptimisations = (Array.isArray(raw.pageOptimisations) ? raw.pageOptimisations : [])
+    .map(validatePageOpt).filter((p): p is PageOptimisation => p !== null);
+  const landingPages = (Array.isArray(raw.landingPages) ? raw.landingPages : [])
+    .map(validateProposedPage).filter((p): p is ProposedPage => p !== null);
+  const categoryPages = (Array.isArray(raw.categoryPages) ? raw.categoryPages : [])
+    .map(validateProposedPage).filter((p): p is ProposedPage => p !== null);
+  const blogPosts = (Array.isArray(raw.blogPosts) ? raw.blogPosts : [])
+    .map(validateProposedPage).filter((p): p is ProposedPage => p !== null)
+    .map(p => ({ title: p.title, keywords: p.keywords, notes: p.notes, priority: false } as BlogPost));
+  const linkTargets = (Array.isArray(raw.linkTargets) ? raw.linkTargets : [])
+    .map(validateLinkTarget).filter((t): t is LinkTarget => t !== null);
+
+  const totalItems = pageOptimisations.length + landingPages.length + categoryPages.length + blogPosts.length + linkTargets.length;
+  if (totalItems === 0) {
+    throw new Error("Could not extract any content strategy data from the document. Please check the file contains keyword data grouped by page URL or title.");
+  }
+
+  return {
+    clientName: "",
+    period: "",
+    pageOptimisations,
+    landingPages,
+    categoryPages,
+    blogPosts,
+    linkTargets,
+    stats: {
+      totalPageOptimisations: pageOptimisations.length,
+      totalLandingPages: landingPages.length + categoryPages.length,
+      totalBlogPosts: blogPosts.length,
+      totalLinkTargets: new Set(linkTargets.map(t => t.url)).size,
+    },
+  };
+}
+
+// ─── Legacy spreadsheet parser (fallback) ───────────────────────────────────
 
 function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
   const wb = XLSX.read(buffer, { type: "array" });
@@ -745,12 +947,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file type
-    const validTypes = [
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "application/vnd.ms-excel",
-    ];
-    if (!validTypes.includes(file.type) && !file.name.endsWith(".xlsx") && !file.name.endsWith(".xls")) {
-      return NextResponse.json({ error: "Please upload an Excel file (.xlsx or .xls)" }, { status: 400 });
+    const supportedExtensions = [".xlsx", ".xls", ".csv", ".docx", ".txt"];
+    const fileExt = "." + (file.name.toLowerCase().split(".").pop() || "");
+    if (!supportedExtensions.includes(fileExt)) {
+      return NextResponse.json(
+        { error: `Unsupported file format. Please upload one of: ${supportedExtensions.join(", ")}` },
+        { status: 400 }
+      );
     }
 
     // Validate file size (max 10MB)
@@ -758,22 +961,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File size must be under 10MB" }, { status: 400 });
     }
 
-    // Parse spreadsheet
     const buffer = await file.arrayBuffer();
-    const spreadsheetData = parseSpreadsheet(buffer);
+
+    // Step 1: Extract structured data
+    // Try the legacy spreadsheet parser first for xlsx (it's fast and free)
+    // Fall back to Claude extraction for non-xlsx or if legacy parser yields poor results
+    let spreadsheetData: SpreadsheetData;
+    const isSpreadsheet = fileExt === ".xlsx" || fileExt === ".xls";
+
+    if (isSpreadsheet) {
+      const legacyData = parseSpreadsheet(buffer);
+      const legacyTotal = legacyData.pageOptimisations.length + legacyData.landingPages.length +
+        legacyData.categoryPages.length + legacyData.blogPosts.length + legacyData.linkTargets.length;
+
+      if (legacyTotal >= 3) {
+        // Legacy parser got usable data
+        spreadsheetData = legacyData;
+      } else {
+        // Layout doesn't match expected format — use Claude
+        const fileText = extractTextFromSpreadsheet(buffer);
+        spreadsheetData = await extractWithClaude(fileText, clientName);
+      }
+    } else {
+      // Non-spreadsheet file — always use Claude
+      const fileText = await extractTextFromFile(buffer, file.name);
+      spreadsheetData = await extractWithClaude(fileText, clientName);
+    }
+
     spreadsheetData.clientName = clientName;
     spreadsheetData.period = period;
 
-    // Generate AI descriptions using Claude
+    // Step 2: Generate AI descriptions using Claude
     let aiContent: Record<string, string> = {};
     try {
       const anthropic = await getAnthropicClient();
-
-      // Build a summary of the data for Claude
       const dataSummary = buildDataSummary(spreadsheetData);
 
       const response = await anthropic.messages.create({
-        model: "claude-opus-4-6",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 4000,
         system: `You are an expert SEO content strategist at a digital marketing agency. You write in British English. You are creating descriptions for a content strategy document for a client called "${clientName}".
 
@@ -805,7 +1030,6 @@ Return your response as valid JSON with the following keys:
 
       const textBlock = response.content.find(b => b.type === "text");
       if (textBlock && textBlock.type === "text") {
-        // Extract JSON from the response (may be wrapped in markdown code blocks)
         let jsonStr = textBlock.text;
         const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
         if (jsonMatch) jsonStr = jsonMatch[1];
@@ -813,7 +1037,6 @@ Return your response as valid JSON with the following keys:
       }
     } catch (aiError) {
       console.error("AI description generation failed, using defaults:", aiError);
-      // Continue with empty aiContent — the template has fallback defaults
     }
 
     // Generate the HTML

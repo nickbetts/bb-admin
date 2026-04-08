@@ -219,13 +219,12 @@ export default function ContentStrategyPage() {
     e.preventDefault();
     setDragOver(false);
     const droppedFile = e.dataTransfer.files[0];
-    if (
-      droppedFile &&
-      (droppedFile.name.endsWith(".xlsx") || droppedFile.name.endsWith(".xls"))
-    ) {
+    const supportedExts = [".xlsx", ".xls", ".csv", ".docx", ".txt"];
+    const ext = droppedFile ? "." + (droppedFile.name.split(".").pop()?.toLowerCase() || "") : "";
+    if (droppedFile && supportedExts.includes(ext)) {
       setFile(droppedFile);
     } else {
-      setError("Please drop an Excel file (.xlsx or .xls)");
+      setError("Please drop a supported file (.xlsx, .xls, .csv, .docx, or .txt)");
     }
   }
 
@@ -302,14 +301,14 @@ export default function ContentStrategyPage() {
                   <div style={{ width: 52, height: 52, borderRadius: "var(--r)", background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
                     <Upload style={{ width: 24, height: 24, color: "var(--accent)" }} />
                   </div>
-                  <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text)", margin: "0 0 4px" }}>Drag & drop your Excel spreadsheet here</p>
-                  <p style={{ fontSize: 13, color: "var(--text-3)", margin: "0 0 16px" }}>Supports .xlsx and .xls files up to 10 MB</p>
+                  <p style={{ fontSize: 14, fontWeight: 500, color: "var(--text)", margin: "0 0 4px" }}>Drag & drop your file here</p>
+                  <p style={{ fontSize: 13, color: "var(--text-3)", margin: "0 0 16px" }}>Supports .xlsx, .xls, .csv, .docx, and .txt files up to 10 MB</p>
                   <label className="btn btn-secondary btn-sm" style={{ cursor: "pointer" }}>
                     Choose File
                     <input
                       id="file-input"
                       type="file"
-                      accept=".xlsx,.xls"
+                      accept=".xlsx,.xls,.csv,.docx,.txt"
                       style={{ display: "none" }}
                       onChange={(e) => {
                         const f = e.target.files?.[0];
