@@ -85,13 +85,14 @@ function formatMetrics(metrics: Record<string, number>): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const { sectionType, metrics, previousMetrics, clientName, clientId, dateRange, length = "medium", tone = "professional", format = "prose", previousCommentaries } =
+    const { sectionType, metrics, previousMetrics, clientName, clientId, reportId, dateRange, length = "medium", tone = "professional", format = "prose", previousCommentaries } =
       await req.json() as {
         sectionType: string;
         metrics: Record<string, number>;
         previousMetrics?: Record<string, number>;
         clientName?: string;
         clientId?: string;
+        reportId?: string;
         dateRange?: string;
         length?: "short" | "medium" | "long";
         tone?: "professional" | "friendly" | "technical" | "executive";
@@ -111,6 +112,20 @@ export async function POST(req: NextRequest) {
       const client = await prisma.client.findUnique({ where: { id: clientId }, select: { aiReportInstructions: true } });
       if (client?.aiReportInstructions) {
         clientAiInstructions = client.aiReportInstructions;
+      }
+    }
+
+    // Fetch report approval notes if reportId provided (changes_requested → guide the revision)
+    let approvalContext = "";
+    if (reportId) {
+      const report = await prisma.report.findUnique({
+        where: { id: reportId },
+        select: { approvalStatus: true, approvalNotes: true, approvedBy: true },
+      });
+      if (report?.approvalStatus === "changes_requested" && report.approvalNotes) {
+        approvalContext = `\n\nREPORT REVISION NOTES (reviewer requested changes):\n${report.approvalNotes}\n\nYou MUST address these notes in your commentary. Adjust tone, content, or emphasis accordingly.`;
+      } else if (report?.approvalStatus === "approved" && report.approvalNotes) {
+        approvalContext = `\n\nREPORT REVIEW NOTE (approved with comment by ${report.approvedBy ?? "reviewer"}):\n${report.approvalNotes}`;
       }
     }
 
@@ -161,7 +176,7 @@ CRITICAL rules:
 - Never use words like "however", "unfortunately", "missed opportunity", "underutilised", or anything implying failure. If a metric has declined, still mention it factually but frame it with context and what we are doing about it (e.g. "Sessions dipped 8% as we restructured campaigns for stronger Q2 performance" rather than "Unfortunately sessions dropped").
 - Do not start with "This section" or "In this section". Start with a substantive observation about the data.
 - When goals are provided, reference progress towards targets naturally (e.g. "We're now at 82% of our ROAS target").
-- Sound like a human account manager wrote it, not an AI.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
+- Sound like a human account manager wrote it, not an AI.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${approvalContext}`;
 
     // Build the previous-commentaries context block to prevent repetition
     let previousCommentariesContext = "";

@@ -7,10 +7,11 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const { sections, clientName, clientId, period } = await req.json() as {
+    const { sections, clientName, clientId, reportId, period } = await req.json() as {
       sections: { sectionType: string; title: string; commentary: string }[];
       clientName?: string;
       clientId?: string;
+      reportId?: string;
       period?: string;
     };
 
@@ -27,6 +28,18 @@ export async function POST(req: NextRequest) {
         select: { aiReportInstructions: true },
       });
       if (client?.aiReportInstructions) clientAiInstructions = client.aiReportInstructions;
+    }
+
+    // Fetch report approval notes if reportId provided
+    let approvalContext = "";
+    if (reportId) {
+      const report = await prisma.report.findUnique({
+        where: { id: reportId },
+        select: { approvalStatus: true, approvalNotes: true, approvedBy: true },
+      });
+      if (report?.approvalStatus === "changes_requested" && report.approvalNotes) {
+        approvalContext = `\n\nREPORT REVISION NOTES (reviewer requested changes — address these in the executive summary):\n${report.approvalNotes}`;
+      }
     }
 
     // Fetch active goals so the executive summary can anchor to KPI progress
@@ -65,7 +78,7 @@ export async function POST(req: NextRequest) {
 Always write in British English — use British spellings throughout.
 Use formal, professional language suitable for senior stakeholders.
 Write in the first person as the agency — use "we" and "our".
-This summary is CLIENT-FACING and should be upbeat, clear, and strategic.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`,
+This summary is CLIENT-FACING and should be upbeat, clear, and strategic.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}${approvalContext}`,
         },
         {
           role: "user",

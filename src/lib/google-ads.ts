@@ -575,6 +575,89 @@ export async function getGoogleAdsAudienceCriteria(
   }
 }
 
+// ── RSA (Responsive Search Ad) asset performance ────────────────────────────
+
+export interface GoogleAdsRSAAsset {
+  campaignName: string;
+  adGroupName: string;
+  adId: string;
+  headlines: string[];
+  descriptions: string[];
+  finalUrl: string;
+  status: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  conversions: number;
+  costMicros: number;
+}
+
+/**
+ * Fetches Responsive Search Ads with their copy (headlines + descriptions) and
+ * ad-level performance metrics. Useful for AI to identify which copy angles
+ * are used in top-performing vs low-performing ads.
+ */
+export async function getGoogleAdsRSAAssets(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsRSAAsset[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      campaign.name,
+      ad_group.name,
+      ad_group_ad.ad.id,
+      ad_group_ad.ad.responsive_search_ad.headlines,
+      ad_group_ad.ad.responsive_search_ad.descriptions,
+      ad_group_ad.ad.final_urls,
+      ad_group_ad.status,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.ctr,
+      metrics.conversions,
+      metrics.cost_micros
+    FROM ad_group_ad
+    WHERE ad_group_ad.ad.type = 'RESPONSIVE_SEARCH_AD'
+      AND ad_group_ad.status != 'REMOVED'
+      AND ad_group.status != 'REMOVED'
+      AND campaign.status != 'REMOVED'
+      AND segments.date BETWEEN '${startDate}' AND '${endDate}'
+    ORDER BY metrics.clicks DESC
+    LIMIT 50
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    type AssetRow = { text?: string };
+    return (data.results ?? []).map((row: GadsRow) => {
+      const ad = row.adGroupAd?.ad as Record<string, unknown> ?? {};
+      const rsa = ad.responsiveSearchAd as Record<string, AssetRow[]> ?? {};
+      const headlines = (rsa.headlines ?? []).map((h) => h.text ?? "").filter(Boolean);
+      const descriptions = (rsa.descriptions ?? []).map((d) => d.text ?? "").filter(Boolean);
+      const finalUrls = (ad.finalUrls as string[] | undefined) ?? [];
+      return {
+        campaignName: String(row.campaign?.name ?? ""),
+        adGroupName: String(row.adGroup?.name ?? ""),
+        adId: String(ad.id ?? ""),
+        headlines,
+        descriptions,
+        finalUrl: finalUrls[0] ?? "",
+        status: String(row.adGroupAd?.status ?? ""),
+        clicks: Number(row.metrics?.clicks ?? 0),
+        impressions: Number(row.metrics?.impressions ?? 0),
+        ctr: Number(row.metrics?.ctr ?? 0),
+        conversions: Number(row.metrics?.conversions ?? 0),
+        costMicros: Number(row.metrics?.costMicros ?? 0),
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 export async function getGoogleAdsAccounts(): Promise<GoogleAdsAccount[]> {
   const mccId = await getMccId();
   if (!mccId) {

@@ -270,6 +270,7 @@ export async function POST(request: NextRequest) {
     let demographicsContext = "";
     let aiReferralsContext = "";
     let audienceContext = "";
+    let metaDemographicsContext = "";
     if (clientGa4PropertyId) {
       const [demoCache, aiRefCache] = await Promise.allSettled([
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -305,6 +306,26 @@ export async function POST(request: NextRequest) {
         } catch { /* ignore */ }
       }
     }
+    // Read most recently cached Meta demographics from ApiCache (written by /api/meta?type=demographics)
+    if (clientId) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const metaDemoCache = await (prisma as any).apiCache.findFirst({
+          where: { key: `meta:demographics:${clientId}` },
+          orderBy: { fetchedAt: "desc" },
+        });
+        if (metaDemoCache) {
+          const rows = JSON.parse(metaDemoCache.data) as { age: string; gender: string; impressions: number; clicks: number; spend: number; conversions: number; roas: number }[];
+          if (rows.length > 0) {
+            const sorted = rows.sort((a, b) => b.conversions - a.conversions).slice(0, 12);
+            metaDemographicsContext = "\n\nMETA ADS AUDIENCE PERFORMANCE (age × gender):\n" +
+              sorted.map((r) =>
+                `  ${r.age} / ${r.gender}: ${r.conversions} conv, £${r.spend.toFixed(2)} spend, ${r.clicks} clicks, ROAS ${r.roas.toFixed(2)}x`
+              ).join("\n");
+          }
+        }
+      } catch { /* ignore */ }
+    }
     if (clientGadsCustomerId) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -313,7 +334,10 @@ export async function POST(request: NextRequest) {
           orderBy: { fetchedAt: "desc" },
         });
         if (gadsCache) {
-          const gadsData = JSON.parse(gadsCache.data) as { audienceCriteria?: { criterionType: string; displayName: string; campaignName: string; negative: boolean }[] };
+          const gadsData = JSON.parse(gadsCache.data) as {
+            audienceCriteria?: { criterionType: string; displayName: string; campaignName: string; negative: boolean }[];
+            rsaAssets?: { campaignName: string; adGroupName: string; headlines: string[]; descriptions: string[]; clicks: number; conversions: number; costMicros: number }[];
+          };
           const audiences = (gadsData.audienceCriteria ?? []).filter((a) => !a.negative && a.displayName);
           if (audiences.length > 0) {
             const byType: Record<string, string[]> = {};
@@ -322,6 +346,14 @@ export async function POST(request: NextRequest) {
             }
             audienceContext = "\n\nGOOGLE ADS AUDIENCE TARGETING:\n" +
               Object.entries(byType).map(([type, names]) => `  ${type}: ${[...new Set(names)].join(", ")}`).join("\n");
+          }
+          // RSA creative copy context
+          const rsas = (gadsData.rsaAssets ?? []).filter((r) => r.clicks > 0).slice(0, 10);
+          if (rsas.length > 0) {
+            audienceContext += "\n\nGOOGLE ADS RSA COPY (top by clicks):\n" +
+              rsas.map((r) =>
+                `  "${r.campaignName} / ${r.adGroupName}": ${r.clicks} clicks, ${r.conversions} conv, £${(r.costMicros / 1e6).toFixed(2)} spend\n    Headlines: ${r.headlines.slice(0, 5).join(" | ")}\n    Descriptions: ${r.descriptions.slice(0, 2).join(" | ")}`
+              ).join("\n");
           }
         }
       } catch { /* ignore */ }
@@ -512,7 +544,7 @@ CHANNEL-BY-CHANNEL DATA:
 ${sections.join("\n\n")}
 
 ${aggText}
-${campaignText}${alertsText}${channelMetricsText}${goalsContext}${competitorContext}${demographicsContext}${aiReferralsContext}${audienceContext}
+${campaignText}${alertsText}${channelMetricsText}${goalsContext}${competitorContext}${demographicsContext}${aiReferralsContext}${metaDemographicsContext}${audienceContext}
 
 Produce a JSON object:
 {

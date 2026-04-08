@@ -1263,3 +1263,74 @@ export async function getMetaPlacementBreakdown(
     return [];
   }
 }
+
+// ── Audience demographic performance breakdown ────────────────────────────────
+
+/** Performance broken down by age bracket × gender */
+export interface MetaAudienceDemographic {
+  age: string;       // "18-24" | "25-34" | "35-44" | "45-54" | "55-64" | "65+"
+  gender: string;    // "male" | "female" | "unknown"
+  impressions: number;
+  clicks: number;
+  spend: number;
+  ctr: number;
+  conversions: number;
+  roas: number;
+}
+
+/**
+ * Returns account-level ad performance broken down by age × gender.
+ * Shows which demographic segments are generating the most conversions and
+ * where spend is being wasted, enabling AI to make audience optimisation
+ * recommendations.
+ */
+export async function getMetaAudienceDemographics(
+  accountId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<MetaAudienceDemographic[]> {
+  const params = new URLSearchParams({
+    access_token: getAccessToken(accessToken),
+    fields: "impressions,clicks,spend,ctr,actions,action_values,purchase_roas",
+    breakdowns: "age,gender",
+    time_range: JSON.stringify({ since: startDate, until: endDate }),
+    level: "account",
+    limit: "100",
+  });
+
+  try {
+    const response = await fetch(
+      `${META_API_BASE}/act_${accountId}/insights?${params}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return (data.data ?? []).map((item: {
+      age?: string;
+      gender?: string;
+      impressions?: string;
+      clicks?: string;
+      spend?: string;
+      ctr?: string;
+      actions?: ActionRow[];
+      action_values?: ActionRow[];
+      purchase_roas?: { value: string }[];
+    }) => {
+      const conv = resolveConversions(item.actions, item.action_values, undefined);
+      return {
+        age: item.age ?? "unknown",
+        gender: item.gender ?? "unknown",
+        impressions: parseInt(item.impressions ?? "0"),
+        clicks: parseInt(item.clicks ?? "0"),
+        spend: parseFloat(item.spend ?? "0"),
+        ctr: parseFloat(item.ctr ?? "0"),
+        conversions: conv.count,
+        roas: parseFloat(item.purchase_roas?.[0]?.value ?? "0"),
+      };
+    });
+  } catch {
+    return [];
+  }
+}

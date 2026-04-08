@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
-import { getMetaAdsOverview, getMetaCampaigns, getMetaCampaignsEnriched, getMetaDailyData, getMetaLandingPages, getMetaAdSets, getMetaAdCreatives, getMetaAdSetAudiences, getMetaPlacementBreakdown } from "@/lib/meta";
+import { getMetaAdsOverview, getMetaCampaigns, getMetaCampaignsEnriched, getMetaDailyData, getMetaLandingPages, getMetaAdSets, getMetaAdCreatives, getMetaAdSetAudiences, getMetaPlacementBreakdown, getMetaAudienceDemographics } from "@/lib/meta";
 import { prisma } from "@/lib/prisma";
 import { withApiCache } from "@/lib/api-cache";
 
@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
 
     const accessToken = client.metaAccessToken ?? process.env.META_ACCESS_TOKEN ?? "";
     const accountId = client.metaAccountId;
-    const cacheKey = type === "audiences"
-      ? `meta:audiences:${clientId}`
+    const cacheKey = (type === "audiences" || type === "demographics")
+      ? `meta:${type}:${clientId}`
       : `meta:${type}:${clientId}:${startDate}:${endDate}`;
 
     switch (type) {
@@ -58,6 +58,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaAdCreatives(accountId, accessToken, startDate, endDate)));
       case "audiences":
         return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaAdSetAudiences(accountId, accessToken)));
+      case "demographics":
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaAudienceDemographics(accountId, accessToken, startDate, endDate)));
       case "placements":
         return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaPlacementBreakdown(accountId, accessToken, startDate, endDate)));
       default:

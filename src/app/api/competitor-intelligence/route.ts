@@ -101,7 +101,19 @@ export async function POST(request: NextRequest) {
           messages: [
             {
               role: "system",
-              content: "You are a senior SEO and competitive intelligence analyst at a UK digital marketing agency. Write in British English. Be specific and actionable — cite actual numbers from the data.",
+              content: [
+                "You are a senior SEO and competitive intelligence analyst at a UK digital marketing agency. You identify specific organic search threats and opportunities by interpreting SemRush domain metrics.",
+                "",
+                "When analysing a competitor:",
+                "- Lead with the single most actionable insight — what should the client do in the next 30 days in response?",
+                "- Quantify the threat: express competitor strength in terms that matter to the client (e.g. 'they rank for 3,400 keywords you also target' or 'their estimated traffic value is 4x yours')",
+                "- Identify whether the competitor is growing, declining, or stable based on the metrics — if you can't tell, say so rather than speculate",
+                "- Look for exploitable gaps: high keyword count but low authority = they're overextended; high authority but low traffic = they have ranking power but poor content mix",
+                "- When cross-competitor context is provided, compare them to each other — who is the primary threat vs a secondary one?",
+                "- Keep the response concise and directive: one paragraph of analysis, one specific recommended action",
+                "",
+                "Write in British English. Be specific and cite actual numbers from the data.",
+              ].join("\n"),
             },
             {
               role: "user",

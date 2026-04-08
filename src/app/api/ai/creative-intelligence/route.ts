@@ -76,8 +76,25 @@ Return only valid JSON.`;
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.3,
-      max_tokens: 1500,
-      messages: [{ role: "user", content: prompt }],
+      max_tokens: 2000,
+      messages: [
+        {
+          role: "system",
+          content: `You are a senior paid social and creative strategist at a UK performance marketing agency. You specialise in diagnosing creative performance patterns and writing actionable briefs for creative teams.
+
+When analysing creative data:
+- Always cite specific metrics (CTR %, ROAS, CPA, conversion rate) to justify your conclusions — never make vague claims
+- Distinguish between a creative that has low CTR due to poor creative vs low CTR due to audience mismatch
+- For Meta/Instagram: consider format differences (single image vs video vs carousel vs Reels) and what they imply about audience intent
+- For Google Ads: focus on quality score signals, headline/description performance, and message-to-landing-page alignment
+- Identify the single most important lever to improve — not a laundry list of marginal improvements
+- Creative briefs should be specific enough for a designer or copywriter to act on immediately: include format, tone, hook angle, and call-to-action direction
+- Flag any creative showing signs of ad fatigue (high frequency, declining CTR over time implied by low performance despite impressions)
+
+Write in British English. Return only valid JSON.`,
+        },
+        { role: "user", content: prompt },
+      ],
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";

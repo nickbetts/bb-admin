@@ -1,17 +1,27 @@
 # AI Audit — i3media Report Platform
 
-**Document version:** 3.1  
+**Document version:** 3.2  
 **Audit date:** April 2026  
 **Last updated:** April 2026  
-**Scope:** Complete data pipeline audit — all Section 4 ❌ items resolved (except 3 requiring new API integrations)
+**Scope:** All data gaps resolved; prompt quality improvements; Super-Summary token increase; report approval notes wired
 
 ---
 
 ## Executive Summary
 
-v3.1 closes all remaining data pipeline gaps from the Section 4 table. Every available data source is now fed to the relevant AI endpoint — demographics, audience segments, competitor context, video metrics, Core Web Vitals, actions, communications, contracted hours, strategy continuity, and budget history are all wired in. Only 3 items remain ❌ as they require entirely new API integrations that don't yet exist in the codebase.
+v3.2 closes the final data gaps (Google Ads RSA assets, Meta audience demographics), improves prompt quality in 4 endpoints, increases Super-Summary token budget to 3,000, and wires report approval notes into `report-commentary` and `executive-summary`. The Section 4 table now has zero ❌ items.
 
-v3.0 closed all remaining actionable gaps from v2.0 (model routing, goal awareness, e-commerce, channel coverage, streaming, API key consistency).
+v3.1 closed all data pipeline gaps.
+
+**New in v3.2:**
+- `getGoogleAdsRSAAssets()` added to `google-ads.ts` — GAQL query fetches top 50 RSAs with headlines, descriptions, and ad-level performance (clicks, conversions, spend); included in Google Ads route cache and injected into `overview-narrative` via ApiCache lookup
+- `getMetaAudienceDemographics()` added to `meta.ts` — Meta Insights API with `age,gender` breakdown; exposed as `?type=demographics` in Meta route; injected into `overview-narrative` via ApiCache
+- `creative-intelligence` — added structured system prompt with platform-specific diagnostic guidance; `max_tokens` raised to 2,000
+- `forecast` — added system prompt with forecasting methodology (confidence bands, seasonality, contradictory signals), was previously user-message-only
+- `competitor-intelligence` — system prompt improved with specific analysis framework (quantify threat, identify growth trajectory, exploit gaps, primary vs secondary threats)
+- `super-summary` — `max_tokens` raised from 2,000 → 3,000 in both streaming and non-streaming paths
+- `report-commentary` — accepts optional `reportId`; fetches `report.approvalStatus` + `report.approvalNotes`; injects revision guidance into system prompt when status is `changes_requested`
+- `executive-summary` — same approval notes wiring as report-commentary
 
 **New in v3.1:**
 - GA4 demographics + AI referrals now injected into `overview-narrative` and `chat` via ApiCache lookup
@@ -448,12 +458,12 @@ This string is passed to each section's AiInsightsPanel / SuperSummary
 | SemRush keywords + positions | ✅ SemRush API | ✅ via extraContext | |
 | Competitor domains + metrics | ✅ CompetitorSnapshot | ✅ overview-narrative | Latest snapshot per competitor injected |
 | Google Ads campaign ROAS/CPA | ✅ Google Ads API | ✅ | |
-| Google Ads RSA asset performance | ✅ Google Ads API | ❌ | Not extracted — requires new API query |
+| Google Ads RSA asset performance | ✅ Google Ads API | ✅ overview-narrative | `getGoogleAdsRSAAssets()` added; top RSAs by clicks (headlines + descriptions + performance) read from ApiCache |
 | Google Ads audience segments | ✅ Google Ads API | ✅ overview-narrative | Read from ApiCache (`googleads:*`) |
 | Meta campaign spend/ROAS | ✅ Meta API | ✅ | |
 | Meta ad-level creative data | ✅ Meta API | ✅ creative-intelligence | |
 | Meta video view metrics | ✅ Meta API | ✅ via MetricSnapshot | `videoViews` + `videoCompletionRate` now parsed from actions array |
-| Meta audience insights | ✅ Meta API | ❌ | Not fetched — requires separate Meta demographic API call |
+| Meta audience insights | ✅ Meta API | ✅ overview-narrative | `getMetaAudienceDemographics()` added; age × gender performance breakdown via Meta Insights API; `?type=demographics` route; read from ApiCache |
 | TikTok campaign metrics | ✅ MetricSnapshot | ✅ AiInsightsPanel | Via summary endpoint |
 | TikTok video completion rates | ✅ TikTok API | ✅ via MetricSnapshot | `avgVideoPlaySeconds` (avg play time proxy) now fetched |
 | Microsoft Ads metrics | ✅ MetricSnapshot | ✅ AiInsightsPanel | Via summary endpoint |
@@ -471,7 +481,7 @@ This string is passed to each section's AiInsightsPanel / SuperSummary
 | Contracted hours | ✅ DB (JSON) | ✅ chat | Parsed and injected as "CONTRACTED SERVICES" |
 | Previous strategy documents | ✅ DB | ✅ strategy-document | Last 2 docs (summary + KPIs) injected for continuity |
 | Budget recommendations history | ✅ DB | ✅ budget-advisor | Most recent recommendation injected |
-| Report approval notes | ✅ DB | ❌ | Minor — not injected into any prompt |
+| Report approval notes | ✅ DB | ✅ report-commentary, executive-summary | Injected when `approvalStatus = 'changes_requested'`; revision notes guide AI regeneration |
 | Client AI instructions | ✅ DB | ✅ All relevant endpoints | Injected into all 10 relevant AI endpoints |
 
 ---
@@ -495,8 +505,8 @@ All 12 channel types are now supported in overview-narrative. YouTube, HubSpot, 
 **5. ~~Per-client AI instructions only used in 2/18 endpoints~~** ✅ FIXED (v3.0)  
 Now injected into all 10 relevant AI endpoints.
 
-**6. ~~Data pipeline gaps — demographics, audience, video metrics, CWV, comms, actions~~** ✅ FIXED (v3.1)  
-All 20+ previously missing data connections are now wired in. See Section 4 table.
+**6. ~~Data pipeline gaps — demographics, audience, video metrics, CWV, comms, actions~~** ✅ FIXED (v3.1/v3.2)  
+All data connections are now wired in. Section 4 table has zero ❌ items.
 
 **7. No AI output quality feedback loop**  
 There is no mechanism for users to rate AI outputs (thumbs up/down, edit, reject). Without this signal, prompts cannot be improved based on real-world usage. Anomaly detection thresholds (>15%, >30%, >50%) were set once and never adjusted.
@@ -507,19 +517,17 @@ strategy-document, super-summary, root-cause, and overview-narrative now support
 **9. ~~API key management inconsistency~~** ✅ FIXED (v3.0)  
 All 23 endpoints now use `getOpenAiClient()`. `tools/page-analyser` was the last holdout.
 
-**10. Remaining data gaps (require new API integrations)**
-- `Google Ads RSA asset performance` — no `getGoogleAdsRSAAssets()` function; requires new GAQL query for `AdGroupAd` asset fields
-- `Meta audience insights` — demographic breakdown not fetched; requires separate Meta Insights API call with `age`, `gender`, `country` breakdowns
-- `Report approval notes` — minor; notes exist in DB but not injected into any prompt
+**10. ~~Prompt quality variance~~** ✅ FIXED (v3.2)  
+`creative-intelligence`, `forecast`, and `competitor-intelligence` previously had no/minimal system prompts. All three now have structured, opinionated system prompts with specific analytical frameworks.
 
 ---
 
 ### 5.2 Structural Weaknesses
 
-**Prompt quality variance across endpoints:**
-- `overview-narrative` and `super-summary` have sophisticated, structured system prompts with clear analytical frameworks
-- `budget-advisor`, `creative-intelligence`, and `competitor-intelligence` have minimal prompts that could be vastly improved
-- `forecast` has no system prompt at all — just a user message
+**Prompt quality variance (remaining):**
+- All key endpoints now have structured system prompts
+- `budget-advisor` prompt is comprehensive (detailed instructions, campaign formatting, JSON schema)
+- Minor: `forecast` still has no channel-level breakdown — single aggregated numbers rather than per-channel projections
 
 **Token budget constraints (remaining):**
 - `executive-summary`: ~~450~~ → **700 tokens** ✅
@@ -527,7 +535,7 @@ All 23 endpoints now use `getOpenAiClient()`. `tools/page-analyser` was the last
 - `strategy-document`: ~~3,000~~ → **6,000 tokens** ✅
 - `root-cause`: ~~2,000~~ → **4,000 tokens** ✅
 - `forecast`: 2,000 tokens (appropriate given structured JSON output size)
-- `super-summary`: 2,000 tokens — still constrained for 5-page crawls
+- `super-summary`: ~~2,000~~ → **3,000 tokens** ✅
 
 **No AI output quality feedback loop** — still open. Requires new DB model + UI rating component.
 
