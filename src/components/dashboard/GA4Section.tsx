@@ -567,6 +567,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
                 fill="url(#userGrad)"
                 name="Users"
               />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
             </AreaChart>
           </ResponsiveContainer>
         </SectionCard>

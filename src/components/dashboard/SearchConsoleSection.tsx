@@ -444,6 +444,7 @@ export function SearchConsoleSection({
                 strokeWidth={2}
                 fill="url(#gscImpressions)"
               />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
             </AreaChart>
           </ResponsiveContainer>
         )}

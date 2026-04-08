@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  Legend,
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
@@ -672,8 +673,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                   return [num, name];
                 }}
               />
-              <Area yAxisId="spend" type="monotone" dataKey="spend" stroke="#ef4444" strokeWidth={2} fill="url(#metaSpendGrad)" dot={false} />
-              <Area yAxisId="cpm" type="monotone" dataKey="cpm" stroke="#f59e0b" strokeWidth={2} fill="url(#metaCpmGrad)" dot={false} />
+              <Area yAxisId="spend" type="monotone" dataKey="spend" stroke="#ef4444" strokeWidth={2} fill="url(#metaSpendGrad)" dot={false} name="Spend" />
+              <Area yAxisId="cpm" type="monotone" dataKey="cpm" stroke="#f59e0b" strokeWidth={2} fill="url(#metaCpmGrad)" dot={false} name="CPM" />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
             </AreaChart>
           </ResponsiveContainer>
         </SectionCard>
@@ -694,6 +696,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
               />
               <Bar dataKey="clicks" fill="#3b82f6" name="Clicks" radius={[2, 2, 0, 0]} />
               <Bar dataKey="conversions" fill="#10b981" name="Conversions" radius={[2, 2, 0, 0]} />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
             </BarChart>
           </ResponsiveContainer>
         </SectionCard>

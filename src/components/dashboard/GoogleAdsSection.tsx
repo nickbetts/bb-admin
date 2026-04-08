@@ -12,6 +12,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
 import { AlertTriangle } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
@@ -623,6 +624,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                     strokeWidth={2}
                     fill="url(#gadsGradCost)"
                     dot={false}
+                    name="Cost"
                   />
                   <Area
                     yAxisId="clicks"
@@ -632,6 +634,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                     strokeWidth={2}
                     fill="url(#gadsGradClicks)"
                     dot={false}
+                    name="Clicks"
                   />
                   <Area
                     yAxisId="clicks"
@@ -641,7 +644,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                     strokeWidth={2}
                     fill="url(#gadsGradConversions)"
                     dot={false}
+                    name="Conversions"
                   />
+                  <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </SectionCard>
