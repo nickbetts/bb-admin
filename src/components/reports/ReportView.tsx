@@ -1162,20 +1162,20 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const enabledSections = report.sections.filter((s) => s.enabled !== false);
 
   const SECTION_META: Record<string, { icon: React.ReactNode; badge: string; subtitle?: string }> = {
-    overview:                    { icon: <LayoutGrid size={14} />, badge: "badge-slate", subtitle: "High-level performance snapshot across all channels" },
-    executive_summary:           { icon: <Star size={14} />, badge: "badge-amber", subtitle: "AI-generated summary of the full report" },
-    seo:                         { icon: <TrendingUp size={14} />, badge: "badge-indigo", subtitle: "Organic search visibility via SEMrush" },
-    web:                         { icon: <Globe size={14} />, badge: "badge-blue", subtitle: "Site traffic data via Google Analytics 4" },
-    paid_social:                 { icon: <BarChart2 size={14} />, badge: "badge-orange", subtitle: "Paid social advertising via Meta Ads" },
-    googleads:                   { icon: <Search size={14} />, badge: "badge-green", subtitle: "Paid search advertising via Google Ads" },
-    searchconsole:               { icon: <Search size={14} />, badge: "badge-purple", subtitle: "Organic search performance via Google Search Console" },
+    overview:                    { icon: <LayoutGrid size={14} />, badge: "badge-slate", subtitle: "A high-level snapshot of performance across all active channels for the period, highlighting key wins, areas of concern and overall trajectory." },
+    executive_summary:           { icon: <Star size={14} />, badge: "badge-amber", subtitle: "An AI-generated summary of the full report, pulling together the key takeaways from every channel into a concise overview for stakeholders." },
+    seo:                         { icon: <TrendingUp size={14} />, badge: "badge-indigo", subtitle: "Covers your domain authority score, referring domains, organic traffic metrics and keyword rankings — plus trend graphs showing how visibility and traffic have moved over the period. Data sourced from SEMrush." },
+    web:                         { icon: <Globe size={14} />, badge: "badge-blue", subtitle: "Shows website traffic performance including sessions, users, engagement rate, average session duration and conversions — alongside channel breakdowns and a sessions-over-time chart. Data sourced from Google Analytics 4." },
+    paid_social:                 { icon: <BarChart2 size={14} />, badge: "badge-orange", subtitle: "Covers paid social advertising performance including spend, impressions, reach, clicks, conversions and cost metrics — with trend charts and campaign-level breakdowns. Data sourced from Meta Ads." },
+    googleads:                   { icon: <Search size={14} />, badge: "badge-green", subtitle: "Shows paid search performance including spend, impressions, clicks, conversions and cost metrics — with trend charts and campaign-level breakdowns. Data sourced from Google Ads." },
+    searchconsole:               { icon: <Search size={14} />, badge: "badge-purple", subtitle: "Covers organic search performance including clicks, impressions, click-through rate and average position — plus top pages, top queries, position movers and device breakdowns. Data sourced from Google Search Console." },
     text_notable_achievements:   { icon: <FileText size={14} />, badge: "badge-slate" },
     text_screenshots:            { icon: <Image size={14} />, badge: "badge-slate" },
     text_work_complete:          { icon: <FileText size={14} />, badge: "badge-slate" },
     text_content_done:           { icon: <FileText size={14} />, badge: "badge-slate" },
     text_technical_update:       { icon: <FileText size={14} />, badge: "badge-slate" },
     text_ppc_update:             { icon: <FileText size={14} />, badge: "badge-slate" },
-    ecommerce:                   { icon: <ShoppingCart size={14} />, badge: "badge-emerald", subtitle: "Online store revenue and order performance" },
+    ecommerce:                   { icon: <ShoppingCart size={14} />, badge: "badge-emerald", subtitle: "Shows online store performance including revenue, orders, average order value and conversion rate — with breakdowns by product and channel." },
   };
 
   const isPublished = report.status === "published";
@@ -1612,12 +1612,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   </div>
                 </div>
 
-                {showDescriptions && meta.subtitle && (
-                  <div style={{ padding: "8px 28px 0", borderTop: "1px solid var(--border-subtle)" }}>
-                    <p style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.5 }}>{meta.subtitle}</p>
-                  </div>
-                )}
-
                 <div className="card-body" style={{ padding: "20px 28px" }}>
                   {editingSection === section.id ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1830,6 +1824,15 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               </div>
             );
 
+            const sectionAfterHeader = (
+              <>
+                {showDescriptions && meta.subtitle && (
+                  <p style={{ fontSize: 13, color: "var(--text-3)", lineHeight: 1.6, marginTop: -8, marginBottom: 4 }}>{meta.subtitle}</p>
+                )}
+                {commentaryCard}
+              </>
+            );
+
             // Executive summary section — AI-generated TL;DR
             if (section.sectionType === "executive_summary") {
               return (
@@ -1922,7 +1925,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                       compareEndDate={compareEndDate ?? undefined}
                       reportMode
                       visibleBlocks={visibleBlocks}
-                      afterHeader={commentaryCard}
+                      afterHeader={sectionAfterHeader}
                     />
                     {textSubSections.map((sub) => (
                       <TextSection
@@ -1958,27 +1961,27 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 <div id={`section-${section.id}`} style={{ marginBottom: 56 }}>
                   {section.sectionType === "seo" && (
                     report.client.semrushDomain
-                      ? <SemrushSection domain={report.client.semrushDomain} projectId={report.client.semrushProjectId} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      ? <SemrushSection domain={report.client.semrushDomain} projectId={report.client.semrushProjectId} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} />
                       : <>{commentaryCard}{unconfiguredNotice("No SEMrush domain connected — configure it in client settings to enable SEO data.")}</>
                   )}
                   {section.sectionType === "web" && (
                     report.client.ga4PropertyId
-                      ? <GA4Section propertyId={report.client.ga4PropertyId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      ? <GA4Section propertyId={report.client.ga4PropertyId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
                       : <>{commentaryCard}{unconfiguredNotice("No GA4 property connected — configure it in client settings to enable web analytics.")}</>
                   )}
                   {section.sectionType === "paid_social" && (
                     report.client.metaAccountId
-                      ? <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      ? <MetaSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
                       : <>{commentaryCard}{unconfiguredNotice("No Meta ad account connected — configure it in client settings to enable paid social data.")}</>
                   )}
                   {section.sectionType === "googleads" && (
                     report.client.googleAdsCustomerId
-                      ? <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      ? <GoogleAdsSection customerId={report.client.googleAdsCustomerId} clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi reportMode afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
                       : <>{commentaryCard}{unconfiguredNotice("No Google Ads account connected — configure it in client settings to enable ads data.")}</>
                   )}
                   {section.sectionType === "searchconsole" && (
                     report.client.searchConsoleSiteUrl
-                      ? <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={commentaryCard} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
+                      ? <SearchConsoleSection siteUrl={report.client.searchConsoleSiteUrl} startDate={startDate} endDate={endDate} compareStartDate={compareStartDate ?? undefined} compareEndDate={compareEndDate ?? undefined} visibleBlocks={visibleBlocks} hideAlerts hideAi afterHeader={sectionAfterHeader} onMetricsReady={(m) => setSectionMetrics((p) => ({ ...p, [section.id]: m }))} onPreviousMetricsReady={(m) => setSectionPreviousMetrics((p) => ({ ...p, [section.id]: m }))} />
                       : <>{commentaryCard}{unconfiguredNotice("No Search Console property connected — configure it in client settings to enable search data.")}</>
                   )}
                   {section.sectionType === "ecommerce" && (
