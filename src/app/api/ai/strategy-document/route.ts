@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getOpenAiClient, createWithWebSearch, streamWithWebSearch } from "@/lib/openai-client";
+import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -148,6 +149,19 @@ Return only valid JSON.`;
         data: { clientId, title, period, content: JSON.stringify(content) },
       });
 
+      logActivity({
+        userId: session.user.id,
+        userEmail: session.user.email,
+        userName: session.user.name ?? undefined,
+        action: "ai_strategy_generated",
+        resourceType: "strategy_document",
+        resourceId: doc.id,
+        clientId,
+        clientName: client.name,
+        description: `Generated strategy document "${title}" for ${client.name} (${period})`,
+        metadata: { model: "gpt-4o", webSearch: true },
+      });
+
       return NextResponse.json({
         document: { id: doc.id, title: doc.title, period: doc.period, content, shareToken: null },
         webSearchCitations: wsResult.citations,
@@ -218,6 +232,19 @@ Return only valid JSON.`;
         period,
         content: JSON.stringify(content),
       },
+    });
+
+    logActivity({
+      userId: session.user.id,
+      userEmail: session.user.email,
+      userName: session.user.name ?? undefined,
+      action: "ai_strategy_generated",
+      resourceType: "strategy_document",
+      resourceId: doc.id,
+      clientId,
+      clientName: client.name,
+      description: `Generated strategy document "${title}" for ${client.name} (${period})`,
+      metadata: { model: "gpt-4o" },
     });
 
     return NextResponse.json({ document: { id: doc.id, title: doc.title, period: doc.period, content, shareToken: null } });

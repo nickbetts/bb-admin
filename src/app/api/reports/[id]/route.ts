@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activity-logger";
 
 export async function GET(
   request: NextRequest,
@@ -73,6 +74,34 @@ export async function PATCH(
         narrativeData: data.narrativeData !== undefined ? data.narrativeData : undefined,
       },
     });
+
+    // Activity log for significant status changes and sharing
+    const client = await prisma.client.findUnique({ where: { id: report.clientId }, select: { name: true } }).catch(() => null);
+    if (data.status === "published") {
+      logActivity({
+        userId: session.user.id,
+        userEmail: session.user.email,
+        userName: session.user.name ?? undefined,
+        action: "report_published",
+        resourceType: "report",
+        resourceId: id,
+        clientId: report.clientId,
+        clientName: client?.name ?? undefined,
+        description: `Published report "${report.title}" for ${client?.name ?? report.clientId}`,
+      });
+    } else if (data.generateShareToken === true) {
+      logActivity({
+        userId: session.user.id,
+        userEmail: session.user.email,
+        userName: session.user.name ?? undefined,
+        action: "report_shared",
+        resourceType: "report",
+        resourceId: id,
+        clientId: report.clientId,
+        clientName: client?.name ?? undefined,
+        description: `Shared report "${report.title}" for ${client?.name ?? report.clientId} (share link enabled)`,
+      });
+    }
 
     return NextResponse.json(report);
   } catch (error) {

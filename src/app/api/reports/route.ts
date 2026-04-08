@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activity-logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -94,6 +95,20 @@ export async function POST(request: NextRequest) {
       include: {
         sections: true,
       },
+    });
+
+    // Fetch client name for the activity log (non-fatal if missing)
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { name: true } }).catch(() => null);
+    logActivity({
+      userId: session.user.id,
+      userEmail: session.user.email,
+      userName: session.user.name ?? undefined,
+      action: "report_created",
+      resourceType: "report",
+      resourceId: report.id,
+      clientId,
+      clientName: client?.name ?? undefined,
+      description: `Created report "${title}" for ${client?.name ?? clientId} (${period})`,
     });
 
     return NextResponse.json(report, { status: 201 });

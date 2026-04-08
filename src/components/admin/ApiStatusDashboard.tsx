@@ -5,6 +5,23 @@ import { ExternalLink, RefreshCw } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+interface OpenAiModelUsage {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  requests: number;
+  estimatedCostUsd: number;
+}
+
+interface OpenAiUsage {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalRequests: number;
+  estimatedCostUsd: number;
+  byModel: OpenAiModelUsage[];
+  periodDays: number;
+}
+
 interface ApiStatusData {
   env: {
     semrush: boolean;
@@ -17,7 +34,7 @@ interface ApiStatusData {
   totalClients: number;
   googleConnections: { count: number; accounts: Array<{ email: string; label: string | null }> };
   semrush: { configured: boolean; units: number | null };
-  openai: { configured: boolean };
+  openai: { configured: boolean; usage: OpenAiUsage | null };
   platformErrors: Record<string, number>;
   cronStats: {
     runs: number;
@@ -106,19 +123,28 @@ const INTEGRATIONS: Integration[] = [
     rateLimits: [
       "GPT-4o: 500 RPM / 30,000 TPM (Tier 1)",
       "GPT-4o-mini: 500 RPM / 200,000 TPM (Tier 1)",
-      "Cost: ~$0.0015/1K input tokens (gpt-4o-mini)",
       "Cost: ~$0.005/1K input tokens (gpt-4o)",
+      "Cost: ~$0.00015/1K input tokens (gpt-4o-mini)",
     ],
     configured: (d) => d.openai.configured,
-    clientCount: () => 0, // Used globally, not per-client
-    badge: (d) =>
-      d.openai.configured
-        ? { label: "API key set", color: "#15803d", bg: "#dcfce7" }
-        : { label: "Not configured", color: "#6b7280", bg: "#f3f4f6" },
-    detail: (d) =>
-      d.openai.configured
-        ? "AI insights and anomaly commentary enabled across all clients"
-        : "Add your OpenAI API key in Settings → OpenAI API Key",
+    clientCount: () => 0,
+    badge: (d) => {
+      if (!d.openai.configured) return { label: "Not configured", color: "#6b7280", bg: "#f3f4f6" };
+      if (d.openai.usage) {
+        return {
+          label: `$${d.openai.usage.estimatedCostUsd.toFixed(2)} est. cost (30d)`,
+          color: d.openai.usage.estimatedCostUsd > 50 ? "#b91c1c" : d.openai.usage.estimatedCostUsd > 20 ? "#d97706" : "#15803d",
+          bg: d.openai.usage.estimatedCostUsd > 50 ? "#fee2e2" : d.openai.usage.estimatedCostUsd > 20 ? "#fef3c7" : "#dcfce7",
+        };
+      }
+      return { label: "API key set", color: "#15803d", bg: "#dcfce7" };
+    },
+    detail: (d) => {
+      if (!d.openai.configured) return "Add your OpenAI API key in Settings → OpenAI API Key";
+      if (!d.openai.usage) return "AI insights and anomaly commentary enabled across all clients. Live usage data requires a key with usage.read scope.";
+      const u = d.openai.usage;
+      return `Last 30 days: ${(u.totalInputTokens + u.totalOutputTokens).toLocaleString()} tokens total · ${u.totalRequests.toLocaleString()} requests · est. $${u.estimatedCostUsd.toFixed(2)} USD`;
+    },
   },
   {
     id: "meta",
@@ -395,6 +421,97 @@ export function ApiStatusDashboard() {
                         </p>
                       )}
                       {detail && <p style={{ fontSize: 12, color: "var(--text-3)" }}>{detail}</p>}
+
+                      {/* OpenAI live usage breakdown */}
+                      {integration.id === "openai" && data.openai.usage && (
+                        <div style={{ marginTop: 14 }}>
+                          <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
+                            Usage — last 30 days
+                          </p>
+                          {/* Summary stat row */}
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 12 }}>
+                            {[
+                              { label: "Input tokens", value: data.openai.usage.totalInputTokens.toLocaleString() },
+                              { label: "Output tokens", value: data.openai.usage.totalOutputTokens.toLocaleString() },
+                              { label: "Total tokens", value: (data.openai.usage.totalInputTokens + data.openai.usage.totalOutputTokens).toLocaleString() },
+                              { label: "Requests", value: data.openai.usage.totalRequests.toLocaleString() },
+                              { label: "Est. cost (USD)", value: `$${data.openai.usage.estimatedCostUsd.toFixed(2)}`, highlight: true },
+                            ].map((s) => (
+                              <div
+                                key={s.label}
+                                style={{
+                                  padding: "8px 14px",
+                                  borderRadius: 8,
+                                  background: s.highlight ? "#fef3c7" : "var(--bg-2, #f8f8f8)",
+                                  border: `1px solid ${s.highlight ? "#fde68a" : "var(--border)"}`,
+                                  minWidth: 100,
+                                }}
+                              >
+                                <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>{s.label}</p>
+                                <p style={{ fontSize: 16, fontWeight: 700, color: s.highlight ? "#92400e" : "var(--text)" }}>{s.value}</p>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Per-model breakdown */}
+                          {data.openai.usage.byModel.length > 0 && (
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                              <thead>
+                                <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                                  {["Model", "Requests", "Input tokens", "Output tokens", "Est. cost (USD)"].map((h) => (
+                                    <th key={h} style={{ padding: "5px 8px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.04em", textTransform: "uppercase" }}>{h}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {data.openai.usage.byModel.map((row) => (
+                                  <tr key={row.model} style={{ borderBottom: "1px solid var(--border)" }}>
+                                    <td style={{ padding: "6px 8px", fontFamily: "monospace", color: "var(--text)", fontWeight: 600 }}>{row.model}</td>
+                                    <td style={{ padding: "6px 8px", color: "var(--text-3)" }}>{row.requests.toLocaleString()}</td>
+                                    <td style={{ padding: "6px 8px", color: "var(--text-3)" }}>{row.inputTokens.toLocaleString()}</td>
+                                    <td style={{ padding: "6px 8px", color: "var(--text-3)" }}>{row.outputTokens.toLocaleString()}</td>
+                                    <td style={{ padding: "6px 8px", fontWeight: 600, color: row.estimatedCostUsd > 10 ? "#92400e" : "var(--text)" }}>
+                                      ${row.estimatedCostUsd.toFixed(4)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                          <p style={{ fontSize: 10, color: "var(--text-3)", marginTop: 8, fontStyle: "italic" }}>
+                            * Cost estimates based on published OpenAI list prices. Actual billing may differ. Requires API key with <code>usage.read</code> scope.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* SEMrush units breakdown */}
+                      {integration.id === "semrush" && data.semrush.configured && data.semrush.units !== null && (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                            {[
+                              {
+                                label: "Units remaining",
+                                value: data.semrush.units.toLocaleString(),
+                                colour: data.semrush.units === 0 ? "#b91c1c" : data.semrush.units < 1000 ? "#d97706" : "#15803d",
+                                bg: data.semrush.units === 0 ? "#fef2f2" : data.semrush.units < 1000 ? "#fffbeb" : "#f0fdf4",
+                              },
+                              { label: "Clients configured", value: (data.platformCounts.seo ?? 0).toString(), colour: "var(--text)", bg: "var(--bg-2, #f8f8f8)" },
+                            ].map((s) => (
+                              <div
+                                key={s.label}
+                                style={{ padding: "8px 14px", borderRadius: 8, background: s.bg, border: "1px solid var(--border)", minWidth: 120 }}
+                              >
+                                <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>{s.label}</p>
+                                <p style={{ fontSize: 18, fontWeight: 700, color: s.colour }}>{s.value}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8 }}>
+                            Typical cost: ~10 units/overview call · ~10 units/keyword report · ~1 unit/backlink row.
+                            Top up at <a href="https://www.semrush.com/billing/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--primary, #6366f1)" }}>semrush.com/billing</a>.
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Right: rate limits + links */}
