@@ -32,6 +32,7 @@ const PERMISSION_GROUPS = [
       { key: "media_plan", label: "Media Planner" },
       { key: "pricing", label: "Pricing" },
       { key: "llm_generator", label: "LLM.txt Generator" },
+      { key: "content_strategy", label: "Content Strategy" },
     ],
   },
   {

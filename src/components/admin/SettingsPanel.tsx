@@ -66,6 +66,12 @@ function SettingsPanelInner() {
   const [openaiKeySaved, setOpenaiKeySaved] = useState(false);
   const [openaiKeyError, setOpenaiKeyError] = useState<string | null>(null);
 
+  const [anthropicKey, setAnthropicKey] = useState("");
+  const [anthropicKeyInput, setAnthropicKeyInput] = useState("");
+  const [anthropicKeySaving, setAnthropicKeySaving] = useState(false);
+  const [anthropicKeySaved, setAnthropicKeySaved] = useState(false);
+  const [anthropicKeyError, setAnthropicKeyError] = useState<string | null>(null);
+
   const DEFAULT_BENCHMARKS = [
     { task: "Blog Post (1,000 words)", hours: 3 },
     { task: "Landing Page Copywriting", hours: 4 },
@@ -158,6 +164,9 @@ function SettingsPanelInner() {
       const storedKey = settings.openaiApiKey ?? "";
       setOpenaiKey(storedKey);
       setOpenaiKeyInput(storedKey ? "sk-…redacted" : "");
+      const storedAnthropicKey = settings.anthropicApiKey ?? "";
+      setAnthropicKey(storedAnthropicKey);
+      setAnthropicKeyInput(storedAnthropicKey ? "sk-ant-…redacted" : "");
       if (settings.taskBenchmarks) {
         try {
           const stored = JSON.parse(settings.taskBenchmarks) as Array<{ task: string; hours: number }>;
@@ -545,6 +554,43 @@ function SettingsPanelInner() {
             </button>
           </div>
           {openaiKey && <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>✓ API key configured. AI insights are enabled across all client dashboards.</p>}
+        </div>
+      </div>
+
+      {/* Anthropic API Key */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-header">
+          <div>
+            <h2 className="card-title">Anthropic API Key</h2>
+            <p className="card-subtitle">Required for the Content Strategy Creator (Claude Opus). Get your key from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>console.anthropic.com</a>.</p>
+          </div>
+        </div>
+        <div className="card-body">
+          {anthropicKeyError && <p style={{ fontSize: 13, color: "var(--danger)", marginBottom: 12 }}>{anthropicKeyError}</p>}
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <input type="password" className="form-input" style={{ flex: 1, fontFamily: "monospace", fontSize: 13 }} placeholder="sk-ant-…" value={anthropicKeyInput} onChange={(e) => setAnthropicKeyInput(e.target.value)} onFocus={() => { if (anthropicKeyInput === "sk-ant-…redacted") setAnthropicKeyInput(""); }} />
+            <button onClick={async () => {
+              setAnthropicKeySaving(true);
+              setAnthropicKeySaved(false);
+              setAnthropicKeyError(null);
+              try {
+                const keyToSave = anthropicKeyInput.startsWith("sk-ant-…") ? anthropicKey : anthropicKeyInput;
+                const res = await fetch("/api/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ anthropicApiKey: keyToSave }) });
+                if (!res.ok) throw new Error("Failed to save");
+                setAnthropicKey(keyToSave);
+                setAnthropicKeyInput(keyToSave ? "sk-ant-…redacted" : "");
+                setAnthropicKeySaved(true);
+                setTimeout(() => setAnthropicKeySaved(false), 3000);
+              } catch (err) {
+                setAnthropicKeyError(err instanceof Error ? err.message : "Failed to save");
+              } finally {
+                setAnthropicKeySaving(false);
+              }
+            }} disabled={anthropicKeySaving || !anthropicKeyInput || anthropicKeyInput === "sk-ant-…redacted"} className="btn btn-primary">
+              {anthropicKeySaving ? "Saving…" : anthropicKeySaved ? "Saved ✓" : "Save"}
+            </button>
+          </div>
+          {anthropicKey && <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>✓ Anthropic API key configured. Content Strategy Creator is ready to use.</p>}
         </div>
       </div>
 

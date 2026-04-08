@@ -115,6 +115,7 @@ model Client {
   mediaPlans            MediaPlan[]
   detectedAnomalies     DetectedAnomaly[]
   clickFraudEvents      ClickFraudEvent[]
+  contentStrategies     ContentStrategy[]
 }
 
 model ClientGoal {
@@ -520,4 +521,22 @@ model ClickFraudEvent {
 
   @@index([clientId, createdAt])
   @@index([clientId, isSuspicious])
+}
+
+model ContentStrategy {
+  id              String   @id @default(cuid())
+  clientId        String
+  title           String
+  period          String
+  spreadsheetData String   // JSON: parsed spreadsheet data
+  generatedHtml   String   // Full standalone HTML output
+  shareToken      String?  @unique
+  sharePassword   String?  // bcrypt hash of password for share link
+  viewCount       Int      @default(0)
+  lastViewedAt    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, createdAt])
 }

@@ -26,6 +26,7 @@ import {
   TrendingUp,
   PieChart,
   Search,
+  FileSpreadsheet,
 } from "lucide-react";
 
 interface NavItem {
@@ -58,6 +59,7 @@ const toolsNavItems: NavItem[] = [
   { href: "/tools/media-plan", label: "Media Planner", icon: <PieChart className="h-4 w-4" />, permission: "media_plan" },
   { href: "/tools/pricing", label: "Pricing", icon: <Tag className="h-4 w-4" />, permission: "pricing" },
   { href: "/tools/llm-generator", label: "LLM.txt Generator", icon: <Bot className="h-4 w-4" />, permission: "llm_generator" },
+  { href: "/tools/content-strategy", label: "Content Strategy", icon: <FileSpreadsheet className="h-4 w-4" />, permission: "content_strategy" },
 ];
 
 interface SidebarProps {
