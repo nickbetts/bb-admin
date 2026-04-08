@@ -173,14 +173,19 @@ export async function POST(req: NextRequest) {
     const previousMetricsText = previousMetrics ? formatMetrics(previousMetrics) : null;
 
     // ── Chaos mode ─────────────────────────────────────────────────────────────
-    // For chaos tones (roadman, uwu_anime, patronising, toxic, gaslighty, cuck):
-    // throw out ALL structure, constraints, format rules, spin rules, templates —
-    // just drop the raw numbers in and let the AI go completely off-piste.
+    // For chaos tones: throw out ALL structure, constraints, format rules, spin
+    // rules, templates — just drop the raw numbers in and let it go off-piste.
+    // Temperature kept at 0.95 — high enough to be unhinged, low enough not to
+    // hallucinate into complete gibberish.
     const CHAOS_TONES = ["roadman", "uwu_anime", "patronising", "toxic", "gaslighty", "cuck"];
     if (CHAOS_TONES.includes(tone)) {
       const chaosSystemPrompt = `${toneInstruction}
 
-You are writing a section of a marketing performance report. You have been given the raw numbers below. Do whatever feels right with them. There is literally no template. No format rules. No spin rules. No word count target. No structure required. You don't even have to write in prose. You just have to embody the tone described above to an absolutely unhinged degree. Go fully off script. Improvise. Be unpredictable. The only non-negotiable is that you reference the actual numbers somewhere in there — even if it's buried in chaos.`;
+You are writing a section of a marketing performance report. You have been given the raw numbers below. There is no template, no format rules, no word count, no structure required. Embody the tone above to an absolutely unhinged, chaotic degree. Go fully off script. Be unpredictable. Improvise. Make it funny and unhinged.
+
+CRITICAL: Every single word must be real English and make grammatical sense. No gibberish, no made-up words, no random characters, no foreign letters, no code fragments. The chaos comes from WHAT you say and HOW you say it, not from hallucinating nonsense text. The output must be readable and coherent — just completely deranged in tone and content.
+
+You must reference the actual numbers somewhere in the output, even if buried in madness.`;
 
       const chaosUserPrompt = `Section: ${sectionLabel}
 Client: ${clientName ?? "some client"}
@@ -197,8 +202,8 @@ Go.`;
           { role: "system", content: chaosSystemPrompt },
           { role: "user", content: chaosUserPrompt },
         ],
-        temperature: 1.3,
-        max_tokens: 900,
+        temperature: 0.95,
+        max_tokens: 600,
       });
       const commentary = chaosResponse.choices[0]?.message?.content?.trim() ?? "";
       return NextResponse.json({ commentary });
