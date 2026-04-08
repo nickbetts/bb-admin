@@ -4,11 +4,11 @@ import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft, Download, Upload, Trash2, Check, X, Eye, EyeOff,
+  ArrowLeft, Download, Trash2, Check, X, Eye, EyeOff,
   ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search,
   MessageSquare, LayoutGrid, FileText, Image, ShoppingCart, CalendarRange,
   LayoutTemplate, Save, GripVertical, Globe2, Link2, Link2Off, CheckCircle2,
-  Copy, Printer, Sparkles, Pencil, Star, Scissors, FileStack,
+  Sparkles, Pencil, Star, Scissors, FileStack,
 } from "lucide-react";
 import {
   DndContext,
@@ -495,30 +495,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     return null;
   });
 
-  // ── Duplicate state ─────────────────────────────────────────────────────────
-  const [duplicating, setDuplicating] = useState(false);
-
-  // ── Page edge visualization state ──────────────────────────────────────────
-  const [showPageEdges, setShowPageEdges] = useState(false);
-  const [contentHeight, setContentHeight] = useState(0);
-  const mainContentRef = useRef<HTMLDivElement>(null);
-
-  // A4 content area height in screen pixels.
-  // 1px = 1/96 inch = 25.4/96 mm → 1mm = 96/25.4 ≈ 3.7795275591 px.
-  // Puppeteer uses A4 (297mm) with top/bottom margins of 14mm each → 269mm content height.
-  const A4_CONTENT_PX = Math.round(269 * 3.7795275591);
-
-  // Track content height for page edge overlay
-  useEffect(() => {
-    if (!showPageEdges) return;
-    const el = mainContentRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setContentHeight(el.scrollHeight));
-    ro.observe(el);
-    setContentHeight(el.scrollHeight);
-    return () => ro.disconnect();
-  }, [showPageEdges]);
-
   // ── DnD sensors ────────────────────────────────────────────────────────────
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const mainContentSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -977,20 +953,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     }
   };
 
-  // ── Duplicate report ────────────────────────────────────────────────────────
-  const handleDuplicate = async () => {
-    setDuplicating(true);
-    try {
-      const res = await fetch(`/api/reports/${report.id}/duplicate`, { method: "POST" });
-      if (res.ok) {
-        const { id } = await res.json();
-        router.push(`/reports/${id}`);
-      }
-    } finally {
-      setDuplicating(false);
-    }
-  };
-
   // ── Screenshots ──────────────────────────────────────────────────────────────
   const handleUploadScreenshot = async (file: File, caption: string, sectionId?: string | null) => {
     if (sectionId) {
@@ -1295,14 +1257,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             )}
           </div>
 
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="btn btn-secondary btn-sm"
-          >
-            <Upload size={13} />
-            {uploading ? "Uploading…" : "Screenshot"}
-          </button>
           <input
             ref={fileInputRef}
             type="file"
@@ -1331,27 +1285,6 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               e.target.value = "";
             }}
           />
-          <button onClick={handleDuplicate} disabled={duplicating} className="btn btn-secondary btn-sm" title="Duplicate this report">
-            <Copy size={13} />
-            {duplicating ? "…" : "Duplicate"}
-          </button>
-          <button
-            onClick={() => window.open(`/reports/${report.id}/print`, "_blank")}
-            className="btn btn-secondary btn-sm"
-            title="Open print view in new tab"
-          >
-            <Printer size={13} />
-            Print
-          </button>
-          <button
-            onClick={() => setShowPageEdges((v) => !v)}
-            className="btn btn-secondary btn-sm"
-            title={showPageEdges ? "Hide A4 page edges" : "Show A4 page edges — visualise where pages will break in the PDF"}
-            style={{ gap: 5, color: showPageEdges ? "var(--accent)" : undefined, borderColor: showPageEdges ? "var(--accent)" : undefined }}
-          >
-            <FileStack size={13} />
-            Page Edges
-          </button>
           <button onClick={handleExportPdf} disabled={exportingPdf} className="btn btn-primary btn-sm">
             <Download size={13} />
             {exportingPdf ? "Generating…" : "Export PDF"}
@@ -1364,44 +1297,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
         {/* Main content */}
         <div
-          ref={mainContentRef}
           className="report-main-content"
           style={{ flex: 1, minWidth: 0, padding: "36px 40px", maxWidth: 1000, position: "relative" }}
         >
-          {/* Page edge overlay — A4 boundary lines */}
-          {showPageEdges && contentHeight > 0 && (
-            <div
-              className="print:hidden"
-              style={{ position: "absolute", top: 0, left: 0, right: 0, height: contentHeight, pointerEvents: "none", zIndex: 20 }}
-            >
-              {Array.from({ length: Math.ceil(contentHeight / A4_CONTENT_PX) - 1 }, (_, i) => (
-                <div
-                  key={i}
-                  style={{
-                    position: "absolute",
-                    top: (i + 1) * A4_CONTENT_PX,
-                    left: 0,
-                    right: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <div style={{ flex: 1, borderTop: "2px dashed rgba(99,102,241,0.4)" }} />
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-                    letterSpacing: "0.07em", color: "#6366f1",
-                    background: "#eef2ff", border: "1px solid #c7d2fe",
-                    borderRadius: 4, padding: "2px 7px", flexShrink: 0,
-                    boxShadow: "0 1px 3px rgba(99,102,241,0.15)",
-                  }}>
-                    Page {i + 2}
-                  </span>
-                  <div style={{ flex: 1, borderTop: "2px dashed rgba(99,102,241,0.4)" }} />
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* Cover card */}
           <div className="card report-cover-card" style={{ marginBottom: 36 }}>
