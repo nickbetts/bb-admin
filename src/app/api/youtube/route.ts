@@ -28,6 +28,32 @@ const MOCK_YOUTUBE_DATA = {
     { id: "v4", title: "Customer Success Story", views: 2400, likes: 178, ctr: 4.1, duration: "5:32" },
     { id: "v5", title: "Product Update: New Features", views: 1980, likes: 143, ctr: 3.8, duration: "4:18" },
   ],
+  trafficSources: [
+    { source: "YT_SEARCH", views: 7200, estimatedMinutesWatched: 4800 },
+    { source: "BROWSE", views: 4600, estimatedMinutesWatched: 3100 },
+    { source: "EXT_URL", views: 3100, estimatedMinutesWatched: 1900 },
+    { source: "SUGGESTED", views: 2400, estimatedMinutesWatched: 1600 },
+    { source: "NOTIFICATION", views: 1120, estimatedMinutesWatched: 640 },
+  ],
+  demographics: [
+    { ageGroup: "age18-24", gender: "male", viewerPercentage: 14.2 },
+    { ageGroup: "age18-24", gender: "female", viewerPercentage: 10.8 },
+    { ageGroup: "age25-34", gender: "male", viewerPercentage: 22.1 },
+    { ageGroup: "age25-34", gender: "female", viewerPercentage: 18.4 },
+    { ageGroup: "age35-44", gender: "male", viewerPercentage: 12.6 },
+    { ageGroup: "age35-44", gender: "female", viewerPercentage: 9.3 },
+    { ageGroup: "age45-54", gender: "male", viewerPercentage: 5.8 },
+    { ageGroup: "age45-54", gender: "female", viewerPercentage: 3.9 },
+    { ageGroup: "age55-64", gender: "male", viewerPercentage: 1.7 },
+    { ageGroup: "age55-64", gender: "female", viewerPercentage: 1.2 },
+  ],
+  searchTerms: [
+    { term: "product tutorial", views: 1840 },
+    { term: "how to get started", views: 1420 },
+    { term: "demo brand review", views: 980 },
+    { term: "top tips success", views: 740 },
+    { term: "behind the scenes", views: 520 },
+  ],
 };
 
 /** Format an ISO 8601 duration string (e.g. "PT8M24S") to "M:SS" */
@@ -283,11 +309,108 @@ export async function GET(request: NextRequest) {
       }
     } catch { /* analytics are best-effort */ }
 
+    // ── Traffic sources, demographics, search terms (YouTube Analytics) ────
+    let trafficSources: Array<{ source: string; views: number; estimatedMinutesWatched: number }> = [];
+    let demographics: Array<{ ageGroup: string; gender: string; viewerPercentage: number }> = [];
+    let searchTerms: Array<{ term: string; views: number }> = [];
+
+    try {
+      let analyticsToken: string | null = null;
+
+      // Re-acquire an OAuth token with YouTube Analytics scope
+      const ytConnections = await prisma.googleConnection.findMany({ orderBy: { createdAt: "asc" }, take: 3 }).catch(() => []);
+      const ytRefreshTokens: string[] = [];
+      if (process.env.GOOGLE_ADS_REFRESH_TOKEN?.trim()) ytRefreshTokens.push(process.env.GOOGLE_ADS_REFRESH_TOKEN.trim());
+      for (const conn of ytConnections) {
+        if (!ytRefreshTokens.includes(conn.refreshToken)) ytRefreshTokens.push(conn.refreshToken);
+      }
+
+      for (const refreshToken of ytRefreshTokens) {
+        try {
+          const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              client_id: process.env.GOOGLE_ADS_CLIENT_ID ?? "",
+              client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET ?? "",
+              refresh_token: refreshToken,
+              grant_type: "refresh_token",
+            }),
+            cache: "no-store",
+          });
+          if (tokenRes.ok) {
+            const tokenData = await tokenRes.json() as { access_token?: string; scope?: string };
+            if (tokenData.access_token && (tokenData.scope ?? "").includes("youtube")) {
+              analyticsToken = tokenData.access_token;
+              break;
+            }
+          }
+        } catch { /* try next token */ }
+      }
+
+      if (analyticsToken) {
+        const ytStart = startDate ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+        const ytEnd = endDate ?? new Date().toISOString().split("T")[0];
+        const authHeaders = { Authorization: `Bearer ${analyticsToken}` };
+        const channelFilter = `channel==${client.youtubeChannelId}`;
+
+        // Traffic sources
+        try {
+          const tsRes = await fetch(
+            `https://youtubeanalytics.googleapis.com/v2/reports?ids=${channelFilter}&startDate=${ytStart}&endDate=${ytEnd}&metrics=views,estimatedMinutesWatched&dimensions=insightTrafficSourceType&sort=-views`,
+            { headers: authHeaders, cache: "no-store" }
+          );
+          if (tsRes.ok) {
+            const tsData = await tsRes.json() as { rows?: Array<[string, number, number]> };
+            trafficSources = (tsData.rows ?? []).map(([source, views, mins]) => ({
+              source,
+              views,
+              estimatedMinutesWatched: mins,
+            }));
+          }
+        } catch { /* non-critical */ }
+
+        // Demographics
+        try {
+          const demoRes = await fetch(
+            `https://youtubeanalytics.googleapis.com/v2/reports?ids=${channelFilter}&startDate=${ytStart}&endDate=${ytEnd}&metrics=viewerPercentage&dimensions=ageGroup,gender`,
+            { headers: authHeaders, cache: "no-store" }
+          );
+          if (demoRes.ok) {
+            const demoData = await demoRes.json() as { rows?: Array<[string, string, number]> };
+            demographics = (demoData.rows ?? []).map(([ageGroup, gender, pct]) => ({
+              ageGroup,
+              gender,
+              viewerPercentage: pct,
+            }));
+          }
+        } catch { /* non-critical */ }
+
+        // Top search terms
+        try {
+          const stRes = await fetch(
+            `https://youtubeanalytics.googleapis.com/v2/reports?ids=${channelFilter}&startDate=${ytStart}&endDate=${ytEnd}&metrics=views&dimensions=insightTrafficSourceDetail&filters=insightTrafficSourceType==YT_SEARCH&sort=-views&maxResults=25`,
+            { headers: authHeaders, cache: "no-store" }
+          );
+          if (stRes.ok) {
+            const stData = await stRes.json() as { rows?: Array<[string, number]> };
+            searchTerms = (stData.rows ?? []).map(([term, views]) => ({
+              term,
+              views,
+            }));
+          }
+        } catch { /* non-critical */ }
+      }
+    } catch { /* analytics expansions are best-effort */ }
+
     return NextResponse.json({
       configured: true,
       channel: channelData,
       analytics,
       videos,
+      trafficSources,
+      demographics,
+      searchTerms,
     });
   } catch (error) {
     console.error("YouTube error:", error);

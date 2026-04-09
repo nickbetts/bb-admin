@@ -28,6 +28,25 @@ const MOCK_CALLRAIL_DATA = {
     { id: "c4", callerNumber: "+44 7700 900321", source: "Google Ads", duration: "8:42", answered: true, date: "2025-01-21T09:45:00Z" },
     { id: "c5", callerNumber: "+44 7700 900654", source: "Social", duration: "3:58", answered: true, date: "2025-01-21T16:10:00Z" },
   ],
+  keywords: [
+    { keyword: "plumber near me", count: 18 },
+    { keyword: "emergency plumbing", count: 12 },
+    { keyword: "boiler repair", count: 7 },
+  ],
+  utmSources: [
+    { utmSource: "google", count: 58 },
+    { utmSource: "facebook", count: 14 },
+    { utmSource: "bing", count: 8 },
+  ],
+  hourlyDistribution: Array.from({ length: 24 }, (_, h) => ({
+    hour: h,
+    calls: h >= 8 && h <= 18 ? Math.round(8 + Math.random() * 10) : Math.round(Math.random() * 3),
+  })),
+  callerBreakdown: {
+    firstTime: 98,
+    repeat: 44,
+    uniqueCallers: 98,
+  },
 };
 
 export async function GET(request: NextRequest) {
@@ -74,7 +93,7 @@ export async function GET(request: NextRequest) {
     );
 
     // Fetch recent calls (up to 250 to aggregate source data accurately)
-    const callsUrl = `https://api.callrail.com/v3/a/${client.callrailAccountId}/calls.json?fields=answered,duration,source,caller_number,start_time&per_page=250${dateQueryString}`;
+    const callsUrl = `https://api.callrail.com/v3/a/${client.callrailAccountId}/calls.json?fields=answered,duration,source,caller_number,start_time,keywords,utm_source,utm_medium,utm_campaign,utm_term&per_page=250${dateQueryString}`;
     const callsRes = await fetch(callsUrl, {
       headers: {
         Authorization: `Token token="${client.callrailApiKey}"`,
@@ -94,6 +113,11 @@ export async function GET(request: NextRequest) {
         duration: number;
         answered: boolean;
         start_time: string;
+        keywords: string | null;
+        utm_source: string | null;
+        utm_medium: string | null;
+        utm_campaign: string | null;
+        utm_term: string | null;
       }>;
       total_records: number;
     };
@@ -148,6 +172,37 @@ export async function GET(request: NextRequest) {
         .sort((a, b) => b.calls - a.calls);
     }
 
+    // ── Keyword / UTM attribution ──────────────────────────────────────────
+    const keywordMap = new Map<string, number>();
+    const utmSourceMap = new Map<string, number>();
+    for (const call of callsData.calls) {
+      if (call.keywords) keywordMap.set(call.keywords, (keywordMap.get(call.keywords) ?? 0) + 1);
+      if (call.utm_source) utmSourceMap.set(call.utm_source, (utmSourceMap.get(call.utm_source) ?? 0) + 1);
+    }
+    const keywords = [...keywordMap.entries()]
+      .map(([keyword, count]) => ({ keyword, count }))
+      .sort((a, b) => b.count - a.count);
+    const utmSources = [...utmSourceMap.entries()]
+      .map(([utmSource, count]) => ({ utmSource, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // ── Hourly distribution ─────────────────────────────────────────────
+    const hourly = new Array<number>(24).fill(0);
+    for (const call of callsData.calls) {
+      const hour = new Date(call.start_time).getHours();
+      hourly[hour]++;
+    }
+    const hourlyDistribution = hourly.map((count, hour) => ({ hour, calls: count }));
+
+    // ── First-time vs repeat callers ────────────────────────────────────
+    const callerNumbers = callsData.calls.map((c) => c.caller_number);
+    const uniqueCallers = new Set(callerNumbers).size;
+    const callerBreakdown = {
+      firstTime: uniqueCallers,
+      repeat: callsData.calls.length - uniqueCallers,
+      uniqueCallers,
+    };
+
     return NextResponse.json({
       configured: true,
       summary: {
@@ -160,6 +215,10 @@ export async function GET(request: NextRequest) {
       },
       bySource,
       calls: calls.slice(0, 25),
+      keywords,
+      utmSources,
+      hourlyDistribution,
+      callerBreakdown,
     });
   } catch (error) {
     console.error("CallRail error:", error);

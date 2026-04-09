@@ -12,9 +12,9 @@ const MOCK_HUBSPOT_DATA = {
     { id: "3", firstName: "Carol", lastName: "Williams", email: "carol@example.com", company: "Gamma Inc", lifecycleStage: "opportunity" },
   ],
   deals: [
-    { id: "101", dealname: "Website Redesign", amount: 12000, dealstage: "presentationscheduled", closedate: "2025-03-31" },
-    { id: "102", dealname: "SEO Retainer Q2", amount: 4500, dealstage: "contractsent", closedate: "2025-04-15" },
-    { id: "103", dealname: "PPC Campaign", amount: 8000, dealstage: "closedwon", closedate: "2025-01-20" },
+    { id: "101", dealname: "Website Redesign", amount: 12000, dealstage: "presentationscheduled", closedate: "2025-03-31", createdate: "2025-01-15" },
+    { id: "102", dealname: "SEO Retainer Q2", amount: 4500, dealstage: "contractsent", closedate: "2025-04-15", createdate: "2025-02-20" },
+    { id: "103", dealname: "PPC Campaign", amount: 8000, dealstage: "closedwon", closedate: "2025-01-20", createdate: "2024-11-10" },
   ],
   summary: {
     totalContacts: 3,
@@ -22,6 +22,21 @@ const MOCK_HUBSPOT_DATA = {
     pipelineValue: 16500,
     closedWonValue: 8000,
   },
+  pipelineStages: [
+    { stage: "presentation scheduled", count: 1, value: 12000 },
+    { stage: "contract sent", count: 1, value: 4500 },
+    { stage: "closedwon", count: 1, value: 8000 },
+  ],
+  lifecycleFunnel: [
+    { stage: "lead", count: 1 },
+    { stage: "customer", count: 1 },
+    { stage: "opportunity", count: 1 },
+  ],
+  dealVelocityDays: 71,
+  formSubmissions: [
+    { formName: "Contact Us", submittedAt: "2025-01-18T14:32:00Z", email: "alice@example.com" },
+    { formName: "Request a Demo", submittedAt: "2025-01-16T09:15:00Z", email: "bob@example.com" },
+  ],
 };
 
 export async function GET(request: NextRequest) {
@@ -56,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     const [contactsRes, dealsRes] = await Promise.all([
       fetch("https://api.hubapi.com/crm/v3/objects/contacts?limit=10&properties=firstname,lastname,email,company,lifecyclestage", { headers }),
-      fetch("https://api.hubapi.com/crm/v3/objects/deals?limit=10&properties=dealname,amount,dealstage,closedate", { headers }),
+      fetch("https://api.hubapi.com/crm/v3/objects/deals?limit=10&properties=dealname,amount,dealstage,closedate,createdate", { headers }),
     ]);
 
     if (!contactsRes.ok || !dealsRes.ok) {
@@ -81,6 +96,7 @@ export async function GET(request: NextRequest) {
       amount: parseFloat(d.properties.amount ?? "0"),
       dealstage: d.properties.dealstage ?? "",
       closedate: d.properties.closedate ?? "",
+      createdate: d.properties.createdate ?? "",
     }));
 
     const openDeals = deals.filter((d) => d.dealstage !== "closedwon" && d.dealstage !== "closedlost");
@@ -88,6 +104,80 @@ export async function GET(request: NextRequest) {
     const closedWonValue = deals
       .filter((d) => d.dealstage === "closedwon")
       .reduce((sum, d) => sum + d.amount, 0);
+
+    // ── Pipeline stage distribution ───────────────────────────────────────
+    const stageMap = new Map<string, { count: number; value: number }>();
+    for (const d of deals) {
+      const existing = stageMap.get(d.dealstage) ?? { count: 0, value: 0 };
+      stageMap.set(d.dealstage, { count: existing.count + 1, value: existing.value + d.amount });
+    }
+    const pipelineStages = [...stageMap.entries()].map(([stage, data]) => ({
+      stage: stage.replace(/([a-z])([A-Z])/g, "$1 $2"),
+      count: data.count,
+      value: data.value,
+    }));
+
+    // ── Lifecycle funnel ──────────────────────────────────────────────────
+    const lifecycleMap = new Map<string, number>();
+    for (const c of contacts) {
+      const stage = c.lifecycleStage || "unknown";
+      lifecycleMap.set(stage, (lifecycleMap.get(stage) ?? 0) + 1);
+    }
+    const lifecycleFunnel = [...lifecycleMap.entries()].map(([stage, count]) => ({ stage, count }));
+
+    // ── Deal velocity (average days from created to closed-won) ───────────
+    const closedWonDeals = deals.filter(
+      (d) => d.dealstage === "closedwon" && d.closedate && d.createdate
+    );
+    const dealVelocityDays = closedWonDeals.length > 0
+      ? Math.round(
+          closedWonDeals.reduce((sum, d) => {
+            return sum + (new Date(d.closedate).getTime() - new Date(d.createdate).getTime()) / (1000 * 60 * 60 * 24);
+          }, 0) / closedWonDeals.length
+        )
+      : null;
+
+    // ── Form submissions (best-effort) ────────────────────────────────────
+    let formSubmissions: Array<{ formName: string; submittedAt: string; email: string }> = [];
+    try {
+      const formsListRes = await fetch(
+        "https://api.hubapi.com/marketing/v3/forms?limit=5",
+        { headers }
+      );
+      if (formsListRes.ok) {
+        const formsListData = await formsListRes.json() as {
+          results: Array<{ id: string; name: string }>;
+        };
+        // Fetch recent submissions for the first few forms
+        for (const form of (formsListData.results ?? []).slice(0, 3)) {
+          try {
+            const subsRes = await fetch(
+              `https://api.hubapi.com/form-integrations/v1/submissions/forms/${form.id}?limit=5`,
+              { headers }
+            );
+            if (subsRes.ok) {
+              const subsData = await subsRes.json() as {
+                results: Array<{
+                  submittedAt: number;
+                  values: Array<{ name: string; value: string }>;
+                }>;
+              };
+              for (const sub of (subsData.results ?? [])) {
+                const emailField = sub.values?.find((v) => v.name === "email");
+                formSubmissions.push({
+                  formName: form.name,
+                  submittedAt: new Date(sub.submittedAt).toISOString(),
+                  email: emailField?.value ?? "",
+                });
+              }
+            }
+          } catch { /* skip this form */ }
+        }
+        formSubmissions = formSubmissions
+          .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
+          .slice(0, 10);
+      }
+    } catch { /* form submissions are non-critical */ }
 
     return NextResponse.json({
       configured: true,
@@ -99,6 +189,10 @@ export async function GET(request: NextRequest) {
         pipelineValue,
         closedWonValue,
       },
+      pipelineStages,
+      lifecycleFunnel,
+      dealVelocityDays,
+      formSubmissions,
     });
   } catch (error) {
     console.error("HubSpot error:", error);
