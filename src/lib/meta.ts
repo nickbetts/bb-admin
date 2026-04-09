@@ -1404,3 +1404,154 @@ export async function getMetaAudienceDemographics(
     return [];
   }
 }
+
+// ── Lead Gen Forms ──────────────────────────────────────────────────────
+
+export interface MetaLeadForm {
+  formId: string;
+  formName: string;
+  campaignId: string;
+  campaignName: string;
+  leads: number;
+  spend: number;
+  impressions: number;
+  costPerLead: number;
+}
+
+/**
+ * Returns campaign-level lead generation data for accounts running
+ * LEAD_GENERATION or OUTCOME_LEADS objective campaigns.  Parses the
+ * `actions` array for "lead" / "leadgen.other" action types and pulls
+ * cost-per-lead from `cost_per_action_type`.
+ */
+export async function getMetaLeadGenForms(
+  accountId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<MetaLeadForm[]> {
+  const params = new URLSearchParams({
+    access_token: getAccessToken(accessToken),
+    fields: "campaign_id,campaign_name,impressions,spend,actions,cost_per_action_type",
+    time_range: JSON.stringify({ since: startDate, until: endDate }),
+    level: "campaign",
+    filtering: JSON.stringify([
+      { field: "objective", operator: "IN", value: ["LEAD_GENERATION", "OUTCOME_LEADS"] },
+    ]),
+    limit: "50",
+  });
+
+  try {
+    const response = await fetch(
+      `${META_API_BASE}/act_${accountId}/insights?${params}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    const LEAD_TYPES = ["lead", "leadgen.other"];
+
+    return (data.data ?? []).map(
+      (item: {
+        campaign_id?: string;
+        campaign_name?: string;
+        impressions?: string;
+        spend?: string;
+        actions?: ActionRow[];
+        cost_per_action_type?: ActionRow[];
+      }) => {
+        const leads = (item.actions ?? [])
+          .filter((a) => LEAD_TYPES.includes(a.action_type))
+          .reduce((s, a) => s + parseInt(a.value || "0"), 0);
+
+        const costPerLead = (item.cost_per_action_type ?? [])
+          .filter((a) => LEAD_TYPES.includes(a.action_type))
+          .reduce((_, a) => parseFloat(a.value || "0"), 0);
+
+        return {
+          formId: item.campaign_id ?? "",
+          formName: item.campaign_name ?? "",
+          campaignId: item.campaign_id ?? "",
+          campaignName: item.campaign_name ?? "",
+          leads,
+          spend: parseFloat(item.spend ?? "0"),
+          impressions: parseInt(item.impressions ?? "0"),
+          costPerLead,
+        };
+      }
+    );
+  } catch {
+    return [];
+  }
+}
+
+// ── Ad Relevance Diagnostics ────────────────────────────────────────────
+
+export interface MetaAdRelevanceDiagnostic {
+  adId: string;
+  adName: string;
+  campaignName: string;
+  qualityRanking: string;
+  engagementRateRanking: string;
+  conversionRateRanking: string;
+  impressions: number;
+  spend: number;
+  clicks: number;
+}
+
+/**
+ * Returns ad-level relevance diagnostics (quality, engagement-rate and
+ * conversion-rate rankings) sorted by impressions descending.  Useful for
+ * identifying underperforming creatives that Meta is penalising.
+ */
+export async function getMetaAdRelevanceDiagnostics(
+  accountId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<MetaAdRelevanceDiagnostic[]> {
+  const params = new URLSearchParams({
+    access_token: getAccessToken(accessToken),
+    fields:
+      "ad_id,ad_name,campaign_name,quality_ranking,engagement_rate_ranking,conversion_rate_ranking,impressions,spend,clicks",
+    time_range: JSON.stringify({ since: startDate, until: endDate }),
+    level: "ad",
+    limit: "50",
+    sort: "impressions_descending",
+  });
+
+  try {
+    const response = await fetch(
+      `${META_API_BASE}/act_${accountId}/insights?${params}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return (data.data ?? []).map(
+      (item: {
+        ad_id?: string;
+        ad_name?: string;
+        campaign_name?: string;
+        quality_ranking?: string;
+        engagement_rate_ranking?: string;
+        conversion_rate_ranking?: string;
+        impressions?: string;
+        spend?: string;
+        clicks?: string;
+      }) => ({
+        adId: item.ad_id ?? "",
+        adName: item.ad_name ?? "",
+        campaignName: item.campaign_name ?? "",
+        qualityRanking: item.quality_ranking ?? "UNKNOWN",
+        engagementRateRanking: item.engagement_rate_ranking ?? "UNKNOWN",
+        conversionRateRanking: item.conversion_rate_ranking ?? "UNKNOWN",
+        impressions: parseInt(item.impressions ?? "0"),
+        spend: parseFloat(item.spend ?? "0"),
+        clicks: parseInt(item.clicks ?? "0"),
+      })
+    );
+  } catch {
+    return [];
+  }
+}
