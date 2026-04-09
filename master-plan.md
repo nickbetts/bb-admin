@@ -1046,15 +1046,15 @@ Add the 13 missing report section types:
 
 Bring thin sections to feature parity with GA4/Google Ads/Meta:
 
-| # | Action | Effort | Impact |
-|---|--------|--------|--------|
-| 31 | **TikTok expansion** — ad group data, audience demographics, creative metadata, video engagement, ROAS | L | 🔴 Critical |
-| 32 | **Microsoft Ads expansion** — keywords, search terms, geographic, device, age/gender, Quality Score, LinkedIn audiences | L | 🔴 Critical |
-| 33 | **LinkedIn expansion** — daily data, industry/job/company demographics, lead form data, organic page metrics, creative breakdown | L | 🟠 High |
-| 34 | **Klaviyo expansion** — Reporting API integration, subscriber health, segment performance, flow detail, SMS metrics, predictive analytics | L | 🟠 High |
-| 35 | **YouTube expansion** — full Analytics API: traffic sources, demographics, audience retention, thumbnail CTR, playlist performance | L | 🟠 High |
-| 36 | **HubSpot expansion** — pipeline stages, deal velocity, lifecycle funnels, lead scoring, form submissions, attribution | L | 🟡 Medium |
-| 37 | **CallRail expansion** — full attribution (keyword, campaign, UTM), call quality scoring, time heatmap, first-time vs repeat | M | 🟡 Medium |
+| # | Action | Effort | Impact | Status |
+|---|--------|--------|--------|--------|
+| 31 | **TikTok expansion** — ad group data, audience demographics, creative metadata, video engagement, ROAS | L | 🔴 Critical | ✅ Done |
+| 32 | **Microsoft Ads expansion** — keywords, search terms, geographic, device, Quality Score | L | 🔴 Critical | ✅ Done |
+| 33 | **LinkedIn expansion** — daily data, industry/job function/company size demographics | L | 🟠 High | ✅ Done |
+| 34 | **Klaviyo expansion** — subscriber health, segment performance, SMS metrics | L | 🟠 High | ✅ Done |
+| 35 | **YouTube expansion** — traffic sources, demographics, search terms via Analytics API | L | 🟠 High | ✅ Done |
+| 36 | **HubSpot expansion** — pipeline stages, deal velocity, lifecycle funnels, form submissions | L | 🟡 Medium | ✅ Done |
+| 37 | **CallRail expansion** — keyword/UTM attribution, hourly distribution, first-time vs repeat callers | M | 🟡 Medium | ✅ Done |
 
 ### Wave 5 — Cross-Platform Intelligence (8-12 weeks)
 
