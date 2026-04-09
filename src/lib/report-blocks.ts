@@ -35,6 +35,8 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "alerts", label: "Cross-Platform Alerts" },
     { id: "client_health", label: "Client Health Score" },
     { id: "since_last_report", label: "Since Last Report" },
+    { id: "goal_progress", label: "Goal Progress" },
+    { id: "blended_cpa", label: "Blended CPA" },
   ],
   executive_summary: [],
   // Text-only sections — no configurable blocks
@@ -74,6 +76,7 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "landing_pages", label: "Landing Page Performance" },
     { id: "user_journeys", label: "User Journeys" },
     { id: "cohort_retention", label: "Cohort Retention" },
+    { id: "engagement_depth", label: "Engagement Depth" },
   ],
   paid_social: [
     { id: "kpis", label: "Key Metrics" },
@@ -82,6 +85,10 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "click_fraud", label: "Click Fraud Protection" },
     { id: "lead_forms", label: "Lead Form Performance" },
     { id: "relevance", label: "Ad Relevance Diagnostics" },
+    { id: "placements", label: "Placement Breakdown" },
+    { id: "audiences", label: "Audience Targeting" },
+    { id: "demographics", label: "Demographics" },
+    { id: "frequency", label: "Frequency Distribution" },
   ],
   googleads: [
     { id: "kpis", label: "Key Metrics" },
@@ -92,6 +99,10 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "pmax", label: "Performance Max Insights" },
     { id: "geo", label: "Geographic Performance" },
     { id: "schedule", label: "Ad Schedule Performance" },
+    { id: "keywords", label: "Keyword Performance" },
+    { id: "search_terms", label: "Search Terms" },
+    { id: "quality_score", label: "Quality Score Breakdown" },
+    { id: "device_breakdown", label: "Device Breakdown" },
   ],
   searchconsole: [
     { id: "kpis", label: "Key Metrics" },
@@ -103,6 +114,7 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "countries", label: "Top Countries" },
     { id: "cannibalisation", label: "Keyword Cannibalisation" },
     { id: "branded_split", label: "Branded vs Non-Branded" },
+    { id: "query_page", label: "Query × Page Analysis" },
   ],
   ecommerce: [
     { id: "kpis", label: "Key Metrics" },
@@ -110,23 +122,33 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "top_products", label: "Top Products" },
     { id: "order_status", label: "Orders by Status" },
     { id: "customers", label: "Customer Analytics" },
+    { id: "repeat_purchase", label: "Repeat Purchase Rate" },
   ],
   tiktok: [
     { id: "kpis", label: "Key Metrics" },
     { id: "chart", label: "Performance Trend" },
     { id: "campaigns", label: "Campaign Breakdown" },
+    { id: "ad_groups", label: "Ad Groups" },
+    { id: "creatives", label: "Creative Performance" },
+    { id: "demographics", label: "Audience Demographics" },
   ],
   microsoft_ads: [
     { id: "kpis", label: "Key Metrics" },
     { id: "campaigns", label: "Campaign Breakdown" },
+    { id: "keywords", label: "Keyword Performance" },
+    { id: "search_terms", label: "Search Terms" },
+    { id: "device_breakdown", label: "Device Breakdown" },
+    { id: "geo", label: "Geographic Performance" },
   ],
   linkedin: [
     { id: "kpis", label: "Key Metrics" },
     { id: "campaigns", label: "Campaign Breakdown" },
+    { id: "demographics", label: "Seniority Demographics" },
   ],
   klaviyo: [
     { id: "kpis", label: "Key Metrics" },
     { id: "campaigns", label: "Campaign Breakdown" },
+    { id: "flows", label: "Automated Flows" },
   ],
   goals: [
     { id: "goals_list", label: "Goals & Progress" },
@@ -152,5 +174,18 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
   ],
   competitor_intelligence: [
     { id: "snapshots", label: "Competitor Snapshots" },
+  ],
+  actions: [
+    { id: "pending_actions", label: "Pending Actions" },
+    { id: "completed_actions", label: "Completed Actions" },
+    { id: "impact_summary", label: "Impact Summary" },
+  ],
+  forecast: [
+    { id: "blended_forecast", label: "Blended Forecast" },
+    { id: "channel_forecast", label: "Per-Channel Forecast" },
+  ],
+  signals: [
+    { id: "active_signals", label: "Active Signals" },
+    { id: "platform_breakdown", label: "Platform Breakdown" },
   ],
 };
