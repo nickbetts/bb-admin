@@ -843,3 +843,480 @@ export async function getGA4CohortRetention(
 
   return { cohortActiveUsers: totalCohortUsers, retentionRates };
 }
+
+// --- Wave 7: Session duration distribution (#63) ---
+export interface GA4SessionDurationBucket {
+  bucket: string;
+  sessions: number;
+}
+
+export async function getGA4SessionDurationDistribution(
+  propertyId: string,
+  startDate: string = "30daysAgo",
+  endDate: string = "today"
+): Promise<GA4SessionDurationBucket[]> {
+  const headers = await buildGa4Headers();
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+
+  // Use sessionDuration as a metric and segment by ranges using the API
+  // GA4 doesn't natively bucket durations, so we pull raw data and bucket client-side
+  const body = {
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: "sessionDuration" }],
+    metrics: [{ name: "sessions" }],
+    orderBys: [{ dimension: { dimensionName: "sessionDuration" } }],
+    limit: 10000,
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  const rows = data.rows ?? [];
+
+  const buckets: Record<string, number> = {
+    "< 10s": 0,
+    "10-30s": 0,
+    "30s-1m": 0,
+    "1-3m": 0,
+    "3-10m": 0,
+    "10m+": 0,
+  };
+
+  for (const row of rows as { dimensionValues: { value: string }[]; metricValues: { value: string }[] }[]) {
+    const durationSec = parseInt(row.dimensionValues[0]?.value ?? "0");
+    const sessions = parseInt(row.metricValues[0]?.value ?? "0");
+
+    if (durationSec < 10) buckets["< 10s"] += sessions;
+    else if (durationSec < 30) buckets["10-30s"] += sessions;
+    else if (durationSec < 60) buckets["30s-1m"] += sessions;
+    else if (durationSec < 180) buckets["1-3m"] += sessions;
+    else if (durationSec < 600) buckets["3-10m"] += sessions;
+    else buckets["10m+"] += sessions;
+  }
+
+  return Object.entries(buckets).map(([bucket, sessions]) => ({ bucket, sessions }));
+}
+
+// --- Wave 7: Event parameters/values (#64) ---
+export interface GA4EventParameter {
+  eventName: string;
+  eventCount: number;
+  eventValue: number;
+}
+
+export async function getGA4EventParameters(
+  propertyId: string,
+  startDate: string = "30daysAgo",
+  endDate: string = "today"
+): Promise<GA4EventParameter[]> {
+  const headers = await buildGa4Headers();
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+
+  const body = {
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: "eventName" }],
+    metrics: [{ name: "eventCount" }, { name: "eventValue" }],
+    orderBys: [{ metric: { metricName: "eventCount" }, desc: true }],
+    limit: 50,
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  return (data.rows ?? []).map(
+    (row: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }) => ({
+      eventName: row.dimensionValues[0]?.value ?? "",
+      eventCount: parseInt(row.metricValues[0]?.value ?? "0"),
+      eventValue: parseFloat(row.metricValues[1]?.value ?? "0"),
+    })
+  );
+}
+
+// --- Wave 7: Content grouping (#65) ---
+export interface GA4ContentGroup {
+  contentGroup: string;
+  sessions: number;
+  pageviews: number;
+  bounceRate: number;
+  avgSessionDuration: number;
+}
+
+export async function getGA4ContentGrouping(
+  propertyId: string,
+  startDate: string = "30daysAgo",
+  endDate: string = "today"
+): Promise<GA4ContentGroup[]> {
+  const headers = await buildGa4Headers();
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+
+  const body = {
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: "contentGroup" }],
+    metrics: [
+      { name: "sessions" },
+      { name: "screenPageViews" },
+      { name: "bounceRate" },
+      { name: "averageSessionDuration" },
+    ],
+    orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+    limit: 20,
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  return (data.rows ?? []).map(
+    (row: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }) => ({
+      contentGroup: row.dimensionValues[0]?.value ?? "(not set)",
+      sessions: parseInt(row.metricValues[0]?.value ?? "0"),
+      pageviews: parseInt(row.metricValues[1]?.value ?? "0"),
+      bounceRate: parseFloat(row.metricValues[2]?.value ?? "0"),
+      avgSessionDuration: parseFloat(row.metricValues[3]?.value ?? "0"),
+    })
+  );
+}
+
+// --- Wave 7: Real-time API (#66) ---
+export interface GA4RealTimeData {
+  activeUsers: number;
+  bySource: { source: string; activeUsers: number }[];
+  byPage: { pagePath: string; activeUsers: number }[];
+}
+
+export async function getGA4RealTimeData(
+  propertyId: string
+): Promise<GA4RealTimeData> {
+  const headers = await buildGa4Headers();
+  const baseUrl = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runRealtimeReport`;
+
+  // Fetch active users overall + by source + by page in parallel
+  const [totalRes, sourceRes, pageRes] = await Promise.allSettled([
+    fetch(baseUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        metrics: [{ name: "activeUsers" }],
+      }),
+      cache: "no-store",
+    }),
+    fetch(baseUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        dimensions: [{ name: "unifiedScreenName" }],
+        metrics: [{ name: "activeUsers" }],
+        orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
+        limit: 10,
+      }),
+      cache: "no-store",
+    }),
+    fetch(baseUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        dimensions: [{ name: "unifiedPagePathScreen" }],
+        metrics: [{ name: "activeUsers" }],
+        orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
+        limit: 10,
+      }),
+      cache: "no-store",
+    }),
+  ]);
+
+  let activeUsers = 0;
+  if (totalRes.status === "fulfilled" && totalRes.value.ok) {
+    const d = await totalRes.value.json();
+    activeUsers = parseInt(d.rows?.[0]?.metricValues?.[0]?.value ?? "0");
+  }
+
+  const bySource: { source: string; activeUsers: number }[] = [];
+  if (sourceRes.status === "fulfilled" && sourceRes.value.ok) {
+    const d = await sourceRes.value.json();
+    for (const row of d.rows ?? []) {
+      bySource.push({
+        source: row.dimensionValues[0]?.value ?? "",
+        activeUsers: parseInt(row.metricValues[0]?.value ?? "0"),
+      });
+    }
+  }
+
+  const byPage: { pagePath: string; activeUsers: number }[] = [];
+  if (pageRes.status === "fulfilled" && pageRes.value.ok) {
+    const d = await pageRes.value.json();
+    for (const row of d.rows ?? []) {
+      byPage.push({
+        pagePath: row.dimensionValues[0]?.value ?? "",
+        activeUsers: parseInt(row.metricValues[0]?.value ?? "0"),
+      });
+    }
+  }
+
+  return { activeUsers, bySource, byPage };
+}
+
+// --- Wave 7: Scroll depth (#67) ---
+export interface GA4ScrollDepth {
+  percentScrolled: string;
+  eventCount: number;
+  users: number;
+}
+
+export async function getGA4ScrollDepth(
+  propertyId: string,
+  startDate: string = "30daysAgo",
+  endDate: string = "today"
+): Promise<GA4ScrollDepth[]> {
+  const headers = await buildGa4Headers();
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+
+  const body = {
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: "percentScrolled" }],
+    metrics: [{ name: "eventCount" }, { name: "totalUsers" }],
+    dimensionFilter: {
+      filter: {
+        fieldName: "eventName",
+        stringFilter: { matchType: "EXACT", value: "scroll" },
+      },
+    },
+    orderBys: [{ dimension: { dimensionName: "percentScrolled" } }],
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  return (data.rows ?? []).map(
+    (row: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }) => ({
+      percentScrolled: row.dimensionValues[0]?.value ?? "",
+      eventCount: parseInt(row.metricValues[0]?.value ?? "0"),
+      users: parseInt(row.metricValues[1]?.value ?? "0"),
+    })
+  );
+}
+
+// --- Wave 7: Browser/OS breakdown (#68) ---
+export interface GA4BrowserOS {
+  browser: string;
+  operatingSystem: string;
+  sessions: number;
+  users: number;
+}
+
+export async function getGA4BrowserOS(
+  propertyId: string,
+  startDate: string = "30daysAgo",
+  endDate: string = "today"
+): Promise<GA4BrowserOS[]> {
+  const headers = await buildGa4Headers();
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+
+  const body = {
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: "browser" }, { name: "operatingSystem" }],
+    metrics: [{ name: "sessions" }, { name: "activeUsers" }],
+    orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+    limit: 25,
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  return (data.rows ?? []).map(
+    (row: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }) => ({
+      browser: row.dimensionValues[0]?.value ?? "",
+      operatingSystem: row.dimensionValues[1]?.value ?? "",
+      sessions: parseInt(row.metricValues[0]?.value ?? "0"),
+      users: parseInt(row.metricValues[1]?.value ?? "0"),
+    })
+  );
+}
+
+// --- E-commerce purchase revenue at page/source level ---
+export interface GA4EcommerceRevenue {
+  pagePath: string;
+  source: string;
+  medium: string;
+  transactions: number;
+  purchaseRevenue: number;
+  totalRevenue: number;
+}
+
+export async function getGA4EcommerceRevenue(
+  propertyId: string,
+  startDate: string = "30daysAgo",
+  endDate: string = "today"
+): Promise<GA4EcommerceRevenue[]> {
+  const headers = await buildGa4Headers();
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+
+  const body = {
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: "pagePath" }, { name: "sessionSource" }, { name: "sessionMedium" }],
+    metrics: [
+      { name: "ecommercePurchases" },
+      { name: "purchaseRevenue" },
+      { name: "totalRevenue" },
+    ],
+    orderBys: [{ metric: { metricName: "purchaseRevenue" }, desc: true }],
+    limit: 50,
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  return (data.rows ?? []).map(
+    (row: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }) => ({
+      pagePath: row.dimensionValues[0]?.value ?? "",
+      source: row.dimensionValues[1]?.value ?? "",
+      medium: row.dimensionValues[2]?.value ?? "",
+      transactions: parseInt(row.metricValues[0]?.value ?? "0"),
+      purchaseRevenue: parseFloat(row.metricValues[1]?.value ?? "0"),
+      totalRevenue: parseFloat(row.metricValues[2]?.value ?? "0"),
+    })
+  );
+}
+
+// --- User acquisition vs traffic acquisition (firstUser dimensions) ---
+export interface GA4UserAcquisition {
+  firstUserSource: string;
+  firstUserMedium: string;
+  newUsers: number;
+  sessions: number;
+  engagedSessions: number;
+  conversions: number;
+}
+
+export async function getGA4UserAcquisition(
+  propertyId: string,
+  startDate: string = "30daysAgo",
+  endDate: string = "today"
+): Promise<GA4UserAcquisition[]> {
+  const headers = await buildGa4Headers();
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+
+  const body = {
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: "firstUserSource" }, { name: "firstUserMedium" }],
+    metrics: [
+      { name: "newUsers" },
+      { name: "sessions" },
+      { name: "engagedSessions" },
+      { name: "conversions" },
+    ],
+    orderBys: [{ metric: { metricName: "newUsers" }, desc: true }],
+    limit: 25,
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  return (data.rows ?? []).map(
+    (row: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }) => ({
+      firstUserSource: row.dimensionValues[0]?.value ?? "",
+      firstUserMedium: row.dimensionValues[1]?.value ?? "",
+      newUsers: parseInt(row.metricValues[0]?.value ?? "0"),
+      sessions: parseInt(row.metricValues[1]?.value ?? "0"),
+      engagedSessions: parseInt(row.metricValues[2]?.value ?? "0"),
+      conversions: parseInt(row.metricValues[3]?.value ?? "0"),
+    })
+  );
+}
+
+// --- Revenue per session (derived metric) ---
+export interface GA4RevenuePerSession {
+  source: string;
+  medium: string;
+  sessions: number;
+  totalRevenue: number;
+  revenuePerSession: number;
+}
+
+export async function getGA4RevenuePerSession(
+  propertyId: string,
+  startDate: string = "30daysAgo",
+  endDate: string = "today"
+): Promise<GA4RevenuePerSession[]> {
+  const headers = await buildGa4Headers();
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+
+  const body = {
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: "sessionSource" }, { name: "sessionMedium" }],
+    metrics: [{ name: "sessions" }, { name: "totalRevenue" }],
+    orderBys: [{ metric: { metricName: "totalRevenue" }, desc: true }],
+    limit: 25,
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  return (data.rows ?? []).map(
+    (row: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }) => {
+      const sessions = parseInt(row.metricValues[0]?.value ?? "0");
+      const totalRevenue = parseFloat(row.metricValues[1]?.value ?? "0");
+      return {
+        source: row.dimensionValues[0]?.value ?? "",
+        medium: row.dimensionValues[1]?.value ?? "",
+        sessions,
+        totalRevenue,
+        revenuePerSession: sessions > 0 ? totalRevenue / sessions : 0,
+      };
+    }
+  );
+}

@@ -487,3 +487,246 @@ export async function getGSCUrlInspection(
 
   return results;
 }
+
+// --- Wave 7: Page × Country combination (#81) ---
+
+export interface GSCPageCountry {
+  page: string;
+  country: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+export async function getGSCPageCountry(
+  siteUrl: string,
+  startDate: string,
+  endDate: string,
+  rowLimit: number = 100
+): Promise<GSCPageCountry[]> {
+  const res = await gscPost(siteUrl, {
+    startDate,
+    endDate,
+    dimensions: ["page", "country"],
+    rowLimit,
+    startRow: 0,
+  });
+
+  if (!res.ok) return [];
+  const data = await res.json();
+
+  return (data.rows ?? []).map((row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
+    page: row.keys[0] ?? "",
+    country: row.keys[1] ?? "",
+    clicks: row.clicks,
+    impressions: row.impressions,
+    ctr: row.ctr,
+    position: row.position,
+  }));
+}
+
+// --- Wave 7: Discover & News data (#82) ---
+
+export interface GSCDiscoverData {
+  type: "discover" | "googleNews";
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  pages: { page: string; clicks: number; impressions: number }[];
+}
+
+export async function getGSCDiscoverData(
+  siteUrl: string,
+  startDate: string,
+  endDate: string
+): Promise<GSCDiscoverData[]> {
+  const results: GSCDiscoverData[] = [];
+
+  for (const searchType of ["discover", "googleNews"] as const) {
+    try {
+      const res = await gscPost(siteUrl, {
+        startDate,
+        endDate,
+        dimensions: ["page"],
+        type: searchType,
+        rowLimit: 25,
+      });
+
+      if (!res.ok) continue;
+      const data = await res.json();
+      const rows = data.rows ?? [];
+
+      let totalClicks = 0;
+      let totalImpressions = 0;
+      const pages: { page: string; clicks: number; impressions: number }[] = [];
+
+      for (const row of rows as { keys: string[]; clicks: number; impressions: number; ctr: number }[]) {
+        totalClicks += row.clicks;
+        totalImpressions += row.impressions;
+        pages.push({
+          page: row.keys[0] ?? "",
+          clicks: row.clicks,
+          impressions: row.impressions,
+        });
+      }
+
+      results.push({
+        type: searchType,
+        clicks: totalClicks,
+        impressions: totalImpressions,
+        ctr: totalImpressions > 0 ? totalClicks / totalImpressions : 0,
+        pages,
+      });
+    } catch {
+      // Discover/News may not be available for all sites
+    }
+  }
+
+  return results;
+}
+
+// --- Wave 7: Sitemaps API (#83) ---
+
+export interface GSCSitemap {
+  path: string;
+  type: string;
+  lastSubmitted: string | null;
+  lastDownloaded: string | null;
+  isPending: boolean;
+  errors: number;
+  warnings: number;
+  contents: { type: string; submitted: number; indexed: number }[];
+}
+
+export async function getGSCSitemaps(
+  siteUrl: string
+): Promise<GSCSitemap[]> {
+  const token = await getGscAccessToken();
+  const encodedSite = encodeURIComponent(siteUrl);
+
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/webmasters/v3/sites/${encodedSite}/sitemaps`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      }
+    );
+
+    if (!res.ok) return [];
+    const data = await res.json();
+
+    return (data.sitemap ?? []).map(
+      (sm: {
+        path?: string;
+        type?: string;
+        lastSubmitted?: string;
+        lastDownloaded?: string;
+        isPending?: boolean;
+        errors?: number;
+        warnings?: number;
+        contents?: { type?: string; submitted?: string; indexed?: string }[];
+      }) => ({
+        path: sm.path ?? "",
+        type: sm.type ?? "",
+        lastSubmitted: sm.lastSubmitted ?? null,
+        lastDownloaded: sm.lastDownloaded ?? null,
+        isPending: sm.isPending ?? false,
+        errors: sm.errors ?? 0,
+        warnings: sm.warnings ?? 0,
+        contents: (sm.contents ?? []).map((c) => ({
+          type: c.type ?? "",
+          submitted: parseInt(c.submitted ?? "0"),
+          indexed: parseInt(c.indexed ?? "0"),
+        })),
+      })
+    );
+  } catch {
+    return [];
+  }
+}
+
+// --- Query × device multi-dimension ---
+
+export interface GSCQueryDevice {
+  query: string;
+  device: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+export async function getGSCQueryDevice(
+  siteUrl: string,
+  startDate: string,
+  endDate: string,
+  rowLimit: number = 100
+): Promise<GSCQueryDevice[]> {
+  try {
+    const res = await gscPost(siteUrl, {
+      startDate,
+      endDate,
+      dimensions: ["query", "device"],
+      rowLimit,
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.rows ?? []).map(
+      (row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
+        query: row.keys[0] ?? "",
+        device: row.keys[1] ?? "",
+        clicks: row.clicks ?? 0,
+        impressions: row.impressions ?? 0,
+        ctr: row.ctr ?? 0,
+        position: row.position ?? 0,
+      })
+    );
+  } catch {
+    return [];
+  }
+}
+
+// --- Query × country multi-dimension ---
+
+export interface GSCQueryCountry {
+  query: string;
+  country: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+export async function getGSCQueryCountry(
+  siteUrl: string,
+  startDate: string,
+  endDate: string,
+  rowLimit: number = 100
+): Promise<GSCQueryCountry[]> {
+  try {
+    const res = await gscPost(siteUrl, {
+      startDate,
+      endDate,
+      dimensions: ["query", "country"],
+      rowLimit,
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.rows ?? []).map(
+      (row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
+        query: row.keys[0] ?? "",
+        country: row.keys[1] ?? "",
+        clicks: row.clicks ?? 0,
+        impressions: row.impressions ?? 0,
+        ctr: row.ctr ?? 0,
+        position: row.position ?? 0,
+      })
+    );
+  } catch {
+    return [];
+  }
+}

@@ -19,6 +19,15 @@ import {
   getGoogleAdsGeoPerformance,
   getGoogleAdsSchedulePerformance,
   getGoogleAdsBidSimulator,
+  getGoogleAdsNegativeKeywords,
+  getGoogleAdsDemographics,
+  getGoogleAdsShoppingPerformance,
+  getGoogleAdsConversionActions,
+  getGoogleAdsCallExtensions,
+  getGoogleAdsSitelinkPerformance,
+  getGoogleAdsDisplayVideoData,
+  getGoogleAdsRecommendations,
+  getGoogleAdsBudgetUtilisation,
 } from "@/lib/google-ads";
 import { withApiCache } from "@/lib/api-cache";
 
@@ -54,7 +63,7 @@ export async function GET(request: NextRequest) {
     const cacheKey = `googleads:${customerId}:${startDate}:${endDate}`;
 
     const data = await withApiCache(cacheKey, GADS_CACHE_TTL_HOURS, async () => {
-      const [overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, keywordQualityScores, audienceCriteria, invalidClicks, deviceBreakdown, rsaAssets, pmaxInsights, pmaxSearchTerms, geoPerformance, schedulePerformance, bidSimulator] =
+      const [overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, keywordQualityScores, audienceCriteria, invalidClicks, deviceBreakdown, rsaAssets, pmaxInsights, pmaxSearchTerms, geoPerformance, schedulePerformance, bidSimulator, negativeKeywords, demographics, shoppingPerformance, conversionActions, callExtensions, sitelinkPerformance, displayVideoData, recommendations, budgetUtilisation] =
         await Promise.all([
           getGoogleAdsOverview(customerId, startDate, endDate),
           getGoogleAdsCampaigns(customerId, startDate, endDate),
@@ -74,8 +83,17 @@ export async function GET(request: NextRequest) {
           getGoogleAdsGeoPerformance(customerId, startDate, endDate),
           getGoogleAdsSchedulePerformance(customerId, startDate, endDate),
           getGoogleAdsBidSimulator(customerId),
+          getGoogleAdsNegativeKeywords(customerId),
+          getGoogleAdsDemographics(customerId, startDate, endDate),
+          getGoogleAdsShoppingPerformance(customerId, startDate, endDate),
+          getGoogleAdsConversionActions(customerId, startDate, endDate),
+          getGoogleAdsCallExtensions(customerId, startDate, endDate),
+          getGoogleAdsSitelinkPerformance(customerId, startDate, endDate),
+          getGoogleAdsDisplayVideoData(customerId, startDate, endDate),
+          getGoogleAdsRecommendations(customerId),
+          getGoogleAdsBudgetUtilisation(customerId, startDate, endDate),
         ]);
-      return { overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, keywordQualityScores, audienceCriteria, invalidClicks, deviceBreakdown, rsaAssets, pmaxInsights, pmaxSearchTerms, geoPerformance, schedulePerformance, bidSimulator };
+      return { overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, keywordQualityScores, audienceCriteria, invalidClicks, deviceBreakdown, rsaAssets, pmaxInsights, pmaxSearchTerms, geoPerformance, schedulePerformance, bidSimulator, negativeKeywords, demographics, shoppingPerformance, conversionActions, callExtensions, sitelinkPerformance, displayVideoData, recommendations, budgetUtilisation };
     });
 
     return NextResponse.json(data);

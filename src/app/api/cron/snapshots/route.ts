@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins } from "@/lib/notifications";
 import { getOpenAiClient } from "@/lib/openai-client";
-import { getGA4Overview } from "@/lib/ga4";
-import { getGoogleAdsOverview } from "@/lib/google-ads";
-import { getMetaAdsOverview } from "@/lib/meta";
-import { getGSCOverview } from "@/lib/search-console";
-import { getDomainOverview } from "@/lib/semrush";
-import { getTikTokAdsOverview } from "@/lib/tiktok-ads";
-import { getMicrosoftAdsOverview } from "@/lib/microsoft-ads";
-import { getWooCommerceStats } from "@/lib/woocommerce";
-import { getShopifyStats } from "@/lib/shopify";
+import { getGA4Overview, getGA4DailyData, getGA4TrafficSources, getGA4TopPages, getGA4ConversionEvents } from "@/lib/ga4";
+import { getGoogleAdsOverview, getGoogleAdsCampaignsEnriched, getGoogleAdsDailyData, getGoogleAdsSearchTerms, getGoogleAdsDeviceBreakdown, getGoogleAdsAvgQualityScore } from "@/lib/google-ads";
+import { getMetaAdsOverview, getMetaCampaignsEnriched, getMetaAdCreatives, getMetaDailyData } from "@/lib/meta";
+import { getGSCOverview, getGSCTopQueries, getGSCTopPages, getGSCDailyData, getGSCDevices, getGSCBrandedSplit } from "@/lib/search-console";
+import { getDomainOverview, getTopOrganicKeywords, getKeywordPositionDistribution, getCompetitors, getSemrushTrackedKeywords, getSemrushAIVisibility } from "@/lib/semrush";
+import { getTikTokAdsOverview, getTikTokCampaigns, getTikTokCreatives, getTikTokAudienceDemographics } from "@/lib/tiktok-ads";
+import { getMicrosoftAdsOverview, getMicrosoftAdsCampaigns, getMicrosoftAdsKeywords, getMicrosoftAdsSearchTerms, getMicrosoftAdsDeviceBreakdown } from "@/lib/microsoft-ads";
+import { getWooCommerceStats, getWooCommerceCustomerData } from "@/lib/woocommerce";
+import { getShopifyStats, getShopifyCustomerData } from "@/lib/shopify";
 import { getCoreWebVitals } from "@/lib/core-web-vitals";
 import { getDomainAuthority } from "@/lib/domain-authority";
 
@@ -19,11 +19,17 @@ export const maxDuration = 300;
 
 type PlatformKey = "ga4" | "googleads" | "meta" | "searchconsole" | "seo" | "tiktok" | "microsoftads" | "woocommerce" | "shopify" | "cwv" | "linkedin" | "klaviyo" | "youtube" | "hubspot" | "callrail" | "moz";
 
+type SnapshotResult = {
+  metrics: Record<string, number>;
+  campaignData?: Record<string, unknown>;
+};
+
 type ClientRow = {
   id: string; name: string;
   ga4PropertyId: string | null; googleAdsCustomerId: string | null;
   metaAccountId: string | null; metaAccessToken: string | null;
   searchConsoleSiteUrl: string | null; semrushDomain: string | null;
+  semrushProjectId: number | null; semrushCampaignIds: string | null;
   tiktokAdvertiserId: string | null; tiktokAccessToken: string | null;
   microsoftAdsAccountId: string | null;
   woocommerceUrl: string | null; woocommerceKey: string | null; woocommerceSecret: string | null;
@@ -51,69 +57,212 @@ async function fetchPlatformMetrics(
   client: ClientRow,
   start: string,
   end: string
-): Promise<Record<string, number> | null> {
+): Promise<SnapshotResult | null> {
   switch (platform) {
     case "ga4": {
       const d = await getGA4Overview(client.ga4PropertyId!, start, end);
-      return { sessions: d.sessions, users: d.users, pageviews: d.pageviews, bounceRate: d.bounceRate, avgSessionDuration: d.avgSessionDuration, conversionRate: d.conversionRate };
+      const metrics: Record<string, number> = {
+        sessions: d.sessions, users: d.users, newUsers: d.newUsers, pageviews: d.pageviews,
+        bounceRate: d.bounceRate, avgSessionDuration: d.avgSessionDuration,
+        conversionRate: d.conversionRate, engagedSessions: d.engagedSessions, engagementRate: d.engagementRate,
+      };
+      const [dailyR, sourcesR, pagesR, eventsR] = await Promise.allSettled([
+        getGA4DailyData(client.ga4PropertyId!, start, end),
+        getGA4TrafficSources(client.ga4PropertyId!, start, end),
+        getGA4TopPages(client.ga4PropertyId!, start, end),
+        getGA4ConversionEvents(client.ga4PropertyId!, start, end),
+      ]);
+      const campaignData: Record<string, unknown> = {};
+      if (dailyR.status === "fulfilled") campaignData.daily = dailyR.value;
+      if (sourcesR.status === "fulfilled") campaignData.topSources = sourcesR.value;
+      if (pagesR.status === "fulfilled") campaignData.topPages = pagesR.value;
+      if (eventsR.status === "fulfilled") campaignData.conversionEvents = eventsR.value;
+      return { metrics, campaignData };
     }
     case "googleads": {
       const d = await getGoogleAdsOverview(client.googleAdsCustomerId!, start, end);
-      return { clicks: d.clicks, impressions: d.impressions, costMicros: d.costMicros, conversions: d.conversions, conversionsValue: d.conversionsValue };
+      const ctr = d.impressions > 0 ? (d.clicks / d.impressions) * 100 : 0;
+      const cost = d.costMicros / 1_000_000;
+      const roas = cost > 0 ? d.conversionsValue / cost : 0;
+      const cpa = d.conversions > 0 ? cost / d.conversions : 0;
+      const metrics: Record<string, number> = {
+        clicks: d.clicks, impressions: d.impressions, costMicros: d.costMicros,
+        conversions: d.conversions, conversionsValue: d.conversionsValue,
+        ctr, cost, roas, cpa,
+      };
+      const [campaignsR, dailyR, searchR, devicesR, qsR] = await Promise.allSettled([
+        getGoogleAdsCampaignsEnriched(client.googleAdsCustomerId!, start, end),
+        getGoogleAdsDailyData(client.googleAdsCustomerId!, start, end),
+        getGoogleAdsSearchTerms(client.googleAdsCustomerId!, start, end, 25),
+        getGoogleAdsDeviceBreakdown(client.googleAdsCustomerId!, start, end),
+        getGoogleAdsAvgQualityScore(client.googleAdsCustomerId!),
+      ]);
+      const campaignData: Record<string, unknown> = {};
+      if (campaignsR.status === "fulfilled") campaignData.campaigns = campaignsR.value;
+      if (dailyR.status === "fulfilled") campaignData.daily = dailyR.value;
+      if (searchR.status === "fulfilled") campaignData.searchTerms = searchR.value;
+      if (devicesR.status === "fulfilled") campaignData.deviceBreakdown = devicesR.value;
+      if (qsR.status === "fulfilled" && qsR.value != null) { campaignData.avgQualityScore = qsR.value; metrics.avgQualityScore = qsR.value; }
+      return { metrics, campaignData };
     }
     case "meta": {
       const accessToken = client.metaAccessToken ?? process.env.META_ACCESS_TOKEN ?? "";
       const d = await getMetaAdsOverview(client.metaAccountId!, accessToken, start, end);
-      return { totalSpend: d.totalSpend, totalClicks: d.totalClicks, totalImpressions: d.totalImpressions, totalConversions: d.totalConversions, avgCpm: d.avgCpm, avgCtr: d.avgCtr, avgRoas: d.avgRoas };
+      const metrics: Record<string, number> = {
+        totalSpend: d.totalSpend, totalClicks: d.totalClicks, totalImpressions: d.totalImpressions,
+        totalConversions: d.totalConversions, avgCpm: d.avgCpm, avgCtr: d.avgCtr, avgRoas: d.avgRoas,
+        avgCpc: d.avgCpc, reach: d.reach, frequency: d.frequency,
+      };
+      const [campaignsR, creativesR, dailyR] = await Promise.allSettled([
+        getMetaCampaignsEnriched(client.metaAccountId!, accessToken, start, end),
+        getMetaAdCreatives(client.metaAccountId!, accessToken, start, end),
+        getMetaDailyData(client.metaAccountId!, accessToken, start, end),
+      ]);
+      const campaignData: Record<string, unknown> = {};
+      if (campaignsR.status === "fulfilled") campaignData.campaigns = campaignsR.value;
+      if (creativesR.status === "fulfilled") campaignData.creatives = creativesR.value;
+      if (dailyR.status === "fulfilled") campaignData.daily = dailyR.value;
+      return { metrics, campaignData };
     }
     case "searchconsole": {
       const d = await getGSCOverview(client.searchConsoleSiteUrl!, start, end);
-      return { clicks: d.clicks, impressions: d.impressions, ctr: d.ctr, position: d.position };
+      const metrics: Record<string, number> = { clicks: d.clicks, impressions: d.impressions, ctr: d.ctr, position: d.position };
+      const [queriesR, pagesR, dailyR, devicesR, brandedR] = await Promise.allSettled([
+        getGSCTopQueries(client.searchConsoleSiteUrl!, start, end, 20),
+        getGSCTopPages(client.searchConsoleSiteUrl!, start, end),
+        getGSCDailyData(client.searchConsoleSiteUrl!, start, end),
+        getGSCDevices(client.searchConsoleSiteUrl!, start, end),
+        getGSCBrandedSplit(client.searchConsoleSiteUrl!, start, end),
+      ]);
+      const campaignData: Record<string, unknown> = {};
+      if (queriesR.status === "fulfilled") campaignData.topQueries = queriesR.value;
+      if (pagesR.status === "fulfilled") campaignData.topPages = pagesR.value;
+      if (dailyR.status === "fulfilled") campaignData.daily = dailyR.value;
+      if (devicesR.status === "fulfilled") campaignData.devices = devicesR.value;
+      if (brandedR.status === "fulfilled") campaignData.brandedSplit = brandedR.value;
+      return { metrics, campaignData };
     }
     case "seo": {
       const d = await getDomainOverview(client.semrushDomain!);
-      return { organicTraffic: d.organicTraffic, organicKeywords: d.organicKeywords, organicCost: d.organicCost, paidTraffic: d.paidTraffic };
+      const metrics: Record<string, number> = {
+        organicTraffic: d.organicTraffic, organicKeywords: d.organicKeywords,
+        organicCost: d.organicCost, paidTraffic: d.paidTraffic,
+      };
+      const enrichCalls: Promise<unknown>[] = [
+        getTopOrganicKeywords(client.semrushDomain!, "uk", 10),
+        getKeywordPositionDistribution(client.semrushDomain!, "uk"),
+        getCompetitors(client.semrushDomain!, "uk", 10),
+      ];
+      // Tracked keywords and AI visibility require campaign IDs
+      const campaignIds: string[] = client.semrushCampaignIds ? JSON.parse(client.semrushCampaignIds) : [];
+      const firstCampaignId = campaignIds[0] ?? null;
+      if (firstCampaignId) {
+        enrichCalls.push(getSemrushTrackedKeywords(firstCampaignId));
+        enrichCalls.push(getSemrushAIVisibility(firstCampaignId));
+      }
+      const settled = await Promise.allSettled(enrichCalls);
+      const campaignData: Record<string, unknown> = {};
+      if (settled[0].status === "fulfilled") campaignData.topKeywords = settled[0].value;
+      if (settled[1].status === "fulfilled") campaignData.positionDistribution = settled[1].value;
+      if (settled[2].status === "fulfilled") campaignData.competitors = settled[2].value;
+      if (firstCampaignId) {
+        if (settled[3]?.status === "fulfilled") campaignData.trackedKeywords = settled[3].value;
+        if (settled[4]?.status === "fulfilled") {
+          const aiVis = settled[4].value as { aiVisibilityScore?: number };
+          campaignData.aiVisibility = aiVis;
+          if (typeof aiVis?.aiVisibilityScore === "number") metrics.aiVisibilityScore = aiVis.aiVisibilityScore;
+        }
+      }
+      return { metrics, campaignData };
     }
     case "tiktok": {
-      const d = await getTikTokAdsOverview(client.tiktokAdvertiserId!, client.tiktokAccessToken ?? "", start, end);
-      return { spend: d.spend, impressions: d.impressions, clicks: d.clicks, conversions: d.conversions, ctr: d.ctr, cpc: d.cpc, cpm: d.cpm };
+      const token = client.tiktokAccessToken ?? "";
+      const d = await getTikTokAdsOverview(client.tiktokAdvertiserId!, token, start, end);
+      const metrics: Record<string, number> = {
+        spend: d.spend, impressions: d.impressions, clicks: d.clicks, conversions: d.conversions,
+        ctr: d.ctr, cpc: d.cpc, cpm: d.cpm, costPerConversion: d.costPerConversion,
+        videoViews: d.videoViews, reach: d.reach, frequency: d.frequency,
+      };
+      const [campaignsR, creativesR, demoR] = await Promise.allSettled([
+        getTikTokCampaigns(client.tiktokAdvertiserId!, token, start, end),
+        getTikTokCreatives(client.tiktokAdvertiserId!, token, start, end),
+        getTikTokAudienceDemographics(client.tiktokAdvertiserId!, token, start, end),
+      ]);
+      const campaignData: Record<string, unknown> = {};
+      if (campaignsR.status === "fulfilled") campaignData.campaigns = campaignsR.value;
+      if (creativesR.status === "fulfilled") campaignData.creatives = creativesR.value;
+      if (demoR.status === "fulfilled") campaignData.demographics = demoR.value;
+      return { metrics, campaignData };
     }
     case "microsoftads": {
       const d = await getMicrosoftAdsOverview(client.microsoftAdsAccountId!, start, end);
-      return { spend: d.spend, impressions: d.impressions, clicks: d.clicks, conversions: d.conversions, revenue: d.revenue, roas: d.roas, ctr: d.ctr, cpc: d.cpc };
+      const metrics: Record<string, number> = {
+        spend: d.spend, impressions: d.impressions, clicks: d.clicks, conversions: d.conversions,
+        revenue: d.revenue, roas: d.roas, ctr: d.ctr, cpc: d.cpc,
+        costPerConversion: d.costPerConversion, impressionSharePercent: d.impressionSharePercent,
+      };
+      const [campaignsR, keywordsR, searchR, devicesR] = await Promise.allSettled([
+        getMicrosoftAdsCampaigns(client.microsoftAdsAccountId!, start, end),
+        getMicrosoftAdsKeywords(client.microsoftAdsAccountId!, start, end),
+        getMicrosoftAdsSearchTerms(client.microsoftAdsAccountId!, start, end),
+        getMicrosoftAdsDeviceBreakdown(client.microsoftAdsAccountId!, start, end),
+      ]);
+      const campaignData: Record<string, unknown> = {};
+      if (campaignsR.status === "fulfilled") campaignData.campaigns = campaignsR.value;
+      if (keywordsR.status === "fulfilled") campaignData.keywords = keywordsR.value;
+      if (searchR.status === "fulfilled") campaignData.searchTerms = searchR.value;
+      if (devicesR.status === "fulfilled") campaignData.deviceBreakdown = devicesR.value;
+      return { metrics, campaignData };
     }
     case "woocommerce": {
       const d = await getWooCommerceStats(client.woocommerceUrl!, client.woocommerceKey ?? "", client.woocommerceSecret ?? "", start, end);
-      return { totalRevenue: d.totalRevenue, totalOrders: d.totalOrders, averageOrderValue: d.averageOrderValue };
+      const metrics: Record<string, number> = { totalRevenue: d.totalRevenue, totalOrders: d.totalOrders, averageOrderValue: d.averageOrderValue };
+      const campaignData: Record<string, unknown> = {
+        topProducts: d.topProducts, ordersByStatus: d.ordersByStatus, revenueByDay: d.revenueByDay,
+      };
+      const [customerR] = await Promise.allSettled([
+        getWooCommerceCustomerData(client.woocommerceUrl!, client.woocommerceKey ?? "", client.woocommerceSecret ?? "", start, end),
+      ]);
+      if (customerR.status === "fulfilled") campaignData.customerSummary = customerR.value;
+      return { metrics, campaignData };
     }
     case "shopify": {
       const d = await getShopifyStats(client.shopifyStoreDomain!, client.shopifyAccessToken ?? "", start, end);
-      return { totalRevenue: d.totalRevenue, totalOrders: d.totalOrders, averageOrderValue: d.averageOrderValue };
+      const metrics: Record<string, number> = { totalRevenue: d.totalRevenue, totalOrders: d.totalOrders, averageOrderValue: d.averageOrderValue };
+      const campaignData: Record<string, unknown> = {
+        topProducts: d.topProducts, ordersByStatus: d.ordersByStatus, revenueByDay: d.revenueByDay,
+      };
+      const [customerR] = await Promise.allSettled([
+        getShopifyCustomerData(client.shopifyStoreDomain!, client.shopifyAccessToken ?? "", start, end),
+      ]);
+      if (customerR.status === "fulfilled") campaignData.customerSummary = customerR.value;
+      return { metrics, campaignData };
     }
     case "cwv": {
       const d = await getCoreWebVitals(client.cwvUrl!);
-      return { lcp: d.lcp?.p75 ?? 0, cls: d.cls?.p75 ?? 0, inp: d.inp?.p75 ?? 0, fid: d.fid?.p75 ?? 0, ttfb: d.ttfb?.p75 ?? 0 };
+      const metrics: Record<string, number> = { lcp: d.lcp?.p75 ?? 0, cls: d.cls?.p75 ?? 0, inp: d.inp?.p75 ?? 0, fid: d.fid?.p75 ?? 0, ttfb: d.ttfb?.p75 ?? 0 };
+      const campaignData: Record<string, unknown> = {
+        overallCategory: d.overallCategory,
+        lcpDetail: d.lcp, clsDetail: d.cls, inpDetail: d.inp, fidDetail: d.fid, ttfbDetail: d.ttfb,
+      };
+      if (d.fcp) campaignData.fcpDetail = d.fcp;
+      return { metrics, campaignData };
     }
-    case "linkedin": {
+    case "linkedin":
       return fetchLinkedInOverview(client.linkedinAccountId!, client.linkedinAccessToken!, start, end);
-    }
-    case "klaviyo": {
+    case "klaviyo":
       return fetchKlaviyoOverview(client.klaviyoApiKey!, start, end);
-    }
-    case "youtube": {
+    case "youtube":
       return fetchYouTubeOverview(client.youtubeChannelId!);
-    }
-    case "hubspot": {
+    case "hubspot":
       return fetchHubSpotOverview(client.hubspotAccessToken!);
-    }
-    case "callrail": {
+    case "callrail":
       return fetchCallRailOverview(client.callrailAccountId!, client.callrailApiKey!, start, end);
-    }
     case "moz": {
       const domain = client.semrushDomain ?? client.cwvUrl ?? client.website;
       if (!domain) return null;
       const d = await getDomainAuthority(domain);
-      return { domainAuthority: d.domainAuthority, pageAuthority: d.pageAuthority, spamScore: d.spamScore, rootDomainsLinking: d.rootDomainsLinking };
+      return { metrics: { domainAuthority: d.domainAuthority, pageAuthority: d.pageAuthority, spamScore: d.spamScore, rootDomainsLinking: d.rootDomainsLinking } };
     }
   }
 }
@@ -125,7 +274,7 @@ async function fetchLinkedInOverview(
   accessToken: string,
   start: string,
   end: string,
-): Promise<Record<string, number>> {
+): Promise<SnapshotResult> {
   const analyticsUrl = `https://api.linkedin.com/v2/adAnalyticsV2?q=analytics&pivot=ACCOUNT&dateRange.start.year=${start.slice(0, 4)}&dateRange.start.month=${parseInt(start.slice(5, 7))}&dateRange.start.day=${parseInt(start.slice(8, 10))}&dateRange.end.year=${end.slice(0, 4)}&dateRange.end.month=${parseInt(end.slice(5, 7))}&dateRange.end.day=${parseInt(end.slice(8, 10))}&accounts=urn:li:sponsoredAccount:${accountId}&fields=dateRange,impressions,clicks,totalEngagements,costInLocalCurrency,externalWebsiteConversions,approximateUniqueImpressions`;
 
   const res = await fetch(analyticsUrl, {
@@ -160,14 +309,15 @@ async function fetchLinkedInOverview(
 
   const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
   const cpc = clicks > 0 ? spend / clicks : 0;
-  return { impressions, clicks, spend, conversions, reach, ctr, cpc };
+  const cpl = conversions > 0 ? spend / conversions : 0;
+  return { metrics: { impressions, clicks, spend, conversions, reach, ctr, cpc, cpl } };
 }
 
 async function fetchKlaviyoOverview(
   apiKey: string,
   start: string,
   end: string,
-): Promise<Record<string, number>> {
+): Promise<SnapshotResult> {
   const timeframe = { start: `${start}T00:00:00`, end: `${end}T23:59:59` };
 
   // Fetch aggregate email campaign metrics via Reporting API
@@ -229,12 +379,12 @@ async function fetchKlaviyoOverview(
     }
   } catch { /* non-critical */ }
 
-  return { sends, opens, clicks, revenue, openRate: openRate * 100, clickRate: clickRate * 100, totalProfiles };
+  return { metrics: { sends, opens, clicks, revenue, openRate: openRate * 100, clickRate: clickRate * 100, totalProfiles } };
 }
 
 async function fetchYouTubeOverview(
   channelId: string,
-): Promise<Record<string, number> | null> {
+): Promise<SnapshotResult | null> {
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) return null;
 
@@ -259,15 +409,17 @@ async function fetchYouTubeOverview(
   if (!stats) return null;
 
   return {
-    subscriberCount: parseInt(stats.subscriberCount ?? "0") || 0,
-    viewCount: parseInt(stats.viewCount ?? "0") || 0,
-    videoCount: parseInt(stats.videoCount ?? "0") || 0,
+    metrics: {
+      subscriberCount: parseInt(stats.subscriberCount ?? "0") || 0,
+      viewCount: parseInt(stats.viewCount ?? "0") || 0,
+      videoCount: parseInt(stats.videoCount ?? "0") || 0,
+    },
   };
 }
 
 async function fetchHubSpotOverview(
   accessToken: string,
-): Promise<Record<string, number>> {
+): Promise<SnapshotResult> {
   const headers = {
     Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
@@ -300,11 +452,16 @@ async function fetchHubSpotOverview(
     : 0;
 
   return {
-    totalContacts: contactsData.total ?? contactsData.results.length,
-    openDeals: openDeals.length,
-    pipelineValue,
-    closedWonValue,
-    dealVelocityDays,
+    metrics: {
+      totalContacts: contactsData.total ?? contactsData.results.length,
+      openDeals: openDeals.length,
+      pipelineValue,
+      closedWonValue,
+      dealVelocityDays,
+    },
+    campaignData: {
+      deals: deals.slice(0, 20),
+    },
   };
 }
 
@@ -313,7 +470,7 @@ async function fetchCallRailOverview(
   apiKey: string,
   start: string,
   end: string,
-): Promise<Record<string, number>> {
+): Promise<SnapshotResult> {
   const callsRes = await fetch(
     `https://api.callrail.com/v3/a/${accountId}/calls.json?fields=answered,duration&per_page=250&start_date=${start}&end_date=${end}`,
     {
@@ -338,11 +495,13 @@ async function fetchCallRailOverview(
   const avgDurationSeconds = calls.length > 0 ? Math.round(totalDuration / calls.length) : 0;
 
   return {
-    totalCalls: data.total_records ?? calls.length,
-    answeredCalls,
-    missedCalls,
-    answeredPct: calls.length > 0 ? Math.round((answeredCalls / calls.length) * 1000) / 10 : 0,
-    avgDurationSeconds,
+    metrics: {
+      totalCalls: data.total_records ?? calls.length,
+      answeredCalls,
+      missedCalls,
+      answeredPct: calls.length > 0 ? Math.round((answeredCalls / calls.length) * 1000) / 10 : 0,
+      avgDurationSeconds,
+    },
   };
 }
 
@@ -462,6 +621,7 @@ export async function POST(request: NextRequest) {
         ga4PropertyId: true, googleAdsCustomerId: true,
         metaAccountId: true, metaAccessToken: true,
         searchConsoleSiteUrl: true, semrushDomain: true,
+        semrushProjectId: true, semrushCampaignIds: true,
         tiktokAdvertiserId: true, tiktokAccessToken: true,
         microsoftAdsAccountId: true,
         woocommerceUrl: true, woocommerceKey: true, woocommerceSecret: true,
@@ -525,19 +685,23 @@ export async function POST(request: NextRequest) {
         }
 
         try {
-          const metrics = await fetchPlatformMetrics(key, client as ClientRow, start, end);
-          if (!metrics) continue;
+          const result = await fetchPlatformMetrics(key, client as ClientRow, start, end);
+          if (!result) continue;
+
+          const campaignDataStr = result.campaignData && Object.keys(result.campaignData).length > 0
+            ? JSON.stringify(result.campaignData)
+            : null;
 
           await prisma.metricSnapshot.upsert({
             where: { clientId_sectionType_periodStart_periodEnd: { clientId: client.id, sectionType: key, periodStart: start, periodEnd: end } },
-            update: { metrics: JSON.stringify(metrics) },
-            create: { clientId: client.id, sectionType: key, periodStart: start, periodEnd: end, metrics: JSON.stringify(metrics) },
+            update: { metrics: JSON.stringify(result.metrics), campaignData: campaignDataStr },
+            create: { clientId: client.id, sectionType: key, periodStart: start, periodEnd: end, metrics: JSON.stringify(result.metrics), campaignData: campaignDataStr },
           });
           row.sections.push(key);
           snapshotsNew++;
 
           try {
-            await detectAndNotifyAnomalies(client.id, client.name, key, metrics, start, end);
+            await detectAndNotifyAnomalies(client.id, client.name, key, result.metrics, start, end);
           } catch (err) {
             console.error(`[cron/snapshots] Anomaly detection failed for ${client.name}/${key}:`, err);
           }

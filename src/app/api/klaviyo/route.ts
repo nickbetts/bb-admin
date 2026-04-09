@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,9 @@ export async function GET(request: NextRequest) {
     const timeframe = startDate && endDate
       ? { start: `${startDate}T00:00:00`, end: `${endDate}T23:59:59` }
       : { key: "last_12_months" };
+
+    const cacheKey = `klaviyo:${clientId}:${startDate ?? "default"}:${endDate ?? "default"}`;
+    const data = await withApiCache(cacheKey, 4, async () => {
 
     // Fetch campaigns from Klaviyo API v2024-02-15
     const campaignsRes = await fetch(
@@ -357,22 +361,25 @@ export async function GET(request: NextRequest) {
       }
     } catch { /* non-critical */ }
 
-    return NextResponse.json({
-      overview: {
-        sends: totalSends,
-        opens: totalOpens,
-        clicks: totalClicks,
-        revenue: totalRevenue,
-        openRate: totalSends > 0 ? (totalOpens / totalSends) * 100 : 0,
-        clickRate: totalSends > 0 ? (totalClicks / totalSends) * 100 : 0,
-        campaignCount: metricsResults.length,
-      },
-      campaigns: metricsResults,
-      flows: flowResults,
-      subscriberHealth,
-      segments,
-      smsCampaigns,
+      return {
+        overview: {
+          sends: totalSends,
+          opens: totalOpens,
+          clicks: totalClicks,
+          revenue: totalRevenue,
+          openRate: totalSends > 0 ? (totalOpens / totalSends) * 100 : 0,
+          clickRate: totalSends > 0 ? (totalClicks / totalSends) * 100 : 0,
+          campaignCount: metricsResults.length,
+        },
+        campaigns: metricsResults,
+        flows: flowResults,
+        subscriberHealth,
+        segments,
+        smsCampaigns,
+      };
     });
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error("Klaviyo route error:", error);
     return NextResponse.json({ error: "Failed to fetch Klaviyo data" }, { status: 500 });

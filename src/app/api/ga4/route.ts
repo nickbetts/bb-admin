@@ -16,6 +16,15 @@ import {
   getGA4LandingPagePerformance,
   getGA4UserJourneys,
   getGA4CohortRetention,
+  getGA4SessionDurationDistribution,
+  getGA4EventParameters,
+  getGA4ContentGrouping,
+  getGA4RealTimeData,
+  getGA4ScrollDepth,
+  getGA4BrowserOS,
+  getGA4EcommerceRevenue,
+  getGA4UserAcquisition,
+  getGA4RevenuePerSession,
 } from "@/lib/ga4";
 import { withApiCache } from "@/lib/api-cache";
 
@@ -82,6 +91,24 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4UserJourneys(propertyId, startDate, endDate)));
       case "cohort-retention":
         return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4CohortRetention(propertyId, startDate, endDate)));
+      case "session-duration":
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4SessionDurationDistribution(propertyId, startDate, endDate)));
+      case "event-parameters":
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4EventParameters(propertyId, startDate, endDate)));
+      case "content-grouping":
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4ContentGrouping(propertyId, startDate, endDate)));
+      case "realtime":
+        return NextResponse.json(await withApiCache(`ga4:realtime:${propertyId}`, 0.05, () => getGA4RealTimeData(propertyId)));
+      case "scroll-depth":
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4ScrollDepth(propertyId, startDate, endDate)));
+      case "browser-os":
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4BrowserOS(propertyId, startDate, endDate)));
+      case "ecommerce-revenue":
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4EcommerceRevenue(propertyId, startDate, endDate)));
+      case "user-acquisition":
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4UserAcquisition(propertyId, startDate, endDate)));
+      case "revenue-per-session":
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4RevenuePerSession(propertyId, startDate, endDate)));
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }

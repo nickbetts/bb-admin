@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
-import { getMetaAdsOverview, getMetaCampaigns, getMetaCampaignsEnriched, getMetaDailyData, getMetaLandingPages, getMetaAdSets, getMetaAdCreatives, getMetaAdSetAudiences, getMetaPlacementBreakdown, getMetaAudienceDemographics, getMetaFrequencyDistribution, getMetaLeadGenForms, getMetaAdRelevanceDiagnostics } from "@/lib/meta";
+import { getMetaAdsOverview, getMetaCampaigns, getMetaCampaignsEnriched, getMetaDailyData, getMetaLandingPages, getMetaAdSets, getMetaAdCreatives, getMetaAdSetAudiences, getMetaPlacementBreakdown, getMetaAudienceDemographics, getMetaFrequencyDistribution, getMetaLeadGenForms, getMetaAdRelevanceDiagnostics, getMetaCostPerActionType, getMetaProductPerformance, getMetaCountryBreakdown, getMetaAttributionSettings, getMetaActionBreakdowns, getMetaInstantExperienceMetrics, getMetaCustomConversions, getMetaSavedAudiences, getMetaReachEstimate, getMetaCampaignSpendingLimits, getMetaHourlyBreakdown } from "@/lib/meta";
 import { prisma } from "@/lib/prisma";
 import { withApiCache } from "@/lib/api-cache";
 
@@ -68,6 +68,31 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaLeadGenForms(accountId, accessToken, startDate, endDate)));
       case "relevance-diagnostics":
         return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaAdRelevanceDiagnostics(accountId, accessToken, startDate, endDate)));
+      case "cost-per-action":
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaCostPerActionType(accountId, accessToken, startDate, endDate)));
+      case "product-performance":
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaProductPerformance(accountId, accessToken, startDate, endDate)));
+      case "country-breakdown":
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaCountryBreakdown(accountId, accessToken, startDate, endDate)));
+      case "attribution-settings":
+        return NextResponse.json(await withApiCache(`meta:attribution:${clientId}`, META_CACHE_TTL_HOURS, () => getMetaAttributionSettings(accountId, accessToken)));
+      case "action-breakdowns":
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaActionBreakdowns(accountId, accessToken, startDate, endDate)));
+      case "instant-experience":
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaInstantExperienceMetrics(accountId, accessToken, startDate, endDate)));
+      case "custom-conversions":
+        return NextResponse.json(await withApiCache(`meta:custom-conversions:${clientId}`, META_CACHE_TTL_HOURS, () => getMetaCustomConversions(accountId, accessToken)));
+      case "saved-audiences":
+        return NextResponse.json(await withApiCache(`meta:saved-audiences:${clientId}`, META_CACHE_TTL_HOURS, () => getMetaSavedAudiences(accountId, accessToken)));
+      case "reach-estimate": {
+        const targetingSpecRaw = searchParams.get("targetingSpec") ?? "{}";
+        const targetingSpecParsed = JSON.parse(targetingSpecRaw) as Record<string, unknown>;
+        return NextResponse.json(await withApiCache(`meta:reach-estimate:${clientId}:${targetingSpecRaw}`, META_CACHE_TTL_HOURS, () => getMetaReachEstimate(accountId, accessToken, targetingSpecParsed)));
+      }
+      case "spending-limits":
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaCampaignSpendingLimits(accountId, accessToken)));
+      case "hourly":
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaHourlyBreakdown(accountId, accessToken, startDate, endDate)));
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }

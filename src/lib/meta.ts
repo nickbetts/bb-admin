@@ -1555,3 +1555,583 @@ export async function getMetaAdRelevanceDiagnostics(
     return [];
   }
 }
+
+// ── Wave 7: Cost per action by type (#77) ───────────────────────────────
+
+export interface MetaCostPerActionType {
+  actionType: string;
+  value: number;
+  costPerAction: number;
+}
+
+export async function getMetaCostPerActionType(
+  accountId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<MetaCostPerActionType[]> {
+  const params = new URLSearchParams({
+    access_token: getAccessToken(accessToken),
+    fields: "actions,cost_per_action_type,spend",
+    time_range: JSON.stringify({ since: startDate, until: endDate }),
+    level: "account",
+  });
+
+  try {
+    const response = await fetch(
+      `${META_API_BASE}/act_${accountId}/insights?${params}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    const row = data.data?.[0];
+    if (!row) return [];
+
+    const cpaMap = new Map<string, number>();
+    for (const cpa of (row.cost_per_action_type ?? []) as { action_type: string; value: string }[]) {
+      cpaMap.set(cpa.action_type, parseFloat(cpa.value));
+    }
+
+    return ((row.actions ?? []) as { action_type: string; value: string }[]).map((a) => ({
+      actionType: a.action_type,
+      value: parseFloat(a.value),
+      costPerAction: cpaMap.get(a.action_type) ?? 0,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ── Wave 7: Catalog/product performance (#78) ───────────────────────────
+
+export interface MetaProductPerformance {
+  productId: string;
+  productName: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  purchases: number;
+  purchaseValue: number;
+}
+
+export async function getMetaProductPerformance(
+  accountId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<MetaProductPerformance[]> {
+  const params = new URLSearchParams({
+    access_token: getAccessToken(accessToken),
+    fields: "impressions,clicks,spend,actions,action_values",
+    time_range: JSON.stringify({ since: startDate, until: endDate }),
+    level: "ad",
+    breakdowns: "product_id",
+    limit: "100",
+    sort: "spend_descending",
+  });
+
+  try {
+    const response = await fetch(
+      `${META_API_BASE}/act_${accountId}/insights?${params}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return (data.data ?? []).map(
+      (item: {
+        product_id?: string;
+        impressions?: string;
+        clicks?: string;
+        spend?: string;
+        actions?: { action_type: string; value: string }[];
+        action_values?: { action_type: string; value: string }[];
+      }) => {
+        const purchases = (item.actions ?? []).find((a) => a.action_type === "purchase");
+        const purchaseValue = (item.action_values ?? []).find((a) => a.action_type === "purchase");
+        return {
+          productId: item.product_id ?? "",
+          productName: item.product_id ?? "",
+          impressions: parseInt(item.impressions ?? "0"),
+          clicks: parseInt(item.clicks ?? "0"),
+          spend: parseFloat(item.spend ?? "0"),
+          purchases: parseInt(purchases?.value ?? "0"),
+          purchaseValue: parseFloat(purchaseValue?.value ?? "0"),
+        };
+      }
+    );
+  } catch {
+    return [];
+  }
+}
+
+// ── Wave 7: Country/region breakdown (#79) ──────────────────────────────
+
+export interface MetaCountryBreakdown {
+  country: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  conversions: number;
+  cpc: number;
+  ctr: number;
+}
+
+export async function getMetaCountryBreakdown(
+  accountId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<MetaCountryBreakdown[]> {
+  const params = new URLSearchParams({
+    access_token: getAccessToken(accessToken),
+    fields: "impressions,clicks,spend,actions,cpc,ctr",
+    time_range: JSON.stringify({ since: startDate, until: endDate }),
+    breakdowns: "country",
+    level: "account",
+    limit: "50",
+    sort: "spend_descending",
+  });
+
+  try {
+    const response = await fetch(
+      `${META_API_BASE}/act_${accountId}/insights?${params}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return (data.data ?? []).map(
+      (item: {
+        country?: string;
+        impressions?: string;
+        clicks?: string;
+        spend?: string;
+        actions?: { action_type: string; value: string }[];
+        cpc?: string;
+        ctr?: string;
+      }) => {
+        const convAction = (item.actions ?? []).find(
+          (a) => a.action_type === "offsite_conversion.fb_pixel_purchase" || a.action_type === "offsite_conversion.fb_pixel_lead" || a.action_type === "lead"
+        );
+        return {
+          country: item.country ?? "",
+          impressions: parseInt(item.impressions ?? "0"),
+          clicks: parseInt(item.clicks ?? "0"),
+          spend: parseFloat(item.spend ?? "0"),
+          conversions: parseInt(convAction?.value ?? "0"),
+          cpc: parseFloat(item.cpc ?? "0"),
+          ctr: parseFloat(item.ctr ?? "0"),
+        };
+      }
+    );
+  } catch {
+    return [];
+  }
+}
+
+// ── Wave 7: Attribution settings (#80) ──────────────────────────────────
+
+export interface MetaAttributionSetting {
+  adSetId: string;
+  adSetName: string;
+  campaignName: string;
+  attributionSpec: string;
+}
+
+export async function getMetaAttributionSettings(
+  accountId: string,
+  accessToken: string
+): Promise<MetaAttributionSetting[]> {
+  const params = new URLSearchParams({
+    access_token: getAccessToken(accessToken),
+    fields: "id,name,campaign{name},attribution_spec",
+    limit: "100",
+  });
+
+  try {
+    const response = await fetch(
+      `${META_API_BASE}/act_${accountId}/adsets?${params}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return (data.data ?? []).map(
+      (item: {
+        id?: string;
+        name?: string;
+        campaign?: { name?: string };
+        attribution_spec?: unknown[];
+      }) => ({
+        adSetId: item.id ?? "",
+        adSetName: item.name ?? "",
+        campaignName: item.campaign?.name ?? "",
+        attributionSpec: JSON.stringify(item.attribution_spec ?? []),
+      })
+    );
+  } catch {
+    return [];
+  }
+}
+
+// ── Action breakdowns (detailed action_type) ─────────────────────────────
+
+export interface MetaActionBreakdown {
+  actionType: string;
+  value: number;
+  costPerAction: number;
+}
+
+export async function getMetaActionBreakdowns(
+  accountId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<MetaActionBreakdown[]> {
+  const params = new URLSearchParams({
+    access_token: getAccessToken(accessToken),
+    time_range: JSON.stringify({ since: startDate, until: endDate }),
+    fields: "actions,cost_per_action_type,spend",
+    level: "account",
+  });
+
+  try {
+    const response = await fetch(
+      `${META_API_BASE}/act_${accountId}/insights?${params}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    const row = data.data?.[0];
+    if (!row) return [];
+
+    const actions: { action_type: string; value: string }[] = row.actions ?? [];
+    const costs: { action_type: string; value: string }[] = row.cost_per_action_type ?? [];
+    const costMap = new Map(costs.map((c) => [c.action_type, parseFloat(c.value)]));
+
+    return actions.map((a) => ({
+      actionType: a.action_type,
+      value: parseInt(a.value),
+      costPerAction: costMap.get(a.action_type) ?? 0,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ── Canvas / Instant Experience metrics ──────────────────────────────────
+
+export interface MetaInstantExperience {
+  adId: string;
+  adName: string;
+  clicksToOpen: number;
+  outboundClicks: number;
+}
+
+export async function getMetaInstantExperienceMetrics(
+  accountId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<MetaInstantExperience[]> {
+  const params = new URLSearchParams({
+    access_token: getAccessToken(accessToken),
+    time_range: JSON.stringify({ since: startDate, until: endDate }),
+    fields: "ad_id,ad_name,actions",
+    level: "ad",
+    filtering: JSON.stringify([
+      { field: "action_type", operator: "IN", value: ["instant_experience_clicks_to_open", "instant_experience_outbound_clicks"] },
+    ]),
+    limit: "50",
+  });
+
+  try {
+    const response = await fetch(
+      `${META_API_BASE}/act_${accountId}/insights?${params}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return (data.data ?? []).map(
+      (item: {
+        ad_id?: string;
+        ad_name?: string;
+        actions?: { action_type: string; value: string }[];
+      }) => {
+        const actions = item.actions ?? [];
+        const clicksToOpen = actions.find((a) => a.action_type === "instant_experience_clicks_to_open");
+        const outbound = actions.find((a) => a.action_type === "instant_experience_outbound_clicks");
+        return {
+          adId: item.ad_id ?? "",
+          adName: item.ad_name ?? "",
+          clicksToOpen: parseInt(clicksToOpen?.value ?? "0"),
+          outboundClicks: parseInt(outbound?.value ?? "0"),
+        };
+      }
+    );
+  } catch {
+    return [];
+  }
+}
+
+// ── Custom conversions / offline conversion data sets ────────────────────
+
+export interface MetaCustomConversion {
+  id: string;
+  name: string;
+  pixelRule: string;
+  customEventType: string;
+}
+
+export async function getMetaCustomConversions(
+  accountId: string,
+  accessToken: string
+): Promise<MetaCustomConversion[]> {
+  const params = new URLSearchParams({
+    access_token: getAccessToken(accessToken),
+    fields: "id,name,pixel_rule,custom_event_type",
+    limit: "100",
+  });
+
+  try {
+    const response = await fetch(
+      `${META_API_BASE}/act_${accountId}/customconversions?${params}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return (data.data ?? []).map(
+      (item: { id?: string; name?: string; pixel_rule?: string; custom_event_type?: string }) => ({
+        id: item.id ?? "",
+        name: item.name ?? "",
+        pixelRule: item.pixel_rule ?? "",
+        customEventType: item.custom_event_type ?? "",
+      })
+    );
+  } catch {
+    return [];
+  }
+}
+
+// ── Saved audiences / Lookalike audiences ────────────────────────────────
+
+export interface MetaSavedAudience {
+  id: string;
+  name: string;
+  approximateCount: number;
+  type: string;
+  subtype: string;
+}
+
+export async function getMetaSavedAudiences(
+  accountId: string,
+  accessToken: string
+): Promise<MetaSavedAudience[]> {
+  const token = getAccessToken(accessToken);
+  const results: MetaSavedAudience[] = [];
+
+  // Fetch custom audiences (lookalikes, website custom, etc.)
+  try {
+    const caParams = new URLSearchParams({
+      access_token: token,
+      fields: "id,name,approximate_count_lower_bound,subtype",
+      limit: "100",
+    });
+    const caRes = await fetch(
+      `${META_API_BASE}/act_${accountId}/customaudiences?${caParams}`,
+      { cache: "no-store" }
+    );
+    if (caRes.ok) {
+      const caData = await caRes.json();
+      for (const item of caData.data ?? []) {
+        results.push({
+          id: item.id ?? "",
+          name: item.name ?? "",
+          approximateCount: parseInt(item.approximate_count_lower_bound ?? "0"),
+          type: "custom_audience",
+          subtype: item.subtype ?? "",
+        });
+      }
+    }
+  } catch { /* ignore */ }
+
+  // Fetch saved audiences
+  try {
+    const saParams = new URLSearchParams({
+      access_token: token,
+      fields: "id,name,approximate_count",
+      limit: "100",
+    });
+    const saRes = await fetch(
+      `${META_API_BASE}/act_${accountId}/saved_audiences?${saParams}`,
+      { cache: "no-store" }
+    );
+    if (saRes.ok) {
+      const saData = await saRes.json();
+      for (const item of saData.data ?? []) {
+        results.push({
+          id: item.id ?? "",
+          name: item.name ?? "",
+          approximateCount: parseInt(item.approximate_count ?? "0"),
+          type: "saved_audience",
+          subtype: "",
+        });
+      }
+    }
+  } catch { /* ignore */ }
+
+  return results;
+}
+
+// ── Estimated daily reach ────────────────────────────────────────────────
+
+export interface MetaReachEstimate {
+  estimatedDailyReach: number;
+  estimatedDailyImpressions: number;
+}
+
+export async function getMetaReachEstimate(
+  accountId: string,
+  accessToken: string,
+  targetingSpec: Record<string, unknown>
+): Promise<MetaReachEstimate> {
+  const params = new URLSearchParams({
+    access_token: getAccessToken(accessToken),
+    targeting_spec: JSON.stringify(targetingSpec),
+    optimize_for: "NONE",
+  });
+
+  try {
+    const response = await fetch(
+      `${META_API_BASE}/act_${accountId}/reachestimate?${params}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return { estimatedDailyReach: 0, estimatedDailyImpressions: 0 };
+
+    const data = await response.json();
+    return {
+      estimatedDailyReach: parseInt(data.data?.users_lower_bound ?? data.data?.estimate_dau ?? "0"),
+      estimatedDailyImpressions: parseInt(data.data?.estimate_ready ?? "0"),
+    };
+  } catch {
+    return { estimatedDailyReach: 0, estimatedDailyImpressions: 0 };
+  }
+}
+
+// ── Campaign spending limit ──────────────────────────────────────────────
+
+export interface MetaCampaignSpendingLimit {
+  campaignId: string;
+  campaignName: string;
+  spendingLimit: number | null;
+  dailyBudget: number | null;
+  lifetimeBudget: number | null;
+  amountSpent: number;
+}
+
+export async function getMetaCampaignSpendingLimits(
+  accountId: string,
+  accessToken: string
+): Promise<MetaCampaignSpendingLimit[]> {
+  const params = new URLSearchParams({
+    access_token: getAccessToken(accessToken),
+    fields: "id,name,spend_cap,daily_budget,lifetime_budget,insights{spend}",
+    limit: "100",
+    effective_status: '["ACTIVE","PAUSED"]',
+  });
+
+  try {
+    const response = await fetch(
+      `${META_API_BASE}/act_${accountId}/campaigns?${params}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return (data.data ?? []).map(
+      (item: {
+        id?: string;
+        name?: string;
+        spend_cap?: string;
+        daily_budget?: string;
+        lifetime_budget?: string;
+        insights?: { data?: { spend?: string }[] };
+      }) => ({
+        campaignId: item.id ?? "",
+        campaignName: item.name ?? "",
+        spendingLimit: item.spend_cap ? parseFloat(item.spend_cap) / 100 : null,
+        dailyBudget: item.daily_budget ? parseFloat(item.daily_budget) / 100 : null,
+        lifetimeBudget: item.lifetime_budget ? parseFloat(item.lifetime_budget) / 100 : null,
+        amountSpent: parseFloat(item.insights?.data?.[0]?.spend ?? "0"),
+      })
+    );
+  } catch {
+    return [];
+  }
+}
+
+// ── Hourly breakdown ─────────────────────────────────────────────────────
+
+export interface MetaHourlyBreakdown {
+  hourOfDay: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  conversions: number;
+  cpc: number;
+}
+
+export async function getMetaHourlyBreakdown(
+  accountId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<MetaHourlyBreakdown[]> {
+  const params = new URLSearchParams({
+    access_token: getAccessToken(accessToken),
+    time_range: JSON.stringify({ since: startDate, until: endDate }),
+    fields: "impressions,clicks,spend,actions,cpc",
+    breakdowns: "hourly_stats_aggregated_by_advertiser_time_zone",
+    level: "account",
+    limit: "24",
+  });
+
+  try {
+    const response = await fetch(
+      `${META_API_BASE}/act_${accountId}/insights?${params}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return (data.data ?? []).map(
+      (item: {
+        hourly_stats_aggregated_by_advertiser_time_zone?: string;
+        impressions?: string;
+        clicks?: string;
+        spend?: string;
+        actions?: { action_type: string; value: string }[];
+        cpc?: string;
+      }) => {
+        const convAction = (item.actions ?? []).find(
+          (a) => a.action_type === "offsite_conversion.fb_pixel_purchase" || a.action_type === "offsite_conversion.fb_pixel_lead" || a.action_type === "lead"
+        );
+        return {
+          hourOfDay: item.hourly_stats_aggregated_by_advertiser_time_zone ?? "",
+          impressions: parseInt(item.impressions ?? "0"),
+          clicks: parseInt(item.clicks ?? "0"),
+          spend: parseFloat(item.spend ?? "0"),
+          conversions: parseInt(convAction?.value ?? "0"),
+          cpc: parseFloat(item.cpc ?? "0"),
+        };
+      }
+    );
+  } catch {
+    return [];
+  }
+}

@@ -1,0 +1,48 @@
+name: DB Migrate (Turso)
+
+# Runs scripts/prod-setup.mjs against the live Turso database whenever the
+# migration script is updated on main, or manually via workflow_dispatch.
+#
+# The script is idempotent — columnExists/tableExists guards mean it's safe
+# to re-run at any time without risk of data loss or duplicate columns.
+#
+# REQUIREMENTS: two GitHub repository secrets must be set:
+#   DATABASE_URL     — libsql://i3reports-nickbetts.aws-eu-west-1.turso.io
+#   TURSO_AUTH_TOKEN — long-lived Turso auth token
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - scripts/prod-setup.mjs
+  workflow_dispatch:
+
+# Never cancel a queued migration — skipping one could leave the DB in a
+# partially-migrated state. Queue the second run instead.
+concurrency:
+  group: db-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Run Turso migrations
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run migration script
+        run: node scripts/prod-setup.mjs
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}

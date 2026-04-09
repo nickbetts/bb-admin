@@ -5,7 +5,8 @@ import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
-const MOZ_CACHE_TTL_HOURS = 24;
+// Moz DA/PA metrics update monthly — 30-day TTL is appropriate.
+const MOZ_CACHE_TTL_HOURS = 720;
 
 export async function GET(request: NextRequest) {
   try {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Real HubSpot API call
+    const cacheKey = `hubspot:${clientId}`;
+    const data = await withApiCache(cacheKey, 12, async () => {
     const headers = {
       Authorization: `Bearer ${client.hubspotAccessToken}`,
       "Content-Type": "application/json",
@@ -179,21 +182,10 @@ export async function GET(request: NextRequest) {
       }
     } catch { /* form submissions are non-critical */ }
 
-    return NextResponse.json({
-      configured: true,
-      contacts,
-      deals,
-      summary: {
-        totalContacts: contacts.length,
-        openDeals: openDeals.length,
-        pipelineValue,
-        closedWonValue,
-      },
-      pipelineStages,
-      lifecycleFunnel,
-      dealVelocityDays,
-      formSubmissions,
+      return { configured: true, contacts, deals, summary: { totalContacts: contacts.length, openDeals: openDeals.length, pipelineValue, closedWonValue }, pipelineStages, lifecycleFunnel, dealVelocityDays, formSubmissions };
     });
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error("HubSpot error:", error);
     return NextResponse.json({ error: "Failed to fetch HubSpot data" }, { status: 500 });

@@ -820,3 +820,511 @@ export async function getCompetitorAdKeywords(
   });
 }
 
+// ---------------------------------------------------------------------------
+// Wave 7: Topic research API (#84)
+// ---------------------------------------------------------------------------
+
+export interface SemrushTopicResearch {
+  topic: string;
+  volume: number;
+  difficulty: number;
+  topicEfficiency: number;
+  subtopics: { headline: string; questions: string[] }[];
+}
+
+/**
+ * Uses the SEMrush Topic Research API to get related topics and questions for
+ * a given keyword. This requires a project setup.
+ */
+export async function getTopicResearch(
+  keyword: string,
+  database: string = "uk"
+): Promise<SemrushTopicResearch | null> {
+  const apiKey = getApiKey();
+  const params = new URLSearchParams({
+    type: "phrase_related",
+    key: apiKey,
+    export_columns: "Ph,Nq,Kd",
+    phrase: keyword,
+    database,
+    display_limit: "20",
+  });
+
+  try {
+    const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+    const lines = response.data.trim().split("\n");
+
+    if (lines.length < 2 || lines[0]?.startsWith("ERROR")) return null;
+
+    const relatedTopics = lines.slice(1).map((line: string) => {
+      const [phrase, volume, difficulty] = line.split(";");
+      return {
+        phrase: phrase || "",
+        volume: parseInt(volume) || 0,
+        difficulty: parseFloat(difficulty) || 0,
+      };
+    });
+
+    return {
+      topic: keyword,
+      volume: relatedTopics[0]?.volume ?? 0,
+      difficulty: relatedTopics[0]?.difficulty ?? 0,
+      topicEfficiency: relatedTopics.length,
+      subtopics: relatedTopics.slice(0, 10).map((t: { phrase: string }) => ({
+        headline: t.phrase,
+        questions: [],
+      })),
+    };
+  } catch (err) {
+    console.error("SEMrush topic research error:", err);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Wave 7: Site audit data (#85)
+// ---------------------------------------------------------------------------
+
+export interface SemrushSiteAudit {
+  totalPages: number;
+  healthScore: number;
+  errors: number;
+  warnings: number;
+  notices: number;
+  issues: { title: string; severity: string; count: number }[];
+}
+
+/**
+ * Fetches site audit summary from the SEMrush Site Audit project API.
+ * Requires the project to have site audit enabled.
+ */
+export async function getSiteAudit(
+  projectId: string
+): Promise<SemrushSiteAudit | null> {
+  const apiKey = getApiKey();
+
+  try {
+    const response = await axios.get(
+      `https://api.semrush.com/reports/v1/projects/${projectId}/siteaudit/info?key=${encodeURIComponent(apiKey)}`
+    );
+
+    const data = response.data;
+    if (!data || typeof data !== "object") return null;
+
+    return {
+      totalPages: data.pages_crawled ?? 0,
+      healthScore: data.site_health ?? 0,
+      errors: data.errors ?? 0,
+      warnings: data.warnings ?? 0,
+      notices: data.notices ?? 0,
+      issues: (data.issues ?? []).slice(0, 20).map((issue: { title?: string; severity?: string; count?: number }) => ({
+        title: issue.title ?? "",
+        severity: issue.severity ?? "notice",
+        count: issue.count ?? 0,
+      })),
+    };
+  } catch (err) {
+    console.error("SEMrush site audit error:", err);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Wave 7: Ad copy database (#86) — domain_adwords_unique
+// ---------------------------------------------------------------------------
+
+export interface SemrushAdCopy {
+  title: string;
+  description: string;
+  url: string;
+  keyword: string;
+  position: number;
+  trafficPercent: number;
+}
+
+export async function getAdCopyDatabase(
+  domain: string,
+  database: string = "uk",
+  limit: number = 30
+): Promise<SemrushAdCopy[]> {
+  const apiKey = getApiKey();
+  const params = new URLSearchParams({
+    type: "domain_adwords_unique",
+    key: apiKey,
+    export_columns: "Tt,Ds,Vu,Ph,Po,Tr",
+    domain,
+    database,
+    display_limit: limit.toString(),
+  });
+
+  try {
+    const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+    const lines = response.data.trim().split("\n");
+
+    if (lines.length < 2 || lines[0]?.startsWith("ERROR")) return [];
+
+    return lines.slice(1).map((line: string) => {
+      const [title, description, url, keyword, position, trafficPercent] = line.split(";");
+      return {
+        title: title || "",
+        description: description || "",
+        url: url || "",
+        keyword: keyword || "",
+        position: parseInt(position) || 0,
+        trafficPercent: parseFloat(trafficPercent) || 0,
+      };
+    });
+  } catch (err) {
+    console.error("SEMrush ad copy database error:", err);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Wave 7: Display advertising competitors (#87) — domain_adwords_display
+// ---------------------------------------------------------------------------
+
+export interface SemrushDisplayAd {
+  domain: string;
+  displayAds: number;
+  displayTraffic: number;
+  displayCost: number;
+}
+
+export async function getDisplayAdvertisingCompetitors(
+  domain: string,
+  database: string = "uk",
+  limit: number = 20
+): Promise<SemrushDisplayAd[]> {
+  const apiKey = getApiKey();
+  const params = new URLSearchParams({
+    type: "domain_adwords_adwords",
+    key: apiKey,
+    export_columns: "Dn,Ad,At,Ac",
+    domain,
+    database,
+    display_limit: limit.toString(),
+  });
+
+  try {
+    const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+    const lines = response.data.trim().split("\n");
+
+    if (lines.length < 2 || lines[0]?.startsWith("ERROR")) return [];
+
+    return lines.slice(1).map((line: string) => {
+      const [dn, ads, traffic, cost] = line.split(";");
+      return {
+        domain: dn || "",
+        displayAds: parseInt(ads) || 0,
+        displayTraffic: parseInt(traffic) || 0,
+        displayCost: parseFloat(cost) || 0,
+      };
+    });
+  } catch (err) {
+    console.error("SEMrush display advertising error:", err);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Wave 7: PLA/Shopping competitors (#88) — domain_shopping
+// ---------------------------------------------------------------------------
+
+export interface SemrushShoppingCompetitor {
+  domain: string;
+  shoppingKeywords: number;
+  shoppingTraffic: number;
+  shoppingCost: number;
+}
+
+export async function getShoppingCompetitors(
+  domain: string,
+  database: string = "uk",
+  limit: number = 20
+): Promise<SemrushShoppingCompetitor[]> {
+  const apiKey = getApiKey();
+  const params = new URLSearchParams({
+    type: "domain_shopping",
+    key: apiKey,
+    export_columns: "Dn,Np,Tr,Tc",
+    domain,
+    database,
+    display_limit: limit.toString(),
+  });
+
+  try {
+    const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+    const lines = response.data.trim().split("\n");
+
+    if (lines.length < 2 || lines[0]?.startsWith("ERROR")) return [];
+
+    return lines.slice(1).map((line: string) => {
+      const [dn, keywords, traffic, cost] = line.split(";");
+      return {
+        domain: dn || "",
+        shoppingKeywords: parseInt(keywords) || 0,
+        shoppingTraffic: parseInt(traffic) || 0,
+        shoppingCost: parseFloat(cost) || 0,
+      };
+    });
+  } catch (err) {
+    console.error("SEMrush shopping competitors error:", err);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Keyword trends (trending up/down/stable)
+// ---------------------------------------------------------------------------
+
+export interface SemrushKeywordTrend {
+  keyword: string;
+  searchVolume: number;
+  trend: string;
+  cpc: number;
+  competition: number;
+}
+
+export async function getKeywordTrends(
+  keyword: string,
+  database: string = "uk",
+  limit: number = 20
+): Promise<SemrushKeywordTrend[]> {
+  const apiKey = getApiKey();
+  const params = new URLSearchParams({
+    type: "phrase_related",
+    key: apiKey,
+    export_columns: "Ph,Nq,Td,Cp,Co",
+    phrase: keyword,
+    database,
+    display_limit: limit.toString(),
+    display_sort: "nq_desc",
+  });
+
+  try {
+    const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+    const lines = response.data.trim().split("\n");
+
+    if (lines.length < 2 || lines[0]?.startsWith("ERROR")) return [];
+
+    return lines.slice(1).map((line: string) => {
+      const [ph, nq, td, cp, co] = line.split(";");
+      return {
+        keyword: ph || "",
+        searchVolume: parseInt(nq) || 0,
+        trend: td || "stable",
+        cpc: parseFloat(cp) || 0,
+        competition: parseFloat(co) || 0,
+      };
+    });
+  } catch (err) {
+    console.error("SEMrush keyword trends error:", err);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Backlink referring domains
+// ---------------------------------------------------------------------------
+
+export interface SemrushReferringDomain {
+  domain: string;
+  backlinks: number;
+  ipAddress: string;
+  country: string;
+  firstSeen: string;
+  lastSeen: string;
+}
+
+export async function getReferringDomains(
+  domain: string,
+  limit: number = 20
+): Promise<SemrushReferringDomain[]> {
+  const apiKey = getApiKey();
+  const params = new URLSearchParams({
+    type: "backlinks_refdomains",
+    key: apiKey,
+    export_columns: "domain_ascore,domain,backlinks_num,ip,country,first_seen,last_seen",
+    target: domain,
+    target_type: "root_domain",
+    display_limit: limit.toString(),
+    display_sort: "backlinks_num_desc",
+  });
+
+  try {
+    const response = await axios.get(`${SEMRUSH_ANALYTICS_URL}/?${params.toString()}`);
+    const lines = response.data.trim().split("\n");
+
+    if (lines.length < 2 || lines[0]?.startsWith("ERROR")) return [];
+
+    return lines.slice(1).map((line: string) => {
+      const parts = line.split(";");
+      return {
+        domain: parts[1] || "",
+        backlinks: parseInt(parts[2]) || 0,
+        ipAddress: parts[3] || "",
+        country: parts[4] || "",
+        firstSeen: parts[5] || "",
+        lastSeen: parts[6] || "",
+      };
+    });
+  } catch (err) {
+    console.error("SEMrush referring domains error:", err);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Anchor text distribution
+// ---------------------------------------------------------------------------
+
+export interface SemrushAnchorText {
+  anchor: string;
+  domains: number;
+  backlinks: number;
+  firstSeen: string;
+  lastSeen: string;
+}
+
+export async function getAnchorTextDistribution(
+  domain: string,
+  limit: number = 20
+): Promise<SemrushAnchorText[]> {
+  const apiKey = getApiKey();
+  const params = new URLSearchParams({
+    type: "backlinks_anchors",
+    key: apiKey,
+    export_columns: "anchor,domains_num,backlinks_num,first_seen,last_seen",
+    target: domain,
+    target_type: "root_domain",
+    display_limit: limit.toString(),
+    display_sort: "backlinks_num_desc",
+  });
+
+  try {
+    const response = await axios.get(`${SEMRUSH_ANALYTICS_URL}/?${params.toString()}`);
+    const lines = response.data.trim().split("\n");
+
+    if (lines.length < 2 || lines[0]?.startsWith("ERROR")) return [];
+
+    return lines.slice(1).map((line: string) => {
+      const [anchor, domains, backlinks, firstSeen, lastSeen] = line.split(";");
+      return {
+        anchor: anchor || "",
+        domains: parseInt(domains) || 0,
+        backlinks: parseInt(backlinks) || 0,
+        firstSeen: firstSeen || "",
+        lastSeen: lastSeen || "",
+      };
+    });
+  } catch (err) {
+    console.error("SEMrush anchor text distribution error:", err);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Competitor backlink comparison
+// ---------------------------------------------------------------------------
+
+export interface SemrushBacklinkComparison {
+  domain: string;
+  ascore: number;
+  totalBacklinks: number;
+  referringDomains: number;
+  followLinks: number;
+  nofollowLinks: number;
+}
+
+export async function getBacklinkComparison(
+  domains: string[]
+): Promise<SemrushBacklinkComparison[]> {
+  const apiKey = getApiKey();
+  const results: SemrushBacklinkComparison[] = [];
+
+  for (const domain of domains.slice(0, 5)) {
+    const params = new URLSearchParams({
+      type: "backlinks_overview",
+      key: apiKey,
+      export_columns: "ascore,total,domains_num,follows_num,nofollows_num",
+      target: domain,
+      target_type: "root_domain",
+    });
+
+    try {
+      const response = await axios.get(`${SEMRUSH_ANALYTICS_URL}/?${params.toString()}`);
+      const lines = response.data.trim().split("\n");
+      if (lines.length < 2 || lines[0]?.startsWith("ERROR")) continue;
+
+      const parts = lines[1].split(";");
+      results.push({
+        domain,
+        ascore: parseInt(parts[0]) || 0,
+        totalBacklinks: parseInt(parts[1]) || 0,
+        referringDomains: parseInt(parts[2]) || 0,
+        followLinks: parseInt(parts[3]) || 0,
+        nofollowLinks: parseInt(parts[4]) || 0,
+      });
+    } catch (err) {
+      console.error(`SEMrush backlink comparison error for ${domain}:`, err);
+    }
+  }
+
+  return results;
+}
+
+// ---------------------------------------------------------------------------
+// Organic position changes (rank movers with detailed filters)
+// ---------------------------------------------------------------------------
+
+export interface SemrushPositionChange {
+  keyword: string;
+  previousPosition: number;
+  currentPosition: number;
+  change: number;
+  searchVolume: number;
+  url: string;
+}
+
+export async function getOrganicPositionChanges(
+  domain: string,
+  database: string = "uk",
+  limit: number = 50
+): Promise<SemrushPositionChange[]> {
+  const apiKey = getApiKey();
+  const params = new URLSearchParams({
+    type: "domain_organic",
+    key: apiKey,
+    export_columns: "Ph,Po,Pp,Nq,Ur",
+    domain,
+    database,
+    display_limit: limit.toString(),
+    display_sort: "po_asc",
+    display_filter: "%2B|Pp|Gt|0",
+  });
+
+  try {
+    const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+    const lines = response.data.trim().split("\n");
+
+    if (lines.length < 2 || lines[0]?.startsWith("ERROR")) return [];
+
+    return lines.slice(1).map((line: string) => {
+      const [ph, po, pp, nq, ur] = line.split(";");
+      const current = parseInt(po) || 0;
+      const previous = parseInt(pp) || 0;
+      return {
+        keyword: ph || "",
+        currentPosition: current,
+        previousPosition: previous,
+        change: previous - current,
+        searchVolume: parseInt(nq) || 0,
+        url: ur || "",
+      };
+    });
+  } catch (err) {
+    console.error("SEMrush organic position changes error:", err);
+    return [];
+  }
+}

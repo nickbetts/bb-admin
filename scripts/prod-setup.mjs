@@ -1,6 +1,16 @@
 // Idempotent migration script for Turso production database.
-// Adds any missing columns that `prisma migrate deploy` can't handle via libsql://.
-// Run manually after schema changes, or automatically during Vercel build.
+// Adds any missing columns/tables that `prisma migrate deploy` can't handle via libsql://.
+//
+// HOW TO ADD A SCHEMA CHANGE:
+//   1. Update prisma/schema.prisma with your new model/field.
+//   2. Run `npm run db:migrate` locally to generate the Prisma migration file.
+//   3. Add the corresponding SQL to this file, wrapped in columnExists/tableExists guards.
+//   4. Push/merge to main — the "DB Migrate (Turso)" GitHub Action will run this
+//      script automatically against the live Turso database.
+//   5. You can also trigger it manually from Actions → DB Migrate (Turso) → Run workflow.
+//
+// Run locally (requires DATABASE_URL + TURSO_AUTH_TOKEN in .env.local):
+//   node scripts/prod-setup.mjs
 import { createClient } from "@libsql/client";
 import { config } from "dotenv";
 import { resolve, dirname } from "path";

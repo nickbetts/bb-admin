@@ -12,6 +12,11 @@ import {
   getGSCQueryPageCombos,
   getGSCSearchAppearances,
   getGSCTopQueriesExpanded,
+  getGSCPageCountry,
+  getGSCDiscoverData,
+  getGSCSitemaps,
+  getGSCQueryDevice,
+  getGSCQueryCountry,
 } from "@/lib/search-console";
 import { getPreviousPeriod } from "@/lib/utils";
 import { withApiCache } from "@/lib/api-cache";
@@ -149,6 +154,50 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(
           await withApiCache(expandedCacheKey, GSC_CACHE_TTL_HOURS, () =>
             getGSCTopQueriesExpanded(siteUrl, startDate, endDate, expandedLimit)
+          )
+        );
+      }
+
+      case "page-country": {
+        const pcRowLimit = parseInt(searchParams.get("rowLimit") ?? "100", 10);
+        const pcCacheKey = `gsc:page-country:${siteUrl}:${startDate}:${endDate}:${pcRowLimit}`;
+        return NextResponse.json(
+          await withApiCache(pcCacheKey, GSC_CACHE_TTL_HOURS, () =>
+            getGSCPageCountry(siteUrl, startDate, endDate, pcRowLimit)
+          )
+        );
+      }
+
+      case "discover":
+        return NextResponse.json(
+          await withApiCache(`gsc:discover:${siteUrl}:${startDate}:${endDate}`, GSC_CACHE_TTL_HOURS, () =>
+            getGSCDiscoverData(siteUrl, startDate, endDate)
+          )
+        );
+
+      case "sitemaps":
+        return NextResponse.json(
+          await withApiCache(`gsc:sitemaps:${siteUrl}`, 24, () =>
+            getGSCSitemaps(siteUrl)
+          )
+        );
+
+      case "query-device": {
+        const qdLimit = parseInt(searchParams.get("rowLimit") ?? "100", 10);
+        const qdCacheKey = `gsc:query-device:${siteUrl}:${startDate}:${endDate}:${qdLimit}`;
+        return NextResponse.json(
+          await withApiCache(qdCacheKey, GSC_CACHE_TTL_HOURS, () =>
+            getGSCQueryDevice(siteUrl, startDate, endDate, qdLimit)
+          )
+        );
+      }
+
+      case "query-country": {
+        const qcLimit = parseInt(searchParams.get("rowLimit") ?? "100", 10);
+        const qcCacheKey = `gsc:query-country:${siteUrl}:${startDate}:${endDate}:${qcLimit}`;
+        return NextResponse.json(
+          await withApiCache(qcCacheKey, GSC_CACHE_TTL_HOURS, () =>
+            getGSCQueryCountry(siteUrl, startDate, endDate, qcLimit)
           )
         );
       }

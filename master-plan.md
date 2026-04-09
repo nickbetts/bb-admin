@@ -28,6 +28,7 @@
    - 2.14 [WooCommerce](#214-woocommerce)
    - 2.15 [Core Web Vitals (CrUX)](#215-core-web-vitals-crux)
    - 2.16 [Moz (Domain Authority)](#216-moz-domain-authority)
+   - 2.17 [Implementation Status Audit (v2.3)](#217-implementation-status-audit-v23--9-april-2026)
 3. [Cross-Platform Intelligence Opportunities](#3-cross-platform-intelligence-opportunities)
 4. [AI-Powered Suggestions & Recommendations Engine](#4-ai-powered-suggestions--recommendations-engine)
 5. [Keyword Intelligence System](#5-keyword-intelligence-system)
@@ -62,7 +63,7 @@ For each platform, we document:
 ### 2.1 Google Analytics 4 (GA4)
 
 **API:** Google Analytics Data API v1beta (`analyticsdata.googleapis.com`)
-**Current Functions:** 12 (`getGA4Overview`, `getGA4DailyData`, `getGA4TrafficSources`, `getGA4TopPages`, `getGA4Geography`, `getGA4Devices`, `getGA4OrganicOverview`, `getGA4NewVsReturning`, `getGA4Demographics`, `getGA4ConversionEvents`, `getGA4ConversionsByChannel`, `getGA4AIReferrals`)
+**Current Functions:** 22 (`getGA4Overview`, `getGA4DailyData`, `getGA4TrafficSources`, `getGA4TopPages`, `getGA4Geography`, `getGA4Devices`, `getGA4OrganicOverview`, `getGA4NewVsReturning`, `getGA4Demographics`, `getGA4ConversionEvents`, `getGA4ConversionsByChannel`, `getGA4AIReferrals`, `getGA4LandingPagePerformance`, `getGA4UserJourneys`, `getGA4CohortRetention`, `getGA4SessionDurationDistribution`, `getGA4EventParameters`, `getGA4ContentGrouping`, `getGA4RealTimeData`, `getGA4ScrollDepth`, `getGA4BrowserOS`)
 
 #### ✅ What We Pull Today
 
@@ -72,59 +73,71 @@ For each platform, we document:
 | Daily | date, sessions, users, pageviews |
 | Traffic Sources | source, medium, sessions, users, bounceRate, conversions (top 10) |
 | Top Pages | pagePath, pageTitle, sessions, pageviews, bounceRate (top 10) |
-| Geography | country, sessions, users (top 15) |
+| Geography | country, city, sessions, users (top 15) |
 | Devices | deviceCategory, sessions, users |
 | Organic Overview | Same as overview, filtered to Organic Search channel |
 | New vs Returning | newUsers, returningUsers counts |
 | Demographics | age brackets × users, gender × users |
 | Conversion Events | eventName, conversions (top 20 conversion events) |
 | Conversions by Channel | channelGroup, conversions, sessions (top 10) |
+| AI Referrals | AI-driven traffic source data |
+| Landing Page Performance | landingPage, bounceRate, avgSessionDuration, conversions, revenue (Wave 6) |
+| User Journeys | entry → pages → exit flow, exit pages (Wave 6) |
+| Cohort Retention | weekly/monthly retention curves (Wave 6) |
+| Session Duration Distribution | bucketed <10s / 10-30s / 30s-1m / 1-3m / 3-10m / 10m+ (Wave 7) |
+| Event Parameters | eventName, eventCount, eventValue (Wave 7) |
+| Content Grouping | contentGroup dimension with sessions, users, pageviews (Wave 7) |
+| Real-time Data | activeUsers in last 30 min with source/page breakdowns (Wave 7) |
+| Scroll Depth | percentScrolled from scroll events (Wave 7) |
+| Browser/OS | browser × operatingSystem with sessions, users (Wave 7) |
 | AI Referrals | AI sources (ChatGPT, Claude, Perplexity, etc.) sessions, users |
 
 #### ⚠️ What We Fetch But Under-Use
 
-| Data | Currently | Should Be |
-|------|-----------|-----------|
-| Demographics (age/gender) | Fetched but only shown in dashboard; NOT passed to per-section AI insights | Pass to ALL AI prompts — enables audience-aware recommendations |
-| Organic Overview | Separate fetch duplicating overview logic | Could be a toggle/comparison view: all traffic vs organic only |
-| AI Referrals | Shown as a data table only | AI should analyse trend of AI-driven traffic growth, suggest content optimisation for AI discovery |
-| Conversion Events | Listed but not ranked by value | Should calculate conversion VALUE per event, not just count |
+| Data | Currently | Should Be | Status |
+|------|-----------|-----------|--------|
+| Demographics (age/gender) | Fetched but only shown in dashboard; NOT passed to per-section AI insights | Pass to ALL AI prompts — enables audience-aware recommendations | ✅ Addressed (Wave 2 #11) — now passed to all AI prompts |
+| Organic Overview | Separate fetch duplicating overview logic | Could be a toggle/comparison view: all traffic vs organic only | ⚠️ Minor — functional, low priority |
+| AI Referrals | Shown as a data table only | AI should analyse trend of AI-driven traffic growth, suggest content optimisation for AI discovery | ✅ Addressed (Wave 2) — SuperSummary analyses trends |
+| Conversion Events | Listed but not ranked by value | Should calculate conversion VALUE per event, not just count | ✅ Addressed (Wave 7 #64) — event parameters/values now pulled |
 
 #### ❌ What the API Offers But We Don't Pull
 
-| Available Data | GA4 API Support | Agency Benefit |
-|---------------|----------------|----------------|
-| **E-commerce purchase revenue** | `purchaseRevenue`, `totalRevenue`, `ecommercePurchases` metrics | Revenue attribution at page/source level without needing Shopify/WooCommerce |
-| **Event parameters/values** | `eventValue`, custom parameters via `customEvent:parameter` | Track form submissions, video plays, scroll depth with actual values |
-| **User journey / path exploration** | `pagePathPlusQueryString` dimension, multi-dimensional reports | Show actual user flows: entry → pages visited → conversion |
-| **Landing page performance** | `landingPage` dimension + bounce/conversion metrics | Which landing pages convert best? Essential for PPC/SEO alignment |
-| **Exit pages** | `pagePath` with `exits` metric (Admin API) | Where are users dropping off? Critical for CRO recommendations |
-| **Session duration distribution** | `sessionDuration` dimension bucketed | Are sessions mostly <10s (poor quality traffic) or >3min (engaged)? |
-| **Content grouping** | `contentGroup` dimension (requires setup) | Performance by content type (blog, product, landing page) |
-| **User acquisition vs traffic acquisition** | Separate `firstUser` dimensions | Distinguish how users first found the site vs how sessions arrive |
-| **Cohort analysis** | Cohort API (weekly/monthly retention) | Retention curves: "Of users acquired in Week 1, how many returned?" |
-| **Real-time data** | Realtime API (activeUsers in last 30 min) | Live dashboard widget during campaign launches |
-| **City-level geography** | `city` dimension | Show performance by city — critical for local businesses |
-| **Browser/OS breakdown** | `browser`, `operatingSystem` dimensions | Technical audience profiling |
-| **Revenue per session** | `totalRevenue` / `sessions` computed | Key e-commerce KPI: revenue efficiency of traffic |
-| **Engagement time** | `userEngagementDuration`, `engagedSessionsPerUser` | Beyond bounce rate — how deeply engaged are visitors? |
-| **Scroll depth** | `percentScrolled` (requires event setup) | Content engagement metric for blog posts and landing pages |
+| Available Data | GA4 API Support | Agency Benefit | Status |
+|---------------|----------------|----------------|--------|
+| **E-commerce purchase revenue** | `purchaseRevenue`, `totalRevenue`, `ecommercePurchases` metrics | Revenue attribution at page/source level without needing Shopify/WooCommerce | ✅ Wave 8 — `getGA4EcommerceRevenue()` |
+| **Event parameters/values** | `eventValue`, custom parameters via `customEvent:parameter` | Track form submissions, video plays, scroll depth with actual values | ✅ Wave 7 #64 — `getGA4EventParameters()` |
+| **User journey / path exploration** | `pagePathPlusQueryString` dimension, multi-dimensional reports | Show actual user flows: entry → pages visited → conversion | ✅ Wave 6 #46 — `getGA4UserJourneys()` |
+| **Landing page performance** | `landingPage` dimension + bounce/conversion metrics | Which landing pages convert best? Essential for PPC/SEO alignment | ✅ Wave 6 #45 — `getGA4LandingPagePerformance()` |
+| **Exit pages** | `pagePath` with `exits` metric (Admin API) | Where are users dropping off? Critical for CRO recommendations | ✅ Wave 6 #46 — included in `getGA4UserJourneys()` |
+| **Session duration distribution** | `sessionDuration` dimension bucketed | Are sessions mostly <10s (poor quality traffic) or >3min (engaged)? | ✅ Wave 7 #63 — `getGA4SessionDurationDistribution()` |
+| **Content grouping** | `contentGroup` dimension (requires setup) | Performance by content type (blog, product, landing page) | ✅ Wave 7 #65 — `getGA4ContentGrouping()` |
+| **User acquisition vs traffic acquisition** | Separate `firstUser` dimensions | Distinguish how users first found the site vs how sessions arrive | ✅ Wave 8 — `getGA4UserAcquisition()` |
+| **Cohort analysis** | Cohort API (weekly/monthly retention) | Retention curves: "Of users acquired in Week 1, how many returned?" | ✅ Wave 6 #47 — `getGA4CohortRetention()` |
+| **Real-time data** | Realtime API (activeUsers in last 30 min) | Live dashboard widget during campaign launches | ✅ Wave 7 #66 — `getGA4RealTimeData()` |
+| **City-level geography** | `city` dimension | Show performance by city — critical for local businesses | ✅ Wave 6 — city dimension in `getGA4Geography()` |
+| **Browser/OS breakdown** | `browser`, `operatingSystem` dimensions | Technical audience profiling | ✅ Wave 7 #68 — `getGA4BrowserOS()` |
+| **Revenue per session** | `totalRevenue` / `sessions` computed | Key e-commerce KPI: revenue efficiency of traffic | ✅ Wave 8 — `getGA4RevenuePerSession()` |
+| **Engagement time** | `userEngagementDuration`, `engagedSessionsPerUser` | Beyond bounce rate — how deeply engaged are visitors? | ✅ Wave 6 — engagement metrics in overview |
+| **Scroll depth** | `percentScrolled` (requires event setup) | Content engagement metric for blog posts and landing pages | ✅ Wave 7 #67 — `getGA4ScrollDepth()` |
 
 #### 💡 AI Suggestions Enabled by Missing Data
 
-1. **Landing Page Optimiser**: "Your Google Ads campaigns send 60% of traffic to /product-page but /landing-v2 has a 3.2× higher conversion rate — consider redirecting"
-2. **Traffic Quality Scorer**: "Organic traffic has avg session duration of 4:32 but paid social traffic is 0:48 — Meta audiences may need refinement"
-3. **Revenue Attribution**: "Blog content drives 12% of sessions but only 2% of e-commerce revenue — consider adding product CTAs to high-traffic articles"
-4. **Exit Page Analysis**: "45% of users exit on /checkout/shipping — potential friction point. Recommend CRO audit"
-5. **Cohort Retention**: "Users acquired via email have 3× higher 30-day return rate than paid search — increase email capture investment"
-6. **City-Level Targeting**: "Manchester generates 18% of sessions but 31% of conversions — recommend increasing geo bid modifier for Manchester"
+> **v2.4 Status:** All 6/6 suggestion types now have the underlying data available. Wave 8 added `getGA4EcommerceRevenue()`, closing the revenue attribution gap. Wiring them into AI prompts and dashboard components will fully realise these benefits.
+
+1. **Landing Page Optimiser**: "Your Google Ads campaigns send 60% of traffic to /product-page but /landing-v2 has a 3.2× higher conversion rate — consider redirecting" — ✅ Data available via `getGA4LandingPagePerformance()`
+2. **Traffic Quality Scorer**: "Organic traffic has avg session duration of 4:32 but paid social traffic is 0:48 — Meta audiences may need refinement" — ✅ Data available via `getGA4SessionDurationDistribution()`
+3. **Revenue Attribution**: "Blog content drives 12% of sessions but only 2% of e-commerce revenue — consider adding product CTAs to high-traffic articles" — ✅ Data available via `getGA4EcommerceRevenue()`
+4. **Exit Page Analysis**: "45% of users exit on /checkout/shipping — potential friction point. Recommend CRO audit" — ✅ Data available via `getGA4UserJourneys()`
+5. **Cohort Retention**: "Users acquired via email have 3× higher 30-day return rate than paid search — increase email capture investment" — ✅ Data available via `getGA4CohortRetention()`
+6. **City-Level Targeting**: "Manchester generates 18% of sessions but 31% of conversions — recommend increasing geo bid modifier for Manchester" — ✅ Data available via `getGA4Geography()`
 
 ---
 
 ### 2.2 Google Ads
 
 **API:** Google Ads API v20 (`googleads.googleapis.com`) + v18 for Keyword Ideas
-**Current Functions:** 15 (`getGoogleAdsOverview`, `getGoogleAdsCampaigns`, `getGoogleAdsCampaignsEnriched`, `getGoogleAdsLandingPages`, `getGoogleAdsAdGroups`, `getGoogleAdsDailyData`, `getGoogleAdsSearchTerms`, `getGoogleAdsAvgQualityScore`, `getGoogleAdsAudienceCriteria`, `getGoogleAdsRSAAssets`, `getGoogleAdsAccounts`, `getAllGoogleAdsAccounts`, `listAccessibleCustomers`, `generateKeywordIdeas`, `getGoogleAdsInvalidClicks`, `getGoogleAdsDeviceBreakdown`)
+**Current Functions:** 27+ (`getGoogleAdsOverview`, `getGoogleAdsCampaigns`, `getGoogleAdsCampaignsEnriched`, `getGoogleAdsLandingPages`, `getGoogleAdsAdGroups`, `getGoogleAdsDailyData`, `getGoogleAdsSearchTerms`, `getGoogleAdsAvgQualityScore`, `getGoogleAdsAudienceCriteria`, `getGoogleAdsRSAAssets`, `getGoogleAdsAccounts`, `getAllGoogleAdsAccounts`, `listAccessibleCustomers`, `generateKeywordIdeas`, `getGoogleAdsInvalidClicks`, `getGoogleAdsDeviceBreakdown`, `getGoogleAdsKeywordQualityScores`, `getGoogleAdsPMaxInsights`, `getGoogleAdsPMaxSearchTerms`, `getGoogleAdsGeoPerformance`, `getGoogleAdsSchedulePerformance`, `getGoogleAdsBidSimulator`, `getGoogleAdsNegativeKeywords`, `getGoogleAdsDemographics`, `getGoogleAdsShoppingPerformance`, `getGoogleAdsConversionActions`, `getGoogleAdsCallExtensions`, `getGoogleAdsSitelinkPerformance`, `getGoogleAdsDisplayVideoData`, `getGoogleAdsRecommendations`)
 
 #### ✅ What We Pull Today
 
@@ -145,57 +158,59 @@ For each platform, we document:
 
 #### ⚠️ What We Fetch But Under-Use
 
-| Data | Currently | Should Be |
-|------|-----------|-----------|
-| Search Terms (top 25) | Shown in table only | **AI should mine for negative keyword suggestions** — identify low-converting/irrelevant terms |
-| Audience Criteria | Fetched but only shown in dashboard | AI should analyse audience performance and suggest new segments |
-| RSA Assets | Shown in table | AI should rate headline/description combinations and suggest improvements |
-| Quality Score (average only) | Single number shown | Should show per-keyword QS with improvement recommendations |
-| Device Breakdown | Shown in chart | AI should suggest device bid modifiers based on performance |
-| Impression Share Lost | In enriched campaigns | AI should calculate exact budget needed to recover lost IS |
+| Data | Currently | Should Be | Status |
+|------|-----------|-----------|--------|
+| Search Terms (top 25) | Shown in table only | **AI should mine for negative keyword suggestions** — identify low-converting/irrelevant terms | ✅ Addressed (Wave 2 #12) — AI mines for negatives |
+| Audience Criteria | Fetched but only shown in dashboard | AI should analyse audience performance and suggest new segments | ✅ Addressed (Wave 2 #20) — AI suggests new audiences |
+| RSA Assets | Shown in table | AI should rate headline/description combinations and suggest improvements | ✅ Addressed (Wave 2 #18) — creative intelligence AI |
+| Quality Score (average only) | Single number shown | Should show per-keyword QS with improvement recommendations | ✅ Addressed (Wave 1 #4) — per-keyword QS with components |
+| Device Breakdown | Shown in chart | AI should suggest device bid modifiers based on performance | ✅ Addressed (Wave 2) — device data passed to AI context |
+| Impression Share Lost | In enriched campaigns | AI should calculate exact budget needed to recover lost IS | ✅ Addressed (Wave 2) — IS data passed to AI context |
 
 #### ❌ What the API Offers But We Don't Pull
 
-| Available Data | GAQL Resource | Agency Benefit |
-|---------------|--------------|----------------|
-| **Per-keyword Quality Score** | `ad_group_criterion.quality_info.quality_score` per keyword | Track QS trends per keyword; AI suggests ad copy/landing page fixes for low-QS keywords |
-| **Quality Score components** | `expected_ctr`, `ad_relevance`, `landing_page_experience` | Pinpoint WHY a keyword has low QS — is it the ad copy or the landing page? |
-| **Negative keyword lists** | `shared_set`, `shared_criterion` resources | Show existing negatives; AI can cross-reference with search terms to find gaps |
-| **Search term match type** | `search_term_view.match_type` field | Identify which match types drive conversions vs waste spend |
-| **Geographic performance** | `geographic_view` or `user_location_view` resources | Performance by city/region — AI suggests geo bid adjustments |
-| **Ad schedule performance** | `ad_schedule_view` resource | Hour-of-day × day-of-week performance — AI suggests dayparting schedules |
-| **Age/gender performance** | `age_range_view`, `gender_view` resources | Demographic performance in paid search — who converts? |
-| **Performance Max asset groups** | `asset_group` resource with metrics | PMax campaign transparency — which asset groups perform, which need attention |
-| **Performance Max search terms** | `campaign_search_term_insight` | What queries trigger PMax ads? Essential visibility into the black box |
-| **Shopping product performance** | `shopping_performance_view` resource | Product-level ROAS for Shopping campaigns |
-| **Bid simulator data** | `ad_group_criterion_simulation`, `campaign_simulation` | "What if" scenario: "If you increase CPC bid by 20%, expect +15% clicks" |
-| **Conversion action detail** | `conversion_action` resource | Which conversion types drive value? Phone calls vs form fills vs purchases |
-| **Campaign budget utilisation** | `campaign_budget.amount_micros` vs actual spend | Budget pacing — is campaign on track to spend full budget? |
-| **Keyword forecasting** | `KeywordPlanService` (already partially implemented) | Forecast clicks, impressions, cost for planned keywords |
-| **Responsive Search Ad asset performance** | `asset_field_type_view` | Which individual headlines/descriptions perform best? Pinned vs unpinned |
-| **Call extensions performance** | `call_view` resource | Calls generated by ads — duration, status, call type |
-| **Sitelink performance** | `extension_feed_item` or `asset` resources | Which sitelinks get clicks? Optimise or remove underperformers |
-| **Display/Video campaign data** | `display_keyword_view`, `video` resources | Full Display/YouTube Ads reporting if clients run these campaign types |
-| **Recommendation insights** | `recommendation` resource | Google's own optimisation suggestions — surface and let AI evaluate them |
+| Available Data | GAQL Resource | Agency Benefit | Status |
+|---------------|--------------|----------------|--------|
+| **Per-keyword Quality Score** | `ad_group_criterion.quality_info.quality_score` per keyword | Track QS trends per keyword; AI suggests ad copy/landing page fixes for low-QS keywords | ✅ Wave 1 #4 — `getGoogleAdsKeywordQualityScores()` |
+| **Quality Score components** | `expected_ctr`, `ad_relevance`, `landing_page_experience` | Pinpoint WHY a keyword has low QS — is it the ad copy or the landing page? | ✅ Wave 1 #4 — components included in QS function |
+| **Negative keyword lists** | `shared_set`, `shared_criterion` resources | Show existing negatives; AI can cross-reference with search terms to find gaps | ✅ Wave 7 #69 — `getGoogleAdsNegativeKeywords()` |
+| **Search term match type** | `search_term_view.match_type` field | Identify which match types drive conversions vs waste spend | ✅ Wave 1 #5 — match type in search terms |
+| **Geographic performance** | `geographic_view` or `user_location_view` resources | Performance by city/region — AI suggests geo bid adjustments | ✅ Wave 6 #49 — `getGoogleAdsGeoPerformance()` |
+| **Ad schedule performance** | `ad_schedule_view` resource | Hour-of-day × day-of-week performance — AI suggests dayparting schedules | ✅ Wave 6 #50 — `getGoogleAdsSchedulePerformance()` |
+| **Age/gender performance** | `age_range_view`, `gender_view` resources | Demographic performance in paid search — who converts? | ✅ Wave 7 #70 — `getGoogleAdsDemographics()` |
+| **Performance Max asset groups** | `asset_group` resource with metrics | PMax campaign transparency — which asset groups perform, which need attention | ✅ Wave 6 #48 — `getGoogleAdsPMaxInsights()` |
+| **Performance Max search terms** | `campaign_search_term_insight` | What queries trigger PMax ads? Essential visibility into the black box | ✅ Wave 6 #48 — `getGoogleAdsPMaxSearchTerms()` |
+| **Shopping product performance** | `shopping_performance_view` resource | Product-level ROAS for Shopping campaigns | ✅ Wave 7 #71 — `getGoogleAdsShoppingPerformance()` |
+| **Bid simulator data** | `ad_group_criterion_simulation`, `campaign_simulation` | "What if" scenario: "If you increase CPC bid by 20%, expect +15% clicks" | ✅ Wave 6 #51 — `getGoogleAdsBidSimulator()` |
+| **Conversion action detail** | `conversion_action` resource | Which conversion types drive value? Phone calls vs form fills vs purchases | ✅ Wave 7 #72 — `getGoogleAdsConversionActions()` |
+| **Campaign budget utilisation** | `campaign_budget.amount_micros` vs actual spend | Budget pacing — is campaign on track to spend full budget? | ✅ Wave 8 — `getGoogleAdsBudgetUtilisation()` |
+| **Keyword forecasting** | `KeywordPlanService` (already partially implemented) | Forecast clicks, impressions, cost for planned keywords | ✅ Partial — `generateKeywordIdeas()` |
+| **Responsive Search Ad asset performance** | `asset_field_type_view` | Which individual headlines/descriptions perform best? Pinned vs unpinned | ✅ Wave 6 — RSA asset performance in route |
+| **Call extensions performance** | `call_view` resource | Calls generated by ads — duration, status, call type | ✅ Wave 7 #73 — `getGoogleAdsCallExtensions()` |
+| **Sitelink performance** | `extension_feed_item` or `asset` resources | Which sitelinks get clicks? Optimise or remove underperformers | ✅ Wave 7 #74 — `getGoogleAdsSitelinkPerformance()` |
+| **Display/Video campaign data** | `display_keyword_view`, `video` resources | Full Display/YouTube Ads reporting if clients run these campaign types | ✅ Wave 7 #75 — `getGoogleAdsDisplayVideoData()` |
+| **Recommendation insights** | `recommendation` resource | Google's own optimisation suggestions — surface and let AI evaluate them | ✅ Wave 7 #76 — `getGoogleAdsRecommendations()` |
 
 #### 💡 AI Suggestions Enabled by Missing Data
 
-1. **Keyword Health Dashboard**: "23 keywords have QS < 5. Top priority: 'insurance quotes' (QS: 3, expected CTR: Below Average). Recommend: rewrite ad copy to include 'insurance quotes' in Headline 1 and improve landing page load speed"
-2. **Negative Keyword Miner**: "Search terms 'free insurance calculator' and 'insurance jobs near me' spent £847 with 0 conversions this month. Recommend adding as exact match negatives"
-3. **Audience Expansion Suggestions**: "In-market audience 'Home Insurance' has 4.2× ROAS vs account average. Recommend creating dedicated campaign targeting this audience with higher bids"
-4. **Geographic Bid Optimiser**: "London: CPA £42 (above target). Birmingham: CPA £18 (below target). Recommend: reduce London bid modifier by 15%, increase Birmingham by 25%"
-5. **Ad Schedule Optimiser**: "Conversions peak Monday-Friday 9am-6pm with CPA £22. Weekends CPA rises to £67. Recommend: reduce weekend bids by 40%"
-6. **PMax Transparency Report**: "Performance Max campaign 'Brand - All Products' is spending 62% of budget on Display Network with 0.3% CTR. Asset group 'Spring Collection' driving 78% of conversions"
-7. **Shopping Product Insights**: "Product 'Blue Widget XL' has 12× ROAS but only 3% of Shopping budget. Recommend: increase bid for this product group by 50%"
-8. **Bid Simulator Projections**: "Increasing max CPC on 'business insurance' from £4.50 to £6.00 could generate an estimated +120 clicks/month at +£540 cost (projected ROAS: 5.2×)"
-9. **RSA Asset Optimisation**: "Headline 'Get a Free Quote Today' appears in 45% of impressions but has below-average CTR. Headline 'Save 30% on Business Insurance' has 2.1× higher CTR — consider pinning to position 1"
+> **v2.3 Status:** All 9 suggestion types below are now technically possible — every required data function exists. Wiring into AI prompts and dashboard components will fully activate these.
+
+1. **Keyword Health Dashboard**: "23 keywords have QS < 5. Top priority: 'insurance quotes' (QS: 3, expected CTR: Below Average). Recommend: rewrite ad copy to include 'insurance quotes' in Headline 1 and improve landing page load speed" — ✅ Data available via `getGoogleAdsKeywordQualityScores()`
+2. **Negative Keyword Miner**: "Search terms 'free insurance calculator' and 'insurance jobs near me' spent £847 with 0 conversions this month. Recommend adding as exact match negatives" — ✅ Data available via `getGoogleAdsNegativeKeywords()` + search terms
+3. **Audience Expansion Suggestions**: "In-market audience 'Home Insurance' has 4.2× ROAS vs account average. Recommend creating dedicated campaign targeting this audience with higher bids" — ✅ Data available via audience criteria
+4. **Geographic Bid Optimiser**: "London: CPA £42 (above target). Birmingham: CPA £18 (below target). Recommend: reduce London bid modifier by 15%, increase Birmingham by 25%" — ✅ Data available via `getGoogleAdsGeoPerformance()`
+5. **Ad Schedule Optimiser**: "Conversions peak Monday-Friday 9am-6pm with CPA £22. Weekends CPA rises to £67. Recommend: reduce weekend bids by 40%" — ✅ Data available via `getGoogleAdsSchedulePerformance()`
+6. **PMax Transparency Report**: "Performance Max campaign 'Brand - All Products' is spending 62% of budget on Display Network with 0.3% CTR. Asset group 'Spring Collection' driving 78% of conversions" — ✅ Data available via `getGoogleAdsPMaxInsights()`
+7. **Shopping Product Insights**: "Product 'Blue Widget XL' has 12× ROAS but only 3% of Shopping budget. Recommend: increase bid for this product group by 50%" — ✅ Data available via `getGoogleAdsShoppingPerformance()`
+8. **Bid Simulator Projections**: "Increasing max CPC on 'business insurance' from £4.50 to £6.00 could generate an estimated +120 clicks/month at +£540 cost (projected ROAS: 5.2×)" — ✅ Data available via `getGoogleAdsBidSimulator()`
+9. **RSA Asset Optimisation**: "Headline 'Get a Free Quote Today' appears in 45% of impressions but has below-average CTR. Headline 'Save 30% on Business Insurance' has 2.1× higher CTR — consider pinning to position 1" — ✅ Data available via RSA asset performance
 
 ---
 
 ### 2.3 Meta Ads (Facebook & Instagram)
 
 **API:** Meta Marketing API v19.0 (`graph.facebook.com`)
-**Current Functions:** 10 (`getMetaAdsOverview`, `getMetaCampaigns`, `getMetaDailyData`, `getMetaCampaignsEnriched`, `getMetaLandingPages`, `getMetaAdSets`, `getMetaAdCreatives`, `getMetaAdSetAudiences`, `getMetaPlacementBreakdown`, `getMetaAudienceDemographics`)
+**Current Functions:** 18 (`getMetaAdsOverview`, `getMetaCampaigns`, `getMetaDailyData`, `getMetaCampaignsEnriched`, `getMetaLandingPages`, `getMetaAdSets`, `getMetaAdCreatives`, `getMetaAdSetAudiences`, `getMetaPlacementBreakdown`, `getMetaAudienceDemographics`, `getMetaFrequencyDistribution`, `getMetaLeadGenForms`, `getMetaAdRelevanceDiagnostics`, `getMetaCostPerActionType`, `getMetaProductPerformance`, `getMetaCountryBreakdown`, `getMetaAttributionSettings`)
 
 #### ✅ What We Pull Today
 
@@ -214,50 +229,52 @@ For each platform, we document:
 
 #### ⚠️ What We Fetch But Under-Use
 
-| Data | Currently | Should Be |
-|------|-----------|-----------|
-| **Audiences (targeting data)** | Fetched for display only; NOT passed to AI | Pass to AI: "Ad Set 'Cold - 25-45 Homeowners' targets interests [Home Improvement, DIY], ages 25-45. Performance: ROAS 2.1×. AI: recommend testing 'Mortgage Holders' interest expansion" |
-| **Placement breakdown** | Shown in chart only | AI should compare placement performance and suggest budget reallocation: "Instagram Reels: CPC £0.12, CTR 3.2%. Facebook Feed: CPC £0.89, CTR 0.4%. Recommend shifting 30% of Feed budget to Reels" |
-| **Demographics** | Fetched; only passed to overview-narrative, not per-section AI | Pass to ALL Meta AI prompts: "Females 25-34 drive 45% of conversions at CPA £8 vs Males 35-44 at CPA £34. Recommend: separate ad sets by gender for budget control" |
-| **Creative media types** | We classify IMAGE/VIDEO/CAROUSEL but don't aggregate performance by format | AI should compare: "Video ads: avg CTR 2.1%, avg CPA £12. Image ads: avg CTR 0.8%, avg CPA £28. Recommend: 70/30 video-to-image creative mix" |
-| **Ad set optimisation goals** | Fetched in enriched campaigns | AI should validate: "Campaign optimising for 'Landing Page Views' but client goal is conversions — consider switching to 'Conversions' optimisation" |
-| **Video completion rate** | Fetched in overview | Should break down by creative: which specific videos have highest completion rates? |
+| Data | Currently | Should Be | Status |
+|------|-----------|-----------|--------|
+| **Audiences (targeting data)** | Fetched for display only; NOT passed to AI | Pass to AI: "Ad Set 'Cold - 25-45 Homeowners' targets interests [Home Improvement, DIY], ages 25-45. Performance: ROAS 2.1×. AI: recommend testing 'Mortgage Holders' interest expansion" | ✅ Addressed (Wave 2 #11) — audiences passed to AI prompts |
+| **Placement breakdown** | Shown in chart only | AI should compare placement performance and suggest budget reallocation: "Instagram Reels: CPC £0.12, CTR 3.2%. Facebook Feed: CPC £0.89, CTR 0.4%. Recommend shifting 30% of Feed budget to Reels" | ✅ Addressed (Wave 2) — placement data in AI context |
+| **Demographics** | Fetched; only passed to overview-narrative, not per-section AI | Pass to ALL Meta AI prompts: "Females 25-34 drive 45% of conversions at CPA £8 vs Males 35-44 at CPA £34. Recommend: separate ad sets by gender for budget control" | ✅ Addressed (Wave 2 #11) — demographics in all AI prompts |
+| **Creative media types** | We classify IMAGE/VIDEO/CAROUSEL but don't aggregate performance by format | AI should compare: "Video ads: avg CTR 2.1%, avg CPA £12. Image ads: avg CTR 0.8%, avg CPA £28. Recommend: 70/30 video-to-image creative mix" | ✅ Addressed (Wave 2 #18) — creative intelligence AI |
+| **Ad set optimisation goals** | Fetched in enriched campaigns | AI should validate: "Campaign optimising for 'Landing Page Views' but client goal is conversions — consider switching to 'Conversions' optimisation" | ✅ Addressed (Wave 2 #15) — goal-aware AI validates strategy |
+| **Video completion rate** | Fetched in overview | Should break down by creative: which specific videos have highest completion rates? | ✅ Addressed (Wave 1 #9) — video quartiles per creative |
 
 #### ❌ What the API Offers But We Don't Pull
 
-| Available Data | Meta API Endpoint | Agency Benefit |
-|---------------|-------------------|----------------|
-| **Frequency distribution** | `frequency_value` breakdown | How many users saw ad 1×, 2×, 3×... 10+ times? Identify creative fatigue precisely |
-| **Action breakdowns** | `action_type` detailed breakdown | Separate link clicks from engagement clicks, video views from ThruPlays |
-| **Cost per action by type** | `cost_per_action_type` | Cost per lead, cost per purchase, cost per add-to-cart — each separately |
-| **Video engagement metrics** | `video_p25_watched_actions`, `video_p50_watched`, `video_p75_watched`, `video_p100_watched` | Exact video funnel: what % of viewers hit 25/50/75/100% — identifies hook quality |
-| **Canvas/Instant Experience metrics** | `instant_experience_clicks_to_open`, `instant_experience_outbound_clicks` | Full-funnel for interactive ads |
-| **Lead form data** | `/leadgen_forms` endpoint + `/leads` | Pull actual lead submissions from Facebook Lead Ads — name, email, phone |
-| **Custom conversions detail** | `offline_conversion_data_set` | Match offline conversions back to campaigns |
-| **Ad relevance diagnostics** | `quality_ranking`, `engagement_rate_ranking`, `conversion_rate_ranking` | Like Google's QS — shows if performance issues are creative, audience, or landing page |
-| **Catalog/product performance** | `product_item` insights | For Dynamic Product Ads: which products perform best in ads? |
-| **Saved audiences / Lookalike audiences** | `/adaccount/saved_audiences`, `/customaudiences` | List all available audiences and their sizes; AI suggests which to test |
-| **Estimated daily reach** | `reach_estimate` endpoint | Before launching: "Targeting 25-45, UK, Interest: Yoga — estimated daily reach: 2.4M" |
-| **Attribution settings** | `attribution_spec` on ad sets | Understand which attribution window each campaign uses (1-day click, 7-day click, etc.) |
-| **Campaign spending limit** | `spending_limit` field on campaign | Budget cap tracking and pacing alerts |
-| **Hourly breakdown** | `time_increment: 1` with `hourly_stats_aggregated_by_advertiser_time_zone` | Hour-of-day performance for dayparting recommendations |
-| **Country/region breakdown** | `country`, `region` in breakdowns | Geographic performance within campaigns |
+| Available Data | Meta API Endpoint | Agency Benefit | Status |
+|---------------|-------------------|----------------|--------|
+| **Frequency distribution** | `frequency_value` breakdown | How many users saw ad 1×, 2×, 3×... 10+ times? Identify creative fatigue precisely | ✅ Wave 1 #8 — `getMetaFrequencyDistribution()` |
+| **Action breakdowns** | `action_type` detailed breakdown | Separate link clicks from engagement clicks, video views from ThruPlays | ✅ Wave 8 — `getMetaActionBreakdowns()` |
+| **Cost per action by type** | `cost_per_action_type` | Cost per lead, cost per purchase, cost per add-to-cart — each separately | ✅ Wave 7 #77 — `getMetaCostPerActionType()` |
+| **Video engagement metrics** | `video_p25_watched_actions`, `video_p50_watched`, `video_p75_watched`, `video_p100_watched` | Exact video funnel: what % of viewers hit 25/50/75/100% — identifies hook quality | ✅ Wave 1 #9 — video quartile metrics in overview |
+| **Canvas/Instant Experience metrics** | `instant_experience_clicks_to_open`, `instant_experience_outbound_clicks` | Full-funnel for interactive ads | ✅ Wave 8 — `getMetaInstantExperienceMetrics()` |
+| **Lead form data** | `/leadgen_forms` endpoint + `/leads` | Pull actual lead submissions from Facebook Lead Ads — name, email, phone | ✅ Wave 6 #52 — `getMetaLeadGenForms()` |
+| **Custom conversions detail** | `offline_conversion_data_set` | Match offline conversions back to campaigns | ❌ Not yet pulled |
+| **Ad relevance diagnostics** | `quality_ranking`, `engagement_rate_ranking`, `conversion_rate_ranking` | Like Google's QS — shows if performance issues are creative, audience, or landing page | ✅ Wave 6 #53 — `getMetaAdRelevanceDiagnostics()` |
+| **Catalog/product performance** | `product_item` insights | For Dynamic Product Ads: which products perform best in ads? | ✅ Wave 7 #78 — `getMetaProductPerformance()` |
+| **Saved audiences / Lookalike audiences** | `/adaccount/saved_audiences`, `/customaudiences` | List all available audiences and their sizes; AI suggests which to test | ✅ Wave 8 — `getMetaSavedAudiences()` |
+| **Estimated daily reach** | `reach_estimate` endpoint | Before launching: "Targeting 25-45, UK, Interest: Yoga — estimated daily reach: 2.4M" | ✅ Wave 8 — `getMetaReachEstimate()` |
+| **Attribution settings** | `attribution_spec` on ad sets | Understand which attribution window each campaign uses (1-day click, 7-day click, etc.) | ✅ Wave 7 #80 — `getMetaAttributionSettings()` |
+| **Campaign spending limit** | `spending_limit` field on campaign | Budget cap tracking and pacing alerts | ✅ Wave 8 — `getMetaCampaignSpendingLimits()` |
+| **Hourly breakdown** | `time_increment: 1` with `hourly_stats_aggregated_by_advertiser_time_zone` | Hour-of-day performance for dayparting recommendations | ✅ Wave 8 — `getMetaHourlyBreakdown()` |
+| **Country/region breakdown** | `country`, `region` in breakdowns | Geographic performance within campaigns | ✅ Wave 7 #79 — `getMetaCountryBreakdown()` |
 
 #### 💡 AI Suggestions Enabled by Missing Data
 
-1. **Audience Architect**: "Current audiences target 'Yoga Enthusiasts' aged 25-45 in UK. Available Lookalike audiences include '1% Lookalike of Purchasers' (size: 450K) — recommend testing as this typically outperforms interest targeting by 40-60%"
-2. **Creative Fatigue Monitor**: "Ad 'Spring Sale Video' has been seen 4.2× per user on average. Frequency distribution shows 32% of audience has seen it 6+ times. Historical data suggests CTR drops 40% above 5× frequency. Recommend: refresh creative within 5 days"
-3. **Video Hook Analyser**: "Video 'Product Demo 30s' loses 60% of viewers in first 3 seconds (only 40% reach 25% mark). Compare: 'Customer Testimonial' retains 72% to 25%. Recommend: test a stronger hook in first 2 seconds with product benefit upfront"
-4. **Placement Budget Optimiser**: "Instagram Stories delivers 3.2× ROAS at £0.003 CPM vs Facebook Right Column at 0.4× ROAS. Recommend: exclude Right Column, increase Stories budget by 40%"
-5. **Lead Quality Tracker**: "Facebook Lead Form 'Free Consultation' generated 142 leads this month. Cross-reference with HubSpot: 23 became SQLs (16.2% conversion rate). Campaign 'Retargeting - Website Visitors' leads convert at 34% vs 'Cold - Interest Targeting' at 8%"
-6. **Relevance Diagnostics**: "Ad Set 'Cold Prospecting - UK' has Below Average quality ranking and Below Average engagement rate ranking. This means the ad creative needs improvement (not the audience). Recommend: test new creative formats before changing targeting"
+> **v2.4 Status:** All 6/6 suggestion types now have the underlying data available. Wave 8 added `getMetaSavedAudiences()`, closing the last gap.
+
+1. **Audience Architect**: "Current audiences target 'Yoga Enthusiasts' aged 25-45 in UK. Available Lookalike audiences include '1% Lookalike of Purchasers' (size: 450K) — recommend testing as this typically outperforms interest targeting by 40-60%" — ✅ Data available via `getMetaSavedAudiences()`
+2. **Creative Fatigue Monitor**: "Ad 'Spring Sale Video' has been seen 4.2× per user on average. Frequency distribution shows 32% of audience has seen it 6+ times. Historical data suggests CTR drops 40% above 5× frequency. Recommend: refresh creative within 5 days" — ✅ Data available via `getMetaFrequencyDistribution()`
+3. **Video Hook Analyser**: "Video 'Product Demo 30s' loses 60% of viewers in first 3 seconds (only 40% reach 25% mark). Compare: 'Customer Testimonial' retains 72% to 25%. Recommend: test a stronger hook in first 2 seconds with product benefit upfront" — ✅ Data available via video quartile metrics
+4. **Placement Budget Optimiser**: "Instagram Stories delivers 3.2× ROAS at £0.003 CPM vs Facebook Right Column at 0.4× ROAS. Recommend: exclude Right Column, increase Stories budget by 40%" — ✅ Data available via `getMetaPlacementBreakdown()`
+5. **Lead Quality Tracker**: "Facebook Lead Form 'Free Consultation' generated 142 leads this month. Cross-reference with HubSpot: 23 became SQLs (16.2% conversion rate). Campaign 'Retargeting - Website Visitors' leads convert at 34% vs 'Cold - Interest Targeting' at 8%" — ✅ Data available via `getMetaLeadGenForms()` + HubSpot
+6. **Relevance Diagnostics**: "Ad Set 'Cold Prospecting - UK' has Below Average quality ranking and Below Average engagement rate ranking. This means the ad creative needs improvement (not the audience). Recommend: test new creative formats before changing targeting" — ✅ Data available via `getMetaAdRelevanceDiagnostics()`
 
 ---
 
 ### 2.4 Google Search Console
 
 **API:** Search Console API v3 (`www.googleapis.com/webmasters/v3`)
-**Current Functions:** 7 (`getGSCSites`, `getGSCOverview`, `getGSCTopQueries`, `getGSCTopPages`, `getGSCDailyData`, `getGSCDevices`, `getGSCCountries`)
+**Current Functions:** 14 (`getGSCSites`, `getGSCOverview`, `getGSCTopQueries`, `getGSCTopPages`, `getGSCDailyData`, `getGSCDevices`, `getGSCCountries`, `getGSCQueryPageCombos`, `getGSCSearchAppearances`, `getGSCBrandedSplit`, `getGSCTopQueriesExpanded`, `getGSCUrlInspection`, `getGSCPageCountry`, `getGSCDiscoverData`, `getGSCSitemaps`)
 
 #### ✅ What We Pull Today
 
@@ -273,35 +290,37 @@ For each platform, we document:
 
 #### ❌ What the API Offers But We Don't Pull
 
-| Available Data | API Support | Agency Benefit |
-|---------------|------------|----------------|
-| **Query × page combination** | Multi-dimension: `[query, page]` | Which queries land on which pages — find cannibalisation AND content gaps |
-| **Search appearance** | `searchAppearance` dimension | Rich results, FAQ, video, AMP — what SERP features do your pages trigger? |
-| **Query × device** | Multi-dimension: `[query, device]` | Which keywords perform differently on mobile vs desktop? |
-| **Query × country** | Multi-dimension: `[query, country]` | Same keyword, different performance by geography |
-| **Page × country** | Multi-dimension: `[page, country]` | Which pages perform in which markets? |
-| **Previous period comparison queries** | Same endpoint with different date range | Rank movement per query (already implemented for overview, NOT for individual queries) |
-| **URL Inspection API** | Separate API: URL Inspection | Is a page indexed? Last crawl date? Mobile usability issues? |
-| **Sitemaps API** | `/sitemaps` endpoint | Sitemap submission status, errors, indexed vs submitted URL counts |
-| **Longer query lists** | `rowLimit` up to 25,000 | We only pull top 20 — missing the long tail which often reveals opportunities |
-| **Branded vs non-branded split** | Filter queries containing brand name | Separate brand traffic from organic acquisition — critical for accurate reporting |
-| **Discover & News data** | `type` filter: `discover`, `googleNews` | How much traffic from Google Discover? Growing channel for content-heavy sites |
+| Available Data | API Support | Agency Benefit | Status |
+|---------------|------------|----------------|--------|
+| **Query × page combination** | Multi-dimension: `[query, page]` | Which queries land on which pages — find cannibalisation AND content gaps | ✅ Wave 6 — `getGSCQueryPageCombos()` |
+| **Search appearance** | `searchAppearance` dimension | Rich results, FAQ, video, AMP — what SERP features do your pages trigger? | ✅ Wave 6 — `getGSCSearchAppearances()` |
+| **Query × device** | Multi-dimension: `[query, device]` | Which keywords perform differently on mobile vs desktop? | ✅ Wave 8 — `getGSCQueryDevice()` |
+| **Query × country** | Multi-dimension: `[query, country]` | Same keyword, different performance by geography | ✅ Wave 8 — `getGSCQueryCountry()` |
+| **Page × country** | Multi-dimension: `[page, country]` | Which pages perform in which markets? | ✅ Wave 7 #81 — `getGSCPageCountry()` |
+| **Previous period comparison queries** | Same endpoint with different date range | Rank movement per query (already implemented for overview, NOT for individual queries) | ✅ Partial — overview comparison implemented |
+| **URL Inspection API** | Separate API: URL Inspection | Is a page indexed? Last crawl date? Mobile usability issues? | ✅ Wave 6 #55 — `getGSCUrlInspection()` |
+| **Sitemaps API** | `/sitemaps` endpoint | Sitemap submission status, errors, indexed vs submitted URL counts | ✅ Wave 7 #83 — `getGSCSitemaps()` |
+| **Longer query lists** | `rowLimit` up to 25,000 | We only pull top 20 — missing the long tail which often reveals opportunities | ✅ Wave 6 — `getGSCTopQueriesExpanded()` |
+| **Branded vs non-branded split** | Filter queries containing brand name | Separate brand traffic from organic acquisition — critical for accurate reporting | ✅ Wave 6 #54 — `getGSCBrandedSplit()` |
+| **Discover & News data** | `type` filter: `discover`, `googleNews` | How much traffic from Google Discover? Growing channel for content-heavy sites | ✅ Wave 7 #82 — `getGSCDiscoverData()` |
 
 #### 💡 AI Suggestions Enabled by Missing Data
 
-1. **Content Gap Finder**: "Query 'best home insurance uk 2026' has 2,400 impressions but 0 clicks (position 42). You rank for the query but have no dedicated content. Recommend: create a comparison/guide article targeting this keyword"
-2. **SERP Feature Optimiser**: "18 of your top 50 queries trigger FAQ rich results, but your pages don't have FAQ schema. Implementing FAQ schema on /insurance-guide could increase CTR by 15-30%"
-3. **Mobile SEO Prioritiser**: "Query 'emergency plumber near me' — mobile: position 3, CTR 12%. Desktop: position 8, CTR 2%. This is a mobile-first query. Ensure page is mobile-optimised and consider AMP"
-4. **Brand vs Non-Brand Tracker**: "Brand queries drive 62% of Search Console clicks. Non-brand organic growth was +8% MoM — true organic acquisition is improving"
-5. **Indexation Monitor**: "URL Inspection shows 14 key landing pages have 'Crawled - currently not indexed' status. These pages are losing potential traffic. Priority fix: improve internal linking and content quality"
-6. **Long-Tail Keyword Discovery**: "Expanding query fetch to 5,000 reveals 847 queries where you rank positions 5-15 with combined 23,000 monthly impressions. Quick win: optimise existing content for these terms"
+> **v2.4 Status:** All 6/6 suggestion types now have the underlying data available. Wave 8 added `getGSCQueryDevice()`, closing the last gap.
+
+1. **Content Gap Finder**: "Query 'best home insurance uk 2026' has 2,400 impressions but 0 clicks (position 42). You rank for the query but have no dedicated content. Recommend: create a comparison/guide article targeting this keyword" — ✅ Data available via `getGSCQueryPageCombos()` + `getGSCTopQueriesExpanded()`
+2. **SERP Feature Optimiser**: "18 of your top 50 queries trigger FAQ rich results, but your pages don't have FAQ schema. Implementing FAQ schema on /insurance-guide could increase CTR by 15-30%" — ✅ Data available via `getGSCSearchAppearances()`
+3. **Mobile SEO Prioritiser**: "Query 'emergency plumber near me' — mobile: position 3, CTR 12%. Desktop: position 8, CTR 2%. This is a mobile-first query. Ensure page is mobile-optimised and consider AMP" — ✅ Data available via `getGSCQueryDevice()`
+4. **Brand vs Non-Brand Tracker**: "Brand queries drive 62% of Search Console clicks. Non-brand organic growth was +8% MoM — true organic acquisition is improving" — ✅ Data available via `getGSCBrandedSplit()`
+5. **Indexation Monitor**: "URL Inspection shows 14 key landing pages have 'Crawled - currently not indexed' status. These pages are losing potential traffic. Priority fix: improve internal linking and content quality" — ✅ Data available via `getGSCUrlInspection()`
+6. **Long-Tail Keyword Discovery**: "Expanding query fetch to 5,000 reveals 847 queries where you rank positions 5-15 with combined 23,000 monthly impressions. Quick win: optimise existing content for these terms" — ✅ Data available via `getGSCTopQueriesExpanded()`
 
 ---
 
 ### 2.5 SEMrush
 
 **API:** SEMrush API (`api.semrush.com`) + Position Tracking API
-**Current Functions:** 10 (`getDomainOverview`, `getTopOrganicKeywords`, `getRankMovers`, `getDomainRankHistory`, `getKeywordPositionDistribution`, `getCompetitors`, `getBacklinks`, `getSemrushTrackedKeywords`, `getSemrushAIVisibility`, `getKeywordVolumeMetrics`)
+**Current Functions:** 20 (`getDomainOverview`, `getTopOrganicKeywords`, `getRankMovers`, `getDomainRankHistory`, `getKeywordPositionDistribution`, `getCompetitors`, `getBacklinks`, `getSemrushTrackedKeywords`, `getSemrushAIVisibility`, `getKeywordVolumeMetrics`, `getKeywordDifficultyAndIntent`, `getContentGap`, `getSerpFeatures`, `getBacklinkChanges`, `getCompetitorAdKeywords`, `getTopicResearch`, `getSiteAudit`, `getAdCopyDatabase`, `getDisplayAdvertisingCompetitors`, `getShoppingCompetitors`)
 
 #### ✅ What We Pull Today
 
@@ -320,34 +339,36 @@ For each platform, we document:
 
 #### ❌ What the API Offers But We Don't Pull
 
-| Available Data | SEMrush API Type | Agency Benefit |
-|---------------|-----------------|----------------|
-| **Keyword difficulty** | `phrase_this` → `Kd` column | How hard is it to rank for each keyword? Essential for prioritisation |
-| **Keyword intent** | `phrase_this` → `In` column (Informational/Commercial/Navigational/Transactional) | Align content strategy with search intent |
-| **SERP features** | `phrase_this` → `Sf` column | Featured snippets, People Also Ask, knowledge panels — which SERPs have opportunities? |
-| **Content gap analysis** | `domain_organic_organic` with filters | Keywords competitors rank for that you don't — instant content roadmap |
-| **Keyword trends** | `phrase_this` → `Td` column (trending up/down/stable) | Spot growing demand before competitors do |
-| **Backlink referring domains** | `backlinks_refdomains` type | Total unique domains linking — more meaningful than total backlinks |
-| **Backlink new/lost** | `backlinks_new`, `backlinks_lost` types | Link velocity: are you gaining or losing links? Critical for link building ROI |
-| **Anchor text distribution** | `backlinks_anchors` type | Is anchor text over-optimised? Natural vs exact match ratio |
-| **Competitor backlink comparison** | `backlinks_comparison` | Side-by-side backlink profiles: who has more/better links? |
-| **Advertising keywords** | `domain_adwords` type | What keywords are competitors bidding on? Compare with your Google Ads keywords |
-| **Ad copy database** | `domain_adwords_unique` type | Competitor ad copy — what headlines/descriptions are they using? |
-| **Display advertising** | `domain_adwords_display` | Competitor display ad placements |
-| **PLA (Shopping) competitors** | `domain_shopping` | Product listing ads competition analysis |
-| **Traffic analytics** | Traffic Analytics API (separate) | Competitor website traffic estimates, traffic sources, audience overlap |
-| **Topic research** | Topic Research API | Related topics, questions people ask, content ideas for a keyword |
-| **Site audit data** | Site Audit API (requires project) | Technical SEO: crawl errors, broken links, redirect chains, duplicate content |
-| **Organic position changes** | `domain_organic` with position change filters | Daily rank movement tracking across all keywords |
+| Available Data | SEMrush API Type | Agency Benefit | Status |
+|---------------|-----------------|----------------|--------|
+| **Keyword difficulty** | `phrase_this` → `Kd` column | How hard is it to rank for each keyword? Essential for prioritisation | ✅ Wave 6 #56 — `getKeywordDifficultyAndIntent()` |
+| **Keyword intent** | `phrase_this` → `In` column (Informational/Commercial/Navigational/Transactional) | Align content strategy with search intent | ✅ Wave 6 #56 — intent included in same function |
+| **SERP features** | `phrase_this` → `Sf` column | Featured snippets, People Also Ask, knowledge panels — which SERPs have opportunities? | ✅ Wave 6 #58 — `getSerpFeatures()` |
+| **Content gap analysis** | `domain_organic_organic` with filters | Keywords competitors rank for that you don't — instant content roadmap | ✅ Wave 6 #57 — `getContentGap()` |
+| **Keyword trends** | `phrase_this` → `Td` column (trending up/down/stable) | Spot growing demand before competitors do | ✅ Wave 8 — `getKeywordTrends()` |
+| **Backlink referring domains** | `backlinks_refdomains` type | Total unique domains linking — more meaningful than total backlinks | ✅ Wave 8 — `getReferringDomains()` |
+| **Backlink new/lost** | `backlinks_new`, `backlinks_lost` types | Link velocity: are you gaining or losing links? Critical for link building ROI | ✅ Wave 6 #59 — `getBacklinkChanges()` |
+| **Anchor text distribution** | `backlinks_anchors` type | Is anchor text over-optimised? Natural vs exact match ratio | ✅ Wave 8 — `getAnchorTextDistribution()` |
+| **Competitor backlink comparison** | `backlinks_comparison` | Side-by-side backlink profiles: who has more/better links? | ✅ Wave 8 — `getBacklinkComparison()` |
+| **Advertising keywords** | `domain_adwords` type | What keywords are competitors bidding on? Compare with your Google Ads keywords | ✅ Wave 6 — `getCompetitorAdKeywords()` |
+| **Ad copy database** | `domain_adwords_unique` type | Competitor ad copy — what headlines/descriptions are they using? | ✅ Wave 7 #86 — `getAdCopyDatabase()` |
+| **Display advertising** | `domain_adwords_display` | Competitor display ad placements | ✅ Wave 7 #87 — `getDisplayAdvertisingCompetitors()` |
+| **PLA (Shopping) competitors** | `domain_shopping` | Product listing ads competition analysis | ✅ Wave 7 #88 — `getShoppingCompetitors()` |
+| **Traffic analytics** | Traffic Analytics API (separate) | Competitor website traffic estimates, traffic sources, audience overlap | ❌ Not yet pulled (separate paid API) |
+| **Topic research** | Topic Research API | Related topics, questions people ask, content ideas for a keyword | ✅ Wave 7 #84 — `getTopicResearch()` |
+| **Site audit data** | Site Audit API (requires project) | Technical SEO: crawl errors, broken links, redirect chains, duplicate content | ✅ Wave 7 #85 — `getSiteAudit()` |
+| **Organic position changes** | `domain_organic` with position change filters | Daily rank movement tracking across all keywords | ✅ Wave 8 — `getOrganicPositionChanges()` |
 
 #### 💡 AI Suggestions Enabled by Missing Data
 
-1. **Keyword Prioritisation Engine**: "You rank position 12 for 'business insurance quotes' (volume: 8,100, difficulty: 67, intent: Transactional). Difficulty is moderate — recommend targeted content + 3 quality backlinks to reach page 1"
-2. **Content Strategy Planner**: "Content gap analysis shows 234 keywords where competitor rankinsurance.co.uk ranks in top 10 but you don't appear in top 100. Top opportunity: 'employers liability insurance' (volume: 14,800, difficulty: 45)"
-3. **SERP Feature Targeting**: "Query 'how much is car insurance' triggers a Featured Snippet (currently held by moneysupermarket.com). Your page ranks #4. Recommend: restructure content with a direct answer paragraph at the top"
-4. **Link Building Priority**: "You gained 12 new referring domains this month but lost 8 (net: +4). Competitor gained +23. Top lost link: authoritative industry directory removed your listing. Recommend: reclaim"
-5. **Competitor Ad Intelligence**: "Competitor is bidding on 47 keywords you don't target in Google Ads, including 'cheap business insurance' (volume: 6,600). Recommend: test in a separate campaign"
-6. **Trend Spotter**: "Keyword 'ai insurance tools' is trending up +340% in 3 months (volume: 1,900 → 8,400). Early mover advantage — recommend creating definitive guide content"
+> **v2.4 Status:** All 6/6 suggestion types now have the underlying data available. Wave 8 added `getKeywordTrends()`, closing the last gap.
+
+1. **Keyword Prioritisation Engine**: "You rank position 12 for 'business insurance quotes' (volume: 8,100, difficulty: 67, intent: Transactional). Difficulty is moderate — recommend targeted content + 3 quality backlinks to reach page 1" — ✅ Data available via `getKeywordDifficultyAndIntent()`
+2. **Content Strategy Planner**: "Content gap analysis shows 234 keywords where competitor rankinsurance.co.uk ranks in top 10 but you don't appear in top 100. Top opportunity: 'employers liability insurance' (volume: 14,800, difficulty: 45)" — ✅ Data available via `getContentGap()`
+3. **SERP Feature Targeting**: "Query 'how much is car insurance' triggers a Featured Snippet (currently held by moneysupermarket.com). Your page ranks #4. Recommend: restructure content with a direct answer paragraph at the top" — ✅ Data available via `getSerpFeatures()`
+4. **Link Building Priority**: "You gained 12 new referring domains this month but lost 8 (net: +4). Competitor gained +23. Top lost link: authoritative industry directory removed your listing. Recommend: reclaim" — ✅ Data available via `getBacklinkChanges()`
+5. **Competitor Ad Intelligence**: "Competitor is bidding on 47 keywords you don't target in Google Ads, including 'cheap business insurance' (volume: 6,600). Recommend: test in a separate campaign" — ✅ Data available via `getCompetitorAdKeywords()` + `getAdCopyDatabase()`
+6. **Trend Spotter**: "Keyword 'ai insurance tools' is trending up +340% in 3 months (volume: 1,900 → 8,400). Early mover advantage — recommend creating definitive guide content" — ✅ Data available via `getKeywordTrends()`
 
 ---
 
@@ -766,6 +787,314 @@ For each platform, we document:
 
 ---
 
+### 2.17 Implementation Status Audit (v2.4 — 9 April 2026)
+
+A codebase audit was conducted against every ❌ table in sections 2.1–2.16 to verify what has been implemented since the plan was written. This section summarises the current state per channel. **All ⚠️/❌ tables above now include a Status column showing implementation state. Waves 1–8 are complete; the remainder form the basis of Waves 9–10 in Section 10.**
+
+#### GA4 — 25 functions (was 12 → 16 after Wave 6 → 22 after Wave 7 → 25 after Wave 8)
+
+**Implemented (Waves 1–6):** `getGA4LandingPagePerformance()` (per-landing-page bounce, duration, revenue), `getGA4UserJourneys()` (entry → pages → exit flow, including exit pages), `getGA4CohortRetention()` (weekly/monthly retention curves), city-level geography in `getGA4Geography()`, engagement time + revenue metrics in overview data.
+
+**Implemented (Wave 7):** `getGA4SessionDurationDistribution()` (#63 — bucketed <10s/10-30s/30s-1m/1-3m/3-10m/10m+), `getGA4EventParameters()` (#64 — eventName/eventCount/eventValue), `getGA4ContentGrouping()` (#65 — contentGroup dimension), `getGA4RealTimeData()` (#66 — live activeUsers with source/page breakdowns), `getGA4ScrollDepth()` (#67 — percentScrolled from scroll events), `getGA4BrowserOS()` (#68 — browser × operatingSystem dimensions).
+
+**Implemented (Wave 8):** `getGA4EcommerceRevenue()` (pagePath × source × medium with purchaseRevenue, totalRevenue, ecommercePurchases), `getGA4UserAcquisition()` (firstUserSource × firstUserMedium with newUsers, sessions, engagedSessions, conversions), `getGA4RevenuePerSession()` (source × medium with computed revenuePerSession).
+
+**Remaining Gaps:** None for tier-1 GA4 data. Only minor UX enhancement (Organic Overview toggle) remains.
+
+**⚠️ Status:** 3/4 fully addressed. Demographics → AI (Wave 2 #11). AI Referrals → SuperSummary. Conversion Events → event parameters now pulled (Wave 7 #64). Only minor: Organic Overview toggle is a UX enhancement, not a data gap.
+
+**❌ Status:** 15/15 implemented (100%). All tier-1 GA4 data gaps closed.
+
+#### Google Ads — 28+ functions (was 15 → 19+ after Wave 6 → 27+ after Wave 7 → 28+ after Wave 8)
+
+**Implemented (Waves 1–6):** `getGoogleAdsKeywordQualityScores()` (per-keyword QS + components), search term match type, `getGoogleAdsPMaxInsights()` + `getGoogleAdsPMaxSearchTerms()`, `getGoogleAdsGeoPerformance()`, `getGoogleAdsSchedulePerformance()`, `getGoogleAdsBidSimulator()`.
+
+**Implemented (Wave 7):** `getGoogleAdsNegativeKeywords()` (#69 — shared_set/shared_criterion), `getGoogleAdsDemographics()` (#70 — age_range_view + gender_view), `getGoogleAdsShoppingPerformance()` (#71 — shopping_performance_view), `getGoogleAdsConversionActions()` (#72 — conversion_action detail), `getGoogleAdsCallExtensions()` (#73 — call_view), `getGoogleAdsSitelinkPerformance()` (#74 — campaign_asset SITELINK), `getGoogleAdsDisplayVideoData()` (#75 — DISPLAY/VIDEO campaigns), `getGoogleAdsRecommendations()` (#76 — recommendation resource).
+
+**Implemented (Wave 8):** `getGoogleAdsBudgetUtilisation()` (campaign budget pacing — spend vs budget with utilisation percentage).
+
+**Remaining Gaps:** None for tier-1 Google Ads data.
+
+**⚠️ Status:** 6/6 fully addressed. All under-used data now passed to AI context.
+
+**❌ Status:** 19/19 implemented (100%). All tier-1 Google Ads data gaps closed.
+
+#### Meta — 25 functions (was 10 → 14 after Wave 6 → 18 after Wave 7 → 25 after Wave 8)
+
+**Implemented (Waves 1–6):** `getMetaFrequencyDistribution()`, video quartile metrics (p25/p50/p75/p100), `getMetaLeadGenForms()`, `getMetaAdRelevanceDiagnostics()`.
+
+**Implemented (Wave 7):** `getMetaCostPerActionType()` (#77 — per-conversion-type CPA), `getMetaProductPerformance()` (#78 — product_item insights for DPA), `getMetaCountryBreakdown()` (#79 — country breakdown), `getMetaAttributionSettings()` (#80 — attribution_spec per ad set).
+
+**Implemented (Wave 8):** `getMetaActionBreakdowns()` (detailed action_type with cost per action), `getMetaInstantExperienceMetrics()` (Canvas/Instant Experience clicks), `getMetaCustomConversions()` (custom conversion rules and pixel rules), `getMetaSavedAudiences()` (saved + custom audiences with approximate counts), `getMetaReachEstimate()` (estimated daily reach/impressions for targeting spec), `getMetaCampaignSpendingLimits()` (spend caps and budget limits per campaign), `getMetaHourlyBreakdown()` (hourly stats for dayparting analysis).
+
+**Remaining Gaps:** None for tier-1 Meta data.
+
+**⚠️ Status:** 6/6 fully addressed. Audiences, placements, demographics all in AI prompts. Creative format comparison live. Video per-creative breakdown available.
+
+**❌ Status:** 15/15 implemented (100%). All tier-1 Meta data gaps closed.
+
+#### Search Console — 16 functions (was 7 → 11 after Wave 6 → 14 after Wave 7 → 16 after Wave 8)
+
+**Implemented (Waves 1–6):** `getGSCQueryPageCombos()`, `getGSCSearchAppearances()`, `getGSCBrandedSplit()`, `getGSCTopQueriesExpanded()`, `getGSCUrlInspection()`.
+
+**Implemented (Wave 7):** `getGSCPageCountry()` (#81 — page × country combinations), `getGSCDiscoverData()` (#82 — Discover & Google News traffic), `getGSCSitemaps()` (#83 — sitemap submission status and indexed URL counts).
+
+**Implemented (Wave 8):** `getGSCQueryDevice()` (query × device multi-dimension with clicks, impressions, CTR, position), `getGSCQueryCountry()` (query × country multi-dimension).
+
+**Remaining Gaps:** None for tier-1 Search Console data.
+
+**❌ Status:** 11/11 implemented (100%). All tier-1 Search Console data gaps closed.
+
+#### SEMrush — 25 functions (was 10 → 15 after Wave 6 → 20 after Wave 7 → 25 after Wave 8)
+
+**Implemented (Waves 1–6):** `getKeywordDifficultyAndIntent()`, `getContentGap()`, `getSerpFeatures()`, `getBacklinkChanges()`, `getCompetitorAdKeywords()`.
+
+**Implemented (Wave 7):** `getTopicResearch()` (#84 — related topics and content ideas), `getSiteAudit()` (#85 — crawl errors, broken links, redirect chains), `getAdCopyDatabase()` (#86 — competitor PPC ad copy), `getDisplayAdvertisingCompetitors()` (#87 — competitor display placements), `getShoppingCompetitors()` (#88 — PLA competition analysis).
+
+**Implemented (Wave 8):** `getKeywordTrends()` (trending up/down/stable via phrase_related), `getReferringDomains()` (unique referring domains with backlink counts), `getAnchorTextDistribution()` (anchor text with domain and backlink counts), `getBacklinkComparison()` (side-by-side backlink profiles across domains), `getOrganicPositionChanges()` (daily rank movements with previous vs current positions).
+
+**Remaining Gaps:** Traffic Analytics (separate paid API product — not included in standard SEMrush plan).
+
+**❌ Status:** 16/17 implemented (94%). Only Traffic Analytics remains (separate paid product).
+
+#### TikTok — 6 functions (was 4)
+
+**Now Implemented:** Ad group data, audience demographics, creative metadata with video engagement quartiles (2s/6s/p25/p50/p75/p100).
+
+**Still Missing (→ Wave 8):** Placement breakdown (#89), Spark Ads comparison (#90), Smart+ metrics (#91).
+
+#### Microsoft Ads — 7 functions (was 4)
+
+**Now Implemented:** Keywords, search terms, device breakdown, geographic breakdown (all added in Wave 4 #32).
+
+**Still Missing (→ Wave 8):** Quality Score, ad schedule, LinkedIn audience insights (unique to MS Ads), Shopping performance.
+
+#### LinkedIn — Basic+ integration
+
+**Now Implemented:** Account analytics, campaign analytics, seniority demographics.
+
+**Still Missing (→ Wave 8):** Industry/job function/company demographics (#92–#94), Lead Gen Form data (#95), organic post performance (#96), daily trend data (#97).
+
+#### Klaviyo — Basic+ integration
+
+**Now Implemented:** Date-filtered reporting (Wave 1 #1), campaigns, flows, overview metrics.
+
+**Still Missing (→ Wave 8):** Predictive analytics (#98), SMS detailed metrics (#99), A/B test results (#100), form performance (#101).
+
+#### YouTube — Basic+ integration
+
+**Now Implemented:** Channel analytics, video-level data, traffic sources, demographics (Wave 4 #35).
+
+**Still Missing (→ Wave 8):** Audience retention curves (#102), Shorts analytics (#103), card/end screen performance (#104), search terms driving views (#105).
+
+#### HubSpot — Basic+ integration
+
+**Now Implemented:** Contacts, deals, pipeline summary, deal velocity, form submissions (Wave 4 #36).
+
+**Still Missing (→ Wave 8):** Deal stage velocity detail (#106), lead scoring (#107), attribution reporting (#108), product line items (#109), ticket data (#110).
+
+#### CallRail — Moderate integration
+
+**Now Implemented:** Call summary, by-source breakdown (Wave 1 #3), keywords, hourly distribution, first-time vs repeat callers (Wave 4 #37).
+
+**Still Missing (→ Wave 8):** Call transcription/recording (#111), UTM-level attribution (#112), form submissions (#113).
+
+#### Shopify — 2 functions
+
+**Now Implemented:** Revenue, orders, AOV, top products, CLV, repeat purchase rate, abandoned checkouts (Wave 6 #61).
+
+**Still Missing (→ Wave 8):** Product-level performance (#114), refund/return data (#115), discount usage (#116), geographic orders (#117), inventory monitoring (#118).
+
+#### WooCommerce — 2 functions
+
+**Now Implemented:** Revenue, orders, AOV, customer data, CLV (Wave 6 #61).
+
+**Still Missing (→ Wave 8):** Product category performance (#119), refund data (#120).
+
+#### Core Web Vitals — 1 function (enhanced)
+
+**Now Implemented:** Origin-level LCP, CLS, INP, FID, TTFB, FCP with percentile data. Mobile/desktop split and historical data (Wave 6 #60).
+
+**Still Missing (→ Wave 8):** Page-level metrics (#121), connection type breakdown (#122).
+
+#### Moz — 1 function
+
+**Now Implemented:** Domain Authority, Page Authority, spam score, linking domains, link intersect (Wave 6 #62).
+
+**Still Missing (→ Wave 8):** Historical DA tracking (#123), anchor text analysis (#124), top linking pages (#125).
+
+---
+
+### 2.18 Wave 8 Data → AI & Tool Enhancement Opportunities (v2.4)
+
+Wave 8 added 18 new data functions across all 5 tier-1 channels. These functions pull data that **no existing AI endpoint or tool currently uses**. This section maps each new data source to concrete enhancements across three layers: (1) per-tab AI insights in client dashboards, (2) AI sidebar chat context, and (3) agency-wide tools.
+
+#### 2.18.1 Per-Tab Dashboard AI Insights
+
+Every channel tab in a client's dashboard has an `AiInsightsPanel` that generates AI commentary. The new Wave 8 data can be injected into these AI prompts to produce **significantly richer, more actionable insights**.
+
+##### GA4 Tab (Web Analytics)
+
+| New Data Function | AI Insight Enhancement | Example Output |
+|---|---|---|
+| `getGA4EcommerceRevenue()` | Revenue attribution at page × source level — AI can identify which content and traffic sources drive actual purchases | *"Your blog post '/best-running-shoes-2026' drives 8% of sessions but 22% of e-commerce revenue (£14.2K). Organic search is the primary revenue channel for this page. Recommend: create similar buyer-intent content."* |
+| `getGA4UserAcquisition()` | First-touch vs session-touch attribution — AI can distinguish how users *discovered* the site vs how they *return* | *"68% of new users arrive via organic search, but 45% of returning sessions come through direct/email. Your acquisition strategy is working — focus retention investment on email nurture sequences."* |
+| `getGA4RevenuePerSession()` | Revenue efficiency per traffic source — AI can rank channels by commercial value, not just volume | *"Revenue per session: Google Ads £4.82, Organic £2.14, Meta £1.03, Direct £0.67. Paid search delivers 4.7× the commercial value per visit vs Meta — consider shifting £2K/month from Meta prospecting to Google Ads branded."* |
+
+##### Google Ads Tab
+
+| New Data Function | AI Insight Enhancement | Example Output |
+|---|---|---|
+| `getGoogleAdsBudgetUtilisation()` | Budget pacing analysis — AI can flag underspending/overspending campaigns and recommend redistributions | *"Campaign 'Brand - Exact' is only at 42% budget utilisation (£840/£2,000) — it's constrained by search volume, not budget. Campaign 'Generic - Insurance' is at 98% and impression share lost to budget is 34%. Recommend: move £800 from Brand to Generic to capture an estimated 1,200 additional clicks."* |
+
+##### Meta Tab (Paid Social)
+
+| New Data Function | AI Insight Enhancement | Example Output |
+|---|---|---|
+| `getMetaActionBreakdowns()` | Separate action types — AI can distinguish expensive engagement clicks from valuable conversion actions | *"Your reported 'clicks' include 62% link clicks (cost: £0.43 each) but 38% are engagement clicks (reactions, comments — cost: £0.12). True cost per landing page visit is £0.71, not the £0.34 shown in overview. Recommend: optimise for link clicks, not all clicks."* |
+| `getMetaInstantExperienceMetrics()` | Canvas ad performance — AI can evaluate interactive ad effectiveness | *"Instant Experience 'Summer Collection' has 2,340 opens but only 12% outbound click rate (281 clicks). By comparison, standard carousel ads achieve 18% CTR. The experience may be engaging but not driving site traffic. Recommend: add stronger CTAs within the experience."* |
+| `getMetaCustomConversions()` | Custom conversion tracking — AI can surface which pixel rules are active and if any are misconfigured | *"You have 8 custom conversions configured but only 3 fired in the last 30 days. 'Add to Cart - Premium' (rule: URL contains /cart?premium=true) recorded 0 events — this URL pattern may have changed after the site redesign. Recommend: audit pixel rules."* |
+| `getMetaSavedAudiences()` | Audience library overview — AI can recommend which audiences to test based on size and type | *"You have 14 saved audiences but are only using 3 in active campaigns. '1% Lookalike of Purchasers' (450K people) has the highest historical conversion rate for similar accounts. 'Interest: Yoga + Fitness 25-45 UK' (2.1M) hasn't been tested since January. Recommend: A/B test Lookalike vs Interest in next campaign."* |
+| `getMetaReachEstimate()` | Pre-launch audience sizing — AI can warn if targeting is too narrow/broad before spend occurs | *"Your proposed targeting spec (UK, 25-45, Interest: Sustainable Fashion) has estimated daily reach of 180K. At your current £50/day budget, you'll reach ~3% daily frequency. This is healthy. Expanding to 18-55 would increase reach to 920K but may dilute relevance."* |
+| `getMetaCampaignSpendingLimits()` | Budget cap awareness — AI can flag campaigns approaching or hitting limits | *"Campaign 'Q2 Retargeting' has a lifetime spending limit of £5,000 and has spent £4,720 (94.4%). At current daily spend of £85, this campaign will hit its cap in ~3 days. Recommend: increase lifetime budget or create a successor campaign to avoid retargeting gaps."* |
+| `getMetaHourlyBreakdown()` | Dayparting intelligence — AI can identify optimal and wasteful hours of day | *"Between 11pm-6am, you're spending £12/day with 0.3× ROAS. Between 7-9am, ROAS is 4.8×. Recommend: implement dayparting schedule — exclude 11pm-6am, increase bid +30% for 7-9am. Projected saving: £360/month, projected additional revenue: £1,200/month."* |
+
+##### Search Console Tab
+
+| New Data Function | AI Insight Enhancement | Example Output |
+|---|---|---|
+| `getGSCQueryDevice()` | Device-specific ranking insights — AI can identify mobile-first opportunities | *"Query 'emergency plumber near me': Mobile position 3, CTR 14.2% (892 clicks). Desktop position 11, CTR 1.1% (23 clicks). This is a mobile-dominant local intent query. 97% of its value comes from mobile. Ensure the landing page is mobile-optimised with click-to-call."* |
+| `getGSCQueryCountry()` | Geographic keyword performance — AI can identify international opportunities | *"Query 'business insurance uk' performs in GB (position 4, 3,200 clicks) but also ranks in IE (position 8, 180 clicks) and AU (position 14, 45 clicks). If you serve Irish clients, targeted content for 'business insurance ireland' could capture this secondary market."* |
+
+##### SEO Tab (SEMrush)
+
+| New Data Function | AI Insight Enhancement | Example Output |
+|---|---|---|
+| `getKeywordTrends()` | Trending keyword detection — AI can spot rising search demand before competitors | *"'AI-powered home insurance' is trending up +280% over 3 months (volume: 720 → 2,740). No page on your site targets this query. Competitor directline.com published a guide 2 weeks ago and already ranks position 6. Recommend: create a definitive comparison guide within 14 days to capture early-mover advantage."* |
+| `getReferringDomains()` | Domain-level link authority — AI can identify link-building patterns and gaps | *"You have 847 unique referring domains (up 12 this month, down 5 — net +7). Top new domain: techcrunch.com (DA 94) links to your /industry-report page. Competitor has 1,240 referring domains. Focus: you need ~400 more quality domains to reach competitive parity. Recommend: replicate the industry report strategy quarterly."* |
+| `getAnchorTextDistribution()` | Link profile health — AI can flag over-optimisation risks | *"Your anchor text distribution: 34% branded ('CompanyName'), 28% URL-based, 22% generic ('click here', 'read more'), 16% exact-match keywords. The 16% exact-match is within safe limits (Google penalties typically trigger above 25%). However, 'cheap insurance' accounts for 8% alone — diversify this anchor."* |
+| `getBacklinkComparison()` | Competitor link gap analysis — AI can quantify the backlink investment needed | *"Backlink comparison vs top 3 competitors: You: 2,340 total links from 847 domains. Competitor A: 8,900 links from 1,240 domains. Competitor B: 5,600 links from 980 domains. You have the smallest link profile. 78% of your links are follow vs 65% industry average — your link quality ratio is strong. Focus on domain count, not total links."* |
+| `getOrganicPositionChanges()` | Rank movement tracking — AI can celebrate wins and diagnose drops | *"This week: 23 keywords improved position, 14 declined, 312 stable. Biggest win: 'best home insurance uk' moved from position 12 → 5 (+7, volume: 8,100). Biggest drop: 'car insurance quotes' fell from position 8 → 15 (-7, volume: 14,800). The drop correlates with Google's core update on 3 April — recommend content refresh + schema markup for this page."* |
+
+#### 2.18.2 AI Chat Sidebar Enrichment
+
+The `AiChatPanel` provides conversational AI access to client data. Currently it receives the last 30 metric snapshots, demographics, AI referrals, actions, and communications. The new Wave 8 data enables these **new conversational capabilities**:
+
+| New Capability | Data Sources | Example Conversation |
+|---|---|---|
+| **Revenue attribution questions** | `getGA4EcommerceRevenue()` + `getGA4RevenuePerSession()` | *User: "Which blog posts actually make us money?" → AI: "Your top 5 revenue-generating pages are: 1. /best-running-shoes (£14.2K) 2. /marathon-training-guide (£8.7K)..."* |
+| **Budget health check** | `getGoogleAdsBudgetUtilisation()` + `getMetaCampaignSpendingLimits()` | *User: "Are we on track with our ad spend?" → AI: "Google Ads: 3 campaigns underspending (42-67% utilisation). Meta: 'Q2 Retargeting' hits its £5K cap in 3 days. Recommend immediate action on both."* |
+| **Audience strategy** | `getMetaSavedAudiences()` + `getMetaReachEstimate()` | *User: "What audiences should we test next?" → AI: "You have 14 saved audiences but only 3 active. '1% Lookalike of Purchasers' (450K reach) is untested and typically outperforms interest targeting by 40-60%. Estimated daily reach at your budget: sufficient for statistical significance in 7 days."* |
+| **Competitive link intelligence** | `getReferringDomains()` + `getBacklinkComparison()` + `getAnchorTextDistribution()` | *User: "How do our backlinks compare to competitors?" → AI: "You have 847 referring domains vs competitor's 1,240. Your quality ratio (78% follow) is better than theirs (65%). Your anchor text is healthy — 16% exact match, below the 25% risk threshold. Priority: gain ~400 more domains."* |
+| **SEO movement briefing** | `getOrganicPositionChanges()` + `getKeywordTrends()` | *User: "What moved in rankings this week?" → AI: "23 keywords improved, 14 declined. Biggest win: 'best home insurance uk' up 7 positions to #5. Also, trending keyword 'AI-powered home insurance' is up +280% — you don't target it yet but competitors are starting to."* |
+| **Dayparting recommendations** | `getMetaHourlyBreakdown()` | *User: "When should we be running our Meta ads?" → AI: "Your best hours are 7-9am (4.8× ROAS) and 12-2pm (3.2× ROAS). You're wasting £360/month on 11pm-6am (0.3× ROAS). Suggest implementing a dayparting schedule."* |
+| **Mobile vs desktop SEO** | `getGSCQueryDevice()` | *User: "How do we perform on mobile vs desktop?" → AI: "Mobile drives 73% of your search clicks. 8 of your top 20 queries rank 3+ positions higher on mobile. Your local intent queries are almost exclusively mobile traffic (97%). Desktop still dominates for B2B comparison queries."* |
+
+#### 2.18.3 Agency Sidebar Tools Enhancement
+
+The sidebar tools currently operate with limited data context. Wave 8 data enables significant enhancements:
+
+##### Keyword Planner Tool
+
+| Enhancement | Data Source | Benefit |
+|---|---|---|
+| **Trending keyword suggestions** | `getKeywordTrends()` | Auto-suggest keywords with rising demand — planners see trending opportunities alongside volume/difficulty |
+| **Position change context** | `getOrganicPositionChanges()` | Show current client ranking + recent movement for suggested keywords — "You already rank #12 for this, up from #18" |
+| **Device-specific opportunity** | `getGSCQueryDevice()` | Flag keywords that perform differently by device — "This keyword ranks #3 on mobile but #15 on desktop" |
+| **Revenue per keyword estimation** | `getGA4RevenuePerSession()` + GSC data | Estimate revenue potential: "Based on avg revenue/session of £2.14 from organic, capturing position 3 could mean ~£1,800/month" |
+
+##### Proposals Tool
+
+| Enhancement | Data Source | Benefit |
+|---|---|---|
+| **Backlink gap in proposals** | `getBacklinkComparison()` + `getReferringDomains()` | AI-generated proposals can include: "Client has 847 referring domains vs competitor's 1,240 — link building is a clear opportunity" |
+| **Anchor text health** | `getAnchorTextDistribution()` | Include link profile analysis in SEO proposals — "Current anchor text distribution is healthy/at risk" |
+| **Budget efficiency data** | `getGoogleAdsBudgetUtilisation()` | Include PPC proposals with: "Current campaigns are only 67% utilised — opportunity to improve ROI before increasing spend" |
+| **Audience expansion opportunities** | `getMetaSavedAudiences()` | Include in social proposals: "12 untested audiences available, including high-potential lookalikes" |
+
+##### Competitor Intelligence Tool
+
+| Enhancement | Data Source | Benefit |
+|---|---|---|
+| **Backlink comparison view** | `getBacklinkComparison()` | Side-by-side backlink profiles for client vs monitored competitors — total links, domain count, follow ratio |
+| **Referring domain overlap** | `getReferringDomains()` | Show which domains link to competitors but not to the client — direct link-building target list |
+| **Anchor text comparison** | `getAnchorTextDistribution()` | Compare anchor text profiles to spot if competitors have more/less brand-heavy link profiles |
+| **Position change tracking** | `getOrganicPositionChanges()` | Show keyword movements alongside competitor movements — who's gaining/losing ground |
+
+##### Media Plan Tool
+
+| Enhancement | Data Source | Benefit |
+|---|---|---|
+| **Budget pacing intelligence** | `getGoogleAdsBudgetUtilisation()` + `getMetaCampaignSpendingLimits()` | Media plans informed by actual spend pacing — "Last quarter, client consistently underspent by 20% on Google Ads. Adjust plan accordingly" |
+| **Hourly optimisation recommendations** | `getMetaHourlyBreakdown()` | Media plans include dayparting recommendations with projected savings |
+| **Reach-based planning** | `getMetaReachEstimate()` | Validate media plan targeting assumptions with actual reach estimates before committing budget |
+
+##### Page Analyser Tool
+
+| Enhancement | Data Source | Benefit |
+|---|---|---|
+| **Revenue impact scoring** | `getGA4EcommerceRevenue()` + `getGA4RevenuePerSession()` | Page analysis includes revenue context: "This page generates £14.2K/month — a 10% conversion rate improvement is worth ~£1.4K/month" |
+| **Acquisition source context** | `getGA4UserAcquisition()` | Show which channels drive traffic to the analysed page — "82% of this page's traffic comes from organic, only 3% from paid" |
+
+##### Content Strategy Tool
+
+| Enhancement | Data Source | Benefit |
+|---|---|---|
+| **Trending topic integration** | `getKeywordTrends()` | Content strategies enriched with trending demand data — prioritise topics with rising search interest |
+| **Geographic content opportunities** | `getGSCQueryCountry()` | Identify content gaps by market — "Your 'insurance guide' content ranks in GB but has no localised version for IE where you also get impressions" |
+| **Position change validation** | `getOrganicPositionChanges()` | Validate content strategy impact: "Content published last month targeting 'best home insurance' has moved from position 42 → 12 in 3 weeks" |
+
+#### 2.18.4 Report AI Commentary Enhancement
+
+Every report section generates AI commentary via `/api/ai/report-commentary`. The new data enables **richer, more data-driven narratives**:
+
+| Report Section | New Data Available | Commentary Enhancement |
+|---|---|---|
+| **Web Analytics (GA4)** | E-commerce revenue, user acquisition, revenue per session | Commentary can now include revenue attribution per source, first-touch vs returning user analysis, and commercial value per channel |
+| **Google Ads** | Budget utilisation/pacing | Commentary can flag underspending/overspending campaigns and recommend budget redistributions with projected impact |
+| **Meta/Paid Social** | Action breakdowns, hourly data, spending limits, audiences, reach estimates | Commentary can distinguish true link clicks from engagement clicks, recommend dayparting schedules, flag budget caps approaching, and suggest untested audiences |
+| **Search Console** | Query × device, query × country | Commentary can highlight mobile-dominant queries, flag desktop ranking opportunities, and identify international market potential |
+| **SEO (SEMrush)** | Keyword trends, referring domains, anchor text, backlink comparison, position changes | Commentary can include weekly rank movement summaries, trending keywords to target, backlink health assessments, and competitive gap analysis |
+
+#### 2.18.5 Cross-Endpoint AI Enhancement
+
+Several existing AI endpoints aggregate data from multiple channels. The new Wave 8 data enriches these:
+
+| AI Endpoint | New Data That Can Be Injected | Enhanced Capability |
+|---|---|---|
+| **`/api/ai/budget-advisor`** | `getGoogleAdsBudgetUtilisation()` + `getMetaCampaignSpendingLimits()` + `getMetaHourlyBreakdown()` | Budget recommendations informed by actual pacing (not just spend vs target), dayparting waste identification, and spending cap awareness |
+| **`/api/ai/keyword-suggestions`** | `getKeywordTrends()` + `getOrganicPositionChanges()` + `getGSCQueryDevice()` | Keyword suggestions weighted by trending demand, current position trajectory, and device-specific opportunity |
+| **`/api/ai/audience-suggestions`** | `getMetaSavedAudiences()` + `getMetaReachEstimate()` | Audience recommendations drawn from the client's actual audience library with reach validation |
+| **`/api/ai/creative-intelligence`** | `getMetaActionBreakdowns()` + `getMetaInstantExperienceMetrics()` | Creative analysis that separates link click performance from engagement metrics, and evaluates interactive ad formats |
+| **`/api/ai/meeting-briefing`** | All 18 Wave 8 functions | Meeting briefs include budget pacing alerts, rank movements, trending opportunities, audience expansion suggestions, and revenue attribution insights |
+| **`/api/ai/super-summary`** | `getGA4EcommerceRevenue()` + `getGA4RevenuePerSession()` + `getOrganicPositionChanges()` | Health score calculation enriched with revenue efficiency metrics and SEO momentum direction |
+| **`/api/ai/strategy-document`** | `getKeywordTrends()` + `getBacklinkComparison()` + `getReferringDomains()` + `getAnchorTextDistribution()` | Quarterly strategies informed by trending demand, competitive link gaps, and link profile health assessments |
+| **`/api/ai/forecast`** | `getGA4RevenuePerSession()` + `getGoogleAdsBudgetUtilisation()` | Forecasts can factor in revenue efficiency trends and budget pacing patterns for more accurate projections |
+| **`/api/ai/root-cause`** | `getOrganicPositionChanges()` + `getGSCQueryDevice()` | Root-cause analysis for traffic drops can now cross-reference with rank movements and device-specific changes |
+
+#### 2.18.6 Implementation Priority
+
+These enhancements should be implemented in priority order:
+
+| Priority | Enhancement Area | Effort | Impact | Rationale |
+|---|---|---|---|---|
+| 🔴 P1 | Inject Wave 8 data into `report-commentary` prompts | S-M | 🟢 High | Immediately improves every generated report with richer insights — zero new UI needed |
+| 🔴 P1 | Inject Wave 8 data into `meeting-briefing` prompts | S | 🟢 High | Meeting briefs become significantly more actionable — budget pacing + rank movements |
+| 🔴 P1 | Enrich `budget-advisor` with pacing + spending limits | S | 🟢 High | Budget recommendations backed by actual utilisation data, not just spend figures |
+| 🟠 P2 | Enrich `keyword-suggestions` with trends + position changes | S | 🟢 High | Trending keywords surfaced automatically — competitive advantage |
+| 🟠 P2 | Enrich `audience-suggestions` with saved audiences + reach | S | 🟡 Medium | Recommendations from actual audience library rather than generic suggestions |
+| 🟠 P2 | Add Wave 8 data to `AiChatPanel` context | M | 🟡 Medium | Conversational AI can answer revenue, budget, backlink, and ranking questions |
+| 🟡 P3 | Enhance Keyword Planner with trends + position data | M | 🟡 Medium | Planners see trending demand + current ranking context |
+| 🟡 P3 | Enhance Proposals with backlink comparison + budget data | M | 🟡 Medium | More compelling, data-driven proposals |
+| 🟡 P3 | Enhance Competitor Intelligence with backlink views | M | 🟡 Medium | Visual backlink gap analysis in competitor monitoring |
+| 🟢 P4 | Enhance Media Plan with pacing + reach data | S | 🟡 Medium | Plans validated against actual performance history |
+| 🟢 P4 | Enhance Content Strategy with trends + geography | S | 🟢 Low | Content strategies enriched with trending demand |
+| 🟢 P4 | Enhance Page Analyser with revenue context | S | 🟢 Low | Revenue impact makes page analysis more compelling |
+
+> **Total estimated effort:** ~40-50 discrete tasks. P1 items (3 tasks) could be completed in a single wave and would immediately improve output quality across all clients. P2 items (3 tasks) build on P1. P3-P4 items are tool-specific enhancements that add depth.
+
+---
+
 ## 3. Cross-Platform Intelligence Opportunities
 
 The biggest value isn't in any single platform — it's in **connecting data across platforms** to reveal insights no single tool can see.
@@ -932,7 +1261,9 @@ When creative fatigue is detected or new campaigns are planned, AI should genera
 
 ## 8. Reporting Gaps & New Report Sections
 
-### 8.1 Missing Report Sections (13 Dashboard Tabs Not Reportable)
+### 8.1 Missing Report Sections (13 Dashboard Tabs Not Reportable) — ✅ All Implemented
+
+> **v2.2 Status:** All 13 previously missing report section types are now implemented in `report-blocks.ts` with full block configurations. Every section type below is live in the report builder.
 
 | Section Type | Priority | Suggested Blocks |
 |-------------|----------|-----------------|
@@ -950,7 +1281,9 @@ When creative fatigue is detected or new campaigns are planned, AI should genera
 | `signals` | 🟢 Low | active_signals, severity_summary, platform_breakdown |
 | `actions` | 🟢 Low | completed_actions, pending_actions, impact_summary |
 
-### 8.2 Enhanced Existing Report Sections
+### 8.2 Enhanced Existing Report Sections — ✅ Mostly Implemented
+
+> **v2.2 Status:** Most blocks below are now registered in `report-blocks.ts`. The `overview` section includes goal_progress, blended_cpa, channel_matrix, alerts, client_health, since_last_report. The `googleads` section includes keywords, search_terms, quality_score, geo, schedule, device_breakdown, pmax. The `paid_social` section includes placements, audiences, demographics, frequency, lead_forms, relevance. The `seo` section includes content_gap, serp_features, backlink_changes. The `searchconsole` section includes branded_split, query_page. The `web` section includes landing_pages, user_journeys, cohort_retention, engagement_depth.
 
 | Existing Section | Missing Blocks to Add |
 |-----------------|----------------------|
@@ -968,6 +1301,8 @@ When creative fatigue is detected or new campaigns are planned, AI should genera
 
 ### 9.1 Account Manager Productivity
 
+> **v2.2 Status:** ✅ "Since Last Report" — implemented (`/api/cross/since-last-report`). ✅ AI Pre-populated Commentary — implemented (`/api/ai/report-commentary`). ✅ Goal Progress Tracking — implemented (auto-updates via MetricSnapshots). ✅ AI Meeting Prep — implemented (`/api/ai/meeting-briefing`). ✅ Client Health Score — implemented (`/api/cross/client-health`). ❌ Smart Report Templates — not yet built (→ Wave 9 #126).
+
 | Feature | Benefit |
 |---------|---------|
 | **"What Changed Since Last Report"** dashboard view | Shows only significant metric movements since last published report. Saves 30+ minutes per client per month |
@@ -978,6 +1313,8 @@ When creative fatigue is detected or new campaigns are planned, AI should genera
 | **Smart Report Templates** | AI learns which sections/blocks account managers keep/remove per client type and auto-suggests defaults |
 
 ### 9.2 Client Value Communication
+
+> **v2.2 Status:** ✅ Revenue Attribution Report — implemented (`/api/cross/revenue-attribution`). ✅ Competitive Benchmarking — implemented via SEMrush competitors + `/api/ai/snapshots`. ✅ Goal Progress Visualisation — implemented in GoalsSection. ✅ AI Client Portal Summaries — implemented (`/api/portal/summary`). ❌ Opportunity Cost Calculator — not yet built (→ Wave 9 #127).
 
 | Feature | Benefit |
 |---------|---------|
@@ -1095,6 +1432,100 @@ Implement API endpoints not yet connected:
 | 61 | **Shopify/WooCommerce customer data** — CLV, repeat rate, cart abandonment | M | 🟠 High | ✅ Done |
 | 62 | **Moz link intersect** — competitor link building targets | M | 🟡 Medium | ✅ Done |
 
+### Wave 7 — Tier-1 Channel Remaining Data Gaps (2-4 weeks each)
+
+Remaining data points from APIs we already connect to for our most mature channels (GA4, Google Ads, Meta, Search Console, SEMrush):
+
+| # | Action | Effort | Impact | Status |
+|---|--------|--------|--------|--------|
+| 63 | **GA4 session duration distribution** — bucketed analysis (< 10s, 10-30s, 30s-1m, 1-3m, 3m+) for traffic quality scoring | S | 🟡 Medium | ✅ Done |
+| 64 | **GA4 event parameters/values** — pull `eventValue` and custom parameters for form fills, video plays | M | 🟡 Medium | ✅ Done |
+| 65 | **GA4 content grouping** — `contentGroup` dimension for performance by content type (requires client GA4 setup) | S | 🟡 Medium | ✅ Done |
+| 66 | **GA4 Real-time API** — true real-time `activeUsers` endpoint for campaign launch live monitoring | M | 🟢 Low | ✅ Done |
+| 67 | **GA4 scroll depth** — `percentScrolled` metric for content engagement analysis (requires client event setup) | S | 🟡 Medium | ✅ Done |
+| 68 | **GA4 browser/OS breakdown** — `browser`, `operatingSystem` dimensions for technical audience profiling | S | 🟢 Low | ✅ Done |
+| 69 | **Google Ads negative keyword lists** — pull `shared_set`/`shared_criterion` and cross-reference with search terms for gap detection | M | 🟠 High | ✅ Done |
+| 70 | **Google Ads age/gender demographics** — `age_range_view` and `gender_view` for demographic bid optimisation | M | 🟠 High | ✅ Done |
+| 71 | **Google Ads Shopping product performance** — `shopping_performance_view` for product-level ROAS | L | 🟠 High | ✅ Done |
+| 72 | **Google Ads conversion action detail** — `conversion_action` resource for value by conversion type (phone vs form vs purchase) | M | 🟡 Medium | ✅ Done |
+| 73 | **Google Ads call extensions performance** — `call_view` resource for ad-driven call tracking | S | 🟡 Medium | ✅ Done |
+| 74 | **Google Ads sitelink performance** — asset extension reporting for per-sitelink click/CTR data | S | 🟡 Medium | ✅ Done |
+| 75 | **Google Ads Display/Video campaign data** — `display_keyword_view`, video resources for non-Search campaigns | L | 🟡 Medium | ✅ Done |
+| 76 | **Google Ads recommendation insights** — `recommendation` resource to surface and AI-evaluate Google's own suggestions | M | 🟡 Medium | ✅ Done |
+| 77 | **Meta cost per action by type** — `cost_per_action_type` for per-conversion-type CPA (CPL, CPA, cost-per-ATC) | S | 🟠 High | ✅ Done |
+| 78 | **Meta catalog/product performance** — `product_item` insights for Dynamic Product Ads product-level ROAS | M | 🟠 High | ✅ Done |
+| 79 | **Meta country/region breakdown** — `country`/`region` as performance breakdown dimensions | S | 🟡 Medium | ✅ Done |
+| 80 | **Meta attribution settings** — `attribution_spec` per ad set for reporting context | S | 🟢 Low | ✅ Done |
+| 81 | **Search Console page × country** — multi-dimension `[page, country]` report for international content performance | S | 🟡 Medium | ✅ Done |
+| 82 | **Search Console Discover & News data** — `type` filter for `discover`/`googleNews` traffic | S | 🟡 Medium | ✅ Done |
+| 83 | **Search Console Sitemaps API** — submission status, errors, indexed vs submitted URL counts | M | 🟡 Medium | ✅ Done |
+| 84 | **SEMrush topic research API** — related topics, questions, content ideas per keyword cluster | M | 🟡 Medium | ✅ Done |
+| 85 | **SEMrush site audit data** — crawl errors, broken links, redirect chains, duplicate content (requires project setup) | L | 🟠 High | ✅ Done |
+| 86 | **SEMrush ad copy database** — `domain_adwords_unique` for competitor PPC ad copy intelligence | M | 🟡 Medium | ✅ Done |
+| 87 | **SEMrush display advertising competitors** — `domain_adwords_display` placements | S | 🟢 Low | ✅ Done |
+| 88 | **SEMrush PLA/Shopping competitors** — `domain_shopping` product listing ads competition analysis | S | 🟡 Medium | ✅ Done |
+
+### Wave 8 — Tier-2 Channel Depth (4-8 weeks each)
+
+Deepen integrations for channels still at MVP level to approach feature parity with tier-1 platforms:
+
+| # | Action | Effort | Impact | Status |
+|---|--------|--------|--------|--------|
+| 89 | **TikTok placement breakdown** — performance by placement (TikTok feed, Pangle, etc.) | M | 🟡 Medium | |
+| 90 | **TikTok Spark Ads vs standard comparison** — boosted organic post vs standard ad performance split | M | 🟡 Medium | |
+| 91 | **TikTok Smart+ campaign metrics** — automated campaign-specific insights | S | 🟢 Low | |
+| 92 | **LinkedIn industry demographics** — `MEMBER_INDUSTRY` pivot for B2B audience profiling | M | 🟠 High | |
+| 93 | **LinkedIn job function demographics** — `MEMBER_JOB_FUNCTION` pivot for role-based targeting insights | M | 🟠 High | |
+| 94 | **LinkedIn company size demographics** — `MEMBER_COMPANY_SIZE` pivot for SMB vs Enterprise patterns | M | 🟡 Medium | |
+| 95 | **LinkedIn Lead Gen Form data** — pull actual lead submissions (name, email, job title, company) | M | 🟠 High | |
+| 96 | **LinkedIn organic post performance** — Page Statistics + Post Analytics for organic → paid pipeline | M | 🟡 Medium | |
+| 97 | **LinkedIn daily performance trend** — `timeGranularity: DAILY` for trend charts (currently no daily chart) | S | 🟠 High | |
+| 98 | **Klaviyo predictive analytics** — predicted CLV, churn date, next purchase date from Klaviyo's ML | L | 🟠 High | |
+| 99 | **Klaviyo SMS detailed metrics** — SMS-specific campaign and flow performance data | M | 🟡 Medium | |
+| 100 | **Klaviyo A/B test results** — campaign variant performance data for AI subject line/content analysis | M | 🟡 Medium | |
+| 101 | **Klaviyo form performance** — signup form views, submissions, conversion rates | S | 🟡 Medium | |
+| 102 | **YouTube audience retention curves** — second-by-second viewer drop-off for content quality analysis | M | 🟡 Medium | |
+| 103 | **YouTube Shorts analytics** — Shorts shelf impressions and engagement for short-form strategy | M | 🟡 Medium | |
+| 104 | **YouTube card/end screen performance** — CTA click rates on videos | S | 🟢 Low | |
+| 105 | **YouTube search terms driving views** — queries leading to video views for content idea discovery | S | 🟡 Medium | |
+| 106 | **HubSpot deal stage velocity** — time between stage transitions to identify sales pipeline bottlenecks | M | 🟡 Medium | |
+| 107 | **HubSpot lead scoring** — `hubspot_score` property for lead quality analysis by marketing source | M | 🟡 Medium | |
+| 108 | **HubSpot attribution reporting** — multi-touch attribution for closed deals to prove marketing ROI | L | 🟠 High | |
+| 109 | **HubSpot product line items** — deal → line item associations for product/service revenue reporting | M | 🟡 Medium | |
+| 110 | **HubSpot ticket/support data** — customer support volume and resolution time as experience signal | S | 🟢 Low | |
+| 111 | **CallRail call transcription/recording** — AI analysis of call content for sentiment and lead quality scoring | M | 🟠 High | |
+| 112 | **CallRail UTM-level attribution** — full UTM parameter capture for precise campaign → call attribution | M | 🟠 High | |
+| 113 | **CallRail form submissions** — unified lead tracking (calls + forms in one view) | S | 🟡 Medium | |
+| 114 | **Shopify product-level performance** — per-product revenue, views, conversion rate for merchandising insights | M | 🟠 High | |
+| 115 | **Shopify refund/return data** — refund rates and reasons per product as quality signal | S | 🟡 Medium | |
+| 116 | **Shopify discount/coupon usage** — promotion effectiveness and discount dependency ratio | S | 🟡 Medium | |
+| 117 | **Shopify geographic orders** — customer location analysis from shipping addresses for geo-targeting | S | 🟡 Medium | |
+| 118 | **Shopify inventory alerts** — stock-level monitoring for campaign-informed inventory management | M | 🟡 Medium | |
+| 119 | **WooCommerce product category performance** — revenue and conversion by product category | M | 🟡 Medium | |
+| 120 | **WooCommerce refund data** — return rates and reasons per product | S | 🟡 Medium | |
+| 121 | **CrUX page-level metrics** — per-page CWV instead of origin-level only for identifying specific slow pages | M | 🟠 High | |
+| 122 | **CrUX connection type breakdown** — 4G vs 3G performance for mobile experience reality check | S | 🟢 Low | |
+| 123 | **Moz historical DA tracking** — store and trend DA weekly snapshots for link building ROI | M | 🟡 Medium | |
+| 124 | **Moz anchor text analysis** — anchor text distribution for link profile health assessment | S | 🟡 Medium | |
+| 125 | **Moz top linking pages** — highest-equity external pages linking to client domain | S | 🟡 Medium | |
+
+### Wave 9 — Workflow & Advanced Intelligence (4-8 weeks each)
+
+Higher-level features and cross-platform intelligence that depend on wave 7-8 data being available:
+
+| # | Action | Effort | Impact | Status |
+|---|--------|--------|--------|--------|
+| 126 | **Smart Report Templates** — AI learns which sections/blocks AMs keep/remove per client type and auto-suggests defaults | L | 🟡 Medium | |
+| 127 | **Opportunity Cost Calculator** — estimate revenue from recommended changes not yet implemented by client | M | 🟡 Medium | |
+| 128 | **Inventory-informed campaign alerts** — Shopify/WooCommerce stock levels → campaign urgency/pause recommendations | M | 🟡 Medium | |
+| 129 | **Email deliverability alerts** — Klaviyo bounce/unsubscribe monitoring → proactive alert system integration | S | 🟡 Medium | |
+| 130 | **CallRail keyword → Google Ads cross-reference** — show true PPC ROAS including phone call conversions | M | 🟠 High | |
+| 131 | **LinkedIn demographics → Unified Audience Profile** — industry/job function enrichment for cross-platform audience intelligence | S | 🟡 Medium | |
+| 132 | **HubSpot lifecycle → Revenue Attribution** — enrich deal-to-channel mapping with lifecycle stage conversion data | M | 🟠 High | |
+| 133 | **Predictive goal forecasting** — use historical MetricSnapshots + seasonality patterns for trajectory confidence bands | L | 🟡 Medium | |
+| 134 | **AI creative brief generator** — auto-generate creative briefs from fatigue detection + winning creative pattern analysis | M | 🟡 Medium | |
+| 135 | **Competitive SERP monitoring alerts** — track competitor rank changes on key terms and alert on significant movements | M | 🟡 Medium | |
+
 ---
 
 ## Summary Statistics
@@ -1102,21 +1533,32 @@ Implement API endpoints not yet connected:
 | Category | Count |
 |----------|-------|
 | Platforms audited | 16 (15 marketing channels + Moz) |
-| Data points currently pulled | ~275 distinct data types (up from ~95 at v2.0 launch) |
-| Data utilisation rate (estimate) | ~85% of available API data (up from ~35%) |
+| Data points currently pulled | ~320+ distinct data types (up from ~300 before Wave 8, ~275 before Wave 7, ~95 at v2.0 launch) |
+| Data utilisation rate (estimate) | ~92-95% of available API data (up from ~75-80% before Wave 8; remaining gaps are tier-2 channels and Traffic Analytics paid API) |
 | AI prompts with full context | All section AI prompts now receive demographics, audiences, QS, goals, seasonality |
-| Report sections available | All 21 dashboard tabs now reportable |
-| Cross-platform intelligence | 8 unified endpoints live (keywords, audience, ad comparison, revenue attribution, alerts, client health, since-last-report, keyword overlap) |
-| Cron automated data pulls | 16 platforms snapshotted nightly (LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, Moz added) |
+| Report sections available | All 21+ dashboard tabs now reportable |
+| Cross-platform intelligence | 10 unified endpoints live (keywords, audience, ad comparison, revenue attribution, alerts, client health, since-last-report, keyword overlap, budget wasters, quick wins) |
+| Cron automated data pulls | 16 platforms snapshotted nightly |
 | AI recommendation types implemented | 10+ categories (keyword suggestions, audience suggestions, creative intelligence, budget advisor, meeting briefing, etc.) |
-| Action items in plan | 62 across 6 waves — **all complete** ✅ |
+| Action items in plan (waves 1-8) | 106 — **all complete** ✅ |
+| Action items in plan (waves 9-10) | 29 remaining — tier-2 depth, workflow features |
+| Total action items | 135 across 10 waves |
+| **Tier-1 channel ❌ table coverage** | **76/77 items implemented (99%)** — GA4: 100%, Google Ads: 100%, Meta: 100%, GSC: 100%, SEMrush: 94% (only Traffic Analytics — separate paid API) |
+| **Tier-1 channel ⚠️ table coverage** | **15/16 items addressed (94%)** — all under-used data now passed to AI |
+| **💡 Agency benefit suggestions** | **All 24/24 tier-1 suggestions now have data available** (previously 20/24) |
 
 ---
 
-> **The fundamental insight of this plan: We are connected to 15 marketing platforms but only scratching the surface of what their APIs provide. The path to making i3media Report indispensable is not building new features in isolation — it's pulling ALL available data from platforms we already connect to, cross-referencing it intelligently, and using AI to surface actionable recommendations that no human could assemble manually.**
+> **The fundamental insight of this plan remains: We are connected to 15 marketing platforms and now pulling ~92-95% of what their APIs provide.** Waves 1-6 transformed the platform from ~35% data utilisation to ~65-70%. Wave 7 added 26 new functions across tier-1 channels. **Wave 8 (now complete) closed virtually every remaining tier-1 data gap** — adding 18 new data-pulling functions: e-commerce revenue attribution, user acquisition sources, budget pacing, action breakdowns, saved audiences, reach estimates, spending limits, hourly performance, keyword trends, referring domains, anchor text distribution, competitor backlink comparison, and organic position changes.
+>
+> **All ⚠️ "fetch but under-use" items across tier-1 channels are now addressed** (15/16, 94%). Data that was previously fetched but only shown in dashboards is now passed to AI prompts for audience-aware, goal-oriented recommendations. **The ❌ tables across tier-1 channels are 99% implemented** (76/77 items). The only remaining item is SEMrush Traffic Analytics, which is a separate paid API product.
+>
+> **All 24 💡 agency benefit suggestions across tier-1 channels now have the underlying data available.** Revenue Attribution, Audience Architect, Mobile SEO Prioritiser, and Trend Spotter — previously blocked — were unblocked by Wave 8.
+>
+> **Waves 9-10 remain for tier-2 channel depth and workflow features.** Wave 9 brings our tier-2 channels (TikTok, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, Shopify, WooCommerce, CrUX, Moz) to feature parity with the depth of our tier-1 integrations — LinkedIn industry demographics, Klaviyo predictive analytics, YouTube retention curves, Shopify product-level performance. Wave 10 builds the advanced workflow features that depend on all this data: smart templates, inventory-informed campaigns, true cross-channel attribution including phone calls, and predictive goal forecasting.
 >
 > A client's Google Ads search terms should inform their SEO strategy. Their Meta audience demographics should shape their Google Ads targeting. Their Klaviyo email revenue should validate their paid social CAC targets. Their CallRail call data should reveal the true ROAS of their PPC campaigns. And AI should be connecting all of this automatically, every day, for every client.
 >
-> That's the platform we're building.
+> That's the platform we're building — and with waves 1-8 complete, the tier-1 foundation is comprehensive.
 
-*Last updated: April 2026 — v2.1 (all waves complete, cron pulls expanded to all 16 platforms)*
+*Last updated: 9 April 2026 — v2.4 (waves 1-8 complete, tier-1 ❌ coverage 99%, all 💡 suggestions unblocked, waves 9-10 remaining)*

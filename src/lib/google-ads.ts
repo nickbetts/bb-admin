@@ -1482,3 +1482,466 @@ export async function getGoogleAdsBidSimulator(
     return [];
   }
 }
+
+// ── Wave 7: Negative keyword lists (#69) ────────────────────────────────
+
+export interface GoogleAdsNegativeKeyword {
+  sharedSetId: string;
+  sharedSetName: string;
+  keyword: string;
+  matchType: string;
+}
+
+export async function getGoogleAdsNegativeKeywords(
+  customerId: string
+): Promise<GoogleAdsNegativeKeyword[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      shared_set.id,
+      shared_set.name,
+      shared_criterion.keyword.text,
+      shared_criterion.keyword.match_type
+    FROM shared_criterion
+    WHERE shared_set.type = 'NEGATIVE_KEYWORDS'
+      AND shared_set.status = 'ENABLED'
+    LIMIT 500
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    return (data.results ?? []).map((row: GadsRow) => ({
+      sharedSetId: String(row.sharedSet?.id ?? ""),
+      sharedSetName: String(row.sharedSet?.name ?? ""),
+      keyword: String((row.sharedCriterion as Record<string, Record<string, unknown>>)?.keyword?.text ?? ""),
+      matchType: String((row.sharedCriterion as Record<string, Record<string, unknown>>)?.keyword?.matchType ?? ""),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ── Wave 7: Age/gender demographics (#70) ───────────────────────────────
+
+export interface GoogleAdsDemographic {
+  type: "age" | "gender";
+  segment: string;
+  clicks: number;
+  impressions: number;
+  costMicros: number;
+  conversions: number;
+}
+
+export async function getGoogleAdsDemographics(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsDemographic[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+
+  const ageQuery = `
+    SELECT
+      ad_group_criterion.age_range.type,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.cost_micros,
+      metrics.conversions
+    FROM age_range_view
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+  `;
+
+  const genderQuery = `
+    SELECT
+      ad_group_criterion.gender.type,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.cost_micros,
+      metrics.conversions
+    FROM gender_view
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+  `;
+
+  type GadsRow = Record<string, Record<string, unknown>>;
+  const results: GoogleAdsDemographic[] = [];
+
+  try {
+    const [ageData, genderData] = await Promise.all([
+      searchGoogleAds(customerId, ageQuery, token, mccId),
+      searchGoogleAds(customerId, genderQuery, token, mccId),
+    ]);
+
+    for (const row of (ageData.results ?? []) as GadsRow[]) {
+      results.push({
+        type: "age",
+        segment: String((row.adGroupCriterion as Record<string, Record<string, unknown>>)?.ageRange?.type ?? ""),
+        clicks: Number(row.metrics?.clicks ?? 0),
+        impressions: Number(row.metrics?.impressions ?? 0),
+        costMicros: Number(row.metrics?.costMicros ?? 0),
+        conversions: Number(row.metrics?.conversions ?? 0),
+      });
+    }
+
+    for (const row of (genderData.results ?? []) as GadsRow[]) {
+      results.push({
+        type: "gender",
+        segment: String((row.adGroupCriterion as Record<string, Record<string, unknown>>)?.gender?.type ?? ""),
+        clicks: Number(row.metrics?.clicks ?? 0),
+        impressions: Number(row.metrics?.impressions ?? 0),
+        costMicros: Number(row.metrics?.costMicros ?? 0),
+        conversions: Number(row.metrics?.conversions ?? 0),
+      });
+    }
+  } catch {
+    // Demographics may not be available for all campaign types
+  }
+
+  return results;
+}
+
+// ── Wave 7: Shopping product performance (#71) ──────────────────────────
+
+export interface GoogleAdsShoppingProduct {
+  productTitle: string;
+  productId: string;
+  productBrand: string;
+  clicks: number;
+  impressions: number;
+  costMicros: number;
+  conversions: number;
+  conversionsValue: number;
+}
+
+export async function getGoogleAdsShoppingPerformance(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsShoppingProduct[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      segments.product_title,
+      segments.product_item_id,
+      segments.product_brand,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.cost_micros,
+      metrics.conversions,
+      metrics.conversions_value
+    FROM shopping_performance_view
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+    ORDER BY metrics.conversions_value DESC
+    LIMIT 100
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    return (data.results ?? []).map((row: GadsRow) => ({
+      productTitle: String(row.segments?.productTitle ?? ""),
+      productId: String(row.segments?.productItemId ?? ""),
+      productBrand: String(row.segments?.productBrand ?? ""),
+      clicks: Number(row.metrics?.clicks ?? 0),
+      impressions: Number(row.metrics?.impressions ?? 0),
+      costMicros: Number(row.metrics?.costMicros ?? 0),
+      conversions: Number(row.metrics?.conversions ?? 0),
+      conversionsValue: Number(row.metrics?.conversionsValue ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ── Wave 7: Conversion action detail (#72) ──────────────────────────────
+
+export interface GoogleAdsConversionAction {
+  id: string;
+  name: string;
+  category: string;
+  type: string;
+  conversions: number;
+  conversionsValue: number;
+  costPerConversion: number;
+}
+
+export async function getGoogleAdsConversionActions(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsConversionAction[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      conversion_action.id,
+      conversion_action.name,
+      conversion_action.category,
+      conversion_action.type,
+      metrics.conversions,
+      metrics.conversions_value,
+      metrics.cost_per_conversion
+    FROM conversion_action
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+      AND metrics.conversions > 0
+    ORDER BY metrics.conversions DESC
+    LIMIT 50
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    return (data.results ?? []).map((row: GadsRow) => ({
+      id: String(row.conversionAction?.id ?? ""),
+      name: String(row.conversionAction?.name ?? ""),
+      category: String(row.conversionAction?.category ?? ""),
+      type: String(row.conversionAction?.type ?? ""),
+      conversions: Number(row.metrics?.conversions ?? 0),
+      conversionsValue: Number(row.metrics?.conversionsValue ?? 0),
+      costPerConversion: Number(row.metrics?.costPerConversion ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ── Wave 7: Call extensions performance (#73) ───────────────────────────
+
+export interface GoogleAdsCallExtension {
+  callerCountryCode: string;
+  callDurationSeconds: number;
+  callType: string;
+  callStatus: string;
+  campaignName: string;
+}
+
+export async function getGoogleAdsCallExtensions(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsCallExtension[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      call_view.caller_country_code,
+      call_view.call_duration_seconds,
+      call_view.call_tracking_display_location,
+      call_view.call_status,
+      campaign.name
+    FROM call_view
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+    ORDER BY call_view.call_duration_seconds DESC
+    LIMIT 100
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    return (data.results ?? []).map((row: GadsRow) => ({
+      callerCountryCode: String(row.callView?.callerCountryCode ?? ""),
+      callDurationSeconds: Number(row.callView?.callDurationSeconds ?? 0),
+      callType: String(row.callView?.callTrackingDisplayLocation ?? ""),
+      callStatus: String(row.callView?.callStatus ?? ""),
+      campaignName: String(row.campaign?.name ?? ""),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ── Wave 7: Sitelink performance (#74) ──────────────────────────────────
+
+export interface GoogleAdsSitelinkPerformance {
+  sitelinkText: string;
+  clicks: number;
+  impressions: number;
+  costMicros: number;
+  conversions: number;
+}
+
+export async function getGoogleAdsSitelinkPerformance(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsSitelinkPerformance[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      asset.sitelink_asset.link_text,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.cost_micros,
+      metrics.conversions
+    FROM campaign_asset
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+      AND asset.type = 'SITELINK'
+    ORDER BY metrics.clicks DESC
+    LIMIT 50
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    return (data.results ?? []).map((row: GadsRow) => ({
+      sitelinkText: String((row.asset as Record<string, Record<string, unknown>>)?.sitelinkAsset?.linkText ?? ""),
+      clicks: Number(row.metrics?.clicks ?? 0),
+      impressions: Number(row.metrics?.impressions ?? 0),
+      costMicros: Number(row.metrics?.costMicros ?? 0),
+      conversions: Number(row.metrics?.conversions ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ── Wave 7: Display/Video campaign data (#75) ───────────────────────────
+
+export interface GoogleAdsDisplayVideoData {
+  campaignId: string;
+  campaignName: string;
+  channelType: string;
+  clicks: number;
+  impressions: number;
+  costMicros: number;
+  conversions: number;
+  videoViews: number;
+  videoViewRate: number;
+}
+
+export async function getGoogleAdsDisplayVideoData(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsDisplayVideoData[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      campaign.id,
+      campaign.name,
+      campaign.advertising_channel_type,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.cost_micros,
+      metrics.conversions,
+      metrics.video_views,
+      metrics.video_view_rate
+    FROM campaign
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+      AND campaign.advertising_channel_type IN ('DISPLAY', 'VIDEO')
+      AND campaign.status = 'ENABLED'
+    ORDER BY metrics.cost_micros DESC
+    LIMIT 50
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    return (data.results ?? []).map((row: GadsRow) => ({
+      campaignId: String(row.campaign?.id ?? ""),
+      campaignName: String(row.campaign?.name ?? ""),
+      channelType: String(row.campaign?.advertisingChannelType ?? ""),
+      clicks: Number(row.metrics?.clicks ?? 0),
+      impressions: Number(row.metrics?.impressions ?? 0),
+      costMicros: Number(row.metrics?.costMicros ?? 0),
+      conversions: Number(row.metrics?.conversions ?? 0),
+      videoViews: Number(row.metrics?.videoViews ?? 0),
+      videoViewRate: Number(row.metrics?.videoViewRate ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ── Wave 7: Recommendation insights (#76) ───────────────────────────────
+
+export interface GoogleAdsRecommendation {
+  type: string;
+  impact: string;
+  campaignName: string;
+}
+
+export async function getGoogleAdsRecommendations(
+  customerId: string
+): Promise<GoogleAdsRecommendation[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      recommendation.type,
+      recommendation.impact,
+      recommendation.campaign
+    FROM recommendation
+    LIMIT 50
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    return (data.results ?? []).map((row: GadsRow) => ({
+      type: String(row.recommendation?.type ?? ""),
+      impact: JSON.stringify(row.recommendation?.impact ?? {}),
+      campaignName: String(row.recommendation?.campaign ?? ""),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ── Campaign budget utilisation / pacing ─────────────────────────────────
+
+export interface GoogleAdsBudgetUtilisation {
+  campaignId: string;
+  campaignName: string;
+  dailyBudgetMicros: number;
+  spendMicros: number;
+  utilisationPercent: number;
+  budgetStatus: string;
+}
+
+export async function getGoogleAdsBudgetUtilisation(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsBudgetUtilisation[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      campaign.id,
+      campaign.name,
+      campaign_budget.amount_micros,
+      campaign_budget.status,
+      metrics.cost_micros
+    FROM campaign
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+      AND campaign.status = 'ENABLED'
+    ORDER BY metrics.cost_micros DESC
+    LIMIT 50
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    return (data.results ?? []).map((row: GadsRow) => {
+      const budgetMicros = Number(row.campaignBudget?.amountMicros ?? 0);
+      const spendMicros = Number(row.metrics?.costMicros ?? 0);
+      const daysInRange = Math.max(1, Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000));
+      const totalBudgetMicros = budgetMicros * daysInRange;
+      return {
+        campaignId: String(row.campaign?.id ?? ""),
+        campaignName: String(row.campaign?.name ?? ""),
+        dailyBudgetMicros: budgetMicros,
+        spendMicros,
+        utilisationPercent: totalBudgetMicros > 0 ? Math.round((spendMicros / totalBudgetMicros) * 100) : 0,
+        budgetStatus: String(row.campaignBudget?.status ?? ""),
+      };
+    });
+  } catch {
+    return [];
+  }
+}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +76,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(MOCK_CALLRAIL_DATA);
     }
 
+    const cacheKey = `callrail:${clientId}:${startDate ?? "default"}:${endDate ?? "default"}`;
+    const data = await withApiCache(cacheKey, 4, async () => {
+
     // Build date range filter if provided
     const dateParams = new URLSearchParams();
     if (startDate) dateParams.set("start_date", startDate);
@@ -126,7 +130,8 @@ export async function GET(request: NextRequest) {
       id: c.id,
       callerNumber: c.caller_number,
       source: c.source ?? "Unknown",
-      duration: `${Math.floor(c.duration / 60)}:${String(c.duration % 60).padStart(2, "0")}`,
+      duration: c.duration,
+      durationFormatted: `${Math.floor(c.duration / 60)}:${String(c.duration % 60).padStart(2, "0")}`,
       answered: c.answered,
       date: c.start_time,
     }));
@@ -203,23 +208,26 @@ export async function GET(request: NextRequest) {
       uniqueCallers,
     };
 
-    return NextResponse.json({
-      configured: true,
-      summary: {
-        totalCalls: callsData.total_records,
-        answeredCalls,
-        missedCalls: calls.length - answeredCalls,
-        answeredPct: calls.length ? Math.round((answeredCalls / calls.length) * 1000) / 10 : 0,
-        avgDuration: `${Math.floor(avgDurationSeconds / 60)}:${String(avgDurationSeconds % 60).padStart(2, "0")}`,
-        avgDurationSeconds,
-      },
-      bySource,
-      calls: calls.slice(0, 25),
-      keywords,
-      utmSources,
-      hourlyDistribution,
-      callerBreakdown,
+      return {
+        configured: true,
+        summary: {
+          totalCalls: callsData.total_records,
+          answeredCalls,
+          missedCalls: calls.length - answeredCalls,
+          answeredPct: calls.length ? Math.round((answeredCalls / calls.length) * 1000) / 10 : 0,
+          avgDuration: `${Math.floor(avgDurationSeconds / 60)}:${String(avgDurationSeconds % 60).padStart(2, "0")}`,
+          avgDurationSeconds,
+        },
+        bySource,
+        calls: calls.slice(0, 25),
+        keywords,
+        utmSources,
+        hourlyDistribution,
+        callerBreakdown,
+      };
     });
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error("CallRail error:", error);
     return NextResponse.json({ error: "Failed to fetch CallRail data" }, { status: 500 });
