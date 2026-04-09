@@ -259,3 +259,125 @@ export async function getGSCCountries(
     position: row.position,
   }));
 }
+
+// --- Branded vs Non-Branded Split ---
+
+export interface GSCBrandedSplit {
+  branded: { clicks: number; impressions: number; ctr: number; position: number };
+  nonBranded: { clicks: number; impressions: number; ctr: number; position: number };
+  topBrandedQueries: GSCQuery[];
+  topNonBrandedQueries: GSCQuery[];
+}
+
+export async function getGSCBrandedSplit(
+  siteUrl: string,
+  startDate: string,
+  endDate: string,
+  brandTerms: string[] = []
+): Promise<GSCBrandedSplit> {
+  const emptyMetrics = { clicks: 0, impressions: 0, ctr: 0, position: 0 };
+
+  const res = await gscPost(siteUrl, {
+    startDate,
+    endDate,
+    dimensions: ["query"],
+    rowLimit: 500,
+    orderBy: [{ fieldName: "clicks", sortOrder: "DESCENDING" }],
+  });
+
+  if (!res.ok) {
+    return { branded: emptyMetrics, nonBranded: emptyMetrics, topBrandedQueries: [], topNonBrandedQueries: [] };
+  }
+
+  const data = await res.json();
+  const allQueries: GSCQuery[] = (data.rows ?? []).map(
+    (row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
+      query: row.keys[0],
+      clicks: row.clicks,
+      impressions: row.impressions,
+      ctr: row.ctr,
+      position: row.position,
+    })
+  );
+
+  const lowerBrands = brandTerms.map((t) => t.toLowerCase());
+  const isBranded = (q: string) => lowerBrands.some((b) => q.toLowerCase().includes(b));
+
+  const branded = allQueries.filter((q) => isBranded(q.query));
+  const nonBranded = allQueries.filter((q) => !isBranded(q.query));
+
+  const aggregate = (queries: GSCQuery[]) => {
+    const totalClicks = queries.reduce((s, q) => s + q.clicks, 0);
+    const totalImpressions = queries.reduce((s, q) => s + q.impressions, 0);
+    return {
+      clicks: totalClicks,
+      impressions: totalImpressions,
+      ctr: totalImpressions > 0 ? totalClicks / totalImpressions : 0,
+      position: queries.length > 0 ? queries.reduce((s, q) => s + q.position, 0) / queries.length : 0,
+    };
+  };
+
+  return {
+    branded: aggregate(branded),
+    nonBranded: aggregate(nonBranded),
+    topBrandedQueries: branded.slice(0, 20),
+    topNonBrandedQueries: nonBranded.slice(0, 20),
+  };
+}
+
+// --- URL Inspection API ---
+
+export interface GSCUrlInspection {
+  url: string;
+  indexingState: string;
+  coverageState: string;
+  robotsTxtState: string;
+  lastCrawlTime: string | null;
+  pageFetchState: string;
+  crawledAs: string;
+  verdict: string;
+}
+
+export async function getGSCUrlInspection(
+  siteUrl: string,
+  urls: string[]
+): Promise<GSCUrlInspection[]> {
+  const token = await getGscAccessToken();
+  const results: GSCUrlInspection[] = [];
+
+  for (const inspectionUrl of urls.slice(0, 20)) {
+    try {
+      const res = await fetch(
+        "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ inspectionUrl, siteUrl }),
+          cache: "no-store",
+        }
+      );
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const result = data.inspectionResult?.indexStatusResult ?? {};
+      results.push({
+        url: inspectionUrl,
+        indexingState: result.indexingState ?? "UNKNOWN",
+        coverageState: result.coverageState ?? "UNKNOWN",
+        robotsTxtState: result.robotsTxtState ?? "UNKNOWN",
+        lastCrawlTime: result.lastCrawlTime ?? null,
+        pageFetchState: result.pageFetchState ?? "UNKNOWN",
+        crawledAs: result.crawledAs ?? "UNKNOWN",
+        verdict: result.verdict ?? "UNKNOWN",
+      });
+    } catch {
+      // Skip individual URL errors
+    }
+  }
+
+  return results;
+}
