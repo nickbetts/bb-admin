@@ -125,11 +125,11 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
     }
     if (client.metaAccountId) {
       fetches.push(
-        fetch(`/api/meta?accountId=${encodeURIComponent(client.metaAccountId)}&startDate=${startDate}&endDate=${endDate}`)
+        fetch(`/api/meta?clientId=${encodeURIComponent(client.id)}&startDate=${startDate}&endDate=${endDate}&type=overview`)
           .then(r => r.ok ? r.json() : null)
           .then(json => {
-            if (json?.overview) {
-              const o = json.overview;
+            if (json?.totalSpend != null) {
+              const o = json;
               summaries.push({ platform: "Meta Ads", metrics: { spend: `£${o.totalSpend?.toFixed(0) ?? 0}`, clicks: o.totalClicks ?? 0, conversions: o.totalConversions ?? 0, ROAS: `${(o.avgRoas ?? 0).toFixed(2)}×` } });
             }
           })

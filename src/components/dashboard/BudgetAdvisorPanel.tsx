@@ -130,8 +130,8 @@ export function BudgetAdvisorPanel({ client, startDate, endDate }: BudgetAdvisor
       if (client.metaAccountId) {
         try {
           const [campaignsRes, adSetsRes] = await Promise.all([
-            fetch(`/api/meta?accountId=${client.metaAccountId}&startDate=${startDate}&endDate=${endDate}&type=campaigns-enriched`),
-            fetch(`/api/meta?accountId=${client.metaAccountId}&startDate=${startDate}&endDate=${endDate}&type=adsets`),
+            fetch(`/api/meta?clientId=${client.id}&startDate=${startDate}&endDate=${endDate}&type=campaigns-enriched`),
+            fetch(`/api/meta?clientId=${client.id}&startDate=${startDate}&endDate=${endDate}&type=adsets`),
           ]);
 
           if (campaignsRes.ok) {
