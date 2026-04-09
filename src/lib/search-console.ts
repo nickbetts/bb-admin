@@ -119,13 +119,14 @@ export async function getGSCOverview(
 export async function getGSCTopQueries(
   siteUrl: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  rowLimit: number = 20
 ): Promise<GSCQuery[]> {
   const res = await gscPost(siteUrl, {
     startDate,
     endDate,
     dimensions: ["query"],
-    rowLimit: 20,
+    rowLimit,
     orderBy: [{ fieldName: "clicks", sortOrder: "DESCENDING" }],
   });
   if (!res.ok) {

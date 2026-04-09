@@ -447,7 +447,8 @@ export interface GoogleAdsSearchTerm {
 export async function getGoogleAdsSearchTerms(
   customerId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  limit: number = 25
 ): Promise<GoogleAdsSearchTerm[]> {
   const token = await getAccessToken();
   const mccId = await getMccId();
@@ -463,7 +464,7 @@ export async function getGoogleAdsSearchTerms(
     FROM search_term_view
     WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
     ORDER BY metrics.clicks DESC
-    LIMIT 25
+    LIMIT ${limit}
   `;
 
   const data = await searchGoogleAds(customerId, query, token, mccId);
