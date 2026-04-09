@@ -1029,18 +1029,18 @@ Enhance AI prompts with data we already have but don't use:
 
 Add the 13 missing report section types:
 
-| # | Action | Effort | Impact |
-|---|--------|--------|--------|
-| 21 | Add `tiktok` report section | M | 🔴 Critical |
-| 22 | Add `microsoft_ads` report section | M | 🔴 Critical |
-| 23 | Add `linkedin` report section | M | 🔴 Critical |
-| 24 | Add `klaviyo` report section | M | 🔴 Critical |
-| 25 | Add `goals` report section | M | 🔴 Critical |
-| 26 | Add `youtube` report section | M | 🟡 Medium |
-| 27 | Add `hubspot` report section | M | 🟡 Medium |
-| 28 | Add `callrail` report section | M | 🟡 Medium |
-| 29 | Add `core_web_vitals` report section | M | 🟡 Medium |
-| 30 | Add `competitor_intelligence` report section | M | 🟡 Medium |
+| # | Action | Effort | Impact | Status |
+|---|--------|--------|--------|--------|
+| 21 | Add `tiktok` report section | M | 🔴 Critical | ✅ Done |
+| 22 | Add `microsoft_ads` report section | M | 🔴 Critical | ✅ Done |
+| 23 | Add `linkedin` report section | M | 🔴 Critical | ✅ Done |
+| 24 | Add `klaviyo` report section | M | 🔴 Critical | ✅ Done |
+| 25 | Add `goals` report section | M | 🔴 Critical | ✅ Done |
+| 26 | Add `youtube` report section | M | 🟡 Medium | ✅ Done |
+| 27 | Add `hubspot` report section | M | 🟡 Medium | ✅ Done |
+| 28 | Add `callrail` report section | M | 🟡 Medium | ✅ Done |
+| 29 | Add `core_web_vitals` report section | M | 🟡 Medium | ✅ Done |
+| 30 | Add `competitor_intelligence` report section | M | 🟡 Medium | ✅ Done |
 
 ### Wave 4 — Platform Parity Upgrades (4-8 weeks)
 

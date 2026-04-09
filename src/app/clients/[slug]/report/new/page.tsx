@@ -41,6 +41,16 @@ const DATA_SECTION_TYPES = [
   { sectionType: "googleads", title: "Google Ads Performance" },
   { sectionType: "searchconsole", title: "Search Console" },
   { sectionType: "ecommerce", title: "E-Commerce Performance" },
+  { sectionType: "tiktok", title: "TikTok Ads" },
+  { sectionType: "microsoft_ads", title: "Microsoft Ads" },
+  { sectionType: "linkedin", title: "LinkedIn Ads" },
+  { sectionType: "klaviyo", title: "Klaviyo Email Marketing" },
+  { sectionType: "goals", title: "Goals & Targets" },
+  { sectionType: "youtube", title: "YouTube Analytics" },
+  { sectionType: "hubspot", title: "HubSpot CRM" },
+  { sectionType: "callrail", title: "CallRail Call Tracking" },
+  { sectionType: "core_web_vitals", title: "Core Web Vitals" },
+  { sectionType: "competitor_intelligence", title: "Competitor Intelligence" },
 ];
 
 const ALL_SECTION_TYPES = [...CONTENT_SECTION_TYPES, ...DATA_SECTION_TYPES];

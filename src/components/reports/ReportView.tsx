@@ -55,7 +55,7 @@ import {
   ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search,
   MessageSquare, LayoutGrid, FileText, Image, ShoppingCart, CalendarRange,
   LayoutTemplate, Save, GripVertical, Globe2, Link2, Link2Off, CheckCircle2,
-  Sparkles, Pencil, Star,
+  Sparkles, Pencil, Star, Video, Users, Phone, Play,
 } from "lucide-react";
 import {
   DndContext,
@@ -80,6 +80,16 @@ import { SearchConsoleSection } from "@/components/dashboard/SearchConsoleSectio
 import { OverviewSection } from "@/components/dashboard/OverviewSection";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { EcommerceSection } from "@/components/dashboard/EcommerceSection";
+import { TikTokSection } from "@/components/dashboard/TikTokSection";
+import { MicrosoftAdsSection } from "@/components/dashboard/MicrosoftAdsSection";
+import { LinkedInSection } from "@/components/dashboard/LinkedInSection";
+import { KlaviyoSection } from "@/components/dashboard/KlaviyoSection";
+import { GoalsSection } from "@/components/dashboard/GoalsSection";
+import { YouTubeSection } from "@/components/dashboard/YouTubeSection";
+import { HubSpotSection } from "@/components/dashboard/HubSpotSection";
+import { CallRailSection } from "@/components/dashboard/CallRailSection";
+import { CoreWebVitalsSection } from "@/components/dashboard/CoreWebVitalsSection";
+import { CompetitorIntelligenceSection } from "@/components/dashboard/CompetitorIntelligenceSection";
 import { TextSection } from "@/components/reports/TextSection";
 import { ScreenshotCaptionDialog } from "@/components/reports/ScreenshotCaptionDialog";
 import { parsePeriodToDateRange, formatDateDisplay, getPreviousPeriod } from "@/lib/utils";
@@ -119,6 +129,15 @@ interface Client {
   searchConsoleSiteUrl: string | null;
   woocommerceUrl?: string | null;
   shopifyStoreDomain?: string | null;
+  tiktokAdvertiserId?: string | null;
+  microsoftAdsAccountId?: string | null;
+  linkedinAccountId?: string | null;
+  linkedinAccessToken?: string | null;
+  klaviyoApiKey?: string | null;
+  youtubeChannelId?: string | null;
+  hubspotPortalId?: string | null;
+  callrailAccountId?: string | null;
+  competitorDomains?: string | null;
 }
 
 interface Report {
@@ -1177,6 +1196,16 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     text_technical_update:       { icon: <FileText size={14} />, badge: "badge-slate" },
     text_ppc_update:             { icon: <FileText size={14} />, badge: "badge-slate" },
     ecommerce:                   { icon: <ShoppingCart size={14} />, badge: "badge-emerald", subtitle: "Shows online store performance including revenue, orders, average order value and conversion rate, with breakdowns by product and channel." },
+    tiktok:                      { icon: <Video size={14} />, badge: "badge-pink", subtitle: "Covers TikTok paid advertising performance including spend, impressions, video views, clicks and conversions, with campaign-level breakdowns." },
+    microsoft_ads:               { icon: <Search size={14} />, badge: "badge-cyan", subtitle: "Shows Microsoft Advertising (Bing Ads) performance including spend, clicks, impressions, conversions and ROAS, with campaign-level breakdowns." },
+    linkedin:                    { icon: <BarChart2 size={14} />, badge: "badge-blue", subtitle: "Covers LinkedIn paid campaign performance including impressions, clicks, spend, conversions and cost per lead, with campaign-level breakdowns." },
+    klaviyo:                     { icon: <CalendarRange size={14} />, badge: "badge-violet", subtitle: "Shows email marketing performance including sends, open rate, click rate and revenue attributed, with individual campaign breakdowns." },
+    goals:                       { icon: <TrendingUp size={14} />, badge: "badge-amber", subtitle: "Tracks progress against client goals and targets across all channels, highlighting what's on track, at risk or achieved." },
+    youtube:                     { icon: <Play size={14} />, badge: "badge-red", subtitle: "Shows YouTube channel performance including views, watch time, subscriber growth and top-performing videos for the period." },
+    hubspot:                     { icon: <Users size={14} />, badge: "badge-orange", subtitle: "Covers CRM pipeline health including open deals, pipeline value, closed revenue and recent contact activity." },
+    callrail:                    { icon: <Phone size={14} />, badge: "badge-teal", subtitle: "Shows call tracking performance including total calls, answer rate, average call duration and attribution by source." },
+    core_web_vitals:             { icon: <Globe size={14} />, badge: "badge-green", subtitle: "Displays Core Web Vitals scores including LCP, CLS and INP from real user data, showing how the website performs against Google's thresholds." },
+    competitor_intelligence:     { icon: <TrendingUp size={14} />, badge: "badge-slate", subtitle: "Compares your client's organic performance against key competitors, tracking changes in traffic, keyword rankings and domain authority." },
   };
 
   const isPublished = report.status === "published";
@@ -1989,6 +2018,52 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                     (report.client.woocommerceUrl || report.client.shopifyStoreDomain)
                       ? <>{commentaryCard}<EcommerceSection clientId={report.client.id} platform={report.client.shopifyStoreDomain ? "shopify" : "woocommerce"} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No WooCommerce or Shopify store connected — configure it in client settings to enable e-commerce data.")}</>
+                  )}
+                  {section.sectionType === "tiktok" && (
+                    report.client.tiktokAdvertiserId
+                      ? <>{commentaryCard}<TikTokSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} /></>
+                      : <>{commentaryCard}{unconfiguredNotice("No TikTok advertiser account connected — configure it in client settings to enable TikTok Ads data.")}</>
+                  )}
+                  {section.sectionType === "microsoft_ads" && (
+                    report.client.microsoftAdsAccountId
+                      ? <>{commentaryCard}<MicrosoftAdsSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} /></>
+                      : <>{commentaryCard}{unconfiguredNotice("No Microsoft Ads account connected — configure it in client settings to enable Microsoft Advertising data.")}</>
+                  )}
+                  {section.sectionType === "linkedin" && (
+                    report.client.linkedinAccountId
+                      ? <>{commentaryCard}<LinkedInSection clientId={report.client.id} clientName={report.client.name} accountId={report.client.linkedinAccountId} accessToken={report.client.linkedinAccessToken} startDate={startDate} endDate={endDate} /></>
+                      : <>{commentaryCard}{unconfiguredNotice("No LinkedIn ad account connected — configure it in client settings to enable LinkedIn Ads data.")}</>
+                  )}
+                  {section.sectionType === "klaviyo" && (
+                    report.client.klaviyoApiKey
+                      ? <>{commentaryCard}<KlaviyoSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} /></>
+                      : <>{commentaryCard}{unconfiguredNotice("No Klaviyo account connected — configure it in client settings to enable email marketing data.")}</>
+                  )}
+                  {section.sectionType === "goals" && (
+                    <>{commentaryCard}<GoalsSection clientId={report.client.id} /></>
+                  )}
+                  {section.sectionType === "youtube" && (
+                    report.client.youtubeChannelId
+                      ? <>{commentaryCard}<YouTubeSection clientId={report.client.id} clientName={report.client.name} /></>
+                      : <>{commentaryCard}{unconfiguredNotice("No YouTube channel connected — configure it in client settings to enable YouTube analytics data.")}</>
+                  )}
+                  {section.sectionType === "hubspot" && (
+                    report.client.hubspotPortalId
+                      ? <>{commentaryCard}<HubSpotSection clientId={report.client.id} clientName={report.client.name} /></>
+                      : <>{commentaryCard}{unconfiguredNotice("No HubSpot portal connected — configure it in client settings to enable CRM data.")}</>
+                  )}
+                  {section.sectionType === "callrail" && (
+                    report.client.callrailAccountId
+                      ? <>{commentaryCard}<CallRailSection clientId={report.client.id} clientName={report.client.name} /></>
+                      : <>{commentaryCard}{unconfiguredNotice("No CallRail account connected — configure it in client settings to enable call tracking data.")}</>
+                  )}
+                  {section.sectionType === "core_web_vitals" && (
+                    report.client.website
+                      ? <>{commentaryCard}<CoreWebVitalsSection url={report.client.website} /></>
+                      : <>{commentaryCard}{unconfiguredNotice("No website URL set for this client — configure it in client settings to enable Core Web Vitals data.")}</>
+                  )}
+                  {section.sectionType === "competitor_intelligence" && (
+                    <>{commentaryCard}<CompetitorIntelligenceSection clientId={report.client.id} semrushDomain={report.client.semrushDomain} /></>
                   )}
                 </div>
               </SortableMainSectionWrapper>
