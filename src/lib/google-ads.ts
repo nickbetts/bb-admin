@@ -1169,3 +1169,315 @@ export async function getGoogleAdsDeviceBreakdown(
 
   return Array.from(deviceMap.values()).sort((a, b) => b.clicks - a.clicks);
 }
+
+// ── Performance Max insights ──────────────────────────────────────────────
+
+export interface GoogleAdsPMaxInsight {
+  campaignId: string;
+  campaignName: string;
+  assetGroupId: string;
+  assetGroupName: string;
+  assetGroupStatus: string;
+  clicks: number;
+  impressions: number;
+  costMicros: number;
+  conversions: number;
+  conversionsValue: number;
+}
+
+/**
+ * Fetches Performance Max asset group performance. Useful for AI analysis of
+ * which asset groups are driving conversions vs wasting spend.
+ */
+export async function getGoogleAdsPMaxInsights(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsPMaxInsight[]> {
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+    throw new Error("Invalid date format — expected YYYY-MM-DD");
+  }
+
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      campaign.id,
+      campaign.name,
+      asset_group.id,
+      asset_group.name,
+      asset_group.status,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.cost_micros,
+      metrics.conversions,
+      metrics.conversions_value
+    FROM asset_group
+    WHERE campaign.advertising_channel_type = 'PERFORMANCE_MAX'
+      AND segments.date BETWEEN '${startDate}' AND '${endDate}'
+      AND asset_group.status != 'REMOVED'
+    ORDER BY metrics.cost_micros DESC
+    LIMIT 30
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    return (data.results ?? []).map((row: GadsRow) => ({
+      campaignId: String(row.campaign?.id ?? ""),
+      campaignName: String(row.campaign?.name ?? ""),
+      assetGroupId: String(row.assetGroup?.id ?? ""),
+      assetGroupName: String(row.assetGroup?.name ?? ""),
+      assetGroupStatus: String(row.assetGroup?.status ?? ""),
+      clicks: Number(row.metrics?.clicks ?? 0),
+      impressions: Number(row.metrics?.impressions ?? 0),
+      costMicros: Number(row.metrics?.costMicros ?? 0),
+      conversions: Number(row.metrics?.conversions ?? 0),
+      conversionsValue: Number(row.metrics?.conversionsValue ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ── Performance Max search term insights ──────────────────────────────────
+
+export interface GoogleAdsPMaxSearchTerm {
+  campaignId: string;
+  campaignName: string;
+  categoryLabel: string;
+  clicks: number;
+  impressions: number;
+}
+
+/**
+ * Fetches Performance Max search term insights (category-level).
+ * The campaign_search_term_insight resource may not be available in all API
+ * versions — returns an empty array if the query fails.
+ */
+export async function getGoogleAdsPMaxSearchTerms(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsPMaxSearchTerm[]> {
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+    throw new Error("Invalid date format — expected YYYY-MM-DD");
+  }
+
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      campaign.id,
+      campaign.name,
+      campaign_search_term_insight.category_label,
+      metrics.clicks,
+      metrics.impressions
+    FROM campaign_search_term_insight
+    WHERE campaign.advertising_channel_type = 'PERFORMANCE_MAX'
+      AND segments.date BETWEEN '${startDate}' AND '${endDate}'
+    ORDER BY metrics.impressions DESC
+    LIMIT 30
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    return (data.results ?? []).map((row: GadsRow) => ({
+      campaignId: String(row.campaign?.id ?? ""),
+      campaignName: String(row.campaign?.name ?? ""),
+      categoryLabel: String(row.campaignSearchTermInsight?.categoryLabel ?? ""),
+      clicks: Number(row.metrics?.clicks ?? 0),
+      impressions: Number(row.metrics?.impressions ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ── Geographic performance ────────────────────────────────────────────────
+
+export interface GoogleAdsGeoPerformance {
+  countryCriterionId: string;
+  locationType: string;
+  clicks: number;
+  impressions: number;
+  costMicros: number;
+  conversions: number;
+  conversionsValue: number;
+}
+
+/**
+ * Returns ad performance aggregated by geographic location (country-level).
+ * Location type is AREA_OF_INTEREST or LOCATION_OF_PRESENCE.
+ */
+export async function getGoogleAdsGeoPerformance(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsGeoPerformance[]> {
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+    throw new Error("Invalid date format — expected YYYY-MM-DD");
+  }
+
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      geographic_view.country_criterion_id,
+      geographic_view.location_type,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.cost_micros,
+      metrics.conversions,
+      metrics.conversions_value
+    FROM geographic_view
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+    ORDER BY metrics.impressions DESC
+    LIMIT 50
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    return (data.results ?? []).map((row: GadsRow) => ({
+      countryCriterionId: String(row.geographicView?.countryCriterionId ?? "Unknown"),
+      locationType: String(row.geographicView?.locationType ?? ""),
+      clicks: Number(row.metrics?.clicks ?? 0),
+      impressions: Number(row.metrics?.impressions ?? 0),
+      costMicros: Number(row.metrics?.costMicros ?? 0),
+      conversions: Number(row.metrics?.conversions ?? 0),
+      conversionsValue: Number(row.metrics?.conversionsValue ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ── Ad schedule (day-of-week × hour) performance ─────────────────────────
+
+export interface GoogleAdsSchedulePerformance {
+  dayOfWeek: string;
+  hourOfDay: number;
+  clicks: number;
+  impressions: number;
+  costMicros: number;
+  conversions: number;
+  conversionsValue: number;
+}
+
+/**
+ * Returns performance broken out by day-of-week and hour. Enables AI to
+ * recommend ad scheduling / bid modifier changes.
+ */
+export async function getGoogleAdsSchedulePerformance(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsSchedulePerformance[]> {
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+    throw new Error("Invalid date format — expected YYYY-MM-DD");
+  }
+
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      segments.day_of_week,
+      segments.hour,
+      metrics.clicks,
+      metrics.impressions,
+      metrics.cost_micros,
+      metrics.conversions,
+      metrics.conversions_value
+    FROM customer
+    WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
+    ORDER BY segments.day_of_week, segments.hour
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    return (data.results ?? []).map((row: GadsRow) => ({
+      dayOfWeek: String(row.segments?.dayOfWeek ?? ""),
+      hourOfDay: Number(row.segments?.hour ?? 0),
+      clicks: Number(row.metrics?.clicks ?? 0),
+      impressions: Number(row.metrics?.impressions ?? 0),
+      costMicros: Number(row.metrics?.costMicros ?? 0),
+      conversions: Number(row.metrics?.conversions ?? 0),
+      conversionsValue: Number(row.metrics?.conversionsValue ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// ── Bid simulator data ───────────────────────────────────────────────────
+
+export interface GoogleAdsBidSimulation {
+  campaignId: string;
+  campaignName: string;
+  startDate: string;
+  endDate: string;
+  points: {
+    cpcBidMicros: number;
+    clicks: number;
+    costMicros: number;
+    impressions: number;
+    conversions: number;
+  }[];
+}
+
+/**
+ * Fetches CPC bid simulation data for enabled campaigns. Bid simulators are
+ * not always available — returns an empty array on error.
+ */
+export async function getGoogleAdsBidSimulator(
+  customerId: string
+): Promise<GoogleAdsBidSimulation[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      campaign.id,
+      campaign.name,
+      campaign_simulation.start_date,
+      campaign_simulation.end_date,
+      campaign_simulation.type,
+      campaign_simulation.cpc_bid_point_list.points
+    FROM campaign_simulation
+    WHERE campaign_simulation.type = 'CPC_BID'
+      AND campaign.status = 'ENABLED'
+    LIMIT 20
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsRow = Record<string, Record<string, unknown>>;
+    type BidPoint = Record<string, unknown>;
+    return (data.results ?? []).map((row: GadsRow) => {
+      const sim = row.campaignSimulation ?? {};
+      const pointList = sim.cpcBidPointList as Record<string, BidPoint[]> | undefined;
+      const rawPoints = pointList?.points ?? [];
+      return {
+        campaignId: String(row.campaign?.id ?? ""),
+        campaignName: String(row.campaign?.name ?? ""),
+        startDate: String(sim.startDate ?? ""),
+        endDate: String(sim.endDate ?? ""),
+        points: rawPoints.map((p) => ({
+          cpcBidMicros: Number(p.cpcBidMicros ?? 0),
+          clicks: Number(p.clicks ?? 0),
+          costMicros: Number(p.costMicros ?? 0),
+          impressions: Number(p.impressions ?? 0),
+          conversions: Number(p.biddableConversions ?? p.conversions ?? 0),
+        })),
+      };
+    });
+  } catch {
+    return [];
+  }
+}

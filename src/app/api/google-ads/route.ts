@@ -14,6 +14,11 @@ import {
   getGoogleAdsInvalidClicks,
   getGoogleAdsDeviceBreakdown,
   getGoogleAdsRSAAssets,
+  getGoogleAdsPMaxInsights,
+  getGoogleAdsPMaxSearchTerms,
+  getGoogleAdsGeoPerformance,
+  getGoogleAdsSchedulePerformance,
+  getGoogleAdsBidSimulator,
 } from "@/lib/google-ads";
 import { withApiCache } from "@/lib/api-cache";
 
@@ -49,7 +54,7 @@ export async function GET(request: NextRequest) {
     const cacheKey = `googleads:${customerId}:${startDate}:${endDate}`;
 
     const data = await withApiCache(cacheKey, GADS_CACHE_TTL_HOURS, async () => {
-      const [overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, keywordQualityScores, audienceCriteria, invalidClicks, deviceBreakdown, rsaAssets] =
+      const [overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, keywordQualityScores, audienceCriteria, invalidClicks, deviceBreakdown, rsaAssets, pmaxInsights, pmaxSearchTerms, geoPerformance, schedulePerformance, bidSimulator] =
         await Promise.all([
           getGoogleAdsOverview(customerId, startDate, endDate),
           getGoogleAdsCampaigns(customerId, startDate, endDate),
@@ -64,8 +69,13 @@ export async function GET(request: NextRequest) {
           getGoogleAdsInvalidClicks(customerId, startDate, endDate),
           getGoogleAdsDeviceBreakdown(customerId, startDate, endDate),
           getGoogleAdsRSAAssets(customerId, startDate, endDate),
+          getGoogleAdsPMaxInsights(customerId, startDate, endDate),
+          getGoogleAdsPMaxSearchTerms(customerId, startDate, endDate),
+          getGoogleAdsGeoPerformance(customerId, startDate, endDate),
+          getGoogleAdsSchedulePerformance(customerId, startDate, endDate),
+          getGoogleAdsBidSimulator(customerId),
         ]);
-      return { overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, keywordQualityScores, audienceCriteria, invalidClicks, deviceBreakdown, rsaAssets };
+      return { overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, keywordQualityScores, audienceCriteria, invalidClicks, deviceBreakdown, rsaAssets, pmaxInsights, pmaxSearchTerms, geoPerformance, schedulePerformance, bidSimulator };
     });
 
     return NextResponse.json(data);
