@@ -21,6 +21,9 @@ const PLATFORM_LABELS: Record<string, string> = {
   klaviyo: "Klaviyo",
   youtube: "YouTube",
   callrail: "CallRail",
+  hubspot: "HubSpot CRM",
+  moz: "Moz / Domain Authority",
+  cwv: "Core Web Vitals",
 };
 
 // ── Types ────────────────────────────────────────────────────────────────────
