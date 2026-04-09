@@ -1074,26 +1074,26 @@ Build the systems that connect data across platforms:
 
 Implement API endpoints not yet connected:
 
-| # | Action | Effort | Impact |
-|---|--------|--------|--------|
-| 45 | **GA4 landing page performance** — per-landing-page conversion data | M | 🟠 High |
-| 46 | **GA4 user journey / path exploration** | L | 🟡 Medium |
-| 47 | **GA4 cohort retention analysis** | M | 🟡 Medium |
-| 48 | **Google Ads Performance Max insights** — asset group performance, search term insights | L | 🟠 High |
-| 49 | **Google Ads geographic performance** — city/region level data | M | 🟠 High |
-| 50 | **Google Ads ad schedule performance** — hour × day data | M | 🟡 Medium |
-| 51 | **Google Ads bid simulator data** — "what if" scenario projections | L | 🟡 Medium |
-| 52 | **Meta Lead Gen Forms data** — pull actual leads from Facebook Lead Ads | M | 🟠 High |
-| 53 | **Meta ad relevance diagnostics** — quality/engagement/conversion rankings | S | 🟡 Medium |
-| 54 | **Search Console branded vs non-branded split** | S | 🟡 Medium |
-| 55 | **Search Console URL Inspection API** — indexation status per page | M | 🟡 Medium |
-| 56 | **SEMrush keyword difficulty + intent** | S | 🟠 High |
-| 57 | **SEMrush content gap analysis** | M | 🟠 High |
-| 58 | **SEMrush SERP features** | S | 🟡 Medium |
-| 59 | **SEMrush backlink new/lost tracking** | S | 🟡 Medium |
-| 60 | **CrUX page-level + mobile/desktop + history** | M | 🟡 Medium |
-| 61 | **Shopify/WooCommerce customer data** — CLV, repeat rate, cart abandonment | M | 🟠 High |
-| 62 | **Moz link intersect** — competitor link building targets | M | 🟡 Medium |
+| # | Action | Effort | Impact | Status |
+|---|--------|--------|--------|--------|
+| 45 | **GA4 landing page performance** — per-landing-page conversion data | M | 🟠 High | ✅ Done |
+| 46 | **GA4 user journey / path exploration** | L | 🟡 Medium | ✅ Done |
+| 47 | **GA4 cohort retention analysis** | M | 🟡 Medium | ✅ Done |
+| 48 | **Google Ads Performance Max insights** — asset group performance, search term insights | L | 🟠 High | ✅ Done |
+| 49 | **Google Ads geographic performance** — city/region level data | M | 🟠 High | ✅ Done |
+| 50 | **Google Ads ad schedule performance** — hour × day data | M | 🟡 Medium | ✅ Done |
+| 51 | **Google Ads bid simulator data** — "what if" scenario projections | L | 🟡 Medium | ✅ Done |
+| 52 | **Meta Lead Gen Forms data** — pull actual leads from Facebook Lead Ads | M | 🟠 High | ✅ Done |
+| 53 | **Meta ad relevance diagnostics** — quality/engagement/conversion rankings | S | 🟡 Medium | ✅ Done |
+| 54 | **Search Console branded vs non-branded split** | S | 🟡 Medium | ✅ Done |
+| 55 | **Search Console URL Inspection API** — indexation status per page | M | 🟡 Medium | ✅ Done |
+| 56 | **SEMrush keyword difficulty + intent** | S | 🟠 High | ✅ Done |
+| 57 | **SEMrush content gap analysis** | M | 🟠 High | ✅ Done |
+| 58 | **SEMrush SERP features** | S | 🟡 Medium | ✅ Done |
+| 59 | **SEMrush backlink new/lost tracking** | S | 🟡 Medium | ✅ Done |
+| 60 | **CrUX page-level + mobile/desktop + history** | M | 🟡 Medium | ✅ Done |
+| 61 | **Shopify/WooCommerce customer data** — CLV, repeat rate, cart abandonment | M | 🟠 High | ✅ Done |
+| 62 | **Moz link intersect** — competitor link building targets | M | 🟡 Medium | ✅ Done |
 
 ---
 
