@@ -153,6 +153,9 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
   const [conversionEvents, setConversionEvents] = useState<GA4ConversionEvent[]>([]);
   const [conversionsByChannel, setConversionsByChannel] = useState<GA4ConversionByChannel[]>([]);
   const [aiReferrals, setAiReferrals] = useState<GA4AIReferral[]>([]);
+  const [landingPages, setLandingPages] = useState<Array<{ page: string; sessions: number; bounceRate: number; conversions: number; avgDuration: number }>>([]);
+  const [userJourneys, setUserJourneys] = useState<Array<{ path: string; users: number; conversions: number }>>([]);
+  const [cohortRetention, setCohortRetention] = useState<Array<{ cohort: string; users: number; retention: number[] }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
@@ -269,7 +272,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         yoyEnd.setFullYear(yoyEnd.getFullYear() - 1);
         if (yoyEnd.getMonth() !== origEndMonth) yoyEnd.setDate(0);
         const yoyBase = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${yoyStart.toISOString().split("T")[0]}&endDate=${yoyEnd.toISOString().split("T")[0]}`;
-        const [ovRes, dailyRes, srcRes, pagesRes, prevOvRes, prevPagesRes, geoRes, devRes, organicRes, yoyRes, nvrRes, demoRes, cvEvRes, cvChRes, aiRefRes] = await Promise.all([
+        const [ovRes, dailyRes, srcRes, pagesRes, prevOvRes, prevPagesRes, geoRes, devRes, organicRes, yoyRes, nvrRes, demoRes, cvEvRes, cvChRes, aiRefRes, lpRes, ujRes, crRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=daily`, { signal: controller.signal }),
           fetch(`${base}&type=sources`, { signal: controller.signal }),
@@ -285,6 +288,9 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           fetch(`${base}&type=conversion-events`, { signal: controller.signal }),
           fetch(`${base}&type=conversions-by-channel`, { signal: controller.signal }),
           fetch(`${base}&type=ai-referrals`, { signal: controller.signal }),
+          fetch(`${base}&type=landing-pages`, { signal: controller.signal }),
+          fetch(`${base}&type=user-journeys`, { signal: controller.signal }),
+          fetch(`${base}&type=cohort-retention`, { signal: controller.signal }),
         ]);
 
         if (!ovRes.ok) {
@@ -292,7 +298,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           throw new Error(err.error ?? "Failed to fetch GA4 data");
         }
 
-        const [ov, d, s, p, prevOv, prevP, geo, devs, organic, yoy, nvr, demo, cvEv, cvCh, aiRef] = await Promise.all([
+        const [ov, d, s, p, prevOv, prevP, geo, devs, organic, yoy, nvr, demo, cvEv, cvCh, aiRef, lp, uj, cr] = await Promise.all([
           ovRes.json(),
           dailyRes.json(),
           srcRes.json(),
@@ -308,6 +314,9 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           cvEvRes.ok ? cvEvRes.json() : Promise.resolve([]),
           cvChRes.ok ? cvChRes.json() : Promise.resolve([]),
           aiRefRes.ok ? aiRefRes.json() : Promise.resolve([]),
+          lpRes.ok ? lpRes.json().catch(() => []) : Promise.resolve([]),
+          ujRes.ok ? ujRes.json().catch(() => []) : Promise.resolve([]),
+          crRes.ok ? crRes.json().catch(() => []) : Promise.resolve([]),
         ]);
 
         setOverview(ov);
@@ -337,6 +346,9 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         setConversionEvents(Array.isArray(cvEv) ? cvEv : []);
         setConversionsByChannel(Array.isArray(cvCh) ? cvCh : []);
         setAiReferrals(Array.isArray(aiRef) ? aiRef : []);
+        setLandingPages(Array.isArray(lp) ? lp : []);
+        setUserJourneys(Array.isArray(uj) ? uj : []);
+        setCohortRetention(Array.isArray(cr) ? cr : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load GA4 data");
@@ -859,6 +871,98 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           )}
         </SectionCard>
       )}
+
+      {/* Super Summary */}
+
+      {/* Landing Page Performance */}
+      {!loading && !error && show("landing_pages") && landingPages.length > 0 && (
+        <SectionCard title="Landing Page Performance" subtitle="Top entry pages by sessions">
+          <div style={{ overflowX: "auto" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(200px, 2fr) repeat(4, minmax(90px, 1fr))", gap: 0, fontSize: 13 }}>
+              <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)" }}>Page</div>
+              <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)", textAlign: "right" }}>Sessions</div>
+              <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)", textAlign: "right" }}>Bounce Rate</div>
+              <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)", textAlign: "right" }}>Conversions</div>
+              <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)", textAlign: "right" }}>Avg Duration</div>
+              {[...landingPages].sort((a, b) => b.sessions - a.sessions).slice(0, 10).map((lp, i) => (
+                <div key={i} style={{ display: "contents" }}>
+                  <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text)" }} title={lp.page}>{lp.page}</div>
+                  <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "right", fontWeight: 600, color: "#6366f1" }}>{formatNumber(lp.sessions)}</div>
+                  <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "right", color: lp.bounceRate > 0.7 ? "#ef4444" : lp.bounceRate > 0.5 ? "#f59e0b" : "#10b981" }}>{formatPercent(lp.bounceRate)}</div>
+                  <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "right", fontWeight: 600 }}>{formatNumber(lp.conversions)}</div>
+                  <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "right" }}>{formatDuration(lp.avgDuration)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* User Journeys */}
+      {!loading && !error && show("user_journeys") && userJourneys.length > 0 && (
+        <SectionCard title="User Journeys" subtitle="Most common navigation paths">
+          <div style={{ overflowX: "auto" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 3fr) repeat(2, minmax(90px, 1fr))", gap: 0, fontSize: 13 }}>
+              <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)" }}>Path</div>
+              <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)", textAlign: "right" }}>Users</div>
+              <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)", textAlign: "right" }}>Conversions</div>
+              {userJourneys.map((uj, i) => (
+                <div key={i} style={{ display: "contents" }}>
+                  <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text)", fontFamily: "monospace", fontSize: 12 }} title={uj.path}>{uj.path}</div>
+                  <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "right", fontWeight: 600, color: "#6366f1" }}>{formatNumber(uj.users)}</div>
+                  <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "right", fontWeight: 600 }}>{formatNumber(uj.conversions)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Cohort Retention */}
+      {!loading && !error && show("cohort_retention") && cohortRetention.length > 0 && (() => {
+        const maxWeeks = Math.max(...cohortRetention.map(c => c.retention.length));
+        const retentionColor = (pct: number) => {
+          if (pct >= 60) return "#059669";
+          if (pct >= 40) return "#10b981";
+          if (pct >= 20) return "#f59e0b";
+          if (pct >= 10) return "#f97316";
+          return "#ef4444";
+        };
+        const retentionBg = (pct: number) => {
+          if (pct >= 60) return "rgba(5,150,105,0.12)";
+          if (pct >= 40) return "rgba(16,185,129,0.10)";
+          if (pct >= 20) return "rgba(245,158,11,0.10)";
+          if (pct >= 10) return "rgba(249,115,22,0.10)";
+          return "rgba(239,68,68,0.10)";
+        };
+        return (
+          <SectionCard title="Cohort Retention" subtitle="Weekly cohort retention rates">
+            <div style={{ overflowX: "auto" }}>
+              <div style={{ display: "grid", gridTemplateColumns: `minmax(100px, 1fr) minmax(70px, auto) repeat(${maxWeeks}, minmax(60px, 1fr))`, gap: 0, fontSize: 12 }}>
+                <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)" }}>Cohort</div>
+                <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)", textAlign: "right" }}>Users</div>
+                {Array.from({ length: maxWeeks }, (_, i) => (
+                  <div key={i} style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)", textAlign: "center" }}>Wk {i + 1}</div>
+                ))}
+                {cohortRetention.map((c, i) => (
+                  <div key={i} style={{ display: "contents" }}>
+                    <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", color: "var(--text)", fontSize: 12, whiteSpace: "nowrap" }}>{c.cohort}</div>
+                    <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "right", fontWeight: 600 }}>{formatNumber(c.users)}</div>
+                    {Array.from({ length: maxWeeks }, (_, wi) => {
+                      const pct = c.retention[wi];
+                      return (
+                        <div key={wi} style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "center", fontWeight: 600, color: pct != null ? retentionColor(pct) : "var(--text-4)", background: pct != null ? retentionBg(pct) : "transparent" }}>
+                          {pct != null ? `${pct.toFixed(1)}%` : "–"}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </SectionCard>
+        );
+      })()}
 
       {/* Super Summary */}
       {!hideAi && !loading && !error && overview && (
