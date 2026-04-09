@@ -803,7 +803,32 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
     if (!client.id) return;
     fetch(`/api/cross/client-health?clientId=${encodeURIComponent(client.id)}&startDate=${startDate}&endDate=${endDate}`)
       .then(r => r.ok ? r.json() : null)
-      .then(json => { if (json) setClientHealth(json); })
+      .then(json => {
+        if (json) {
+          // Map API response shape → component state shape
+          const riskFactors: Array<{ category: string; severity: string; detail: string }> = [];
+          if (json.factors) {
+            for (const [category, factor] of Object.entries(json.factors)) {
+              const f = factor as { score: number; detail: string };
+              if (f.score < -5) {
+                riskFactors.push({
+                  category,
+                  severity: f.score <= -15 ? "high" : f.score <= -8 ? "medium" : "low",
+                  detail: f.detail,
+                });
+              }
+            }
+          }
+          setClientHealth({
+            score: json.healthScore ?? 0,
+            grade: json.grade ?? "N/A",
+            trend: json.trend ?? "stable",
+            riskFactors,
+            narrative: json.narrative,
+            recommendations: json.recommendations,
+          });
+        }
+      })
       .catch(() => {});
   }, [client.id, startDate, endDate]);
 
