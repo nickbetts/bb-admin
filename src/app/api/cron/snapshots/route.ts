@@ -553,6 +553,71 @@ export async function POST(request: NextRequest) {
 
     console.log(`[cron/snapshots] Done: ${snapshotsNew} new, ${snapshotsSkipped} skipped, ${errors} errors across ${clients.length} clients`);
 
+    // --- Sync ClientGoal currentValue from latest MetricSnapshot data ---
+    let goalsSynced = 0;
+    try {
+      const activeGoals = await prisma.clientGoal.findMany({
+        where: { status: "active" },
+        select: { id: true, clientId: true, channel: true, metric: true },
+      });
+
+      for (const goal of activeGoals) {
+        try {
+          if (!goal.metric) continue;
+
+          let extractedValue: number | null = null;
+
+          if (goal.channel && goal.channel !== "overview") {
+            // Look up the latest snapshot for this client + channel (sectionType)
+            const snap = await prisma.metricSnapshot.findFirst({
+              where: { clientId: goal.clientId, sectionType: goal.channel },
+              orderBy: { createdAt: "desc" },
+              select: { metrics: true },
+            });
+            if (snap?.metrics) {
+              try {
+                const parsed = JSON.parse(snap.metrics) as Record<string, unknown>;
+                const val = parsed[goal.metric];
+                if (typeof val === "number" && isFinite(val)) extractedValue = val;
+              } catch { /* corrupt JSON — skip this snapshot */ }
+            }
+          } else {
+            // No specific channel — search all sectionTypes for a matching metric
+            const snaps = await prisma.metricSnapshot.findMany({
+              where: { clientId: goal.clientId },
+              orderBy: { createdAt: "desc" },
+              distinct: ["sectionType"],
+              select: { metrics: true },
+            });
+            for (const snap of snaps) {
+              if (!snap.metrics) continue;
+              try {
+                const parsed = JSON.parse(snap.metrics) as Record<string, unknown>;
+                const val = parsed[goal.metric];
+                if (typeof val === "number" && isFinite(val)) {
+                  extractedValue = val;
+                  break;
+                }
+              } catch { /* corrupt JSON — skip this snapshot */ }
+            }
+          }
+
+          if (extractedValue !== null) {
+            await prisma.clientGoal.update({
+              where: { id: goal.id },
+              data: { currentValue: extractedValue },
+            });
+            goalsSynced++;
+          }
+        } catch (goalErr) {
+          console.error(`[cron/snapshots] Goal sync failed for goal ${goal.id}:`, goalErr);
+        }
+      }
+      console.log(`[cron/snapshots] Goal sync complete: ${goalsSynced}/${activeGoals.length} goals updated`);
+    } catch (goalSyncErr) {
+      console.error("[cron/snapshots] Goal sync batch error:", goalSyncErr);
+    }
+
     await (db.cronLog.update({
       where: { id: log.id },
       data: {
@@ -566,7 +631,7 @@ export async function POST(request: NextRequest) {
       },
     }) as Promise<unknown>);
 
-    return NextResponse.json({ success: true, clientsProcessed: clients.length, snapshotsNew, snapshotsSkipped, errors, results });
+    return NextResponse.json({ success: true, clientsProcessed: clients.length, snapshotsNew, snapshotsSkipped, errors, goalsSynced, results });
   } catch (error) {
     console.error("[cron/snapshots] Fatal error:", error);
     await (db.cronLog.update({
