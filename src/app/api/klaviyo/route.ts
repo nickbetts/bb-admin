@@ -230,6 +230,133 @@ export async function GET(request: NextRequest) {
       }
     } catch { /* non-critical */ }
 
+    // Fetch subscriber health (lists + profile counts)
+    let subscriberHealth = { totalProfiles: 0, activeLists: 0, suppressedProfiles: 0 };
+    try {
+      const listsRes = await fetch("https://a.klaviyo.com/api/lists/?page[size]=50", {
+        headers: {
+          Authorization: `Klaviyo-API-Key ${apiKey}`,
+          revision: "2024-02-15",
+          accept: "application/json",
+        },
+      });
+      if (listsRes.ok) {
+        const listsData = await listsRes.json() as {
+          data?: Array<{ id: string; attributes?: { name?: string; profile_count?: number } }>;
+        };
+        const lists = listsData.data ?? [];
+        subscriberHealth = {
+          totalProfiles: lists.reduce((s, l) => s + (l.attributes?.profile_count ?? 0), 0),
+          activeLists: lists.length,
+          suppressedProfiles: 0,
+        };
+      }
+    } catch { /* non-critical */ }
+
+    // Fetch segments
+    let segments: Array<{ id: string; name: string; profileCount: number }> = [];
+    try {
+      const segRes = await fetch("https://a.klaviyo.com/api/segments/?page[size]=20", {
+        headers: {
+          Authorization: `Klaviyo-API-Key ${apiKey}`,
+          revision: "2024-02-15",
+          accept: "application/json",
+        },
+      });
+      if (segRes.ok) {
+        const segData = await segRes.json() as {
+          data?: Array<{ id: string; attributes?: { name?: string; profile_count?: number } }>;
+        };
+        segments = (segData.data ?? []).map((s) => ({
+          id: s.id,
+          name: s.attributes?.name ?? "Unknown",
+          profileCount: s.attributes?.profile_count ?? 0,
+        }));
+      }
+    } catch { /* non-critical */ }
+
+    // Fetch SMS campaigns
+    const smsCampaigns: typeof metricsResults = [];
+    try {
+      const smsRes = await fetch(
+        "https://a.klaviyo.com/api/campaigns/?filter=equals(messages.channel,'sms')&sort=-created_at&page[size]=20",
+        {
+          headers: {
+            Authorization: `Klaviyo-API-Key ${apiKey}`,
+            revision: "2024-02-15",
+            accept: "application/json",
+          },
+        }
+      );
+      if (smsRes.ok) {
+        const smsData = await smsRes.json() as {
+          data?: Array<{
+            id: string;
+            attributes?: { name?: string; status?: string; created_at?: string; send_time?: string };
+          }>;
+        };
+        const smsList = smsData.data ?? [];
+        for (const sms of smsList.slice(0, 10)) {
+          const smsAttrs = sms.attributes ?? {};
+          const smsMetricsRes = await fetch(
+            "https://a.klaviyo.com/api/campaign-values-reports/",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Klaviyo-API-Key ${apiKey}`,
+                revision: "2024-02-15",
+                "content-type": "application/json",
+                accept: "application/json",
+              },
+              body: JSON.stringify({
+                data: {
+                  type: "campaign-values-report",
+                  attributes: {
+                    filter: `equals(campaign_id,"${sms.id}")`,
+                    statistics: ["delivered", "open_rate", "click_rate", "revenue"],
+                    timeframe,
+                  },
+                },
+              }),
+            }
+          );
+          let sSends = 0, sOpens = 0, sClicks = 0, sRevenue = 0, sOpenRate = 0, sClickRate = 0;
+          if (smsMetricsRes.ok) {
+            try {
+              const smData = await smsMetricsRes.json() as {
+                data?: {
+                  attributes?: {
+                    results?: Array<{
+                      statistics?: { delivered?: number; open_rate?: number; click_rate?: number; revenue?: number };
+                    }>;
+                  };
+                };
+              };
+              const sStats = smData.data?.attributes?.results?.[0]?.statistics ?? {};
+              sSends = sStats.delivered ?? 0;
+              sOpenRate = sStats.open_rate ?? 0;
+              sClickRate = sStats.click_rate ?? 0;
+              sOpens = Math.round(sSends * sOpenRate);
+              sClicks = Math.round(sSends * sClickRate);
+              sRevenue = sStats.revenue ?? 0;
+            } catch { /* non-critical */ }
+          }
+          smsCampaigns.push({
+            id: sms.id,
+            name: smsAttrs.name ?? "Unknown SMS Campaign",
+            status: smsAttrs.status ?? "unknown",
+            sendTime: smsAttrs.send_time ?? smsAttrs.created_at ?? null,
+            sends: sSends,
+            opens: sOpens,
+            clicks: sClicks,
+            revenue: sRevenue,
+            openRate: sOpenRate,
+            clickRate: sClickRate,
+          });
+        }
+      }
+    } catch { /* non-critical */ }
+
     return NextResponse.json({
       overview: {
         sends: totalSends,
@@ -242,6 +369,9 @@ export async function GET(request: NextRequest) {
       },
       campaigns: metricsResults,
       flows: flowResults,
+      subscriberHealth,
+      segments,
+      smsCampaigns,
     });
   } catch (error) {
     console.error("Klaviyo route error:", error);
