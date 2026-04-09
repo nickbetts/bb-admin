@@ -15,6 +15,7 @@ import {
   getContentGap,
   getSerpFeatures,
   getBacklinkChanges,
+  getCompetitorAdKeywords,
 } from "@/lib/semrush";
 import { withApiCache } from "@/lib/api-cache";
 
@@ -106,6 +107,12 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getSerpFeatures(domain!, database)));
       case "backlink-changes":
         return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getBacklinkChanges(domain!)));
+      case "competitor-ad-keywords": {
+        const competitorDomain = searchParams.get("competitorDomain");
+        if (!competitorDomain) return NextResponse.json({ error: "competitorDomain is required" }, { status: 400 });
+        const adCacheKey = `semrush:competitor-ad-keywords:${competitorDomain}:${database}`;
+        return NextResponse.json(await withApiCache(adCacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getCompetitorAdKeywords(competitorDomain, database)));
+      }
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }

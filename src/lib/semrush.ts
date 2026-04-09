@@ -767,3 +767,56 @@ export async function getBacklinkChanges(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Competitor paid-search keyword intelligence
+// ---------------------------------------------------------------------------
+
+export interface SemrushCompetitorAdKeyword {
+  keyword: string;
+  position: number;
+  url: string;
+  cpc: number;
+  volume: number;
+  trafficPercent: number;
+  trafficCost: number;
+}
+
+/**
+ * Fetches the keywords a competitor domain is bidding on in Google Ads
+ * (SEMrush `domain_adwords` report).
+ */
+export async function getCompetitorAdKeywords(
+  domain: string,
+  database: string = "uk",
+  limit: number = 30
+): Promise<SemrushCompetitorAdKeyword[]> {
+  const apiKey = getApiKey();
+  const params = new URLSearchParams({
+    type: "domain_adwords",
+    key: apiKey,
+    export_columns: "Ph,Po,Ur,Cp,Nq,Tr,Tc",
+    domain,
+    database,
+    display_limit: limit.toString(),
+  });
+
+  const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+  const lines = response.data.trim().split("\n");
+
+  if (lines.length < 2 || lines[0]?.startsWith("ERROR")) return [];
+
+  return lines.slice(1).map((line: string) => {
+    const [keyword, position, url, cpc, volume, trafficPercent, trafficCost] =
+      line.split(";");
+    return {
+      keyword: keyword || "",
+      position: parseInt(position) || 0,
+      url: url || "",
+      cpc: parseFloat(cpc) || 0,
+      volume: parseInt(volume) || 0,
+      trafficPercent: parseFloat(trafficPercent) || 0,
+      trafficCost: parseFloat(trafficCost) || 0,
+    };
+  });
+}
+

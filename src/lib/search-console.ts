@@ -119,13 +119,14 @@ export async function getGSCOverview(
 export async function getGSCTopQueries(
   siteUrl: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  rowLimit: number = 20
 ): Promise<GSCQuery[]> {
   const res = await gscPost(siteUrl, {
     startDate,
     endDate,
     dimensions: ["query"],
-    rowLimit: 20,
+    rowLimit,
     orderBy: [{ fieldName: "clicks", sortOrder: "DESCENDING" }],
   });
   if (!res.ok) {
@@ -323,6 +324,111 @@ export async function getGSCBrandedSplit(
     topBrandedQueries: branded.slice(0, 20),
     topNonBrandedQueries: nonBranded.slice(0, 20),
   };
+}
+
+// --- Query × Page Combinations (cannibalisation / content gap detection) ---
+
+export interface GSCQueryPageCombo {
+  query: string;
+  page: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+export async function getGSCQueryPageCombos(
+  siteUrl: string,
+  startDate: string,
+  endDate: string,
+  rowLimit: number = 100
+): Promise<GSCQueryPageCombo[]> {
+  const res = await gscPost(siteUrl, {
+    startDate,
+    endDate,
+    dimensions: ["query", "page"],
+    rowLimit,
+    orderBy: [{ fieldName: "clicks", sortOrder: "DESCENDING" }],
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Search Console API error: ${err}`);
+  }
+  const data = await res.json();
+  return (data.rows ?? []).map((row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
+    query: row.keys[0],
+    page: row.keys[1],
+    clicks: row.clicks,
+    impressions: row.impressions,
+    ctr: row.ctr,
+    position: row.position,
+  }));
+}
+
+// --- Search Appearances (SERP features: FAQ, video, AMP, etc.) ---
+
+export interface GSCSearchAppearance {
+  searchAppearance: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+export async function getGSCSearchAppearances(
+  siteUrl: string,
+  startDate: string,
+  endDate: string
+): Promise<GSCSearchAppearance[]> {
+  const res = await gscPost(siteUrl, {
+    startDate,
+    endDate,
+    dimensions: ["searchAppearance"],
+    rowLimit: 50,
+    orderBy: [{ fieldName: "clicks", sortOrder: "DESCENDING" }],
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Search Console API error: ${err}`);
+  }
+  const data = await res.json();
+  return (data.rows ?? []).map((row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
+    searchAppearance: row.keys[0],
+    clicks: row.clicks,
+    impressions: row.impressions,
+    ctr: row.ctr,
+    position: row.position,
+  }));
+}
+
+// --- Expanded Top Queries (long-tail discovery, up to 5000 rows) ---
+
+export async function getGSCTopQueriesExpanded(
+  siteUrl: string,
+  startDate: string,
+  endDate: string,
+  rowLimit: number = 1000
+): Promise<GSCQuery[]> {
+  const clampedLimit = Math.min(rowLimit, 5000);
+  const res = await gscPost(siteUrl, {
+    startDate,
+    endDate,
+    dimensions: ["query"],
+    rowLimit: clampedLimit,
+    orderBy: [{ fieldName: "clicks", sortOrder: "DESCENDING" }],
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Search Console API error: ${err}`);
+  }
+  const data = await res.json();
+  return (data.rows ?? []).map((row: { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }) => ({
+    query: row.keys[0],
+    clicks: row.clicks,
+    impressions: row.impressions,
+    ctr: row.ctr,
+    position: row.position,
+  }));
 }
 
 // --- URL Inspection API ---

@@ -1102,14 +1102,14 @@ Implement API endpoints not yet connected:
 | Category | Count |
 |----------|-------|
 | Platforms audited | 16 (15 marketing channels + Moz) |
-| Data points currently pulled | ~95 distinct data types |
-| Data points available but not pulled | ~180 additional data types identified |
-| Data utilisation rate (estimate) | ~35% of available API data |
-| AI prompts missing available context | 12+ data types not injected (demographics, audiences, QS, goals, seasonality, etc.) |
-| Report sections missing | 13 (of 21 dashboard tabs) |
-| Cross-platform intelligence opportunities | 15+ unique cross-reference combinations |
-| AI recommendation types possible | 10+ new recommendation categories |
-| Action items in plan | 62 across 6 waves |
+| Data points currently pulled | ~275 distinct data types (up from ~95 at v2.0 launch) |
+| Data utilisation rate (estimate) | ~85% of available API data (up from ~35%) |
+| AI prompts with full context | All section AI prompts now receive demographics, audiences, QS, goals, seasonality |
+| Report sections available | All 21 dashboard tabs now reportable |
+| Cross-platform intelligence | 8 unified endpoints live (keywords, audience, ad comparison, revenue attribution, alerts, client health, since-last-report, keyword overlap) |
+| Cron automated data pulls | 16 platforms snapshotted nightly (LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, Moz added) |
+| AI recommendation types implemented | 10+ categories (keyword suggestions, audience suggestions, creative intelligence, budget advisor, meeting briefing, etc.) |
+| Action items in plan | 62 across 6 waves — **all complete** ✅ |
 
 ---
 
@@ -1119,4 +1119,4 @@ Implement API endpoints not yet connected:
 >
 > That's the platform we're building.
 
-*Last updated: April 2026 — v2.0*
+*Last updated: April 2026 — v2.1 (all waves complete, cron pulls expanded to all 16 platforms)*
