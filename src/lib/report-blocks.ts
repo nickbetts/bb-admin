@@ -33,6 +33,8 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "engagement_kpis", label: "Engagement & Conversion KPIs" },
     { id: "channel_matrix", label: "Channel Efficiency Matrix" },
     { id: "alerts", label: "Cross-Platform Alerts" },
+    { id: "client_health", label: "Client Health Score" },
+    { id: "since_last_report", label: "Since Last Report" },
   ],
   executive_summary: [],
   // Text-only sections — no configurable blocks
@@ -52,6 +54,9 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "backlinks", label: "Recent Backlinks" },
     { id: "ai_visibility", label: "AI Search Visibility" },
     { id: "competitors", label: "Competitor Landscape" },
+    { id: "content_gap", label: "Content Gap Analysis" },
+    { id: "serp_features", label: "SERP Features" },
+    { id: "backlink_changes", label: "Recent Backlink Changes" },
   ],
   web: [
     { id: "kpis", label: "Key Metrics" },
@@ -66,12 +71,17 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "conversion_events", label: "Conversion Events" },
     { id: "conversions_by_channel", label: "Conversions by Channel" },
     { id: "ai_referrals", label: "AI Search Referrals" },
+    { id: "landing_pages", label: "Landing Page Performance" },
+    { id: "user_journeys", label: "User Journeys" },
+    { id: "cohort_retention", label: "Cohort Retention" },
   ],
   paid_social: [
     { id: "kpis", label: "Key Metrics" },
     { id: "chart", label: "Performance Trend" },
     { id: "campaigns", label: "Campaign Breakdown" },
     { id: "click_fraud", label: "Click Fraud Protection" },
+    { id: "lead_forms", label: "Lead Form Performance" },
+    { id: "relevance", label: "Ad Relevance Diagnostics" },
   ],
   googleads: [
     { id: "kpis", label: "Key Metrics" },
@@ -79,6 +89,9 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "campaigns", label: "Campaign Breakdown" },
     { id: "ad_groups", label: "Ad Groups" },
     { id: "click_fraud", label: "Click Fraud Protection" },
+    { id: "pmax", label: "Performance Max Insights" },
+    { id: "geo", label: "Geographic Performance" },
+    { id: "schedule", label: "Ad Schedule Performance" },
   ],
   searchconsole: [
     { id: "kpis", label: "Key Metrics" },
@@ -89,12 +102,14 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "devices", label: "Device Breakdown" },
     { id: "countries", label: "Top Countries" },
     { id: "cannibalisation", label: "Keyword Cannibalisation" },
+    { id: "branded_split", label: "Branded vs Non-Branded" },
   ],
   ecommerce: [
     { id: "kpis", label: "Key Metrics" },
     { id: "chart", label: "Revenue Over Time" },
     { id: "top_products", label: "Top Products" },
     { id: "order_status", label: "Orders by Status" },
+    { id: "customers", label: "Customer Analytics" },
   ],
   tiktok: [
     { id: "kpis", label: "Key Metrics" },
@@ -132,6 +147,8 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
   ],
   core_web_vitals: [
     { id: "metrics", label: "Core Web Vitals" },
+    { id: "device_breakdown", label: "Device Breakdown" },
+    { id: "history", label: "CWV History" },
   ],
   competitor_intelligence: [
     { id: "snapshots", label: "Competitor Snapshots" },
