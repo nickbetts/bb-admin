@@ -9,6 +9,9 @@ import {
   getGSCCountries,
   getGSCBrandedSplit,
   getGSCUrlInspection,
+  getGSCQueryPageCombos,
+  getGSCSearchAppearances,
+  getGSCTopQueriesExpanded,
 } from "@/lib/search-console";
 import { getPreviousPeriod } from "@/lib/utils";
 import { withApiCache } from "@/lib/api-cache";
@@ -119,6 +122,33 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(
           await withApiCache(inspectionCacheKey, GSC_CACHE_TTL_HOURS, () =>
             getGSCUrlInspection(siteUrl, urls)
+          )
+        );
+      }
+
+      case "query-page": {
+        const rowLimitParam = parseInt(searchParams.get("rowLimit") ?? "100", 10);
+        const qpCacheKey = `gsc:query-page:${siteUrl}:${startDate}:${endDate}:${rowLimitParam}`;
+        return NextResponse.json(
+          await withApiCache(qpCacheKey, GSC_CACHE_TTL_HOURS, () =>
+            getGSCQueryPageCombos(siteUrl, startDate, endDate, rowLimitParam)
+          )
+        );
+      }
+
+      case "search-appearances":
+        return NextResponse.json(
+          await withApiCache(cacheKey, GSC_CACHE_TTL_HOURS, () =>
+            getGSCSearchAppearances(siteUrl, startDate, endDate)
+          )
+        );
+
+      case "queries-expanded": {
+        const expandedLimit = parseInt(searchParams.get("rowLimit") ?? "1000", 10);
+        const expandedCacheKey = `gsc:queries-expanded:${siteUrl}:${startDate}:${endDate}:${expandedLimit}`;
+        return NextResponse.json(
+          await withApiCache(expandedCacheKey, GSC_CACHE_TTL_HOURS, () =>
+            getGSCTopQueriesExpanded(siteUrl, startDate, endDate, expandedLimit)
           )
         );
       }
