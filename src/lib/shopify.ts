@@ -96,3 +96,122 @@ export async function getShopifyStats(
 
   return { totalRevenue, totalOrders, averageOrderValue, currency, topProducts, ordersByStatus, revenueByDay };
 }
+
+export interface ShopifyCustomerData {
+  totalCustomers: number;
+  newCustomers: number;
+  returningCustomers: number;
+  repeatRate: number;
+  averageCLV: number;
+  averageOrdersPerCustomer: number;
+  topCustomers: { email: string; ordersCount: number; totalSpent: number }[];
+  abandonedCheckouts: number;
+  abandonedCheckoutValue: number;
+  recoveredCheckouts: number;
+}
+
+interface ShopifyCustomerRaw {
+  id: number;
+  email: string;
+  orders_count: number;
+  total_spent: string;
+  created_at: string;
+}
+
+interface ShopifyCheckoutRaw {
+  id: number;
+  created_at: string;
+  completed_at: string | null;
+  total_price: string;
+}
+
+export async function getShopifyCustomerData(
+  storeDomain: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<ShopifyCustomerData> {
+  const baseUrl = `https://${storeDomain.replace(/^https?:\/\//, "")}/admin/api/2024-01`;
+
+  const headers = {
+    "X-Shopify-Access-Token": accessToken,
+    "Content-Type": "application/json",
+  };
+
+  try {
+    // Fetch customers created in the period
+    const customerParams = new URLSearchParams({
+      created_at_min: `${startDate}T00:00:00-00:00`,
+      limit: "250",
+      fields: "id,email,orders_count,total_spent,created_at",
+    });
+
+    const customerRes = await fetch(`${baseUrl}/customers.json?${customerParams.toString()}`, { headers });
+    const customers: ShopifyCustomerRaw[] = customerRes.ok
+      ? ((await customerRes.json()) as { customers: ShopifyCustomerRaw[] }).customers
+      : [];
+
+    const totalCustomers = customers.length;
+    const returningCustomers = customers.filter((c) => c.orders_count > 1).length;
+    const newCustomers = totalCustomers - returningCustomers;
+    const repeatRate = totalCustomers > 0 ? (returningCustomers / totalCustomers) * 100 : 0;
+
+    const totalSpentAll = customers.reduce((sum, c) => sum + parseFloat(c.total_spent || "0"), 0);
+    const averageCLV = totalCustomers > 0 ? totalSpentAll / totalCustomers : 0;
+    const totalOrdersAll = customers.reduce((sum, c) => sum + c.orders_count, 0);
+    const averageOrdersPerCustomer = totalCustomers > 0 ? totalOrdersAll / totalCustomers : 0;
+
+    const topCustomers = [...customers]
+      .sort((a, b) => parseFloat(b.total_spent || "0") - parseFloat(a.total_spent || "0"))
+      .slice(0, 10)
+      .map((c) => ({
+        email: c.email,
+        ordersCount: c.orders_count,
+        totalSpent: parseFloat(c.total_spent || "0"),
+      }));
+
+    // Fetch abandoned checkouts
+    const checkoutRes = await fetch(`${baseUrl}/checkouts.json?limit=250`, { headers });
+    const checkouts: ShopifyCheckoutRaw[] = checkoutRes.ok
+      ? ((await checkoutRes.json()) as { checkouts: ShopifyCheckoutRaw[] }).checkouts
+      : [];
+
+    const periodCheckouts = checkouts.filter((c) => {
+      const created = c.created_at.split("T")[0];
+      return created >= startDate && created <= endDate;
+    });
+
+    const abandonedCheckouts = periodCheckouts.filter((c) => !c.completed_at).length;
+    const abandonedCheckoutValue = periodCheckouts
+      .filter((c) => !c.completed_at)
+      .reduce((sum, c) => sum + parseFloat(c.total_price || "0"), 0);
+    const recoveredCheckouts = periodCheckouts.filter((c) => c.completed_at).length;
+
+    return {
+      totalCustomers,
+      newCustomers,
+      returningCustomers,
+      repeatRate: Math.round(repeatRate * 100) / 100,
+      averageCLV: Math.round(averageCLV * 100) / 100,
+      averageOrdersPerCustomer: Math.round(averageOrdersPerCustomer * 100) / 100,
+      topCustomers,
+      abandonedCheckouts,
+      abandonedCheckoutValue: Math.round(abandonedCheckoutValue * 100) / 100,
+      recoveredCheckouts,
+    };
+  } catch (error) {
+    console.error("Shopify customer data error:", error);
+    return {
+      totalCustomers: 0,
+      newCustomers: 0,
+      returningCustomers: 0,
+      repeatRate: 0,
+      averageCLV: 0,
+      averageOrdersPerCustomer: 0,
+      topCustomers: [],
+      abandonedCheckouts: 0,
+      abandonedCheckoutValue: 0,
+      recoveredCheckouts: 0,
+    };
+  }
+}
