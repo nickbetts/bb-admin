@@ -12,6 +12,7 @@ interface TikTokSectionProps {
   startDate: string;
   endDate: string;
   crossPlatformContext?: string;
+  visibleBlocks?: string[];
 }
 
 interface TikTokOverview {
@@ -75,7 +76,8 @@ interface TikTokCreative {
   videoWatched2s: number;
 }
 
-export function TikTokSection({ clientId, clientName, startDate, endDate, crossPlatformContext }: TikTokSectionProps) {
+export function TikTokSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks }: TikTokSectionProps) {
+  const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [data, setData] = useState<{ overview: TikTokOverview; campaigns: TikTokCampaign[]; daily: TikTokDaily[]; demographics?: TikTokDemo[]; creatives?: TikTokCreative[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -136,7 +138,7 @@ export function TikTokSection({ clientId, clientName, startDate, endDate, crossP
       </div>
 
       {/* Overview KPI Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
+      {show("kpis") && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
         {[
           { label: "Spend", value: formatCurrency(overview.spend), color: "#000" },
           { label: "Impressions", value: formatNumber(overview.impressions), color: "#6366f1" },
@@ -160,10 +162,10 @@ export function TikTokSection({ clientId, clientName, startDate, endDate, crossP
             <div style={{ fontSize: 20, fontWeight: 700, color: kpi.color }}>{kpi.value}</div>
           </div>
         ))}
-      </div>
+      </div>}
 
       {/* Campaigns table */}
-      {campaigns.length > 0 && (
+      {show("campaigns") && campaigns.length > 0 && (
         <div style={{ overflowX: "auto" }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Campaigns</h3>
           <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -196,7 +198,7 @@ export function TikTokSection({ clientId, clientName, startDate, endDate, crossP
       )}
 
       {/* Demographics breakdown */}
-      {data.demographics && data.demographics.length > 0 && (
+      {show("demographics") && data.demographics && data.demographics.length > 0 && (
         <div style={{ overflowX: "auto" }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Demographics</h3>
           <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -225,7 +227,7 @@ export function TikTokSection({ clientId, clientName, startDate, endDate, crossP
       )}
 
       {/* Top Creatives */}
-      {data.creatives && data.creatives.length > 0 && (
+      {show("creatives") && data.creatives && data.creatives.length > 0 && (
         <div style={{ overflowX: "auto" }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Top Creatives</h3>
           <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>

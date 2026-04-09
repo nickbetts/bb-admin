@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo, type ReactNode } from "react";
 import {
   AreaChart,
   Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -156,6 +158,14 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
   const [landingPages, setLandingPages] = useState<Array<{ page: string; sessions: number; bounceRate: number; conversions: number; avgDuration: number }>>([]);
   const [userJourneys, setUserJourneys] = useState<Array<{ path: string; users: number; conversions: number }>>([]);
   const [cohortRetention, setCohortRetention] = useState<Array<{ cohort: string; users: number; retention: number[] }>>([]);
+  const [sessionDuration, setSessionDuration] = useState<Array<{ bucket: string; sessions: number }>>([]);
+  const [eventParameters, setEventParameters] = useState<Array<{ eventName: string; eventCount: number; eventValue: number }>>([]);
+  const [contentGrouping, setContentGrouping] = useState<Array<{ contentGroup: string; sessions: number; pageviews: number; bounceRate: number; avgSessionDuration: number }>>([]);
+  const [scrollDepth, setScrollDepth] = useState<Array<{ percentScrolled: string; eventCount: number; users: number }>>([]);
+  const [browserOs, setBrowserOs] = useState<Array<{ browser: string; operatingSystem: string; sessions: number; users: number }>>([]);
+  const [ecommerceRevenue, setEcommerceRevenue] = useState<Array<{ pagePath: string; source: string; medium: string; transactions: number; purchaseRevenue: number; totalRevenue: number }>>([]);
+  const [userAcquisition, setUserAcquisition] = useState<Array<{ firstUserSource: string; firstUserMedium: string; newUsers: number; sessions: number; engagedSessions: number; conversions: number }>>([]);
+  const [revenuePerSession, setRevenuePerSession] = useState<Array<{ source: string; medium: string; sessions: number; totalRevenue: number; revenuePerSession: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
@@ -272,7 +282,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         yoyEnd.setFullYear(yoyEnd.getFullYear() - 1);
         if (yoyEnd.getMonth() !== origEndMonth) yoyEnd.setDate(0);
         const yoyBase = `/api/ga4?propertyId=${encodeURIComponent(propertyId)}&startDate=${yoyStart.toISOString().split("T")[0]}&endDate=${yoyEnd.toISOString().split("T")[0]}`;
-        const [ovRes, dailyRes, srcRes, pagesRes, prevOvRes, prevPagesRes, geoRes, devRes, organicRes, yoyRes, nvrRes, demoRes, cvEvRes, cvChRes, aiRefRes, lpRes, ujRes, crRes] = await Promise.all([
+        const [ovRes, dailyRes, srcRes, pagesRes, prevOvRes, prevPagesRes, geoRes, devRes, organicRes, yoyRes, nvrRes, demoRes, cvEvRes, cvChRes, aiRefRes, lpRes, ujRes, crRes, sessDurRes, evParamRes, contGrpRes, scrollRes, browserOsRes, ecomRevRes, userAcqRes, revSessRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=daily`, { signal: controller.signal }),
           fetch(`${base}&type=sources`, { signal: controller.signal }),
@@ -291,6 +301,14 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           fetch(`${base}&type=landing-pages`, { signal: controller.signal }),
           fetch(`${base}&type=user-journeys`, { signal: controller.signal }),
           fetch(`${base}&type=cohort-retention`, { signal: controller.signal }),
+          fetch(`${base}&type=session-duration`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=event-parameters`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=content-grouping`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=scroll-depth`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=browser-os`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=ecommerce-revenue`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=user-acquisition`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=revenue-per-session`, { signal: controller.signal }).catch(() => null),
         ]);
 
         if (!ovRes.ok) {
@@ -298,7 +316,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           throw new Error(err.error ?? "Failed to fetch GA4 data");
         }
 
-        const [ov, d, s, p, prevOv, prevP, geo, devs, organic, yoy, nvr, demo, cvEv, cvCh, aiRef, lp, uj, cr] = await Promise.all([
+        const [ov, d, s, p, prevOv, prevP, geo, devs, organic, yoy, nvr, demo, cvEv, cvCh, aiRef, lp, uj, cr, sessDurData, evParamData, contGrpData, scrollData, browserData, ecomRevData, userAcqData, revSessData] = await Promise.all([
           ovRes.json(),
           dailyRes.json(),
           srcRes.json(),
@@ -317,6 +335,14 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           lpRes.ok ? lpRes.json().catch(() => []) : Promise.resolve([]),
           ujRes.ok ? ujRes.json().catch(() => []) : Promise.resolve([]),
           crRes.ok ? crRes.json().catch(() => []) : Promise.resolve([]),
+          sessDurRes?.ok ? sessDurRes.json().catch(() => []) : Promise.resolve([]),
+          evParamRes?.ok ? evParamRes.json().catch(() => []) : Promise.resolve([]),
+          contGrpRes?.ok ? contGrpRes.json().catch(() => []) : Promise.resolve([]),
+          scrollRes?.ok ? scrollRes.json().catch(() => []) : Promise.resolve([]),
+          browserOsRes?.ok ? browserOsRes.json().catch(() => []) : Promise.resolve([]),
+          ecomRevRes?.ok ? ecomRevRes.json().catch(() => []) : Promise.resolve([]),
+          userAcqRes?.ok ? userAcqRes.json().catch(() => []) : Promise.resolve([]),
+          revSessRes?.ok ? revSessRes.json().catch(() => []) : Promise.resolve([]),
         ]);
 
         setOverview(ov);
@@ -349,6 +375,14 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         setLandingPages(Array.isArray(lp) ? lp : []);
         setUserJourneys(Array.isArray(uj) ? uj : []);
         setCohortRetention(Array.isArray(cr) ? cr : []);
+        setSessionDuration(Array.isArray(sessDurData) ? sessDurData : []);
+        setEventParameters(Array.isArray(evParamData) ? evParamData : []);
+        setContentGrouping(Array.isArray(contGrpData) ? contGrpData : []);
+        setScrollDepth(Array.isArray(scrollData) ? scrollData : []);
+        setBrowserOs(Array.isArray(browserData) ? browserData : []);
+        setEcommerceRevenue(Array.isArray(ecomRevData) ? ecomRevData : []);
+        setUserAcquisition(Array.isArray(userAcqData) ? userAcqData : []);
+        setRevenuePerSession(Array.isArray(revSessData) ? revSessData : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load GA4 data");
@@ -1040,6 +1074,209 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           crossPlatformContext={crossPlatformContext}
         />
       )}
+
+      {/* Session Duration Distribution */}
+      {show("session_duration") && sessionDuration.length > 0 && (
+        <SectionCard title="Session Duration Distribution" subtitle="How long users spend per session">
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={sessionDuration} barSize={32}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="bucket" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
+              <Tooltip contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }} />
+              <Bar dataKey="sessions" fill="#6366f1" radius={[4, 4, 0, 0]} name="Sessions" />
+            </BarChart>
+          </ResponsiveContainer>
+        </SectionCard>
+      )}
+
+      {/* Event Parameters */}
+      {show("event_parameters") && eventParameters.length > 0 && (
+        <SectionCard title="Event Parameters" subtitle={`${eventParameters.length} event${eventParameters.length !== 1 ? "s" : ""} tracked`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 400 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Event Name</th>
+                  <th className="text-right px-4 py-3 font-medium">Count</th>
+                  <th className="text-right px-6 py-3 font-medium">Value</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {eventParameters.map((e) => (
+                  <tr key={e.eventName} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{e.eventName}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(e.eventCount)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600">{e.eventValue > 0 ? formatCurrency(e.eventValue) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Content Grouping */}
+      {show("content_grouping") && contentGrouping.length > 0 && (
+        <SectionCard title="Content Grouping" subtitle="Performance by content group">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Content Group</th>
+                  <th className="text-right px-4 py-3 font-medium">Sessions</th>
+                  <th className="text-right px-4 py-3 font-medium">Pageviews</th>
+                  <th className="text-right px-4 py-3 font-medium">Bounce Rate</th>
+                  <th className="text-right px-6 py-3 font-medium">Avg Duration</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {contentGrouping.map((cg) => (
+                  <tr key={cg.contentGroup} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{cg.contentGroup || "(not set)"}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(cg.sessions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(cg.pageviews)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{(cg.bounceRate * 100).toFixed(1)}%</td>
+                    <td className="px-6 py-3 text-right text-slate-600">{formatDuration(cg.avgSessionDuration)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Scroll Depth */}
+      {show("scroll_depth") && scrollDepth.length > 0 && (
+        <SectionCard title="Scroll Depth" subtitle="How far users scroll on pages">
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={scrollDepth} barSize={32}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="percentScrolled" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
+              <Tooltip contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }} />
+              <Bar dataKey="users" fill="#10b981" radius={[4, 4, 0, 0]} name="Users" />
+            </BarChart>
+          </ResponsiveContainer>
+        </SectionCard>
+      )}
+
+      {/* Browser & OS */}
+      {show("browser_os") && browserOs.length > 0 && (
+        <SectionCard title="Browser & OS" subtitle={`${browserOs.length} browser/OS combination${browserOs.length !== 1 ? "s" : ""}`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 480 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Browser</th>
+                  <th className="text-left px-4 py-3 font-medium">Operating System</th>
+                  <th className="text-right px-4 py-3 font-medium">Sessions</th>
+                  <th className="text-right px-6 py-3 font-medium">Users</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {browserOs.map((bo, i) => (
+                  <tr key={`${bo.browser}-${bo.operatingSystem}-${i}`} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{bo.browser}</td>
+                    <td className="px-4 py-3 text-slate-600">{bo.operatingSystem}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(bo.sessions)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600">{formatNumber(bo.users)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Ecommerce Revenue */}
+      {show("ecommerce_revenue") && ecommerceRevenue.length > 0 && (
+        <SectionCard title="Ecommerce Revenue" subtitle="Revenue by page and source">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 640 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Page</th>
+                  <th className="text-left px-4 py-3 font-medium">Source / Medium</th>
+                  <th className="text-right px-4 py-3 font-medium">Transactions</th>
+                  <th className="text-right px-4 py-3 font-medium">Purchase Revenue</th>
+                  <th className="text-right px-6 py-3 font-medium">Total Revenue</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {ecommerceRevenue.map((er, i) => (
+                  <tr key={`${er.pagePath}-${er.source}-${i}`} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium truncate max-w-[200px]">{er.pagePath}</td>
+                    <td className="px-4 py-3 text-slate-600">{er.source} / {er.medium}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(er.transactions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(er.purchaseRevenue)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(er.totalRevenue)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* User Acquisition */}
+      {show("user_acquisition") && userAcquisition.length > 0 && (
+        <SectionCard title="User Acquisition" subtitle="First-touch source for new users">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 600 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">First Source / Medium</th>
+                  <th className="text-right px-4 py-3 font-medium">New Users</th>
+                  <th className="text-right px-4 py-3 font-medium">Sessions</th>
+                  <th className="text-right px-4 py-3 font-medium">Engaged</th>
+                  <th className="text-right px-6 py-3 font-medium">Conversions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {userAcquisition.map((ua, i) => (
+                  <tr key={`${ua.firstUserSource}-${ua.firstUserMedium}-${i}`} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{ua.firstUserSource} / {ua.firstUserMedium}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(ua.newUsers)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(ua.sessions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(ua.engagedSessions)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600">{formatNumber(ua.conversions)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Revenue Per Session */}
+      {show("revenue_per_session") && revenuePerSession.length > 0 && (
+        <SectionCard title="Revenue Per Session" subtitle="Revenue efficiency by traffic source">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 520 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Source / Medium</th>
+                  <th className="text-right px-4 py-3 font-medium">Sessions</th>
+                  <th className="text-right px-4 py-3 font-medium">Total Revenue</th>
+                  <th className="text-right px-6 py-3 font-medium">Rev / Session</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {revenuePerSession.map((rps, i) => (
+                  <tr key={`${rps.source}-${rps.medium}-${i}`} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{rps.source} / {rps.medium}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(rps.sessions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(rps.totalRevenue)}</td>
+                    <td className="px-6 py-3 text-right"><span className="font-semibold text-emerald-600">{formatCurrency(rps.revenuePerSession)}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
         </>
       )}
     </div>

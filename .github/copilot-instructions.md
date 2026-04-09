@@ -5,10 +5,17 @@
 i3media Report is an internal agency platform built with **Next.js 16 (App Router) + React 19 + TypeScript + Prisma + Tailwind CSS v4**, deployed on **Vercel**. It aggregates data from 15 marketing channels (GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, SemRush, Search Console, Moz, WooCommerce, Shopify) and surfaces AI-powered insights via **OpenAI** (GPT-4o / GPT-4o-mini).
 
 > **Coding agents available:** Specialised sub-agent instructions live in `.github/agents/`:
+> - `orchestrator.agent.md` — routing tasks and orchestrating multi-step workflows across agents (@Orchestrator in chat)
 > - `channel-integration.md` — adding new marketing channel data integrations
 > - `ai-endpoint.md` — creating AI analysis API endpoints
 > - `report-component.md` — building dashboard/report section components
 > - `database.md` — Prisma schema changes and migrations
+> - `data-fetching.md` — data-fetching efficiency, caching, TTLs, and cron snapshot architecture
+> - `ui-ux.agent.md` — dashboard design system, shared UI primitives, and UX consistency (@UI/UX Expert in chat)
+> - `landing-page.agent.md` — marketing landing page, login page copy and animations (@Landing Page in chat)
+> - `agency-tools.agent.md` — keyword planner, proposals, content strategy, media plan, and all agency tools (@Agency Tools in chat)
+> - `client-portal.agent.md` — client-facing portal, magic-link auth, portal dashboard and permissions (@Client Portal in chat)
+> - `developer-docs.agent.md` — creating and maintaining all developer documentation (@Developer Docs in chat)
 
 ## Repository layout
 

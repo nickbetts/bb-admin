@@ -152,6 +152,16 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
   const [contentGap, setContentGap] = useState<Array<{ keyword: string; volume: number; difficulty: number; competitors: string[] }>>([]);
   const [serpFeatures, setSerpFeatures] = useState<Array<{ feature: string; count: number; percentage: number }>>([]);
   const [backlinkChanges, setBacklinkChanges] = useState<Array<{ url: string; type: string; domain: string; firstSeen: string; lost: boolean }>>([]);
+  const [topicResearch, setTopicResearch] = useState<{ topic: string; volume: number; difficulty: number; topicEfficiency: number; subtopics: { headline: string; questions: string[] }[] } | null>(null);
+  const [siteAudit, setSiteAudit] = useState<{ totalPages: number; healthScore: number; errors: number; warnings: number; notices: number; issues: { title: string; severity: string; count: number }[] } | null>(null);
+  const [adCopyIntelligence, setAdCopyIntelligence] = useState<Array<{ title: string; description: string; url: string; keyword: string; position: number; trafficPercent: number }>>([]);
+  const [displayAdvertising, setDisplayAdvertising] = useState<Array<{ domain: string; displayAds: number; displayTraffic: number; displayCost: number }>>([]);
+  const [shoppingCompetitors, setShoppingCompetitors] = useState<Array<{ domain: string; shoppingKeywords: number; shoppingTraffic: number; shoppingCost: number }>>([]);
+  const [keywordTrends, setKeywordTrends] = useState<Array<{ keyword: string; searchVolume: number; trend: string; cpc: number; competition: number }>>([]);
+  const [referringDomains, setReferringDomains] = useState<Array<{ domain: string; backlinks: number; ipAddress: string; country: string; firstSeen: string; lastSeen: string }>>([]);
+  const [anchorText, setAnchorText] = useState<Array<{ anchor: string; domains: number; backlinks: number; firstSeen: string; lastSeen: string }>>([]);
+  const [backlinkComparison, setBacklinkComparison] = useState<Array<{ domain: string; ascore: number; totalBacklinks: number; referringDomains: number; followLinks: number; nofollowLinks: number }>>([]);
+  const [positionChanges, setPositionChanges] = useState<Array<{ keyword: string; previousPosition: number; currentPosition: number; change: number; searchVolume: number; url: string }>>([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -171,6 +181,16 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=content-gap`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=serp-features`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=backlink-changes`, { signal: controller.signal }),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=topic-research`, { signal: controller.signal }).catch(() => null),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=site-audit`, { signal: controller.signal }).catch(() => null),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=ad-copy`, { signal: controller.signal }).catch(() => null),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=display-advertising`, { signal: controller.signal }).catch(() => null),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=shopping-competitors`, { signal: controller.signal }).catch(() => null),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=keyword-trends`, { signal: controller.signal }).catch(() => null),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=referring-domains`, { signal: controller.signal }).catch(() => null),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=anchor-text`, { signal: controller.signal }).catch(() => null),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=backlink-comparison`, { signal: controller.signal }).catch(() => null),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=position-changes`, { signal: controller.signal }).catch(() => null),
         ];
         const activeCampaignId = campaignIds?.[0] ?? null;
         if (activeCampaignId) {
@@ -181,7 +201,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           fetchList.push(Promise.resolve(new Response(JSON.stringify([]), { status: 200 })));
           fetchList.push(Promise.resolve(new Response(JSON.stringify({ totalTracked: 0, aiOverviewKeywords: 0, brandCitations: 0, aiVisibilityScore: 0, keywords: [] }), { status: 200 })));
         }
-        const [overviewRes, keywordsRes, rankMoversRes, historyRes, distRes, competitorsRes, backlinksRes, contentGapRes, serpFeaturesRes, backlinkChangesRes, trackedRes, aiVisRes] = await Promise.all(fetchList);
+        const [overviewRes, keywordsRes, rankMoversRes, historyRes, distRes, competitorsRes, backlinksRes, contentGapRes, serpFeaturesRes, backlinkChangesRes, topicResRes, siteAuditRes, adCopyRes, displayAdvRes, shoppingCompRes, kwTrendsRes, refDomainsRes, anchorTextRes, blCompRes, posChangesRes, trackedRes, aiVisRes] = await Promise.all(fetchList);
 
         if (!overviewRes.ok) {
           const err = await overviewRes.json();
@@ -246,6 +266,48 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
         if (trackedRes?.ok) {
           const tracked = await trackedRes.json();
           setTrackedKeywords(Array.isArray(tracked) ? tracked : []);
+        }
+
+        // Parse new block data
+        if (topicResRes?.ok) {
+          const tr = await topicResRes.json().catch(() => null);
+          if (tr && typeof tr === "object") setTopicResearch(tr);
+        }
+        if (siteAuditRes?.ok) {
+          const sa = await siteAuditRes.json().catch(() => null);
+          if (sa && typeof sa === "object") setSiteAudit(sa);
+        }
+        if (adCopyRes?.ok) {
+          const ac = await adCopyRes.json().catch(() => []);
+          setAdCopyIntelligence(Array.isArray(ac) ? ac : []);
+        }
+        if (displayAdvRes?.ok) {
+          const da = await displayAdvRes.json().catch(() => []);
+          setDisplayAdvertising(Array.isArray(da) ? da : []);
+        }
+        if (shoppingCompRes?.ok) {
+          const sc = await shoppingCompRes.json().catch(() => []);
+          setShoppingCompetitors(Array.isArray(sc) ? sc : []);
+        }
+        if (kwTrendsRes?.ok) {
+          const kt = await kwTrendsRes.json().catch(() => []);
+          setKeywordTrends(Array.isArray(kt) ? kt : []);
+        }
+        if (refDomainsRes?.ok) {
+          const rd = await refDomainsRes.json().catch(() => []);
+          setReferringDomains(Array.isArray(rd) ? rd : []);
+        }
+        if (anchorTextRes?.ok) {
+          const at = await anchorTextRes.json().catch(() => []);
+          setAnchorText(Array.isArray(at) ? at : []);
+        }
+        if (blCompRes?.ok) {
+          const bc2 = await blCompRes.json().catch(() => []);
+          setBacklinkComparison(Array.isArray(bc2) ? bc2 : []);
+        }
+        if (posChangesRes?.ok) {
+          const pc = await posChangesRes.json().catch(() => []);
+          setPositionChanges(Array.isArray(pc) ? pc : []);
         }
         if (aiVisRes?.ok) {
           const aiv = await aiVisRes.json();
@@ -1156,6 +1218,320 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                     <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>
                       {item.firstSeen ? formatDateDisplay(item.firstSeen) : "—"}
                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Topic Research */}
+      {show("topic_research") && topicResearch && (
+        <SectionCard title="Topic Research" subtitle={`${topicResearch.topic} — volume ${formatNumber(topicResearch.volume)}, difficulty ${topicResearch.difficulty}`}>
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="bg-slate-50 rounded-lg p-3 text-center">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Volume</p>
+              <p className="text-lg font-bold text-slate-800">{formatNumber(topicResearch.volume)}</p>
+            </div>
+            <div className="bg-slate-50 rounded-lg p-3 text-center">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Difficulty</p>
+              <p className="text-lg font-bold text-slate-800">{topicResearch.difficulty}%</p>
+            </div>
+            <div className="bg-slate-50 rounded-lg p-3 text-center">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Efficiency</p>
+              <p className="text-lg font-bold text-slate-800">{topicResearch.topicEfficiency.toFixed(1)}</p>
+            </div>
+          </div>
+          {topicResearch.subtopics && topicResearch.subtopics.length > 0 && (
+            <div className="space-y-3">
+              {topicResearch.subtopics.slice(0, 10).map((st, i) => (
+                <div key={i} className="border border-slate-100 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-slate-800">{st.headline}</p>
+                  {st.questions && st.questions.length > 0 && (
+                    <ul className="mt-1 space-y-0.5">
+                      {st.questions.slice(0, 3).map((q, qi) => (
+                        <li key={qi} className="text-[11px] text-slate-500">• {q}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      )}
+
+      {/* Site Audit Summary */}
+      {show("site_audit") && siteAudit && (
+        <SectionCard title="Site Audit Summary" subtitle={`${formatNumber(siteAudit.totalPages)} pages crawled`}>
+          <div className="grid grid-cols-4 gap-4 mb-4">
+            <div className="bg-slate-50 rounded-lg p-3 text-center">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Health Score</p>
+              <p className={`text-lg font-bold ${siteAudit.healthScore >= 80 ? "text-emerald-600" : siteAudit.healthScore >= 50 ? "text-amber-600" : "text-red-600"}`}>{siteAudit.healthScore}%</p>
+            </div>
+            <div className="bg-red-50 rounded-lg p-3 text-center">
+              <p className="text-[10px] text-red-500 uppercase tracking-wider">Errors</p>
+              <p className="text-lg font-bold text-red-600">{formatNumber(siteAudit.errors)}</p>
+            </div>
+            <div className="bg-amber-50 rounded-lg p-3 text-center">
+              <p className="text-[10px] text-amber-500 uppercase tracking-wider">Warnings</p>
+              <p className="text-lg font-bold text-amber-600">{formatNumber(siteAudit.warnings)}</p>
+            </div>
+            <div className="bg-slate-50 rounded-lg p-3 text-center">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Notices</p>
+              <p className="text-lg font-bold text-slate-600">{formatNumber(siteAudit.notices)}</p>
+            </div>
+          </div>
+          {siteAudit.issues && siteAudit.issues.length > 0 && (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Issue</th>
+                  <th className="text-center px-4 py-3 font-medium">Severity</th>
+                  <th className="text-right px-6 py-3 font-medium">Count</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {siteAudit.issues.map((issue, i) => (
+                  <tr key={i} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800">{issue.title}</td>
+                    <td className="px-4 py-3 text-center"><span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${issue.severity === "error" ? "bg-red-100 text-red-700" : issue.severity === "warning" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{issue.severity}</span></td>
+                    <td className="px-6 py-3 text-right text-slate-600">{formatNumber(issue.count)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </SectionCard>
+      )}
+
+      {/* Ad Copy Intelligence */}
+      {show("ad_copy_intelligence") && adCopyIntelligence.length > 0 && (
+        <SectionCard title="Ad Copy Intelligence" subtitle={`${adCopyIntelligence.length} competitor ad${adCopyIntelligence.length !== 1 ? "s" : ""} detected`}>
+          <div className="space-y-3">
+            {adCopyIntelligence.slice(0, 15).map((ad, i) => (
+              <div key={i} className="border border-slate-100 rounded-lg p-3">
+                <p className="text-xs font-semibold text-indigo-600">{ad.title}</p>
+                <p className="text-[11px] text-slate-600 mt-0.5">{ad.description}</p>
+                <div className="flex items-center gap-3 mt-1 text-[10px] text-slate-400">
+                  <span className="truncate max-w-[200px]">{ad.url}</span>
+                  <span>Keyword: {ad.keyword}</span>
+                  <span>Pos {ad.position}</span>
+                  <span>{ad.trafficPercent.toFixed(1)}% traffic</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Display Advertising */}
+      {show("display_advertising") && displayAdvertising.length > 0 && (
+        <SectionCard title="Display Advertising Competitors" subtitle={`${displayAdvertising.length} competitor${displayAdvertising.length !== 1 ? "s" : ""}`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 480 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Domain</th>
+                  <th className="text-right px-4 py-3 font-medium">Display Ads</th>
+                  <th className="text-right px-4 py-3 font-medium">Traffic</th>
+                  <th className="text-right px-6 py-3 font-medium">Est. Cost</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {displayAdvertising.map((da) => (
+                  <tr key={da.domain} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{da.domain}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(da.displayAds)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(da.displayTraffic)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(da.displayCost)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* PLA / Shopping Competitors */}
+      {show("shopping_competitors") && shoppingCompetitors.length > 0 && (
+        <SectionCard title="PLA / Shopping Competitors" subtitle={`${shoppingCompetitors.length} competitor${shoppingCompetitors.length !== 1 ? "s" : ""}`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 480 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Domain</th>
+                  <th className="text-right px-4 py-3 font-medium">Shopping KWs</th>
+                  <th className="text-right px-4 py-3 font-medium">Traffic</th>
+                  <th className="text-right px-6 py-3 font-medium">Est. Cost</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {shoppingCompetitors.map((sc) => (
+                  <tr key={sc.domain} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{sc.domain}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(sc.shoppingKeywords)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(sc.shoppingTraffic)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(sc.shoppingCost)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Keyword Trends */}
+      {show("keyword_trends") && keywordTrends.length > 0 && (
+        <SectionCard title="Keyword Trends" subtitle={`${keywordTrends.length} keyword${keywordTrends.length !== 1 ? "s" : ""} tracked`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Keyword</th>
+                  <th className="text-right px-4 py-3 font-medium">Volume</th>
+                  <th className="text-center px-4 py-3 font-medium">Trend</th>
+                  <th className="text-right px-4 py-3 font-medium">CPC</th>
+                  <th className="text-right px-6 py-3 font-medium">Competition</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {keywordTrends.map((kt) => (
+                  <tr key={kt.keyword} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{kt.keyword}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(kt.searchVolume)}</td>
+                    <td className="px-4 py-3 text-center"><span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${kt.trend === "up" ? "bg-emerald-100 text-emerald-700" : kt.trend === "down" ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-600"}`}>{kt.trend}</span></td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(kt.cpc)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600">{(kt.competition * 100).toFixed(0)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Referring Domains */}
+      {show("referring_domains") && referringDomains.length > 0 && (
+        <SectionCard title="Referring Domains" subtitle={`${referringDomains.length} domain${referringDomains.length !== 1 ? "s" : ""} linking`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 600 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Domain</th>
+                  <th className="text-right px-4 py-3 font-medium">Backlinks</th>
+                  <th className="text-left px-4 py-3 font-medium">Country</th>
+                  <th className="text-right px-4 py-3 font-medium">First Seen</th>
+                  <th className="text-right px-6 py-3 font-medium">Last Seen</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {referringDomains.slice(0, 50).map((rd) => (
+                  <tr key={rd.domain} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{rd.domain}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(rd.backlinks)}</td>
+                    <td className="px-4 py-3 text-slate-600">{rd.country || "—"}</td>
+                    <td className="px-4 py-3 text-right text-slate-400 text-[10px]">{rd.firstSeen ? formatDateDisplay(rd.firstSeen) : "—"}</td>
+                    <td className="px-6 py-3 text-right text-slate-400 text-[10px]">{rd.lastSeen ? formatDateDisplay(rd.lastSeen) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Anchor Text Distribution */}
+      {show("anchor_text") && anchorText.length > 0 && (
+        <SectionCard title="Anchor Text Distribution" subtitle={`${anchorText.length} unique anchor${anchorText.length !== 1 ? "s" : ""}`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 520 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Anchor Text</th>
+                  <th className="text-right px-4 py-3 font-medium">Domains</th>
+                  <th className="text-right px-4 py-3 font-medium">Backlinks</th>
+                  <th className="text-right px-4 py-3 font-medium">First Seen</th>
+                  <th className="text-right px-6 py-3 font-medium">Last Seen</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {anchorText.slice(0, 30).map((at, i) => (
+                  <tr key={`${at.anchor}-${i}`} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium truncate max-w-[200px]">{at.anchor || "(empty)"}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(at.domains)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(at.backlinks)}</td>
+                    <td className="px-4 py-3 text-right text-slate-400 text-[10px]">{at.firstSeen ? formatDateDisplay(at.firstSeen) : "—"}</td>
+                    <td className="px-6 py-3 text-right text-slate-400 text-[10px]">{at.lastSeen ? formatDateDisplay(at.lastSeen) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Competitor Backlink Comparison */}
+      {show("backlink_comparison") && backlinkComparison.length > 0 && (
+        <SectionCard title="Competitor Backlink Comparison" subtitle={`${backlinkComparison.length} domain${backlinkComparison.length !== 1 ? "s" : ""} compared`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 600 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Domain</th>
+                  <th className="text-right px-4 py-3 font-medium">Authority</th>
+                  <th className="text-right px-4 py-3 font-medium">Backlinks</th>
+                  <th className="text-right px-4 py-3 font-medium">Ref. Domains</th>
+                  <th className="text-right px-4 py-3 font-medium">Follow</th>
+                  <th className="text-right px-6 py-3 font-medium">Nofollow</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {backlinkComparison.map((bc) => (
+                  <tr key={bc.domain} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{bc.domain}</td>
+                    <td className="px-4 py-3 text-right"><span className={`font-semibold ${bc.ascore >= 50 ? "text-emerald-600" : bc.ascore >= 30 ? "text-amber-600" : "text-red-600"}`}>{bc.ascore}</span></td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(bc.totalBacklinks)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(bc.referringDomains)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(bc.followLinks)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600">{formatNumber(bc.nofollowLinks)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Organic Position Changes */}
+      {show("position_changes") && positionChanges.length > 0 && (
+        <SectionCard title="Organic Position Changes" subtitle={`${positionChanges.length} keyword${positionChanges.length !== 1 ? "s" : ""} with position changes`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 600 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Keyword</th>
+                  <th className="text-right px-4 py-3 font-medium">Previous</th>
+                  <th className="text-right px-4 py-3 font-medium">Current</th>
+                  <th className="text-right px-4 py-3 font-medium">Change</th>
+                  <th className="text-right px-4 py-3 font-medium">Volume</th>
+                  <th className="text-left px-6 py-3 font-medium">URL</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {positionChanges.map((pc, i) => (
+                  <tr key={`${pc.keyword}-${i}`} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{pc.keyword}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{pc.previousPosition}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{pc.currentPosition}</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className={`inline-flex items-center gap-0.5 font-semibold ${pc.change > 0 ? "text-emerald-600" : pc.change < 0 ? "text-red-600" : "text-slate-400"}`}>
+                        {pc.change > 0 ? <><CssArrowUp /> +{pc.change}</> : pc.change < 0 ? <><CssArrowDown /> {pc.change}</> : <><CssMinus /> 0</>}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(pc.searchVolume)}</td>
+                    <td className="px-6 py-3 text-slate-500 truncate max-w-[200px]" title={pc.url}>{pc.url.replace(/^https?:\/\/[^/]+/, "")}</td>
                   </tr>
                 ))}
               </tbody>

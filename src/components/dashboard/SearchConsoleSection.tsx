@@ -82,6 +82,61 @@ interface GSCCountry {
   position: number;
 }
 
+interface GSCQueryPage {
+  query: string;
+  page: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+interface GSCPageCountry {
+  page: string;
+  country: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+interface GSCDiscoverNews {
+  type: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  pages: { page: string; clicks: number; impressions: number }[];
+}
+
+interface GSCSitemap {
+  path: string;
+  type: string;
+  lastSubmitted: string | null;
+  lastDownloaded: string | null;
+  isPending: boolean;
+  errors: number;
+  warnings: number;
+  contents: { type: string; submitted: number; indexed: number }[];
+}
+
+interface GSCQueryDevice {
+  query: string;
+  device: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+interface GSCQueryCountry {
+  query: string;
+  country: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
 const DEVICE_COLORS: Record<string, string> = {
   MOBILE: "#6366f1",
   DESKTOP: "#3b82f6",
@@ -128,6 +183,12 @@ export function SearchConsoleSection({
   const [brandedSplit, setBrandedSplit] = useState<{ branded: { clicks: number; impressions: number; ctr: number; position: number }; nonBranded: { clicks: number; impressions: number; ctr: number; position: number } } | null>(null);
   const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
   const [alertAiLoading, setAlertAiLoading] = useState(false);
+  const [queryPage, setQueryPage] = useState<GSCQueryPage[]>([]);
+  const [pageCountry, setPageCountry] = useState<GSCPageCountry[]>([]);
+  const [discoverNews, setDiscoverNews] = useState<GSCDiscoverNews[]>([]);
+  const [sitemaps, setSitemaps] = useState<GSCSitemap[]>([]);
+  const [queryDevice, setQueryDevice] = useState<GSCQueryDevice[]>([]);
+  const [queryCountry, setQueryCountry] = useState<GSCQueryCountry[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -167,6 +228,31 @@ export function SearchConsoleSection({
           .then(r => r.ok ? r.json() : null)
           .then(data => { if (data) setBrandedSplit(data); })
           .catch(() => {});
+
+        // Additional data for new blocks
+        const extra = `/api/search-console?siteUrl=${encodeURIComponent(siteUrl)}&startDate=${startDate}&endDate=${endDate}`;
+        const [qpRes, pcRes, dnRes, smRes, qdRes, qcRes] = await Promise.all([
+          fetch(`${extra}&type=query-page`, { signal: controller.signal }).catch(() => null),
+          fetch(`${extra}&type=page-country`, { signal: controller.signal }).catch(() => null),
+          fetch(`${extra}&type=discover-news`, { signal: controller.signal }).catch(() => null),
+          fetch(`${extra}&type=sitemaps`, { signal: controller.signal }).catch(() => null),
+          fetch(`${extra}&type=query-device`, { signal: controller.signal }).catch(() => null),
+          fetch(`${extra}&type=query-country`, { signal: controller.signal }).catch(() => null),
+        ]);
+        const [qpData, pcData, dnData, smData, qdData, qcData] = await Promise.all([
+          qpRes?.ok ? qpRes.json().catch(() => []) : Promise.resolve([]),
+          pcRes?.ok ? pcRes.json().catch(() => []) : Promise.resolve([]),
+          dnRes?.ok ? dnRes.json().catch(() => []) : Promise.resolve([]),
+          smRes?.ok ? smRes.json().catch(() => []) : Promise.resolve([]),
+          qdRes?.ok ? qdRes.json().catch(() => []) : Promise.resolve([]),
+          qcRes?.ok ? qcRes.json().catch(() => []) : Promise.resolve([]),
+        ]);
+        setQueryPage(Array.isArray(qpData) ? qpData : []);
+        setPageCountry(Array.isArray(pcData) ? pcData : []);
+        setDiscoverNews(Array.isArray(dnData) ? dnData : []);
+        setSitemaps(Array.isArray(smData) ? smData : []);
+        setQueryDevice(Array.isArray(qdData) ? qdData : []);
+        setQueryCountry(Array.isArray(qcData) ? qcData : []);
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load Search Console data");
@@ -943,6 +1029,218 @@ export function SearchConsoleSection({
           ].join("\n") : undefined}
           crossPlatformContext={crossPlatformContext}
         />
+      )}
+
+      {/* Query × Page */}
+      {show("query_page") && queryPage.length > 0 && (
+        <SectionCard title="Query × Page" subtitle={`${queryPage.length} query/page combination${queryPage.length !== 1 ? "s" : ""}`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 640 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Query</th>
+                  <th className="text-left px-4 py-3 font-medium">Page</th>
+                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
+                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
+                  <th className="text-right px-4 py-3 font-medium">CTR</th>
+                  <th className="text-right px-6 py-3 font-medium">Position</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {queryPage.map((qp, i) => (
+                  <tr key={`${qp.query}-${qp.page}-${i}`} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{qp.query}</td>
+                    <td className="px-4 py-3 text-slate-600 truncate max-w-[200px]" title={qp.page}>{qp.page.replace(/^https?:\/\/[^/]+/, "")}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(qp.clicks)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(qp.impressions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{(qp.ctr * 100).toFixed(1)}%</td>
+                    <td className="px-6 py-3 text-right"><span className={positionBadgeClass(qp.position)}>{qp.position.toFixed(1)}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Page × Country */}
+      {show("page_country") && pageCountry.length > 0 && (
+        <SectionCard title="Page × Country" subtitle={`${pageCountry.length} page/country combination${pageCountry.length !== 1 ? "s" : ""}`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 640 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Page</th>
+                  <th className="text-left px-4 py-3 font-medium">Country</th>
+                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
+                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
+                  <th className="text-right px-4 py-3 font-medium">CTR</th>
+                  <th className="text-right px-6 py-3 font-medium">Position</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {pageCountry.map((pc, i) => (
+                  <tr key={`${pc.page}-${pc.country}-${i}`} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium truncate max-w-[200px]" title={pc.page}>{pc.page.replace(/^https?:\/\/[^/]+/, "")}</td>
+                    <td className="px-4 py-3 text-slate-600">{pc.country}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(pc.clicks)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(pc.impressions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{(pc.ctr * 100).toFixed(1)}%</td>
+                    <td className="px-6 py-3 text-right"><span className={positionBadgeClass(pc.position)}>{pc.position.toFixed(1)}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Discover & News */}
+      {show("discover_news") && discoverNews.length > 0 && (
+        <SectionCard title="Discover & News" subtitle="Google Discover and Google News performance">
+          <div className="space-y-4">
+            {discoverNews.map((dn) => (
+              <div key={dn.type} className="border border-slate-100 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-slate-800">{dn.type}</span>
+                  <div className="flex gap-4 text-xs text-slate-500">
+                    <span>{formatNumber(dn.clicks)} clicks</span>
+                    <span>{formatNumber(dn.impressions)} impressions</span>
+                    <span>{(dn.ctr * 100).toFixed(1)}% CTR</span>
+                  </div>
+                </div>
+                {dn.pages && dn.pages.length > 0 && (
+                  <table className="w-full text-xs mt-2">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-slate-500">
+                        <th className="text-left px-4 py-2 font-medium">Page</th>
+                        <th className="text-right px-4 py-2 font-medium">Clicks</th>
+                        <th className="text-right px-4 py-2 font-medium">Impressions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {dn.pages.map((pg, i) => (
+                        <tr key={`${pg.page}-${i}`} className="hover:bg-slate-50 transition">
+                          <td className="px-4 py-2 text-slate-700 truncate max-w-[300px]" title={pg.page}>{pg.page.replace(/^https?:\/\/[^/]+/, "")}</td>
+                          <td className="px-4 py-2 text-right text-slate-600">{formatNumber(pg.clicks)}</td>
+                          <td className="px-4 py-2 text-right text-slate-600">{formatNumber(pg.impressions)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Sitemaps */}
+      {show("sitemaps") && sitemaps.length > 0 && (
+        <SectionCard title="Sitemaps" subtitle={`${sitemaps.length} sitemap${sitemaps.length !== 1 ? "s" : ""} submitted`}>
+          <div className="space-y-3">
+            {sitemaps.map((sm) => (
+              <div key={sm.path} className="border border-slate-100 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-semibold text-slate-800 truncate max-w-[300px]" title={sm.path}>{sm.path}</span>
+                  <div className="flex gap-3 text-xs">
+                    <span className="text-slate-500">{sm.type}</span>
+                    {sm.isPending && <span className="text-amber-600 font-medium">Pending</span>}
+                    {sm.errors > 0 && <span className="text-red-600 font-medium">{sm.errors} error{sm.errors !== 1 ? "s" : ""}</span>}
+                    {sm.warnings > 0 && <span className="text-amber-600 font-medium">{sm.warnings} warning{sm.warnings !== 1 ? "s" : ""}</span>}
+                  </div>
+                </div>
+                {sm.lastSubmitted && <p className="text-[10px] text-slate-400">Submitted: {new Date(sm.lastSubmitted).toLocaleDateString()}</p>}
+                {sm.contents && sm.contents.length > 0 && (
+                  <table className="w-full text-xs mt-2">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-slate-500">
+                        <th className="text-left px-4 py-2 font-medium">Type</th>
+                        <th className="text-right px-4 py-2 font-medium">Submitted</th>
+                        <th className="text-right px-4 py-2 font-medium">Indexed</th>
+                        <th className="text-right px-4 py-2 font-medium">Coverage</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {sm.contents.map((c, i) => (
+                        <tr key={`${c.type}-${i}`}>
+                          <td className="px-4 py-2 text-slate-700">{c.type}</td>
+                          <td className="px-4 py-2 text-right text-slate-600">{formatNumber(c.submitted)}</td>
+                          <td className="px-4 py-2 text-right text-slate-600">{formatNumber(c.indexed)}</td>
+                          <td className="px-4 py-2 text-right"><span className={c.submitted > 0 ? ((c.indexed / c.submitted) >= 0.8 ? "text-emerald-600" : (c.indexed / c.submitted) >= 0.5 ? "text-amber-600" : "text-red-600") : "text-slate-400"}>{c.submitted > 0 ? ((c.indexed / c.submitted) * 100).toFixed(0) + "%" : "—"}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Query × Device */}
+      {show("query_device") && queryDevice.length > 0 && (
+        <SectionCard title="Query × Device" subtitle={`${queryDevice.length} query/device combination${queryDevice.length !== 1 ? "s" : ""}`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Query</th>
+                  <th className="text-left px-4 py-3 font-medium">Device</th>
+                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
+                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
+                  <th className="text-right px-4 py-3 font-medium">CTR</th>
+                  <th className="text-right px-6 py-3 font-medium">Position</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {queryDevice.map((qd, i) => (
+                  <tr key={`${qd.query}-${qd.device}-${i}`} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{qd.query}</td>
+                    <td className="px-4 py-3 text-slate-600">{qd.device}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(qd.clicks)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(qd.impressions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{(qd.ctr * 100).toFixed(1)}%</td>
+                    <td className="px-6 py-3 text-right"><span className={positionBadgeClass(qd.position)}>{qd.position.toFixed(1)}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Query × Country */}
+      {show("query_country") && queryCountry.length > 0 && (
+        <SectionCard title="Query × Country" subtitle={`${queryCountry.length} query/country combination${queryCountry.length !== 1 ? "s" : ""}`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Query</th>
+                  <th className="text-left px-4 py-3 font-medium">Country</th>
+                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
+                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
+                  <th className="text-right px-4 py-3 font-medium">CTR</th>
+                  <th className="text-right px-6 py-3 font-medium">Position</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {queryCountry.map((qc, i) => (
+                  <tr key={`${qc.query}-${qc.country}-${i}`} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{qc.query}</td>
+                    <td className="px-4 py-3 text-slate-600">{qc.country}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(qc.clicks)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(qc.impressions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{(qc.ctr * 100).toFixed(1)}%</td>
+                    <td className="px-6 py-3 text-right"><span className={positionBadgeClass(qc.position)}>{qc.position.toFixed(1)}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
       )}
     </div>
   );

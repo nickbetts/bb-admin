@@ -219,6 +219,20 @@ interface AdSetAudience {
 
 type MetaAlert = { severity: "high" | "medium"; label: string; level: "Campaign" | "Ad Set" | "Creative"; detail: string; recommendation: string };
 
+interface MetaPlacement { publisherPlatform: string; placement: string; impressions: number; clicks: number; spend: number; ctr: number; cpc: number; cpm: number; conversions: number; roas: number }
+interface MetaDemographic { age: string; gender: string; impressions: number; clicks: number; spend: number; ctr: number; conversions: number; roas: number }
+interface MetaFrequencyBucket { frequencyValue: string; reach: number; impressions: number }
+interface MetaCostPerAction { actionType: string; value: number; costPerAction: number }
+interface MetaProductPerf { productId: string; productName: string; impressions: number; clicks: number; spend: number; purchases: number; purchaseValue: number }
+interface MetaCountryRow { country: string; impressions: number; clicks: number; spend: number; conversions: number; cpc: number; ctr: number }
+interface MetaAttribution { adSetId: string; adSetName: string; campaignName: string; attributionSpec: string }
+interface MetaActionBreakdown { actionType: string; value: number; costPerAction: number }
+interface MetaInstantExp { adId: string; adName: string; clicksToOpen: number; outboundClicks: number }
+interface MetaCustomConv { id: string; name: string; pixelRule: string; customEventType: string }
+interface MetaSavedAud { id: string; name: string; approximateCount: number; type: string; subtype: string }
+interface MetaSpendLimit { campaignId: string; campaignName: string; spendingLimit: number | null; dailyBudget: number | null; lifetimeBudget: number | null; amountSpent: number }
+interface MetaHourlyRow { hourOfDay: string; impressions: number; clicks: number; spend: number; conversions: number; cpc: number }
+
 export function MetaSection({ clientId, clientName, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, onMetricsReady, onPreviousMetricsReady, afterHeader }: MetaSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<MetaOverview | null>(null);
@@ -240,6 +254,19 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
   const [alertAiLoading, setAlertAiLoading] = useState(false);
   const [leadForms, setLeadForms] = useState<Array<{ formId: string; formName: string; leads: number; costPerLead: number; spend: number }>>([]);
   const [relevanceDiagnostics, setRelevanceDiagnostics] = useState<Array<{ adName: string; qualityRanking: string; engagementRateRanking: string; conversionRateRanking: string; impressions: number }>>([]);
+  const [placements, setPlacements] = useState<MetaPlacement[]>([]);
+  const [demographicsData, setDemographicsData] = useState<MetaDemographic[]>([]);
+  const [frequencyDist, setFrequencyDist] = useState<MetaFrequencyBucket[]>([]);
+  const [costPerAction, setCostPerAction] = useState<MetaCostPerAction[]>([]);
+  const [productPerformance, setProductPerformance] = useState<MetaProductPerf[]>([]);
+  const [countryBreakdown, setCountryBreakdown] = useState<MetaCountryRow[]>([]);
+  const [attributionSettings, setAttributionSettings] = useState<MetaAttribution[]>([]);
+  const [actionBreakdowns, setActionBreakdowns] = useState<MetaActionBreakdown[]>([]);
+  const [instantExperience, setInstantExperience] = useState<MetaInstantExp[]>([]);
+  const [customConversions, setCustomConversions] = useState<MetaCustomConv[]>([]);
+  const [savedAudiences, setSavedAudiences] = useState<MetaSavedAud[]>([]);
+  const [spendingLimits, setSpendingLimits] = useState<MetaSpendLimit[]>([]);
+  const [hourlyBreakdown, setHourlyBreakdown] = useState<MetaHourlyRow[]>([]);
 
   // Compute anomaly alerts from current data
   const metaAlerts = useMemo<MetaAlert[]>(() => {
@@ -396,7 +423,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
           : getPreviousPeriod(startDate, endDate);
         const prevBase = `/api/meta?clientId=${encodeURIComponent(clientId)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
 
-        const [ovRes, campRes, enrichedRes, dailyRes, lpRes, prevOvRes, prevCampRes, adSetsRes, creativesRes, audiencesRes, leadFormsRes, relevanceRes] = await Promise.all([
+        const [ovRes, campRes, enrichedRes, dailyRes, lpRes, prevOvRes, prevCampRes, adSetsRes, creativesRes, audiencesRes, leadFormsRes, relevanceRes, placementsRes, demographicsRes, frequencyDistRes, costPerActionRes, productPerfRes, countryBreakdownRes, attributionRes, actionBreakdownsRes, instantExpRes, customConvRes, savedAudRes, spendLimitsRes, hourlyRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=campaigns`, { signal: controller.signal }),
           fetch(`${base}&type=campaigns-enriched`, { signal: controller.signal }),
@@ -409,6 +436,19 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
           fetch(`${base}&type=audiences`, { signal: controller.signal }),
           fetch(`${base}&type=lead-forms`, { signal: controller.signal }).catch(() => null),
           fetch(`${base}&type=relevance-diagnostics`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=placements`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=demographics`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=frequency`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=cost-per-action`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=product-performance`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=country-breakdown`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=attribution-settings`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=action-breakdowns`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=instant-experience`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=custom-conversions`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=saved-audiences`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=spending-limits`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=hourly`, { signal: controller.signal }).catch(() => null),
         ]);
 
         if (!ovRes.ok) {
@@ -416,7 +456,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
           throw new Error(err.error ?? "Failed to fetch Meta Ads data");
         }
 
-        const [ov, camp, enriched, d, lp, prevOv, prevCamp, adSetsData, creativesData, audiencesData, leadFormsData, relevanceData] = await Promise.all([
+        const [ov, camp, enriched, d, lp, prevOv, prevCamp, adSetsData, creativesData, audiencesData, leadFormsData, relevanceData, placementsData, demographicsRaw, frequencyDistData, costPerActionData, productPerfData, countryBreakdownData, attributionData, actionBreakdownsData, instantExpData, customConvData, savedAudData, spendLimitsData, hourlyData] = await Promise.all([
           ovRes.json(),
           campRes.json(),
           enrichedRes.ok ? enrichedRes.json() : Promise.resolve([]),
@@ -429,6 +469,19 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
           audiencesRes.ok ? audiencesRes.json() : Promise.resolve([]),
           leadFormsRes?.ok ? leadFormsRes.json() : Promise.resolve([]),
           relevanceRes?.ok ? relevanceRes.json() : Promise.resolve([]),
+          placementsRes?.ok ? placementsRes.json() : Promise.resolve([]),
+          demographicsRes?.ok ? demographicsRes.json() : Promise.resolve([]),
+          frequencyDistRes?.ok ? frequencyDistRes.json() : Promise.resolve([]),
+          costPerActionRes?.ok ? costPerActionRes.json() : Promise.resolve([]),
+          productPerfRes?.ok ? productPerfRes.json() : Promise.resolve([]),
+          countryBreakdownRes?.ok ? countryBreakdownRes.json() : Promise.resolve([]),
+          attributionRes?.ok ? attributionRes.json() : Promise.resolve([]),
+          actionBreakdownsRes?.ok ? actionBreakdownsRes.json() : Promise.resolve([]),
+          instantExpRes?.ok ? instantExpRes.json() : Promise.resolve([]),
+          customConvRes?.ok ? customConvRes.json() : Promise.resolve([]),
+          savedAudRes?.ok ? savedAudRes.json() : Promise.resolve([]),
+          spendLimitsRes?.ok ? spendLimitsRes.json() : Promise.resolve([]),
+          hourlyRes?.ok ? hourlyRes.json() : Promise.resolve([]),
         ]);
 
         setOverview(ov);
@@ -455,6 +508,19 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
         setAdSetAudiences(Array.isArray(audiencesData) ? audiencesData : []);
         setLeadForms(Array.isArray(leadFormsData) ? leadFormsData : []);
         setRelevanceDiagnostics(Array.isArray(relevanceData) ? relevanceData : []);
+        setPlacements(Array.isArray(placementsData) ? placementsData : []);
+        setDemographicsData(Array.isArray(demographicsRaw) ? demographicsRaw : []);
+        setFrequencyDist(Array.isArray(frequencyDistData) ? frequencyDistData : []);
+        setCostPerAction(Array.isArray(costPerActionData) ? costPerActionData : []);
+        setProductPerformance(Array.isArray(productPerfData) ? productPerfData : []);
+        setCountryBreakdown(Array.isArray(countryBreakdownData) ? countryBreakdownData : []);
+        setAttributionSettings(Array.isArray(attributionData) ? attributionData : []);
+        setActionBreakdowns(Array.isArray(actionBreakdownsData) ? actionBreakdownsData : []);
+        setInstantExperience(Array.isArray(instantExpData) ? instantExpData : []);
+        setCustomConversions(Array.isArray(customConvData) ? customConvData : []);
+        setSavedAudiences(Array.isArray(savedAudData) ? savedAudData : []);
+        setSpendingLimits(Array.isArray(spendLimitsData) ? spendLimitsData : []);
+        setHourlyBreakdown(Array.isArray(hourlyData) ? hourlyData : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load Meta Ads data");
@@ -1343,6 +1409,441 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
               </tbody>
             </table>
           </div>
+        </SectionCard>
+      )}
+
+      {/* Placement Breakdown */}
+      {show("placements") && placements.length > 0 && (
+        <SectionCard title="Placement Breakdown" subtitle={`Performance across ${placements.length} placement${placements.length !== 1 ? "s" : ""}`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 800 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Platform</th>
+                  <th className="text-left px-4 py-3 font-medium">Placement</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Spend</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Impressions</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Clicks</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">CTR</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">CPC</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Conv.</th>
+                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">ROAS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {placements.map((p, i) => (
+                  <tr key={`${p.publisherPlatform}-${p.placement}-${i}`} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium capitalize">{p.publisherPlatform}</td>
+                    <td className="px-4 py-3 text-slate-600 capitalize">{p.placement.replace(/_/g, " ")}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(p.spend)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(p.impressions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(p.clicks)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{p.ctr.toFixed(2)}%</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(p.cpc)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(p.conversions)}</td>
+                    <td className="px-6 py-3 text-right whitespace-nowrap">
+                      <span className={`font-semibold ${p.roas >= 2 ? "text-emerald-600" : p.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>{p.roas.toFixed(2)}x</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Audience Targeting */}
+      {show("audiences") && adSetAudiences.length > 0 && (
+        <SectionCard title="Audience Targeting" subtitle={`Targeting details for ${adSetAudiences.length} ad set${adSetAudiences.length !== 1 ? "s" : ""}`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 700 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Ad Set</th>
+                  <th className="text-left px-4 py-3 font-medium">Age</th>
+                  <th className="text-left px-4 py-3 font-medium">Gender</th>
+                  <th className="text-left px-4 py-3 font-medium">Location</th>
+                  <th className="text-left px-4 py-3 font-medium">Interests</th>
+                  <th className="text-left px-6 py-3 font-medium">Custom Audiences</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {adSetAudiences.map((aud) => (
+                  <tr key={aud.adSetId} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{aud.adSetName}</td>
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{aud.ageMin != null && aud.ageMax != null ? `${aud.ageMin}–${aud.ageMax}` : "All"}</td>
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{aud.genders.length === 1 ? (aud.genders[0] === 1 ? "Male" : "Female") : "All"}</td>
+                    <td className="px-4 py-3 text-slate-600">{aud.geoSummary || "All locations"}</td>
+                    <td className="px-4 py-3 text-slate-600">{aud.interests.length > 0 ? aud.interests.slice(0, 3).join(", ") + (aud.interests.length > 3 ? ` +${aud.interests.length - 3}` : "") : "—"}</td>
+                    <td className="px-6 py-3 text-slate-600">{aud.customAudiences.length > 0 ? aud.customAudiences.map(c => c.name).join(", ") : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Demographics */}
+      {show("demographics") && demographicsData.length > 0 && (() => {
+        const byAge = Object.values(
+          demographicsData.reduce<Record<string, { age: string; spend: number; clicks: number; impressions: number; conversions: number }>>((acc, d) => {
+            if (!acc[d.age]) acc[d.age] = { age: d.age, spend: 0, clicks: 0, impressions: 0, conversions: 0 };
+            acc[d.age].spend += d.spend;
+            acc[d.age].clicks += d.clicks;
+            acc[d.age].impressions += d.impressions;
+            acc[d.age].conversions += d.conversions;
+            return acc;
+          }, {})
+        );
+        return (
+          <SectionCard title="Demographics" subtitle="Performance by age and gender">
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={byAge} barSize={24}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="age" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `£${v}`} />
+                <Tooltip contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }} />
+                <Bar dataKey="spend" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Spend" />
+              </BarChart>
+            </ResponsiveContainer>
+            <div style={{ overflowX: "auto", marginTop: 16 }}>
+              <table className="w-full text-xs" style={{ minWidth: 600 }}>
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                    <th className="text-left px-6 py-3 font-medium">Age</th>
+                    <th className="text-left px-4 py-3 font-medium">Gender</th>
+                    <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Spend</th>
+                    <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Impressions</th>
+                    <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Clicks</th>
+                    <th className="text-right px-4 py-3 font-medium whitespace-nowrap">CTR</th>
+                    <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Conv.</th>
+                    <th className="text-right px-6 py-3 font-medium whitespace-nowrap">ROAS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {demographicsData.map((d, i) => (
+                    <tr key={`${d.age}-${d.gender}-${i}`} className="hover:bg-slate-50 transition">
+                      <td className="px-6 py-3 text-slate-800 font-medium">{d.age}</td>
+                      <td className="px-4 py-3 text-slate-600 capitalize">{d.gender}</td>
+                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(d.spend)}</td>
+                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(d.impressions)}</td>
+                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(d.clicks)}</td>
+                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{d.ctr.toFixed(2)}%</td>
+                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(d.conversions)}</td>
+                      <td className="px-6 py-3 text-right whitespace-nowrap">
+                        <span className={`font-semibold ${d.roas >= 2 ? "text-emerald-600" : d.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>{d.roas.toFixed(2)}x</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </SectionCard>
+        );
+      })()}
+
+      {/* Frequency Distribution */}
+      {show("frequency") && frequencyDist.length > 0 && (
+        <SectionCard title="Frequency Distribution" subtitle="How often users see your ads">
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={frequencyDist} barSize={32}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="frequencyValue" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
+              <Tooltip contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }} />
+              <Bar dataKey="reach" fill="#6366f1" radius={[4, 4, 0, 0]} name="Unique Users" />
+            </BarChart>
+          </ResponsiveContainer>
+        </SectionCard>
+      )}
+
+      {/* Cost Per Action */}
+      {show("cost_per_action") && costPerAction.length > 0 && (
+        <SectionCard title="Cost Per Action" subtitle="Breakdown by action type">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 400 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Action Type</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Count</th>
+                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Cost Per Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {costPerAction.map((a) => (
+                  <tr key={a.actionType} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{a.actionType.replace(/_/g, " ").replace(/\./g, " › ").replace(/\b\w/g, c => c.toUpperCase())}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(a.value)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(a.costPerAction)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Product Performance */}
+      {show("product_performance") && productPerformance.length > 0 && (
+        <SectionCard title="Product Performance" subtitle={`${productPerformance.length} product${productPerformance.length !== 1 ? "s" : ""} with ad data`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 700 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Product</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Spend</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Impressions</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Clicks</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Purchases</th>
+                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Revenue</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {productPerformance.map((p) => (
+                  <tr key={p.productId} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{p.productName}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(p.spend)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(p.impressions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(p.clicks)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(p.purchases)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(p.purchaseValue)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Country Breakdown */}
+      {show("country_breakdown") && countryBreakdown.length > 0 && (
+        <SectionCard title="Country Breakdown" subtitle={`Performance across ${countryBreakdown.length} ${countryBreakdown.length !== 1 ? "countries" : "country"}`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 600 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Country</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Spend</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Impressions</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Clicks</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">CTR</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">CPC</th>
+                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Conv.</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {countryBreakdown.map((c) => (
+                  <tr key={c.country} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{c.country}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(c.spend)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(c.impressions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(c.clicks)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{c.ctr.toFixed(2)}%</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(c.cpc)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(c.conversions)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Attribution Settings */}
+      {show("attribution") && attributionSettings.length > 0 && (
+        <SectionCard title="Attribution Settings" subtitle="Attribution windows per ad set">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 500 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Campaign</th>
+                  <th className="text-left px-4 py-3 font-medium">Ad Set</th>
+                  <th className="text-left px-6 py-3 font-medium">Attribution Window</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {attributionSettings.map((a) => {
+                  let windowLabel = a.attributionSpec;
+                  try {
+                    const spec = JSON.parse(a.attributionSpec);
+                    if (Array.isArray(spec)) windowLabel = spec.map((s: Record<string, string>) => `${s.event_type}: ${s.window_days}d`).join(", ");
+                  } catch { /* use raw string */ }
+                  return (
+                    <tr key={a.adSetId} className="hover:bg-slate-50 transition">
+                      <td className="px-6 py-3 text-slate-600">{a.campaignName}</td>
+                      <td className="px-4 py-3 text-slate-800 font-medium">{a.adSetName}</td>
+                      <td className="px-6 py-3 text-slate-600">{windowLabel}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Action Breakdowns */}
+      {show("action_breakdowns") && actionBreakdowns.length > 0 && (
+        <SectionCard title="Action Breakdowns" subtitle="All tracked conversion actions">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 400 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Action Type</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Count</th>
+                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Cost Per Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {actionBreakdowns.map((a) => (
+                  <tr key={a.actionType} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{a.actionType.replace(/_/g, " ").replace(/\./g, " › ").replace(/\b\w/g, c => c.toUpperCase())}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(a.value)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(a.costPerAction)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Instant Experience */}
+      {show("instant_experience") && instantExperience.length > 0 && (
+        <SectionCard title="Instant Experience" subtitle="Canvas / instant experience engagement">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 480 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Ad Name</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Opens</th>
+                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Outbound Clicks</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {instantExperience.map((ie) => (
+                  <tr key={ie.adId} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{ie.adName}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(ie.clicksToOpen)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(ie.outboundClicks)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Custom Conversions */}
+      {show("custom_conversions") && customConversions.length > 0 && (
+        <SectionCard title="Custom Conversions" subtitle={`${customConversions.length} custom conversion${customConversions.length !== 1 ? "s" : ""} configured`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 480 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Name</th>
+                  <th className="text-left px-4 py-3 font-medium">Event Type</th>
+                  <th className="text-left px-6 py-3 font-medium">Rule</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {customConversions.map((cc) => (
+                  <tr key={cc.id} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{cc.name}</td>
+                    <td className="px-4 py-3 text-slate-600">{cc.customEventType.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</td>
+                    <td className="px-6 py-3 text-slate-500 text-[10px] font-mono truncate max-w-[240px]">{cc.pixelRule}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Saved & Custom Audiences */}
+      {show("saved_audiences") && savedAudiences.length > 0 && (
+        <SectionCard title="Saved & Custom Audiences" subtitle={`${savedAudiences.length} audience${savedAudiences.length !== 1 ? "s" : ""} available`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 520 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Audience Name</th>
+                  <th className="text-left px-4 py-3 font-medium">Type</th>
+                  <th className="text-left px-4 py-3 font-medium">Subtype</th>
+                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Approx. Size</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {savedAudiences.map((a) => (
+                  <tr key={a.id} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{a.name}</td>
+                    <td className="px-4 py-3 text-slate-600 capitalize">{a.type.replace(/_/g, " ")}</td>
+                    <td className="px-4 py-3 text-slate-600 capitalize">{a.subtype ? a.subtype.replace(/_/g, " ").toLowerCase() : "—"}</td>
+                    <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{a.approximateCount > 0 ? formatNumber(a.approximateCount) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Campaign Spending Limits */}
+      {show("spending_limits") && spendingLimits.length > 0 && (
+        <SectionCard title="Campaign Spending Limits" subtitle="Budget caps and current spend">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 640 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Campaign</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Spend Cap</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Daily Budget</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Lifetime Budget</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Amount Spent</th>
+                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Utilisation</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {spendingLimits.map((s) => {
+                  const cap = s.spendingLimit ?? s.lifetimeBudget;
+                  const util = cap && cap > 0 ? (s.amountSpent / cap) * 100 : null;
+                  return (
+                    <tr key={s.campaignId} className="hover:bg-slate-50 transition">
+                      <td className="px-6 py-3 text-slate-800 font-medium">{s.campaignName}</td>
+                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{s.spendingLimit != null ? formatCurrency(s.spendingLimit) : "—"}</td>
+                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{s.dailyBudget != null ? formatCurrency(s.dailyBudget) : "—"}</td>
+                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{s.lifetimeBudget != null ? formatCurrency(s.lifetimeBudget) : "—"}</td>
+                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(s.amountSpent)}</td>
+                      <td className="px-6 py-3 text-right whitespace-nowrap">
+                        {util != null ? (
+                          <span className={`font-semibold ${util >= 90 ? "text-red-600" : util >= 70 ? "text-amber-600" : "text-emerald-600"}`}>{util.toFixed(0)}%</span>
+                        ) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Hourly Performance */}
+      {show("hourly_breakdown") && hourlyBreakdown.length > 0 && (
+        <SectionCard title="Hourly Performance" subtitle="Performance by hour of day">
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={hourlyBreakdown} barSize={16}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="hourOfDay" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}:00`} />
+              <YAxis yAxisId="spend" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `£${v}`} width={50} />
+              <YAxis yAxisId="clicks" orientation="right" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
+              <Tooltip contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }} labelFormatter={(v) => `${v}:00`} />
+              <Bar yAxisId="spend" dataKey="spend" fill="#ef4444" radius={[4, 4, 0, 0]} name="Spend" />
+              <Bar yAxisId="clicks" dataKey="clicks" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Clicks" />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+            </BarChart>
+          </ResponsiveContainer>
         </SectionCard>
       )}
 

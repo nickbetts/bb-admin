@@ -151,6 +151,85 @@ interface GoogleAdsData {
     costMicros: number;
     conversions: number;
   }>;
+  deviceBreakdown?: Array<{
+    device: string;
+    clicks: number;
+    costMicros: number;
+    impressions: number;
+    conversions: number;
+    conversionsValue: number;
+  }>;
+  negativeKeywords?: Array<{
+    sharedSetId: string;
+    sharedSetName: string;
+    keyword: string;
+    matchType: string;
+  }>;
+  demographics?: Array<{
+    type: string;
+    segment: string;
+    clicks: number;
+    impressions: number;
+    costMicros: number;
+    conversions: number;
+  }>;
+  shoppingPerformance?: Array<{
+    productTitle: string;
+    productId: string;
+    productBrand: string;
+    clicks: number;
+    impressions: number;
+    costMicros: number;
+    conversions: number;
+    conversionsValue: number;
+  }>;
+  conversionActions?: Array<{
+    id: string;
+    name: string;
+    category: string;
+    type: string;
+    conversions: number;
+    conversionsValue: number;
+    costPerConversion: number;
+  }>;
+  callExtensions?: Array<{
+    callerCountryCode: string;
+    callDurationSeconds: number;
+    callType: string;
+    callStatus: string;
+    campaignName: string;
+  }>;
+  sitelinkPerformance?: Array<{
+    sitelinkText: string;
+    clicks: number;
+    impressions: number;
+    costMicros: number;
+    conversions: number;
+  }>;
+  displayVideoData?: Array<{
+    campaignId: string;
+    campaignName: string;
+    channelType: string;
+    clicks: number;
+    impressions: number;
+    costMicros: number;
+    conversions: number;
+    videoViews: number;
+    videoViewRate: number;
+  }>;
+  recommendations?: Array<{
+    type: string;
+    impact: string;
+    campaignName: string;
+  }>;
+  budgetUtilisation?: Array<{
+    campaignId: string;
+    campaignName: string;
+    dailyBudgetMicros: number;
+    spendMicros: number;
+    utilisationPercent: number;
+    budgetStatus: string;
+  }>;
 }
 
 interface Props {
@@ -906,7 +985,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           })()}
 
           {/* Search terms report */}
-          {(data.searchTerms ?? []).length > 0 && (
+          {show("search_terms") && (data.searchTerms ?? []).length > 0 && (
             <SectionCard title="Search Terms" subtitle="Top queries triggering your ads">
               <table className="w-full text-xs">
                 <thead>
@@ -1254,6 +1333,361 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           clickFraudToken={clickFraudToken}
           reportMode={reportMode}
         />
+      )}
+
+      {/* Keywords & Quality Scores */}
+      {!loading && !error && show("keywords") && (data?.keywordQualityScores?.length ?? 0) > 0 && (
+        <SectionCard title="Keyword Quality Scores" subtitle={`${data!.keywordQualityScores!.length} keyword${data!.keywordQualityScores!.length !== 1 ? "s" : ""} with quality data`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 800 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Keyword</th>
+                  <th className="text-left px-4 py-3 font-medium">Campaign</th>
+                  <th className="text-center px-4 py-3 font-medium">QS</th>
+                  <th className="text-center px-4 py-3 font-medium">Exp. CTR</th>
+                  <th className="text-center px-4 py-3 font-medium">Ad Relevance</th>
+                  <th className="text-center px-4 py-3 font-medium">Landing Page</th>
+                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
+                  <th className="text-right px-6 py-3 font-medium">Cost</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {data!.keywordQualityScores!.map((kw, i) => {
+                  const qsBadge = (rank: string) => {
+                    const cls = rank === "ABOVE_AVERAGE" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : rank === "AVERAGE" ? "bg-amber-50 text-amber-700 border-amber-200" : rank === "BELOW_AVERAGE" ? "bg-red-50 text-red-700 border-red-200" : "bg-slate-50 text-slate-500 border-slate-200";
+                    return <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`}>{rank.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</span>;
+                  };
+                  return (
+                    <tr key={`${kw.keyword}-${i}`} className="hover:bg-slate-50 transition">
+                      <td className="px-6 py-3 text-slate-800 font-medium">{kw.keyword}</td>
+                      <td className="px-4 py-3 text-slate-500 text-[11px]">{kw.campaignName}</td>
+                      <td className="px-4 py-3 text-center"><span className={`font-bold ${(kw.qualityScore ?? 0) >= 7 ? "text-emerald-600" : (kw.qualityScore ?? 0) >= 5 ? "text-amber-600" : "text-red-600"}`}>{kw.qualityScore ?? "—"}</span></td>
+                      <td className="px-4 py-3 text-center">{qsBadge(kw.expectedCtr)}</td>
+                      <td className="px-4 py-3 text-center">{qsBadge(kw.adRelevance)}</td>
+                      <td className="px-4 py-3 text-center">{qsBadge(kw.landingPageExperience)}</td>
+                      <td className="px-4 py-3 text-right text-slate-600">{formatNumber(kw.clicks)}</td>
+                      <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(micros(kw.costMicros))}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Quality Score Summary */}
+      {!loading && !error && show("quality_score") && data?.avgQualityScore != null && (
+        <SectionCard title="Quality Score Overview" subtitle={`Account average: ${data.avgQualityScore.toFixed(1)} / 10`}>
+          <div className="grid grid-cols-3 gap-6">
+            <div className="text-center">
+              <p className="text-3xl font-bold" style={{ color: data.avgQualityScore >= 7 ? "#10b981" : data.avgQualityScore >= 5 ? "#f59e0b" : "#ef4444" }}>{data.avgQualityScore.toFixed(1)}</p>
+              <p className="text-xs text-slate-500 mt-1">Average Quality Score</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-bold text-slate-700">{data.keywordQualityScores?.filter(k => (k.qualityScore ?? 0) >= 7).length ?? 0}</p>
+              <p className="text-xs text-slate-500 mt-1">Keywords QS ≥ 7</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-bold text-slate-700">{data.keywordQualityScores?.filter(k => (k.qualityScore ?? 0) > 0 && (k.qualityScore ?? 0) < 5).length ?? 0}</p>
+              <p className="text-xs text-slate-500 mt-1">Keywords QS &lt; 5</p>
+            </div>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Device Breakdown */}
+      {!loading && !error && show("device_breakdown") && (data?.deviceBreakdown?.length ?? 0) > 0 && (
+        <SectionCard title="Device Breakdown" subtitle="Performance by device type">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 600 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Device</th>
+                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
+                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
+                  <th className="text-right px-4 py-3 font-medium">Cost</th>
+                  <th className="text-right px-4 py-3 font-medium">Conv.</th>
+                  <th className="text-right px-6 py-3 font-medium">ROAS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {data!.deviceBreakdown!.map((d) => (
+                  <tr key={d.device} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium capitalize">{d.device.toLowerCase().replace(/_/g, " ")}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(d.clicks)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(d.impressions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(micros(d.costMicros))}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(d.conversions)}</td>
+                    <td className="px-6 py-3 text-right"><span className={`font-semibold ${roas(d.conversionsValue, d.costMicros) >= 2 ? "text-emerald-600" : roas(d.conversionsValue, d.costMicros) >= 1 ? "text-amber-600" : "text-red-600"}`}>{roas(d.conversionsValue, d.costMicros).toFixed(2)}x</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Negative Keywords */}
+      {!loading && !error && show("negative_keywords") && (data?.negativeKeywords?.length ?? 0) > 0 && (
+        <SectionCard title="Negative Keywords" subtitle={`${data!.negativeKeywords!.length} negative keyword${data!.negativeKeywords!.length !== 1 ? "s" : ""} active`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 480 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Keyword</th>
+                  <th className="text-left px-4 py-3 font-medium">Match Type</th>
+                  <th className="text-left px-6 py-3 font-medium">Shared Set</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {data!.negativeKeywords!.map((nk, i) => (
+                  <tr key={`${nk.keyword}-${i}`} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{nk.keyword}</td>
+                    <td className="px-4 py-3 text-slate-600 capitalize">{nk.matchType.toLowerCase().replace(/_/g, " ")}</td>
+                    <td className="px-6 py-3 text-slate-500">{nk.sharedSetName}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Demographics */}
+      {!loading && !error && show("demographics_paid") && (data?.demographics?.length ?? 0) > 0 && (
+        <SectionCard title="Demographics" subtitle="Performance by age and gender">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Type</th>
+                  <th className="text-left px-4 py-3 font-medium">Segment</th>
+                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
+                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
+                  <th className="text-right px-4 py-3 font-medium">Cost</th>
+                  <th className="text-right px-6 py-3 font-medium">Conv.</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {data!.demographics!.map((d, i) => (
+                  <tr key={`${d.type}-${d.segment}-${i}`} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium capitalize">{d.type}</td>
+                    <td className="px-4 py-3 text-slate-600">{d.segment.replace(/^AGE_/, "").replace(/_/g, "–")}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(d.clicks)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(d.impressions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(micros(d.costMicros))}</td>
+                    <td className="px-6 py-3 text-right text-slate-600">{formatNumber(d.conversions)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Shopping Performance */}
+      {!loading && !error && show("shopping") && (data?.shoppingPerformance?.length ?? 0) > 0 && (
+        <SectionCard title="Shopping Performance" subtitle={`${data!.shoppingPerformance!.length} product${data!.shoppingPerformance!.length !== 1 ? "s" : ""} with ad data`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 700 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Product</th>
+                  <th className="text-left px-4 py-3 font-medium">Brand</th>
+                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
+                  <th className="text-right px-4 py-3 font-medium">Cost</th>
+                  <th className="text-right px-4 py-3 font-medium">Conv.</th>
+                  <th className="text-right px-6 py-3 font-medium">ROAS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {data!.shoppingPerformance!.map((p) => (
+                  <tr key={p.productId} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{p.productTitle}</td>
+                    <td className="px-4 py-3 text-slate-600">{p.productBrand || "—"}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(p.clicks)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(micros(p.costMicros))}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(p.conversions)}</td>
+                    <td className="px-6 py-3 text-right"><span className={`font-semibold ${roas(p.conversionsValue, p.costMicros) >= 2 ? "text-emerald-600" : roas(p.conversionsValue, p.costMicros) >= 1 ? "text-amber-600" : "text-red-600"}`}>{roas(p.conversionsValue, p.costMicros).toFixed(2)}x</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Conversion Actions */}
+      {!loading && !error && show("conversion_actions") && (data?.conversionActions?.length ?? 0) > 0 && (
+        <SectionCard title="Conversion Actions" subtitle="All tracked conversion types">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Action Name</th>
+                  <th className="text-left px-4 py-3 font-medium">Category</th>
+                  <th className="text-right px-4 py-3 font-medium">Conv.</th>
+                  <th className="text-right px-4 py-3 font-medium">Value</th>
+                  <th className="text-right px-6 py-3 font-medium">Cost/Conv.</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {data!.conversionActions!.map((ca) => (
+                  <tr key={ca.id} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{ca.name}</td>
+                    <td className="px-4 py-3 text-slate-600 capitalize">{ca.category.toLowerCase().replace(/_/g, " ")}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(ca.conversions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(ca.conversionsValue)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(ca.costPerConversion)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Call Extensions */}
+      {!loading && !error && show("call_extensions") && (data?.callExtensions?.length ?? 0) > 0 && (
+        <SectionCard title="Call Extensions" subtitle={`${data!.callExtensions!.length} call${data!.callExtensions!.length !== 1 ? "s" : ""} tracked`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 520 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Campaign</th>
+                  <th className="text-left px-4 py-3 font-medium">Status</th>
+                  <th className="text-left px-4 py-3 font-medium">Country</th>
+                  <th className="text-right px-4 py-3 font-medium">Duration (s)</th>
+                  <th className="text-left px-6 py-3 font-medium">Type</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {data!.callExtensions!.map((ce, i) => (
+                  <tr key={`${ce.campaignName}-${i}`} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{ce.campaignName}</td>
+                    <td className="px-4 py-3 text-slate-600 capitalize">{ce.callStatus.toLowerCase().replace(/_/g, " ")}</td>
+                    <td className="px-4 py-3 text-slate-600">{ce.callerCountryCode}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{ce.callDurationSeconds}</td>
+                    <td className="px-6 py-3 text-slate-500">{ce.callType}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Sitelink Performance */}
+      {!loading && !error && show("sitelinks") && (data?.sitelinkPerformance?.length ?? 0) > 0 && (
+        <SectionCard title="Sitelink Performance" subtitle="Ad extension click-through data">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Sitelink Text</th>
+                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
+                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
+                  <th className="text-right px-4 py-3 font-medium">Cost</th>
+                  <th className="text-right px-6 py-3 font-medium">Conv.</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {data!.sitelinkPerformance!.map((sl, i) => (
+                  <tr key={`${sl.sitelinkText}-${i}`} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{sl.sitelinkText}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(sl.clicks)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(sl.impressions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(micros(sl.costMicros))}</td>
+                    <td className="px-6 py-3 text-right text-slate-600">{formatNumber(sl.conversions)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Display & Video */}
+      {!loading && !error && show("display_video") && (data?.displayVideoData?.length ?? 0) > 0 && (
+        <SectionCard title="Display & Video" subtitle="Performance across display and video campaigns">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 700 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Campaign</th>
+                  <th className="text-left px-4 py-3 font-medium">Type</th>
+                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
+                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
+                  <th className="text-right px-4 py-3 font-medium">Cost</th>
+                  <th className="text-right px-4 py-3 font-medium">Video Views</th>
+                  <th className="text-right px-6 py-3 font-medium">View Rate</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {data!.displayVideoData!.map((dv) => (
+                  <tr key={dv.campaignId} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{dv.campaignName}</td>
+                    <td className="px-4 py-3 text-slate-600 capitalize">{dv.channelType.toLowerCase()}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(dv.clicks)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(dv.impressions)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(micros(dv.costMicros))}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(dv.videoViews)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600">{(dv.videoViewRate * 100).toFixed(1)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Recommendations */}
+      {!loading && !error && show("recommendations") && (data?.recommendations?.length ?? 0) > 0 && (
+        <SectionCard title="Google Ads Recommendations" subtitle={`${data!.recommendations!.length} recommendation${data!.recommendations!.length !== 1 ? "s" : ""} from Google`}>
+          <div className="flex flex-col gap-3">
+            {data!.recommendations!.map((rec, i) => (
+              <div key={i} className="rounded-lg border border-slate-100 p-4">
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{rec.type.replace(/_/g, " ")}</span>
+                  <span className="text-xs text-slate-500">{rec.campaignName}</span>
+                </div>
+                <p className="text-xs text-slate-600">{(() => { try { const p = JSON.parse(rec.impact); return typeof p === "object" ? JSON.stringify(p, null, 0) : rec.impact; } catch { return rec.impact; } })()}</p>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Budget Utilisation */}
+      {!loading && !error && show("budget_utilisation") && (data?.budgetUtilisation?.length ?? 0) > 0 && (
+        <SectionCard title="Budget Utilisation" subtitle="How much of each campaign budget is being spent">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Campaign</th>
+                  <th className="text-right px-4 py-3 font-medium">Daily Budget</th>
+                  <th className="text-right px-4 py-3 font-medium">Spend</th>
+                  <th className="text-right px-4 py-3 font-medium">Utilisation</th>
+                  <th className="text-left px-6 py-3 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {data!.budgetUtilisation!.map((bu) => (
+                  <tr key={bu.campaignId} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{bu.campaignName}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(micros(bu.dailyBudgetMicros))}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(micros(bu.spendMicros))}</td>
+                    <td className="px-4 py-3 text-right"><span className={`font-semibold ${bu.utilisationPercent >= 90 ? "text-red-600" : bu.utilisationPercent >= 70 ? "text-amber-600" : "text-emerald-600"}`}>{bu.utilisationPercent.toFixed(0)}%</span></td>
+                    <td className="px-6 py-3 text-slate-500 capitalize">{bu.budgetStatus.toLowerCase()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
       )}
     </div>
   );
