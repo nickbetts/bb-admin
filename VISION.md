@@ -1,26 +1,5 @@
-# 🗺️ Roady Woady — i3media Report Platform: The Master Plan
 
-> **A comprehensive audit and vision document for transforming i3media Report into the most powerful marketing and agency intelligence platform on the market.**
-
----
-
-## Table of Contents
-
-1. [Where We Are Now — The Honest Audit](#1-where-we-are-now--the-honest-audit)
-2. [The Vision](#2-the-vision)
-3. [AI Intelligence Layer — Beyond Gimmicks](#3-ai-intelligence-layer--beyond-gimmicks)
-4. [Data & Cross-Channel Intelligence](#4-data--cross-channel-intelligence)
-5. [New Platform Integrations](#5-new-platform-integrations)
-6. [Reporting Revolution](#6-reporting-revolution)
-7. [Agency Operations Suite](#7-agency-operations-suite)
-8. [Client Portal & Experience Layer](#8-client-portal--experience-layer)
-9. [Automation & Workflow Engine](#9-automation--workflow-engine)
-10. [Business Intelligence & Revenue Tracking](#10-business-intelligence--revenue-tracking)
-11. [Platform Architecture Upgrades](#11-platform-architecture-upgrades)
-12. [Mobile & Notifications](#12-mobile--notifications)
-13. [Competitive Positioning](#13-competitive-positioning)
-14. [Phased Roadmap](#14-phased-roadmap)
-15. [Feature Priority Matrix](#15-feature-priority-matrix)
+# i3media Report — Platform Vision
 
 ---
 
@@ -121,7 +100,6 @@ This section covers AI features that deliver genuine, measurable value — not d
 - A persistent chat interface on the client dashboard
 - Questions are sent to an AI model with the full cross-platform context (current metrics, historical snapshots, campaign data, anomalies)
 - The AI can query stored MetricSnapshot data for trends
-- The AI can request additional data pulls if the question requires it (e.g., "fetch last 90 days of search term data")
 - The conversation history is stored per-client so context builds over time
 - AI can produce formatted outputs: tables, summaries, bullet lists
 
@@ -365,8 +343,6 @@ Enhanced: "Sessions dropped 28% — HIGH
 
 **What it is:** A structured analysis of how efficiently marketing spend moves prospects through each stage of the funnel — Awareness → Interest → Consideration → Intent → Conversion → Retention.
 
-**Current state:** The overview tab shows a basic impressions → clicks → sessions → conversions funnel. This extends it into a full efficiency analysis.
-
 **What it adds:**
 - Stage-by-stage conversion rates with benchmarks
 - Bottleneck identification: "The biggest drop-off in your funnel is between Sessions and Conversions (2.1% vs 3.8% industry average) — this is a landing page and CRO problem, not a traffic problem."
@@ -454,8 +430,6 @@ Enhanced: "Sessions dropped 28% — HIGH
 
 ### Integration Architecture Upgrade
 
-To support this many integrations without the codebase becoming unmanageable:
-
 - **Integration registry:** A standardised `IntegrationConfig` pattern where each integration defines its connection parameters, data types, and fetch functions
 - **Integration health dashboard:** Per-client integration status (connected / error / stale token / no data) with one-click reconnect
 - **Unified credential vault:** Encrypted credential storage per client, per integration — replacing scattered environment variables
@@ -495,8 +469,6 @@ To support this many integrations without the codebase becoming unmanageable:
 - Follow-up CTA: "Book a strategy call" button embedded in reports
 - Custom branding: client colours, fonts, and logo applied to report theme
 
-**Why this matters:** PDFs are consumed passively. Interactive reports drive engagement and create conversation opportunities. Clients who explore their data feel more invested in the process.
-
 ---
 
 ### 6.3 AI Video Report Generation
@@ -509,8 +481,6 @@ To support this many integrations without the codebase becoming unmanageable:
 - Screen-recorded walkthrough of the key charts and metrics with highlight overlays
 - 2-4 minute video summary perfect for client email or Slack delivery
 - Account manager can add their own voiceover over the AI-generated visuals
-
-**Why this matters:** Some clients never read reports. A 3-minute video that explains the headlines is far more likely to be consumed. This is a differentiator no competitor offers at scale.
 
 ---
 
@@ -603,8 +573,6 @@ To support this many integrations without the codebase becoming unmanageable:
 - When completed, account manager can mark it done and optionally note the outcome
 - Outcome data feeds back into future AI recommendations
 
-**Why this matters:** Without this loop, AI recommendations generate no accountability. This turns insights into actions and actions into outcomes.
-
 ---
 
 ### 7.3 Client Communication Hub
@@ -685,8 +653,6 @@ To support this many integrations without the codebase becoming unmanageable:
 - Permissions configurable per client user
 - Login via email link (magic link, no password required) for simplicity
 
-**Why this matters:** Clients who can see their data real-time ask better questions, feel more in control, and churn less. The agency is no longer a black box.
-
 ---
 
 ### 8.2 Goal Setting & Tracking
@@ -740,7 +706,7 @@ To support this many integrations without the codebase becoming unmanageable:
 
 ### 9.1 Alert & Notification System
 
-**What it is:** The most immediately high-value automation. Anomalies are detected but currently silently — this delivers them to the right people.
+**What it is:** Anomalies are detected but currently silently — this delivers them to the right people.
 
 **Delivery channels:**
 - **Email:** Digest format (immediate for HIGH, daily digest for MEDIUM/LOW)
@@ -769,8 +735,6 @@ To support this many integrations without the codebase becoming unmanageable:
 
 ### 9.2 Automated Monthly Reporting Workflow
 
-**What it is:** A triggered workflow that automatically creates and delivers the monthly client report.
-
 **Workflow steps:**
 1. Trigger: 1st of each month (or custom date per client)
 2. Create report from default template
@@ -795,7 +759,7 @@ To support this many integrations without the codebase becoming unmanageable:
 - Organic sessions drop 20%+ week-over-week → schedule emergency strategy review
 - CPA exceeds target by 50% → send account manager urgent alert
 
-**Notes on safe automation:** Direct campaign pausing should always require account manager confirmation via a one-click approval in the alert. The platform recommends and initiates, humans approve and execute. API write access to ad platforms can be added for automated bid adjustments or budget changes with explicit permission.
+**Notes on safe automation:** Direct campaign pausing should always require account manager confirmation via a one-click approval in the alert. The platform recommends and initiates, humans approve and execute.
 
 ---
 
@@ -896,11 +860,6 @@ To support this many integrations without the codebase becoming unmanageable:
 
 **New state:** WebSocket connection to the server that streams metric updates as they are computed. Dashboard sections update progressively without full page reload. Combined with server-sent events for notification delivery.
 
-**Benefits:**
-- Faster perceived performance
-- Live anomaly alerts appear without refresh
-- Multi-user: if a colleague updates something, it reflects for all viewers instantly
-
 ---
 
 ### 11.2 Data Caching Layer
@@ -940,8 +899,6 @@ To support this many integrations without the codebase becoming unmanageable:
 - `GET /api/v1/clients/{id}/insights` — retrieve latest AI insights
 
 **Authentication:** API key per client or service account. Rate limited and audited.
-
-**Why this matters:** Clients with their own BI tools (Tableau, Looker Studio, Power BI) can pull data directly. Also enables enterprise integration with tools the agency doesn't control.
 
 ---
 
@@ -984,8 +941,6 @@ To support this many integrations without the codebase becoming unmanageable:
 - Report opened (external)
 - Settings changed
 - User created / deleted / role changed
-
-**Purpose:** Compliance, debugging, accountability, and client transparency.
 
 ---
 
@@ -1072,8 +1027,6 @@ This category does not currently have a clear winner. Klipfolio, AgencyAnalytics
 
 ### Phase 1 — Foundation Hardening (0–3 months) ✅ Complete
 
-Core improvements that make the existing platform more powerful and reliable.
-
 - [x] **Notification system** — email + Slack alerts for anomalies and key events
 - [x] **Historical snapshot automation** — nightly data pulls for all clients
 - [x] **Conversational AI chat** — "Ask the data" interface on client dashboards
@@ -1088,8 +1041,6 @@ Core improvements that make the existing platform more powerful and reliable.
 
 ### Phase 2 — AI Intelligence Expansion (3–6 months) ✅ Complete
 
-Transform the AI layer from insights into a full intelligence system.
-
 - [x] **Predictive performance forecasting** — 30/60/90 day projections
 - [x] **Budget optimisation advisor** — cross-channel budget recommendations
 - [x] **Creative performance intelligence** — Meta and Google ad creative analysis
@@ -1103,8 +1054,6 @@ Transform the AI layer from insights into a full intelligence system.
 ---
 
 ### Phase 3 — Agency Operating System (6–12 months) ✅ Complete
-
-Build the agency workflow features that embed the platform into daily operations.
 
 - [x] **Client portal** — self-serve client-facing dashboard with magic-link login
 - [x] **Internal action tracking** — AI recommendations → assigned actions → outcomes
@@ -1121,8 +1070,6 @@ Build the agency workflow features that embed the platform into daily operations
 
 ### Phase 4 — Platform & Scale (12–18 months)
 
-Infrastructure and business model evolution.
-
 - [ ] **White-label mode** — full rebrandability for agency self-deployment
 - [ ] **External API** — programmatic data access with API key authentication
 - [ ] **Data export connectors** — BigQuery, Looker Studio, Google Sheets sync
@@ -1136,8 +1083,6 @@ Infrastructure and business model evolution.
 ---
 
 ## 15. Feature Priority Matrix
-
-Features plotted by **Impact** (value delivered) vs **Effort** (development cost):
 
 ### High Impact / Low Effort — Do First
 
@@ -1204,5 +1149,5 @@ Build this, and the question stops being "why would we use this?" and starts bei
 
 ---
 
-*Document version: 1.3 — April 2026 (Phase 3 substantially complete — 9/10 items done)*
+*Document version: 1.3 — April 2026 (Phase 3 substantially complete — 9/10 items done)*  
 *Next review: After Phase 4 planning session*

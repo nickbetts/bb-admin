@@ -1,7 +1,7 @@
 ---
 description: "Use when: creating or updating developer documentation, writing API reference docs, updating README, recording architecture decisions, writing a changelog, documenting a new feature, updating the roadmap or master plan, or registering a new agent in copilot-instructions.md."
 name: "Developer Docs"
-tools: [read, edit, search]
+tools: [read, edit, search, run_in_terminal]
 user-invocable: true
 ---
 
@@ -13,11 +13,16 @@ Before creating any new file, check whether the right place already exists:
 
 | File | Purpose | Update when |
 |---|---|---|
-| `README.md` | Setup, env vars, dev commands, onboarding | New env vars added, setup process changes |
-| `ROADY_WOADY.md` | Vision, roadmap, platform ambition | New features added or planned |
-| `master-plan.md` | API capability audit — all 15 channels, what is and isn't used | New channel integrated or new API endpoints utilised |
-| `ai_audit.md` | AI endpoint inventory and analysis | New AI endpoints added |
-| `docs/` folder | Technical reference docs (architecture, API reference, design decisions) | Architecture changes, new API reference needed |
+| `README.md` | Concise project overview, quick start, doc links | New env vars added, setup process changes |
+| `VISION.md` | Platform vision, AI intelligence roadmap, agency operations ambition | Strategic direction changes |
+| `ROADMAP.md` | Product roadmap and upcoming features | New features added or planned |
+| `docs/features.md` | Full feature walkthrough, data flows, AI architecture | New features added or data flows change |
+| `docs/architecture.md` | System architecture, database schema, project structure | Architecture changes |
+| `docs/deployment.md` | Setup, environment variables, API integrations, Vercel deployment | New env vars, deployment process changes |
+| `docs/ai-audit.md` | AI endpoint inventory, data availability matrix, improvements | New AI endpoints added |
+| `docs/data-audit.md` | Per-platform API capability audit across all 15 channels | New channel integrated or new API endpoints utilised |
+| `.github/copilot-instructions.md` | Project conventions for Copilot | New agents added, new coding conventions established |
+| `.github/agents/*.md` | Specialist agent instructions | Agent scope changes or new agents created |
 | `.github/copilot-instructions.md` | Project conventions for Copilot | New agents added, new coding conventions established |
 | `.github/agents/*.md` | Specialist agent instructions | Agent scope changes or new agents created |
 
@@ -31,9 +36,10 @@ Before creating any new file, check whether the right place already exists:
 | API endpoint reference (routes, params, responses) | `docs/api-reference.md` |
 | Changelog / release notes | `CHANGELOG.md` (root — create if absent) |
 | Onboarding / setup / environment | `README.md` |
-| Vision, product roadmap, feature plans | `ROADY_WOADY.md` |
-| Channel API capability gaps and opportunities | `master-plan.md` |
-| AI endpoint inventory | `ai_audit.md` |
+| Vision, product roadmap, feature plans | `ROADMAP.md` or `VISION.md` |
+| Full feature walkthrough and data flows | `docs/features.md` |
+| Channel API capability gaps and opportunities | `docs/data-audit.md` |
+| AI endpoint inventory | `docs/ai-audit.md` |
 | New specialist agent registration | `.github/copilot-instructions.md` "Coding agents available" section |
 
 ## Step 3 — When called after a new agent is created

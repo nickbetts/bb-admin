@@ -1,4 +1,4 @@
-# 🧠 Master Plan v2 — i3media Report Platform
+# Data Capabilities Audit — i3media Report Platform
 
 > **A data-first deep dive into every API endpoint available across all 15 marketing channels — what we pull today, what we're leaving on the table, and how every untapped data point can drive better reporting, smarter AI, and real competitive advantage for the agency.**
 >

@@ -1,7 +1,7 @@
 ---
 description: "Use when: updating the login page, updating the landing page, adding a new marketing section, refreshing marketing copy, updating the channel list on the landing page, adding animations, updating the product feature descriptions, changing the brand narrative, working on the portal login page, or keeping the landing page current with new platform features."
 name: "Landing Page"
-tools: [read, edit, search]
+tools: [read, edit, search, run_in_terminal]
 user-invocable: true
 ---
 

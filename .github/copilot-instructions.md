@@ -20,6 +20,15 @@ i3media Report is an internal agency platform built with **Next.js 16 (App Route
 ## Repository layout
 
 ```
+README.md               # Concise project overview, quick start, doc links
+VISION.md               # Platform vision, AI intelligence roadmap, agency operations ambition
+ROADMAP.md              # Product roadmap and upcoming features
+docs/
+  features.md           # Full feature walkthrough, data flows, AI architecture
+  architecture.md       # System architecture, database schema, project structure
+  deployment.md         # Setup, environment variables, API integrations, Vercel deployment
+  ai-audit.md           # AI endpoint inventory, data availability matrix, improvements
+  data-audit.md         # Per-platform API capability audit across all 15 channels
 src/
   app/                  # Next.js App Router pages and API routes
     api/                # ~120 API route handlers

@@ -148,7 +148,6 @@ The workhorse per-channel AI panel. Appears on every data tab. Performs two jobs
 - ❌ Goals progress (is the client on-track for their KPI targets?)
 - ❌ Historical anomaly pattern — was this same anomaly seen last quarter?
 - ❌ Competitor benchmarking data (CompetitorSnapshot metrics)
-- ❌ No awareness of contracted hours or budget constraints
 
 **Channel personas for alert recommendations:**
 A sophisticated feature — **13 distinct system prompts** exist: search_console/gsc, meta, google_ads, ga4, semrush, tiktok, microsoftads, linkedin, klaviyo, youtube, hubspot, callrail, woocommerce, shopify, ecommerce. YouTube, HubSpot, CallRail, WooCommerce, Shopify, and E-Commerce personas added in v3.0.
@@ -629,24 +628,13 @@ Anthropic's Claude API (available via `@anthropic-ai/sdk`) uses a similar REST p
 
 **Claude Sonnet 3.5 / 3.7 strengths that matter for marketing AI:**
 
-1. **Longer coherent documents**  
-   Strategy documents, comprehensive quarterly reviews, multi-channel narratives — Claude produces substantially more coherent long-form text than gpt-4o-mini. A strategy document that currently reads as a templated bulleted list could become a genuinely persuasive client-facing document.
-
-2. **Better instruction following for complex prompts**  
-   The overview-narrative and super-summary prompts are long and nuanced. Claude Sonnet has notably better adherence to complex, multi-constraint instructions (e.g. "mention specific campaign names AND give a journey assessment AND produce 5 distinct actions AND score the channels AND don't mention channels not in the active list").
-
-3. **200k context window**  
-   Pass full 12-month MetricSnapshot history, all competitor snapshots, all active goals, all previous strategy documents, and full campaign data in a single prompt without chunking or truncation.
-
-4. **Claude Opus 4 / 4.5 for strategic reasoning**  
-   Opus-class models demonstrate markedly better causal reasoning — "sessions dropped because impression share fell because budget ran out because the campaign hit its monthly cap on day 22". This is the quality gap that most affects root-cause analysis and strategy documents.
-
-5. **Reduced hallucination on numerical tasks**  
-   Claude Sonnet hallucinates specific numbers less often than gpt-4o-mini under constrained prompts, which matters for budget recommendations and forecast confidence levels.
+1. **Longer coherent documents** — strategy documents, comprehensive quarterly reviews, multi-channel narratives — Claude produces substantially more coherent long-form text than gpt-4o-mini.
+2. **Better instruction following for complex prompts** — the overview-narrative and super-summary prompts are long and nuanced. Claude Sonnet has notably better adherence to complex, multi-constraint instructions.
+3. **200k context window** — pass full 12-month MetricSnapshot history, all competitor snapshots, all active goals, all previous strategy documents, and full campaign data in a single prompt without chunking.
+4. **Claude Opus 4 / 4.5 for strategic reasoning** — Opus-class models demonstrate markedly better causal reasoning, most affecting root-cause analysis and strategy documents.
+5. **Reduced hallucination on numerical tasks** — Claude Sonnet hallucinates specific numbers less often than gpt-4o-mini under constrained prompts.
 
 ### 7.4 Proposed Hybrid Architecture
-
-Rather than a wholesale replacement, the optimal approach is **model routing based on task complexity and commercial stakes**:
 
 | Task | Current | Proposed | Rationale |
 |------|---------|----------|-----------|
@@ -669,8 +657,6 @@ Rather than a wholesale replacement, the optimal approach is **model routing bas
 
 **Approach A: Drop-in replacement (low risk, 1–2 days)**
 
-Install the Anthropic SDK and add Claude as an alternative via an environment variable or AppSetting:
-
 ```typescript
 // lib/ai-client.ts
 import Anthropic from "@anthropic-ai/sdk";
@@ -685,7 +671,7 @@ export async function createAICompletion(options: {
   temperature?: number;
 }): Promise<string> {
   const provider = await getAIProvider(); // "openai" | "claude"
-  
+
   if (provider === "claude") {
     const client = new Anthropic({ apiKey: await getClaudeKey() });
     const response = await client.messages.create({
@@ -697,7 +683,7 @@ export async function createAICompletion(options: {
     });
     return response.content[0].type === "text" ? response.content[0].text : "";
   }
-  
+
   const client = new OpenAI({ apiKey: await getOpenAIKey() });
   const response = await client.chat.completions.create({
     model: "gpt-4o-mini",
@@ -713,49 +699,21 @@ export async function createAICompletion(options: {
 }
 ```
 
-All 18 endpoints can be refactored to use this single helper, with a `provider` AppSetting controlling which model runs.
-
 **Approach B: Per-task model selection (moderate risk, 1–2 weeks)**
 
-Add a `model` field to the AppSetting UI that allows selecting per-task model routing:
-- "Fast" tasks: always gpt-4o-mini
-- "Deep analysis" tasks: Claude Sonnet (configurable)
-- "Strategic documents": Claude Opus (configurable)
+Add a `model` field to the AppSetting UI that allows selecting per-task model routing — "Fast" tasks always use gpt-4o-mini, "deep analysis" tasks use Claude Sonnet, "strategic documents" use Claude Opus.
 
 **Approach C: A/B routing with quality scoring (advanced, 4–6 weeks)**
 
 Run identical prompts against both models for high-stakes requests, ask a lightweight model to score both outputs (0–10 on specificity, accuracy, actionability), return the higher-scoring result, and log the comparison to improve routing decisions over time.
 
-### 7.6 What If We Integrated Claude Natively (Full Replacement)
+### 7.6 What Is Genuinely Possible with Claude Opus
 
-If the decision were to switch entirely to Claude:
-
-**Wins:**
-- ✅ 200k context window removes all current context limits
-- ✅ Substantially better strategy documents and root cause narratives
-- ✅ Claude's Constitutional AI training makes it less likely to produce outputs that could embarrass the agency (e.g. inappropriate tone, fabricated data)
-- ✅ Anthropic's streaming API is clean and idiomatic
-- ✅ `claude-haiku-3-5` is competitive with gpt-4o-mini on cost for the fast tasks
-
-**Risks:**
-- ❌ Claude doesn't natively support `response_format: { type: "json_object" }` in the same way — all JSON-mode endpoints would need prompt-level instruction changes and more robust JSON extraction
-- ❌ Cost increase of 15–25× on the premium tasks (Opus/Sonnet vs gpt-4o-mini)
-- ❌ `web_search_preview` tool is OpenAI-specific — the landing-page-analysis fallback for bot-blocked pages would break and would need to use a separate web crawl service (Firecrawl, Jina.ai)
-- ❌ OpenAI Responses API (used for web search) has no Claude equivalent — different product surface
-
-### 7.7 What Is Genuinely Possible with Claude Opus
-
-If the agency invested in Claude Opus for its highest-stakes prompts, the following would become realistic:
-
-1. **A genuinely persuasive quarterly strategy document** — not a bulleted template, but a properly argued narrative that sounds like a senior strategist wrote it, with coherent through-lines from performance data to strategic recommendations.
-
-2. **Real root cause analysis that follows causal chains** — "Your CPA rose because budget ran out on day 18, which pushed spend to brand terms (lower intent), which reduced conversion rate, which in turn appears to have triggered Smart Bidding's learning phase to reset." Current gpt-4o-mini often stops at the first plausible hypothesis.
-
-3. **Multi-document synthesis** — pass the last 4 strategy documents, 6 months of snapshots, the current goals, and the client's AI instructions, and get a strategy recommendation that genuinely builds on history.
-
-4. **Creative brief that learns from past** — feed 6 months of creative performance data and Claude Opus can identify non-obvious creative patterns (e.g. "ads featuring a human face consistently outperform product-only shots by 40% for this client, across all seasonal periods").
-
-5. **Proactive client communication drafts** — "Based on this month's performance, here's a draft email to the client explaining the CPA increase with proposed remediation steps and a revised forecast." The agency saves 30 minutes of email writing per client per month.
+1. **A genuinely persuasive quarterly strategy document** — properly argued narrative that sounds like a senior strategist wrote it.
+2. **Real root cause analysis that follows causal chains** — "Your CPA rose because budget ran out on day 18, which pushed spend to brand terms (lower intent), which reduced conversion rate, which in turn appears to have triggered Smart Bidding's learning phase to reset."
+3. **Multi-document synthesis** — pass the last 4 strategy documents, 6 months of snapshots, the current goals, and the client's AI instructions.
+4. **Creative brief that learns from past** — identify non-obvious creative patterns across 6 months of data.
+5. **Proactive client communication drafts** — "Based on this month's performance, here's a draft email to the client explaining the CPA increase with proposed remediation steps."
 
 ---
 
@@ -772,109 +730,109 @@ If the agency invested in Claude Opus for its highest-stakes prompts, the follow
 ### 8.1 Feedback & Quality
 
 **RT-01 — AI output quality feedback loop** *(Large)*  
-No mechanism exists for users to mark AI output as useful, wrong, or edited. Without this signal, prompt tuning is blind. Required: new `AiOutputFeedback` DB model (endpointName, clientId, rating, editedOutput, createdAt), a thumbs up/down + optional text UI component, and an admin analytics view showing rating trends per endpoint.
+No mechanism exists for users to mark AI output as useful, wrong, or edited. Required: new `AiOutputFeedback` DB model (endpointName, clientId, rating, editedOutput, createdAt), a thumbs up/down + optional text UI component, and an admin analytics view showing rating trends per endpoint.
 
 **RT-02 — Prompt output caching / deduplication** *(Medium)*  
-Every button press fires a fresh OpenAI API call even if the same client + period + data has been requested before. A hash of the serialised prompt context stored in `ApiCache` with a short TTL (e.g. 1h) would cut costs and improve perceived performance. Particularly high value for `overview-narrative` and `strategy-document` which are expensive to generate.
+Every button press fires a fresh OpenAI API call even if the same client + period + data has been requested before. A hash of the serialised prompt context stored in `ApiCache` with a short TTL (e.g. 1h) would cut costs and improve perceived performance. Particularly high value for `overview-narrative` and `strategy-document`.
 
 ---
 
 ### 8.2 Data & Context Gaps
 
 **RT-03 — Budget Advisor: no ClientGoal awareness** *(Quick win)*  
-`budget-advisor` fetches client name and instructions but never queries `ClientGoal`. Adding a goals context block (same pattern as overview-narrative and strategy-document) would orient budget recommendations around hitting the client's actual CPA/ROAS targets rather than generic efficiency improvements.
+`budget-advisor` fetches client name and instructions but never queries `ClientGoal`. Adding a goals context block would orient budget recommendations around hitting the client's actual CPA/ROAS targets.
 
 **RT-04 — Budget Advisor: no total budget / contracted spend** *(Quick win)*  
-The endpoint recommends specific daily budgets with no knowledge of the client's total available budget or contracted media spend. Passing `client.contractedHours` (which contains service/hours JSON) and any future `totalMediaBudget` field from the client record would prevent nonsensical recommendations (e.g. "double Meta budget" when the client has a fixed £2k/month).
+The endpoint recommends specific daily budgets with no knowledge of the client's total available budget or contracted media spend.
 
 **RT-05 — EcommerceSection: no AiInsightsPanel** *(Quick win)*  
-`woocommerce`, `shopify`, and `ecommerce` personas exist in `SECTION_CONFIGS` in `summary/route.ts` but `EcommerceSection.tsx` does not render `AiInsightsPanel`. Wiring it in follows the same pattern as KlaviyoSection, LinkedInSection, etc. — import `AiInsightsPanel`, pass `sectionType="ecommerce"` and the loaded stats as `metrics`.
+`woocommerce`, `shopify`, and `ecommerce` personas exist in `SECTION_CONFIGS` in `summary/route.ts` but `EcommerceSection.tsx` does not render `AiInsightsPanel`.
 
 **RT-06 — Seasonality context in AI prompts** *(Medium)*  
-No endpoint currently tells the AI what time of year it is or what seasonal events are upcoming. Adding a lightweight seasonality context block (current month, upcoming retail events for the client's sector, YoY comparison flag) to `overview-narrative`, `forecast`, and `report-commentary` would improve the quality of all time-sensitive outputs.
+No endpoint currently tells the AI what time of year it is or what seasonal events are upcoming.
 
 **RT-07 — SuperSummary: missing channel coverage** *(Medium)*  
-`SECTION_NAMES` and `METRIC_LABELS` in `super-summary/route.ts` only define entries for `ga4`, `googleads`, `meta`, `seo`, `searchconsole`. Clients using TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, or CallRail cannot use SuperSummary on those tabs. Adding entries to `SECTION_NAMES`/`METRIC_LABELS` and rendering `<SuperSummary>` in the relevant section components (TikTokSection, MicrosoftAdsSection, etc.) would complete coverage.
+`SECTION_NAMES` and `METRIC_LABELS` in `super-summary/route.ts` only define entries for `ga4`, `googleads`, `meta`, `seo`, `searchconsole`. Clients using TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, or CallRail cannot use SuperSummary on those tabs.
 
 **RT-08 — SuperSummary: no Core Web Vitals data** *(Quick win)*  
-`landing-page-analysis` already uses `getCoreWebVitals()` from `src/lib/core-web-vitals.ts` with 24h cache. SuperSummary crawls landing pages but never pulls CrUX/CWV data despite it being available. Injecting the CWV scores (LCP, CLS, INP) per URL into the SuperSummary page signals would make the page health scoring more grounded in real user data.
+SuperSummary crawls landing pages but never pulls CrUX/CWV data despite it being available via `getCoreWebVitals()`.
 
 **RT-09 — SuperSummary: no ClientGoal awareness** *(Quick win)*  
-SuperSummary is the most comprehensive per-channel analysis tool but it never references the client's active goals. Adding a goals context block (same pattern as other endpoints) would let it say "you are 60% of the way to your ROAS target — here is what the landing page data suggests is holding you back."
+SuperSummary never references the client's active goals.
 
 **RT-10 — Overview-narrative: blended totals not server-guaranteed** *(Medium)*  
-The `aggregated` object (blended ROAS, total spend, etc.) is assembled by the frontend and passed to `overview-narrative`. If a channel section hasn't been loaded on the dashboard, its data is absent from the totals. Moving the blended totals calculation server-side (reading from `ApiCache`) would make the numbers deterministic and complete regardless of which tabs the user visited.
+The `aggregated` object is assembled by the frontend. If a channel section hasn't been loaded, its data is absent. Moving blended totals calculation server-side (reading from `ApiCache`) would make the numbers deterministic.
 
 ---
 
 ### 8.3 Model & Output Quality
 
 **RT-11 — Forecast: no per-channel breakdown** *(Medium)*  
-The forecast endpoint projects sessions/conversions/revenue as single aggregated numbers. A marketer reviewing the forecast needs "Google Ads conversions: +8%, Meta spend efficiency: -5% (seasonal CPM increase)" rather than a blended total. Refactoring the prompt to loop over available `MetricSnapshot` section types and produce per-channel projections would make forecasts operationally useful.
+The forecast endpoint projects sessions/conversions/revenue as single aggregated numbers. Per-channel projections would make forecasts operationally useful.
 
 **RT-12 — Forecast: results not persisted** *(Quick win)*  
-Every forecast is ephemeral — generated on demand, never stored. Saving each `forecast` response to `MetricSnapshot` (or a new `ForecastRecord` model) with the period it covers would enable: (a) comparing previous forecasts to actuals, (b) showing forecast vs actual charts, and (c) calibrating confidence bands over time.
+Every forecast is ephemeral — generated on demand, never stored.
 
 **RT-13 — Attribution: no Data-Driven Attribution model** *(Large)*  
-The 5 attribution models (Last Click, First Click, Linear, Time Decay, Position-Based) are algorithmically correct but none of them is Data-Driven (DDA). DDA is what Google and Meta now default to and what clients are increasingly being quoted by platforms. Adding a DDA approximation (Shapley value across touchpoints) would make the attribution module more credible.
+Adding a DDA approximation (Shapley value across touchpoints) would make the attribution module more credible.
 
 **RT-14 — Attribution: results not saved to DB** *(Quick win)*  
-Attribution model results are computed on demand and discarded. Saving each run to a `AttributionResult` model (similar to `BudgetRecommendation`) would enable trend tracking — "this month Google Ads' DDA share dropped 8 points, suggesting declining upper-funnel effectiveness".
+Attribution model results are computed on demand and discarded.
 
 **RT-15 — Root cause: plain Markdown output** *(Medium)*  
-`root-cause` returns a plain Markdown string. The frontend renders it as raw text, making it impossible to build interactive components (expandable hypothesis sections, confidence badges, one-click "create action from this" buttons). Migrating the output to structured JSON (same approach as `strategy-document`) would unlock a significantly better UI.
+`root-cause` returns a plain Markdown string. Migrating to structured JSON would unlock a significantly better UI.
 
 **RT-16 — Creative Intelligence: no video performance metrics** *(Medium)*  
-The `creative` data shape (`name, spend, impressions, clicks, ctr, conversions, roas, format, headline, description`) has no video metrics. For Meta Reels and TikTok ads, the critical signals are thumb-stop rate, 3-second view rate, video completion rate, and hook watch time — none of which are fed in. These are available from the Meta and TikTok APIs already fetched by the platform.
+The `creative` data shape has no video metrics (thumb-stop rate, 3-second view rate, video completion rate, hook watch time).
 
 **RT-17 — Creative Intelligence: no TikTok-specific analysis** *(Medium)*  
-The `creative-intelligence` endpoint accepts a `platform` parameter but there is no dedicated TikTok creative path. TikTok creative analysis requires different vocabulary (hooks, sounds, effects, UGC vs polished) and TikTok-specific fatigue signals. Creating a separate system prompt branch for `platform === "tiktok"` (or a separate endpoint) would significantly improve the quality of TikTok creative recommendations.
+No dedicated TikTok creative path exists. TikTok creative analysis requires different vocabulary and TikTok-specific fatigue signals.
 
 ---
 
 ### 8.4 Chat & Conversational AI
 
 **RT-18 — Chat: context limited to MetricSnapshot only** *(Large)*  
-The chat AI can only reference historical snapshots. Live questions like "what were my conversions yesterday?" or "which campaign is overspending today?" cannot be answered. Adding function calling (`tools`) that can call `/api/ga4`, `/api/google-ads`, and `/api/meta` on demand would transform the chat from a historical analysis tool into a genuine real-time assistant.
+Adding function calling (`tools`) that can call `/api/ga4`, `/api/google-ads`, and `/api/meta` on demand would transform the chat from a historical analysis tool into a genuine real-time assistant.
 
 **RT-19 — Chat: no suggested follow-up questions** *(Quick win)*  
-The UI shows static prompt suggestions that never adapt to the data. After each AI response, generating 2–3 contextual follow-up questions (a small secondary completion call using the conversation and last response as context) would significantly improve engagement and discoverability of insights.
+After each AI response, generating 2–3 contextual follow-up questions would significantly improve engagement.
 
 ---
 
 ### 8.5 AiInsightsPanel (summary endpoint)
 
 **RT-20 — AiInsightsPanel: no demographic/audience breakdown** *(Medium)*  
-The per-channel `AiInsightsPanel` (`/api/ai/summary`) receives account-level and campaign-level metrics but no audience/demographic breakdown (age, gender, device split, placement). Meta age×gender data now exists via `getMetaAudienceDemographics()` (v3.2) but it is only fed into `overview-narrative`, not into the per-channel AiInsightsPanel where campaign-level creative decisions are made.
+Meta age×gender data now exists via `getMetaAudienceDemographics()` (v3.2) but it is only fed into `overview-narrative`, not into the per-channel AiInsightsPanel.
 
 **RT-21 — AiInsightsPanel: no goal progress** *(Quick win)*  
-Each channel's AiInsightsPanel prompt does not include the client's active goals. Adding a goals context block (same as other endpoints) would let the AI say "Google Ads ROAS is 3.2x — you need 4.0x by March to hit your target."
+Each channel's AiInsightsPanel prompt does not include the client's active goals.
 
 **RT-22 — AiInsightsPanel: no historical anomaly pattern** *(Quick win)*  
-When anomaly detection flags a metric change, the AI doesn't know whether this is a first-time occurrence or a recurring pattern. Querying `DetectedAnomaly` for the same client/platform/metric (read pattern from root-cause route) and injecting "this metric has anomalied X times in the last 6 months" would improve insight quality.
+When anomaly detection flags a metric change, the AI doesn't know whether this is a first-time occurrence or a recurring pattern.
 
 ---
 
 ### 8.6 Report & Document Workflow
 
 **RT-23 — Report Commentary: no previous-period context for intro sections** *(Quick win)*  
-The `overview` / `intro` section type in `report-commentary` does not receive previous-period metrics even though they are stored. For the executive overview commentary, a MoM/YoY comparison block injected into the prompt would make the opening narrative measurably more useful to clients.
+The `overview`/`intro` section type does not receive previous-period metrics even though they are stored.
 
 **RT-24 — Report Commentary: no seasonal context** *(Quick win)*  
-Same gap as RT-06 but specifically in the report commentary context. Commentary generated in December could say "given the upcoming Christmas trading peak" only if the AI knows the current date and client sector. A `{ currentMonth, clientSector, upcomingEvents }` block would address this.
+Commentary generated in December could reference "the upcoming Christmas trading peak" only if the AI knows the current date and client sector.
 
 ---
 
 ### 8.7 Architecture & Infrastructure
 
 **RT-25 — Claude Sonnet/Opus model routing** *(Large)*  
-See Section 7 for full analysis. The highest-leverage targets for model upgrades are: `strategy-document` (long-form coherence), `root-cause` (causal reasoning), `overview-narrative` (multi-constraint instruction following), and `forecast` (numerical reasoning). Implementation via a `createAICompletion()` abstraction in `src/lib/ai-client.ts` that routes based on task type and a per-task `AppSetting`.
+See Section 7 for full analysis. Implementation via a `createAICompletion()` abstraction in `src/lib/ai-client.ts` that routes based on task type and a per-task `AppSetting`.
 
 **RT-26 — Media Plan Forecast: no historical benchmarks** *(Medium)*  
-`/api/tools/media-plan/[id]/forecast` generates projections with no knowledge of the client's actual historical CTRs, CPMs, or CPAs. Querying `MetricSnapshot` for the channels in the media plan and injecting "your last 3-month average Google Ads CTR is 4.2%" would make media plan forecasts substantially more credible.
+`/api/tools/media-plan/[id]/forecast` generates projections with no knowledge of the client's actual historical CTRs, CPMs, or CPAs.
 
 **RT-27 — Keyword-overlap endpoint not surfaced in AI** *(Quick win)*  
-`/api/cross/keyword-overlap` identifies paid/organic cannibilisation (queries where you're paying for clicks you'd get organically). This data is currently only shown in a UI panel. Injecting the high-risk cannibilisation pairs into the SEO `AiInsightsPanel` prompt would make it a much stronger strategic insight.
+`/api/cross/keyword-overlap` identifies paid/organic cannibalisation but this data is only shown in a UI panel. Injecting the high-risk cannibalisation pairs into the SEO `AiInsightsPanel` prompt would make it a much stronger strategic insight.
 
 ---
 
