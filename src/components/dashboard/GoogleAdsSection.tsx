@@ -125,6 +125,32 @@ interface GoogleAdsData {
     costMicros: number;
     impressions: number;
   }>;
+  pmaxInsights?: Array<{
+    campaignName: string;
+    assetGroupName: string;
+    listingGroupStatus: string;
+    clicks: number;
+    impressions: number;
+    costMicros: number;
+    conversions: number;
+    conversionsValue: number;
+  }>;
+  geoPerformance?: Array<{
+    country: string;
+    region: string;
+    clicks: number;
+    impressions: number;
+    costMicros: number;
+    conversions: number;
+  }>;
+  schedulePerformance?: Array<{
+    dayOfWeek: string;
+    hourOfDay: number;
+    clicks: number;
+    impressions: number;
+    costMicros: number;
+    conversions: number;
+  }>;
 }
 
 interface Props {
@@ -1028,6 +1054,179 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           source="googleads"
         />
       ) : null}
+
+      {/* Performance Max Insights */}
+      {!loading && !error && show("pmax") && (data?.pmaxInsights?.length ?? 0) > 0 && (
+        <SectionCard title="Performance Max Insights" subtitle="Asset group performance across PMax campaigns">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 700 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-4 font-medium">Campaign</th>
+                  <th className="text-left px-4 py-4 font-medium">Asset Group</th>
+                  <th className="text-right px-4 py-4 font-medium">Clicks</th>
+                  <th className="text-right px-4 py-4 font-medium">Cost</th>
+                  <th className="text-right px-4 py-4 font-medium">Conv.</th>
+                  <th className="text-right px-4 py-4 font-medium">Conv. Value</th>
+                  <th className="text-right px-6 py-4 font-medium">ROAS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {data!.pmaxInsights!.map((p, i) => {
+                  const pRoas = roas(p.conversionsValue, p.costMicros);
+                  return (
+                    <tr key={i} className="hover:bg-slate-50 transition">
+                      <td className="px-6 py-4 text-slate-800 font-medium max-w-[200px] truncate">{p.campaignName}</td>
+                      <td className="px-4 py-4 text-slate-600 max-w-[200px] truncate">{p.assetGroupName}</td>
+                      <td className="px-4 py-4 text-right text-slate-600">{formatNumber(p.clicks)}</td>
+                      <td className="px-4 py-4 text-right text-slate-600">{formatCurrency(micros(p.costMicros))}</td>
+                      <td className="px-4 py-4 text-right text-slate-600">{formatNumber(p.conversions)}</td>
+                      <td className="px-4 py-4 text-right text-slate-600">{formatCurrency(p.conversionsValue)}</td>
+                      <td className="px-6 py-4 text-right">
+                        <span className={`font-semibold ${pRoas >= 2 ? "text-emerald-600" : pRoas >= 1 ? "text-amber-600" : "text-red-600"}`}>
+                          {pRoas.toFixed(2)}x
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Geographic Performance */}
+      {!loading && !error && show("geo") && (data?.geoPerformance?.length ?? 0) > 0 && (
+        <SectionCard title="Geographic Performance" subtitle="Top locations by click volume">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 600 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-4 font-medium">Country</th>
+                  <th className="text-left px-4 py-4 font-medium">Region</th>
+                  <th className="text-right px-4 py-4 font-medium">Clicks</th>
+                  <th className="text-right px-4 py-4 font-medium">Impr.</th>
+                  <th className="text-right px-4 py-4 font-medium">Cost</th>
+                  <th className="text-right px-4 py-4 font-medium">Conv.</th>
+                  <th className="text-right px-6 py-4 font-medium">CPA</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {[...data!.geoPerformance!]
+                  .sort((a, b) => b.clicks - a.clicks)
+                  .slice(0, 10)
+                  .map((g, i) => {
+                    const geoCpa = cpa(g.costMicros, g.conversions);
+                    return (
+                      <tr key={i} className="hover:bg-slate-50 transition">
+                        <td className="px-6 py-4 text-slate-800 font-medium">{g.country}</td>
+                        <td className="px-4 py-4 text-slate-600">{g.region || "—"}</td>
+                        <td className="px-4 py-4 text-right text-slate-600">{formatNumber(g.clicks)}</td>
+                        <td className="px-4 py-4 text-right text-slate-600">{formatNumber(g.impressions)}</td>
+                        <td className="px-4 py-4 text-right text-slate-600">{formatCurrency(micros(g.costMicros))}</td>
+                        <td className="px-4 py-4 text-right text-slate-600">{formatNumber(g.conversions)}</td>
+                        <td className="px-6 py-4 text-right text-slate-600">{g.conversions > 0 ? formatCurrency(geoCpa) : "—"}</td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Ad Schedule Performance */}
+      {!loading && !error && show("schedule") && (data?.schedulePerformance?.length ?? 0) > 0 && (() => {
+        const dayOrder = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+        const dayLabels: Record<string, string> = { MONDAY: "Mon", TUESDAY: "Tue", WEDNESDAY: "Wed", THURSDAY: "Thu", FRIDAY: "Fri", SATURDAY: "Sat", SUNDAY: "Sun" };
+        const hourBuckets = [
+          { label: "00–06", hours: [0, 1, 2, 3, 4, 5] },
+          { label: "06–09", hours: [6, 7, 8] },
+          { label: "09–12", hours: [9, 10, 11] },
+          { label: "12–15", hours: [12, 13, 14] },
+          { label: "15–18", hours: [15, 16, 17] },
+          { label: "18–21", hours: [18, 19, 20] },
+          { label: "21–24", hours: [21, 22, 23] },
+        ];
+
+        // Aggregate by day+bucket
+        const grid: Record<string, Record<string, { clicks: number; impressions: number; conversions: number; costMicros: number }>> = {};
+        let maxConvRate = 0;
+
+        for (const day of dayOrder) {
+          grid[day] = {};
+          for (const bucket of hourBuckets) {
+            grid[day][bucket.label] = { clicks: 0, impressions: 0, conversions: 0, costMicros: 0 };
+          }
+        }
+
+        for (const s of data!.schedulePerformance!) {
+          const bucket = hourBuckets.find(b => b.hours.includes(s.hourOfDay));
+          if (!bucket || !grid[s.dayOfWeek]) continue;
+          const cell = grid[s.dayOfWeek][bucket.label];
+          cell.clicks += s.clicks;
+          cell.impressions += s.impressions;
+          cell.conversions += s.conversions;
+          cell.costMicros += s.costMicros;
+        }
+
+        for (const day of dayOrder) {
+          for (const bucket of hourBuckets) {
+            const cell = grid[day][bucket.label];
+            const rate = cell.clicks > 0 ? cell.conversions / cell.clicks : 0;
+            if (rate > maxConvRate) maxConvRate = rate;
+          }
+        }
+
+        return (
+          <SectionCard title="Ad Schedule Performance" subtitle="Conversion rate heatmap by day and time">
+            <div style={{ overflowX: "auto" }}>
+              <table className="w-full text-xs" style={{ minWidth: 500 }}>
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                    <th className="text-left px-4 py-3 font-medium">Day</th>
+                    {hourBuckets.map(b => (
+                      <th key={b.label} className="text-center px-2 py-3 font-medium">{b.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {dayOrder.map(day => (
+                    <tr key={day}>
+                      <td className="px-4 py-3 text-slate-800 font-medium">{dayLabels[day]}</td>
+                      {hourBuckets.map(bucket => {
+                        const cell = grid[day][bucket.label];
+                        const convRate = cell.clicks > 0 ? cell.conversions / cell.clicks : 0;
+                        const intensity = maxConvRate > 0 ? convRate / maxConvRate : 0;
+                        const bg = cell.clicks === 0
+                          ? "bg-slate-50"
+                          : intensity > 0.75
+                            ? "bg-emerald-200 text-emerald-900"
+                            : intensity > 0.5
+                              ? "bg-emerald-100 text-emerald-800"
+                              : intensity > 0.25
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-red-50 text-red-700";
+                        return (
+                          <td
+                            key={bucket.label}
+                            className={`text-center px-2 py-3 font-medium ${bg}`}
+                            title={`${dayLabels[day]} ${bucket.label}: ${formatNumber(cell.clicks)} clicks, ${formatNumber(cell.conversions)} conv, ${formatPercent(convRate)} CVR`}
+                          >
+                            {cell.clicks > 0 ? formatPercent(convRate) : "—"}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-3">Cell colour intensity = conversion rate relative to the best-performing slot. Hover for details.</p>
+          </SectionCard>
+        );
+      })()}
 
       {/* Creative Intelligence */}
       {!hideAi && !reportMode && !loading && !error && clientId && (
