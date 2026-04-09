@@ -20,6 +20,7 @@ interface ClientGoal {
 
 interface GoalsSectionProps {
   clientId: string;
+  visibleBlocks?: string[];
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -100,7 +101,8 @@ function GoalProgress({ goal }: { goal: ClientGoal }) {
   );
 }
 
-export function GoalsSection({ clientId }: GoalsSectionProps) {
+export function GoalsSection({ clientId, visibleBlocks }: GoalsSectionProps) {
+  const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [goals, setGoals] = useState<ClientGoal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);

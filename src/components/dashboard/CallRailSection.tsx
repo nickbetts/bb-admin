@@ -59,9 +59,11 @@ interface CallRailSectionProps {
   clientId: string;
   clientName: string;
   crossPlatformContext?: string;
+  visibleBlocks?: string[];
 }
 
-export function CallRailSection({ clientId, clientName, crossPlatformContext }: CallRailSectionProps) {
+export function CallRailSection({ clientId, clientName, crossPlatformContext, visibleBlocks }: CallRailSectionProps) {
+  const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [data, setData] = useState<CallRailData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -107,7 +109,7 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext }: 
 
   return (
     <div>
-      {summary && (
+      {show("kpis") && summary && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
           {[
             { label: "Total Calls", value: summary.totalCalls, icon: <Phone style={{ width: 14, height: 14 }} />, color: "#6366f1" },
@@ -124,7 +126,7 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext }: 
         </div>
       )}
 
-      {summary?.bySource && summary.bySource.length > 0 && (
+      {show("by_source") && summary?.bySource && summary.bySource.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 10 }}>Calls by Source</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -146,7 +148,7 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext }: 
         </div>
       )}
 
-      {calls && calls.length > 0 && (
+      {show("recent_calls") && calls && calls.length > 0 && (
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Recent Calls</div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>

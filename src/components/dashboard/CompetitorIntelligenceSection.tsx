@@ -24,9 +24,11 @@ interface ParsedMetrics {
 interface CompetitorIntelligenceSectionProps {
   clientId: string;
   semrushDomain?: string | null;
+  visibleBlocks?: string[];
 }
 
-export function CompetitorIntelligenceSection({ clientId }: CompetitorIntelligenceSectionProps) {
+export function CompetitorIntelligenceSection({ clientId, visibleBlocks }: CompetitorIntelligenceSectionProps) {
+  const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [snapshots, setSnapshots] = useState<CompetitorSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
 

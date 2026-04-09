@@ -53,6 +53,7 @@ interface KlaviyoSectionProps {
   startDate: string;
   endDate: string;
   crossPlatformContext?: string;
+  visibleBlocks?: string[];
 }
 
 function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -65,7 +66,8 @@ function MetricCard({ label, value, sub }: { label: string; value: string; sub?:
   );
 }
 
-export function KlaviyoSection({ clientId, clientName, startDate: _startDate, endDate: _endDate, crossPlatformContext }: KlaviyoSectionProps) {
+export function KlaviyoSection({ clientId, clientName, startDate: _startDate, endDate: _endDate, crossPlatformContext, visibleBlocks }: KlaviyoSectionProps) {
+  const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<KlaviyoOverview | null>(null);
   const [campaigns, setCampaigns] = useState<KlaviyoCampaign[]>([]);
@@ -119,14 +121,14 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
 
       {overview && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+          {show("kpis") && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
             <MetricCard label="Total Sends" value={overview.sends.toLocaleString()} sub={`${overview.campaignCount} campaigns`} />
             <MetricCard label="Opens" value={overview.opens.toLocaleString()} sub={`${overview.openRate.toFixed(1)}% open rate`} />
             <MetricCard label="Clicks" value={overview.clicks.toLocaleString()} sub={`${overview.clickRate.toFixed(1)}% click rate`} />
             <MetricCard label="Revenue" value={`£${overview.revenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} />
-          </div>
+          </div>}
 
-          {campaigns.length > 0 && (
+          {show("campaigns") && campaigns.length > 0 && (
             <div className="card">
               <div className="card-header">
                 <h3 className="card-title">Recent Campaigns</h3>

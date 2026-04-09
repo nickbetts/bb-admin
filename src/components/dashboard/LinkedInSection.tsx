@@ -57,6 +57,7 @@ interface LinkedInSectionProps {
   startDate: string;
   endDate: string;
   crossPlatformContext?: string;
+  visibleBlocks?: string[];
 }
 
 function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -69,7 +70,8 @@ function MetricCard({ label, value, sub }: { label: string; value: string; sub?:
   );
 }
 
-export function LinkedInSection({ clientId, clientName, accountId, accessToken, startDate, endDate, crossPlatformContext }: LinkedInSectionProps) {
+export function LinkedInSection({ clientId, clientName, accountId, accessToken, startDate, endDate, crossPlatformContext, visibleBlocks }: LinkedInSectionProps) {
+  const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [loading, setLoading] = useState(false);
   const [overview, setOverview] = useState<LinkedInOverview | null>(null);
   const [campaigns, setCampaigns] = useState<LinkedInCampaign[]>([]);
@@ -136,7 +138,7 @@ export function LinkedInSection({ clientId, clientName, accountId, accessToken, 
             <MetricCard label="Reach" value={overview.reach.toLocaleString()} />
           </div>
 
-          {campaigns.length > 0 && (
+          {show("campaigns") && campaigns.length > 0 && (
             <div className="card">
               <div className="card-header">
                 <h3 className="card-title">Campaign Breakdown</h3>
@@ -169,7 +171,7 @@ export function LinkedInSection({ clientId, clientName, accountId, accessToken, 
           )}
 
           {/* Demographics — Industry */}
-          {demographics?.industry && demographics.industry.length > 0 && (
+          {show("demographics") && demographics?.industry && demographics.industry.length > 0 && (
             <div className="card" style={{ marginTop: 4 }}>
               <div className="card-header"><h3 className="card-title">Industry</h3></div>
               <div className="card-body" style={{ padding: 0 }}>
@@ -198,7 +200,7 @@ export function LinkedInSection({ clientId, clientName, accountId, accessToken, 
           )}
 
           {/* Demographics — Job Function */}
-          {demographics?.jobFunction && demographics.jobFunction.length > 0 && (
+          {show("demographics") && demographics?.jobFunction && demographics.jobFunction.length > 0 && (
             <div className="card" style={{ marginTop: 4 }}>
               <div className="card-header"><h3 className="card-title">Job Function</h3></div>
               <div className="card-body" style={{ padding: 0 }}>
@@ -227,7 +229,7 @@ export function LinkedInSection({ clientId, clientName, accountId, accessToken, 
           )}
 
           {/* Demographics — Company Size */}
-          {demographics?.companySize && demographics.companySize.length > 0 && (
+          {show("demographics") && demographics?.companySize && demographics.companySize.length > 0 && (
             <div className="card" style={{ marginTop: 4 }}>
               <div className="card-header"><h3 className="card-title">Company Size</h3></div>
               <div className="card-body" style={{ padding: 0 }}>

@@ -55,13 +55,15 @@ interface HubSpotSectionProps {
   clientId: string;
   clientName: string;
   crossPlatformContext?: string;
+  visibleBlocks?: string[];
 }
 
 function formatCurrency(v: number) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(v);
 }
 
-export function HubSpotSection({ clientId, clientName, crossPlatformContext }: HubSpotSectionProps) {
+export function HubSpotSection({ clientId, clientName, crossPlatformContext, visibleBlocks }: HubSpotSectionProps) {
+  const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [data, setData] = useState<HubSpotData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -123,7 +125,7 @@ export function HubSpotSection({ clientId, clientName, crossPlatformContext }: H
         </div>
       )}
 
-      {data.deals && data.deals.length > 0 && (
+      {show("deals") && data.deals && data.deals.length > 0 && (
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Recent Deals</div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>

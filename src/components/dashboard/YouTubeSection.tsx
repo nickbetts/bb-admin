@@ -59,9 +59,11 @@ interface YouTubeSectionProps {
   clientId: string;
   clientName: string;
   crossPlatformContext?: string;
+  visibleBlocks?: string[];
 }
 
-export function YouTubeSection({ clientId, clientName, crossPlatformContext }: YouTubeSectionProps) {
+export function YouTubeSection({ clientId, clientName, crossPlatformContext, visibleBlocks }: YouTubeSectionProps) {
+  const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [data, setData] = useState<YouTubeData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -101,7 +103,7 @@ export function YouTubeSection({ clientId, clientName, crossPlatformContext }: Y
   return (
     <div>
       {/* Channel summary */}
-      {channel && (
+      {show("kpis") && channel && (
         <div style={{ marginBottom: 20, padding: "14px 16px", background: "#ff000008", border: "1px solid #ff000020", borderRadius: "var(--r-sm)", display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 40, height: 40, borderRadius: 8, background: "#ff0000", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Play style={{ width: 18, height: 18, color: "white", fill: "white" }} />
@@ -115,7 +117,7 @@ export function YouTubeSection({ clientId, clientName, crossPlatformContext }: Y
         </div>
       )}
 
-      {analytics && (
+      {show("kpis") && analytics && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
           {[
             { label: "Views", value: analytics.views.toLocaleString(), icon: <Eye style={{ width: 13, height: 13 }} />, color: "#ef4444" },
@@ -133,7 +135,7 @@ export function YouTubeSection({ clientId, clientName, crossPlatformContext }: Y
         </div>
       )}
 
-      {videos && videos.length > 0 && (
+      {show("videos") && videos && videos.length > 0 && (
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Top Videos</div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>

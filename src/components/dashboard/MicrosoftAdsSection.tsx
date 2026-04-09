@@ -12,6 +12,7 @@ interface MicrosoftAdsSectionProps {
   startDate: string;
   endDate: string;
   crossPlatformContext?: string;
+  visibleBlocks?: string[];
 }
 
 interface MicrosoftAdsOverview {
@@ -72,7 +73,8 @@ interface MsGeoBreakdown {
   spend: number;
 }
 
-export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, crossPlatformContext }: MicrosoftAdsSectionProps) {
+export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks }: MicrosoftAdsSectionProps) {
+  const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [data, setData] = useState<{ overview: MicrosoftAdsOverview; campaigns: MicrosoftAdsCampaign[]; keywords?: MsKeyword[]; searchTerms?: MsSearchTerm[]; deviceBreakdown?: MsDeviceBreakdown[]; geoBreakdown?: MsGeoBreakdown[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -133,7 +135,7 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
       </div>
 
       {/* Overview KPI Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
+      {show("kpis") && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
         {[
           { label: "Spend", value: formatCurrency(overview.spend), color: "#00a4ef" },
           { label: "Impressions", value: formatNumber(overview.impressions), color: "#6366f1" },
@@ -155,10 +157,10 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
             <div style={{ fontSize: 20, fontWeight: 700, color: kpi.color }}>{kpi.value}</div>
           </div>
         ))}
-      </div>
+      </div>}
 
       {/* Campaigns table */}
-      {campaigns.length > 0 && (
+      {show("campaigns") && campaigns.length > 0 && (
         <div style={{ overflowX: "auto" }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Campaigns</h3>
           <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -203,7 +205,7 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
       )}
 
       {/* Keywords table */}
-      {data.keywords && data.keywords.length > 0 && (
+      {show("keywords") && data.keywords && data.keywords.length > 0 && (
         <div style={{ overflowX: "auto" }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Keywords</h3>
           <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -236,7 +238,7 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
       )}
 
       {/* Search Terms table */}
-      {data.searchTerms && data.searchTerms.length > 0 && (
+      {show("search_terms") && data.searchTerms && data.searchTerms.length > 0 && (
         <div style={{ overflowX: "auto" }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Search Terms</h3>
           <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -265,7 +267,7 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
       )}
 
       {/* Device Breakdown */}
-      {data.deviceBreakdown && data.deviceBreakdown.length > 0 && (
+      {show("device_breakdown") && data.deviceBreakdown && data.deviceBreakdown.length > 0 && (
         <div>
           <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Device Breakdown</h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
@@ -282,7 +284,7 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
       )}
 
       {/* Geographic Breakdown */}
-      {data.geoBreakdown && data.geoBreakdown.length > 0 && (
+      {show("geo") && data.geoBreakdown && data.geoBreakdown.length > 0 && (
         <div style={{ overflowX: "auto" }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Geographic Breakdown</h3>
           <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>

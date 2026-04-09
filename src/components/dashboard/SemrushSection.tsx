@@ -170,7 +170,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       setLoading(true);
       setError(null);
       try {
-        const fetchList: Promise<Response>[] = [
+        const fetchList: Promise<Response | null>[] = [
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=overview`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=keywords`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=rank_movers`, { signal: controller.signal }),
@@ -203,8 +203,8 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
         }
         const [overviewRes, keywordsRes, rankMoversRes, historyRes, distRes, competitorsRes, backlinksRes, contentGapRes, serpFeaturesRes, backlinkChangesRes, topicResRes, siteAuditRes, adCopyRes, displayAdvRes, shoppingCompRes, kwTrendsRes, refDomainsRes, anchorTextRes, blCompRes, posChangesRes, trackedRes, aiVisRes] = await Promise.all(fetchList);
 
-        if (!overviewRes.ok) {
-          const err = await overviewRes.json();
+        if (!overviewRes || !overviewRes.ok) {
+          const err = overviewRes ? await overviewRes.json() : { error: "Failed to fetch overview" };
           if (err.error === "semrush_no_units") {
             throw new Error("SEMrush API unit balance is zero. Top up units to restore data.");
           }
@@ -213,12 +213,12 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
 
         const [ov, kw, movers, hist, dist, comps, bls] = await Promise.all([
           overviewRes.json(),
-          keywordsRes.json(),
-          rankMoversRes.ok ? rankMoversRes.json() : Promise.resolve([]),
-          historyRes.json(),
-          distRes.json(),
-          competitorsRes.ok ? competitorsRes.json() : Promise.resolve([]),
-          backlinksRes.ok ? backlinksRes.json() : backlinksRes.json().then(e => { setBacklinkError(e.error ?? "Failed to load backlinks"); return []; }).catch(() => []),
+          keywordsRes!.json(),
+          rankMoversRes!.ok ? rankMoversRes!.json() : Promise.resolve([]),
+          historyRes!.json(),
+          distRes!.json(),
+          competitorsRes!.ok ? competitorsRes!.json() : Promise.resolve([]),
+          backlinksRes!.ok ? backlinksRes!.json() : backlinksRes!.json().then(e => { setBacklinkError(e.error ?? "Failed to load backlinks"); return []; }).catch(() => []),
         ]);
 
         setOverview(ov);
