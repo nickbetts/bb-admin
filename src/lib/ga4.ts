@@ -633,3 +633,213 @@ export async function getGA4AIReferrals(
     })
   );
 }
+
+// Landing page performance
+export interface GA4LandingPage {
+  landingPage: string;
+  sessions: number;
+  users: number;
+  bounceRate: number;
+  avgSessionDuration: number;
+  conversions: number;
+  conversionRate: number;
+  revenue: number;
+}
+
+export async function getGA4LandingPagePerformance(
+  propertyId: string,
+  startDate: string = "30daysAgo",
+  endDate: string = "today"
+): Promise<GA4LandingPage[]> {
+  const headers = await buildGa4Headers();
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+
+  const body = {
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: "landingPage" }],
+    metrics: [
+      { name: "sessions" },
+      { name: "activeUsers" },
+      { name: "bounceRate" },
+      { name: "averageSessionDuration" },
+      { name: "conversions" },
+      { name: "totalRevenue" },
+    ],
+    orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
+    limit: 30,
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  return (data.rows ?? []).map(
+    (row: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }) => {
+      const sessions = parseInt(row.metricValues[0]?.value ?? "0");
+      const conversions = parseInt(row.metricValues[4]?.value ?? "0");
+      return {
+        landingPage: row.dimensionValues[0]?.value ?? "",
+        sessions,
+        users: parseInt(row.metricValues[1]?.value ?? "0"),
+        bounceRate: parseFloat(row.metricValues[2]?.value ?? "0") * 100,
+        avgSessionDuration: parseFloat(row.metricValues[3]?.value ?? "0"),
+        conversions,
+        conversionRate: sessions > 0 ? (conversions / sessions) * 100 : 0,
+        revenue: parseFloat(row.metricValues[5]?.value ?? "0"),
+      };
+    }
+  );
+}
+
+// User journey / path exploration
+export interface GA4UserJourney {
+  pagePath: string;
+  pageTitle: string;
+  entrances: number;
+  exits: number;
+  avgTimeOnPage: number;
+  pageviews: number;
+}
+
+export interface GA4UserJourneyResult {
+  pages: GA4UserJourney[];
+  topEntryPages: { pagePath: string; entrances: number }[];
+  topExitPages: { pagePath: string; exits: number }[];
+}
+
+export async function getGA4UserJourneys(
+  propertyId: string,
+  startDate: string = "30daysAgo",
+  endDate: string = "today"
+): Promise<GA4UserJourneyResult> {
+  const headers = await buildGa4Headers();
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+
+  const body = {
+    dateRanges: [{ startDate, endDate }],
+    dimensions: [{ name: "pagePath" }, { name: "pageTitle" }],
+    metrics: [
+      { name: "entrances" },
+      { name: "exits" },
+      { name: "userEngagementDuration" },
+      { name: "screenPageViews" },
+    ],
+    orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }],
+    limit: 50,
+  };
+
+  const fallback: GA4UserJourneyResult = { pages: [], topEntryPages: [], topExitPages: [] };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!response.ok) return fallback;
+
+  const data = await response.json();
+  const pages: GA4UserJourney[] = (data.rows ?? []).map(
+    (row: { dimensionValues: { value: string }[]; metricValues: { value: string }[] }) => ({
+      pagePath: row.dimensionValues[0]?.value ?? "",
+      pageTitle: row.dimensionValues[1]?.value ?? "",
+      entrances: parseInt(row.metricValues[0]?.value ?? "0"),
+      exits: parseInt(row.metricValues[1]?.value ?? "0"),
+      avgTimeOnPage: parseFloat(row.metricValues[2]?.value ?? "0"),
+      pageviews: parseInt(row.metricValues[3]?.value ?? "0"),
+    })
+  );
+
+  const topEntryPages = [...pages]
+    .sort((a, b) => b.entrances - a.entrances)
+    .slice(0, 10)
+    .map(({ pagePath, entrances }) => ({ pagePath, entrances }));
+
+  const topExitPages = [...pages]
+    .sort((a, b) => b.exits - a.exits)
+    .slice(0, 10)
+    .map(({ pagePath, exits }) => ({ pagePath, exits }));
+
+  return { pages, topEntryPages, topExitPages };
+}
+
+// Cohort retention analysis
+export interface GA4CohortRetention {
+  cohortActiveUsers: number;
+  retentionRates: { week: number; rate: number }[];
+}
+
+export async function getGA4CohortRetention(
+  propertyId: string,
+  startDate: string = "30daysAgo",
+  endDate: string = "today"
+): Promise<GA4CohortRetention> {
+  const headers = await buildGa4Headers();
+  const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
+
+  const body = {
+    cohortSpec: {
+      cohorts: [
+        {
+          dimension: "firstSessionDate",
+          dateRange: { startDate, endDate },
+        },
+      ],
+      cohortsRange: {
+        granularity: "WEEKLY",
+        endOffset: 5,
+      },
+    },
+    metrics: [{ name: "cohortActiveUsers" }, { name: "cohortTotalUsers" }],
+    dimensions: [{ name: "cohort" }, { name: "cohortNthWeek" }],
+  };
+
+  const fallback: GA4CohortRetention = { cohortActiveUsers: 0, retentionRates: [] };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!response.ok) return fallback;
+
+  const data = await response.json();
+  const rows = data.rows ?? [];
+
+  if (rows.length === 0) return fallback;
+
+  let totalCohortUsers = 0;
+  const weekMap = new Map<number, { active: number; total: number }>();
+
+  for (const row of rows as { dimensionValues: { value: string }[]; metricValues: { value: string }[] }[]) {
+    const week = parseInt(row.dimensionValues[1]?.value ?? "0");
+    const active = parseInt(row.metricValues[0]?.value ?? "0");
+    const total = parseInt(row.metricValues[1]?.value ?? "0");
+
+    if (week === 0) totalCohortUsers += active;
+
+    const existing = weekMap.get(week) ?? { active: 0, total: 0 };
+    weekMap.set(week, {
+      active: existing.active + active,
+      total: existing.total + total,
+    });
+  }
+
+  const retentionRates = Array.from(weekMap.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([week, { active, total }]) => ({
+      week,
+      rate: total > 0 ? Math.round((active / total) * 10000) / 100 : 0,
+    }));
+
+  return { cohortActiveUsers: totalCohortUsers, retentionRates };
+}

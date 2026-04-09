@@ -13,6 +13,9 @@ import {
   getGA4ConversionEvents,
   getGA4ConversionsByChannel,
   getGA4AIReferrals,
+  getGA4LandingPagePerformance,
+  getGA4UserJourneys,
+  getGA4CohortRetention,
 } from "@/lib/ga4";
 import { withApiCache } from "@/lib/api-cache";
 
@@ -73,6 +76,12 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4ConversionsByChannel(propertyId, startDate, endDate)));
       case "ai-referrals":
         return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4AIReferrals(propertyId, startDate, endDate)));
+      case "landing-pages":
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4LandingPagePerformance(propertyId, startDate, endDate)));
+      case "user-journeys":
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4UserJourneys(propertyId, startDate, endDate)));
+      case "cohort-retention":
+        return NextResponse.json(await withApiCache(cacheKey, GA4_CACHE_TTL_HOURS, () => getGA4CohortRetention(propertyId, startDate, endDate)));
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }
