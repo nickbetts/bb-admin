@@ -54,30 +54,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const client = await prisma.client.findUnique({
+      where: { id: clientId },
+      select: {
+        googleAdsCustomerId: true,
+        microsoftAdsAccountId: true,
+      },
+    });
+
+    if (!client) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    }
+
+    if (!client.googleAdsCustomerId || !client.microsoftAdsAccountId) {
+      return NextResponse.json(
+        { error: "Both Google Ads and Microsoft Ads must be configured for cross-engine comparison" },
+        { status: 400 }
+      );
+    }
+
     const cacheKey = `cross:ad-comparison:${clientId}:${startDate}:${endDate}`;
 
     const result = await withApiCache(cacheKey, 4, async () => {
-      const client = await prisma.client.findUnique({
-        where: { id: clientId },
-        select: {
-          googleAdsCustomerId: true,
-          microsoftAdsAccountId: true,
-        },
-      });
-
-      if (!client) {
-        throw new Error("Client not found");
-      }
-
-      if (!client.googleAdsCustomerId || !client.microsoftAdsAccountId) {
-        throw new Error(
-          "Both Google Ads and Microsoft Ads must be configured for cross-engine comparison"
-        );
-      }
-
       const [googleData, microsoftData] = await Promise.all([
-        getGoogleAdsSearchTerms(client.googleAdsCustomerId, startDate, endDate),
-        getMicrosoftAdsKeywords(client.microsoftAdsAccountId, startDate, endDate),
+        getGoogleAdsSearchTerms(client.googleAdsCustomerId!, startDate, endDate),
+        getMicrosoftAdsKeywords(client.microsoftAdsAccountId!, startDate, endDate),
       ]);
 
       // Build normalised maps

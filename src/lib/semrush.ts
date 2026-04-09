@@ -725,7 +725,7 @@ async function fetchBacklinksByType(
     `key=${encodeURIComponent(apiKey)}`,
     `target=${encodeURIComponent(domain)}`,
     `target_type=root_domain`,
-    `export_columns=source_url,target_url,anchor,domain_ascore,first_seen,last_seen`,
+    `export_columns=source_url,target_url,anchor,page_ascore,first_seen,last_seen`,
     `display_limit=25`,
   ].join("&");
 
