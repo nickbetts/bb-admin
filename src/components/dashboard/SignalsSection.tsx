@@ -331,7 +331,7 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
 
     try {
       // ── Parallel platform data fetches ──────────────────────────────────────
-      const [metaResult, gadsResult, scResult, ga4Result, semrushResult] = await Promise.allSettled([
+      const [metaResult, gadsResult, scResult, ga4Result, semrushResult, crossResult] = await Promise.allSettled([
         // Meta: campaigns-enriched, adsets, creatives, overview, prev-overview, audiences (all in parallel)
         client.metaAccountId
           ? Promise.all([
@@ -370,6 +370,13 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
               fetch(`/api/semrush?domain=${encodeURIComponent(client.semrushDomain)}&type=keywords`).then(r => r.ok ? r.json() : null).catch(() => null),
             ])
           : Promise.resolve(null),
+
+        // Cross-platform intelligence — client health + ad comparison + cross alerts
+        Promise.all([
+          fetch(`/api/cross/client-health?clientId=${client.id}&startDate=${startDate}&endDate=${endDate}`).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch(`/api/cross/ad-comparison?clientId=${client.id}&startDate=${startDate}&endDate=${endDate}`).then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch(`/api/cross/alerts?clientId=${client.id}&startDate=${startDate}&endDate=${endDate}`).then(r => r.ok ? r.json() : null).catch(() => null),
+        ]),
       ]);
 
       const metaData         = metaResult.status     === "fulfilled" ? metaResult.value     : null;
@@ -377,6 +384,10 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
       const scData           = scResult.status       === "fulfilled" ? scResult.value       : null;
       const ga4ResultVal     = ga4Result.status      === "fulfilled" ? ga4Result.value      : null;
       const semrushResultVal = semrushResult.status  === "fulfilled" ? semrushResult.value  : null;
+      const crossData        = crossResult.status   === "fulfilled" ? crossResult.value   : null;
+      const clientHealthData = Array.isArray(crossData) ? crossData[0] : null;
+      const adComparisonData = Array.isArray(crossData) ? crossData[1] : null;
+      const crossAlertsData  = Array.isArray(crossData) ? crossData[2] : null;
 
       // Unpack GA4 sub-results
       const ga4Data     = Array.isArray(ga4ResultVal) ? ga4ResultVal[0] : ga4ResultVal;
@@ -663,6 +674,12 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
           const keywords = typeof o.organicKeywords === "number" ? o.organicKeywords.toLocaleString() : "n/a";
           lines.push(`\u2022 SEMrush: ${traffic} organic traffic, ${keywords} keywords`);
         }
+        if (clientHealthData?.score != null) {
+          lines.push(`\u2022 Client Health: score ${clientHealthData.score}/100, grade ${clientHealthData.grade ?? "N/A"}, trend: ${clientHealthData.trend ?? "stable"}`);
+        }
+        if (adComparisonData?.summary) {
+          lines.push(`\u2022 Ad Platform Comparison: ${adComparisonData.summary}`);
+        }
         return lines.length > 1 ? lines.join("\n") : undefined;
       })();
 
@@ -796,6 +813,21 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
             label: a.context,
             detail: a.description,
             direction: a.direction as "up" | "down" | undefined,
+          });
+        }
+      }
+
+      // Cross-platform alerts as computed signals
+      if (crossAlertsData?.alerts && Array.isArray(crossAlertsData.alerts)) {
+        for (const alert of crossAlertsData.alerts) {
+          allSignals.push({
+            platform: alert.platform ?? "Cross-Platform",
+            source: "computed",
+            severity: alert.severity ?? "medium",
+            metric: alert.metric ?? "cross-platform",
+            label: alert.label,
+            detail: alert.detail ?? alert.description ?? "",
+            direction: alert.direction,
           });
         }
       }
@@ -955,6 +987,8 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
                     clientName: client.name,
                     dateRange: `${startDate} to ${endDate}`,
                     crossPlatformContext,
+                    clientHealth: clientHealthData ? { score: clientHealthData.score, grade: clientHealthData.grade, riskFactors: clientHealthData.riskFactors?.slice(0, 5) } : undefined,
+                    adComparison: adComparisonData?.summary ?? undefined,
                     alerts: dedupedSignals.map(s => ({
                       platform: s.platform,
                       severity: s.severity,
