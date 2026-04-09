@@ -1060,15 +1060,15 @@ Bring thin sections to feature parity with GA4/Google Ads/Meta:
 
 Build the systems that connect data across platforms:
 
-| # | Action | Effort | Impact |
-|---|--------|--------|--------|
-| 38 | **Unified Keyword Intelligence Database** — merge keywords from GSC + SEMrush + Google Ads + CallRail | XL | 🔴 Critical — core differentiator |
-| 39 | **Unified Audience Profile** — composite audience from all demographic data sources | L | 🟠 High |
-| 40 | **Cross-engine ad comparison** — Google Ads vs Microsoft Ads keyword-level benchmarks | M | 🟡 Medium |
-| 41 | **Revenue attribution engine** — connect HubSpot deals back to marketing channels | L | 🟠 High |
-| 42 | **Proactive Alert System** — automated detection and notification of budget pacing, creative fatigue, QS drops, etc. | XL | 🟠 High |
-| 43 | **Client Health Score** — AI composite of metric trends + communications + goals + engagement | L | 🟡 Medium |
-| 44 | **"Since Last Report" dashboard view** — delta calculation and automated highlight generation | M | 🟡 Medium |
+| # | Action | Effort | Impact | Status |
+|---|--------|--------|--------|--------|
+| 38 | **Unified Keyword Intelligence Database** — merge keywords from GSC + SEMrush + Google Ads + Microsoft Ads | XL | 🔴 Critical — core differentiator | ✅ Done |
+| 39 | **Unified Audience Profile** — AI composite audience from GA4 + Meta + TikTok + LinkedIn + YouTube demographics | L | 🟠 High | ✅ Done |
+| 40 | **Cross-engine ad comparison** — Google Ads vs Microsoft Ads keyword-level CPC/CTR/conversion benchmarks | M | 🟡 Medium | ✅ Done |
+| 41 | **Revenue attribution engine** — connect HubSpot deals to marketing channels via `hs_analytics_source` | L | 🟠 High | ✅ Done |
+| 42 | **Proactive Alert System** — budget pacing, creative fatigue, QS drops, conversion rate drops, anomaly aggregation | XL | 🟠 High | ✅ Done |
+| 43 | **Client Health Score** — AI composite of anomalies + goals + comms + report freshness + metric trends (0-100, A-F) | L | 🟡 Medium | ✅ Done |
+| 44 | **"Since Last Report" dashboard view** — delta calculation from MetricSnapshots + AI highlight generation | M | 🟡 Medium | ✅ Done |
 
 ### Wave 6 — Advanced Data Pulls (8-12 weeks)
 
