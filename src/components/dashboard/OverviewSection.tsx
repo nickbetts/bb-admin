@@ -34,6 +34,7 @@ import {
   ArrowRight,
   BarChart3,
   Wallet,
+  Activity,
 } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -225,6 +226,17 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
 
   // Keyword overlap state
   const [keywordOverlapSummary, setKeywordOverlapSummary] = useState<{ total: number; highRisk: number; potentialSavings: number } | null>(null);
+
+  // Cross-platform Wave 1-6 state
+  const [clientHealth, setClientHealth] = useState<{
+    score: number; grade: string; trend: string;
+    riskFactors: Array<{ category: string; severity: string; detail: string }>;
+    narrative?: string; recommendations?: string[];
+  } | null>(null);
+  const [sinceLastReport, setSinceLastReport] = useState<{
+    changes: Array<{ platform: string; metric: string; current: number; previous: number; change: number; significance: string }>;
+    narrative?: string;
+  } | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -756,6 +768,8 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             healthScore: r.healthScore,
             trend: r.prevEfficiency != null ? (pctChange(r.efficiency, r.prevEfficiency) ?? 0) : 0,
           })) : undefined,
+          clientHealth: clientHealth ? { score: clientHealth.score, grade: clientHealth.grade, riskFactors: clientHealth.riskFactors.slice(0, 5) } : undefined,
+          sinceLastReport: sinceLastReport?.changes?.slice(0, 10) ?? undefined,
         }),
       });
       const json = await res.json();
@@ -783,6 +797,24 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
       })
       .catch(() => {});
   }, [client.searchConsoleSiteUrl, client.googleAdsCustomerId, startDate, endDate]);
+
+  // Client health score fetch
+  useEffect(() => {
+    if (!client.id) return;
+    fetch(`/api/cross/client-health?clientId=${encodeURIComponent(client.id)}&startDate=${startDate}&endDate=${endDate}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(json => { if (json) setClientHealth(json); })
+      .catch(() => {});
+  }, [client.id, startDate, endDate]);
+
+  // Since last report fetch
+  useEffect(() => {
+    if (!client.id) return;
+    fetch(`/api/cross/since-last-report?clientId=${encodeURIComponent(client.id)}&startDate=${startDate}&endDate=${endDate}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(json => { if (json) setSinceLastReport(json); })
+      .catch(() => {});
+  }, [client.id, startDate, endDate]);
 
   // ─── Active platforms list ─────────────────────────────────────────────────
 
@@ -1020,6 +1052,68 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             </div>
           </SectionCard>
         )}
+
+        {/* ── Client Health Score ─────────────────────────────────────── */}
+        {show("client_health") && clientHealth && (
+          <SectionCard title="Client Health Score" subtitle="Overall account health assessment">
+            <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+              <div style={{
+                width: 80, height: 80, borderRadius: "50%",
+                background: clientHealth.score >= 75 ? "#dcfce7" : clientHealth.score >= 50 ? "#fef9c3" : "#fee2e2",
+                border: `3px solid ${clientHealth.score >= 75 ? "#16a34a" : clientHealth.score >= 50 ? "#ca8a04" : "#dc2626"}`,
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              }}>
+                <span style={{ fontSize: 24, fontWeight: 800, color: clientHealth.score >= 75 ? "#16a34a" : clientHealth.score >= 50 ? "#ca8a04" : "#dc2626" }}>
+                  {clientHealth.score}
+                </span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)" }}>{clientHealth.grade}</span>
+              </div>
+              <div style={{ flex: 1 }}>
+                {clientHealth.narrative && (
+                  <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6, marginBottom: 8 }}>{clientHealth.narrative}</p>
+                )}
+                {clientHealth.riskFactors.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {clientHealth.riskFactors.slice(0, 3).map((rf, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+                        <span style={{
+                          fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3,
+                          color: "#fff",
+                          background: rf.severity === "high" ? "#dc2626" : rf.severity === "medium" ? "#d97706" : "#6b7280"
+                        }}>
+                          {rf.severity}
+                        </span>
+                        <span style={{ color: "var(--text-2)" }}>{rf.detail}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </SectionCard>
+        )}
+
+        {/* ── Since Last Report ───────────────────────────────────────── */}
+        {show("since_last_report") && sinceLastReport && sinceLastReport.changes.length > 0 && (
+          <SectionCard title="Since Last Report" subtitle="Key metric changes since the previous reporting period">
+            {sinceLastReport.narrative && (
+              <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6, marginBottom: 12 }}>{sinceLastReport.narrative}</p>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 0, borderRadius: 8, border: "1px solid var(--border)", overflow: "hidden" }}>
+              {sinceLastReport.changes.slice(0, 8).map((ch, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: i < Math.min(sinceLastReport.changes.length, 8) - 1 ? "1px solid var(--border)" : "none", background: i % 2 === 0 ? "var(--surface)" : "transparent" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 3, background: "#eef2ff", color: "#6366f1" }}>{ch.platform}</span>
+                    <span style={{ fontSize: 12, color: "var(--text)" }}>{ch.metric}</span>
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: ch.change >= 0 ? "#16a34a" : "#dc2626" }}>
+                    {ch.change >= 0 ? "+" : ""}{ch.change.toFixed(1)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        )}
       </div>
     );
   }
@@ -1193,6 +1287,76 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             {keywordOverlapSummary.potentialSavings > 0 && <> Potential savings: <strong style={{ color: "#065f46" }}>${keywordOverlapSummary.potentialSavings.toFixed(2)}</strong>.</>}
             {" "}See the Search Console section for full details.
           </p>
+        </div>
+      )}
+
+      {/* ── Client Health Score ──────────────────────────────────────────── */}
+      {show("client_health") && clientHealth && (
+        <div style={{ borderRadius: 12, border: "1px solid var(--border)", padding: "14px 18px", background: clientHealth.score >= 75 ? "#f0fdf4" : clientHealth.score >= 50 ? "#fefce8" : "#fef2f2" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <Activity className="h-4 w-4" style={{ color: clientHealth.score >= 75 ? "#16a34a" : clientHealth.score >= 50 ? "#ca8a04" : "#dc2626" }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Client Health Score</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: "50%",
+              background: clientHealth.score >= 75 ? "#dcfce7" : clientHealth.score >= 50 ? "#fef9c3" : "#fee2e2",
+              border: `3px solid ${clientHealth.score >= 75 ? "#16a34a" : clientHealth.score >= 50 ? "#ca8a04" : "#dc2626"}`,
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+              <span style={{ fontSize: 20, fontWeight: 800, color: clientHealth.score >= 75 ? "#16a34a" : clientHealth.score >= 50 ? "#ca8a04" : "#dc2626" }}>
+                {clientHealth.score}
+              </span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: "var(--text-3)" }}>{clientHealth.grade}</span>
+            </div>
+            <div style={{ flex: 1 }}>
+              {clientHealth.narrative && (
+                <p style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6, margin: 0, marginBottom: clientHealth.riskFactors.length > 0 ? 6 : 0 }}>{clientHealth.narrative}</p>
+              )}
+              {clientHealth.riskFactors.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  {clientHealth.riskFactors.slice(0, 3).map((rf, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3,
+                        color: "#fff",
+                        background: rf.severity === "high" ? "#dc2626" : rf.severity === "medium" ? "#d97706" : "#6b7280"
+                      }}>
+                        {rf.severity}
+                      </span>
+                      <span style={{ color: "var(--text-2)" }}>{rf.detail}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Since Last Report ────────────────────────────────────────────── */}
+      {show("since_last_report") && sinceLastReport && sinceLastReport.changes.length > 0 && (
+        <div style={{ borderRadius: 12, border: "1px solid var(--border)", padding: "14px 18px", background: "var(--surface)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <BarChart3 className="h-4 w-4" style={{ color: "#6366f1" }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Since Last Report</span>
+          </div>
+          {sinceLastReport.narrative && (
+            <p style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6, margin: 0, marginBottom: 10 }}>{sinceLastReport.narrative}</p>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 0, borderRadius: 8, border: "1px solid var(--border)", overflow: "hidden" }}>
+            {sinceLastReport.changes.slice(0, 8).map((ch, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 12px", borderBottom: i < Math.min(sinceLastReport.changes.length, 8) - 1 ? "1px solid var(--border)" : "none", background: i % 2 === 0 ? "var(--surface)" : "transparent" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 3, background: "#eef2ff", color: "#6366f1" }}>{ch.platform}</span>
+                  <span style={{ fontSize: 12, color: "var(--text)" }}>{ch.metric}</span>
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: ch.change >= 0 ? "#16a34a" : "#dc2626" }}>
+                  {ch.change >= 0 ? "+" : ""}{ch.change.toFixed(1)}%
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
