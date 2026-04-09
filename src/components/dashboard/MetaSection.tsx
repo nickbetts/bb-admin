@@ -238,6 +238,8 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
   const [lightbox, setLightbox] = useState<{ type: "image" | "video"; src: string; videoId?: string | null; title: string } | null>(null);
   const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
   const [alertAiLoading, setAlertAiLoading] = useState(false);
+  const [leadForms, setLeadForms] = useState<Array<{ formId: string; formName: string; leads: number; costPerLead: number; spend: number }>>([]);
+  const [relevanceDiagnostics, setRelevanceDiagnostics] = useState<Array<{ adName: string; qualityRanking: string; engagementRanking: string; conversionRanking: string; impressions: number }>>([]);
 
   // Compute anomaly alerts from current data
   const metaAlerts = useMemo<MetaAlert[]>(() => {
@@ -394,7 +396,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
           : getPreviousPeriod(startDate, endDate);
         const prevBase = `/api/meta?clientId=${encodeURIComponent(clientId)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
 
-        const [ovRes, campRes, enrichedRes, dailyRes, lpRes, prevOvRes, prevCampRes, adSetsRes, creativesRes, audiencesRes] = await Promise.all([
+        const [ovRes, campRes, enrichedRes, dailyRes, lpRes, prevOvRes, prevCampRes, adSetsRes, creativesRes, audiencesRes, leadFormsRes, relevanceRes] = await Promise.all([
           fetch(`${base}&type=overview`, { signal: controller.signal }),
           fetch(`${base}&type=campaigns`, { signal: controller.signal }),
           fetch(`${base}&type=campaigns-enriched`, { signal: controller.signal }),
@@ -405,6 +407,8 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
           fetch(`${base}&type=adsets`, { signal: controller.signal }),
           fetch(`${base}&type=creatives`, { signal: controller.signal }),
           fetch(`${base}&type=audiences`, { signal: controller.signal }),
+          fetch(`${base}&type=lead-forms`, { signal: controller.signal }).catch(() => null),
+          fetch(`${base}&type=relevance-diagnostics`, { signal: controller.signal }).catch(() => null),
         ]);
 
         if (!ovRes.ok) {
@@ -412,7 +416,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
           throw new Error(err.error ?? "Failed to fetch Meta Ads data");
         }
 
-        const [ov, camp, enriched, d, lp, prevOv, prevCamp, adSetsData, creativesData, audiencesData] = await Promise.all([
+        const [ov, camp, enriched, d, lp, prevOv, prevCamp, adSetsData, creativesData, audiencesData, leadFormsData, relevanceData] = await Promise.all([
           ovRes.json(),
           campRes.json(),
           enrichedRes.ok ? enrichedRes.json() : Promise.resolve([]),
@@ -423,6 +427,8 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
           adSetsRes.ok ? adSetsRes.json() : Promise.resolve([]),
           creativesRes.ok ? creativesRes.json() : Promise.resolve([]),
           audiencesRes.ok ? audiencesRes.json() : Promise.resolve([]),
+          leadFormsRes?.ok ? leadFormsRes.json() : Promise.resolve([]),
+          relevanceRes?.ok ? relevanceRes.json() : Promise.resolve([]),
         ]);
 
         setOverview(ov);
@@ -447,6 +453,8 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
         setAdSets(Array.isArray(adSetsData) ? adSetsData : []);
         setCreatives(Array.isArray(creativesData) ? creativesData : []);
         setAdSetAudiences(Array.isArray(audiencesData) ? audiencesData : []);
+        setLeadForms(Array.isArray(leadFormsData) ? leadFormsData : []);
+        setRelevanceDiagnostics(Array.isArray(relevanceData) ? relevanceData : []);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load Meta Ads data");
@@ -1260,6 +1268,81 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
           clickFraudToken={clickFraudToken}
           reportMode={reportMode}
         />
+      )}
+
+      {/* Lead Form Performance */}
+      {show("lead_forms") && leadForms.length > 0 && (
+        <SectionCard title="Lead Form Performance" subtitle={`${leadForms.length} form${leadForms.length !== 1 ? "s" : ""} with lead data`}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 520 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Form Name</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Leads</th>
+                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Cost per Lead</th>
+                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Total Spend</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {leadForms.map((form) => (
+                  <tr key={form.formId} className="hover:bg-slate-50 transition">
+                    <td className="px-6 py-3 text-slate-800 font-medium">{form.formName}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(form.leads)}</td>
+                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(form.costPerLead)}</td>
+                    <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(form.spend)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Ad Relevance Diagnostics */}
+      {show("relevance") && relevanceDiagnostics.length > 0 && (
+        <SectionCard title="Ad Relevance Diagnostics" subtitle="Quality, engagement, and conversion ranking per ad">
+          <div style={{ overflowX: "auto" }}>
+            <table className="w-full text-xs" style={{ minWidth: 640 }}>
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
+                  <th className="text-left px-6 py-3 font-medium">Ad Name</th>
+                  <th className="text-center px-4 py-3 font-medium whitespace-nowrap">Quality</th>
+                  <th className="text-center px-4 py-3 font-medium whitespace-nowrap">Engagement</th>
+                  <th className="text-center px-4 py-3 font-medium whitespace-nowrap">Conversion</th>
+                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Impressions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {relevanceDiagnostics.map((ad, idx) => {
+                  const rankBadge = (rank: string) => {
+                    const label = rank.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+                    const cls = rank === "ABOVE_AVERAGE"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : rank === "AVERAGE"
+                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                        : rank === "BELOW_AVERAGE"
+                          ? "bg-red-50 text-red-700 border-red-200"
+                          : "bg-slate-50 text-slate-500 border-slate-200";
+                    return (
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`}>
+                        {label}
+                      </span>
+                    );
+                  };
+                  return (
+                    <tr key={`${ad.adName}-${idx}`} className="hover:bg-slate-50 transition">
+                      <td className="px-6 py-3 text-slate-800 font-medium">{ad.adName}</td>
+                      <td className="px-4 py-3 text-center">{rankBadge(ad.qualityRanking)}</td>
+                      <td className="px-4 py-3 text-center">{rankBadge(ad.engagementRanking)}</td>
+                      <td className="px-4 py-3 text-center">{rankBadge(ad.conversionRanking)}</td>
+                      <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(ad.impressions)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
       )}
 
       {/* Lightbox overlay */}
