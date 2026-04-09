@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getMicrosoftAdsOverview, getMicrosoftAdsCampaigns, getMicrosoftAdsDailyData } from "@/lib/microsoft-ads";
+import { getMicrosoftAdsOverview, getMicrosoftAdsCampaigns, getMicrosoftAdsDailyData, getMicrosoftAdsKeywords, getMicrosoftAdsSearchTerms, getMicrosoftAdsDeviceBreakdown, getMicrosoftAdsGeoBreakdown } from "@/lib/microsoft-ads";
 import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
@@ -32,12 +32,16 @@ export async function GET(request: NextRequest) {
     const accountId = client.microsoftAdsAccountId;
     const cacheKey = `msads:${clientId}:${startDate}:${endDate}`;
     const data = await withApiCache(cacheKey, 4, async () => {
-      const [overview, campaigns, daily] = await Promise.all([
+      const [overview, campaigns, daily, keywords, searchTerms, deviceBreakdown, geoBreakdown] = await Promise.all([
         getMicrosoftAdsOverview(accountId, startDate, endDate),
         getMicrosoftAdsCampaigns(accountId, startDate, endDate),
         getMicrosoftAdsDailyData(accountId, startDate, endDate),
+        getMicrosoftAdsKeywords(accountId, startDate, endDate).catch(() => []),
+        getMicrosoftAdsSearchTerms(accountId, startDate, endDate).catch(() => []),
+        getMicrosoftAdsDeviceBreakdown(accountId, startDate, endDate).catch(() => []),
+        getMicrosoftAdsGeoBreakdown(accountId, startDate, endDate).catch(() => []),
       ]);
-      return { overview, campaigns, daily };
+      return { overview, campaigns, daily, keywords, searchTerms, deviceBreakdown, geoBreakdown };
     });
 
     return NextResponse.json(data);

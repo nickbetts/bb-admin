@@ -218,6 +218,70 @@ export async function getMicrosoftAdsCampaigns(
   return getCampaignsRaw(accessToken, accountId, startDate, endDate);
 }
 
+// ─── Shared report helpers ─────────────────────────────────────────────────────
+
+function buildTimeRange(startDate: string, endDate: string) {
+  return {
+    CustomDateRangeStart: { Day: parseInt(startDate.split("-")[2]), Month: parseInt(startDate.split("-")[1]), Year: parseInt(startDate.split("-")[0]) },
+    CustomDateRangeEnd: { Day: parseInt(endDate.split("-")[2]), Month: parseInt(endDate.split("-")[1]), Year: parseInt(endDate.split("-")[0]) },
+  };
+}
+
+async function submitAndDownloadReport(
+  accessToken: string,
+  accountId: string,
+  reportRequest: Record<string, unknown>
+): Promise<Array<Record<string, unknown>>> {
+  let reportRequestId: string;
+  try {
+    const submitData = await msAdsFetch(
+      `${MS_ADS_API_BASE}/SubmitGenerateReport`,
+      accessToken,
+      accountId,
+      reportRequest
+    );
+    reportRequestId = String(submitData.ReportRequestId ?? "");
+    if (!reportRequestId) return [];
+  } catch {
+    return [];
+  }
+
+  let downloadUrl = "";
+  for (let attempt = 0; attempt < 10; attempt++) {
+    await new Promise((r) => setTimeout(r, 3000));
+    try {
+      const pollData = await msAdsFetch(
+        `${MS_ADS_API_BASE}/PollGenerateReport?ReportRequestId=${encodeURIComponent(reportRequestId)}`,
+        accessToken,
+        accountId
+      );
+      const status = (pollData.ReportRequestStatus as Record<string, unknown>)?.Status as string | undefined;
+      if (status === "Success") {
+        downloadUrl = String((pollData.ReportRequestStatus as Record<string, unknown>)?.ReportDownloadUrl ?? "");
+        break;
+      }
+      if (status === "Error" || status === "Failed") return [];
+    } catch {
+      return [];
+    }
+  }
+
+  if (!downloadUrl) return [];
+
+  try {
+    const downloadRes = await fetch(downloadUrl, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!downloadRes.ok) return [];
+    const reportJson = await downloadRes.json() as { ReportData?: { Rows?: Array<Record<string, unknown>> } };
+    return reportJson.ReportData?.Rows ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// ─── Daily data ────────────────────────────────────────────────────────────────
+
 export async function getMicrosoftAdsDailyData(
   accountId: string,
   startDate: string,
@@ -323,4 +387,166 @@ export async function getMicrosoftAdsDailyData(
   } catch {
     return [];
   }
+}
+
+// ── Keywords ────────────────────────────────────────────────────────────────────
+
+export interface MicrosoftAdsKeyword {
+  keyword: string;
+  campaignName: string;
+  adGroupName: string;
+  matchType: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  spend: number;
+  conversions: number;
+  qualityScore: number | null;
+}
+
+export async function getMicrosoftAdsKeywords(
+  accountId: string,
+  startDate: string,
+  endDate: string
+): Promise<MicrosoftAdsKeyword[]> {
+  const accessToken = await getAccessToken();
+  const rows = await submitAndDownloadReport(accessToken, accountId, {
+    ReportRequest: {
+      ExcludeColumnHeaders: false, ExcludeReportFooter: true, ExcludeReportHeader: true,
+      Format: "Json", ReturnOnlyCompleteData: false,
+      Type: "KeywordPerformanceReportRequest",
+      Aggregation: "Summary",
+      Columns: ["Keyword", "CampaignName", "AdGroupName", "DeliveredMatchType", "Impressions", "Clicks", "Ctr", "AverageCpc", "Spend", "Conversions", "QualityScore"],
+      Time: buildTimeRange(startDate, endDate),
+    },
+  });
+  return rows.map((r) => ({
+    keyword: String(r.Keyword ?? ""),
+    campaignName: String(r.CampaignName ?? ""),
+    adGroupName: String(r.AdGroupName ?? ""),
+    matchType: String(r.DeliveredMatchType ?? ""),
+    impressions: Number(r.Impressions ?? 0),
+    clicks: Number(r.Clicks ?? 0),
+    ctr: Number(r.Ctr ?? 0),
+    cpc: Number(r.AverageCpc ?? 0),
+    spend: Number(r.Spend ?? 0),
+    conversions: Number(r.Conversions ?? 0),
+    qualityScore: r.QualityScore != null && r.QualityScore !== "--" ? Number(r.QualityScore) : null,
+  })).sort((a, b) => b.spend - a.spend).slice(0, 50);
+}
+
+// ── Search terms ────────────────────────────────────────────────────────────────
+
+export interface MicrosoftAdsSearchTerm {
+  searchTerm: string;
+  keyword: string;
+  campaignName: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  conversions: number;
+}
+
+export async function getMicrosoftAdsSearchTerms(
+  accountId: string,
+  startDate: string,
+  endDate: string
+): Promise<MicrosoftAdsSearchTerm[]> {
+  const accessToken = await getAccessToken();
+  const rows = await submitAndDownloadReport(accessToken, accountId, {
+    ReportRequest: {
+      ExcludeColumnHeaders: false, ExcludeReportFooter: true, ExcludeReportHeader: true,
+      Format: "Json", ReturnOnlyCompleteData: false,
+      Type: "SearchQueryPerformanceReportRequest",
+      Aggregation: "Summary",
+      Columns: ["SearchQuery", "Keyword", "CampaignName", "Impressions", "Clicks", "Spend", "Conversions"],
+      Time: buildTimeRange(startDate, endDate),
+    },
+  });
+  return rows.map((r) => ({
+    searchTerm: String(r.SearchQuery ?? ""),
+    keyword: String(r.Keyword ?? ""),
+    campaignName: String(r.CampaignName ?? ""),
+    impressions: Number(r.Impressions ?? 0),
+    clicks: Number(r.Clicks ?? 0),
+    spend: Number(r.Spend ?? 0),
+    conversions: Number(r.Conversions ?? 0),
+  })).sort((a, b) => b.clicks - a.clicks).slice(0, 100);
+}
+
+// ── Device breakdown ────────────────────────────────────────────────────────────
+
+export interface MicrosoftAdsDeviceRow {
+  device: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  spend: number;
+  conversions: number;
+  cpc: number;
+}
+
+export async function getMicrosoftAdsDeviceBreakdown(
+  accountId: string,
+  startDate: string,
+  endDate: string
+): Promise<MicrosoftAdsDeviceRow[]> {
+  const accessToken = await getAccessToken();
+  const rows = await submitAndDownloadReport(accessToken, accountId, {
+    ReportRequest: {
+      ExcludeColumnHeaders: false, ExcludeReportFooter: true, ExcludeReportHeader: true,
+      Format: "Json", ReturnOnlyCompleteData: false,
+      Type: "AccountPerformanceReportRequest",
+      Aggregation: "Summary",
+      Columns: ["DeviceType", "Impressions", "Clicks", "Ctr", "Spend", "Conversions", "AverageCpc"],
+      Time: buildTimeRange(startDate, endDate),
+    },
+  });
+  return rows.map((r) => ({
+    device: String(r.DeviceType ?? "Unknown"),
+    impressions: Number(r.Impressions ?? 0),
+    clicks: Number(r.Clicks ?? 0),
+    ctr: Number(r.Ctr ?? 0),
+    spend: Number(r.Spend ?? 0),
+    conversions: Number(r.Conversions ?? 0),
+    cpc: Number(r.AverageCpc ?? 0),
+  })).filter((d) => d.impressions > 0);
+}
+
+// ── Geographic breakdown ────────────────────────────────────────────────────────
+
+export interface MicrosoftAdsGeoRow {
+  location: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  conversions: number;
+  ctr: number;
+}
+
+export async function getMicrosoftAdsGeoBreakdown(
+  accountId: string,
+  startDate: string,
+  endDate: string
+): Promise<MicrosoftAdsGeoRow[]> {
+  const accessToken = await getAccessToken();
+  const rows = await submitAndDownloadReport(accessToken, accountId, {
+    ReportRequest: {
+      ExcludeColumnHeaders: false, ExcludeReportFooter: true, ExcludeReportHeader: true,
+      Format: "Json", ReturnOnlyCompleteData: false,
+      Type: "GeographicPerformanceReportRequest",
+      Aggregation: "Summary",
+      Columns: ["LocationId", "Impressions", "Clicks", "Spend", "Conversions", "Ctr"],
+      Time: buildTimeRange(startDate, endDate),
+    },
+  });
+  return rows.map((r) => ({
+    location: String(r.LocationId ?? "Unknown"),
+    impressions: Number(r.Impressions ?? 0),
+    clicks: Number(r.Clicks ?? 0),
+    spend: Number(r.Spend ?? 0),
+    conversions: Number(r.Conversions ?? 0),
+    ctr: Number(r.Ctr ?? 0),
+  })).filter((d) => d.impressions > 0).sort((a, b) => b.spend - a.spend).slice(0, 30);
 }

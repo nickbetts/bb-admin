@@ -275,3 +275,104 @@ export async function getTikTokAdGroups(
     };
   });
 }
+
+// ── Audience demographics ───────────────────────────────────────────────────
+
+export interface TikTokAudienceDemo {
+  gender: string;
+  ageRange: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  conversions: number;
+  videoViews: number;
+}
+
+export async function getTikTokAudienceDemographics(
+  advertiserId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<TikTokAudienceDemo[]> {
+  const genderData = await tiktokFetch("/report/integrated/get/", accessToken, {
+    advertiser_id: advertiserId,
+    report_type: "AUDIENCE",
+    data_level: "AUCTION_ADVERTISER",
+    dimensions: '["gender","age"]',
+    metrics: '["spend","impressions","clicks","conversion","video_play_actions"]',
+    start_date: startDate,
+    end_date: endDate,
+  });
+
+  const list = ((genderData.data as Record<string, unknown>)?.list as Array<Record<string, Record<string, unknown>>>) ?? [];
+
+  return list.map((item) => {
+    const m = item.metrics ?? {};
+    const d = item.dimensions ?? {};
+    return {
+      gender: String(d.gender ?? "UNKNOWN"),
+      ageRange: String(d.age ?? "UNKNOWN"),
+      impressions: Number(m.impressions ?? 0),
+      clicks: Number(m.clicks ?? 0),
+      spend: Number(m.spend ?? 0),
+      conversions: Number(m.conversion ?? 0),
+      videoViews: Number(m.video_play_actions ?? 0),
+    };
+  }).filter((d) => d.impressions > 0);
+}
+
+// ── Creative / ad-level data ────────────────────────────────────────────────
+
+export interface TikTokCreative {
+  adId: string;
+  adName: string;
+  campaignId: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  conversions: number;
+  costPerConversion: number;
+  videoViews: number;
+  videoViewsP100: number | null;
+  videoWatched2s: number | null;
+}
+
+export async function getTikTokCreatives(
+  advertiserId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<TikTokCreative[]> {
+  const data = await tiktokFetch("/report/integrated/get/", accessToken, {
+    advertiser_id: advertiserId,
+    report_type: "BASIC",
+    data_level: "AUCTION_AD",
+    dimensions: '["ad_id"]',
+    metrics: '["ad_name","campaign_id","spend","impressions","clicks","ctr","conversion","cost_per_conversion","video_play_actions","video_views_p100","video_watched_2s"]',
+    start_date: startDate,
+    end_date: endDate,
+    page_size: "20",
+  });
+
+  const list = ((data.data as Record<string, unknown>)?.list as Array<Record<string, Record<string, unknown>>>) ?? [];
+
+  return list.map((item) => {
+    const m = item.metrics ?? {};
+    const d = item.dimensions ?? {};
+    return {
+      adId: String(d.ad_id ?? ""),
+      adName: String(m.ad_name ?? ""),
+      campaignId: String(m.campaign_id ?? ""),
+      spend: Number(m.spend ?? 0),
+      impressions: Number(m.impressions ?? 0),
+      clicks: Number(m.clicks ?? 0),
+      ctr: Number(m.ctr ?? 0),
+      conversions: Number(m.conversion ?? 0),
+      costPerConversion: Number(m.cost_per_conversion ?? 0),
+      videoViews: Number(m.video_play_actions ?? 0),
+      videoViewsP100: m.video_views_p100 != null ? Number(m.video_views_p100) : null,
+      videoWatched2s: m.video_watched_2s != null ? Number(m.video_watched_2s) : null,
+    };
+  });
+}
