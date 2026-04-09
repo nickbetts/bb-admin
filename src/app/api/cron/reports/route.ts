@@ -37,6 +37,19 @@ export async function POST(request: NextRequest) {
         metaAccountId: true,
         searchConsoleSiteUrl: true,
         semrushDomain: true,
+        tiktokAdvertiserId: true,
+        tiktokAccessToken: true,
+        microsoftAdsAccountId: true,
+        linkedinAccountId: true,
+        linkedinAccessToken: true,
+        klaviyoApiKey: true,
+        youtubeChannelId: true,
+        hubspotAccessToken: true,
+        callrailAccountId: true,
+        callrailApiKey: true,
+        cwvUrl: true,
+        woocommerceUrl: true,
+        shopifyStoreDomain: true,
       },
     });
 
@@ -114,6 +127,15 @@ export async function POST(request: NextRequest) {
             { type: "searchconsole", title: "Search Console", check: !!client.searchConsoleSiteUrl },
             { type: "meta", title: "Paid Social (Meta)", check: !!client.metaAccountId },
             { type: "googleads", title: "Paid Search (Google Ads)", check: !!client.googleAdsCustomerId },
+            { type: "tiktok", title: "TikTok Ads", check: !!(client.tiktokAdvertiserId && client.tiktokAccessToken) },
+            { type: "microsoft_ads", title: "Microsoft Ads", check: !!client.microsoftAdsAccountId },
+            { type: "linkedin", title: "LinkedIn Ads", check: !!(client.linkedinAccountId && client.linkedinAccessToken) },
+            { type: "klaviyo", title: "Email Marketing (Klaviyo)", check: !!client.klaviyoApiKey },
+            { type: "youtube", title: "YouTube", check: !!client.youtubeChannelId },
+            { type: "hubspot", title: "HubSpot CRM", check: !!client.hubspotAccessToken },
+            { type: "callrail", title: "Call Tracking (CallRail)", check: !!(client.callrailAccountId && client.callrailApiKey) },
+            { type: "core_web_vitals", title: "Core Web Vitals", check: !!client.cwvUrl },
+            { type: "ecommerce", title: "E-commerce", check: !!(client.woocommerceUrl || client.shopifyStoreDomain) },
           ];
 
           sections = availableSections
