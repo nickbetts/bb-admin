@@ -219,8 +219,24 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           setContentGap(Array.isArray(cg) ? cg : []);
         }
         if (serpFeaturesRes?.ok) {
-          const sf = await serpFeaturesRes.json();
-          setSerpFeatures(Array.isArray(sf) ? sf : []);
+          const sfRaw = await serpFeaturesRes.json();
+          if (Array.isArray(sfRaw) && sfRaw.length > 0) {
+            // Aggregate per-keyword features into { feature, count, percentage }
+            const featureCounts: Record<string, number> = {};
+            const total = sfRaw.length;
+            for (const item of sfRaw) {
+              const feats = Array.isArray(item.features) ? item.features : [];
+              for (const f of feats) {
+                if (f) featureCounts[f] = (featureCounts[f] || 0) + 1;
+              }
+            }
+            const aggregated = Object.entries(featureCounts)
+              .map(([feature, count]) => ({ feature, count, percentage: (count / total) * 100 }))
+              .sort((a, b) => b.count - a.count);
+            setSerpFeatures(aggregated);
+          } else {
+            setSerpFeatures([]);
+          }
         }
         if (backlinkChangesRes?.ok) {
           const bc = await backlinkChangesRes.json();

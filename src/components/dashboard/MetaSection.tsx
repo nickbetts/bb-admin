@@ -239,7 +239,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
   const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
   const [alertAiLoading, setAlertAiLoading] = useState(false);
   const [leadForms, setLeadForms] = useState<Array<{ formId: string; formName: string; leads: number; costPerLead: number; spend: number }>>([]);
-  const [relevanceDiagnostics, setRelevanceDiagnostics] = useState<Array<{ adName: string; qualityRanking: string; engagementRanking: string; conversionRanking: string; impressions: number }>>([]);
+  const [relevanceDiagnostics, setRelevanceDiagnostics] = useState<Array<{ adName: string; qualityRanking: string; engagementRateRanking: string; conversionRateRanking: string; impressions: number }>>([]);
 
   // Compute anomaly alerts from current data
   const metaAlerts = useMemo<MetaAlert[]>(() => {
@@ -1314,13 +1314,14 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {relevanceDiagnostics.map((ad, idx) => {
-                  const rankBadge = (rank: string) => {
-                    const label = rank.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
-                    const cls = rank === "ABOVE_AVERAGE"
+                  const rankBadge = (rank: string | undefined | null) => {
+                    const r = rank ?? "UNKNOWN";
+                    const label = r.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+                    const cls = r === "ABOVE_AVERAGE"
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : rank === "AVERAGE"
+                      : r === "AVERAGE"
                         ? "bg-amber-50 text-amber-700 border-amber-200"
-                        : rank === "BELOW_AVERAGE"
+                        : r === "BELOW_AVERAGE"
                           ? "bg-red-50 text-red-700 border-red-200"
                           : "bg-slate-50 text-slate-500 border-slate-200";
                     return (
@@ -1333,8 +1334,8 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                     <tr key={`${ad.adName}-${idx}`} className="hover:bg-slate-50 transition">
                       <td className="px-6 py-3 text-slate-800 font-medium">{ad.adName}</td>
                       <td className="px-4 py-3 text-center">{rankBadge(ad.qualityRanking)}</td>
-                      <td className="px-4 py-3 text-center">{rankBadge(ad.engagementRanking)}</td>
-                      <td className="px-4 py-3 text-center">{rankBadge(ad.conversionRanking)}</td>
+                      <td className="px-4 py-3 text-center">{rankBadge(ad.engagementRateRanking)}</td>
+                      <td className="px-4 py-3 text-center">{rankBadge(ad.conversionRateRanking)}</td>
                       <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(ad.impressions)}</td>
                     </tr>
                   );
