@@ -234,7 +234,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
     narrative?: string; recommendations?: string[];
   } | null>(null);
   const [sinceLastReport, setSinceLastReport] = useState<{
-    changes: Array<{ platform: string; metric: string; current: number; previous: number; change: number; significance: string }>;
+    highlights: Array<{ platform: string; metric: string; previousValue: number; currentValue: number; changePercent: number; direction: string; significance: string; detail: string }>;
     narrative?: string;
   } | null>(null);
 
@@ -769,7 +769,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             trend: r.prevEfficiency != null ? (pctChange(r.efficiency, r.prevEfficiency) ?? 0) : 0,
           })) : undefined,
           clientHealth: clientHealth ? { score: clientHealth.score, grade: clientHealth.grade, riskFactors: clientHealth.riskFactors.slice(0, 5) } : undefined,
-          sinceLastReport: sinceLastReport?.changes?.slice(0, 10) ?? undefined,
+          sinceLastReport: sinceLastReport?.highlights?.slice(0, 10) ?? undefined,
         }),
       });
       const json = await res.json();
@@ -1094,20 +1094,20 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
         )}
 
         {/* ── Since Last Report ───────────────────────────────────────── */}
-        {show("since_last_report") && sinceLastReport && sinceLastReport.changes.length > 0 && (
+        {show("since_last_report") && sinceLastReport && sinceLastReport.highlights.length > 0 && (
           <SectionCard title="Since Last Report" subtitle="Key metric changes since the previous reporting period">
             {sinceLastReport.narrative && (
               <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6, marginBottom: 12 }}>{sinceLastReport.narrative}</p>
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: 0, borderRadius: 8, border: "1px solid var(--border)", overflow: "hidden" }}>
-              {sinceLastReport.changes.slice(0, 8).map((ch, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: i < Math.min(sinceLastReport.changes.length, 8) - 1 ? "1px solid var(--border)" : "none", background: i % 2 === 0 ? "var(--surface)" : "transparent" }}>
+              {sinceLastReport.highlights.slice(0, 8).map((ch, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: i < Math.min(sinceLastReport.highlights.length, 8) - 1 ? "1px solid var(--border)" : "none", background: i % 2 === 0 ? "var(--surface)" : "transparent" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 3, background: "#eef2ff", color: "#6366f1" }}>{ch.platform}</span>
                     <span style={{ fontSize: 12, color: "var(--text)" }}>{ch.metric}</span>
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: ch.change >= 0 ? "#16a34a" : "#dc2626" }}>
-                    {ch.change >= 0 ? "+" : ""}{ch.change.toFixed(1)}%
+                  <span style={{ fontSize: 12, fontWeight: 600, color: ch.changePercent >= 0 ? "#16a34a" : "#dc2626" }}>
+                    {ch.changePercent >= 0 ? "+" : ""}{ch.changePercent.toFixed(1)}%
                   </span>
                 </div>
               ))}
@@ -1335,7 +1335,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
       )}
 
       {/* ── Since Last Report ────────────────────────────────────────────── */}
-      {show("since_last_report") && sinceLastReport && sinceLastReport.changes.length > 0 && (
+      {show("since_last_report") && sinceLastReport && sinceLastReport.highlights.length > 0 && (
         <div style={{ borderRadius: 12, border: "1px solid var(--border)", padding: "14px 18px", background: "var(--surface)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
             <BarChart3 className="h-4 w-4" style={{ color: "#6366f1" }} />
@@ -1345,14 +1345,14 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             <p style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.6, margin: 0, marginBottom: 10 }}>{sinceLastReport.narrative}</p>
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 0, borderRadius: 8, border: "1px solid var(--border)", overflow: "hidden" }}>
-            {sinceLastReport.changes.slice(0, 8).map((ch, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 12px", borderBottom: i < Math.min(sinceLastReport.changes.length, 8) - 1 ? "1px solid var(--border)" : "none", background: i % 2 === 0 ? "var(--surface)" : "transparent" }}>
+            {sinceLastReport.highlights.slice(0, 8).map((ch, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 12px", borderBottom: i < Math.min(sinceLastReport.highlights.length, 8) - 1 ? "1px solid var(--border)" : "none", background: i % 2 === 0 ? "var(--surface)" : "transparent" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 3, background: "#eef2ff", color: "#6366f1" }}>{ch.platform}</span>
                   <span style={{ fontSize: 12, color: "var(--text)" }}>{ch.metric}</span>
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 600, color: ch.change >= 0 ? "#16a34a" : "#dc2626" }}>
-                  {ch.change >= 0 ? "+" : ""}{ch.change.toFixed(1)}%
+                <span style={{ fontSize: 12, fontWeight: 600, color: ch.changePercent >= 0 ? "#16a34a" : "#dc2626" }}>
+                  {ch.changePercent >= 0 ? "+" : ""}{ch.changePercent.toFixed(1)}%
                 </span>
               </div>
             ))}
