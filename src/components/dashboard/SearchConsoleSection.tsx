@@ -125,6 +125,7 @@ export function SearchConsoleSection({
   const [countries, setCountries] = useState<GSCCountry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [brandedSplit, setBrandedSplit] = useState<{ branded: { clicks: number; impressions: number; ctr: number; position: number }; nonBranded: { clicks: number; impressions: number; ctr: number; position: number } } | null>(null);
   const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
   const [alertAiLoading, setAlertAiLoading] = useState(false);
 
@@ -160,6 +161,12 @@ export function SearchConsoleSection({
         setCountries(Array.isArray(ctrs) ? ctrs : []);
         if (Array.isArray(prevQ)) setPrevQueriesMap(new Map(prevQ.map((pq: GSCQuery) => [pq.query, pq])));
         if (Array.isArray(prevP)) setPrevPagesMap(new Map(prevP.map((pp: GSCPage) => [pp.page, pp])));
+
+        // Branded vs Non-Branded split (separate call — not part of bulk)
+        fetch(`/api/search-console?siteUrl=${encodeURIComponent(siteUrl)}&startDate=${startDate}&endDate=${endDate}&type=branded-split`, { signal: controller.signal })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => { if (data) setBrandedSplit(data); })
+          .catch(() => {});
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
         setError(err instanceof Error ? err.message : "Failed to load Search Console data");
@@ -819,6 +826,58 @@ export function SearchConsoleSection({
               )}
             </div>
           )}
+        </SectionCard>
+      )}
+
+      {/* Branded vs Non-Branded */}
+      {show("branded_split") && brandedSplit && (
+        <SectionCard title="Branded vs Non-Branded" subtitle="Search performance split by branded and non-branded queries">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            {/* Branded column */}
+            <div style={{ background: "#f8fafc", borderRadius: 12, padding: 16 }}>
+              <h4 style={{ fontSize: 13, fontWeight: 700, color: "#6366f1", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>Branded</h4>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <p style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>Clicks</p>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>{formatNumber(brandedSplit.branded.clicks)}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>Impressions</p>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>{formatNumber(brandedSplit.branded.impressions)}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>CTR</p>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>{(brandedSplit.branded.ctr * 100).toFixed(2)}%</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>Avg Position</p>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>{brandedSplit.branded.position.toFixed(1)}</p>
+                </div>
+              </div>
+            </div>
+            {/* Non-Branded column */}
+            <div style={{ background: "#f8fafc", borderRadius: 12, padding: 16 }}>
+              <h4 style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>Non-Branded</h4>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <p style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>Clicks</p>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>{formatNumber(brandedSplit.nonBranded.clicks)}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>Impressions</p>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>{formatNumber(brandedSplit.nonBranded.impressions)}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>CTR</p>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>{(brandedSplit.nonBranded.ctr * 100).toFixed(2)}%</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>Avg Position</p>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>{brandedSplit.nonBranded.position.toFixed(1)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </SectionCard>
       )}
 

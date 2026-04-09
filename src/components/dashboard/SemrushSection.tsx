@@ -149,6 +149,9 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
   const [error, setError] = useState<string | null>(null);
   const [alertAiRecs, setAlertAiRecs] = useState<string[]>([]);
   const [alertAiLoading, setAlertAiLoading] = useState(false);
+  const [contentGap, setContentGap] = useState<Array<{ keyword: string; volume: number; difficulty: number; competitors: string[] }>>([]);
+  const [serpFeatures, setSerpFeatures] = useState<Array<{ feature: string; count: number; percentage: number }>>([]);
+  const [backlinkChanges, setBacklinkChanges] = useState<Array<{ url: string; type: string; domain: string; firstSeen: string; lost: boolean }>>([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -165,6 +168,9 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=distribution`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=competitors`, { signal: controller.signal }),
           fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=backlinks`, { signal: controller.signal }),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=content-gap`, { signal: controller.signal }),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=serp-features`, { signal: controller.signal }),
+          fetch(`/api/semrush?domain=${encodeURIComponent(domain)}&type=backlink-changes`, { signal: controller.signal }),
         ];
         const activeCampaignId = campaignIds?.[0] ?? null;
         if (activeCampaignId) {
@@ -175,7 +181,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           fetchList.push(Promise.resolve(new Response(JSON.stringify([]), { status: 200 })));
           fetchList.push(Promise.resolve(new Response(JSON.stringify({ totalTracked: 0, aiOverviewKeywords: 0, brandCitations: 0, aiVisibilityScore: 0, keywords: [] }), { status: 200 })));
         }
-        const [overviewRes, keywordsRes, rankMoversRes, historyRes, distRes, competitorsRes, backlinksRes, trackedRes, aiVisRes] = await Promise.all(fetchList);
+        const [overviewRes, keywordsRes, rankMoversRes, historyRes, distRes, competitorsRes, backlinksRes, contentGapRes, serpFeaturesRes, backlinkChangesRes, trackedRes, aiVisRes] = await Promise.all(fetchList);
 
         if (!overviewRes.ok) {
           const err = await overviewRes.json();
@@ -206,6 +212,21 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
         setDistribution(Array.isArray(dist) ? dist : []);
         setCompetitors(Array.isArray(comps) ? comps : []);
         setBacklinks(Array.isArray(bls) ? bls : []);
+
+        // Wave 1-6 new data cards
+        if (contentGapRes?.ok) {
+          const cg = await contentGapRes.json();
+          setContentGap(Array.isArray(cg) ? cg : []);
+        }
+        if (serpFeaturesRes?.ok) {
+          const sf = await serpFeaturesRes.json();
+          setSerpFeatures(Array.isArray(sf) ? sf : []);
+        }
+        if (backlinkChangesRes?.ok) {
+          const bc = await backlinkChangesRes.json();
+          setBacklinkChanges(Array.isArray(bc) ? bc : []);
+        }
+
         if (trackedRes?.ok) {
           const tracked = await trackedRes.json();
           setTrackedKeywords(Array.isArray(tracked) ? tracked : []);
@@ -1016,6 +1037,115 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           ].join("\n") : undefined}
           crossPlatformContext={crossPlatformContext}
         />
+      )}
+
+      {/* Content Gap Analysis */}
+      {show("content_gap") && contentGap.length > 0 && (
+        <SectionCard title="Content Gap Analysis" subtitle="Keyword opportunities where competitors rank but you don't">
+          <div className="overflow-x-auto">
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: "2px solid var(--border)" }}>
+                  <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>Keyword</th>
+                  <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Volume</th>
+                  <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Difficulty</th>
+                  <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Competitors</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contentGap.slice(0, 20).map((item, i) => (
+                  <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "8px 12px", color: "var(--text)", fontWeight: 500 }}>{item.keyword}</td>
+                    <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(item.volume)}</td>
+                    <td style={{ padding: "8px 12px", textAlign: "right" }}>
+                      <span style={{
+                        fontSize: 11, fontWeight: 600, color: "#fff",
+                        background: item.difficulty >= 80 ? "#dc2626" : item.difficulty >= 60 ? "#d97706" : item.difficulty >= 40 ? "#2563eb" : "#16a34a",
+                        borderRadius: 4, padding: "2px 8px",
+                      }}>
+                        {item.difficulty}%
+                      </span>
+                    </td>
+                    <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>{item.competitors.length}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {/* SERP Features */}
+      {show("serp_features") && serpFeatures.length > 0 && (
+        <SectionCard title="SERP Features" subtitle="Distribution of SERP feature types for tracked keywords">
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {serpFeatures.map((item, i) => {
+              const maxPct = Math.max(...serpFeatures.map(f => f.percentage), 1);
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ minWidth: 140, fontSize: 12, fontWeight: 500, color: "var(--text)" }}>{item.feature}</span>
+                  <div style={{ flex: 1, background: "#f1f5f9", borderRadius: 4, height: 22, position: "relative", overflow: "hidden" }}>
+                    <div style={{
+                      width: `${(item.percentage / maxPct) * 100}%`,
+                      height: "100%",
+                      background: "linear-gradient(90deg, #6366f1, #818cf8)",
+                      borderRadius: 4,
+                      transition: "width 0.3s ease",
+                    }} />
+                  </div>
+                  <span style={{ minWidth: 60, fontSize: 12, fontWeight: 600, color: "var(--text-2)", textAlign: "right" }}>
+                    {item.percentage.toFixed(1)}%
+                  </span>
+                  <span style={{ minWidth: 40, fontSize: 11, color: "var(--text-3)", textAlign: "right" }}>
+                    {formatNumber(item.count)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Recent Backlink Changes */}
+      {show("backlink_changes") && backlinkChanges.length > 0 && (
+        <SectionCard title="Recent Backlink Changes" subtitle="New and lost backlinks detected recently">
+          <div className="overflow-x-auto">
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: "2px solid var(--border)" }}>
+                  <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>URL</th>
+                  <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>Referring Domain</th>
+                  <th style={{ padding: "8px 12px", textAlign: "center", fontWeight: 600, color: "var(--text-2)" }}>Type</th>
+                  <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>First Seen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {backlinkChanges.slice(0, 20).map((item, i) => (
+                  <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "8px 12px", color: "var(--text)", fontWeight: 500, maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: "#6366f1", textDecoration: "none" }}>
+                        {item.url}
+                      </a>
+                    </td>
+                    <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{item.domain}</td>
+                    <td style={{ padding: "8px 12px", textAlign: "center" }}>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff",
+                        background: item.lost ? "#dc2626" : "#16a34a",
+                        borderRadius: 4, padding: "2px 8px",
+                      }}>
+                        {item.lost ? "Lost" : "New"}
+                      </span>
+                    </td>
+                    <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>
+                      {item.firstSeen ? formatDateDisplay(item.firstSeen) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
       )}
 
       {/* Share of Voice and Seasonality */}
