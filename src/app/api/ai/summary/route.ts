@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
+import { getSeasonalityContext } from "@/lib/seasonality";
 
 export const dynamic = "force-dynamic";
 
@@ -1100,6 +1101,9 @@ CROSS-CUTTING RULES:
 - When client goals are provided, frame performance against those targets.
 - Keep summaries punchy: aim for clarity over length.${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
 
+    // Seasonality context — calendar-aware analysis
+    const seasonality = getSeasonalityContext();
+
     const contextParts = [
       `${config.name} performance for ${clientName ?? "the client"} — ${dateRange ?? "selected period"}`,
       "",
@@ -1115,6 +1119,7 @@ CROSS-CUTTING RULES:
       crossPlatformContext ? `\nCROSS-PLATFORM CONTEXT (from other channels — use to inform deeper analysis):\n${crossPlatformContext}` : "",
       goalsContext,
       competitorContext,
+      `\n${seasonality.promptText}`,
     ].filter(Boolean);
 
     const userPrompt = `Analyse the following ${config.name} data and provide a comprehensive performance review.

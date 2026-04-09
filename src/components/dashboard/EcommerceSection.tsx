@@ -19,6 +19,8 @@ import { LoadingSpinner } from "@/components/ui/index";
 import { formatCurrency, formatNumber, formatDateDisplay } from "@/lib/utils";
 import { ShoppingCart, TrendingUp, Package } from "lucide-react";
 import { BlendedRevenuePanel } from "./BlendedRevenuePanel";
+import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { SuperSummary } from "@/components/ai/SuperSummary";
 
 interface EcStats {
   totalRevenue: number;
@@ -32,15 +34,17 @@ interface EcStats {
 
 interface EcommerceSectionProps {
   clientId: string;
+  clientName?: string;
   platform: "woocommerce" | "shopify";
   startDate: string;
   endDate: string;
   visibleBlocks?: string[];
+  crossPlatformContext?: string;
 }
 
 const CHART_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
-export function EcommerceSection({ clientId, platform, startDate, endDate, visibleBlocks }: EcommerceSectionProps) {
+export function EcommerceSection({ clientId, clientName, platform, startDate, endDate, visibleBlocks, crossPlatformContext }: EcommerceSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [stats, setStats] = useState<EcStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -205,6 +209,35 @@ export function EcommerceSection({ clientId, platform, startDate, endDate, visib
             clientId={clientId}
             dateRange={`${startDate} – ${endDate}`}
             ecommerceStats={stats ? { totalRevenue: stats.totalRevenue, totalOrders: stats.totalOrders, averageOrderValue: stats.averageOrderValue, source: platformLabel } : null}
+          />
+
+          {/* Full Journey Analysis */}
+          <SuperSummary
+            sectionType={platform}
+            metrics={{
+              totalRevenue: stats.totalRevenue,
+              totalOrders: stats.totalOrders,
+              averageOrderValue: stats.averageOrderValue,
+            }}
+            campaignData={stats.topProducts.map(p => ({ name: p.name, quantity: p.quantity, revenue: p.revenue }))}
+            clientName={clientName}
+            dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+            crossPlatformContext={crossPlatformContext}
+          />
+
+          {/* AI Insights */}
+          <AiInsightsPanel
+            sectionType="ecommerce"
+            metrics={{
+              totalRevenue: stats.totalRevenue,
+              totalOrders: stats.totalOrders,
+              averageOrderValue: stats.averageOrderValue,
+            }}
+            campaignData={stats.topProducts.map(p => ({ name: p.name, quantity: p.quantity, revenue: p.revenue }))}
+            clientId={clientId}
+            clientName={clientName}
+            dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+            crossPlatformContext={crossPlatformContext}
           />
         </>
       )}

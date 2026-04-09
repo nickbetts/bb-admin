@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 import { fetchPageSignals, type PageSignals } from "@/lib/landing-page-analyzer";
+import { getSeasonalityContext } from "@/lib/seasonality";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -51,6 +52,16 @@ const SECTION_NAMES: Record<string, string> = {
   meta: "Meta Ads",
   seo: "SEO (SemRush)",
   searchconsole: "Search Console",
+  tiktok: "TikTok Ads",
+  microsoftads: "Microsoft Ads (Bing)",
+  linkedin: "LinkedIn Ads",
+  klaviyo: "Email & SMS (Klaviyo)",
+  youtube: "YouTube",
+  hubspot: "HubSpot CRM",
+  callrail: "Call Tracking (CallRail)",
+  ecommerce: "E-Commerce",
+  shopify: "Shopify",
+  woocommerce: "WooCommerce",
 };
 
 const METRIC_LABELS: Record<string, Record<string, string>> = {
@@ -80,6 +91,43 @@ const METRIC_LABELS: Record<string, Record<string, string>> = {
   searchconsole: {
     clicks: "Clicks", impressions: "Impressions", ctr: "CTR", position: "Avg Position",
   },
+  tiktok: {
+    spend: "Total Spend", impressions: "Impressions", clicks: "Clicks", ctr: "CTR",
+    cpc: "CPC", cpm: "CPM", conversions: "Conversions", costPerConversion: "Cost/Conv",
+    videoViews: "Video Views", reach: "Reach", frequency: "Frequency",
+  },
+  microsoftads: {
+    spend: "Total Spend", impressions: "Impressions", clicks: "Clicks", ctr: "CTR",
+    cpc: "CPC", conversions: "Conversions", revenue: "Revenue", roas: "ROAS",
+    costPerConversion: "Cost/Conv", impressionSharePercent: "Impression Share",
+  },
+  linkedin: {
+    impressions: "Impressions", clicks: "Clicks", spend: "Total Spend",
+    conversions: "Conversions", reach: "Reach", ctr: "CTR", cpc: "CPC", cpl: "CPL",
+  },
+  klaviyo: {
+    sends: "Emails Sent", opens: "Opens", clicks: "Clicks", revenue: "Revenue",
+    openRate: "Open Rate", clickRate: "Click Rate", campaignCount: "Campaigns",
+  },
+  youtube: {
+    views: "Views", watchTimeHours: "Watch Time (hrs)", subscribers: "Subscribers", ctr: "CTR",
+  },
+  hubspot: {
+    totalContacts: "Total Contacts", openDeals: "Open Deals",
+    pipelineValue: "Pipeline Value", closedWonValue: "Closed Won",
+  },
+  callrail: {
+    totalCalls: "Total Calls", answeredCalls: "Answered", missedCalls: "Missed", answeredRate: "Answer Rate",
+  },
+  ecommerce: {
+    totalRevenue: "Revenue", totalOrders: "Orders", averageOrderValue: "AOV",
+  },
+  shopify: {
+    totalRevenue: "Revenue", totalOrders: "Orders", averageOrderValue: "AOV",
+  },
+  woocommerce: {
+    totalRevenue: "Revenue", totalOrders: "Orders", averageOrderValue: "AOV",
+  },
 };
 
 // ─── Route handler ─────────────────────────────────────────────────────────────
@@ -108,12 +156,30 @@ export async function POST(request: NextRequest) {
 
     // Fetch client-specific AI instructions if clientId provided
     let clientAiInstructions = "";
+    let goalsContext = "";
     if (clientId) {
-      const client = await prisma.client.findUnique({ where: { id: clientId }, select: { aiReportInstructions: true } });
+      const [client, goals] = await Promise.all([
+        prisma.client.findUnique({ where: { id: clientId }, select: { aiReportInstructions: true } }),
+        prisma.clientGoal.findMany({
+          where: { clientId, status: { in: ["active", "at_risk"] } },
+          select: { title: true, metric: true, targetValue: true, currentValue: true, unit: true, targetDate: true, status: true },
+        }),
+      ]);
       if (client?.aiReportInstructions) {
         clientAiInstructions = client.aiReportInstructions;
       }
+      if (goals.length > 0) {
+        goalsContext = "\n\nACTIVE CLIENT GOALS:\n" + goals.map((g) => {
+          const progress = g.currentValue && g.targetValue && g.targetValue !== 0
+            ? Math.round((g.currentValue / g.targetValue) * 100)
+            : null;
+          return `• ${g.title}: target ${g.targetValue}${g.unit ? ` ${g.unit}` : ""} by ${g.targetDate} (current: ${g.currentValue ?? "not measured"}${progress ? ` — ${progress}% to target` : ""}, ${g.status.toUpperCase()})`;
+        }).join("\n");
+      }
     }
+
+    // Seasonality context — calendar-aware analysis
+    const seasonality = getSeasonalityContext();
 
     const sectionName = SECTION_NAMES[sectionType] ?? sectionType;
     const labels = METRIC_LABELS[sectionType] ?? {};
@@ -198,6 +264,8 @@ When ad creative data is provided, deliver DETAILED creative-level analysis as p
 - Flag creative fatigue at the ad level (high frequency + declining CTR or rising CPA) and recommend refresh strategies.
 - For winning creatives, explain what makes them effective (strong hook, clear CTA, emotional resonance, social proof, etc.) so success can be replicated.
 
+When client goals are provided, frame your analysis against those targets — state clearly whether the channel is on track, at risk, or off track for each goal.
+
 Be specific with numbers, campaign names, page URLs, and metric values. Use British English.
 Prioritise commercial impact — which issues, if fixed, would deliver the most revenue or efficiency gain?${clientAiInstructions ? `\n\nAdditional client-specific instructions:\n${clientAiInstructions}` : ""}`;
 
@@ -210,6 +278,9 @@ ${campaignSummary}
 ${pageAnalysisContext}
 ${extraContext ? `\nAdditional context:\n${extraContext}` : ""}
 ${crossPlatformContext ? `\nCROSS-PLATFORM CONTEXT (from other channels — use to enrich your analysis):\n${crossPlatformContext}` : ""}
+${goalsContext}
+
+${seasonality.promptText}
 
 Analyse the FULL JOURNEY — traffic generation → click → landing page → conversion — and return a JSON object:
 {

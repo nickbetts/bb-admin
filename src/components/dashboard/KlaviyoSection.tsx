@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Mail, Loader2 } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { SuperSummary } from "@/components/ai/SuperSummary";
+import { formatDateDisplay } from "@/lib/utils";
 
 interface KlaviyoOverview {
   sends: number;
@@ -147,6 +149,35 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
         <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-3)", fontSize: 13 }}>
           No Klaviyo data available. Ensure your API key is configured in client settings.
         </div>
+      )}
+
+      {/* Full Journey Analysis */}
+      {!loading && overview && (
+        <SuperSummary
+          sectionType="klaviyo"
+          metrics={{
+            sends: overview.sends,
+            opens: overview.opens,
+            clicks: overview.clicks,
+            revenue: overview.revenue,
+            openRate: overview.openRate,
+            clickRate: overview.clickRate,
+            campaignCount: overview.campaignCount,
+          }}
+          campaignData={campaigns.slice(0, 20).map((c) => ({
+            name: c.name,
+            status: c.status,
+            sends: c.sends,
+            opens: c.opens,
+            clicks: c.clicks,
+            revenue: c.revenue,
+            openRate: c.openRate,
+            clickRate: c.clickRate,
+          }))}
+          clientName={clientName}
+          dateRange={_startDate && _endDate ? `${formatDateDisplay(_startDate)} – ${formatDateDisplay(_endDate)}` : undefined}
+          crossPlatformContext={crossPlatformContext}
+        />
       )}
 
       {/* AI Insights */}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Phone, PhoneCall, PhoneMissed, Loader2, AlertCircle } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { SuperSummary } from "@/components/ai/SuperSummary";
 
 interface CallSummary {
   totalCalls: number;
@@ -151,6 +152,22 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext }: 
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Full Journey Analysis */}
+      {summary && (
+        <SuperSummary
+          sectionType="callrail"
+          metrics={{
+            totalCalls: summary.totalCalls,
+            answeredCalls: summary.answeredCalls,
+            missedCalls: summary.missedCalls,
+            answeredRate: summary.totalCalls > 0 ? Math.round((summary.answeredCalls / summary.totalCalls) * 100) : 0,
+          }}
+          campaignData={summary.bySource?.map(s => ({ name: s.source, calls: s.calls })) ?? []}
+          clientName={clientName}
+          crossPlatformContext={crossPlatformContext}
+        />
       )}
 
       {/* AI Insights */}

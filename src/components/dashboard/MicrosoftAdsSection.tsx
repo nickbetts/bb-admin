@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Loader2, AlertTriangle, RefreshCw, Search } from "lucide-react";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber, formatDateDisplay } from "@/lib/utils";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { SuperSummary } from "@/components/ai/SuperSummary";
 
 interface MicrosoftAdsSectionProps {
   clientId: string;
@@ -168,6 +169,27 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
           </table>
         </div>
       )}
+
+      {/* Full Journey Analysis */}
+      <SuperSummary
+        sectionType="microsoftads"
+        metrics={{
+          spend: overview.spend,
+          impressions: overview.impressions,
+          clicks: overview.clicks,
+          ctr: overview.ctr,
+          cpc: overview.cpc,
+          conversions: overview.conversions,
+          revenue: overview.revenue,
+          roas: overview.roas,
+          costPerConversion: overview.costPerConversion,
+          impressionSharePercent: overview.impressionSharePercent,
+        }}
+        campaignData={campaigns as unknown as Record<string, unknown>[]}
+        clientName={clientName}
+        dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+        crossPlatformContext={crossPlatformContext}
+      />
 
       {/* AI Insights */}
       <AiInsightsPanel

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Play, Eye, Clock, Users, ThumbsUp, Loader2, AlertCircle } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { SuperSummary } from "@/components/ai/SuperSummary";
 
 interface YouTubeVideo {
   id: string;
@@ -136,6 +137,22 @@ export function YouTubeSection({ clientId, clientName, crossPlatformContext }: Y
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Full Journey Analysis */}
+      {analytics && (
+        <SuperSummary
+          sectionType="youtube"
+          metrics={{
+            views: analytics.views,
+            watchTimeHours: analytics.watchTimeHours,
+            subscribers: analytics.subscribers,
+            ctr: analytics.ctr,
+          }}
+          campaignData={(videos ?? []).slice(0, 10).map(v => ({ name: v.title, views: v.views, likes: v.likes, ctr: v.ctr, duration: v.duration }))}
+          clientName={clientName}
+          crossPlatformContext={crossPlatformContext}
+        />
       )}
 
       {/* AI Insights */}

@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Loader2, ExternalLink } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { SuperSummary } from "@/components/ai/SuperSummary";
+import { formatDateDisplay } from "@/lib/utils";
 
 function Linkedin({ style }: { style?: React.CSSProperties }) {
   return (
@@ -159,6 +161,33 @@ export function LinkedInSection({ clientId, clientName, accountId, accessToken, 
             Open Campaign Manager <ExternalLink style={{ width: 12, height: 12 }} />
           </a>
         </div>
+      )}
+
+      {/* Full Journey Analysis */}
+      {!loading && overview && (
+        <SuperSummary
+          sectionType="linkedin"
+          metrics={{
+            impressions: overview.impressions,
+            clicks: overview.clicks,
+            spend: overview.spend,
+            conversions: overview.conversions,
+            reach: overview.reach,
+            ctr: overview.ctr,
+            cpc: overview.cpc,
+            cpl: overview.cpl,
+          }}
+          campaignData={campaigns.slice(0, 20).map((c) => ({
+            name: c.pivotValues?.[0] ?? "Campaign",
+            impressions: c.impressions ?? 0,
+            clicks: c.clicks ?? 0,
+            spend: parseFloat(c.costInLocalCurrency ?? "0"),
+            conversions: c.externalWebsiteConversions ?? 0,
+          }))}
+          clientName={clientName}
+          dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+          crossPlatformContext={crossPlatformContext}
+        />
       )}
 
       {/* AI Insights */}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Users, DollarSign, TrendingUp, Loader2, AlertCircle } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { SuperSummary } from "@/components/ai/SuperSummary";
 
 interface HubSpotContact {
   id: string;
@@ -124,6 +125,21 @@ export function HubSpotSection({ clientId, clientName, crossPlatformContext }: H
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Full Journey Analysis */}
+      {summary && (
+        <SuperSummary
+          sectionType="hubspot"
+          metrics={{
+            totalContacts: summary.totalContacts,
+            openDeals: summary.openDeals,
+            pipelineValue: summary.pipelineValue,
+            closedWonValue: summary.closedWonValue,
+          }}
+          clientName={clientName}
+          crossPlatformContext={crossPlatformContext}
+        />
       )}
 
       {/* AI Insights */}

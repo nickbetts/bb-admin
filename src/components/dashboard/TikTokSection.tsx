@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Loader2, AlertTriangle, RefreshCw, Video } from "lucide-react";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber, formatDateDisplay } from "@/lib/utils";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { SuperSummary } from "@/components/ai/SuperSummary";
 
 interface TikTokSectionProps {
   clientId: string;
@@ -168,6 +169,28 @@ export function TikTokSection({ clientId, clientName, startDate, endDate, crossP
           </table>
         </div>
       )}
+
+      {/* Full Journey Analysis */}
+      <SuperSummary
+        sectionType="tiktok"
+        metrics={{
+          spend: overview.spend,
+          impressions: overview.impressions,
+          clicks: overview.clicks,
+          ctr: overview.ctr,
+          cpc: overview.cpc,
+          cpm: overview.cpm,
+          conversions: overview.conversions,
+          costPerConversion: overview.costPerConversion,
+          videoViews: overview.videoViews,
+          reach: overview.reach,
+          frequency: overview.frequency,
+        }}
+        campaignData={campaigns as unknown as Record<string, unknown>[]}
+        clientName={clientName}
+        dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+        crossPlatformContext={crossPlatformContext}
+      />
 
       {/* AI Insights */}
       <AiInsightsPanel
