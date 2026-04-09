@@ -47,6 +47,7 @@ const CHART_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8
 export function EcommerceSection({ clientId, clientName, platform, startDate, endDate, visibleBlocks, crossPlatformContext }: EcommerceSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [stats, setStats] = useState<EcStats | null>(null);
+  const [customers, setCustomers] = useState<{ totalCustomers: number; newCustomers: number; returningCustomers: number; averageOrdersPerCustomer: number; topCustomers: Array<{ name: string; email: string; totalSpent: number; orderCount: number }> } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,6 +75,15 @@ export function EcommerceSection({ clientId, clientName, platform, startDate, en
     load();
 
     return () => controller.abort();
+  }, [clientId, platform, startDate, endDate]);
+
+  // Fetch customer analytics (non-blocking)
+  useEffect(() => {
+    const apiPath = platform === "shopify" ? "/api/shopify" : "/api/woocommerce";
+    fetch(`${apiPath}?clientId=${encodeURIComponent(clientId)}&startDate=${startDate}&endDate=${endDate}&type=customers`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setCustomers(d); })
+      .catch(() => null);
   }, [clientId, platform, startDate, endDate]);
 
   const platformLabel = platform === "shopify" ? "Shopify" : "WooCommerce";
@@ -201,6 +211,61 @@ export function EcommerceSection({ clientId, clientName, platform, startDate, en
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+            </SectionCard>
+          )}
+
+          {/* Customer Analytics */}
+          {show("customers") && customers && (
+            <SectionCard title="Customer Analytics" subtitle="Customer breakdown for the period">
+              <div className="grid grid-cols-3 gap-5 mb-6">
+                <MetricCard
+                  title="Total Customers"
+                  value={formatNumber(customers.totalCustomers)}
+                  subtitle="Unique customers"
+                  icon={<ShoppingCart className="h-5 w-5" />}
+                  color="blue"
+                />
+                <MetricCard
+                  title="New vs Returning"
+                  value={customers.totalCustomers > 0
+                    ? `${Math.round((customers.newCustomers / customers.totalCustomers) * 100)}% new`
+                    : "—"}
+                  subtitle={`${formatNumber(customers.newCustomers)} new · ${formatNumber(customers.returningCustomers)} returning`}
+                  icon={<TrendingUp className="h-5 w-5" />}
+                  color="green"
+                />
+                <MetricCard
+                  title="Avg Orders / Customer"
+                  value={customers.averageOrdersPerCustomer.toFixed(1)}
+                  subtitle="Orders per customer"
+                  icon={<Package className="h-5 w-5" />}
+                  color="purple"
+                />
+              </div>
+              {customers.topCustomers.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50">
+                        <th className="text-left py-2 px-4 text-slate-400 font-medium text-xs">Customer</th>
+                        <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Total Spent</th>
+                        <th className="text-right py-2 px-4 text-slate-400 font-medium text-xs">Orders</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {customers.topCustomers.slice(0, 5).map((c, i) => (
+                        <tr key={i} className="hover:bg-slate-50 transition">
+                          <td className="py-3 px-4">
+                            <p className="text-slate-800 font-medium truncate max-w-[240px]">{c.name}</p>
+                          </td>
+                          <td className="py-3 px-3 text-right font-semibold text-slate-800 text-sm">{formatCurrency(c.totalSpent)}</td>
+                          <td className="py-3 px-4 text-right text-slate-600 text-xs">{formatNumber(c.orderCount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </SectionCard>
           )}
 

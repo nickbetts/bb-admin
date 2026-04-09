@@ -25,6 +25,7 @@ interface CWVData {
 
 interface CoreWebVitalsSectionProps {
   url: string;
+  visibleBlocks?: string[];
 }
 
 const CATEGORY_CONFIG = {
@@ -93,8 +94,11 @@ function MetricCard({ name, data }: { name: string; data: MetricData | null }) {
   );
 }
 
-export function CoreWebVitalsSection({ url }: CoreWebVitalsSectionProps) {
+export function CoreWebVitalsSection({ url, visibleBlocks }: CoreWebVitalsSectionProps) {
+  const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [data, setData] = useState<CWVData | null>(null);
+  const [deviceData, setDeviceData] = useState<Record<string, CWVData> | null>(null);
+  const [historyData, setHistoryData] = useState<Array<{ date: string; lcp: number; cls: number; inp: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -111,6 +115,10 @@ export function CoreWebVitalsSection({ url }: CoreWebVitalsSectionProps) {
       } finally {
         setLoading(false);
       }
+
+      // Fetch supplementary data (non-blocking)
+      fetch(`/api/cwv?url=${encodeURIComponent(url)}&type=by-device`).then(r => r.ok ? r.json() : null).then(d => { if (d) setDeviceData(d); }).catch(() => null);
+      fetch(`/api/cwv?url=${encodeURIComponent(url)}&type=history`).then(r => r.ok ? r.json() : null).then(d => { if (Array.isArray(d)) setHistoryData(d); }).catch(() => null);
     }
     load();
   }, [url]);
@@ -186,6 +194,101 @@ export function CoreWebVitalsSection({ url }: CoreWebVitalsSectionProps) {
       <div style={{ fontSize: 12, color: "var(--text-3, #888)", textAlign: "right" }}>
         Last fetched: {new Date(data.fetchedAt).toLocaleString("en-GB")}
       </div>
+
+      {/* Device Breakdown */}
+      {show("device_breakdown") && deviceData && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <h3 style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1, #1a1a1a)" }}>CWV by Device</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+            {(["mobile", "desktop", "tablet"] as const).map(device => {
+              const d = deviceData[device];
+              if (!d) return null;
+              const cfg = CATEGORY_CONFIG[d.overallCategory];
+              const DeviceIcon = cfg.Icon;
+              return (
+                <div key={device} style={{
+                  padding: 20,
+                  borderRadius: 12,
+                  border: `1px solid ${cfg.border}`,
+                  background: cfg.bg,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <DeviceIcon style={{ width: 18, height: 18, color: cfg.color }} />
+                      <span style={{ fontWeight: 700, fontSize: 14, textTransform: "capitalize", color: "var(--text-1, #1a1a1a)" }}>{device}</span>
+                    </div>
+                    <span style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: "2px 10px",
+                      borderRadius: 20,
+                      background: cfg.color,
+                      color: "white",
+                    }}>
+                      {cfg.label}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13 }}>
+                    {(["lcp", "cls", "inp"] as const).map(metric => {
+                      const m = d[metric];
+                      if (!m) return null;
+                      const mCfg = CATEGORY_CONFIG[m.category];
+                      return (
+                        <div key={metric} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontWeight: 600, color: "var(--text-2, #444)" }}>{METRIC_INFO[metric].label}</span>
+                          <span style={{ fontWeight: 700, color: mCfg.color }}>
+                            {metric === "cls" ? m.p75.toFixed(3) : Math.round(m.p75)}{METRIC_INFO[metric].unit}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* CWV History */}
+      {show("history") && historyData.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <h3 style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1, #1a1a1a)" }}>CWV History</h3>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: "2px solid #e5e7eb" }}>
+                  <th style={{ textAlign: "left", padding: "8px 12px", color: "#6b7280", fontWeight: 600, fontSize: 12 }}>Date</th>
+                  <th style={{ textAlign: "right", padding: "8px 12px", color: "#6b7280", fontWeight: 600, fontSize: 12 }}>LCP (ms)</th>
+                  <th style={{ textAlign: "right", padding: "8px 12px", color: "#6b7280", fontWeight: 600, fontSize: 12 }}>CLS</th>
+                  <th style={{ textAlign: "right", padding: "8px 12px", color: "#6b7280", fontWeight: 600, fontSize: 12 }}>INP (ms)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historyData.map((row, i) => {
+                  const prev = i > 0 ? historyData[i - 1] : null;
+                  const lcpColor = prev ? (row.lcp < prev.lcp ? "#16a34a" : row.lcp > prev.lcp ? "#dc2626" : "#6b7280") : "#6b7280";
+                  const clsColor = prev ? (row.cls < prev.cls ? "#16a34a" : row.cls > prev.cls ? "#dc2626" : "#6b7280") : "#6b7280";
+                  const inpColor = prev ? (row.inp < prev.inp ? "#16a34a" : row.inp > prev.inp ? "#dc2626" : "#6b7280") : "#6b7280";
+                  return (
+                    <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                      <td style={{ padding: "8px 12px", color: "var(--text-2, #444)" }}>{row.date}</td>
+                      <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: lcpColor }}>{Math.round(row.lcp)}</td>
+                      <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: clsColor }}>{row.cls.toFixed(3)}</td>
+                      <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: inpColor }}>{Math.round(row.inp)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text-3, #888)" }}>
+            <span style={{ color: "#16a34a", fontWeight: 600 }}>■</span> Improved
+            {" "}<span style={{ color: "#dc2626", fontWeight: 600 }}>■</span> Degraded
+            {" "}<span style={{ color: "#6b7280", fontWeight: 600 }}>■</span> Unchanged
+          </div>
+        </div>
+      )}
     </div>
   );
 }
