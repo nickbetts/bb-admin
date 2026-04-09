@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getTikTokAdsOverview, getTikTokCampaigns, getTikTokDailyData } from "@/lib/tiktok-ads";
+import { getTikTokAdsOverview, getTikTokCampaigns, getTikTokDailyData, getTikTokAdGroups } from "@/lib/tiktok-ads";
 import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
@@ -37,12 +37,13 @@ export async function GET(request: NextRequest) {
     const advertiserId = client.tiktokAdvertiserId;
     const cacheKey = `tiktok:${clientId}:${startDate}:${endDate}`;
     const data = await withApiCache(cacheKey, 4, async () => {
-      const [overview, campaigns, daily] = await Promise.all([
+      const [overview, campaigns, daily, adGroups] = await Promise.all([
         getTikTokAdsOverview(advertiserId, accessToken, startDate, endDate),
         getTikTokCampaigns(advertiserId, accessToken, startDate, endDate),
         getTikTokDailyData(advertiserId, accessToken, startDate, endDate),
+        getTikTokAdGroups(advertiserId, accessToken, startDate, endDate),
       ]);
-      return { overview, campaigns, daily };
+      return { overview, campaigns, daily, adGroups };
     });
 
     return NextResponse.json(data);

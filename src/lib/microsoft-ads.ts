@@ -219,11 +219,108 @@ export async function getMicrosoftAdsCampaigns(
 }
 
 export async function getMicrosoftAdsDailyData(
-  _accountId: string,
-  _startDate: string,
-  _endDate: string
+  accountId: string,
+  startDate: string,
+  endDate: string
 ): Promise<MicrosoftAdsDailyData[]> {
-  // Daily data requires the reporting API async flow
-  // For now, return empty — full implementation requires report polling
-  return [];
+  const accessToken = await getAccessToken();
+
+  const reportRequest = {
+    ReportRequest: {
+      ExcludeColumnHeaders: false,
+      ExcludeReportFooter: true,
+      ExcludeReportHeader: true,
+      Format: "Json",
+      ReturnOnlyCompleteData: false,
+      Type: "AccountPerformanceReportRequest",
+      Aggregation: "Daily",
+      Columns: ["TimePeriod", "Spend", "Impressions", "Clicks", "Conversions", "Revenue"],
+      Time: {
+        CustomDateRangeStart: {
+          Day: parseInt(startDate.split("-")[2]),
+          Month: parseInt(startDate.split("-")[1]),
+          Year: parseInt(startDate.split("-")[0]),
+        },
+        CustomDateRangeEnd: {
+          Day: parseInt(endDate.split("-")[2]),
+          Month: parseInt(endDate.split("-")[1]),
+          Year: parseInt(endDate.split("-")[0]),
+        },
+      },
+    },
+  };
+
+  // Step 1: submit the report
+  let reportRequestId: string;
+  try {
+    const submitData = await msAdsFetch(
+      `${MS_ADS_API_BASE}/SubmitGenerateReport`,
+      accessToken,
+      accountId,
+      reportRequest
+    );
+    reportRequestId = String(submitData.ReportRequestId ?? "");
+    if (!reportRequestId) return [];
+  } catch {
+    return [];
+  }
+
+  // Step 2: poll until ready (max 10 attempts × 3s = 30s)
+  let downloadUrl = "";
+  for (let attempt = 0; attempt < 10; attempt++) {
+    await new Promise((r) => setTimeout(r, 3000));
+    try {
+      const pollData = await msAdsFetch(
+        `${MS_ADS_API_BASE}/PollGenerateReport?ReportRequestId=${encodeURIComponent(reportRequestId)}`,
+        accessToken,
+        accountId
+      );
+      const status = (pollData.ReportRequestStatus as Record<string, unknown>)?.Status as string | undefined;
+      if (status === "Success") {
+        downloadUrl = String((pollData.ReportRequestStatus as Record<string, unknown>)?.ReportDownloadUrl ?? "");
+        break;
+      }
+      if (status === "Error" || status === "Failed") return [];
+    } catch {
+      return [];
+    }
+  }
+
+  if (!downloadUrl) return [];
+
+  // Step 3: download and parse the JSON report
+  try {
+    const downloadRes = await fetch(downloadUrl, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!downloadRes.ok) return [];
+
+    const reportJson = await downloadRes.json() as {
+      ReportData?: {
+        Rows?: Array<{
+          TimePeriod?: string;
+          Spend?: number | string;
+          Impressions?: number | string;
+          Clicks?: number | string;
+          Conversions?: number | string;
+          Revenue?: number | string;
+        }>;
+      };
+    };
+
+    const rows = reportJson.ReportData?.Rows ?? [];
+    return rows
+      .map((row) => ({
+        date: String(row.TimePeriod ?? "").split("T")[0],
+        spend: Number(row.Spend ?? 0),
+        impressions: Number(row.Impressions ?? 0),
+        clicks: Number(row.Clicks ?? 0),
+        conversions: Number(row.Conversions ?? 0),
+        revenue: Number(row.Revenue ?? 0),
+      }))
+      .filter((r) => r.date)
+      .sort((a, b) => a.date.localeCompare(b.date));
+  } catch {
+    return [];
+  }
 }

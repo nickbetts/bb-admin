@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get("clientId");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
 
     if (!clientId) return NextResponse.json({ error: "clientId is required" }, { status: 400 });
 
@@ -19,6 +21,11 @@ export async function GET(request: NextRequest) {
 
     const apiKey = client.klaviyoApiKey;
     if (!apiKey) return NextResponse.json({ error: "Klaviyo API key not configured for this client" }, { status: 400 });
+
+    // Build timeframe: use explicit date range if provided, otherwise default to last 12 months
+    const timeframe = startDate && endDate
+      ? { start: `${startDate}T00:00:00`, end: `${endDate}T23:59:59` }
+      : { key: "last_12_months" };
 
     // Fetch campaigns from Klaviyo API v2024-02-15
     const campaignsRes = await fetch(
@@ -84,7 +91,7 @@ export async function GET(request: NextRequest) {
               attributes: {
                 filter: `equals(campaign_id,"${campaign.id}")`,
                 statistics: ["delivered", "open_rate", "click_rate", "revenue"],
-                timeframe: { key: "last_12_months" },
+                timeframe,
               },
             },
           }),
@@ -179,7 +186,7 @@ export async function GET(request: NextRequest) {
                   attributes: {
                     filter: `equals(flow_id,"${flow.id}")`,
                     statistics: ["delivered", "open_rate", "click_rate", "revenue"],
-                    timeframe: { key: "last_12_months" },
+                    timeframe,
                   },
                 },
               }),

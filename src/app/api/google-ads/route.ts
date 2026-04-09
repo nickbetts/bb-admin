@@ -9,6 +9,7 @@ import {
   getGoogleAdsSearchTerms,
   getGoogleAdsLandingPages,
   getGoogleAdsAvgQualityScore,
+  getGoogleAdsKeywordQualityScores,
   getGoogleAdsAudienceCriteria,
   getGoogleAdsInvalidClicks,
   getGoogleAdsDeviceBreakdown,
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
     const cacheKey = `googleads:${customerId}:${startDate}:${endDate}`;
 
     const data = await withApiCache(cacheKey, GADS_CACHE_TTL_HOURS, async () => {
-      const [overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, audienceCriteria, invalidClicks, deviceBreakdown, rsaAssets] =
+      const [overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, keywordQualityScores, audienceCriteria, invalidClicks, deviceBreakdown, rsaAssets] =
         await Promise.all([
           getGoogleAdsOverview(customerId, startDate, endDate),
           getGoogleAdsCampaigns(customerId, startDate, endDate),
@@ -58,12 +59,13 @@ export async function GET(request: NextRequest) {
           getGoogleAdsSearchTerms(customerId, startDate, endDate),
           getGoogleAdsLandingPages(customerId, startDate, endDate),
           getGoogleAdsAvgQualityScore(customerId),
+          getGoogleAdsKeywordQualityScores(customerId, startDate, endDate),
           getGoogleAdsAudienceCriteria(customerId),
           getGoogleAdsInvalidClicks(customerId, startDate, endDate),
           getGoogleAdsDeviceBreakdown(customerId, startDate, endDate),
           getGoogleAdsRSAAssets(customerId, startDate, endDate),
         ]);
-      return { overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, audienceCriteria, invalidClicks, deviceBreakdown, rsaAssets };
+      return { overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, keywordQualityScores, audienceCriteria, invalidClicks, deviceBreakdown, rsaAssets };
     });
 
     return NextResponse.json(data);

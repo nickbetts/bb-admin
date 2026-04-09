@@ -995,18 +995,18 @@ When creative fatigue is detected or new campaigns are planned, AI should genera
 
 These require small code changes to pull more data from APIs we already connect to:
 
-| # | Action | Effort | Impact |
-|---|--------|--------|--------|
-| 1 | **Fix Klaviyo date range** — implement Reporting API for date-filtered metrics | S | 🔴 Critical — currently broken |
-| 2 | **Fix Microsoft Ads daily data** — implement async report polling for daily metrics | M | 🔴 Critical — stub returning empty |
-| 3 | **Fix CallRail by-source** — populate source attribution from real API data | S | 🔴 High — only works for demo |
-| 4 | **Add Quality Score per keyword** to Google Ads (with components: expected CTR, ad relevance, landing page) | S | 🟠 High — one of most-requested PPC metrics |
-| 5 | **Add search term match type** to Google Ads search terms | S | 🟡 Medium — helps negative keyword identification |
-| 6 | **Add video engagement metrics** to TikTok (2s/6s views, p25/p50/p75/p100 completion) | S | 🟠 High — TikTok is a video platform |
-| 7 | **Add ad group level data** to TikTok | M | 🟠 High — essential middle layer missing entirely |
-| 8 | **Add frequency distribution** to Meta | S | 🟡 Medium — precise creative fatigue detection |
-| 9 | **Add video funnel metrics** to Meta (p25/p50/p75/p100 watched) | S | 🟡 Medium — video is dominant format |
-| 10 | **Implement YouTube Analytics API** — channel + video level real data | M | 🔴 Critical — currently only metadata |
+| # | Action | Effort | Impact | Status |
+|---|--------|--------|--------|--------|
+| 1 | **Fix Klaviyo date range** — implement Reporting API for date-filtered metrics | S | 🔴 Critical — currently broken | ✅ Done |
+| 2 | **Fix Microsoft Ads daily data** — implement async report polling for daily metrics | M | 🔴 Critical — stub returning empty | ✅ Done |
+| 3 | **Fix CallRail by-source** — populate source attribution from real API data | S | 🔴 High — only works for demo | ✅ Done |
+| 4 | **Add Quality Score per keyword** to Google Ads (with components: expected CTR, ad relevance, landing page) | S | 🟠 High — one of most-requested PPC metrics | ✅ Done |
+| 5 | **Add search term match type** to Google Ads search terms | S | 🟡 Medium — helps negative keyword identification | ✅ Done |
+| 6 | **Add video engagement metrics** to TikTok (2s/6s views, p25/p50/p75/p100 completion) | S | 🟠 High — TikTok is a video platform | ✅ Done |
+| 7 | **Add ad group level data** to TikTok | M | 🟠 High — essential middle layer missing entirely | ✅ Done |
+| 8 | **Add frequency distribution** to Meta | S | 🟡 Medium — precise creative fatigue detection | ✅ Done |
+| 9 | **Add video funnel metrics** to Meta (p25/p50/p75/p100 watched) | S | 🟡 Medium — video is dominant format | ✅ Done |
+| 10 | **Implement YouTube Analytics API** — channel + video level real data | M | 🔴 Critical — currently only metadata | ✅ Done |
 
 ### Wave 2 — AI Intelligence Upgrades (2-4 weeks each)
 

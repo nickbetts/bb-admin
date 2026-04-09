@@ -37,6 +37,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get("clientId");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
     if (!clientId) return NextResponse.json({ error: "clientId is required" }, { status: 400 });
 
     const client = await prisma.client.findUnique({
@@ -54,9 +56,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(MOCK_CALLRAIL_DATA);
     }
 
-    // Real CallRail API call
-    const res = await fetch(
-      `https://api.callrail.com/v3/a/${client.callrailAccountId}/calls.json?fields=answered,duration,source,caller_number,start_time&per_page=25`,
+    // Build date range filter if provided
+    const dateParams = new URLSearchParams();
+    if (startDate) dateParams.set("start_date", startDate);
+    if (endDate) dateParams.set("end_date", endDate);
+    const dateQueryString = dateParams.toString() ? `&${dateParams.toString()}` : "";
+
+    // Fetch summary with source breakdown
+    const summaryRes = await fetch(
+      `https://api.callrail.com/v3/a/${client.callrailAccountId}/calls/summary.json?group_by=source_name${dateQueryString}`,
       {
         headers: {
           Authorization: `Token token="${client.callrailApiKey}"`,
@@ -65,11 +73,20 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    if (!res.ok) {
+    // Fetch recent calls (up to 250 to aggregate source data accurately)
+    const callsUrl = `https://api.callrail.com/v3/a/${client.callrailAccountId}/calls.json?fields=answered,duration,source,caller_number,start_time&per_page=250${dateQueryString}`;
+    const callsRes = await fetch(callsUrl, {
+      headers: {
+        Authorization: `Token token="${client.callrailApiKey}"`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!callsRes.ok) {
       return NextResponse.json({ configured: true, error: "CallRail API error" }, { status: 502 });
     }
 
-    const data = await res.json() as {
+    const callsData = await callsRes.json() as {
       calls: Array<{
         id: string;
         caller_number: string;
@@ -81,26 +98,68 @@ export async function GET(request: NextRequest) {
       total_records: number;
     };
 
-    const calls = data.calls.map((c) => ({
+    const calls = callsData.calls.map((c) => ({
       id: c.id,
       callerNumber: c.caller_number,
-      source: c.source,
+      source: c.source ?? "Unknown",
       duration: `${Math.floor(c.duration / 60)}:${String(c.duration % 60).padStart(2, "0")}`,
       answered: c.answered,
       date: c.start_time,
     }));
 
     const answeredCalls = calls.filter((c) => c.answered).length;
+    const totalDuration = callsData.calls.reduce((s, c) => s + (c.duration ?? 0), 0);
+    const avgDurationSeconds = calls.length > 0 ? Math.round(totalDuration / calls.length) : 0;
+
+    // Build source breakdown from summary API if available, otherwise aggregate from calls
+    let bySource: Array<{ source: string; calls: number; pct: number }> = [];
+
+    if (summaryRes.ok) {
+      try {
+        const summaryData = await summaryRes.json() as {
+          data?: Array<{ source_name?: string; total_calls?: number }>;
+        };
+        const totalFromSummary = (summaryData.data ?? []).reduce((s, r) => s + (r.total_calls ?? 0), 0);
+        bySource = (summaryData.data ?? [])
+          .filter((r) => r.total_calls && r.total_calls > 0)
+          .map((r) => ({
+            source: r.source_name ?? "Unknown",
+            calls: r.total_calls ?? 0,
+            pct: totalFromSummary > 0 ? Math.round(((r.total_calls ?? 0) / totalFromSummary) * 1000) / 10 : 0,
+          }))
+          .sort((a, b) => b.calls - a.calls);
+      } catch { /* fall through to aggregate from calls */ }
+    }
+
+    // Fallback: aggregate source breakdown from fetched calls
+    if (bySource.length === 0 && calls.length > 0) {
+      const sourceMap = new Map<string, number>();
+      for (const call of calls) {
+        const src = call.source || "Unknown";
+        sourceMap.set(src, (sourceMap.get(src) ?? 0) + 1);
+      }
+      const total = calls.length;
+      bySource = [...sourceMap.entries()]
+        .map(([source, count]) => ({
+          source,
+          calls: count,
+          pct: Math.round((count / total) * 1000) / 10,
+        }))
+        .sort((a, b) => b.calls - a.calls);
+    }
+
     return NextResponse.json({
       configured: true,
       summary: {
-        totalCalls: data.total_records,
+        totalCalls: callsData.total_records,
         answeredCalls,
         missedCalls: calls.length - answeredCalls,
-        answeredPct: calls.length ? Math.round((answeredCalls / calls.length) * 100 * 10) / 10 : 0,
+        answeredPct: calls.length ? Math.round((answeredCalls / calls.length) * 1000) / 10 : 0,
+        avgDuration: `${Math.floor(avgDurationSeconds / 60)}:${String(avgDurationSeconds % 60).padStart(2, "0")}`,
+        avgDurationSeconds,
       },
-      bySource: [],
-      calls,
+      bySource,
+      calls: calls.slice(0, 25),
     });
   } catch (error) {
     console.error("CallRail error:", error);

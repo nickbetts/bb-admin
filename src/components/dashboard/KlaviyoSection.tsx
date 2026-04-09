@@ -55,7 +55,10 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/klaviyo?clientId=${encodeURIComponent(clientId)}`);
+      const params = new URLSearchParams({ clientId });
+      if (_startDate) params.set("startDate", _startDate);
+      if (_endDate) params.set("endDate", _endDate);
+      const res = await fetch(`/api/klaviyo?${params}`);
       const data = await res.json() as { overview?: KlaviyoOverview; campaigns?: KlaviyoCampaign[]; error?: string };
       if (!res.ok) { setError(data.error ?? "Failed to load Klaviyo data"); return; }
       setOverview(data.overview ?? null);
@@ -65,7 +68,7 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
     } finally {
       setLoading(false);
     }
-  }, [clientId]);
+  }, [clientId, _startDate, _endDate]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
