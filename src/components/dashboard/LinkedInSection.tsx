@@ -35,6 +35,20 @@ interface LinkedInCampaign {
   externalWebsiteConversions?: number;
 }
 
+interface LinkedInDemoRow {
+  name: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+}
+
+interface LinkedInDemographics {
+  seniority?: LinkedInDemoRow[];
+  industry?: LinkedInDemoRow[];
+  jobFunction?: LinkedInDemoRow[];
+  companySize?: LinkedInDemoRow[];
+}
+
 interface LinkedInSectionProps {
   clientId: string;
   clientName?: string;
@@ -59,6 +73,7 @@ export function LinkedInSection({ clientId, clientName, accountId, accessToken, 
   const [loading, setLoading] = useState(false);
   const [overview, setOverview] = useState<LinkedInOverview | null>(null);
   const [campaigns, setCampaigns] = useState<LinkedInCampaign[]>([]);
+  const [demographics, setDemographics] = useState<LinkedInDemographics | null>(null);
   const [error, setError] = useState("");
 
   const fetchData = useCallback(async () => {
@@ -68,10 +83,11 @@ export function LinkedInSection({ clientId, clientName, accountId, accessToken, 
     try {
       const params = new URLSearchParams({ accountId, accessToken, startDate, endDate });
       const res = await fetch(`/api/linkedin?${params}`);
-      const data = await res.json() as { overview?: LinkedInOverview; campaigns?: LinkedInCampaign[]; error?: string };
+      const data = await res.json() as { overview?: LinkedInOverview; campaigns?: LinkedInCampaign[]; demographics?: LinkedInDemographics; error?: string };
       if (!res.ok) { setError(data.error ?? "Failed to load LinkedIn data"); return; }
       setOverview(data.overview ?? null);
       setCampaigns(data.campaigns ?? []);
+      setDemographics(data.demographics ?? null);
     } catch {
       setError("Network error loading LinkedIn data.");
     } finally {
@@ -144,6 +160,93 @@ export function LinkedInSection({ clientId, clientName, accountId, accessToken, 
                         <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{(c.clicks ?? 0).toLocaleString()}</td>
                         <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>£{parseFloat(c.costInLocalCurrency ?? "0").toFixed(2)}</td>
                         <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{(c.externalWebsiteConversions ?? 0).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Demographics — Industry */}
+          {demographics?.industry && demographics.industry.length > 0 && (
+            <div className="card" style={{ marginTop: 4 }}>
+              <div className="card-header"><h3 className="card-title">Industry</h3></div>
+              <div className="card-body" style={{ padding: 0 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                      <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Industry</th>
+                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Impressions</th>
+                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Clicks</th>
+                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {demographics.industry.map((row, i) => (
+                      <tr key={`ind-${i}`} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "10px 16px", color: "var(--text)" }}>{row.name}</td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{row.impressions.toLocaleString()}</td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{row.clicks.toLocaleString()}</td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>£{row.spend.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Demographics — Job Function */}
+          {demographics?.jobFunction && demographics.jobFunction.length > 0 && (
+            <div className="card" style={{ marginTop: 4 }}>
+              <div className="card-header"><h3 className="card-title">Job Function</h3></div>
+              <div className="card-body" style={{ padding: 0 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                      <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Job Function</th>
+                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Impressions</th>
+                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Clicks</th>
+                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {demographics.jobFunction.map((row, i) => (
+                      <tr key={`jf-${i}`} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "10px 16px", color: "var(--text)" }}>{row.name}</td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{row.impressions.toLocaleString()}</td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{row.clicks.toLocaleString()}</td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>£{row.spend.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Demographics — Company Size */}
+          {demographics?.companySize && demographics.companySize.length > 0 && (
+            <div className="card" style={{ marginTop: 4 }}>
+              <div className="card-header"><h3 className="card-title">Company Size</h3></div>
+              <div className="card-body" style={{ padding: 0 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                      <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Company Size</th>
+                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Impressions</th>
+                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Clicks</th>
+                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {demographics.companySize.map((row, i) => (
+                      <tr key={`cs-${i}`} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "10px 16px", color: "var(--text)" }}>{row.name}</td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{row.impressions.toLocaleString()}</td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{row.clicks.toLocaleString()}</td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>£{row.spend.toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>

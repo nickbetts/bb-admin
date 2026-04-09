@@ -29,6 +29,24 @@ interface KlaviyoCampaign {
   clickRate: number;
 }
 
+interface KlaviyoSubscriberHealth {
+  totalProfiles: number;
+  activeLists: number;
+}
+
+interface KlaviyoSegment {
+  name: string;
+  profileCount: number;
+}
+
+interface KlaviyoSmsCampaign {
+  id: string;
+  name: string;
+  sends: number;
+  clicks: number;
+  revenue: number;
+}
+
 interface KlaviyoSectionProps {
   clientId: string;
   clientName?: string;
@@ -51,6 +69,9 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<KlaviyoOverview | null>(null);
   const [campaigns, setCampaigns] = useState<KlaviyoCampaign[]>([]);
+  const [subscriberHealth, setSubscriberHealth] = useState<KlaviyoSubscriberHealth | null>(null);
+  const [segments, setSegments] = useState<KlaviyoSegment[]>([]);
+  const [smsCampaigns, setSmsCampaigns] = useState<KlaviyoSmsCampaign[]>([]);
   const [error, setError] = useState("");
 
   const fetchData = useCallback(async () => {
@@ -61,10 +82,13 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
       if (_startDate) params.set("startDate", _startDate);
       if (_endDate) params.set("endDate", _endDate);
       const res = await fetch(`/api/klaviyo?${params}`);
-      const data = await res.json() as { overview?: KlaviyoOverview; campaigns?: KlaviyoCampaign[]; error?: string };
+      const data = await res.json() as { overview?: KlaviyoOverview; campaigns?: KlaviyoCampaign[]; subscriberHealth?: KlaviyoSubscriberHealth; segments?: KlaviyoSegment[]; smsCampaigns?: KlaviyoSmsCampaign[]; error?: string };
       if (!res.ok) { setError(data.error ?? "Failed to load Klaviyo data"); return; }
       setOverview(data.overview ?? null);
       setCampaigns(data.campaigns ?? []);
+      setSubscriberHealth(data.subscriberHealth ?? null);
+      setSegments(data.segments ?? []);
+      setSmsCampaigns(data.smsCampaigns ?? []);
     } catch {
       setError("Network error loading Klaviyo data.");
     } finally {
@@ -135,6 +159,68 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
                         <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>
                           {c.revenue > 0 ? `£${c.revenue.toFixed(0)}` : "—"}
                         </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Subscriber Health */}
+          {subscriberHealth && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+              <MetricCard label="Total Profiles" value={subscriberHealth.totalProfiles.toLocaleString()} />
+              <MetricCard label="Active Lists" value={subscriberHealth.activeLists.toLocaleString()} />
+            </div>
+          )}
+
+          {/* Segments */}
+          {segments.length > 0 && (
+            <div className="card">
+              <div className="card-header"><h3 className="card-title">Segments</h3></div>
+              <div className="card-body" style={{ padding: 0 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                      <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Segment</th>
+                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Profiles</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {segments.map((seg, i) => (
+                      <tr key={`seg-${i}`} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "10px 16px", color: "var(--text)" }}>{seg.name}</td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{seg.profileCount.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SMS Campaigns */}
+          {smsCampaigns.length > 0 && (
+            <div className="card">
+              <div className="card-header"><h3 className="card-title">SMS Campaigns</h3></div>
+              <div className="card-body" style={{ padding: 0 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                      <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Campaign</th>
+                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Sends</th>
+                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Clicks</th>
+                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {smsCampaigns.map((sms) => (
+                      <tr key={sms.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "10px 16px", color: "var(--text)" }}>{sms.name}</td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{sms.sends.toLocaleString()}</td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{sms.clicks.toLocaleString()}</td>
+                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{sms.revenue > 0 ? `£${sms.revenue.toFixed(0)}` : "—"}</td>
                       </tr>
                     ))}
                   </tbody>

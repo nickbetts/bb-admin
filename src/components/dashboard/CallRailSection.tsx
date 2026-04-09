@@ -27,7 +27,32 @@ interface CallRailData {
   configured: boolean;
   summary?: CallSummary;
   calls?: RecentCall[];
+  keywords?: CallRailKeyword[];
+  utmSources?: CallRailUtmSource[];
+  hourlyDistribution?: CallRailHourlyDist[];
+  callerBreakdown?: CallRailCallerBreakdown;
   error?: string;
+}
+
+interface CallRailKeyword {
+  keyword: string;
+  calls: number;
+}
+
+interface CallRailUtmSource {
+  source: string;
+  calls: number;
+}
+
+interface CallRailHourlyDist {
+  hour: number;
+  calls: number;
+}
+
+interface CallRailCallerBreakdown {
+  firstTimeCalls: number;
+  repeatCalls: number;
+  uniqueCallers: number;
 }
 
 interface CallRailSectionProps {
@@ -147,6 +172,89 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext }: 
                   <td style={{ padding: "8px 16px", color: "var(--text-3)", fontSize: 11 }}>
                     {new Date(call.startTime).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Caller Breakdown */}
+      {data.callerBreakdown && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 20 }}>
+          {[
+            { label: "First-Time Callers", value: data.callerBreakdown.firstTimeCalls, color: "#6366f1" },
+            { label: "Repeat Callers", value: data.callerBreakdown.repeatCalls, color: "#f59e0b" },
+            { label: "Unique Callers", value: data.callerBreakdown.uniqueCallers, color: "#22c55e" },
+          ].map((stat) => (
+            <div key={stat.label} style={{ background: `${stat.color}08`, border: `1px solid ${stat.color}20`, borderRadius: "var(--r-sm)", padding: "12px 16px" }}>
+              <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>{stat.label}</p>
+              <p style={{ fontSize: 20, fontWeight: 700, color: stat.color }}>{stat.value.toLocaleString()}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Hourly Distribution */}
+      {data.hourlyDistribution && data.hourlyDistribution.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 10 }}>Calls by Hour</p>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 80 }}>
+            {data.hourlyDistribution.map((h) => {
+              const maxCalls = Math.max(...data.hourlyDistribution!.map(x => x.calls), 1);
+              const pct = (h.calls / maxCalls) * 100;
+              return (
+                <div key={h.hour} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                  <div style={{ width: "100%", height: `${pct}%`, minHeight: 2, background: "#6366f1", borderRadius: "2px 2px 0 0" }} title={`${h.hour}:00 — ${h.calls} calls`} />
+                  <span style={{ fontSize: 9, color: "var(--text-3)" }}>{h.hour}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Keywords */}
+      {data.keywords && data.keywords.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 20 }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Top Keywords</div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {["Keyword", "Calls"].map((h) => (
+                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.keywords.map((kw, i) => (
+                <tr key={`kw-${i}`} style={{ borderBottom: i < data.keywords!.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <td style={{ padding: "8px 16px", fontWeight: 500, color: "var(--text)" }}>{kw.keyword}</td>
+                  <td style={{ padding: "8px 16px", color: "var(--text-2)" }}>{kw.calls.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* UTM Sources */}
+      {data.utmSources && data.utmSources.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 20 }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Top UTM Sources</div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {["Source", "Calls"].map((h) => (
+                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.utmSources.map((utm, i) => (
+                <tr key={`utm-${i}`} style={{ borderBottom: i < data.utmSources!.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <td style={{ padding: "8px 16px", fontWeight: 500, color: "var(--text)" }}>{utm.source}</td>
+                  <td style={{ padding: "8px 16px", color: "var(--text-2)" }}>{utm.calls.toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>

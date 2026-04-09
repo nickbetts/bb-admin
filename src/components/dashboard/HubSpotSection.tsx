@@ -27,7 +27,28 @@ interface HubSpotData {
   contacts?: HubSpotContact[];
   deals?: HubSpotDeal[];
   summary?: { totalContacts: number; openDeals: number; pipelineValue: number; closedWonValue: number };
+  pipelineStages?: HubSpotPipelineStage[];
+  lifecycleFunnel?: HubSpotLifecycleStage[];
+  dealVelocityDays?: number;
+  formSubmissions?: HubSpotFormSubmission[];
   error?: string;
+}
+
+interface HubSpotPipelineStage {
+  stageName: string;
+  count: number;
+  value: number;
+}
+
+interface HubSpotLifecycleStage {
+  stage: string;
+  count: number;
+}
+
+interface HubSpotFormSubmission {
+  formName: string;
+  submittedAt: string;
+  email: string;
 }
 
 interface HubSpotSectionProps {
@@ -120,6 +141,91 @@ export function HubSpotSection({ clientId, clientName, crossPlatformContext }: H
                   <td style={{ padding: "10px 16px", color: "#22c55e", fontWeight: 600 }}>{formatCurrency(deal.amount)}</td>
                   <td style={{ padding: "10px 16px", color: "var(--text-2)", textTransform: "capitalize" }}>{deal.dealstage.replace(/([a-z])([A-Z])/g, "$1 $2")}</td>
                   <td style={{ padding: "10px 16px", color: "var(--text-3)" }}>{deal.closedate ? new Date(deal.closedate).toLocaleDateString("en-GB") : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Pipeline Stages */}
+      {data.pipelineStages && data.pipelineStages.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 20 }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Pipeline Stages</div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {["Stage", "Count", "Value"].map((h) => (
+                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.pipelineStages.map((ps, i) => (
+                <tr key={`ps-${i}`} style={{ borderBottom: i < data.pipelineStages!.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <td style={{ padding: "10px 16px", fontWeight: 500, color: "var(--text)" }}>{ps.stageName}</td>
+                  <td style={{ padding: "10px 16px", color: "var(--text-2)" }}>{ps.count}</td>
+                  <td style={{ padding: "10px 16px", color: "#22c55e", fontWeight: 600 }}>{formatCurrency(ps.value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Lifecycle Funnel */}
+      {data.lifecycleFunnel && data.lifecycleFunnel.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 20 }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Lifecycle Funnel</div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {["Stage", "Count"].map((h) => (
+                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.lifecycleFunnel.map((lf, i) => (
+                <tr key={`lf-${i}`} style={{ borderBottom: i < data.lifecycleFunnel!.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <td style={{ padding: "10px 16px", fontWeight: 500, color: "var(--text)", textTransform: "capitalize" }}>{lf.stage}</td>
+                  <td style={{ padding: "10px 16px", color: "var(--text-2)" }}>{lf.count.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Deal Velocity */}
+      {data.dealVelocityDays != null && (
+        <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+          <div style={{ background: "#3b82f608", border: "1px solid #3b82f620", borderRadius: "var(--r-sm)", padding: "12px 16px" }}>
+            <div style={{ color: "#3b82f6", marginBottom: 5 }}><TrendingUp style={{ width: 14, height: 14 }} /></div>
+            <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>Deal Velocity</p>
+            <p style={{ fontSize: 20, fontWeight: 700, color: "#3b82f6" }}>{data.dealVelocityDays} days</p>
+          </div>
+        </div>
+      )}
+
+      {/* Form Submissions */}
+      {data.formSubmissions && data.formSubmissions.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 20 }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Recent Form Submissions</div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {["Form", "Email", "Submitted"].map((h) => (
+                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.formSubmissions.map((fs, i) => (
+                <tr key={`fs-${i}`} style={{ borderBottom: i < data.formSubmissions!.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <td style={{ padding: "10px 16px", fontWeight: 500, color: "var(--text)" }}>{fs.formName}</td>
+                  <td style={{ padding: "10px 16px", color: "var(--text-2)" }}>{fs.email}</td>
+                  <td style={{ padding: "10px 16px", color: "var(--text-3)", fontSize: 11 }}>{new Date(fs.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</td>
                 </tr>
               ))}
             </tbody>

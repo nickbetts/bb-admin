@@ -14,6 +14,23 @@ interface YouTubeVideo {
   duration: string;
 }
 
+interface YouTubeTrafficSource {
+  sourceType: string;
+  views: number;
+  watchTimeHours: number;
+}
+
+interface YouTubeDemographic {
+  ageGroup: string;
+  gender: string;
+  viewerPercentage: number;
+}
+
+interface YouTubeSearchTerm {
+  term: string;
+  views: number;
+}
+
 interface YouTubeData {
   configured: boolean;
   channel?: {
@@ -32,6 +49,9 @@ interface YouTubeData {
     ctr: number;
   };
   videos?: YouTubeVideo[];
+  trafficSources?: YouTubeTrafficSource[];
+  demographics?: YouTubeDemographic[];
+  searchTerms?: YouTubeSearchTerm[];
   error?: string;
 }
 
@@ -132,6 +152,79 @@ export function YouTubeSection({ clientId, clientName, crossPlatformContext }: Y
                   <td style={{ padding: "10px 16px", color: "var(--text-2)" }}>{v.likes.toLocaleString()}</td>
                   <td style={{ padding: "10px 16px", color: "var(--text-2)" }}>{v.ctr}%</td>
                   <td style={{ padding: "10px 16px", color: "var(--text-3)" }}>{v.duration}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Traffic Sources */}
+      {data.trafficSources && data.trafficSources.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 10 }}>Traffic Sources</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {data.trafficSources.map((src) => {
+              const maxViews = Math.max(...data.trafficSources!.map(s => s.views), 1);
+              const pct = (src.views / maxViews) * 100;
+              return (
+                <div key={src.sourceType}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 12 }}>
+                    <span style={{ color: "var(--text-2)" }}>{src.sourceType}</span>
+                    <span style={{ color: "var(--text-3)" }}>{src.views.toLocaleString()} views · {src.watchTimeHours.toLocaleString()}h</span>
+                  </div>
+                  <div style={{ height: 5, background: "var(--border)", borderRadius: 99 }}>
+                    <div style={{ height: "100%", width: `${pct}%`, background: "#ef4444", borderRadius: 99 }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Demographics */}
+      {data.demographics && data.demographics.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 20 }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Demographics</div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {["Age Group", "Gender", "Viewer %"].map((h) => (
+                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.demographics.map((d, i) => (
+                <tr key={`demo-${d.ageGroup}-${d.gender}-${i}`} style={{ borderBottom: i < data.demographics!.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <td style={{ padding: "8px 16px", color: "var(--text)" }}>{d.ageGroup}</td>
+                  <td style={{ padding: "8px 16px", color: "var(--text-2)", textTransform: "capitalize" }}>{d.gender}</td>
+                  <td style={{ padding: "8px 16px", color: "var(--text-2)" }}>{d.viewerPercentage.toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Search Terms */}
+      {data.searchTerms && data.searchTerms.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 20 }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Top Search Terms</div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {["Search Term", "Views"].map((h) => (
+                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.searchTerms.map((t, i) => (
+                <tr key={`st-${i}`} style={{ borderBottom: i < data.searchTerms!.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <td style={{ padding: "8px 16px", fontWeight: 500, color: "var(--text)" }}>{t.term}</td>
+                  <td style={{ padding: "8px 16px", color: "var(--text-2)" }}>{t.views.toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
