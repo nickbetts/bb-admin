@@ -222,8 +222,8 @@ export async function getMicrosoftAdsCampaigns(
 
 function buildTimeRange(startDate: string, endDate: string) {
   return {
-    CustomDateRangeStart: { Day: parseInt(startDate.split("-")[2]), Month: parseInt(startDate.split("-")[1]), Year: parseInt(startDate.split("-")[0]) },
-    CustomDateRangeEnd: { Day: parseInt(endDate.split("-")[2]), Month: parseInt(endDate.split("-")[1]), Year: parseInt(endDate.split("-")[0]) },
+    CustomDateRangeStart: { Day: parseInt(startDate.split("-")[2], 10), Month: parseInt(startDate.split("-")[1], 10), Year: parseInt(startDate.split("-")[0], 10) },
+    CustomDateRangeEnd: { Day: parseInt(endDate.split("-")[2], 10), Month: parseInt(endDate.split("-")[1], 10), Year: parseInt(endDate.split("-")[0], 10) },
   };
 }
 
@@ -517,7 +517,7 @@ export async function getMicrosoftAdsDeviceBreakdown(
 // ── Geographic breakdown ────────────────────────────────────────────────────────
 
 export interface MicrosoftAdsGeoRow {
-  location: string;
+  locationId: string;
   impressions: number;
   clicks: number;
   spend: number;
@@ -542,7 +542,7 @@ export async function getMicrosoftAdsGeoBreakdown(
     },
   });
   return rows.map((r) => ({
-    location: String(r.LocationId ?? "Unknown"),
+    locationId: String(r.LocationId ?? "Unknown"),
     impressions: Number(r.Impressions ?? 0),
     clicks: Number(r.Clicks ?? 0),
     spend: Number(r.Spend ?? 0),

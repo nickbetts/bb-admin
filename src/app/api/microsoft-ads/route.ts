@@ -36,10 +36,10 @@ export async function GET(request: NextRequest) {
         getMicrosoftAdsOverview(accountId, startDate, endDate),
         getMicrosoftAdsCampaigns(accountId, startDate, endDate),
         getMicrosoftAdsDailyData(accountId, startDate, endDate),
-        getMicrosoftAdsKeywords(accountId, startDate, endDate).catch(() => []),
-        getMicrosoftAdsSearchTerms(accountId, startDate, endDate).catch(() => []),
-        getMicrosoftAdsDeviceBreakdown(accountId, startDate, endDate).catch(() => []),
-        getMicrosoftAdsGeoBreakdown(accountId, startDate, endDate).catch(() => []),
+        getMicrosoftAdsKeywords(accountId, startDate, endDate).catch((err) => { console.error("getMicrosoftAdsKeywords error:", err); return [] as never[]; }),
+        getMicrosoftAdsSearchTerms(accountId, startDate, endDate).catch((err) => { console.error("getMicrosoftAdsSearchTerms error:", err); return [] as never[]; }),
+        getMicrosoftAdsDeviceBreakdown(accountId, startDate, endDate).catch((err) => { console.error("getMicrosoftAdsDeviceBreakdown error:", err); return [] as never[]; }),
+        getMicrosoftAdsGeoBreakdown(accountId, startDate, endDate).catch((err) => { console.error("getMicrosoftAdsGeoBreakdown error:", err); return [] as never[]; }),
       ]);
       return { overview, campaigns, daily, keywords, searchTerms, deviceBreakdown, geoBreakdown };
     });
