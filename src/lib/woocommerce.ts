@@ -119,3 +119,102 @@ interface WooCommerceOrderRaw {
   currency: string;
   line_items: { name: string; quantity: number; total: string }[];
 }
+
+export interface WooCommerceCustomerData {
+  totalCustomers: number;
+  newCustomers: number;
+  returningCustomers: number;
+  repeatRate: number;
+  averageCLV: number;
+  averageOrdersPerCustomer: number;
+  topCustomers: { email: string; ordersCount: number; totalSpent: number }[];
+}
+
+interface WooCommerceCustomerRaw {
+  id: number;
+  email: string;
+  orders_count: number;
+  total_spent: string;
+  date_created: string;
+}
+
+export async function getWooCommerceCustomerData(
+  storeUrl: string,
+  key: string,
+  secret: string,
+  startDate: string,
+  endDate: string
+): Promise<WooCommerceCustomerData> {
+  const auth = buildAuth(key, secret);
+  const baseUrl = storeUrl.replace(/\/$/, "");
+
+  const headers = {
+    Authorization: `Basic ${auth}`,
+    "Content-Type": "application/json",
+  };
+
+  try {
+    const customersRes = await axios.get(`${baseUrl}/wp-json/wc/v3/customers`, {
+      headers,
+      params: {
+        per_page: 100,
+        orderby: "id",
+        order: "desc",
+      },
+    });
+
+    const customers: WooCommerceCustomerRaw[] = (customersRes.data as WooCommerceCustomerRaw[]).map((c) => ({
+      id: c.id,
+      email: c.email,
+      orders_count: c.orders_count,
+      total_spent: c.total_spent,
+      date_created: c.date_created,
+    }));
+
+    // Filter customers created in the period for new customer count
+    const periodCustomers = customers.filter((c) => {
+      const created = c.date_created.split("T")[0];
+      return created >= startDate && created <= endDate;
+    });
+
+    const totalCustomers = customers.length;
+    const newCustomers = periodCustomers.length;
+    const returningCustomers = customers.filter((c) => c.orders_count > 1).length;
+    const repeatRate = totalCustomers > 0 ? (returningCustomers / totalCustomers) * 100 : 0;
+
+    const totalSpentAll = customers.reduce((sum, c) => sum + parseFloat(c.total_spent || "0"), 0);
+    const averageCLV = totalCustomers > 0 ? totalSpentAll / totalCustomers : 0;
+    const totalOrdersAll = customers.reduce((sum, c) => sum + c.orders_count, 0);
+    const averageOrdersPerCustomer = totalCustomers > 0 ? totalOrdersAll / totalCustomers : 0;
+
+    const topCustomers = [...customers]
+      .sort((a, b) => parseFloat(b.total_spent || "0") - parseFloat(a.total_spent || "0"))
+      .slice(0, 10)
+      .map((c) => ({
+        email: c.email,
+        ordersCount: c.orders_count,
+        totalSpent: parseFloat(c.total_spent || "0"),
+      }));
+
+    return {
+      totalCustomers,
+      newCustomers,
+      returningCustomers,
+      repeatRate: Math.round(repeatRate * 100) / 100,
+      averageCLV: Math.round(averageCLV * 100) / 100,
+      averageOrdersPerCustomer: Math.round(averageOrdersPerCustomer * 100) / 100,
+      topCustomers,
+    };
+  } catch (error) {
+    console.error("WooCommerce customer data error:", error);
+    return {
+      totalCustomers: 0,
+      newCustomers: 0,
+      returningCustomers: 0,
+      repeatRate: 0,
+      averageCLV: 0,
+      averageOrdersPerCustomer: 0,
+      topCustomers: [],
+    };
+  }
+}

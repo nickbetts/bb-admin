@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
-import { getMetaAdsOverview, getMetaCampaigns, getMetaCampaignsEnriched, getMetaDailyData, getMetaLandingPages, getMetaAdSets, getMetaAdCreatives, getMetaAdSetAudiences, getMetaPlacementBreakdown, getMetaAudienceDemographics, getMetaFrequencyDistribution } from "@/lib/meta";
+import { getMetaAdsOverview, getMetaCampaigns, getMetaCampaignsEnriched, getMetaDailyData, getMetaLandingPages, getMetaAdSets, getMetaAdCreatives, getMetaAdSetAudiences, getMetaPlacementBreakdown, getMetaAudienceDemographics, getMetaFrequencyDistribution, getMetaLeadGenForms, getMetaAdRelevanceDiagnostics } from "@/lib/meta";
 import { prisma } from "@/lib/prisma";
 import { withApiCache } from "@/lib/api-cache";
 
@@ -64,6 +64,10 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaPlacementBreakdown(accountId, accessToken, startDate, endDate)));
       case "frequency":
         return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaFrequencyDistribution(accountId, accessToken, startDate, endDate)));
+      case "lead-forms":
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaLeadGenForms(accountId, accessToken, startDate, endDate)));
+      case "relevance-diagnostics":
+        return NextResponse.json(await withApiCache(cacheKey, META_CACHE_TTL_HOURS, () => getMetaAdRelevanceDiagnostics(accountId, accessToken, startDate, endDate)));
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }

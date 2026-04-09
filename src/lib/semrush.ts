@@ -530,3 +530,240 @@ export async function getKeywordVolumeMetrics(
   return results;
 }
 
+// ── Keyword Difficulty + Intent ─────────────────────────────────────────────
+
+export interface SemrushKeywordDifficulty {
+  keyword: string;
+  difficulty: number;
+  searchVolume: number;
+  cpc: number;
+  intent: string;
+}
+
+const INTENT_MAP: Record<string, string> = {
+  "0": "informational",
+  "1": "navigational",
+  "2": "commercial",
+  "3": "transactional",
+};
+
+export async function getKeywordDifficultyAndIntent(
+  keywords: string[],
+  database: string = "uk"
+): Promise<SemrushKeywordDifficulty[]> {
+  const apiKey = getApiKey();
+  const results: SemrushKeywordDifficulty[] = [];
+
+  for (let i = 0; i < keywords.length; i += 10) {
+    const batch = keywords.slice(i, i + 10);
+    const batchResults = await Promise.all(
+      batch.map(async (kw): Promise<SemrushKeywordDifficulty | null> => {
+        try {
+          const params = new URLSearchParams({
+            type: "phrase_this",
+            key: apiKey,
+            phrase: kw,
+            database,
+            export_columns: "Ph,Nq,Kd,Cp,In",
+          });
+          const res = await axios.get<string>(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+          const lines = (res.data as string).trim().split("\n");
+          if (lines.length < 2 || lines[0].startsWith("ERROR")) return null;
+
+          const vals = lines[1].split(";");
+          const nq = parseInt(vals[1], 10) || 0;
+          if (nq === 0) return null;
+
+          const intentRaw = (vals[4] ?? "").trim();
+          const intent = INTENT_MAP[intentRaw] ?? (intentRaw || "unknown");
+
+          return {
+            keyword: vals[0] || kw,
+            searchVolume: nq,
+            difficulty: parseFloat(vals[2]) || 0,
+            cpc: parseFloat(vals[3]) || 0,
+            intent,
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+    results.push(...(batchResults.filter(Boolean) as SemrushKeywordDifficulty[]));
+  }
+
+  return results;
+}
+
+// ── Content Gap Analysis ────────────────────────────────────────────────────
+
+export interface SemrushContentGap {
+  keyword: string;
+  searchVolume: number;
+  difficulty: number;
+  competitorPositions: { domain: string; position: number }[];
+  yourPosition: number | null;
+}
+
+export async function getContentGap(
+  domain: string,
+  competitors: string[],
+  database: string = "uk"
+): Promise<SemrushContentGap[]> {
+  const apiKey = getApiKey();
+
+  try {
+    // Build position columns: P0 = target domain, P1..Pn = competitors
+    const posColumns = ["P0", ...competitors.map((_, idx) => `P${idx + 1}`)];
+    const exportColumns = ["Ph", "Nq", "Kd", ...posColumns].join(",");
+
+    // *domain|or = domain does NOT rank, +competitor|or = competitor DOES rank
+    const domainsParts = [`*${domain}|or`, ...competitors.map((c) => `+${c}|or`)];
+
+    const params = new URLSearchParams({
+      type: "domain_domains",
+      key: apiKey,
+      export_columns: exportColumns,
+      domains: domainsParts.join("|"),
+      database,
+      display_limit: "50",
+      display_sort: "nq_desc",
+    });
+
+    const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+    const lines = (response.data as string).trim().split("\n");
+
+    if (lines.length < 2 || lines[0]?.startsWith("ERROR")) return [];
+
+    return lines.slice(1).map((line: string) => {
+      const vals = line.split(";");
+      const competitorPositions = competitors.map((comp, idx) => ({
+        domain: comp,
+        position: parseInt(vals[3 + idx]) || 0,
+      }));
+
+      return {
+        keyword: vals[0] || "",
+        searchVolume: parseInt(vals[1]) || 0,
+        difficulty: parseFloat(vals[2]) || 0,
+        competitorPositions,
+        yourPosition: null,
+      };
+    });
+  } catch (err) {
+    console.error("SEMrush content gap error:", err);
+    return [];
+  }
+}
+
+// ── SERP Features ───────────────────────────────────────────────────────────
+
+export interface SemrushSerpFeature {
+  keyword: string;
+  position: number;
+  searchVolume: number;
+  features: string[];
+}
+
+export async function getSerpFeatures(
+  domain: string,
+  database: string = "uk"
+): Promise<SemrushSerpFeature[]> {
+  const apiKey = getApiKey();
+
+  try {
+    const params = new URLSearchParams({
+      type: "domain_organic",
+      key: apiKey,
+      domain,
+      database,
+      export_columns: "Ph,Po,Nq,Sf",
+      display_limit: "50",
+      display_sort: "nq_desc",
+    });
+
+    const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+    const lines = (response.data as string).trim().split("\n");
+
+    if (lines.length < 2 || lines[0]?.startsWith("ERROR")) return [];
+
+    return lines.slice(1).map((line: string) => {
+      const [keyword, position, searchVolume, sfRaw] = line.split(";");
+      const features = sfRaw ? sfRaw.split(",").map((f) => f.trim()).filter(Boolean) : [];
+      return {
+        keyword: keyword || "",
+        position: parseInt(position) || 0,
+        searchVolume: parseInt(searchVolume) || 0,
+        features,
+      };
+    });
+  } catch (err) {
+    console.error("SEMrush SERP features error:", err);
+    return [];
+  }
+}
+
+// ── Backlink New/Lost Tracking ──────────────────────────────────────────────
+
+export interface SemrushBacklinkChange {
+  sourceUrl: string;
+  targetUrl: string;
+  anchorText: string;
+  authority: number;
+  type: "new" | "lost";
+  firstSeen: string;
+  lastSeen: string;
+}
+
+async function fetchBacklinksByType(
+  domain: string,
+  changeType: "new" | "lost"
+): Promise<SemrushBacklinkChange[]> {
+  const apiKey = getApiKey();
+  const qs = [
+    `type=backlinks_${changeType}`,
+    `key=${encodeURIComponent(apiKey)}`,
+    `target=${encodeURIComponent(domain)}`,
+    `target_type=root_domain`,
+    `export_columns=source_url,target_url,anchor,domain_ascore,first_seen,last_seen`,
+    `display_limit=25`,
+  ].join("&");
+
+  const response = await axios.get(`${SEMRUSH_ANALYTICS_URL}/?${qs}`);
+  const lines = (response.data as string).trim().split("\n");
+
+  if (lines[0]?.startsWith("ERROR")) {
+    throw new Error(`SEMrush backlinks_${changeType} error: ${lines[0]}`);
+  }
+
+  if (lines.length < 2) return [];
+
+  return lines.slice(1).map((line: string) => {
+    const [sourceUrl, targetUrl, anchorText, authority, firstSeen, lastSeen] = line.split("\t");
+    return {
+      sourceUrl: sourceUrl || "",
+      targetUrl: targetUrl || "",
+      anchorText: anchorText || "",
+      authority: parseInt(authority) || 0,
+      type: changeType,
+      firstSeen: firstSeen || "",
+      lastSeen: lastSeen || "",
+    };
+  });
+}
+
+export async function getBacklinkChanges(
+  domain: string
+): Promise<SemrushBacklinkChange[]> {
+  try {
+    const [newLinks, lostLinks] = await Promise.all([
+      fetchBacklinksByType(domain, "new"),
+      fetchBacklinksByType(domain, "lost"),
+    ]);
+    return [...newLinks, ...lostLinks];
+  } catch (err) {
+    console.error("SEMrush backlink changes error:", err);
+    return [];
+  }
+}
+

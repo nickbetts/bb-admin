@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getShopifyStats } from "@/lib/shopify";
+import { getShopifyStats, getShopifyCustomerData } from "@/lib/shopify";
 import { withApiCache } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const clientId = searchParams.get("clientId");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    const type = searchParams.get("type") ?? "overview";
 
     if (!clientId || !startDate || !endDate) {
       return NextResponse.json({ error: "clientId, startDate, and endDate are required" }, { status: 400 });
@@ -31,11 +32,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Shopify not configured for this client" }, { status: 503 });
     }
 
-    const stats = await withApiCache(`shopify:${clientId}:${startDate}:${endDate}`, 4, () =>
-      getShopifyStats(client.shopifyStoreDomain!, client.shopifyAccessToken!, startDate, endDate)
-    );
-
-    return NextResponse.json(stats);
+    switch (type) {
+      case "overview": {
+        const stats = await withApiCache(`shopify:${clientId}:${startDate}:${endDate}`, 4, () =>
+          getShopifyStats(client.shopifyStoreDomain!, client.shopifyAccessToken!, startDate, endDate)
+        );
+        return NextResponse.json(stats);
+      }
+      case "customers": {
+        const customerData = await withApiCache(`shopify:customers:${clientId}:${startDate}:${endDate}`, 4, () =>
+          getShopifyCustomerData(client.shopifyStoreDomain!, client.shopifyAccessToken!, startDate, endDate)
+        );
+        return NextResponse.json(customerData);
+      }
+      default:
+        return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+    }
   } catch (error) {
     console.error("Shopify API error:", error);
     const message = error instanceof Error ? error.message : "Failed to fetch Shopify data";

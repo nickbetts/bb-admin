@@ -7,6 +7,8 @@ import {
   getGSCDailyData,
   getGSCDevices,
   getGSCCountries,
+  getGSCBrandedSplit,
+  getGSCUrlInspection,
 } from "@/lib/search-console";
 import { getPreviousPeriod } from "@/lib/utils";
 import { withApiCache } from "@/lib/api-cache";
@@ -94,6 +96,31 @@ export async function GET(request: NextRequest) {
             ]);
           return { overview, queries, pages, daily, devices, countries, prevOverview, prevQueries, prevPages };
         }));
+      }
+
+      case "branded-split": {
+        const brandTermsParam = searchParams.get("brandTerms") ?? "";
+        const brandTerms = brandTermsParam ? brandTermsParam.split(",").map((t) => t.trim()).filter(Boolean) : [];
+        const brandedCacheKey = `gsc:branded-split:${siteUrl}:${startDate}:${endDate}:${brandTerms.join(",")}`;
+        return NextResponse.json(
+          await withApiCache(brandedCacheKey, GSC_CACHE_TTL_HOURS, () =>
+            getGSCBrandedSplit(siteUrl, startDate, endDate, brandTerms)
+          )
+        );
+      }
+
+      case "url-inspection": {
+        const urlsParam = searchParams.get("urls") ?? "";
+        const urls = urlsParam.split(",").map((u) => u.trim()).filter(Boolean);
+        if (urls.length === 0) {
+          return NextResponse.json({ error: "urls parameter is required" }, { status: 400 });
+        }
+        const inspectionCacheKey = `gsc:url-inspection:${siteUrl}:${urls.join(",")}`;
+        return NextResponse.json(
+          await withApiCache(inspectionCacheKey, GSC_CACHE_TTL_HOURS, () =>
+            getGSCUrlInspection(siteUrl, urls)
+          )
+        );
       }
 
       default:
