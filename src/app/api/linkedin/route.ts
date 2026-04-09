@@ -97,12 +97,17 @@ export async function GET(request: NextRequest) {
       "8": "Partner",
     };
 
+    type DemoEntry = { label: string; impressions: number; clicks: number; spend: number; conversions: number };
     const demographics: {
-      seniority: Array<{ label: string; impressions: number; clicks: number; spend: number; conversions: number }>;
-    } = { seniority: [] };
+      seniority: DemoEntry[];
+      industry: DemoEntry[];
+      jobFunction: DemoEntry[];
+      companySize: DemoEntry[];
+    } = { seniority: [], industry: [], jobFunction: [], companySize: [] };
+
+    const demDateParams = `dateRange.start.year=${start.slice(0, 4)}&dateRange.start.month=${parseInt(start.slice(5, 7))}&dateRange.start.day=${parseInt(start.slice(8, 10))}&dateRange.end.year=${end.slice(0, 4)}&dateRange.end.month=${parseInt(end.slice(5, 7))}&dateRange.end.day=${parseInt(end.slice(8, 10))}`;
 
     try {
-      const demDateParams = `dateRange.start.year=${start.slice(0, 4)}&dateRange.start.month=${parseInt(start.slice(5, 7))}&dateRange.start.day=${parseInt(start.slice(8, 10))}&dateRange.end.year=${end.slice(0, 4)}&dateRange.end.month=${parseInt(end.slice(5, 7))}&dateRange.end.day=${parseInt(end.slice(8, 10))}`;
       const seniorityUrl = `https://api.linkedin.com/v2/adAnalyticsV2?q=analytics&pivot=MEMBER_SENIORITY&${demDateParams}&accounts=urn:li:sponsoredAccount:${accountId}&fields=pivotValues,impressions,clicks,costInLocalCurrency,externalWebsiteConversions`;
       const senRes = await fetch(seniorityUrl, {
         headers: {
@@ -135,10 +140,150 @@ export async function GET(request: NextRequest) {
       }
     } catch { /* non-critical */ }
 
+    // Fetch industry demographics
+    try {
+      const industryUrl = `https://api.linkedin.com/v2/adAnalyticsV2?q=analytics&pivot=MEMBER_INDUSTRY&${demDateParams}&accounts=urn:li:sponsoredAccount:${accountId}&fields=pivotValues,impressions,clicks,costInLocalCurrency,externalWebsiteConversions`;
+      const indRes = await fetch(industryUrl, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "LinkedIn-Version": "202401",
+          "X-Restli-Protocol-Version": "2.0.0",
+        },
+      });
+      if (indRes.ok) {
+        const indData = await indRes.json() as {
+          elements?: Array<{
+            pivotValues?: string[];
+            impressions?: number;
+            clicks?: number;
+            costInLocalCurrency?: string;
+            externalWebsiteConversions?: number;
+          }>;
+        };
+        demographics.industry = (indData.elements ?? []).map((el) => {
+          const urn = el.pivotValues?.[0] ?? "";
+          const label = urn.split(":").pop() ?? urn;
+          return {
+            label,
+            impressions: el.impressions ?? 0,
+            clicks: el.clicks ?? 0,
+            spend: parseFloat(el.costInLocalCurrency ?? "0"),
+            conversions: el.externalWebsiteConversions ?? 0,
+          };
+        }).filter((d) => d.impressions > 0).sort((a, b) => b.impressions - a.impressions);
+      }
+    } catch { /* non-critical */ }
+
+    // Fetch job function demographics
+    try {
+      const jfUrl = `https://api.linkedin.com/v2/adAnalyticsV2?q=analytics&pivot=MEMBER_JOB_FUNCTION&${demDateParams}&accounts=urn:li:sponsoredAccount:${accountId}&fields=pivotValues,impressions,clicks,costInLocalCurrency,externalWebsiteConversions`;
+      const jfRes = await fetch(jfUrl, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "LinkedIn-Version": "202401",
+          "X-Restli-Protocol-Version": "2.0.0",
+        },
+      });
+      if (jfRes.ok) {
+        const jfData = await jfRes.json() as {
+          elements?: Array<{
+            pivotValues?: string[];
+            impressions?: number;
+            clicks?: number;
+            costInLocalCurrency?: string;
+            externalWebsiteConversions?: number;
+          }>;
+        };
+        demographics.jobFunction = (jfData.elements ?? []).map((el) => {
+          const urn = el.pivotValues?.[0] ?? "";
+          const label = urn.split(":").pop() ?? urn;
+          return {
+            label,
+            impressions: el.impressions ?? 0,
+            clicks: el.clicks ?? 0,
+            spend: parseFloat(el.costInLocalCurrency ?? "0"),
+            conversions: el.externalWebsiteConversions ?? 0,
+          };
+        }).filter((d) => d.impressions > 0).sort((a, b) => b.impressions - a.impressions);
+      }
+    } catch { /* non-critical */ }
+
+    // Fetch company size demographics
+    try {
+      const csUrl = `https://api.linkedin.com/v2/adAnalyticsV2?q=analytics&pivot=MEMBER_COMPANY_SIZE&${demDateParams}&accounts=urn:li:sponsoredAccount:${accountId}&fields=pivotValues,impressions,clicks,costInLocalCurrency,externalWebsiteConversions`;
+      const csRes = await fetch(csUrl, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "LinkedIn-Version": "202401",
+          "X-Restli-Protocol-Version": "2.0.0",
+        },
+      });
+      if (csRes.ok) {
+        const csData = await csRes.json() as {
+          elements?: Array<{
+            pivotValues?: string[];
+            impressions?: number;
+            clicks?: number;
+            costInLocalCurrency?: string;
+            externalWebsiteConversions?: number;
+          }>;
+        };
+        demographics.companySize = (csData.elements ?? []).map((el) => {
+          const urn = el.pivotValues?.[0] ?? "";
+          const label = urn.split(":").pop() ?? urn;
+          return {
+            label,
+            impressions: el.impressions ?? 0,
+            clicks: el.clicks ?? 0,
+            spend: parseFloat(el.costInLocalCurrency ?? "0"),
+            conversions: el.externalWebsiteConversions ?? 0,
+          };
+        }).filter((d) => d.impressions > 0).sort((a, b) => b.impressions - a.impressions);
+      }
+    } catch { /* non-critical */ }
+
+    // Fetch daily data for trend charts
+    let daily: Array<{ date: string; impressions: number; clicks: number; spend: number; conversions: number }> = [];
+    try {
+      const dailyUrl = `https://api.linkedin.com/v2/adAnalyticsV2?q=analytics&pivot=ACCOUNT&timeGranularity=DAILY&dateRange.start.year=${start.slice(0, 4)}&dateRange.start.month=${parseInt(start.slice(5, 7))}&dateRange.start.day=${parseInt(start.slice(8, 10))}&dateRange.end.year=${end.slice(0, 4)}&dateRange.end.month=${parseInt(end.slice(5, 7))}&dateRange.end.day=${parseInt(end.slice(8, 10))}&accounts=urn:li:sponsoredAccount:${accountId}&fields=dateRange,impressions,clicks,costInLocalCurrency,externalWebsiteConversions`;
+      const dailyRes = await fetch(dailyUrl, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "LinkedIn-Version": "202401",
+          "X-Restli-Protocol-Version": "2.0.0",
+        },
+      });
+      if (dailyRes.ok) {
+        const dailyData = await dailyRes.json() as {
+          elements?: Array<{
+            dateRange?: { start?: { year?: number; month?: number; day?: number } };
+            impressions?: number;
+            clicks?: number;
+            costInLocalCurrency?: string;
+            externalWebsiteConversions?: number;
+          }>;
+        };
+        daily = (dailyData.elements ?? []).map((el) => {
+          const dr = el.dateRange?.start;
+          const y = String(dr?.year ?? 2024);
+          const m = String(dr?.month ?? 1).padStart(2, "0");
+          const d = String(dr?.day ?? 1).padStart(2, "0");
+          return {
+            date: `${y}-${m}-${d}`,
+            impressions: el.impressions ?? 0,
+            clicks: el.clicks ?? 0,
+            spend: parseFloat(el.costInLocalCurrency ?? "0"),
+            conversions: el.externalWebsiteConversions ?? 0,
+          };
+        }).sort((a, b) => a.date.localeCompare(b.date));
+      }
+    } catch { /* non-critical */ }
+
     return NextResponse.json({
       overview: { ...overview, ctr, cpc, cpl },
       campaigns,
       demographics,
+      daily,
     });
   } catch (error) {
     console.error("LinkedIn route error:", error);

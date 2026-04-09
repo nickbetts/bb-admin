@@ -435,6 +435,8 @@ export async function getGoogleAdsDailyData(
 
 export interface GoogleAdsSearchTerm {
   searchTerm: string;
+  /** BROAD | EXACT | PHRASE | BROAD_MATCH_MODIFIER | UNSPECIFIED */
+  matchType: string;
   clicks: number;
   costMicros: number;
   impressions: number;
@@ -452,6 +454,7 @@ export async function getGoogleAdsSearchTerms(
   const query = `
     SELECT
       search_term_view.search_term,
+      segments.keyword.info.match_type,
       metrics.clicks,
       metrics.cost_micros,
       metrics.impressions,
@@ -466,6 +469,11 @@ export async function getGoogleAdsSearchTerms(
   const data = await searchGoogleAds(customerId, query, token, mccId);
   return (data.results ?? []).map((row: Record<string, Record<string, unknown>>) => ({
     searchTerm: String(row.searchTermView?.searchTerm ?? ""),
+    matchType: String(
+      (((row.segments as Record<string, unknown>)?.keyword as Record<string, unknown>)?.info as Record<string, unknown>)?.matchType ??
+      (row.segments as Record<string, unknown>)?.matchType ??
+      "UNSPECIFIED"
+    ),
     clicks: Number(row.metrics?.clicks ?? 0),
     costMicros: Number(row.metrics?.costMicros ?? 0),
     impressions: Number(row.metrics?.impressions ?? 0),
@@ -512,6 +520,90 @@ export async function getGoogleAdsAvgQualityScore(
   } catch {
     // Quality score may not be available — fail gracefully
     return null;
+  }
+}
+
+// ── Per-keyword Quality Score ──────────────────────────────────────────────
+
+export interface GoogleAdsKeywordQualityScore {
+  keyword: string;
+  campaignName: string;
+  adGroupName: string;
+  qualityScore: number | null;
+  /** ABOVE_AVERAGE | AVERAGE | BELOW_AVERAGE | UNKNOWN */
+  expectedCtr: string;
+  /** ABOVE_AVERAGE | AVERAGE | BELOW_AVERAGE | UNKNOWN */
+  adRelevance: string;
+  /** ABOVE_AVERAGE | AVERAGE | BELOW_AVERAGE | UNKNOWN */
+  landingPageExperience: string;
+  clicks: number;
+  costMicros: number;
+  impressions: number;
+}
+
+/**
+ * Fetches per-keyword Quality Score with all three components (expected CTR,
+ * ad relevance, landing page experience). Only includes keywords with a
+ * quality score > 0. Top 50 by impressions.
+ */
+export async function getGoogleAdsKeywordQualityScores(
+  customerId: string,
+  startDate: string,
+  endDate: string
+): Promise<GoogleAdsKeywordQualityScore[]> {
+  const token = await getAccessToken();
+  const mccId = await getMccId();
+  const query = `
+    SELECT
+      ad_group_criterion.keyword.text,
+      campaign.name,
+      ad_group.name,
+      ad_group_criterion.quality_info.quality_score,
+      ad_group_criterion.quality_info.search_predicted_ctr,
+      ad_group_criterion.quality_info.creative_quality_score,
+      ad_group_criterion.quality_info.post_click_quality_score,
+      metrics.clicks,
+      metrics.cost_micros,
+      metrics.impressions
+    FROM ad_group_criterion
+    WHERE ad_group_criterion.type = 'KEYWORD'
+      AND ad_group_criterion.status = 'ENABLED'
+      AND ad_group.status = 'ENABLED'
+      AND campaign.status = 'ENABLED'
+      AND campaign.advertising_channel_type = 'SEARCH'
+      AND segments.date BETWEEN '${startDate}' AND '${endDate}'
+    ORDER BY metrics.impressions DESC
+    LIMIT 50
+  `;
+
+  try {
+    const data = await searchGoogleAds(customerId, query, token, mccId);
+    type GadsQsRow = Record<string, Record<string, unknown>>;
+    const labelMap: Record<string, string> = {
+      ABOVE_AVERAGE: "ABOVE_AVERAGE",
+      AVERAGE: "AVERAGE",
+      BELOW_AVERAGE: "BELOW_AVERAGE",
+    };
+    const normalise = (v: unknown) => labelMap[String(v ?? "")] ?? "UNKNOWN";
+    return (data.results ?? []).map((row: GadsQsRow) => {
+      const qualityInfo = (row.adGroupCriterion?.qualityInfo ?? row.adGroupCriterion?.quality_info) as Record<string, unknown> | undefined;
+      const qs = qualityInfo?.qualityScore ?? qualityInfo?.quality_score;
+      const score = qs != null && Number(qs) > 0 ? Number(qs) : null;
+      return {
+        keyword: String((row.adGroupCriterion as Record<string, Record<string, unknown>>)?.keyword?.text ?? ""),
+        campaignName: String(row.campaign?.name ?? ""),
+        adGroupName: String(row.adGroup?.name ?? ""),
+        qualityScore: score,
+        expectedCtr: normalise(qualityInfo?.searchPredictedCtr ?? qualityInfo?.search_predicted_ctr),
+        adRelevance: normalise(qualityInfo?.creativeQualityScore ?? qualityInfo?.creative_quality_score),
+        landingPageExperience: normalise(qualityInfo?.postClickQualityScore ?? qualityInfo?.post_click_quality_score),
+        clicks: Number(row.metrics?.clicks ?? 0),
+        costMicros: Number(row.metrics?.costMicros ?? 0),
+        impressions: Number(row.metrics?.impressions ?? 0),
+      };
+    });
+  } catch {
+    return [];
   }
 }
 

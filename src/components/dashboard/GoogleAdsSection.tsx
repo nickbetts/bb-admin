@@ -72,6 +72,7 @@ interface GoogleAdsDailyPoint {
 
 interface GoogleAdsSearchTerm {
   searchTerm: string;
+  matchType?: string;
   clicks: number;
   costMicros: number;
   impressions: number;
@@ -112,6 +113,18 @@ interface GoogleAdsData {
     estimatedInvalidCostMicros: number;
     totalCostMicros: number;
   };
+  keywordQualityScores?: Array<{
+    keyword: string;
+    campaignName: string;
+    adGroupName: string;
+    qualityScore: number | null;
+    expectedCtr: string;
+    adRelevance: string;
+    landingPageExperience: string;
+    clicks: number;
+    costMicros: number;
+    impressions: number;
+  }>;
 }
 
 interface Props {
@@ -944,6 +957,17 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
           crossPlatformContext={crossPlatformContext}
+          extraContext={[
+            data.keywordQualityScores?.length
+              ? `KEYWORD QUALITY SCORES (top by impressions):\n${data.keywordQualityScores.slice(0, 15).map(k => `  • "${k.keyword}" [${k.campaignName}]: QS ${k.qualityScore ?? "N/A"}/10 — expectedCTR: ${k.expectedCtr}, adRelevance: ${k.adRelevance}, landingPage: ${k.landingPageExperience}`).join("\n")}`
+              : "",
+            data.searchTerms?.length
+              ? `TOP SEARCH TERMS (review for negative keyword opportunities):\n${data.searchTerms.slice(0, 20).map(st => `  • "${st.searchTerm}" [${st.matchType ?? ""}]: ${st.clicks} clicks, ${st.conversions} conv, £${(st.costMicros / 1e6).toFixed(2)} spend`).join("\n")}`
+              : "",
+            data.audienceCriteria?.filter(a => !a.negative).length
+              ? `AUDIENCE TARGETING:\n${data.audienceCriteria!.filter(a => !a.negative).slice(0, 10).map(a => `  • ${a.displayName} [${a.criterionType}] in "${a.campaignName}" — bid modifier: ${a.bidModifier != null ? `${a.bidModifier > 1 ? "+" : ""}${((a.bidModifier - 1) * 100).toFixed(0)}%` : "observation"}`).join("\n")}`
+              : "",
+          ].filter(Boolean).join("\n\n") || undefined}
         />
       )}
 
@@ -982,6 +1006,17 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
           crossPlatformContext={crossPlatformContext}
+          extraContext={[
+            data.keywordQualityScores?.length
+              ? `KEYWORD QUALITY SCORES:\n${data.keywordQualityScores.slice(0, 15).map(k => `  • "${k.keyword}" [${k.campaignName}]: QS ${k.qualityScore ?? "N/A"}/10 — expectedCTR: ${k.expectedCtr}, adRelevance: ${k.adRelevance}, landingPage: ${k.landingPageExperience}`).join("\n")}`
+              : "",
+            data.searchTerms?.length
+              ? `TOP SEARCH TERMS (negative keyword review):\n${data.searchTerms.slice(0, 20).map(st => `  • "${st.searchTerm}" [${st.matchType ?? ""}]: ${st.clicks} clicks, ${st.conversions} conv, £${(st.costMicros / 1e6).toFixed(2)} spend`).join("\n")}`
+              : "",
+            data.audienceCriteria?.filter(a => !a.negative).length
+              ? `AUDIENCE TARGETING:\n${data.audienceCriteria!.filter(a => !a.negative).slice(0, 10).map(a => `  • ${a.displayName} [${a.criterionType}] in "${a.campaignName}" — ${a.bidModifier != null ? `bid modifier: ${((a.bidModifier - 1) * 100).toFixed(0)}%` : "observation mode"}`).join("\n")}`
+              : "",
+          ].filter(Boolean).join("\n\n") || undefined}
         />
       )}
 

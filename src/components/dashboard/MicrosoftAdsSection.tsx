@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Loader2, AlertTriangle, RefreshCw, Search } from "lucide-react";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber, formatDateDisplay } from "@/lib/utils";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { SuperSummary } from "@/components/ai/SuperSummary";
 
 interface MicrosoftAdsSectionProps {
   clientId: string;
@@ -39,8 +40,40 @@ interface MicrosoftAdsCampaign {
   roas: number;
 }
 
+interface MsKeyword {
+  keyword: string;
+  matchType: string;
+  impressions: number;
+  clicks: number;
+  cpc: number;
+  qualityScore: number;
+  conversions: number;
+}
+
+interface MsSearchTerm {
+  searchTerm: string;
+  keyword: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+}
+
+interface MsDeviceBreakdown {
+  device: string;
+  impressions: number;
+  clicks: number;
+  cpc: number;
+}
+
+interface MsGeoBreakdown {
+  location: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+}
+
 export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, crossPlatformContext }: MicrosoftAdsSectionProps) {
-  const [data, setData] = useState<{ overview: MicrosoftAdsOverview; campaigns: MicrosoftAdsCampaign[] } | null>(null);
+  const [data, setData] = useState<{ overview: MicrosoftAdsOverview; campaigns: MicrosoftAdsCampaign[]; keywords?: MsKeyword[]; searchTerms?: MsSearchTerm[]; deviceBreakdown?: MsDeviceBreakdown[]; geoBreakdown?: MsGeoBreakdown[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -168,6 +201,133 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
           </table>
         </div>
       )}
+
+      {/* Keywords table */}
+      {data.keywords && data.keywords.length > 0 && (
+        <div style={{ overflowX: "auto" }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Keywords</h3>
+          <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "2px solid var(--border, #e5e7eb)" }}>
+                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Keyword</th>
+                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Match Type</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Impressions</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Clicks</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>CPC</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>QS</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Conversions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.keywords.map((kw, i) => (
+                <tr key={`${kw.keyword}-${i}`} style={{ borderBottom: "1px solid var(--border, #e5e7eb)" }}>
+                  <td style={{ padding: "8px 12px", fontWeight: 500 }}>{kw.keyword}</td>
+                  <td style={{ padding: "8px 12px" }}>{kw.matchType}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(kw.impressions)}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(kw.clicks)}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatCurrency(kw.cpc)}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{kw.qualityScore}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(kw.conversions)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Search Terms table */}
+      {data.searchTerms && data.searchTerms.length > 0 && (
+        <div style={{ overflowX: "auto" }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Search Terms</h3>
+          <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "2px solid var(--border, #e5e7eb)" }}>
+                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Search Term</th>
+                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Keyword</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Impressions</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Clicks</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Spend</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.searchTerms.map((st, i) => (
+                <tr key={`${st.searchTerm}-${i}`} style={{ borderBottom: "1px solid var(--border, #e5e7eb)" }}>
+                  <td style={{ padding: "8px 12px", fontWeight: 500 }}>{st.searchTerm}</td>
+                  <td style={{ padding: "8px 12px" }}>{st.keyword}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(st.impressions)}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(st.clicks)}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatCurrency(st.spend)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Device Breakdown */}
+      {data.deviceBreakdown && data.deviceBreakdown.length > 0 && (
+        <div>
+          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Device Breakdown</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
+            {data.deviceBreakdown.map((d) => (
+              <div key={d.device} style={{ padding: 16, borderRadius: 10, border: "1px solid var(--border, #e5e7eb)", background: "var(--card-bg, #fff)" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: "var(--text-1)" }}>{d.device}</div>
+                <div style={{ fontSize: 12, color: "var(--text-3, #888)", marginBottom: 2 }}>Impressions: {formatNumber(d.impressions)}</div>
+                <div style={{ fontSize: 12, color: "var(--text-3, #888)", marginBottom: 2 }}>Clicks: {formatNumber(d.clicks)}</div>
+                <div style={{ fontSize: 12, color: "var(--text-3, #888)" }}>CPC: {formatCurrency(d.cpc)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Geographic Breakdown */}
+      {data.geoBreakdown && data.geoBreakdown.length > 0 && (
+        <div style={{ overflowX: "auto" }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Geographic Breakdown</h3>
+          <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "2px solid var(--border, #e5e7eb)" }}>
+                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Location</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Impressions</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Clicks</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Spend</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.geoBreakdown.map((g, i) => (
+                <tr key={`${g.location}-${i}`} style={{ borderBottom: "1px solid var(--border, #e5e7eb)" }}>
+                  <td style={{ padding: "8px 12px", fontWeight: 500 }}>{g.location}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(g.impressions)}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(g.clicks)}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatCurrency(g.spend)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Full Journey Analysis */}
+      <SuperSummary
+        sectionType="microsoftads"
+        metrics={{
+          spend: overview.spend,
+          impressions: overview.impressions,
+          clicks: overview.clicks,
+          ctr: overview.ctr,
+          cpc: overview.cpc,
+          conversions: overview.conversions,
+          revenue: overview.revenue,
+          roas: overview.roas,
+          costPerConversion: overview.costPerConversion,
+          impressionSharePercent: overview.impressionSharePercent,
+        }}
+        campaignData={campaigns as unknown as Record<string, unknown>[]}
+        clientName={clientName}
+        dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+        crossPlatformContext={crossPlatformContext}
+      />
 
       {/* AI Insights */}
       <AiInsightsPanel

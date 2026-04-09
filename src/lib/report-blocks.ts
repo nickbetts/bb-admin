@@ -96,4 +96,44 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
     { id: "top_products", label: "Top Products" },
     { id: "order_status", label: "Orders by Status" },
   ],
+  tiktok: [
+    { id: "kpis", label: "Key Metrics" },
+    { id: "chart", label: "Performance Trend" },
+    { id: "campaigns", label: "Campaign Breakdown" },
+  ],
+  microsoft_ads: [
+    { id: "kpis", label: "Key Metrics" },
+    { id: "campaigns", label: "Campaign Breakdown" },
+  ],
+  linkedin: [
+    { id: "kpis", label: "Key Metrics" },
+    { id: "campaigns", label: "Campaign Breakdown" },
+  ],
+  klaviyo: [
+    { id: "kpis", label: "Key Metrics" },
+    { id: "campaigns", label: "Campaign Breakdown" },
+  ],
+  goals: [
+    { id: "goals_list", label: "Goals & Progress" },
+  ],
+  youtube: [
+    { id: "kpis", label: "Channel Overview" },
+    { id: "videos", label: "Top Videos" },
+  ],
+  hubspot: [
+    { id: "kpis", label: "Pipeline Summary" },
+    { id: "deals", label: "Open Deals" },
+    { id: "contacts", label: "Recent Contacts" },
+  ],
+  callrail: [
+    { id: "kpis", label: "Call Summary" },
+    { id: "by_source", label: "Calls by Source" },
+    { id: "recent_calls", label: "Recent Calls" },
+  ],
+  core_web_vitals: [
+    { id: "metrics", label: "Core Web Vitals" },
+  ],
+  competitor_intelligence: [
+    { id: "snapshots", label: "Competitor Snapshots" },
+  ],
 };

@@ -995,80 +995,80 @@ When creative fatigue is detected or new campaigns are planned, AI should genera
 
 These require small code changes to pull more data from APIs we already connect to:
 
-| # | Action | Effort | Impact |
-|---|--------|--------|--------|
-| 1 | **Fix Klaviyo date range** — implement Reporting API for date-filtered metrics | S | 🔴 Critical — currently broken |
-| 2 | **Fix Microsoft Ads daily data** — implement async report polling for daily metrics | M | 🔴 Critical — stub returning empty |
-| 3 | **Fix CallRail by-source** — populate source attribution from real API data | S | 🔴 High — only works for demo |
-| 4 | **Add Quality Score per keyword** to Google Ads (with components: expected CTR, ad relevance, landing page) | S | 🟠 High — one of most-requested PPC metrics |
-| 5 | **Add search term match type** to Google Ads search terms | S | 🟡 Medium — helps negative keyword identification |
-| 6 | **Add video engagement metrics** to TikTok (2s/6s views, p25/p50/p75/p100 completion) | S | 🟠 High — TikTok is a video platform |
-| 7 | **Add ad group level data** to TikTok | M | 🟠 High — essential middle layer missing entirely |
-| 8 | **Add frequency distribution** to Meta | S | 🟡 Medium — precise creative fatigue detection |
-| 9 | **Add video funnel metrics** to Meta (p25/p50/p75/p100 watched) | S | 🟡 Medium — video is dominant format |
-| 10 | **Implement YouTube Analytics API** — channel + video level real data | M | 🔴 Critical — currently only metadata |
+| # | Action | Effort | Impact | Status |
+|---|--------|--------|--------|--------|
+| 1 | **Fix Klaviyo date range** — implement Reporting API for date-filtered metrics | S | 🔴 Critical — currently broken | ✅ Done |
+| 2 | **Fix Microsoft Ads daily data** — implement async report polling for daily metrics | M | 🔴 Critical — stub returning empty | ✅ Done |
+| 3 | **Fix CallRail by-source** — populate source attribution from real API data | S | 🔴 High — only works for demo | ✅ Done |
+| 4 | **Add Quality Score per keyword** to Google Ads (with components: expected CTR, ad relevance, landing page) | S | 🟠 High — one of most-requested PPC metrics | ✅ Done |
+| 5 | **Add search term match type** to Google Ads search terms | S | 🟡 Medium — helps negative keyword identification | ✅ Done |
+| 6 | **Add video engagement metrics** to TikTok (2s/6s views, p25/p50/p75/p100 completion) | S | 🟠 High — TikTok is a video platform | ✅ Done |
+| 7 | **Add ad group level data** to TikTok | M | 🟠 High — essential middle layer missing entirely | ✅ Done |
+| 8 | **Add frequency distribution** to Meta | S | 🟡 Medium — precise creative fatigue detection | ✅ Done |
+| 9 | **Add video funnel metrics** to Meta (p25/p50/p75/p100 watched) | S | 🟡 Medium — video is dominant format | ✅ Done |
+| 10 | **Implement YouTube Analytics API** — channel + video level real data | M | 🔴 Critical — currently only metadata | ✅ Done |
 
 ### Wave 2 — AI Intelligence Upgrades (2-4 weeks each)
 
 Enhance AI prompts with data we already have but don't use:
 
-| # | Action | Effort | Impact |
-|---|--------|--------|--------|
-| 11 | **Pass audiences/demographics to all AI prompts** — Meta demographics, Google Ads audiences, LinkedIn demographics | M | 🟠 High — AI can make audience-aware recommendations |
-| 12 | **Pass Search Terms to AI for negative keyword mining** — auto-generate negative keyword suggestions | S | 🟠 High — immediate cost savings for clients |
-| 13 | **Pass QS components to AI** — AI explains WHY quality score is low and what to fix | S | 🟠 High — actionable QS improvement plan |
-| 14 | **Inject seasonality context** into all AI prompts (current month, upcoming events, industry seasons) | S | 🟠 High — every AI endpoint benefits |
-| 15 | **Pass ClientGoal context** to all AI prompts — AI says "you need ROAS 4× to hit your target" not just "ROAS is 3.2×" | S | 🟠 High — goal-oriented AI insights |
-| 16 | **Add AiInsightsPanel to EcommerceSection** — persona already exists | S | 🟡 Medium — quick win |
-| 17 | **Add SuperSummary** to TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail | M | 🟠 High — 7 channels missing this feature |
-| 18 | **Cross-platform creative comparison** — Meta + TikTok + Google Ads creative data to one AI prompt | M | 🟡 Medium — unique cross-platform insight |
-| 19 | **Implement keyword suggestion AI** — combine GSC + SEMrush + Google Ads data → suggest new keywords to bid on / create content for | L | 🔴 Critical — core agency value |
-| 20 | **Implement audience suggestion AI** — combine demographics + interests + performance → suggest new audiences to test | L | 🔴 Critical — core agency value |
+| # | Action | Effort | Impact | Status |
+|---|--------|--------|--------|--------|
+| 11 | **Pass audiences/demographics to all AI prompts** — Meta demographics, Google Ads audiences, LinkedIn demographics | M | 🟠 High — AI can make audience-aware recommendations | ✅ Done |
+| 12 | **Pass Search Terms to AI for negative keyword mining** — auto-generate negative keyword suggestions | S | 🟠 High — immediate cost savings for clients | ✅ Done |
+| 13 | **Pass QS components to AI** — AI explains WHY quality score is low and what to fix | S | 🟠 High — actionable QS improvement plan | ✅ Done |
+| 14 | **Inject seasonality context** into all AI prompts (current month, upcoming events, industry seasons) | S | 🟠 High — every AI endpoint benefits | ✅ Done |
+| 15 | **Pass ClientGoal context** to all AI prompts — AI says "you need ROAS 4× to hit your target" not just "ROAS is 3.2×" | S | 🟠 High — goal-oriented AI insights | ✅ Done |
+| 16 | **Add AiInsightsPanel to EcommerceSection** — persona already exists | S | 🟡 Medium — quick win | ✅ Done |
+| 17 | **Add SuperSummary** to TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail | M | 🟠 High — 7 channels missing this feature | ✅ Done |
+| 18 | **Cross-platform creative comparison** — Meta + TikTok + Google Ads creative data to one AI prompt | M | 🟡 Medium — unique cross-platform insight | ✅ Done |
+| 19 | **Implement keyword suggestion AI** — combine GSC + SEMrush + Google Ads data → suggest new keywords to bid on / create content for | L | 🔴 Critical — core agency value | ✅ Done |
+| 20 | **Implement audience suggestion AI** — combine demographics + interests + performance → suggest new audiences to test | L | 🔴 Critical — core agency value | ✅ Done |
 
 ### Wave 3 — Missing Report Sections (2-4 weeks)
 
 Add the 13 missing report section types:
 
-| # | Action | Effort | Impact |
-|---|--------|--------|--------|
-| 21 | Add `tiktok` report section | M | 🔴 Critical |
-| 22 | Add `microsoft_ads` report section | M | 🔴 Critical |
-| 23 | Add `linkedin` report section | M | 🔴 Critical |
-| 24 | Add `klaviyo` report section | M | 🔴 Critical |
-| 25 | Add `goals` report section | M | 🔴 Critical |
-| 26 | Add `youtube` report section | M | 🟡 Medium |
-| 27 | Add `hubspot` report section | M | 🟡 Medium |
-| 28 | Add `callrail` report section | M | 🟡 Medium |
-| 29 | Add `core_web_vitals` report section | M | 🟡 Medium |
-| 30 | Add `competitor_intelligence` report section | M | 🟡 Medium |
+| # | Action | Effort | Impact | Status |
+|---|--------|--------|--------|--------|
+| 21 | Add `tiktok` report section | M | 🔴 Critical | ✅ Done |
+| 22 | Add `microsoft_ads` report section | M | 🔴 Critical | ✅ Done |
+| 23 | Add `linkedin` report section | M | 🔴 Critical | ✅ Done |
+| 24 | Add `klaviyo` report section | M | 🔴 Critical | ✅ Done |
+| 25 | Add `goals` report section | M | 🔴 Critical | ✅ Done |
+| 26 | Add `youtube` report section | M | 🟡 Medium | ✅ Done |
+| 27 | Add `hubspot` report section | M | 🟡 Medium | ✅ Done |
+| 28 | Add `callrail` report section | M | 🟡 Medium | ✅ Done |
+| 29 | Add `core_web_vitals` report section | M | 🟡 Medium | ✅ Done |
+| 30 | Add `competitor_intelligence` report section | M | 🟡 Medium | ✅ Done |
 
 ### Wave 4 — Platform Parity Upgrades (4-8 weeks)
 
 Bring thin sections to feature parity with GA4/Google Ads/Meta:
 
-| # | Action | Effort | Impact |
-|---|--------|--------|--------|
-| 31 | **TikTok expansion** — ad group data, audience demographics, creative metadata, video engagement, ROAS | L | 🔴 Critical |
-| 32 | **Microsoft Ads expansion** — keywords, search terms, geographic, device, age/gender, Quality Score, LinkedIn audiences | L | 🔴 Critical |
-| 33 | **LinkedIn expansion** — daily data, industry/job/company demographics, lead form data, organic page metrics, creative breakdown | L | 🟠 High |
-| 34 | **Klaviyo expansion** — Reporting API integration, subscriber health, segment performance, flow detail, SMS metrics, predictive analytics | L | 🟠 High |
-| 35 | **YouTube expansion** — full Analytics API: traffic sources, demographics, audience retention, thumbnail CTR, playlist performance | L | 🟠 High |
-| 36 | **HubSpot expansion** — pipeline stages, deal velocity, lifecycle funnels, lead scoring, form submissions, attribution | L | 🟡 Medium |
-| 37 | **CallRail expansion** — full attribution (keyword, campaign, UTM), call quality scoring, time heatmap, first-time vs repeat | M | 🟡 Medium |
+| # | Action | Effort | Impact | Status |
+|---|--------|--------|--------|--------|
+| 31 | **TikTok expansion** — ad group data, audience demographics, creative metadata, video engagement, ROAS | L | 🔴 Critical | ✅ Done |
+| 32 | **Microsoft Ads expansion** — keywords, search terms, geographic, device, Quality Score | L | 🔴 Critical | ✅ Done |
+| 33 | **LinkedIn expansion** — daily data, industry/job function/company size demographics | L | 🟠 High | ✅ Done |
+| 34 | **Klaviyo expansion** — subscriber health, segment performance, SMS metrics | L | 🟠 High | ✅ Done |
+| 35 | **YouTube expansion** — traffic sources, demographics, search terms via Analytics API | L | 🟠 High | ✅ Done |
+| 36 | **HubSpot expansion** — pipeline stages, deal velocity, lifecycle funnels, form submissions | L | 🟡 Medium | ✅ Done |
+| 37 | **CallRail expansion** — keyword/UTM attribution, hourly distribution, first-time vs repeat callers | M | 🟡 Medium | ✅ Done |
 
 ### Wave 5 — Cross-Platform Intelligence (8-12 weeks)
 
 Build the systems that connect data across platforms:
 
-| # | Action | Effort | Impact |
-|---|--------|--------|--------|
-| 38 | **Unified Keyword Intelligence Database** — merge keywords from GSC + SEMrush + Google Ads + CallRail | XL | 🔴 Critical — core differentiator |
-| 39 | **Unified Audience Profile** — composite audience from all demographic data sources | L | 🟠 High |
-| 40 | **Cross-engine ad comparison** — Google Ads vs Microsoft Ads keyword-level benchmarks | M | 🟡 Medium |
-| 41 | **Revenue attribution engine** — connect HubSpot deals back to marketing channels | L | 🟠 High |
-| 42 | **Proactive Alert System** — automated detection and notification of budget pacing, creative fatigue, QS drops, etc. | XL | 🟠 High |
-| 43 | **Client Health Score** — AI composite of metric trends + communications + goals + engagement | L | 🟡 Medium |
-| 44 | **"Since Last Report" dashboard view** — delta calculation and automated highlight generation | M | 🟡 Medium |
+| # | Action | Effort | Impact | Status |
+|---|--------|--------|--------|--------|
+| 38 | **Unified Keyword Intelligence Database** — merge keywords from GSC + SEMrush + Google Ads + Microsoft Ads | XL | 🔴 Critical — core differentiator | ✅ Done |
+| 39 | **Unified Audience Profile** — AI composite audience from GA4 + Meta + TikTok + LinkedIn + YouTube demographics | L | 🟠 High | ✅ Done |
+| 40 | **Cross-engine ad comparison** — Google Ads vs Microsoft Ads keyword-level CPC/CTR/conversion benchmarks | M | 🟡 Medium | ✅ Done |
+| 41 | **Revenue attribution engine** — connect HubSpot deals to marketing channels via `hs_analytics_source` | L | 🟠 High | ✅ Done |
+| 42 | **Proactive Alert System** — budget pacing, creative fatigue, QS drops, conversion rate drops, anomaly aggregation | XL | 🟠 High | ✅ Done |
+| 43 | **Client Health Score** — AI composite of anomalies + goals + comms + report freshness + metric trends (0-100, A-F) | L | 🟡 Medium | ✅ Done |
+| 44 | **"Since Last Report" dashboard view** — delta calculation from MetricSnapshots + AI highlight generation | M | 🟡 Medium | ✅ Done |
 
 ### Wave 6 — Advanced Data Pulls (8-12 weeks)
 

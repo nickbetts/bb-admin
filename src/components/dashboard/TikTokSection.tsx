@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Loader2, AlertTriangle, RefreshCw, Video } from "lucide-react";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber, formatDateDisplay } from "@/lib/utils";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
+import { SuperSummary } from "@/components/ai/SuperSummary";
 
 interface TikTokSectionProps {
   clientId: string;
@@ -49,8 +50,33 @@ interface TikTokDaily {
   videoViews: number;
 }
 
+interface TikTokDemo {
+  gender: string;
+  ageRange: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  conversions: number;
+  videoViews: number;
+}
+
+interface TikTokCreative {
+  adId: string;
+  adName: string;
+  campaignId: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  conversions: number;
+  costPerConversion: number;
+  videoViews: number;
+  videoViewsP100: number;
+  videoWatched2s: number;
+}
+
 export function TikTokSection({ clientId, clientName, startDate, endDate, crossPlatformContext }: TikTokSectionProps) {
-  const [data, setData] = useState<{ overview: TikTokOverview; campaigns: TikTokCampaign[]; daily: TikTokDaily[] } | null>(null);
+  const [data, setData] = useState<{ overview: TikTokOverview; campaigns: TikTokCampaign[]; daily: TikTokDaily[]; demographics?: TikTokDemo[]; creatives?: TikTokCreative[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -168,6 +194,90 @@ export function TikTokSection({ clientId, clientName, startDate, endDate, crossP
           </table>
         </div>
       )}
+
+      {/* Demographics breakdown */}
+      {data.demographics && data.demographics.length > 0 && (
+        <div style={{ overflowX: "auto" }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Demographics</h3>
+          <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "2px solid var(--border, #e5e7eb)" }}>
+                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Gender</th>
+                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Age Range</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Impressions</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Clicks</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Spend</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.demographics.map((d, i) => (
+                <tr key={`${d.gender}-${d.ageRange}-${i}`} style={{ borderBottom: "1px solid var(--border, #e5e7eb)" }}>
+                  <td style={{ padding: "8px 12px", fontWeight: 500, textTransform: "capitalize" }}>{d.gender}</td>
+                  <td style={{ padding: "8px 12px" }}>{d.ageRange}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(d.impressions)}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(d.clicks)}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatCurrency(d.spend)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Top Creatives */}
+      {data.creatives && data.creatives.length > 0 && (
+        <div style={{ overflowX: "auto" }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Top Creatives</h3>
+          <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: "2px solid var(--border, #e5e7eb)" }}>
+                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Ad Name</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Spend</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Impressions</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Clicks</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>CTR</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Conversions</th>
+                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Video Completion</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.creatives.map((cr) => (
+                <tr key={cr.adId} style={{ borderBottom: "1px solid var(--border, #e5e7eb)" }}>
+                  <td style={{ padding: "8px 12px", fontWeight: 500, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cr.adName}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatCurrency(cr.spend)}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(cr.impressions)}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(cr.clicks)}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{cr.ctr.toFixed(2)}%</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(cr.conversions)}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(cr.videoViewsP100)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Full Journey Analysis */}
+      <SuperSummary
+        sectionType="tiktok"
+        metrics={{
+          spend: overview.spend,
+          impressions: overview.impressions,
+          clicks: overview.clicks,
+          ctr: overview.ctr,
+          cpc: overview.cpc,
+          cpm: overview.cpm,
+          conversions: overview.conversions,
+          costPerConversion: overview.costPerConversion,
+          videoViews: overview.videoViews,
+          reach: overview.reach,
+          frequency: overview.frequency,
+        }}
+        campaignData={campaigns as unknown as Record<string, unknown>[]}
+        clientName={clientName}
+        dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
+        crossPlatformContext={crossPlatformContext}
+      />
 
       {/* AI Insights */}
       <AiInsightsPanel

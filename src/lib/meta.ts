@@ -46,6 +46,14 @@ export interface MetaAdsOverview {
   videoViews: number;
   /** Percentage of video plays that reached 100% completion (null if no video content) */
   videoCompletionRate: number | null;
+  /** Count of video plays that reached 25% (null if no video content) */
+  videoP25Views: number | null;
+  /** Count of video plays that reached 50% (null if no video content) */
+  videoP50Views: number | null;
+  /** Count of video plays that reached 75% (null if no video content) */
+  videoP75Views: number | null;
+  /** Count of video plays that reached 100% completion */
+  videoP100Views: number | null;
 }
 
 export interface MetaAdsDailyData {
@@ -214,6 +222,7 @@ export async function getMetaAdsOverview(
       totalConversions: 0, conversionLabel: "Conversions", totalConversionValue: 0, avgRoas: 0,
       reach: 0, frequency: 0, outboundClicks: 0, landingPageViews: 0,
       videoViews: 0, videoCompletionRate: null,
+      videoP25Views: null, videoP50Views: null, videoP75Views: null, videoP100Views: null,
     };
   }
 
@@ -222,6 +231,13 @@ export async function getMetaAdsOverview(
     insight.action_values as ActionRow[] | undefined,
     insight.conversions as { value: string }[] | undefined
   );
+
+  const acts = insight.actions as ActionRow[] | undefined;
+  const videoViews = parseInt(acts?.find((a) => a.action_type === "video_view")?.value ?? "0");
+  const videoP25 = parseInt(acts?.find((a) => a.action_type === "video_p25_watched_actions")?.value ?? "0");
+  const videoP50 = parseInt(acts?.find((a) => a.action_type === "video_p50_watched_actions")?.value ?? "0");
+  const videoP75 = parseInt(acts?.find((a) => a.action_type === "video_p75_watched_actions")?.value ?? "0");
+  const videoP100 = parseInt(acts?.find((a) => a.action_type === "video_p100_watched_actions")?.value ?? "0");
 
   return {
     totalSpend: parseFloat(insight.spend ?? "0"),
@@ -239,19 +255,15 @@ export async function getMetaAdsOverview(
     outboundClicks: Array.isArray(insight.outbound_clicks)
       ? insight.outbound_clicks.reduce((sum: number, o: { value: string }) => sum + parseInt(o.value), 0)
       : 0,
-    landingPageViews: (insight.actions as ActionRow[] | undefined)
-      ?.find((a) => a.action_type === "landing_page_view")?.value
-      ? parseInt((insight.actions as ActionRow[]).find((a) => a.action_type === "landing_page_view")!.value)
+    landingPageViews: acts?.find((a) => a.action_type === "landing_page_view")?.value
+      ? parseInt(acts!.find((a) => a.action_type === "landing_page_view")!.value)
       : 0,
-    videoViews: parseInt(
-      (insight.actions as ActionRow[] | undefined)?.find((a) => a.action_type === "video_view")?.value ?? "0"
-    ),
-    videoCompletionRate: (() => {
-      const acts = insight.actions as ActionRow[] | undefined;
-      const plays = parseInt(acts?.find((a) => a.action_type === "video_view")?.value ?? "0");
-      const completed = parseInt(acts?.find((a) => a.action_type === "video_p100_watched_actions")?.value ?? "0");
-      return plays > 0 ? Math.round((completed / plays) * 100) : null;
-    })(),
+    videoViews,
+    videoCompletionRate: videoViews > 0 ? Math.round((videoP100 / videoViews) * 100) : null,
+    videoP25Views: videoViews > 0 ? videoP25 : null,
+    videoP50Views: videoViews > 0 ? videoP50 : null,
+    videoP75Views: videoViews > 0 ? videoP75 : null,
+    videoP100Views: videoViews > 0 ? videoP100 : null,
   };
 }
 
@@ -1265,6 +1277,64 @@ export async function getMetaPlacementBreakdown(
 }
 
 // ── Audience demographic performance breakdown ────────────────────────────────
+
+// ── Frequency distribution ──────────────────────────────────────────────────
+
+/**
+ * A single bucket in the frequency distribution — how many unique users saw
+ * an ad exactly `frequencyValue` times (or `frequencyValue`+ for the last bucket).
+ */
+export interface MetaFrequencyBucket {
+  /** Number of times the ad was seen (e.g. "1", "2", "3+") */
+  frequencyValue: string;
+  /** Unique users who were reached exactly this many times */
+  reach: number;
+  /** Total impressions delivered to this frequency bucket */
+  impressions: number;
+}
+
+/**
+ * Returns the frequency distribution for the account over the given period.
+ * Uses the `frequency_value` breakdown which shows how many users saw ads
+ * 1×, 2×, 3× … N+ times — a precise creative fatigue indicator.
+ */
+export async function getMetaFrequencyDistribution(
+  accountId: string,
+  accessToken: string,
+  startDate: string,
+  endDate: string
+): Promise<MetaFrequencyBucket[]> {
+  const params = new URLSearchParams({
+    access_token: getAccessToken(accessToken),
+    fields: "reach,impressions",
+    breakdowns: "frequency_value",
+    time_range: JSON.stringify({ since: startDate, until: endDate }),
+    level: "account",
+    limit: "50",
+  });
+
+  try {
+    const response = await fetch(
+      `${META_API_BASE}/act_${accountId}/insights?${params}`,
+      { cache: "no-store" }
+    );
+    if (!response.ok) return [];
+    const data = await response.json();
+    return ((data.data ?? []) as Array<{
+      frequency_value?: string;
+      reach?: string;
+      impressions?: string;
+    }>)
+      .map((item) => ({
+        frequencyValue: item.frequency_value ?? "1",
+        reach: parseInt(item.reach ?? "0"),
+        impressions: parseInt(item.impressions ?? "0"),
+      }))
+      .sort((a, b) => parseInt(a.frequencyValue) - parseInt(b.frequencyValue));
+  } catch {
+    return [];
+  }
+}
 
 /** Performance broken down by age bracket × gender */
 export interface MetaAudienceDemographic {

@@ -341,6 +341,20 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
     [creatives, adSets]
   );
 
+  // Memoize audience demographics summary for AI context (#11)
+  const audienceDemoContext = useMemo(() => {
+    if (!adSetAudiences.length) return undefined;
+    const lines = adSetAudiences.slice(0, 8).map(a => {
+      const age = a.ageMin != null && a.ageMax != null ? `${a.ageMin}–${a.ageMax}` : "all ages";
+      const gender = a.genders.length === 1 ? (a.genders[0] === 1 ? "male" : "female") : "all genders";
+      const interests = a.interests.slice(0, 3).join(", ");
+      const customs = a.customAudiences.slice(0, 2).map(c => c.name).join(", ");
+      const excl = a.excludedAudiences.slice(0, 2).map(c => c.name).join(", ");
+      return `  • "${a.adSetName}" [${a.status}]: age ${age}, ${gender}, geo: ${a.geoSummary || "all"}${interests ? `, interests: ${interests}` : ""}${customs ? `, custom: ${customs}` : ""}${excl ? `, excluded: ${excl}` : ""}`;
+    });
+    return `AUDIENCE TARGETING (ad sets):\n${lines.join("\n")}`;
+  }, [adSetAudiences]);
+
   // Fetch AI-generated recommendations for each alert
   useEffect(() => {
     setAlertAiRecs([]);
@@ -1168,7 +1182,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
           landingPages={landingPages.length ? landingPages : undefined}
           clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
-          extraContext={creativeSummary}
+          extraContext={[creativeSummary, audienceDemoContext].filter(Boolean).join("\n\n") || undefined}
           crossPlatformContext={crossPlatformContext}
         />
       )}
@@ -1198,7 +1212,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
           clientId={clientId}
           clientName={clientName}
           dateRange={`${formatDateDisplay(startDate)} – ${formatDateDisplay(endDate)}`}
-          extraContext={creativeSummary}
+          extraContext={[creativeSummary, audienceDemoContext].filter(Boolean).join("\n\n") || undefined}
           crossPlatformContext={crossPlatformContext}
         />
       )}
