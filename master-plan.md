@@ -1012,18 +1012,18 @@ These require small code changes to pull more data from APIs we already connect 
 
 Enhance AI prompts with data we already have but don't use:
 
-| # | Action | Effort | Impact |
-|---|--------|--------|--------|
-| 11 | **Pass audiences/demographics to all AI prompts** — Meta demographics, Google Ads audiences, LinkedIn demographics | M | 🟠 High — AI can make audience-aware recommendations |
-| 12 | **Pass Search Terms to AI for negative keyword mining** — auto-generate negative keyword suggestions | S | 🟠 High — immediate cost savings for clients |
-| 13 | **Pass QS components to AI** — AI explains WHY quality score is low and what to fix | S | 🟠 High — actionable QS improvement plan |
-| 14 | **Inject seasonality context** into all AI prompts (current month, upcoming events, industry seasons) | S | 🟠 High — every AI endpoint benefits |
-| 15 | **Pass ClientGoal context** to all AI prompts — AI says "you need ROAS 4× to hit your target" not just "ROAS is 3.2×" | S | 🟠 High — goal-oriented AI insights |
-| 16 | **Add AiInsightsPanel to EcommerceSection** — persona already exists | S | 🟡 Medium — quick win |
-| 17 | **Add SuperSummary** to TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail | M | 🟠 High — 7 channels missing this feature |
-| 18 | **Cross-platform creative comparison** — Meta + TikTok + Google Ads creative data to one AI prompt | M | 🟡 Medium — unique cross-platform insight |
-| 19 | **Implement keyword suggestion AI** — combine GSC + SEMrush + Google Ads data → suggest new keywords to bid on / create content for | L | 🔴 Critical — core agency value |
-| 20 | **Implement audience suggestion AI** — combine demographics + interests + performance → suggest new audiences to test | L | 🔴 Critical — core agency value |
+| # | Action | Effort | Impact | Status |
+|---|--------|--------|--------|--------|
+| 11 | **Pass audiences/demographics to all AI prompts** — Meta demographics, Google Ads audiences, LinkedIn demographics | M | 🟠 High — AI can make audience-aware recommendations | ✅ Done |
+| 12 | **Pass Search Terms to AI for negative keyword mining** — auto-generate negative keyword suggestions | S | 🟠 High — immediate cost savings for clients | ✅ Done |
+| 13 | **Pass QS components to AI** — AI explains WHY quality score is low and what to fix | S | 🟠 High — actionable QS improvement plan | ✅ Done |
+| 14 | **Inject seasonality context** into all AI prompts (current month, upcoming events, industry seasons) | S | 🟠 High — every AI endpoint benefits | ✅ Done |
+| 15 | **Pass ClientGoal context** to all AI prompts — AI says "you need ROAS 4× to hit your target" not just "ROAS is 3.2×" | S | 🟠 High — goal-oriented AI insights | ✅ Done |
+| 16 | **Add AiInsightsPanel to EcommerceSection** — persona already exists | S | 🟡 Medium — quick win | ✅ Done |
+| 17 | **Add SuperSummary** to TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail | M | 🟠 High — 7 channels missing this feature | ✅ Done |
+| 18 | **Cross-platform creative comparison** — Meta + TikTok + Google Ads creative data to one AI prompt | M | 🟡 Medium — unique cross-platform insight | ✅ Done |
+| 19 | **Implement keyword suggestion AI** — combine GSC + SEMrush + Google Ads data → suggest new keywords to bid on / create content for | L | 🔴 Critical — core agency value | ✅ Done |
+| 20 | **Implement audience suggestion AI** — combine demographics + interests + performance → suggest new audiences to test | L | 🔴 Critical — core agency value | ✅ Done |
 
 ### Wave 3 — Missing Report Sections (2-4 weeks)
 

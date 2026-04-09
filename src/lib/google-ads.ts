@@ -469,7 +469,11 @@ export async function getGoogleAdsSearchTerms(
   const data = await searchGoogleAds(customerId, query, token, mccId);
   return (data.results ?? []).map((row: Record<string, Record<string, unknown>>) => ({
     searchTerm: String(row.searchTermView?.searchTerm ?? ""),
-    matchType: String((row.segments as Record<string, Record<string, unknown>>)?.keyword?.info?.matchType ?? row.segments?.matchType ?? "UNSPECIFIED"),
+    matchType: String(
+      (((row.segments as Record<string, unknown>)?.keyword as Record<string, unknown>)?.info as Record<string, unknown>)?.matchType ??
+      (row.segments as Record<string, unknown>)?.matchType ??
+      "UNSPECIFIED"
+    ),
     clicks: Number(row.metrics?.clicks ?? 0),
     costMicros: Number(row.metrics?.costMicros ?? 0),
     impressions: Number(row.metrics?.impressions ?? 0),
