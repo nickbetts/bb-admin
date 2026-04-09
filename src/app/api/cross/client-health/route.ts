@@ -21,6 +21,9 @@ const PLATFORM_LABELS: Record<string, string> = {
   klaviyo: "Klaviyo",
   youtube: "YouTube",
   callrail: "CallRail",
+  hubspot: "HubSpot CRM",
+  moz: "Moz / Domain Authority",
+  cwv: "Core Web Vitals",
 };
 
 const TREND_METRICS: Record<string, string[]> = {
@@ -29,6 +32,16 @@ const TREND_METRICS: Record<string, string[]> = {
   ga4: ["sessions", "conversions"],
   searchconsole: ["clicks", "impressions"],
   seo: ["organicTraffic"],
+  tiktok: ["clicks", "conversions", "ctr"],
+  microsoftads: ["clicks", "conversions", "revenue"],
+  linkedin: ["clicks", "conversions", "reach"],
+  klaviyo: ["sends", "opens", "revenue"],
+  youtube: ["subscriberCount", "viewCount"],
+  hubspot: ["totalContacts", "closedWonValue", "pipelineValue"],
+  callrail: ["totalCalls", "answeredCalls"],
+  moz: ["domainAuthority"],
+  woocommerce: ["totalRevenue", "totalOrders"],
+  shopify: ["totalRevenue", "totalOrders"],
 };
 
 // ── Grading helpers ──────────────────────────────────────────────────────────

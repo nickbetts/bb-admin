@@ -35,6 +35,16 @@ const HIGHER_IS_BETTER: Record<string, string[]> = {
   meta: ["totalClicks", "totalImpressions", "totalConversions", "avgRoas", "avgCtr"],
   tiktok: ["clicks", "impressions", "conversions", "ctr"],
   microsoftads: ["clicks", "impressions", "conversions", "revenue", "roas", "ctr"],
+  linkedin: ["clicks", "impressions", "conversions", "reach"],
+  klaviyo: ["sends", "opens", "clicks", "revenue", "openRate", "clickRate", "totalProfiles"],
+  youtube: ["subscriberCount", "viewCount", "videoCount"],
+  hubspot: ["totalContacts", "closedWonValue", "pipelineValue"],
+  callrail: ["totalCalls", "answeredCalls", "answeredPct"],
+  moz: ["domainAuthority", "rootDomainsLinking"],
+  woocommerce: ["totalRevenue", "totalOrders"],
+  shopify: ["totalRevenue", "totalOrders"],
+  searchconsole: ["clicks", "impressions", "ctr"],
+  seo: ["organicTraffic", "organicKeywords"],
 };
 
 const LOWER_IS_BETTER: Record<string, string[]> = {
@@ -43,6 +53,11 @@ const LOWER_IS_BETTER: Record<string, string[]> = {
   meta: ["avgCpm"],
   tiktok: ["cpc", "cpm"],
   microsoftads: ["cpc"],
+  linkedin: ["cpc"],
+  callrail: ["missedCalls"],
+  moz: ["spamScore"],
+  searchconsole: ["position"],
+  cwv: ["lcp", "cls", "inp", "fid", "ttfb"],
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -175,7 +190,7 @@ function detectConversionRateDrop(
 }
 
 /**
- * Creative fatigue: Meta/TikTok frequency >4 with declining CTR.
+ * Creative fatigue: Meta/TikTok/LinkedIn frequency >4 with declining CTR.
  * Uses snapshot-level metrics (avgCtr / frequency / ctr / cpm).
  */
 function detectCreativeFatigue(
@@ -230,6 +245,28 @@ function detectCreativeFatigue(
     }
   }
 
+  if (platform === "linkedin") {
+    const currentCtr = current.ctr ?? 0;
+    const previousCtr = previous.ctr ?? 0;
+    const currentImps = current.impressions ?? 0;
+    const previousImps = previous.impressions ?? 0;
+    const impGrowth = previousImps > 0 ? (currentImps - previousImps) / previousImps : 0;
+    const ctrDrop = previousCtr > 0 ? (previousCtr - currentCtr) / previousCtr : 0;
+
+    if (previousCtr > 0 && ctrDrop > 0.2 && impGrowth > 0.1) {
+      const dropPct = Math.round(ctrDrop * 100);
+      alerts.push({
+        category: "creative_fatigue",
+        platform: "linkedin",
+        metric: "ctr",
+        severity: dropPct > 30 ? "high" : "medium",
+        direction: "down",
+        changePercent: -dropPct,
+        detail: `LinkedIn CTR dropped ${dropPct}% whilst impressions grew ${Math.round(impGrowth * 100)}% — consider refreshing ad creatives`,
+      });
+    }
+  }
+
   return alerts;
 }
 
@@ -248,7 +285,7 @@ function detectBudgetPacing(
     spend = (current.costMicros ?? 0) / 1_000_000;
   } else if (platform === "meta") {
     spend = current.totalSpend ?? 0;
-  } else if (platform === "tiktok" || platform === "microsoftads") {
+  } else if (platform === "tiktok" || platform === "microsoftads" || platform === "linkedin") {
     spend = current.spend ?? 0;
   } else {
     return [];
@@ -392,6 +429,16 @@ export async function POST(request: NextRequest) {
           { metaAccountId: { not: null } },
           { tiktokAdvertiserId: { not: null } },
           { microsoftAdsAccountId: { not: null } },
+          { linkedinAccountId: { not: null } },
+          { klaviyoApiKey: { not: null } },
+          { youtubeChannelId: { not: null } },
+          { hubspotAccessToken: { not: null } },
+          { callrailAccountId: { not: null } },
+          { searchConsoleSiteUrl: { not: null } },
+          { semrushDomain: { not: null } },
+          { woocommerceUrl: { not: null } },
+          { shopifyStoreDomain: { not: null } },
+          { cwvUrl: { not: null } },
         ],
       },
       select: {
@@ -404,6 +451,18 @@ export async function POST(request: NextRequest) {
         tiktokAdvertiserId: true,
         tiktokAccessToken: true,
         microsoftAdsAccountId: true,
+        linkedinAccountId: true,
+        linkedinAccessToken: true,
+        klaviyoApiKey: true,
+        youtubeChannelId: true,
+        hubspotAccessToken: true,
+        callrailAccountId: true,
+        callrailApiKey: true,
+        searchConsoleSiteUrl: true,
+        semrushDomain: true,
+        woocommerceUrl: true,
+        shopifyStoreDomain: true,
+        cwvUrl: true,
       },
     });
 
@@ -436,6 +495,16 @@ export async function POST(request: NextRequest) {
       if (client.tiktokAdvertiserId && client.tiktokAccessToken)
         platforms.push("tiktok");
       if (client.microsoftAdsAccountId) platforms.push("microsoftads");
+      if (client.linkedinAccountId && client.linkedinAccessToken) platforms.push("linkedin");
+      if (client.klaviyoApiKey) platforms.push("klaviyo");
+      if (client.youtubeChannelId) platforms.push("youtube");
+      if (client.hubspotAccessToken) platforms.push("hubspot");
+      if (client.callrailAccountId && client.callrailApiKey) platforms.push("callrail");
+      if (client.searchConsoleSiteUrl) platforms.push("searchconsole");
+      if (client.semrushDomain) platforms.push("seo");
+      if (client.woocommerceUrl) platforms.push("woocommerce");
+      if (client.shopifyStoreDomain) platforms.push("shopify");
+      if (client.cwvUrl) platforms.push("cwv");
 
       const allPending: PendingAlert[] = [];
 
@@ -458,8 +527,8 @@ export async function POST(request: NextRequest) {
             );
           }
 
-          // 3. Creative fatigue (Meta / TikTok)
-          if (platform === "meta" || platform === "tiktok") {
+          // 3. Creative fatigue (Meta / TikTok / LinkedIn)
+          if (platform === "meta" || platform === "tiktok" || platform === "linkedin") {
             allPending.push(
               ...detectCreativeFatigue(platform, current, previous)
             );
