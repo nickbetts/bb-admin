@@ -11,6 +11,10 @@ import {
   getBacklinks,
   getSemrushTrackedKeywords,
   getSemrushAIVisibility,
+  getKeywordDifficultyAndIntent,
+  getContentGap,
+  getSerpFeatures,
+  getBacklinkChanges,
 } from "@/lib/semrush";
 import { withApiCache } from "@/lib/api-cache";
 
@@ -35,7 +39,7 @@ export async function GET(request: NextRequest) {
     // It takes priority over projectId for position-tracking endpoints.
     const campaignId = searchParams.get("campaignId");
 
-    if (!domain && type !== "project-keywords" && type !== "ai-visibility") {
+    if (!domain && type !== "project-keywords" && type !== "ai-visibility" && type !== "keyword-difficulty") {
       return NextResponse.json({ error: "domain is required" }, { status: 400 });
     }
 
@@ -85,6 +89,23 @@ export async function GET(request: NextRequest) {
         const kwCacheKey = `semrush:project-keywords:${campaignId}`;
         return NextResponse.json(await withApiCache(kwCacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getSemrushTrackedKeywords(campaignId)));
       }
+      case "keyword-difficulty": {
+        const kwParam = searchParams.get("keywords") ?? "";
+        const keywords = kwParam.split(",").map(k => k.trim()).filter(Boolean);
+        if (keywords.length === 0) return NextResponse.json({ error: "keywords parameter is required" }, { status: 400 });
+        const kdCacheKey = `semrush:keyword-difficulty:${keywords.join(",")}:${database}`;
+        return NextResponse.json(await withApiCache(kdCacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getKeywordDifficultyAndIntent(keywords, database)));
+      }
+      case "content-gap": {
+        const competitors = (searchParams.get("competitors") ?? "").split(",").map(c => c.trim()).filter(Boolean);
+        if (!domain || competitors.length === 0) return NextResponse.json({ error: "domain and competitors are required" }, { status: 400 });
+        const gapCacheKey = `semrush:content-gap:${domain}:${competitors.join(",")}:${database}`;
+        return NextResponse.json(await withApiCache(gapCacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getContentGap(domain!, competitors, database)));
+      }
+      case "serp-features":
+        return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getSerpFeatures(domain!, database)));
+      case "backlink-changes":
+        return NextResponse.json(await withApiCache(cacheKey, SEMRUSH_CACHE_TTL_HOURS, () => getBacklinkChanges(domain!)));
       default:
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }
