@@ -1781,3 +1781,68 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
   background: rgb(70 78 112 / 0.8);
 }
 
+/* =============================================
+   AUTO DARK MODE (OS preference)
+   Only applies when user hasn't explicitly set
+   a theme via the sidebar toggle.
+============================================= */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --bg:            #09090f;
+    --surface:       #0f111b;
+    --border:        #1a1d2e;
+    --border-subtle: #141727;
+    --text:          #f1f5f9;
+    --text-2:        #94a3b8;
+    --text-3:        #64748b;
+    --text-4:        #475569;
+    --accent:        #818cf8;
+    --accent-hover:  #6366f1;
+    --accent-bg:     #1e1f3a;
+    --accent-text:   #a5b4fc;
+    --accent-2:      #c084fc;
+    --accent-3:      #f472b6;
+    --success:       #34d399;
+    --warning:       #fbbf24;
+    --danger:        #f87171;
+    --info:          #60a5fa;
+    --success-bg:     #052e16;
+    --success-border: #14532d;
+    --success-text:   #bbf7d0;
+    --warning-bg:     #1c1400;
+    --warning-border: #713f12;
+    --warning-text:   #fde68a;
+    --danger-bg:      #1c0505;
+    --danger-border:  #7f1d1d;
+    --danger-text:    #fecaca;
+    --info-bg:        #071731;
+    --info-border:    #1e3a5f;
+    --info-text:      #bfdbfe;
+    --gradient-accent: linear-gradient(135deg, #818cf8, #c084fc);
+    --gradient-accent-wide: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+    --gradient-surface: linear-gradient(135deg, rgb(15 17 26 / 0.9), rgb(15 17 26 / 0.7));
+    --glass-bg:     rgb(15 17 26 / 0.85);
+    --glass-border: rgb(129 140 248 / 0.10);
+    --glass-blur:   20px;
+    --glass-shine:  inset 0 1px 0 0 rgb(255 255 255 / 0.06);
+    --shadow-xs: 0 1px 3px 0 rgb(0 0 0 / 0.40);
+    --shadow-sm: 0 2px 8px -2px rgb(0 0 0 / 0.50), 0 1px 2px -1px rgb(0 0 0 / 0.35);
+    --shadow:    0 4px 20px -4px rgb(0 0 0 / 0.60), 0 2px 6px -2px rgb(0 0 0 / 0.40);
+    --shadow-lg: 0 12px 32px -8px rgb(0 0 0 / 0.70), 0 4px 8px -4px rgb(0 0 0 / 0.50);
+    --shadow-xl: 0 24px 48px -12px rgb(0 0 0 / 0.80), 0 8px 16px -8px rgb(0 0 0 / 0.60);
+    --shadow-glow: 0 4px 24px -6px rgb(129 140 248 / 0.30);
+  }
+}
+
+/* =============================================
+   REDUCED MOTION
+============================================= */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

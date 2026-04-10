@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { Users, FileText, TrendingUp, ArrowRight, Plus, Search, BarChart2, AlertTriangle, Clock } from "lucide-react";
+import { Users, FileText, TrendingUp, ArrowRight, Plus, Search, BarChart2, AlertTriangle, Clock, Settings, AlertCircle } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { DashboardGreeting } from "@/components/dashboard/DashboardGreeting";
 
 const SEVERITY_COLOUR: Record<string, string> = {
   high:   "#ef4444",
@@ -60,12 +61,25 @@ export default async function DashboardPage() {
   return (
     <div className="page">
       {/* Header */}
-      <div className="animate-in" style={{ marginBottom: 52 }}>
-        <h1 className="page-title">
-          Welcome back, {session?.user.name ?? "there"} 👋
-        </h1>
+      <div className="animate-in" style={{ marginBottom: 40 }}>
+        <DashboardGreeting name={session?.user.name ?? "there"} />
         <p className="page-desc">Here&apos;s an overview of your clients and recent activity</p>
       </div>
+
+      {/* Reports needing attention banner */}
+      {inProgressCount > 0 && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 14, padding: "14px 20px",
+          background: "var(--warning-bg)", border: "1px solid var(--warning-border)",
+          borderRadius: "var(--r)", marginBottom: 28, flexWrap: "wrap",
+        }}>
+          <AlertCircle style={{ width: 16, height: 16, color: "var(--warning)", flexShrink: 0 }} />
+          <span style={{ fontSize: 13, color: "var(--warning-text)", flex: 1 }}>
+            <strong>{inProgressCount} report{inProgressCount !== 1 ? "s" : ""}</strong> {inProgressCount === 1 ? "needs" : "need"} attention — currently draft or in review.
+          </span>
+          <Link href="/reports" style={{ fontSize: 13, fontWeight: 600, color: "var(--warning)", textDecoration: "none" }}>View reports →</Link>
+        </div>
+      )}
 
       {/* Stats row */}
       <div className="stat-card-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, marginBottom: 36 }}>
@@ -81,8 +95,8 @@ export default async function DashboardPage() {
         <div className="stat-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <p className="stat-card-label">Total Reports</p>
-            <div className="stat-card-icon" style={{ background: "var(--info-bg, #eff6ff)" }}>
-              <FileText style={{ width: 20, height: 20, color: "var(--info, #3b82f6)" }} />
+            <div className="stat-card-icon" style={{ background: "var(--info-bg)" }}>
+              <FileText style={{ width: 20, height: 20, color: "var(--info)" }} />
             </div>
           </div>
           <p className="stat-card-value">{totalReports}</p>
@@ -102,7 +116,7 @@ export default async function DashboardPage() {
         <div className="stat-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <p className="stat-card-label">In Progress</p>
-            <div className="stat-card-icon" style={{ background: "var(--warning-bg, #fffbeb)" }}>
+            <div className="stat-card-icon" style={{ background: "var(--warning-bg)" }}>
               <Clock style={{ width: 20, height: 20, color: "var(--warning)" }} />
             </div>
           </div>
@@ -210,13 +224,19 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Latest Signals */}
-      {latestSignals.length > 0 && (
-        <div className="card" style={{ marginTop: 24 }}>
-          <div className="card-header">
-            <h2 className="card-title">Latest Signals</h2>
-            <span style={{ fontSize: 12, color: "var(--text-3)" }}>Unresolved anomalies across all clients</span>
-          </div>
+      {/* Latest Signals — always shown, with empty state */}
+      <div className="card" style={{ marginTop: 24 }}>
+        <div className="card-header">
+          <h2 className="card-title">Latest Signals</h2>
+          <span style={{ fontSize: 12, color: "var(--text-3)" }}>Unresolved anomalies across all clients</span>
+        </div>
+        {latestSignals.length === 0 ? (
+          <EmptyState
+            icon={<AlertTriangle style={{ width: 24, height: 24 }} />}
+            title="No active signals"
+            description="All clear — no unresolved anomalies across your client accounts."
+          />
+        ) : (
           <div>
             {latestSignals.map((signal) => (
               <Link
@@ -243,8 +263,8 @@ export default async function DashboardPage() {
               </Link>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Quick Actions */}
       <div className="card animate-in-slow" style={{ marginTop: 28 }}>
@@ -253,25 +273,41 @@ export default async function DashboardPage() {
         </div>
         <div className="card-body">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
-            <Link href="/clients/new" className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-xl border border-[var(--border)] no-underline transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-bg)]">
-              <Users style={{ width: 20, height: 20, color: "var(--accent)" }} />
+            <Link href="/clients/new" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 14, border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.2s" }} className="hover:border-[var(--accent)] hover:bg-[var(--accent-bg)]">
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Users style={{ width: 18, height: 18, color: "var(--accent)" }} />
+              </div>
               <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Add Client</span>
             </Link>
-            <Link href="/tools/keyword-planner" className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-xl border border-[var(--border)] no-underline transition-all hover:border-[var(--info,#3b82f6)] hover:bg-[var(--info-bg,#eff6ff)]">
-              <Search style={{ width: 20, height: 20, color: "var(--info, #3b82f6)" }} />
+            <Link href="/tools/keyword-planner" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 14, border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.2s" }} className="hover:border-[var(--info)] hover:bg-[var(--info-bg)]">
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--info-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Search style={{ width: 18, height: 18, color: "var(--info)" }} />
+              </div>
               <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Keyword Planner</span>
             </Link>
-            <Link href="/tools/proposals" className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-xl border border-[var(--border)] no-underline transition-all hover:border-[var(--success)] hover:bg-[var(--success-bg)]">
-              <FileText style={{ width: 20, height: 20, color: "var(--success)" }} />
+            <Link href="/tools/proposals" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 14, border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.2s" }} className="hover:border-[var(--success)] hover:bg-[var(--success-bg)]">
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--success-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <FileText style={{ width: 18, height: 18, color: "var(--success)" }} />
+              </div>
               <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Proposals</span>
             </Link>
-            <Link href="/reports" className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-xl border border-[var(--border)] no-underline transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-bg)]">
-              <BarChart2 style={{ width: 20, height: 20, color: "var(--accent)" }} />
+            <Link href="/reports" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 14, border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.2s" }} className="hover:border-[var(--accent)] hover:bg-[var(--accent-bg)]">
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <BarChart2 style={{ width: 18, height: 18, color: "var(--accent)" }} />
+              </div>
               <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>All Reports</span>
             </Link>
-            <Link href="/portfolio" className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-xl border border-[var(--border)] no-underline transition-all hover:border-[var(--warning)] hover:bg-[var(--warning-bg,#fffbeb)]">
-              <TrendingUp style={{ width: 20, height: 20, color: "var(--warning)" }} />
+            <Link href="/portfolio" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 14, border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.2s" }} className="hover:border-[var(--warning)] hover:bg-[var(--warning-bg)]">
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--warning-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <TrendingUp style={{ width: 18, height: 18, color: "var(--warning)" }} />
+              </div>
               <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Portfolio</span>
+            </Link>
+            <Link href="/settings" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 16px", borderRadius: 14, border: "1px solid var(--border)", textDecoration: "none", transition: "all 0.2s" }} className="hover:border-[var(--text-3)] hover:bg-[var(--border-subtle)]">
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Settings style={{ width: 18, height: 18, color: "var(--text-3)" }} />
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Settings</span>
             </Link>
           </div>
         </div>

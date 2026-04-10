@@ -32,6 +32,7 @@ import {
   Sun,
   Moon,
 } from "lucide-react";
+import { CommandPalette } from "@/components/ui/CommandPalette";
 
 interface NavItem {
   href: string;
@@ -334,6 +335,7 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === "undefined") return false;
     const stored = localStorage.getItem("theme");
@@ -353,6 +355,18 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
     setDarkMode(next);
     localStorage.setItem("theme", next ? "dark" : "light");
   }
+
+  // Cmd+K / Ctrl+K to open command palette
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     const check = () => {
@@ -394,6 +408,23 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
   function renderNavLinks() {
     return (
       <nav className="sidebar-nav" aria-label="Main navigation">
+        <button
+          onClick={() => setPaletteOpen(true)}
+          className="nav-item"
+          style={{ width: "100%", marginBottom: 4, ...(collapsed ? { justifyContent: "center" } : {}) }}
+          title={collapsed ? "Search (⌘K)" : undefined}
+          aria-label="Open command palette"
+        >
+          <span className="nav-item-icon" style={{ display: "flex", width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+            <Search className="h-4 w-4" />
+          </span>
+          {!collapsed && (
+            <>
+              <span style={{ flex: 1, color: "var(--text-3)", fontSize: 13 }}>Search…</span>
+              <kbd style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", background: "var(--border-subtle)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px", fontFamily: "inherit" }}>⌘K</kbd>
+            </>
+          )}
+        </button>
         {!collapsed && <p className="sidebar-nav-label">Menu</p>}
         {navItems.filter((item) => permissions.includes(item.permission)).map((item) => {
           // Admin users access Settings through the Admin panel tabs
@@ -502,6 +533,7 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
         )}
 
         <aside className={cn("sidebar sidebar-mobile", mobileOpen && "open")} aria-label="Main navigation">
+          <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
           <div className="sidebar-logo">
             <div className="sidebar-logo-inner">
               <img src="/primary-logo-dark.svg" style={{ height: 28, width: "auto" }} alt="i3media" />
@@ -637,6 +669,7 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
           {!collapsed && <span>Sign out</span>}
         </button>
       </div>
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </aside>
   );
 }
