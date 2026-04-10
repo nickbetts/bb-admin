@@ -233,7 +233,31 @@ export async function GET(request: NextRequest) {
         take: 50,
       });
 
+      // Deduplicate anomalies: keep the most severe per (clientId, platform, metric).
+      // Tie-break 1: largest absolute changePercent. Tie-break 2: most recent createdAt.
+      const anomalyMap = new Map<string, (typeof anomalies)[0]>();
       for (const a of anomalies) {
+        const key = `${a.clientId}::${a.platform}::${a.metric}`;
+        const existing = anomalyMap.get(key);
+        if (!existing) {
+          anomalyMap.set(key, a);
+        } else {
+          const aRank = SEVERITY_ORDER[a.severity as AlertSeverity] ?? 2;
+          const eRank = SEVERITY_ORDER[existing.severity as AlertSeverity] ?? 2;
+          if (aRank < eRank) {
+            anomalyMap.set(key, a);
+          } else if (aRank === eRank) {
+            const aChange = Math.abs(a.changePercent ?? 0);
+            const eChange = Math.abs(existing.changePercent ?? 0);
+            if (aChange > eChange || (aChange === eChange && a.createdAt > existing.createdAt)) {
+              anomalyMap.set(key, a);
+            }
+          }
+        }
+      }
+      const dedupedAnomalies = [...anomalyMap.values()];
+
+      for (const a of dedupedAnomalies) {
         alerts.push(
           makeAlert(
             "performance_drop",

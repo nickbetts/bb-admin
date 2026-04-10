@@ -8,6 +8,7 @@ import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
+import { DataTable } from "@/components/ui/DataTable";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 
@@ -139,109 +140,64 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
 
       {/* Campaigns table */}
       {show("campaigns") && campaigns.length > 0 && (
-        <div style={{ overflowX: "auto" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Campaigns</h3>
-          <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid var(--border, #e5e7eb)" }}>
-                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Campaign</th>
-                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Status</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Spend</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Clicks</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>CTR</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Conv</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Revenue</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>ROAS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {campaigns.map((c) => (
-                <tr key={c.campaignId} style={{ borderBottom: "1px solid var(--border, #e5e7eb)" }}>
-                  <td style={{ padding: "8px 12px", fontWeight: 500 }}>{c.campaignName}</td>
-                  <td style={{ padding: "8px 12px" }}>
-                    <span style={{
-                      fontSize: 11,
-                      padding: "2px 8px",
-                      borderRadius: 12,
-                      background: c.status === "Active" ? "#dcfce7" : "#f3f4f6",
-                      color: c.status === "Active" ? "#16a34a" : "#6b7280",
-                    }}>
-                      {c.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatCurrency(c.spend)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(c.clicks)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{c.ctr.toFixed(2)}%</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(c.conversions)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatCurrency(c.revenue)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{c.roas.toFixed(2)}×</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<MicrosoftAdsCampaign>
+          data={campaigns}
+          columns={[
+            { key: "campaignName", label: "Campaign", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.campaignName}</span> },
+            { key: "status", label: "Status", render: (_v, row) => (
+              <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: row.status === "Active" ? "var(--success-bg)" : "var(--border-subtle)", color: row.status === "Active" ? "var(--success)" : "var(--text-3)" }}>{row.status}</span>
+            )},
+            { key: "spend", label: "Spend", align: "right", sortable: true, render: (_v, row) => formatCurrency(row.spend) },
+            { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => formatNumber(row.clicks) },
+            { key: "ctr", label: "CTR", align: "right", sortable: true, render: (_v, row) => `${row.ctr.toFixed(2)}%` },
+            { key: "conversions", label: "Conv", align: "right", sortable: true, render: (_v, row) => formatNumber(row.conversions) },
+            { key: "revenue", label: "Revenue", align: "right", sortable: true, render: (_v, row) => formatCurrency(row.revenue) },
+            { key: "roas", label: "ROAS", align: "right", sortable: true, render: (_v, row) => `${row.roas.toFixed(2)}×` },
+          ]}
+          pageSize={20}
+          exportable
+          exportFilename="microsoft-campaigns"
+        />
       )}
 
       {/* Keywords table */}
       {show("keywords") && data.keywords && data.keywords.length > 0 && (
-        <div style={{ overflowX: "auto" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Keywords</h3>
-          <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid var(--border, #e5e7eb)" }}>
-                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Keyword</th>
-                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Match Type</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Impressions</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Clicks</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>CPC</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>QS</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Conversions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.keywords.map((kw, i) => (
-                <tr key={`${kw.keyword}-${i}`} style={{ borderBottom: "1px solid var(--border, #e5e7eb)" }}>
-                  <td style={{ padding: "8px 12px", fontWeight: 500 }}>{kw.keyword}</td>
-                  <td style={{ padding: "8px 12px" }}>{kw.matchType}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(kw.impressions)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(kw.clicks)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatCurrency(kw.cpc)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{kw.qualityScore}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(kw.conversions)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<MsKeyword>
+          data={data.keywords}
+          columns={[
+            { key: "keyword", label: "Keyword", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.keyword}</span> },
+            { key: "matchType", label: "Match Type" },
+            { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => formatNumber(row.impressions) },
+            { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => formatNumber(row.clicks) },
+            { key: "cpc", label: "CPC", align: "right", sortable: true, render: (_v, row) => formatCurrency(row.cpc) },
+            { key: "qualityScore", label: "QS", align: "right", sortable: true },
+            { key: "conversions", label: "Conversions", align: "right", sortable: true, render: (_v, row) => formatNumber(row.conversions) },
+          ]}
+          pageSize={20}
+          searchable
+          exportable
+          exportFilename="microsoft-keywords"
+          className="mt-5"
+        />
       )}
 
       {/* Search Terms table */}
       {show("search_terms") && data.searchTerms && data.searchTerms.length > 0 && (
-        <div style={{ overflowX: "auto" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Search Terms</h3>
-          <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid var(--border, #e5e7eb)" }}>
-                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Search Term</th>
-                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Keyword</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Impressions</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Clicks</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Spend</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.searchTerms.map((st, i) => (
-                <tr key={`${st.searchTerm}-${i}`} style={{ borderBottom: "1px solid var(--border, #e5e7eb)" }}>
-                  <td style={{ padding: "8px 12px", fontWeight: 500 }}>{st.searchTerm}</td>
-                  <td style={{ padding: "8px 12px" }}>{st.keyword}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(st.impressions)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(st.clicks)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatCurrency(st.spend)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<MsSearchTerm>
+          data={data.searchTerms}
+          columns={[
+            { key: "searchTerm", label: "Search Term", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.searchTerm}</span> },
+            { key: "keyword", label: "Keyword" },
+            { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => formatNumber(row.impressions) },
+            { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => formatNumber(row.clicks) },
+            { key: "spend", label: "Spend", align: "right", sortable: true, render: (_v, row) => formatCurrency(row.spend) },
+          ]}
+          pageSize={20}
+          searchable
+          exportable
+          exportFilename="microsoft-search-terms"
+          className="mt-5"
+        />
       )}
 
       {/* Device Breakdown */}
@@ -263,29 +219,17 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
 
       {/* Geographic Breakdown */}
       {show("geo") && data.geoBreakdown && data.geoBreakdown.length > 0 && (
-        <div style={{ overflowX: "auto" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Geographic Breakdown</h3>
-          <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid var(--border, #e5e7eb)" }}>
-                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Location</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Impressions</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Clicks</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Spend</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.geoBreakdown.map((g, i) => (
-                <tr key={`${g.location}-${i}`} style={{ borderBottom: "1px solid var(--border, #e5e7eb)" }}>
-                  <td style={{ padding: "8px 12px", fontWeight: 500 }}>{g.location}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(g.impressions)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(g.clicks)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatCurrency(g.spend)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<MsGeoBreakdown>
+          data={data.geoBreakdown}
+          columns={[
+            { key: "location", label: "Location", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.location}</span> },
+            { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => formatNumber(row.impressions) },
+            { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => formatNumber(row.clicks) },
+            { key: "spend", label: "Spend", align: "right", sortable: true, render: (_v, row) => formatCurrency(row.spend) },
+          ]}
+          pageSize={20}
+          className="mt-5"
+        />
       )}
 
       {/* Full Journey Analysis */}

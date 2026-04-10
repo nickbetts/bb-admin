@@ -6,6 +6,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { DataTable } from "@/components/ui/DataTable";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 
@@ -125,29 +126,19 @@ export function YouTubeSection({ clientId, clientName, crossPlatformContext, vis
       )}
 
       {show("videos") && videos && videos.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Top Videos</div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Title", "Views", "Likes", "CTR", "Duration"].map((h) => (
-                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {videos.map((v, i) => (
-                <tr key={v.id} style={{ borderBottom: i < videos.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  <td style={{ padding: "10px 16px", fontWeight: 500, color: "var(--text)", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.title}</td>
-                  <td style={{ padding: "10px 16px", color: "var(--text-2)" }}>{v.views.toLocaleString()}</td>
-                  <td style={{ padding: "10px 16px", color: "var(--text-2)" }}>{v.likes.toLocaleString()}</td>
-                  <td style={{ padding: "10px 16px", color: "var(--text-2)" }}>{v.ctr}%</td>
-                  <td style={{ padding: "10px 16px", color: "var(--text-3)" }}>{v.duration}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<YouTubeVideo>
+          data={videos}
+          columns={[
+            { key: "title", label: "Title", minWidth: "200px", render: (_v, row) => <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", maxWidth: 280 }}>{row.title}</span> },
+            { key: "views", label: "Views", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.views.toLocaleString()}</span> },
+            { key: "likes", label: "Likes", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.likes.toLocaleString()}</span> },
+            { key: "ctr", label: "CTR", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.ctr}%</span> },
+            { key: "duration", label: "Duration", render: (_v, row) => <span style={{ color: "var(--text-3)" }}>{row.duration}</span> },
+          ]}
+          pageSize={10}
+          exportable
+          exportFilename="youtube-videos"
+        />
       )}
 
       {/* Traffic Sources */}
@@ -176,51 +167,30 @@ export function YouTubeSection({ clientId, clientName, crossPlatformContext, vis
 
       {/* Demographics */}
       {data.demographics && data.demographics.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 20 }}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Demographics</div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Age Group", "Gender", "Viewer %"].map((h) => (
-                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.demographics.map((d, i) => (
-                <tr key={`demo-${d.ageGroup}-${d.gender}-${i}`} style={{ borderBottom: i < data.demographics!.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  <td style={{ padding: "8px 16px", color: "var(--text)" }}>{d.ageGroup}</td>
-                  <td style={{ padding: "8px 16px", color: "var(--text-2)", textTransform: "capitalize" }}>{d.gender}</td>
-                  <td style={{ padding: "8px 16px", color: "var(--text-2)" }}>{d.viewerPercentage.toFixed(1)}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<YouTubeDemographic>
+          data={data.demographics}
+          columns={[
+            { key: "ageGroup", label: "Age Group" },
+            { key: "gender", label: "Gender", render: (_v, row) => <span style={{ textTransform: "capitalize" }}>{row.gender}</span> },
+            { key: "viewerPercentage", label: "Viewer %", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.viewerPercentage.toFixed(1)}%</span> },
+          ]}
+          pageSize={0}
+          className="mt-5"
+        />
       )}
 
       {/* Search Terms */}
       {data.searchTerms && data.searchTerms.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 20 }}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Top Search Terms</div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Search Term", "Views"].map((h) => (
-                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.searchTerms.map((t, i) => (
-                <tr key={`st-${i}`} style={{ borderBottom: i < data.searchTerms!.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  <td style={{ padding: "8px 16px", fontWeight: 500, color: "var(--text)" }}>{t.term}</td>
-                  <td style={{ padding: "8px 16px", color: "var(--text-2)" }}>{t.views.toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<YouTubeSearchTerm>
+          data={data.searchTerms}
+          columns={[
+            { key: "term", label: "Search Term", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.term}</span> },
+            { key: "views", label: "Views", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.views.toLocaleString()}</span> },
+          ]}
+          pageSize={10}
+          searchable
+          className="mt-5"
+        />
       )}
 
       {/* Full Journey Analysis */}

@@ -8,6 +8,7 @@ import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
+import { DataTable } from "@/components/ui/DataTable";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 
@@ -144,97 +145,57 @@ export function TikTokSection({ clientId, clientName, startDate, endDate, crossP
 
       {/* Campaigns table */}
       {show("campaigns") && campaigns.length > 0 && (
-        <div style={{ overflowX: "auto" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Campaigns</h3>
-          <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid var(--border, #e5e7eb)" }}>
-                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Campaign</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Spend</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Impressions</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Clicks</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>CTR</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Conversions</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Video Views</th>
-              </tr>
-            </thead>
-            <tbody>
-              {campaigns.map((c) => (
-                <tr key={c.campaignId} style={{ borderBottom: "1px solid var(--border, #e5e7eb)" }}>
-                  <td style={{ padding: "8px 12px", fontWeight: 500 }}>{c.campaignName}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatCurrency(c.spend)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(c.impressions)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(c.clicks)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{c.ctr.toFixed(2)}%</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(c.conversions)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(c.videoViews)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<TikTokCampaign>
+          data={campaigns}
+          columns={[
+            { key: "campaignName", label: "Campaign", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.campaignName}</span> },
+            { key: "spend", label: "Spend", align: "right", sortable: true, render: (_v, row) => formatCurrency(row.spend) },
+            { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => formatNumber(row.impressions) },
+            { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => formatNumber(row.clicks) },
+            { key: "ctr", label: "CTR", align: "right", sortable: true, render: (_v, row) => `${row.ctr.toFixed(2)}%` },
+            { key: "conversions", label: "Conversions", align: "right", sortable: true, render: (_v, row) => formatNumber(row.conversions) },
+            { key: "videoViews", label: "Video Views", align: "right", sortable: true, render: (_v, row) => formatNumber(row.videoViews) },
+          ]}
+          pageSize={20}
+          exportable
+          exportFilename="tiktok-campaigns"
+        />
       )}
 
       {/* Demographics breakdown */}
       {show("demographics") && data.demographics && data.demographics.length > 0 && (
-        <div style={{ overflowX: "auto" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Demographics</h3>
-          <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid var(--border, #e5e7eb)" }}>
-                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Gender</th>
-                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Age Range</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Impressions</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Clicks</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Spend</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.demographics.map((d, i) => (
-                <tr key={`${d.gender}-${d.ageRange}-${i}`} style={{ borderBottom: "1px solid var(--border, #e5e7eb)" }}>
-                  <td style={{ padding: "8px 12px", fontWeight: 500, textTransform: "capitalize" }}>{d.gender}</td>
-                  <td style={{ padding: "8px 12px" }}>{d.ageRange}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(d.impressions)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(d.clicks)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatCurrency(d.spend)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<TikTokDemo>
+          data={data.demographics}
+          columns={[
+            { key: "gender", label: "Gender", render: (_v, row) => <span style={{ fontWeight: 500, textTransform: "capitalize" }}>{row.gender}</span> },
+            { key: "ageRange", label: "Age Range" },
+            { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => formatNumber(row.impressions) },
+            { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => formatNumber(row.clicks) },
+            { key: "spend", label: "Spend", align: "right", sortable: true, render: (_v, row) => formatCurrency(row.spend) },
+          ]}
+          pageSize={0}
+          className="mt-5"
+        />
       )}
 
       {/* Top Creatives */}
       {show("creatives") && data.creatives && data.creatives.length > 0 && (
-        <div style={{ overflowX: "auto" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Top Creatives</h3>
-          <table className="data-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid var(--border, #e5e7eb)" }}>
-                <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600 }}>Ad Name</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Spend</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Impressions</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Clicks</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>CTR</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Conversions</th>
-                <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600 }}>Video Completion</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.creatives.map((cr) => (
-                <tr key={cr.adId} style={{ borderBottom: "1px solid var(--border, #e5e7eb)" }}>
-                  <td style={{ padding: "8px 12px", fontWeight: 500, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cr.adName}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatCurrency(cr.spend)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(cr.impressions)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(cr.clicks)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{cr.ctr.toFixed(2)}%</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(cr.conversions)}</td>
-                  <td style={{ padding: "8px 12px", textAlign: "right" }}>{formatNumber(cr.videoViewsP100)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<TikTokCreative>
+          data={data.creatives}
+          columns={[
+            { key: "adName", label: "Ad Name", minWidth: "160px", render: (_v, row) => <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", maxWidth: 220 }}>{row.adName}</span> },
+            { key: "spend", label: "Spend", align: "right", sortable: true, render: (_v, row) => formatCurrency(row.spend) },
+            { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => formatNumber(row.impressions) },
+            { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => formatNumber(row.clicks) },
+            { key: "ctr", label: "CTR", align: "right", sortable: true, render: (_v, row) => `${row.ctr.toFixed(2)}%` },
+            { key: "conversions", label: "Conversions", align: "right", sortable: true, render: (_v, row) => formatNumber(row.conversions) },
+            { key: "videoViewsP100", label: "Video Completion", align: "right", sortable: true, render: (_v, row) => formatNumber(row.videoViewsP100) },
+          ]}
+          pageSize={20}
+          className="mt-5"
+          exportable
+          exportFilename="tiktok-creatives"
+        />
       )}
 
       {/* Full Journey Analysis */}

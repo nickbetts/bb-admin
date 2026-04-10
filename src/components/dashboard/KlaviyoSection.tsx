@@ -7,6 +7,7 @@ import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
+import { DataTable } from "@/components/ui/DataTable";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 import { formatDateDisplay } from "@/lib/utils";
@@ -119,46 +120,25 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
           )}
 
           {show("campaigns") && campaigns.length > 0 && (
-            <div className="card">
-              <div className="card-header">
-                <h3 className="card-title">Recent Campaigns</h3>
-              </div>
-              <div className="card-body" style={{ padding: 0 }}>
-                <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Campaign</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Sends</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Open Rate</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Click Rate</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Revenue</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {campaigns.slice(0, 20).map((c) => (
-                      <tr key={c.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td style={{ padding: "10px 16px" }}>
-                          <div style={{ fontWeight: 500, color: "var(--text)" }}>{c.name}</div>
-                          {c.sendTime && (
-                            <div style={{ fontSize: 11, color: "var(--text-3)" }}>
-                              {new Date(c.sendTime).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{c.sends.toLocaleString()}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{(c.openRate * 100).toFixed(1)}%</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{(c.clickRate * 100).toFixed(1)}%</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>
-                          {c.revenue > 0 ? `£${c.revenue.toFixed(0)}` : "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                </div>
-              </div>
-            </div>
+            <DataTable<KlaviyoCampaign>
+              data={campaigns}
+              columns={[
+                { key: "name", label: "Campaign", render: (_v, row) => (
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{row.name}</div>
+                    {row.sendTime && <div style={{ fontSize: 11, color: "var(--text-3)" }}>{new Date(row.sendTime).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>}
+                  </div>
+                )},
+                { key: "sends", label: "Sends", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.sends.toLocaleString()}</span> },
+                { key: "openRate", label: "Open Rate", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{(row.openRate * 100).toFixed(1)}%</span> },
+                { key: "clickRate", label: "Click Rate", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{(row.clickRate * 100).toFixed(1)}%</span> },
+                { key: "revenue", label: "Revenue", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.revenue > 0 ? `£${row.revenue.toFixed(0)}` : "—"}</span> },
+              ]}
+              pageSize={20}
+              searchable
+              exportable
+              exportFilename="klaviyo-campaigns"
+            />
           )}
 
           {/* Subscriber Health */}
@@ -171,60 +151,30 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
 
           {/* Segments */}
           {segments.length > 0 && (
-            <div className="card">
-              <div className="card-header"><h3 className="card-title">Segments</h3></div>
-              <div className="card-body" style={{ padding: 0 }}>
-                <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Segment</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Profiles</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {segments.map((seg, i) => (
-                      <tr key={`seg-${i}`} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td style={{ padding: "10px 16px", color: "var(--text)" }}>{seg.name}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{seg.profileCount.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                </div>
-              </div>
-            </div>
+            <DataTable<KlaviyoSegment>
+              data={segments}
+              columns={[
+                { key: "name", label: "Segment", render: (_v, row) => <span style={{ color: "var(--text)" }}>{row.name}</span> },
+                { key: "profileCount", label: "Profiles", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.profileCount.toLocaleString()}</span> },
+              ]}
+              pageSize={0}
+              className="mt-5"
+            />
           )}
 
           {/* SMS Campaigns */}
           {smsCampaigns.length > 0 && (
-            <div className="card">
-              <div className="card-header"><h3 className="card-title">SMS Campaigns</h3></div>
-              <div className="card-body" style={{ padding: 0 }}>
-                <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Campaign</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Sends</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Clicks</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Revenue</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {smsCampaigns.map((sms) => (
-                      <tr key={sms.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td style={{ padding: "10px 16px", color: "var(--text)" }}>{sms.name}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{sms.sends.toLocaleString()}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{sms.clicks.toLocaleString()}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{sms.revenue > 0 ? `£${sms.revenue.toFixed(0)}` : "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                </div>
-              </div>
-            </div>
+            <DataTable<KlaviyoSmsCampaign>
+              data={smsCampaigns}
+              columns={[
+                { key: "name", label: "Campaign", render: (_v, row) => <span style={{ color: "var(--text)" }}>{row.name}</span> },
+                { key: "sends", label: "Sends", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.sends.toLocaleString()}</span> },
+                { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.clicks.toLocaleString()}</span> },
+                { key: "revenue", label: "Revenue", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.revenue > 0 ? `£${row.revenue.toFixed(0)}` : "—"}</span> },
+              ]}
+              pageSize={0}
+              className="mt-5"
+            />
           )}
         </>
       )}

@@ -837,22 +837,23 @@ AVAILABLE LEVERS: channel budget reallocation based on revenue contribution, ema
 
       const recPrompt = `Client: ${clientName ?? "client"} | Period: ${dateRange ?? "selected period"}
 
-For each numbered alert below, write ONE specific, data-driven recommendation (1–2 sentences max).
+For each numbered alert below, write ONE specific, immediately actionable recommendation (1–2 sentences max).
 
-RULES:
-- Use the EXACT numbers from the alert and context. If a daily budget is £20.00/day and 27% IS is lost, state "Increase daily budget from £20.00 to approximately £27.00/day to recover the lost 27% impression share."
-- If budget data is present, calculate what the new budget should be. If spend pacing data is present, estimate when budget will exhaust.
-- Name specific campaigns, ad sets, or creatives by name. Never say "the campaign" when you have its name.
-- State the expected impact: "This should recover approximately X% of lost impressions" or "Reducing frequency from 4.1x to under 3x."
-- NEVER use vague phrases: "consider reviewing", "monitor closely", "evaluate performance", "assess the situation". Every recommendation must contain a concrete action.
-- Do NOT invent numbers, budgets, or metrics that are not in the data below.
+MANDATORY FORMAT RULES:
+1. ALWAYS begin with a bold imperative verb: **Increase**, **Pause**, **Reduce**, **Add**, **Update**, **Remove**, **Switch**, **Expand**, **Archive**, **Restructure**. A recommendation that starts with "Investigate", "Review", "Examine", "Assess", "Monitor", "Evaluate", or "Consider" is INVALID and must be rewritten.
+2. Use EXACT numbers from the alert and context. If daily budget is £20.00 and 27% IS is lost to budget, write: "**Increase** daily budget for '[campaign name]' from £20.00 to £27.00/day — this is losing 27% of eligible impressions purely due to budget cap."
+3. Name specific campaigns, ad sets, ads, and queries by their exact names from the data. Never write "the campaign" when you know its name.
+4. State the expected outcome: "…recovering approximately 27% of lost impression share" or "…reducing frequency from 4.1× to under 3×".
+5. If the signal genuinely requires investigation before a fix, still start with the action: "**Check** GA4 → Acquisition → Traffic Sources for [date range] — the 95% session drop suggests a tracking break or paid channel going dark; if confirmed, [specific fix]."
+6. Do NOT fabricate numbers or metrics not present in the data.
+7. British English at all times.
 
 ${contextBlock ? `Channel data:\n${contextBlock}\n` : ""}
 Alerts:
 ${alertList}
 
 Return JSON: { "recommendations": ["rec for alert 1", "rec for alert 2", ...] }
-One string per alert, in the same order. British English.`;
+One string per alert, same order. British English.`;
 
       const comp2 = await openai2.chat.completions.create({
         model: "gpt-4o-mini",

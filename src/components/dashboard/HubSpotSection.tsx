@@ -7,6 +7,7 @@ import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { DataTable } from "@/components/ui/DataTable";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 
@@ -114,77 +115,45 @@ export function HubSpotSection({ clientId, clientName, crossPlatformContext, vis
       )}
 
       {show("deals") && data.deals && data.deals.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Recent Deals</div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Deal Name", "Amount", "Stage", "Close Date"].map((h) => (
-                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.deals.map((deal) => (
-                <tr key={deal.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "10px 16px", fontWeight: 500, color: "var(--text)" }}>{deal.dealname}</td>
-                  <td style={{ padding: "10px 16px", color: "var(--success)", fontWeight: 600 }}>{formatCurrency(deal.amount)}</td>
-                  <td style={{ padding: "10px 16px", color: "var(--text-2)", textTransform: "capitalize" }}>{deal.dealstage.replace(/([a-z])([A-Z])/g, "$1 $2")}</td>
-                  <td style={{ padding: "10px 16px", color: "var(--text-3)" }}>{deal.closedate ? new Date(deal.closedate).toLocaleDateString("en-GB") : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<HubSpotDeal>
+          data={data.deals}
+          columns={[
+            { key: "dealname", label: "Deal Name", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.dealname}</span> },
+            { key: "amount", label: "Amount", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--success)", fontWeight: 600 }}>{formatCurrency(row.amount)}</span> },
+            { key: "dealstage", label: "Stage", render: (_v, row) => <span style={{ color: "var(--text-2)", textTransform: "capitalize" }}>{row.dealstage.replace(/([a-z])([A-Z])/g, "$1 $2")}</span> },
+            { key: "closedate", label: "Close Date", render: (_v, row) => <span style={{ color: "var(--text-3)" }}>{row.closedate ? new Date(row.closedate).toLocaleDateString("en-GB") : "—"}</span> },
+          ]}
+          pageSize={0}
+          exportable
+          exportFilename="hubspot-deals"
+        />
       )}
 
       {/* Pipeline Stages */}
       {data.pipelineStages && data.pipelineStages.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 20 }}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Pipeline Stages</div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Stage", "Count", "Value"].map((h) => (
-                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.pipelineStages.map((ps, i) => (
-                <tr key={`ps-${i}`} style={{ borderBottom: i < data.pipelineStages!.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  <td style={{ padding: "10px 16px", fontWeight: 500, color: "var(--text)" }}>{ps.stageName}</td>
-                  <td style={{ padding: "10px 16px", color: "var(--text-2)" }}>{ps.count}</td>
-                  <td style={{ padding: "10px 16px", color: "var(--success)", fontWeight: 600 }}>{formatCurrency(ps.value)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<HubSpotPipelineStage>
+          data={data.pipelineStages}
+          columns={[
+            { key: "stageName", label: "Stage", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.stageName}</span> },
+            { key: "count", label: "Count", align: "right", sortable: true },
+            { key: "value", label: "Value", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--success)", fontWeight: 600 }}>{formatCurrency(row.value)}</span> },
+          ]}
+          pageSize={0}
+          className="mt-5"
+        />
       )}
 
       {/* Lifecycle Funnel */}
       {data.lifecycleFunnel && data.lifecycleFunnel.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 20 }}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Lifecycle Funnel</div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Stage", "Count"].map((h) => (
-                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.lifecycleFunnel.map((lf, i) => (
-                <tr key={`lf-${i}`} style={{ borderBottom: i < data.lifecycleFunnel!.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  <td style={{ padding: "10px 16px", fontWeight: 500, color: "var(--text)", textTransform: "capitalize" }}>{lf.stage}</td>
-                  <td style={{ padding: "10px 16px", color: "var(--text-2)" }}>{lf.count.toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<HubSpotLifecycleStage>
+          data={data.lifecycleFunnel}
+          columns={[
+            { key: "stage", label: "Stage", render: (_v, row) => <span style={{ fontWeight: 500, textTransform: "capitalize" }}>{row.stage}</span> },
+            { key: "count", label: "Count", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.count.toLocaleString()}</span> },
+          ]}
+          pageSize={0}
+          className="mt-5"
+        />
       )}
 
       {/* Deal Velocity */}
@@ -196,27 +165,16 @@ export function HubSpotSection({ clientId, clientName, crossPlatformContext, vis
 
       {/* Form Submissions */}
       {data.formSubmissions && data.formSubmissions.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 20 }}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Recent Form Submissions</div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Form", "Email", "Submitted"].map((h) => (
-                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.formSubmissions.map((fs, i) => (
-                <tr key={`fs-${i}`} style={{ borderBottom: i < data.formSubmissions!.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  <td style={{ padding: "10px 16px", fontWeight: 500, color: "var(--text)" }}>{fs.formName}</td>
-                  <td style={{ padding: "10px 16px", color: "var(--text-2)" }}>{fs.email}</td>
-                  <td style={{ padding: "10px 16px", color: "var(--text-3)", fontSize: 11 }}>{new Date(fs.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<HubSpotFormSubmission>
+          data={data.formSubmissions}
+          columns={[
+            { key: "formName", label: "Form", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.formName}</span> },
+            { key: "email", label: "Email", render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.email}</span> },
+            { key: "submittedAt", label: "Submitted", render: (_v, row) => <span style={{ color: "var(--text-3)", fontSize: 11 }}>{new Date(row.submittedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span> },
+          ]}
+          pageSize={10}
+          className="mt-5"
+        />
       )}
 
       {/* Full Journey Analysis */}

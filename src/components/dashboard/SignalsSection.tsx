@@ -46,7 +46,7 @@ function deduplicateSignals(signals: Signal[]): Signal[] {
     const labelKey = (s.label ?? "").toLowerCase().trim();
     const key = labelKey
       ? `${s.platform}::${s.metric}::${labelKey}`
-      : `${s.platform}::${s.metric}::${s.detail}`;
+      : `${s.platform}::${s.metric}`;
     const existing = map.get(key);
     if (existing) {
       // Keep higher severity
@@ -84,6 +84,26 @@ const PLATFORM_COLOURS: Record<string, { bg: string; text: string; border: strin
   "GA4":              { bg: "#fff7ed", text: "#c2410c", border: "#fed7aa" },
   "Search Console":   { bg: "#faf5ff", text: "#7e22ce", border: "#e9d5ff" },
   "SEMrush":          { bg: "#f0fdfa", text: "#0f766e", border: "#99f6e4" },
+};
+
+/** Normalise DB lowercase platform slugs to the display name used by computed signals */
+const PLATFORM_NORMALISE: Record<string, string> = {
+  ga4:           "GA4",
+  googleads:     "Google Ads",
+  google_ads:    "Google Ads",
+  meta:          "Meta",
+  searchconsole: "Search Console",
+  search_console:"Search Console",
+  semrush:       "SEMrush",
+  tiktok:        "TikTok",
+  linkedin:      "LinkedIn",
+  microsoftads:  "Microsoft Ads",
+  microsoft_ads: "Microsoft Ads",
+  klaviyo:       "Klaviyo",
+  hubspot:       "HubSpot",
+  callrail:      "CallRail",
+  woocommerce:   "WooCommerce",
+  shopify:       "Shopify",
 };
 
 const SEV_CONFIG: Record<string, { bg: string; border: string; headerBg: string; headerText: string; badgeBg: string; label: string }> = {
@@ -825,7 +845,7 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
       if (crossAlertsData?.alerts && Array.isArray(crossAlertsData.alerts)) {
         for (const alert of crossAlertsData.alerts) {
           allSignals.push({
-            platform: alert.platform ?? "Cross-Platform",
+            platform: PLATFORM_NORMALISE[(alert.platform ?? "").toLowerCase()] ?? alert.platform ?? "Cross-Platform",
             source: "computed",
             severity: alert.severity ?? "medium",
             metric: alert.metric ?? "cross-platform",

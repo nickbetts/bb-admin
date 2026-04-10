@@ -18,7 +18,7 @@ export interface DataTableColumn<T> {
   minWidth?: string;
 }
 
-interface DataTableProps<T extends Record<string, unknown>> {
+interface DataTableProps<T> {
   data: T[];
   columns: DataTableColumn<T>[];
   /** 0 = show all. Default: 20 */
@@ -43,7 +43,7 @@ function SortIcon({ direction }: { direction: SortDirection }) {
   return <ChevronsUpDown style={{ width: 12, height: 12, color: "var(--text-4)", flexShrink: 0 }} />;
 }
 
-export function DataTable<T extends Record<string, unknown>>({
+export function DataTable<T>({
   data,
   columns,
   pageSize = 20,
@@ -68,7 +68,7 @@ export function DataTable<T extends Record<string, unknown>>({
     const q = query.toLowerCase();
     return data.filter((row) =>
       columns.some((col) => {
-        const v = row[col.key];
+        const v = (row as Record<string, unknown>)[col.key];
         return v != null && String(v).toLowerCase().includes(q);
       })
     );
@@ -78,8 +78,8 @@ export function DataTable<T extends Record<string, unknown>>({
   const sorted = useMemo(() => {
     if (!sortKey || !sortDir) return filtered;
     return [...filtered].sort((a, b) => {
-      const av = a[sortKey];
-      const bv = b[sortKey];
+      const av = (a as Record<string, unknown>)[sortKey];
+      const bv = (b as Record<string, unknown>)[sortKey];
       if (av == null && bv == null) return 0;
       if (av == null) return 1;
       if (bv == null) return -1;
@@ -120,7 +120,7 @@ export function DataTable<T extends Record<string, unknown>>({
     const header = columns.map((c) => c.label).join(",");
     const rows = sorted.map((row) =>
       columns.map((c) => {
-        const v = row[c.key];
+        const v = (row as Record<string, unknown>)[c.key];
         const str = v == null ? "" : String(v).replace(/"/g, '""');
         return `"${str}"`;
       }).join(",")
@@ -138,7 +138,7 @@ export function DataTable<T extends Record<string, unknown>>({
   function copyToClipboard() {
     const header = columns.map((c) => c.label).join("\t");
     const rows = sorted.map((row) =>
-      columns.map((c) => (row[c.key] == null ? "" : String(row[c.key]))).join("\t")
+      columns.map((c) => { const _v = (row as Record<string, unknown>)[c.key]; return _v == null ? "" : String(_v); }).join("\t")
     );
     navigator.clipboard.writeText([header, ...rows].join("\n"));
   }
@@ -283,10 +283,10 @@ export function DataTable<T extends Record<string, unknown>>({
                       }}
                     >
                       {col.render
-                        ? col.render(row[col.key], row, i)
-                        : row[col.key] == null
+                        ? col.render((row as Record<string, unknown>)[col.key], row, i)
+                        : (row as Record<string, unknown>)[col.key] == null
                         ? "—"
-                        : String(row[col.key])}
+                        : String((row as Record<string, unknown>)[col.key])}
                     </td>
                   ))}
                 </tr>
