@@ -209,7 +209,7 @@ export async function collectSemrushData(
     for (const q of gscQueryPages) allKeywords.add(q.query);
   }
   for (const k of organicKeywords) allKeywords.add(k.keyword);
-  const topKeywordPhrases = [...allKeywords].slice(0, 50);
+  const topKeywordPhrases = [...allKeywords].slice(0, 100);
 
   // Phase 2: Content gap (needs competitors), difficulty (needs keyword list),
   // backlinks + anchors (independent)
@@ -347,7 +347,7 @@ export function estimateApiUnits(hasCompetitors: boolean, hasGsc: boolean = fals
     breakdown.push({ call: "Google Search Console (1000 query×page, free)", units: 0 });
   }
   breakdown.push({ call: "Sitemap crawl (free)", units: 0 });
-  breakdown.push({ call: "Keyword difficulty (50 keywords)", units: 50 });
+  breakdown.push({ call: "Keyword difficulty (100 keywords)", units: 100 });
   breakdown.push({ call: "Backlinks (30)", units: 3 });
   breakdown.push({ call: "Anchor text distribution", units: 2 });
   if (!hasCompetitors) {
