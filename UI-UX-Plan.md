@@ -12,9 +12,9 @@
 |-------|--------|--------|
 | Phase 1 — Foundation (shared components + CSS tokens) | ✅ Complete | `8564e2c` |
 | Phase 2 — Channel section unification + chart config | ✅ Complete | `8564e2c` |
-| Phase 3 — Interactivity & Polish | 🔲 Pending | — |
-| Phase 4 — Accessibility & Responsive | 🔲 Pending | — |
-| Phase 5 — Dark Mode & Advanced | 🔲 Pending | — |
+| Phase 3 — Interactivity & Polish | ✅ Complete | 6f53920 |
+| Phase 4 — Accessibility & Responsive | ✅ Complete | 6f53920 |
+| Phase 5 — Dark Mode & Advanced | ✅ Complete | 6f53920 |
 
 ---
 
