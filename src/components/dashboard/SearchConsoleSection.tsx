@@ -21,6 +21,7 @@ import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { formatNumber, formatDateDisplay, pctChange } from "@/lib/utils";
+import { DataTable } from "@/components/ui/DataTable";
 import { MousePointer, Eye, TrendingUp, Search, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
@@ -535,52 +536,20 @@ export function SearchConsoleSection({
           {queries.length === 0 ? (
             <p className="text-sm text-[var(--text-3)] py-6 text-center">No query data</p>
           ) : (
-            <div style={{ overflowX: "visible" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, tableLayout: "fixed" }}>
-                <colgroup>
-                  <col style={{ width: "42%" }} />
-                  <col style={{ width: "14%" }} />
-                  <col style={{ width: "16%" }} />
-                  <col style={{ width: "14%" }} />
-                  <col style={{ width: "14%" }} />
-                </colgroup>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <th style={{ textAlign: "left", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Query</th>
-                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
-                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
-                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Pos.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {queries.map((q, i) => {
-                    const prevQ = prevQueriesMap.get(q.query);
-                    return (
-                    <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                      <td style={{ padding: "10px 12px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.query}</td>
-                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>
-                        <div>{formatNumber(q.clicks)}</div>
-                        <Delta current={q.clicks} previous={prevQ?.clicks} format="count" />
-                      </td>
-                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>
-                        <div>{formatNumber(q.impressions)}</div>
-                        <Delta current={q.impressions} previous={prevQ?.impressions} format="count" />
-                      </td>
-                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>
-                        <div>{(q.ctr * 100).toFixed(1)}%</div>
-                        <Delta current={q.ctr} previous={prevQ?.ctr} format="none" />
-                      </td>
-                      <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                        <div><span className={positionBadgeClass(q.position)}>{q.position.toFixed(1)}</span></div>
-                        <Delta current={q.position} previous={prevQ?.position} format="count" invert />
-                      </td>
-                    </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <DataTable<GSCQuery>
+              data={queries}
+              columns={[
+                { key: "query", label: "Query", render: (_v, row) => <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{row.query}</span> },
+                { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => { const prevQ = prevQueriesMap.get(row.query); return <><div style={{ fontWeight: 600 }}>{formatNumber(row.clicks)}</div><Delta current={row.clicks} previous={prevQ?.clicks} format="count" /></>; } },
+                { key: "impressions", label: "Impr.", align: "right", sortable: true, render: (_v, row) => { const prevQ = prevQueriesMap.get(row.query); return <><div>{formatNumber(row.impressions)}</div><Delta current={row.impressions} previous={prevQ?.impressions} format="count" /></>; } },
+                { key: "ctr", label: "CTR", align: "right", sortable: true, render: (_v, row) => { const prevQ = prevQueriesMap.get(row.query); return <><div>{(row.ctr * 100).toFixed(1)}%</div><Delta current={row.ctr} previous={prevQ?.ctr} format="none" /></>; } },
+                { key: "position", label: "Pos.", align: "right", sortable: true, render: (_v, row) => { const prevQ = prevQueriesMap.get(row.query); return <><span className={positionBadgeClass(row.position)}>{row.position.toFixed(1)}</span><Delta current={row.position} previous={prevQ?.position} format="count" invert /></>; } },
+              ]}
+              pageSize={20}
+              searchable
+              exportable
+              exportFilename="gsc-queries"
+            />
           )}
         </SectionCard>
         )}
@@ -591,61 +560,24 @@ export function SearchConsoleSection({
           {pages.length === 0 ? (
             <p className="text-sm text-[var(--text-3)] py-6 text-center">No page data</p>
           ) : (
-            <div style={{ overflowX: "visible" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, tableLayout: "fixed" }}>
-                <colgroup>
-                  <col style={{ width: "42%" }} />
-                  <col style={{ width: "14%" }} />
-                  <col style={{ width: "16%" }} />
-                  <col style={{ width: "14%" }} />
-                  <col style={{ width: "14%" }} />
-                </colgroup>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <th style={{ textAlign: "left", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Page</th>
-                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
-                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
-                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Pos.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pages.map((p, i) => {
-                    let displayPage = p.page;
-                    try {
-                      const url = new URL(p.page);
-                      displayPage = url.pathname + url.search;
-                    } catch {}
-                    const prevP = prevPagesMap.get(p.page);
-                    return (
-                      <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                        <td style={{ padding: "10px 12px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          <a href={p.page} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text)", textDecoration: "none" }}>
-                            {displayPage}
-                          </a>
-                        </td>
-                        <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>
-                          <div>{formatNumber(p.clicks)}</div>
-                          <Delta current={p.clicks} previous={prevP?.clicks} format="count" />
-                        </td>
-                        <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>
-                          <div>{formatNumber(p.impressions)}</div>
-                          <Delta current={p.impressions} previous={prevP?.impressions} format="count" />
-                        </td>
-                        <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>
-                          <div>{(p.ctr * 100).toFixed(1)}%</div>
-                          <Delta current={p.ctr} previous={prevP?.ctr} format="none" />
-                        </td>
-                        <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                          <div><span className={positionBadgeClass(p.position)}>{p.position.toFixed(1)}</span></div>
-                          <Delta current={p.position} previous={prevP?.position} format="count" invert />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <DataTable<GSCPage>
+              data={pages}
+              columns={[
+                { key: "page", label: "Page", render: (_v, row) => {
+                  let displayPage = row.page;
+                  try { const url = new URL(row.page); displayPage = url.pathname + url.search; } catch {}
+                  return <a href={row.page} target="_blank" rel="noopener noreferrer" style={{ color: "var(--text)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{displayPage}</a>;
+                }},
+                { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => { const prevP = prevPagesMap.get(row.page); return <><div style={{ fontWeight: 600 }}>{formatNumber(row.clicks)}</div><Delta current={row.clicks} previous={prevP?.clicks} format="count" /></>; } },
+                { key: "impressions", label: "Impr.", align: "right", sortable: true, render: (_v, row) => { const prevP = prevPagesMap.get(row.page); return <><div>{formatNumber(row.impressions)}</div><Delta current={row.impressions} previous={prevP?.impressions} format="count" /></>; } },
+                { key: "ctr", label: "CTR", align: "right", sortable: true, render: (_v, row) => { const prevP = prevPagesMap.get(row.page); return <><div>{(row.ctr * 100).toFixed(1)}%</div><Delta current={row.ctr} previous={prevP?.ctr} format="none" /></>; } },
+                { key: "position", label: "Pos.", align: "right", sortable: true, render: (_v, row) => { const prevP = prevPagesMap.get(row.page); return <><span className={positionBadgeClass(row.position)}>{row.position.toFixed(1)}</span><Delta current={row.position} previous={prevP?.position} format="count" invert /></>; } },
+              ]}
+              pageSize={20}
+              searchable
+              exportable
+              exportFilename="gsc-pages"
+            />
           )}
         </SectionCard>
         )}
@@ -762,42 +694,16 @@ export function SearchConsoleSection({
           {/* Top countries table */}
           {show("countries") && countries.length > 0 && (
             <SectionCard title="Top Countries" subtitle="Ranked by clicks">
-              <div style={{ overflowX: "visible" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, tableLayout: "fixed" }}>
-                  <colgroup>
-                    <col style={{ width: "46%" }} />
-                    <col style={{ width: "18%" }} />
-                    <col style={{ width: "18%" }} />
-                    <col style={{ width: "18%" }} />
-                  </colgroup>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                      <th style={{ textAlign: "left", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Country</th>
-                      <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                      <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
-                      <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {countries.map((c, i) => (
-                      <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                        <td style={{ padding: "10px 12px", color: "var(--text)", textTransform: "capitalize", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {c.country.toLowerCase()}
-                        </td>
-                        <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>
-                          {formatNumber(c.clicks)}
-                        </td>
-                        <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>
-                          {formatNumber(c.impressions)}
-                        </td>
-                        <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>
-                          {(c.ctr * 100).toFixed(1)}%
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable<GSCCountry>
+                data={countries}
+                columns={[
+                  { key: "country", label: "Country", render: (_v, row) => <span style={{ textTransform: "capitalize" }}>{row.country.toLowerCase()}</span> },
+                  { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => <span style={{ fontWeight: 600 }}>{formatNumber(row.clicks)}</span> },
+                  { key: "impressions", label: "Impr.", align: "right", sortable: true, render: (_v, row) => formatNumber(row.impressions) },
+                  { key: "ctr", label: "CTR", align: "right", sortable: true, render: (_v, row) => `${(row.ctr * 100).toFixed(1)}%` },
+                ]}
+                pageSize={20}
+              />
             </SectionCard>
           )}
         </div>
@@ -1017,64 +923,38 @@ export function SearchConsoleSection({
       {/* Query × Page */}
       {show("query_page") && queryPage.length > 0 && (
         <SectionCard title="Query × Page" subtitle={`${queryPage.length} query/page combination${queryPage.length !== 1 ? "s" : ""}`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Query</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Page</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Position</th>
-                </tr>
-              </thead>
-              <tbody>
-                {queryPage.map((qp, i) => (
-                  <tr key={`${qp.query}-${qp.page}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{qp.query}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }} title={qp.page}>{qp.page.replace(/^https?:\/\/[^/]+/, "")}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(qp.clicks)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(qp.impressions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{(qp.ctr * 100).toFixed(1)}%</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}><span className={positionBadgeClass(qp.position)}>{qp.position.toFixed(1)}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<GSCQueryPage>
+            data={queryPage}
+            columns={[
+              { key: "query", label: "Query", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.query}</span> },
+              { key: "page", label: "Page", render: (_v, row) => <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", maxWidth: 200 }} title={row.page}>{row.page.replace(/^https?:\/\/[^/]+/, "")}</span> },
+              { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => formatNumber(row.clicks) },
+              { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => formatNumber(row.impressions) },
+              { key: "ctr", label: "CTR", align: "right", sortable: true, render: (_v, row) => `${(row.ctr * 100).toFixed(1)}%` },
+              { key: "position", label: "Position", align: "right", sortable: true, render: (_v, row) => <span className={positionBadgeClass(row.position)}>{row.position.toFixed(1)}</span> },
+            ]}
+            pageSize={20}
+            searchable
+          />
         </SectionCard>
       )}
 
       {/* Page × Country */}
       {show("page_country") && pageCountry.length > 0 && (
         <SectionCard title="Page × Country" subtitle={`${pageCountry.length} page/country combination${pageCountry.length !== 1 ? "s" : ""}`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Page</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Country</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Position</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageCountry.map((pc, i) => (
-                  <tr key={`${pc.page}-${pc.country}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }} title={pc.page}>{pc.page.replace(/^https?:\/\/[^/]+/, "")}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{pc.country}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(pc.clicks)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(pc.impressions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{(pc.ctr * 100).toFixed(1)}%</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}><span className={positionBadgeClass(pc.position)}>{pc.position.toFixed(1)}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<GSCPageCountry>
+            data={pageCountry}
+            columns={[
+              { key: "page", label: "Page", render: (_v, row) => <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", maxWidth: 200 }} title={row.page}>{row.page.replace(/^https?:\/\/[^/]+/, "")}</span> },
+              { key: "country", label: "Country" },
+              { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => formatNumber(row.clicks) },
+              { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => formatNumber(row.impressions) },
+              { key: "ctr", label: "CTR", align: "right", sortable: true, render: (_v, row) => `${(row.ctr * 100).toFixed(1)}%` },
+              { key: "position", label: "Position", align: "right", sortable: true, render: (_v, row) => <span className={positionBadgeClass(row.position)}>{row.position.toFixed(1)}</span> },
+            ]}
+            pageSize={20}
+            searchable
+          />
         </SectionCard>
       )}
 
@@ -1165,64 +1045,38 @@ export function SearchConsoleSection({
       {/* Query × Device */}
       {show("query_device") && queryDevice.length > 0 && (
         <SectionCard title="Query × Device" subtitle={`${queryDevice.length} query/device combination${queryDevice.length !== 1 ? "s" : ""}`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Query</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Device</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Position</th>
-                </tr>
-              </thead>
-              <tbody>
-                {queryDevice.map((qd, i) => (
-                  <tr key={`${qd.query}-${qd.device}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{qd.query}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{qd.device}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(qd.clicks)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(qd.impressions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{(qd.ctr * 100).toFixed(1)}%</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}><span className={positionBadgeClass(qd.position)}>{qd.position.toFixed(1)}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<GSCQueryDevice>
+            data={queryDevice}
+            columns={[
+              { key: "query", label: "Query", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.query}</span> },
+              { key: "device", label: "Device" },
+              { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => formatNumber(row.clicks) },
+              { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => formatNumber(row.impressions) },
+              { key: "ctr", label: "CTR", align: "right", sortable: true, render: (_v, row) => `${(row.ctr * 100).toFixed(1)}%` },
+              { key: "position", label: "Position", align: "right", sortable: true, render: (_v, row) => <span className={positionBadgeClass(row.position)}>{row.position.toFixed(1)}</span> },
+            ]}
+            pageSize={20}
+            searchable
+          />
         </SectionCard>
       )}
 
       {/* Query × Country */}
       {show("query_country") && queryCountry.length > 0 && (
         <SectionCard title="Query × Country" subtitle={`${queryCountry.length} query/country combination${queryCountry.length !== 1 ? "s" : ""}`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Query</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Country</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Position</th>
-                </tr>
-              </thead>
-              <tbody>
-                {queryCountry.map((qc, i) => (
-                  <tr key={`${qc.query}-${qc.country}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{qc.query}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{qc.country}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(qc.clicks)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(qc.impressions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{(qc.ctr * 100).toFixed(1)}%</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}><span className={positionBadgeClass(qc.position)}>{qc.position.toFixed(1)}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<GSCQueryCountry>
+            data={queryCountry}
+            columns={[
+              { key: "query", label: "Query", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.query}</span> },
+              { key: "country", label: "Country" },
+              { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => formatNumber(row.clicks) },
+              { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => formatNumber(row.impressions) },
+              { key: "ctr", label: "CTR", align: "right", sortable: true, render: (_v, row) => `${(row.ctr * 100).toFixed(1)}%` },
+              { key: "position", label: "Position", align: "right", sortable: true, render: (_v, row) => <span className={positionBadgeClass(row.position)}>{row.position.toFixed(1)}</span> },
+            ]}
+            pageSize={20}
+            searchable
+          />
         </SectionCard>
       )}
     </div>

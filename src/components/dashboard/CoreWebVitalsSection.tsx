@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DataTable } from "@/components/ui/DataTable";
 import { Loader2, AlertTriangle, CheckCircle, MinusCircle, Globe } from "lucide-react";
 
 interface MetricData {
@@ -254,34 +255,31 @@ export function CoreWebVitalsSection({ url, visibleBlocks }: CoreWebVitalsSectio
       {show("history") && historyData.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <h3 style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1, #1a1a1a)" }}>CWV History</h3>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ borderBottom: "2px solid #e5e7eb" }}>
-                  <th style={{ textAlign: "left", padding: "8px 12px", color: "var(--text-2)", fontWeight: 600, fontSize: 12 }}>Date</th>
-                  <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-2)", fontWeight: 600, fontSize: 12 }}>LCP (ms)</th>
-                  <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-2)", fontWeight: 600, fontSize: 12 }}>CLS</th>
-                  <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-2)", fontWeight: 600, fontSize: 12 }}>INP (ms)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historyData.map((row, i) => {
-                  const prev = i > 0 ? historyData[i - 1] : null;
-                  const lcpColor = prev ? (row.lcp < prev.lcp ? "#16a34a" : row.lcp > prev.lcp ? "#dc2626" : "#6b7280") : "#6b7280";
-                  const clsColor = prev ? (row.cls < prev.cls ? "#16a34a" : row.cls > prev.cls ? "#dc2626" : "#6b7280") : "#6b7280";
-                  const inpColor = prev ? (row.inp < prev.inp ? "#16a34a" : row.inp > prev.inp ? "#dc2626" : "#6b7280") : "#6b7280";
-                  return (
-                    <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                      <td style={{ padding: "8px 12px", color: "var(--text-2, #444)" }}>{row.date}</td>
-                      <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: lcpColor }}>{Math.round(row.lcp)}</td>
-                      <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: clsColor }}>{row.cls.toFixed(3)}</td>
-                      <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: inpColor }}>{Math.round(row.inp)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<{ date: string; lcp: number; cls: number; inp: number }>
+            data={historyData}
+            columns={[
+              { key: "date", label: "Date" },
+              { key: "lcp", label: "LCP (ms)", align: "right", render: (_v, row) => {
+                const i = historyData.indexOf(row);
+                const prev = i > 0 ? historyData[i - 1] : null;
+                const color = prev ? (row.lcp < prev.lcp ? "#16a34a" : row.lcp > prev.lcp ? "#dc2626" : "#6b7280") : "#6b7280";
+                return <span style={{ fontWeight: 600, color }}>{Math.round(row.lcp)}</span>;
+              }},
+              { key: "cls", label: "CLS", align: "right", render: (_v, row) => {
+                const i = historyData.indexOf(row);
+                const prev = i > 0 ? historyData[i - 1] : null;
+                const color = prev ? (row.cls < prev.cls ? "#16a34a" : row.cls > prev.cls ? "#dc2626" : "#6b7280") : "#6b7280";
+                return <span style={{ fontWeight: 600, color }}>{row.cls.toFixed(3)}</span>;
+              }},
+              { key: "inp", label: "INP (ms)", align: "right", render: (_v, row) => {
+                const i = historyData.indexOf(row);
+                const prev = i > 0 ? historyData[i - 1] : null;
+                const color = prev ? (row.inp < prev.inp ? "#16a34a" : row.inp > prev.inp ? "#dc2626" : "#6b7280") : "#6b7280";
+                return <span style={{ fontWeight: 600, color }}>{Math.round(row.inp)}</span>;
+              }},
+            ]}
+            pageSize={0}
+          />
           <div style={{ fontSize: 11, color: "var(--text-3, #888)" }}>
             <span style={{ color: "var(--success)", fontWeight: 600 }}>■</span> Improved
             {" "}<span style={{ color: "var(--danger)", fontWeight: 600 }}>■</span> Degraded

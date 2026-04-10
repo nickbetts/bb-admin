@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { GitMerge, Loader2, ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
+import { DataTable } from "@/components/ui/DataTable";
 import { formatCurrency } from "@/lib/utils";
 
 interface ChannelAttribution {
@@ -223,34 +224,21 @@ export function BlendedRevenuePanel({ clientId, dateRange, ecommerceStats }: Ble
               {result.channelAttribution && result.channelAttribution.length > 0 && (
                 <div>
                   <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)", marginBottom: 10 }}>Channel Attribution</p>
-                  <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-sm)", overflow: "hidden" }}>
-                    <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
-                      <thead>
-                        <tr style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
-                          <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600, color: "var(--text-3)" }}>Channel</th>
-                          <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600, color: "var(--text-3)" }}>Reported</th>
-                          <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600, color: "var(--text-3)" }}>Attributed</th>
-                          <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600, color: "var(--text-3)" }}>True ROAS</th>
-                          <th style={{ textAlign: "center", padding: "8px 12px", fontWeight: 600, color: "var(--text-3)" }}>Confidence</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {result.channelAttribution.map((c, i) => (
-                          <tr key={i} style={{ borderBottom: i < result.channelAttribution.length - 1 ? "1px solid var(--border)" : "none" }}>
-                            <td style={{ padding: "8px 12px", fontWeight: 500, color: "var(--text)" }}>{c.channel}</td>
-                            <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-3)" }}>{formatCurrency(c.reportedRevenue)}</td>
-                            <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text)" }}>{formatCurrency(c.attributedRevenue)}</td>
-                            <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>{c.trueRoas != null ? `${c.trueRoas.toFixed(2)}×` : "—"}</td>
-                            <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                              <span style={{ fontSize: 10, fontWeight: 600, color: confidenceColor[c.confidence] ?? "#6366f1", background: `${confidenceColor[c.confidence] ?? "#6366f1"}20`, padding: "2px 7px", borderRadius: 99, textTransform: "capitalize" }}>
-                                {c.confidence}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <DataTable<ChannelAttribution>
+                    data={result.channelAttribution}
+                    columns={[
+                      { key: "channel", label: "Channel", render: (_v, row) => <span style={{ fontWeight: 500, color: "var(--text)" }}>{row.channel}</span> },
+                      { key: "reportedRevenue", label: "Reported", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-3)" }}>{formatCurrency(row.reportedRevenue)}</span> },
+                      { key: "attributedRevenue", label: "Attributed", align: "right", sortable: true, render: (_v, row) => <span style={{ fontWeight: 600, color: "var(--text)" }}>{formatCurrency(row.attributedRevenue)}</span> },
+                      { key: "trueRoas", label: "True ROAS", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.trueRoas != null ? `${row.trueRoas.toFixed(2)}×` : "—"}</span> },
+                      { key: "confidence", label: "Confidence", align: "center", render: (_v, row) => (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: confidenceColor[row.confidence] ?? "#6366f1", background: `${confidenceColor[row.confidence] ?? "#6366f1"}20`, padding: "2px 7px", borderRadius: 99, textTransform: "capitalize" }}>
+                          {row.confidence}
+                        </span>
+                      )},
+                    ]}
+                    pageSize={0}
+                  />
                 </div>
               )}
 

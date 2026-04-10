@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
         id: true,
         name: true,
         semrushDomain: true,
+        searchConsoleSiteUrl: true,
       },
     });
 
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
       const competitors = body.competitors as string[] | undefined;
       const estimate = estimateApiUnits(
         Array.isArray(competitors) && competitors.length > 0,
+        !!client.searchConsoleSiteUrl,
       );
       return NextResponse.json(estimate);
     }
@@ -86,6 +88,7 @@ export async function POST(request: NextRequest) {
       brief || "",
       competitors,
       db,
+      client.searchConsoleSiteUrl,
     );
 
     data.clientName = client.name;

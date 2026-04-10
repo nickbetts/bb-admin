@@ -39,6 +39,7 @@ interface Client {
   id: string;
   name: string;
   semrushDomain?: string | null;
+  searchConsoleSiteUrl?: string | null;
 }
 
 type GenerationMode = "semrush" | "upload";
@@ -482,6 +483,15 @@ export default function ContentStrategyPage() {
                   }}>
                     <Globe style={{ width: 14, height: 14, color: "var(--text-4)", flexShrink: 0 }} />
                     {semrushDomain || "Auto-filled from client settings"}
+                    {clientId && clients.find((c) => c.id === clientId)?.searchConsoleSiteUrl && (
+                      <span style={{
+                        marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4,
+                        fontSize: 11, color: "var(--success)", fontWeight: 500,
+                        padding: "2px 8px", borderRadius: 999, background: "var(--success-bg)",
+                      }}>
+                        GSC connected — fewer SEMrush units
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -613,6 +623,8 @@ export default function ContentStrategyPage() {
 
           {/* ─── Upload Mode ─── */}
           {mode === "upload" && (
+          <form onSubmit={handleGenerate}>
+            <div
               style={{
                 border: `2px dashed ${dragOver ? "var(--accent)" : file ? "var(--success)" : "var(--border)"}`,
                 borderRadius: "var(--r)",

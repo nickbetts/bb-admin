@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { DataTable } from "@/components/ui/DataTable";
 import { FileText, Loader2, ChevronDown, ChevronUp, Sparkles, Clock } from "lucide-react";
 
 interface StrategyDoc {
@@ -189,28 +190,16 @@ export function StrategyDocumentPanel({ clientId, clientName, crossPlatformData 
         {content.kpiTargets && content.kpiTargets.length > 0 && (
           <div>
             <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-3)", marginBottom: 8 }}>KPI Targets</p>
-            <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-sm)", overflow: "hidden" }}>
-              <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
-                    <th style={{ textAlign: "left", padding: "8px 12px", fontWeight: 600, color: "var(--text-3)" }}>KPI</th>
-                    <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600, color: "var(--text-3)" }}>Current</th>
-                    <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600, color: "var(--text-3)" }}>Target</th>
-                    <th style={{ textAlign: "right", padding: "8px 12px", fontWeight: 600, color: "var(--text-3)" }}>Timeline</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {content.kpiTargets.map((kpi, i) => (
-                    <tr key={i} style={{ borderBottom: i < content.kpiTargets!.length - 1 ? "1px solid var(--border)" : "none" }}>
-                      <td style={{ padding: "8px 12px", fontWeight: 500, color: "var(--text)" }}>{kpi.metric}</td>
-                      <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-3)" }}>{kpi.current}</td>
-                      <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--success)" }}>{kpi.target}</td>
-                      <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-3)" }}>{kpi.timeline}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable<{ metric: string; current: string; target: string; timeline: string }>
+              data={content.kpiTargets}
+              columns={[
+                { key: "metric", label: "KPI", render: (_v, row) => <span style={{ fontWeight: 500, color: "var(--text)" }}>{row.metric}</span> },
+                { key: "current", label: "Current", align: "right", render: (_v, row) => <span style={{ color: "var(--text-3)" }}>{row.current}</span> },
+                { key: "target", label: "Target", align: "right", render: (_v, row) => <span style={{ fontWeight: 600, color: "var(--success)" }}>{row.target}</span> },
+                { key: "timeline", label: "Timeline", align: "right", render: (_v, row) => <span style={{ color: "var(--text-3)" }}>{row.timeline}</span> },
+              ]}
+              pageSize={0}
+            />
           </div>
         )}
 

@@ -14,6 +14,10 @@ import {
   type SemrushDomainOverview,
   type SemrushAnchorText,
 } from "@/lib/semrush";
+import {
+  getGSCQueryPageCombos,
+  type GSCQueryPageCombo,
+} from "@/lib/search-console";
 import { withApiCache } from "@/lib/api-cache";
 import { getOpenAiClient } from "@/lib/openai-client";
 
@@ -75,6 +79,9 @@ interface CollectedData {
   keywordDifficulty: SemrushKeywordDifficulty[];
   backlinks: SemrushBacklink[];
   anchorTexts: SemrushAnchorText[];
+  // GSC data — present when client has Search Console connected
+  gscQueryPages: GSCQueryPageCombo[];
+  dataSource: "gsc+semrush" | "semrush-only";
 }
 
 // Page grouped structure for analysis
@@ -90,12 +97,27 @@ export async function collectSemrushData(
   domain: string,
   competitors: string[],
   database: string = "uk",
+  searchConsoleSiteUrl?: string | null,
 ): Promise<CollectedData> {
-  // Phase 1: Fetch organic keywords + competitors + overview in parallel
-  const [organicKeywords, detectedCompetitors, overview] = await Promise.all([
-    withApiCache(`cs:organic:${domain}:${database}`, 168, () =>
-      getTopOrganicKeywords(domain, database, 300)
-    ),
+  const hasGsc = !!searchConsoleSiteUrl;
+
+  // GSC date range: last 3 months
+  const endDate = new Date().toISOString().split("T")[0];
+  const startDate = new Date(Date.now() - 90 * 86400000).toISOString().split("T")[0];
+
+  // Phase 1: Fetch organic data + competitors + overview in parallel
+  // If GSC is available, use it for organic keyword/page data instead of SEMrush (free, real data)
+  const [organicKeywords, gscQueryPages, detectedCompetitors, overview] = await Promise.all([
+    hasGsc
+      ? Promise.resolve([] as SemrushKeywordData[])
+      : withApiCache(`cs:organic:${domain}:${database}`, 168, () =>
+          getTopOrganicKeywords(domain, database, 300)
+        ),
+    hasGsc
+      ? withApiCache(`cs:gsc:${searchConsoleSiteUrl}`, 24, () =>
+          getGSCQueryPageCombos(searchConsoleSiteUrl!, startDate, endDate, 500)
+        )
+      : Promise.resolve([] as GSCQueryPageCombo[]),
     competitors.length > 0
       ? Promise.resolve([] as SemrushCompetitor[])
       : withApiCache(`cs:competitors:${domain}:${database}`, 168, () =>
@@ -112,12 +134,14 @@ export async function collectSemrushData(
       ? competitors
       : detectedCompetitors.slice(0, 3).map((c) => c.domain);
 
+  // Build keyword list for difficulty check — from GSC or SEMrush
+  // Only send 30 (down from 100) to save ~70 SEMrush units
+  const topKeywordPhrases = hasGsc
+    ? [...new Set(gscQueryPages.map((q) => q.query))].slice(0, 30)
+    : organicKeywords.slice(0, 30).map((k) => k.keyword);
+
   // Phase 2: Content gap (needs competitors), difficulty (needs keyword list),
   // backlinks + anchors (independent)
-  const topKeywordPhrases = organicKeywords
-    .slice(0, 100)
-    .map((k) => k.keyword);
-
   const [contentGap, keywordDifficulty, backlinks, anchorTexts] =
     await Promise.all([
       finalCompetitors.length > 0
@@ -150,6 +174,8 @@ export async function collectSemrushData(
     keywordDifficulty,
     backlinks,
     anchorTexts,
+    gscQueryPages,
+    dataSource: hasGsc ? "gsc+semrush" : "semrush-only",
   };
 }
 
@@ -199,19 +225,59 @@ function groupKeywordsByPage(keywords: SemrushKeywordData[]): PageGroup[] {
   );
 }
 
+// GSC variant — uses real clicks as the traffic signal, impressions as volume proxy
+interface GscPageGroup {
+  url: string;
+  keywords: { keyword: string; position: number; volume: number; trafficPercent: number; clicks: number; impressions: number; ctr: number }[];
+  totalClicks: number;
+  totalImpressions: number;
+}
+
+function groupGscByPage(combos: GSCQueryPageCombo[]): GscPageGroup[] {
+  const map = new Map<string, GscPageGroup>();
+  const totalClicks = combos.reduce((s, c) => s + c.clicks, 0) || 1;
+  for (const combo of combos) {
+    const cleanUrl = combo.page.replace(/^https?:\/\//, "").replace(/^www\./, "");
+    let group = map.get(cleanUrl);
+    if (!group) {
+      group = { url: cleanUrl, keywords: [], totalClicks: 0, totalImpressions: 0 };
+      map.set(cleanUrl, group);
+    }
+    group.keywords.push({
+      keyword: combo.query,
+      position: Math.round(combo.position),
+      volume: combo.impressions, // impressions ≈ search volume proxy for GSC
+      trafficPercent: (combo.clicks / totalClicks) * 100,
+      clicks: combo.clicks,
+      impressions: combo.impressions,
+      ctr: combo.ctr,
+    });
+    group.totalClicks += combo.clicks;
+    group.totalImpressions += combo.impressions;
+  }
+  for (const group of map.values()) {
+    group.keywords.sort((a, b) => b.impressions - a.impressions);
+  }
+  return Array.from(map.values()).sort((a, b) => b.totalClicks - a.totalClicks);
+}
+
 // ─── Estimate SEMrush API units ─────────────────────────────────────────────
 
-export function estimateApiUnits(hasCompetitors: boolean): {
+export function estimateApiUnits(hasCompetitors: boolean, hasGsc: boolean = false): {
   estimated: number;
   breakdown: { call: string; units: number }[];
 } {
-  const breakdown = [
+  const breakdown: { call: string; units: number }[] = [
     { call: "Domain overview", units: 1 },
-    { call: "Top organic keywords (300)", units: 30 },
-    { call: "Keyword difficulty (100 keywords)", units: 100 },
-    { call: "Backlinks (30)", units: 3 },
-    { call: "Anchor text distribution", units: 2 },
   ];
+  if (hasGsc) {
+    breakdown.push({ call: "Google Search Console (query×page, free)", units: 0 });
+  } else {
+    breakdown.push({ call: "Top organic keywords (300)", units: 30 });
+  }
+  breakdown.push({ call: "Keyword difficulty (30 keywords)", units: 30 });
+  breakdown.push({ call: "Backlinks (30)", units: 3 });
+  breakdown.push({ call: "Anchor text distribution", units: 2 });
   if (!hasCompetitors) {
     breakdown.push({ call: "Competitor detection", units: 1 });
   }
@@ -228,37 +294,85 @@ function buildAnalysisPrompt(
   brief: string,
   data: CollectedData,
 ): string {
-  const pages = groupKeywordsByPage(data.organicKeywords);
+  const useGsc = data.dataSource === "gsc+semrush" && data.gscQueryPages.length > 0;
 
   // Build difficulty lookup
   const difficultyMap = new Map(
     data.keywordDifficulty.map((kd) => [kd.keyword, kd]),
   );
 
-  // Identify struggling pages (position 5-30, has volume)
-  const strugglingPages = pages.filter((p) =>
-    p.keywords.some(
-      (kw) => kw.position >= 5 && kw.position <= 30 && kw.volume >= 50,
-    ),
-  );
+  let strugglingPagesText: string;
+  let topPagesText: string;
 
-  // Format struggling pages
-  const strugglingPagesText = strugglingPages
-    .slice(0, 40)
-    .map((p) => {
-      const kws = p.keywords
-        .filter((k) => k.position >= 5 && k.volume >= 50)
-        .slice(0, 8)
-        .map((k) => {
-          const diff = difficultyMap.get(k.keyword);
-          return `    - "${k.keyword}" pos:${k.position} vol:${k.volume}${diff ? ` KD:${diff.difficulty} intent:${diff.intent}` : ""}`;
-        })
-        .join("\n");
-      return `  ${p.url}\n${kws}`;
-    })
-    .join("\n");
+  if (useGsc) {
+    // ── GSC path: real Google data with clicks, impressions, CTR ──────
+    const gscPages = groupGscByPage(data.gscQueryPages);
 
-  // Format content gap
+    // Struggling pages: position 5-30, have impressions
+    const gscStruggling = gscPages.filter((p) =>
+      p.keywords.some(
+        (kw) => kw.position >= 5 && kw.position <= 30 && kw.impressions >= 50,
+      ),
+    );
+
+    strugglingPagesText = gscStruggling
+      .slice(0, 40)
+      .map((p) => {
+        const kws = p.keywords
+          .filter((k) => k.position >= 5 && k.impressions >= 50)
+          .slice(0, 8)
+          .map((k) => {
+            const diff = difficultyMap.get(k.keyword);
+            return `    - "${k.keyword}" pos:${k.position} impressions:${k.impressions} clicks:${k.clicks} CTR:${(k.ctr * 100).toFixed(1)}%${diff ? ` KD:${diff.difficulty} intent:${diff.intent}` : ""}`;
+          })
+          .join("\n");
+        return `  ${p.url} (${p.totalClicks} clicks/3mo, ${p.totalImpressions.toLocaleString()} impressions)\n${kws}`;
+      })
+      .join("\n") || "  (none found)";
+
+    // Top pages by real traffic
+    topPagesText = gscPages
+      .slice(0, 15)
+      .map(
+        (p) =>
+          `  ${p.url} — ${p.keywords.length} keywords, ${p.totalClicks} clicks/3mo, top: "${p.keywords[0]?.keyword}" (${p.keywords[0]?.impressions.toLocaleString()} impressions)`,
+      )
+      .join("\n");
+  } else {
+    // ── SEMrush path: estimated traffic data ─────────────────────────
+    const pages = groupKeywordsByPage(data.organicKeywords);
+
+    const strugglingPages = pages.filter((p) =>
+      p.keywords.some(
+        (kw) => kw.position >= 5 && kw.position <= 30 && kw.volume >= 50,
+      ),
+    );
+
+    strugglingPagesText = strugglingPages
+      .slice(0, 40)
+      .map((p) => {
+        const kws = p.keywords
+          .filter((k) => k.position >= 5 && k.volume >= 50)
+          .slice(0, 8)
+          .map((k) => {
+            const diff = difficultyMap.get(k.keyword);
+            return `    - "${k.keyword}" pos:${k.position} vol:${k.volume}${diff ? ` KD:${diff.difficulty} intent:${diff.intent}` : ""}`;
+          })
+          .join("\n");
+        return `  ${p.url}\n${kws}`;
+      })
+      .join("\n") || "  (none found)";
+
+    topPagesText = pages
+      .slice(0, 15)
+      .map(
+        (p) =>
+          `  ${p.url} — ${p.keywords.length} keywords, top: "${p.keywords[0]?.keyword}" (vol:${p.keywords[0]?.volume})`,
+      )
+      .join("\n");
+  }
+
+  // Format content gap (always from SEMrush — only they have this)
   const gapText = data.contentGap
     .slice(0, 80)
     .map((g) => {
@@ -267,15 +381,6 @@ function buildAnalysisPrompt(
         .join(", ");
       return `  - "${g.keyword}" vol:${g.searchVolume} KD:${g.difficulty} (competitors: ${compPositions})`;
     })
-    .join("\n");
-
-  // Format top pages (for link target selection)
-  const topPagesText = pages
-    .slice(0, 15)
-    .map(
-      (p) =>
-        `  ${p.url} — ${p.keywords.length} keywords, top: "${p.keywords[0]?.keyword}" (vol:${p.keywords[0]?.volume})`,
-    )
     .join("\n");
 
   // Format anchor text distribution
@@ -290,15 +395,20 @@ function buildAnalysisPrompt(
     .map((b) => `  - ${b.sourceUrl} → ${b.targetUrl} anchor:"${b.anchorText}" DA:${b.authority}`)
     .join("\n");
 
+  const dataSourceNote = useGsc
+    ? "DATA SOURCE: Google Search Console (real clicks/impressions from last 3 months) + SEMrush (competitive data)\nNote: For GSC data, 'impressions' represents how often the page appeared in search results — use it as a search volume proxy. 'clicks' is actual traffic."
+    : "DATA SOURCE: SEMrush (estimated traffic data)";
+
   return `DOMAIN: ${domain}
 CLIENT: ${clientName}
 ORGANIC TRAFFIC: ${data.overview.organicTraffic.toLocaleString()} monthly visits
 ORGANIC KEYWORDS: ${data.overview.organicKeywords.toLocaleString()} ranking keywords
+${dataSourceNote}
 
 ${brief ? `CLIENT BRIEF:\n${brief}\n` : ""}
 ═══ STRUGGLING PAGES (position 5–30, have search volume) ═══
 These are existing pages that rank but could improve. Select the best candidates for page optimisations.
-${strugglingPagesText || "  (none found)"}
+${strugglingPagesText}
 
 ═══ CONTENT GAP (keywords competitors rank for, you don't) ═══
 These are opportunities for new landing pages or blog posts.
@@ -399,9 +509,10 @@ export async function generateContentStrategy(
   brief: string,
   competitors: string[],
   database: string = "uk",
+  searchConsoleSiteUrl?: string | null,
 ): Promise<{ data: ContentStrategyData; collectedData: CollectedData; autoCompetitors: string[] }> {
-  // Step 1: Collect all SEMrush data
-  const collectedData = await collectSemrushData(domain, competitors, database);
+  // Step 1: Collect data (uses GSC when available, falls back to SEMrush-only)
+  const collectedData = await collectSemrushData(domain, competitors, database, searchConsoleSiteUrl);
 
   // Determine auto-detected competitors for response
   const autoCompetitors =

@@ -24,6 +24,7 @@ import { ShoppingCart, TrendingUp, Package } from "lucide-react";
 import { BlendedRevenuePanel } from "./BlendedRevenuePanel";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
+import { DataTable } from "@/components/ui/DataTable";
 
 interface EcStats {
   totalRevenue: number;
@@ -162,28 +163,36 @@ export function EcommerceSection({ clientId, clientName, platform, startDate, en
           {/* Top products */}
           {show("top_products") && stats.topProducts.length > 0 && (
             <SectionCard title="Top Products by Revenue" subtitle="Best-selling products in period">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
-                      <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Product</th>
-                      <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Qty Sold</th>
-                      <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Revenue</th>
-                    </tr>
-                  </thead>
-                  <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                    {stats.topProducts.map((p, i) => (
-                      <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                        <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>
-                          <p className="text-[var(--text)] font-medium truncate max-w-[280px]">{p.name}</p>
-                        </td>
-                        <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.quantity)}</td>
-                        <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>{formatCurrency(p.revenue)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DataTable<{ name: string; quantity: number; revenue: number }>
+                data={stats.topProducts}
+                columns={[
+                  {
+                    key: "name",
+                    label: "Product",
+                    render: (_value, row) => (
+                      <p className="text-[var(--text)] font-medium truncate max-w-[280px]">{row.name}</p>
+                    ),
+                  },
+                  {
+                    key: "quantity",
+                    label: "Qty Sold",
+                    align: "right",
+                    sortable: true,
+                    render: (_value, row) => formatNumber(row.quantity),
+                  },
+                  {
+                    key: "revenue",
+                    label: "Revenue",
+                    align: "right",
+                    sortable: true,
+                    render: (_value, row) => <span className="font-semibold">{formatCurrency(row.revenue)}</span>,
+                  },
+                ]}
+                pageSize={20}
+                searchable
+                exportable
+                exportFilename="top-products"
+              />
             </SectionCard>
           )}
 
@@ -238,28 +247,35 @@ export function EcommerceSection({ clientId, clientName, platform, startDate, en
                 />
               </div>
               {customers.topCustomers.length > 0 && (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
-                        <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Customer</th>
-                        <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Total Spent</th>
-                        <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Orders</th>
-                      </tr>
-                    </thead>
-                    <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                      {customers.topCustomers.slice(0, 5).map((c, i) => (
-                        <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                          <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>
-                            <p className="text-[var(--text)] font-medium truncate max-w-[240px]">{c.name}</p>
-                          </td>
-                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>{formatCurrency(c.totalSpent)}</td>
-                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(c.orderCount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTable<{ name: string; email: string; totalSpent: number; orderCount: number }>
+                  data={customers.topCustomers}
+                  columns={[
+                    {
+                      key: "name",
+                      label: "Customer",
+                      render: (_value, row) => (
+                        <p className="text-[var(--text)] font-medium truncate max-w-[240px]">{row.name}</p>
+                      ),
+                    },
+                    {
+                      key: "totalSpent",
+                      label: "Total Spent",
+                      align: "right",
+                      sortable: true,
+                      render: (_value, row) => <span className="font-semibold">{formatCurrency(row.totalSpent)}</span>,
+                    },
+                    {
+                      key: "orderCount",
+                      label: "Orders",
+                      align: "right",
+                      sortable: true,
+                      render: (_value, row) => formatNumber(row.orderCount),
+                    },
+                  ]}
+                  pageSize={20}
+                  exportable
+                  exportFilename="top-customers"
+                />
               )}
             </SectionCard>
           )}
