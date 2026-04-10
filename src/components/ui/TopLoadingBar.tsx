@@ -6,14 +6,17 @@ import { usePathname } from "next/navigation";
 // External store for loading bar state — avoids setState-in-effect lint warnings
 let _progress = 0;
 let _visible = false;
+let _snapshot = { progress: _progress, visible: _visible };
 const _listeners = new Set<() => void>();
 
-function getSnapshot() { return { progress: _progress, visible: _visible }; }
+function getSnapshot() { return _snapshot; }
 function subscribe(cb: () => void) { _listeners.add(cb); return () => { _listeners.delete(cb); }; }
 function notify() { _listeners.forEach((cb) => cb()); }
 function setBar(progress: number, visible: boolean) {
+  if (_progress === progress && _visible === visible) return;
   _progress = progress;
   _visible = visible;
+  _snapshot = { progress, visible };
   notify();
 }
 
