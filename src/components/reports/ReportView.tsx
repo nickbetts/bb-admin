@@ -55,7 +55,7 @@ import {
   ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search,
   MessageSquare, LayoutGrid, FileText, Image, ShoppingCart, CalendarRange,
   LayoutTemplate, Save, GripVertical, Globe2, Link2, Link2Off, CheckCircle2,
-  Sparkles, Pencil, Star, Video, Users, Phone, Play,
+  Sparkles, Pencil, Star, Video, Users, Phone, Play, Loader2,
 } from "lucide-react";
 import {
   DndContext,
@@ -1248,7 +1248,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       )}
 
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
-      <div className="print:hidden" style={{
+      <div className="print:hidden print-hidden" style={{
         position: "sticky", top: 0, zIndex: 20,
         background: "var(--surface)", borderBottom: "1px solid var(--border)",
         padding: "0 28px", height: 60,
@@ -1514,7 +1514,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
             title={isChaosTone ? "🚫 Export disabled — switch to a sensible tone first, yeah?" : undefined}
             style={isChaosTone ? { opacity: 0.4, cursor: "not-allowed" } : undefined}
           >
-            <Download size={13} />
+            {exportingPdf ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
             {exportingPdf ? "Generating…" : "Export PDF"}
           </button>
         </div>

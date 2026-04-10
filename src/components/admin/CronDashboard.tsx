@@ -279,7 +279,7 @@ export function CronDashboard() {
           <span><span style={{ fontWeight: 600, color: "var(--text-2)" }}>GA4 / Search Console</span> — Daily quota: 200,000 requests. Cron uses ~1 per client per platform.</span>
           <span><span style={{ fontWeight: 600, color: "var(--text-2)" }}>Meta Ads</span> — Tier-based rate limits. Standard tier supports ~200 calls/hour per access token.</span>
           <span style={{ color: "var(--text-3)", fontStyle: "italic", marginTop: 4 }}>
-            The nightly cron runs once at 02:00 UTC, skipping platforms already fetched in the last 23 hours. Use "Run Now" for a manual refresh.
+            The nightly cron runs once at 02:00 UTC, skipping platforms already fetched in the last 23 hours. Use &ldquo;Run Now&rdquo; for a manual refresh.
           </span>
         </div>
       </div>

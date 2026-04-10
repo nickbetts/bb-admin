@@ -105,6 +105,24 @@ export function TextSection({ sectionId, reportId, sectionType, title, contentTe
           onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
         />
 
+        {!text && (
+          <div style={{
+            background: "var(--border-subtle)",
+            borderRadius: "var(--r)",
+            padding: "12px 14px",
+            color: "var(--text-3)",
+            fontSize: "var(--text-sm)",
+            fontStyle: "italic",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginTop: 8,
+          }}>
+            <span style={{ opacity: 0.5 }}>ⓘ</span>
+            No commentary added for this section.
+          </div>
+        )}
+
         {/* Read-only render when there is text (shown in PDF/print view) */}
         {text && (
           <div

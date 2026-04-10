@@ -468,7 +468,7 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
       <>
         <button
           onClick={() => setMobileOpen(true)}
-          className="sidebar-mobile-trigger"
+          className={cn("sidebar-mobile-trigger", mobileOpen && "sidebar-trigger-hidden")}
           aria-label="Open navigation menu"
         >
           <Menu style={{ width: 20, height: 20 }} />

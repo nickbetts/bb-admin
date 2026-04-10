@@ -5,9 +5,10 @@ import { cn, formatNumber, formatCurrency } from "@/lib/utils";
 interface LoadingSpinnerProps {
   size?: "sm" | "md" | "lg";
   className?: string;
+  label?: string;
 }
 
-export function LoadingSpinner({ size = "md", className }: LoadingSpinnerProps) {
+export function LoadingSpinner({ size = "md", className, label = "Loading" }: LoadingSpinnerProps) {
   const sizeMap = {
     sm: "h-4 w-4 border-2",
     md: "h-8 w-8 border-2",
@@ -17,13 +18,15 @@ export function LoadingSpinner({ size = "md", className }: LoadingSpinnerProps) 
   return (
     <div
       role="status"
-      aria-label="Loading"
+      aria-label={label}
       className={cn(
         "animate-spin rounded-full border-slate-200 border-t-indigo-600",
         sizeMap[size],
         className
       )}
-    />
+    >
+      <span className="sr-only">{label}</span>
+    </div>
   );
 }
 

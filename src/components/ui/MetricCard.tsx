@@ -20,15 +20,9 @@ interface MetricCardProps {
   icon?: React.ReactNode;
   className?: string;
   color?: "purple" | "blue" | "green" | "orange" | "red";
+  /** Optional channel identifier — maps to brand colour for icon tint */
+  channel?: string;
 }
-
-const colorMap = {
-  purple: "from-violet-50 to-indigo-50 border-violet-200",
-  blue: "from-blue-50 to-cyan-50 border-blue-200",
-  green: "from-emerald-50 to-teal-50 border-emerald-200",
-  orange: "from-amber-50 to-orange-50 border-amber-200",
-  red: "from-red-50 to-rose-50 border-red-200",
-};
 
 const iconColorMap = {
   purple: "text-violet-600",
@@ -36,6 +30,24 @@ const iconColorMap = {
   green: "text-emerald-600",
   orange: "text-amber-600",
   red: "text-red-600",
+};
+
+/** Maps channel identifiers to brand-accurate hex colours for icon tinting */
+const channelColorMap: Record<string, string> = {
+  ga4: "#f97316",
+  google_ads: "#10b981",
+  meta: "#3b82f6",
+  linkedin: "#0077b5",
+  tiktok: "#374151",
+  microsoft_ads: "#00a4ef",
+  klaviyo: "#1b9c4f",
+  hubspot: "#ff7a59",
+  semrush: "#ff642d",
+  shopify: "#96bf48",
+  woocommerce: "#7f54b3",
+  callrail: "#45d18b",
+  youtube: "#ff0000",
+  default: "#6366f1",
 };
 
 export function MetricCard({
@@ -49,16 +61,23 @@ export function MetricCard({
   icon,
   className,
   color = "purple",
+  channel,
 }: MetricCardProps) {
   const isPositive = change !== undefined && change >= 0;
   const isYoyPositive = yoyChange !== undefined && yoyChange >= 0;
+  const brandColor = channel ? (channelColorMap[channel] ?? channelColorMap.default) : null;
 
   return (
     <div className={cn("metric-card", className)}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <p className="metric-label">{title}</p>
         {icon && (
-          <span className={cn("text-xl", iconColorMap[color])}>{icon}</span>
+          <span
+            className={brandColor ? undefined : cn("text-xl", iconColorMap[color])}
+            style={brandColor ? { color: brandColor, fontSize: "1.25rem" } : undefined}
+          >
+            {icon}
+          </span>
         )}
       </div>
       <p className="metric-value">{value}</p>

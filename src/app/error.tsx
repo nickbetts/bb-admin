@@ -85,6 +85,12 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
             View server logs
           </a>
         </div>
+        <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 20, lineHeight: 1.6 }}>
+          If this keeps happening, contact{" "}
+          <a href="mailto:hello@i3media.co.uk" style={{ color: "var(--accent)", textDecoration: "underline" }}>
+            hello@i3media.co.uk
+          </a>
+        </p>
       </div>
     </div>
   );

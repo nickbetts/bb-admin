@@ -54,12 +54,13 @@ export function ScreenshotCaptionDialog({ file, uploading, onUpload, onCancel }:
         </p>
 
         <form onSubmit={handleSubmit}>
-          <label style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+          <label htmlFor="caption-input" style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               Caption <span style={{ textTransform: "none", fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
             </span>
             <input
               ref={inputRef}
+              id="caption-input"
               type="text"
               placeholder="Describe this screenshot…"
               style={{

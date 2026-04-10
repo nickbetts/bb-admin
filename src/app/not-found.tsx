@@ -11,9 +11,14 @@ export default function NotFound() {
         <p style={{ fontSize: 14, color: "var(--text-2)", marginBottom: 24, lineHeight: 1.6 }}>
           The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
-        <Link href="/dashboard" className="btn btn-primary">
-          Back to dashboard
-        </Link>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+          <Link href="/dashboard" className="btn btn-primary">
+            Back to dashboard
+          </Link>
+          <Link href="/clients" className="btn btn-secondary">
+            Browse clients →
+          </Link>
+        </div>
       </div>
     </div>
   );

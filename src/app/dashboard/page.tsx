@@ -96,7 +96,7 @@ export default async function DashboardPage() {
           <div>
             {clients.length === 0 ? (
               <div style={{ padding: "40px 28px", textAlign: "center" }}>
-                <p style={{ color: "var(--text-3)", fontSize: 14 }}>No clients yet</p>
+                <p style={{ color: "var(--text-3)", fontSize: 14 }}>No clients yet. Add your first client to get started.</p>
                 <Link href="/clients/new" className="btn btn-primary btn-sm" style={{ marginTop: 16, display: "inline-flex" }}>
                   Add your first client
                 </Link>
@@ -113,7 +113,7 @@ export default async function DashboardPage() {
                       {client.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{client.name}</p>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }} title={client.name}>{client.name}</p>
                       <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
                         {client._count.reports} report{client._count.reports !== 1 ? "s" : ""}
                       </p>
@@ -141,8 +141,7 @@ export default async function DashboardPage() {
           <div>
             {recentReports.length === 0 ? (
               <div style={{ padding: "40px 28px", textAlign: "center" }}>
-                <p style={{ color: "var(--text-3)", fontSize: 14 }}>No reports yet</p>
-                <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 6 }}>Select a client and create a report</p>
+                <p style={{ color: "var(--text-3)", fontSize: 14 }}>No reports yet. Select a client and create your first report.</p>
               </div>
             ) : (
               recentReports.map((report) => (

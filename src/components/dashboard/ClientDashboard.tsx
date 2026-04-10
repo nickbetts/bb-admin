@@ -85,6 +85,13 @@ function getDefaultTab(_client: Client): Tab {
 export function ClientDashboard({ client, period: initialPeriod, userRole, permissions = [] }: ClientDashboardProps) {
   const [period, setPeriod] = useState(initialPeriod);
   const [activeTab, setActiveTab] = useState<Tab>(() => getDefaultTab(client));
+  const [tabTransitioning, setTabTransitioning] = useState(false);
+
+  function handleTabChange(tab: Tab) {
+    setTabTransitioning(true);
+    setActiveTab(tab);
+    setTimeout(() => setTabTransitioning(false), 200);
+  }
 
   // Tab visibility: if the role has any "tab:" permissions, restrict to only those tabs
   const tabPermissions = permissions.filter(p => p.startsWith("tab:")).map(p => p.slice(4));
@@ -230,7 +237,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               role="tab"
               aria-selected={activeTab === tab.id}
               className={cn("tab-btn", activeTab === tab.id && "active")}
@@ -278,6 +285,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
       )}
 
       {/* Section content */}
+      <div style={{ opacity: tabTransitioning ? 0.5 : 1, pointerEvents: tabTransitioning ? "none" : "auto", transition: "opacity 0.2s" }}>
       {activeTab === "signals" && (
         <SignalsSection client={client} startDate={startDate} endDate={endDate} />
       )}
@@ -450,6 +458,8 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
           />
         </div>
       )}
+
+      </div>{/* end tab content wrapper */}
 
       {/* AI Chat panel — always visible when any platform is connected */}
       <AiChatPanel clientId={client.id} clientName={client.name} />

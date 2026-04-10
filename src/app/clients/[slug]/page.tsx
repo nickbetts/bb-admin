@@ -92,44 +92,44 @@ export default async function ClientPage({ params, searchParams }: Props) {
         {/* Integration badges */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 28 }}>
           {client.semrushDomain ? (
-            <span className="badge badge-orange" style={{ padding: "6px 14px", fontSize: 13 }}>
+            <span className="badge badge-orange" style={{ padding: "6px 14px", fontSize: 13 }} title={`SemRush: ${client.semrushDomain}`}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f97316", display: "inline-block" }} />
               SemRush · {client.semrushDomain}
             </span>
           ) : (
-            <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }}>SemRush not configured</span>
+            <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }} title="SemRush not configured">SemRush not configured</span>
           )}
           {client.ga4PropertyId ? (
-            <span className="badge badge-blue" style={{ padding: "6px 14px", fontSize: 13 }}>
+            <span className="badge badge-blue" style={{ padding: "6px 14px", fontSize: 13 }} title={`GA4: ${client.ga4PropertyName ?? client.ga4PropertyId}`}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#3b82f6", display: "inline-block" }} />
               GA4 · {client.ga4PropertyName ?? client.ga4PropertyId}
             </span>
           ) : (
-            <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }}>GA4 not configured</span>
+            <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }} title="GA4 not configured">GA4 not configured</span>
           )}
           {client.metaAccountId ? (
-            <span className="badge badge-indigo" style={{ padding: "6px 14px", fontSize: 13 }}>
+            <span className="badge badge-indigo" style={{ padding: "6px 14px", fontSize: 13 }} title={`Meta Ads: ${client.metaAccountName ?? client.metaAccountId}`}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#6366f1", display: "inline-block" }} />
               Meta Ads · {client.metaAccountName ?? client.metaAccountId}
             </span>
           ) : (
-            <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }}>Meta Ads not configured</span>
+            <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }} title="Meta Ads not configured">Meta Ads not configured</span>
           )}
           {client.googleAdsCustomerId ? (
-            <span className="badge badge-green" style={{ padding: "6px 14px", fontSize: 13 }}>
+            <span className="badge badge-green" style={{ padding: "6px 14px", fontSize: 13 }} title={`Google Ads: ${client.googleAdsAccountName ?? client.googleAdsCustomerId}`}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
               Google Ads · {client.googleAdsAccountName ?? client.googleAdsCustomerId}
             </span>
           ) : (
-            <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }}>Google Ads not configured</span>
+            <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }} title="Google Ads not configured">Google Ads not configured</span>
           )}
           {client.searchConsoleSiteUrl ? (
-            <span className="badge badge-purple" style={{ padding: "6px 14px", fontSize: 13 }}>
+            <span className="badge badge-purple" style={{ padding: "6px 14px", fontSize: 13 }} title={`Search Console: ${client.searchConsoleSiteUrl}`}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#8b5cf6", display: "inline-block" }} />
               Search Console · {client.searchConsoleSiteUrl.replace(/^https?:\/\//, "").replace(/^sc-domain:/, "").replace(/\/$/, "")}
             </span>
           ) : (
-            <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }}>Search Console not configured</span>
+            <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }} title="Search Console not configured">Search Console not configured</span>
           )}
         </div>
       </div>

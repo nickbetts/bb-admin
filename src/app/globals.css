@@ -40,6 +40,26 @@
   --surface-2: var(--bg);
   --bg-2:      var(--bg);
   --card-bg:   var(--surface);
+
+  /* ── Type scale ── */
+  --text-xs:   12px;
+  --text-sm:   13px;
+  --text-base: 14px;
+  --text-lg:   15px;
+  --text-xl:   17px;
+  --text-2xl:  20px;
+  --text-3xl:  26px;
+
+  /* ── Spacing scale ── */
+  --space-xs:   4px;
+  --space-sm:   8px;
+  --space-md:   12px;
+  --space-lg:   16px;
+  --space-xl:   20px;
+  --space-2xl:  24px;
+  --space-3xl:  32px;
+  --space-4xl:  40px;
+  --space-5xl:  48px;
 }
 
 /* =============================================
@@ -186,9 +206,17 @@ body {
 }
 
 .nav-item.active {
+  border-left: 3px solid var(--accent);
+  padding-left: 11px; /* 14px − 3px to preserve alignment */
   background: var(--accent-bg);
   color: var(--accent-text);
   font-weight: 600;
+}
+
+/* In collapsed mode the left-border accent doesn’t fit the icon-only layout */
+.sidebar.collapsed .nav-item.active {
+  border-left: none;
+  padding-left: 14px;
 }
 
 .nav-item.active .nav-item-icon { color: var(--accent); }
@@ -247,6 +275,12 @@ body {
   color: var(--text);
 }
 
+/* Hide the trigger button while the mobile sidebar is open */
+.sidebar-mobile-trigger.sidebar-trigger-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .sidebar-overlay {
   display: none;
   position: fixed;
@@ -290,7 +324,7 @@ body {
    PAGE LAYOUT
 ============================================= */
 .page {
-  max-width: 1300px;
+  max-width: min(1300px, 90vw);
   margin: 0 auto;
   padding: 52px 52px 80px;
 }
@@ -304,6 +338,10 @@ body {
   justify-content: space-between;
   gap: 20px;
   margin-bottom: 48px;
+}
+
+h1, h2, h3, h4, .page-title, .section-title, .card-title {
+  line-height: 1.2;
 }
 
 .page-title {
@@ -379,7 +417,7 @@ body {
 }
 
 .metric-value {
-  font-size: clamp(13px, 1.4vw, 20px);
+  font-size: clamp(16px, 2.5vw, 24px);
   font-weight: 700;
   color: var(--text);
   letter-spacing: -0.5px;
@@ -474,6 +512,15 @@ body {
   font-size: 13px;
   padding: 8px 14px;
   border-radius: var(--r-sm);
+}
+
+.btn:disabled,
+.btn-primary:disabled,
+.btn-ghost:disabled,
+.btn-secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* =============================================
@@ -691,6 +738,7 @@ body {
   border-radius: var(--r-lg);
   padding: 28px;
   box-shadow: var(--shadow-xs);
+  min-height: 140px;
 }
 
 .stat-card-label {
@@ -758,14 +806,33 @@ body {
 }
 
 /* =============================================
+   REPORT SECTION LIST (sidebar items)
+============================================= */
+.report-section-item {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.report-section-item:hover {
+  background: var(--border-subtle);
+}
+
+/* =============================================
    UTILITY
 ============================================= */
 .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
 
-@media (max-width: 1024px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } .grid-3 { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 640px)  { .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+@media (max-width: 1280px) {
+  .grid-4 { grid-template-columns: repeat(3, 1fr) !important; }
+}
+@media (max-width: 1024px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
+  .grid-3 { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 640px) {
+  .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr !important; }
+}
 
 /* =============================================
    GAME PLAN HTML CONTENT
@@ -894,6 +961,10 @@ body {
   display: none !important;
 }
 
+.pdf-print-view .print-hidden {
+  display: none !important;
+}
+
 /* =============================================
    PRINT / PDF EXPORT
 ============================================= */
@@ -925,6 +996,10 @@ body {
      these use inline style="display:flex" which beats class selectors
      without !important, so we must force-override here. */
   .print\:hidden {
+    display: none !important;
+  }
+
+  .print-hidden {
     display: none !important;
   }
 
