@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { MetricCard } from "@/components/ui/MetricCard";
+import { DataTable } from "@/components/ui/DataTable";
 import { LoadingSpinner, SectionCard } from "@/components/ui/index";
 import { ForecastSection } from "./ForecastSection";
 import { BudgetAdvisorPanel } from "./BudgetAdvisorPanel";
@@ -999,48 +1000,20 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
         {/* Channel Efficiency Matrix */}
         {show("channel_matrix") && channelRows.length > 0 && (
           <SectionCard title="Channel Efficiency Matrix" subtitle="Investment, traffic, and performance by platform">
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" as const, fontSize: 12 }}>
-                <thead>
-                  <tr style={{ background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
-                    {["Platform", "Investment", "Traffic", "Conversions", "Revenue", "Efficiency", "vs Prev", "Health"].map(h => (
-                      <th key={h} style={{ padding: "10px 12px", fontWeight: 700, fontSize: 10, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: "var(--text-3)", textAlign: (h === "Platform" ? "left" : "right") as "left" | "right" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {channelRows.map((row) => {
-                    const effChange = row.prevEfficiency != null ? pctChange(row.efficiency, row.prevEfficiency) : undefined;
-                    const config = CHANNEL_CONFIG[row.platformKey];
-                    return (
-                      <tr key={row.platformKey} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                        <td style={{ padding: "10px 12px", fontWeight: 600, color: "var(--text)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <div style={{ width: 8, height: 8, borderRadius: 4, background: config?.gradient ?? "#6366f1", flexShrink: 0 }} />
-                            {row.platform}
-                          </div>
-                        </td>
-                        <td style={{ padding: "10px 12px", textAlign: "right" as const, color: "var(--text-2)" }}>{row.investment > 0 ? formatCurrency(row.investment) : "—"}</td>
-                        <td style={{ padding: "10px 12px", textAlign: "right" as const, color: "var(--text-2)" }}>{formatNumber(row.traffic)}</td>
-                        <td style={{ padding: "10px 12px", textAlign: "right" as const, color: "var(--text-2)" }}>{row.conversions > 0 ? formatNumber(row.conversions) : "—"}</td>
-                        <td style={{ padding: "10px 12px", textAlign: "right" as const, color: "var(--text-2)" }}>{row.revenue > 0 ? formatCurrency(row.revenue) : "—"}</td>
-                        <td style={{ padding: "10px 12px", textAlign: "right" as const, fontWeight: 600, color: "var(--text)" }}>
-                          {row.platformKey === "googleads" || row.platformKey === "meta" ? `${row.efficiency.toFixed(2)}×` : row.platformKey === "ga4" || row.platformKey === "searchconsole" ? `${row.efficiency.toFixed(1)}%` : "—"}
-                        </td>
-                        <td style={{ padding: "10px 12px", textAlign: "right" as const }}>
-                          {effChange != null ? (
-                            <span style={{ fontSize: 11, fontWeight: 600, color: effChange >= 0 ? "#10b981" : "#ef4444" }}>{effChange >= 0 ? "+" : ""}{effChange.toFixed(1)}%</span>
-                          ) : <span style={{ color: "var(--text-3)" }}>—</span>}
-                        </td>
-                        <td style={{ padding: "10px 12px", textAlign: "right" as const }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: scoreColor(row.healthScore), background: `${scoreColor(row.healthScore)}15`, borderRadius: 4, padding: "2px 6px" }}>{row.healthScore}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <DataTable<(typeof channelRows)[number]>
+              data={channelRows}
+              columns={[
+                { key: "platform", label: "Platform", render: (_v, row) => { const config = CHANNEL_CONFIG[row.platformKey]; return <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ width: 8, height: 8, borderRadius: 4, background: config?.gradient ?? "#6366f1", flexShrink: 0 }} />{row.platform}</div>; } },
+                { key: "investment", label: "Investment", align: "right", render: (_v, row) => row.investment > 0 ? formatCurrency(row.investment) : "—" },
+                { key: "traffic", label: "Traffic", align: "right", render: (_v, row) => formatNumber(row.traffic) },
+                { key: "conversions", label: "Conversions", align: "right", render: (_v, row) => row.conversions > 0 ? formatNumber(row.conversions) : "—" },
+                { key: "revenue", label: "Revenue", align: "right", render: (_v, row) => row.revenue > 0 ? formatCurrency(row.revenue) : "—" },
+                { key: "efficiency", label: "Efficiency", align: "right", render: (_v, row) => row.platformKey === "googleads" || row.platformKey === "meta" ? `${row.efficiency.toFixed(2)}×` : row.platformKey === "ga4" || row.platformKey === "searchconsole" ? `${row.efficiency.toFixed(1)}%` : "—" },
+                { key: "prevEfficiency", label: "vs Prev", align: "right", render: (_v, row) => { const effChange = row.prevEfficiency != null ? pctChange(row.efficiency, row.prevEfficiency) : undefined; return effChange != null ? <span style={{ fontSize: 11, fontWeight: 600, color: effChange >= 0 ? "#10b981" : "#ef4444" }}>{effChange >= 0 ? "+" : ""}{effChange.toFixed(1)}%</span> : <span style={{ color: "var(--text-3)" }}>—</span>; } },
+                { key: "healthScore", label: "Health", align: "right", render: (_v, row) => <span style={{ fontSize: 11, fontWeight: 700, color: scoreColor(row.healthScore), background: `${scoreColor(row.healthScore)}15`, borderRadius: 4, padding: "2px 6px" }}>{row.healthScore}</span> },
+              ]}
+              pageSize={0}
+            />
           </SectionCard>
         )}
 
@@ -1248,53 +1221,20 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             Channel Efficiency Matrix
           </p>
           <div style={{ borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-              <thead>
-                <tr style={{ background: "var(--bg-subtle)", borderBottom: "1px solid var(--border)" }}>
-                  {["Platform", "Investment", "Traffic", "Conversions", "Revenue", "Efficiency", "vs Prev", "Health"].map(h => (
-                    <th key={h} style={{ padding: "10px 12px", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", textAlign: h === "Platform" ? "left" : "right" }}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {channelRows.map((row) => {
-                  const effChange = row.prevEfficiency != null ? pctChange(row.efficiency, row.prevEfficiency) : undefined;
-                  const config = CHANNEL_CONFIG[row.platformKey];
-                  const displayHealth = aiResult?.channelScores?.[row.platformKey] ?? row.healthScore;
-                  return (
-                    <tr key={row.platformKey} style={{ borderBottom: "1px solid var(--border)" }}>
-                      <td style={{ padding: "10px 12px", fontWeight: 600, color: "var(--text)" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: 4, background: config?.gradient ?? "#6366f1", flexShrink: 0 }} />
-                          {row.platform}
-                        </div>
-                      </td>
-                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>{row.investment > 0 ? formatCurrency(row.investment) : "—"}</td>
-                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(row.traffic)}</td>
-                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>{row.conversions > 0 ? formatNumber(row.conversions) : "—"}</td>
-                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>{row.revenue > 0 ? formatCurrency(row.revenue) : "—"}</td>
-                      <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 600, color: "var(--text)" }}>
-                        {row.platformKey === "googleads" || row.platformKey === "meta" ? `${row.efficiency.toFixed(2)}×` : row.platformKey === "ga4" || row.platformKey === "searchconsole" ? `${row.efficiency.toFixed(1)}%` : row.investment > 0 ? formatCurrency(row.investment) : "—"}
-                      </td>
-                      <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                        {effChange != null ? (
-                          <span style={{ fontSize: 11, fontWeight: 600, color: effChange >= 0 ? "#10b981" : "#ef4444" }}>
-                            {effChange >= 0 ? "+" : ""}{effChange.toFixed(1)}%
-                          </span>
-                        ) : <span style={{ color: "var(--text-3)" }}>—</span>}
-                      </td>
-                      <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: scoreColor(displayHealth), background: `${scoreColor(displayHealth)}15`, borderRadius: 4, padding: "2px 6px" }}>
-                          {displayHealth}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <DataTable<(typeof channelRows)[number]>
+              data={channelRows}
+              columns={[
+                { key: "platform", label: "Platform", render: (_v, row) => { const config = CHANNEL_CONFIG[row.platformKey]; return <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ width: 8, height: 8, borderRadius: 4, background: config?.gradient ?? "#6366f1", flexShrink: 0 }} />{row.platform}</div>; } },
+                { key: "investment", label: "Investment", align: "right", render: (_v, row) => row.investment > 0 ? formatCurrency(row.investment) : "—" },
+                { key: "traffic", label: "Traffic", align: "right", render: (_v, row) => formatNumber(row.traffic) },
+                { key: "conversions", label: "Conversions", align: "right", render: (_v, row) => row.conversions > 0 ? formatNumber(row.conversions) : "—" },
+                { key: "revenue", label: "Revenue", align: "right", render: (_v, row) => row.revenue > 0 ? formatCurrency(row.revenue) : "—" },
+                { key: "efficiency", label: "Efficiency", align: "right", render: (_v, row) => row.platformKey === "googleads" || row.platformKey === "meta" ? `${row.efficiency.toFixed(2)}×` : row.platformKey === "ga4" || row.platformKey === "searchconsole" ? `${row.efficiency.toFixed(1)}%` : row.investment > 0 ? formatCurrency(row.investment) : "—" },
+                { key: "prevEfficiency", label: "vs Prev", align: "right", render: (_v, row) => { const effChange = row.prevEfficiency != null ? pctChange(row.efficiency, row.prevEfficiency) : undefined; return effChange != null ? <span style={{ fontSize: 11, fontWeight: 600, color: effChange >= 0 ? "#10b981" : "#ef4444" }}>{effChange >= 0 ? "+" : ""}{effChange.toFixed(1)}%</span> : <span style={{ color: "var(--text-3)" }}>—</span>; } },
+                { key: "healthScore", label: "Health", align: "right", render: (_v, row) => { const displayHealth = aiResult?.channelScores?.[row.platformKey] ?? row.healthScore; return <span style={{ fontSize: 11, fontWeight: 700, color: scoreColor(displayHealth), background: `${scoreColor(displayHealth)}15`, borderRadius: 4, padding: "2px 6px" }}>{displayHealth}</span>; } },
+              ]}
+              pageSize={0}
+            />
           </div>
         </>
       )}
