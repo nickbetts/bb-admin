@@ -4,6 +4,8 @@ import { getSession } from "@/lib/auth";
 import { Users, FileText, TrendingUp, ArrowRight, Plus, Search, BarChart2, AlertTriangle, Clock, Settings, AlertCircle } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DashboardGreeting } from "@/components/dashboard/DashboardGreeting";
+import { DashboardStatValue } from "@/components/dashboard/DashboardStatValue";
+import { FavouriteToggle } from "@/components/ui/FavouriteToggle";
 
 const SEVERITY_COLOUR: Record<string, string> = {
   high:   "#ef4444",
@@ -90,7 +92,7 @@ export default async function DashboardPage() {
               <Users style={{ width: 20, height: 20, color: "var(--accent)" }} />
             </div>
           </div>
-          <p className="stat-card-value">{totalClients}</p>
+          <DashboardStatValue value={totalClients} />
         </div>
         <div className="stat-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -99,7 +101,7 @@ export default async function DashboardPage() {
               <FileText style={{ width: 20, height: 20, color: "var(--info)" }} />
             </div>
           </div>
-          <p className="stat-card-value">{totalReports}</p>
+          <DashboardStatValue value={totalReports} />
         </div>
         <div className="stat-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -108,10 +110,7 @@ export default async function DashboardPage() {
               <TrendingUp style={{ width: 20, height: 20, color: "var(--success)" }} />
             </div>
           </div>
-          <p className="stat-card-value">{activeIntegrationCount}</p>
-          <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6, lineHeight: 1.5 }}>
-            {activeIntegrationLabels.join(" · ") || "None configured"}
-          </p>
+          <DashboardStatValue value={activeIntegrationCount} subtitle={activeIntegrationLabels.join(" · ") || "None configured"} />
         </div>
         <div className="stat-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -120,8 +119,7 @@ export default async function DashboardPage() {
               <Clock style={{ width: 20, height: 20, color: "var(--warning)" }} />
             </div>
           </div>
-          <p className="stat-card-value">{inProgressCount}</p>
-          <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6 }}>Draft or in review</p>
+          <DashboardStatValue value={inProgressCount} subtitle="Draft or in review" />
         </div>
       </div>
 
@@ -162,7 +160,10 @@ export default async function DashboardPage() {
                       </p>
                     </div>
                   </div>
-                  <ArrowRight style={{ width: 16, height: 16, color: "var(--text-4)", flexShrink: 0 }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <FavouriteToggle id={client.slug} size={14} />
+                    <ArrowRight style={{ width: 16, height: 16, color: "var(--text-4)", flexShrink: 0 }} />
+                  </div>
                 </Link>
               ))
             )}

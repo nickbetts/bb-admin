@@ -319,6 +319,10 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
+  // ─── Filters ─────────────────────────────────────────────────────────────────
+  const [filterSeverity, setFilterSeverity] = useState<"all" | "high" | "medium" | "low">("all");
+  const [filterPlatform, setFilterPlatform] = useState<string>("all");
+
   const fetchSignals = useCallback(async () => {
     setLoading(true);
     setAiLoadingPlatforms(new Set());
@@ -1028,6 +1032,17 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
   const medium = signals.filter(s => s.severity === "medium");
   const low    = signals.filter(s => s.severity === "low");
 
+  // Apply filters
+  const filtered = signals.filter(s => {
+    if (filterSeverity !== "all" && s.severity !== filterSeverity) return false;
+    if (filterPlatform !== "all" && s.platform !== filterPlatform) return false;
+    return true;
+  });
+  const fHigh   = filtered.filter(s => s.severity === "high");
+  const fMedium = filtered.filter(s => s.severity === "medium");
+  const fLow    = filtered.filter(s => s.severity === "low");
+  const isFiltered = filterSeverity !== "all" || filterPlatform !== "all";
+
   const connectedPlatforms = [
     client.metaAccountId && "Meta",
     client.googleAdsCustomerId && "Google Ads",
@@ -1169,6 +1184,97 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
         })}
       </div>
 
+      {/* ── Filter pills ──────────────────────────────────────────────────── */}
+      {signals.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", marginRight: 2 }}>
+            Filter:
+          </span>
+          {/* Severity pills */}
+          {(["all", "high", "medium", "low"] as const).map((sev) => {
+            const count = sev === "all" ? signals.length : sev === "high" ? high.length : sev === "medium" ? medium.length : low.length;
+            if (sev !== "all" && count === 0) return null;
+            const active = filterSeverity === sev;
+            const colours: Record<string, { bg: string; activeBg: string; text: string }> = {
+              all:    { bg: "var(--border-subtle)", activeBg: "var(--accent)", text: active ? "#fff" : "var(--text-2)" },
+              high:   { bg: "var(--danger-bg)", activeBg: "var(--danger)", text: active ? "#fff" : "var(--danger-text)" },
+              medium: { bg: "var(--warning-bg)", activeBg: "#d97706", text: active ? "#fff" : "var(--warning-text)" },
+              low:    { bg: "var(--info-bg)", activeBg: "var(--info)", text: active ? "#fff" : "var(--info-text)" },
+            };
+            const c = colours[sev];
+            return (
+              <button
+                key={sev}
+                onClick={() => setFilterSeverity(sev)}
+                style={{
+                  fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 999, border: "none",
+                  background: active ? c.activeBg : c.bg, color: c.text,
+                  cursor: "pointer", transition: "all 0.15s ease",
+                }}
+              >
+                {sev === "all" ? "All" : sev.charAt(0).toUpperCase() + sev.slice(1)}{" "}
+                <span style={{ opacity: 0.8 }}>({count})</span>
+              </button>
+            );
+          })}
+
+          {/* Separator */}
+          {activePlatformsInSignals.length > 1 && (
+            <span style={{ width: 1, height: 16, background: "var(--border)", margin: "0 2px" }} />
+          )}
+
+          {/* Platform pills */}
+          {activePlatformsInSignals.length > 1 && (
+            <>
+              <button
+                onClick={() => setFilterPlatform("all")}
+                style={{
+                  fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 999, border: "none",
+                  background: filterPlatform === "all" ? "var(--accent)" : "var(--border-subtle)",
+                  color: filterPlatform === "all" ? "#fff" : "var(--text-2)",
+                  cursor: "pointer", transition: "all 0.15s ease",
+                }}
+              >
+                All platforms
+              </button>
+              {activePlatformsInSignals.map((p) => {
+                const active = filterPlatform === p;
+                const colours = PLATFORM_COLOURS[p] ?? { bg: "#f8fafc", text: "#475569", border: "#e2e8f0" };
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setFilterPlatform(active ? "all" : p)}
+                    style={{
+                      fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 999,
+                      border: `1px solid ${active ? colours.text : colours.border}`,
+                      background: active ? colours.text : colours.bg,
+                      color: active ? "#fff" : colours.text,
+                      cursor: "pointer", transition: "all 0.15s ease",
+                    }}
+                  >
+                    {p} ({signals.filter(s => s.platform === p).length})
+                  </button>
+                );
+              })}
+            </>
+          )}
+
+          {/* Clear filters */}
+          {isFiltered && (
+            <button
+              onClick={() => { setFilterSeverity("all"); setFilterPlatform("all"); }}
+              style={{
+                fontSize: 11, fontWeight: 500, padding: "3px 10px", borderRadius: 999, border: "none",
+                background: "transparent", color: "var(--accent)", cursor: "pointer",
+                textDecoration: "underline", textUnderlineOffset: 2,
+              }}
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
+
       {/* All-clear state */}
       {signals.length === 0 && (
         <div style={{
@@ -1192,12 +1298,40 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
         </div>
       )}
 
+      {/* Filtered results count */}
+      {isFiltered && filtered.length > 0 && (
+        <p style={{ fontSize: 12, color: "var(--text-3)", fontStyle: "italic" }}>
+          Showing {filtered.length} of {signals.length} signal{signals.length !== 1 ? "s" : ""}
+        </p>
+      )}
+
+      {/* No results for current filter */}
+      {isFiltered && filtered.length === 0 && signals.length > 0 && (
+        <div style={{
+          borderRadius: 12, border: "1px solid var(--border)", background: "var(--surface)",
+          padding: "28px 24px", textAlign: "center",
+        }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>
+            No signals match this filter
+          </p>
+          <button
+            onClick={() => { setFilterSeverity("all"); setFilterPlatform("all"); }}
+            style={{
+              fontSize: 13, fontWeight: 600, color: "var(--accent)", background: "none", border: "none",
+              cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2,
+            }}
+          >
+            Clear filters
+          </button>
+        </div>
+      )}
+
       {/* Severity groups */}
       {(
         [
-          ["high",   high]   as const,
-          ["medium", medium] as const,
-          ["low",    low]    as const,
+          ["high",   fHigh]   as const,
+          ["medium", fMedium] as const,
+          ["low",    fLow]    as const,
         ]
       ).map(([sev, items]) => {
         if (items.length === 0) return null;

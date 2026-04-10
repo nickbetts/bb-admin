@@ -33,6 +33,10 @@ import {
   Moon,
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/CommandPalette";
+import { KeyboardShortcutsHelp } from "@/components/ui/KeyboardShortcutsHelp";
+import { BackToTop } from "@/components/ui/BackToTop";
+import { TopLoadingBar } from "@/components/ui/TopLoadingBar";
+import { ScrollProgress } from "@/components/ui/ScrollProgress";
 
 interface NavItem {
   href: string;
@@ -336,6 +340,7 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === "undefined") return false;
     const stored = localStorage.getItem("theme");
@@ -356,17 +361,65 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
     localStorage.setItem("theme", next ? "dark" : "light");
   }
 
-  // Cmd+K / Ctrl+K to open command palette
+  // Cmd+K / Ctrl+K to open command palette, ? for shortcuts, G+key for navigation
   useEffect(() => {
+    let gPressed = false;
+    let gTimeout: ReturnType<typeof setTimeout> | null = null;
+
     function onKey(e: KeyboardEvent) {
+      // Don't intercept when user is typing in an input
+      const tag = (e.target as HTMLElement)?.tagName;
+      const isInput = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (e.target as HTMLElement)?.isContentEditable;
+
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setPaletteOpen(true);
+        return;
+      }
+
+      if (isInput) return;
+
+      // ? key — show keyboard shortcuts
+      if (e.key === "?" && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setShortcutsOpen(true);
+        return;
+      }
+
+      // G + key navigation
+      if (e.key === "g" || e.key === "G") {
+        if (!gPressed) {
+          gPressed = true;
+          gTimeout = setTimeout(() => { gPressed = false; }, 500);
+          return;
+        }
+      }
+
+      if (gPressed) {
+        gPressed = false;
+        if (gTimeout) clearTimeout(gTimeout);
+        const routes: Record<string, string> = {
+          d: "/dashboard",
+          c: "/clients",
+          r: "/reports",
+          s: "/settings",
+          t: "/tools/keyword-planner",
+          p: "/portfolio",
+          a: "/admin",
+        };
+        const route = routes[e.key.toLowerCase()];
+        if (route) {
+          e.preventDefault();
+          router.push(route);
+        }
       }
     }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      if (gTimeout) clearTimeout(gTimeout);
+    };
+  }, [router]);
 
   useEffect(() => {
     const check = () => {
@@ -534,6 +587,10 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
 
         <aside className={cn("sidebar sidebar-mobile", mobileOpen && "open")} aria-label="Main navigation">
           <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+          <KeyboardShortcutsHelp open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+          <BackToTop />
+          <TopLoadingBar />
+          <ScrollProgress />
           <div className="sidebar-logo">
             <div className="sidebar-logo-inner">
               <img src="/primary-logo-dark.svg" style={{ height: 28, width: "auto" }} alt="i3media" />
@@ -670,6 +727,10 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
         </button>
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <KeyboardShortcutsHelp open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <BackToTop />
+      <TopLoadingBar />
+      <ScrollProgress />
     </aside>
   );
 }

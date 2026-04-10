@@ -9,6 +9,7 @@ interface Toast {
   id: string;
   message: string;
   type: ToastType;
+  exiting?: boolean;
 }
 
 interface ToastContextValue {
@@ -27,17 +28,22 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const counterRef = useRef(0);
 
+  const startExit = useCallback((id: string) => {
+    setToasts((prev) => prev.map((t) => t.id === id ? { ...t, exiting: true } : t));
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 200); // matches toast-out animation duration
+  }, []);
+
   const toast = useCallback((message: string, type: ToastType = "success") => {
     const id = String(++counterRef.current);
     setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
-  }, []);
+    setTimeout(() => startExit(id), 4000);
+  }, [startExit]);
 
   const dismiss = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+    startExit(id);
+  }, [startExit]);
 
   const icons: Record<ToastType, React.ReactNode> = {
     success: <CheckCircle2 style={{ width: 16, height: 16, color: "var(--success)", flexShrink: 0 }} />,
@@ -86,7 +92,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 boxShadow: "var(--shadow)",
                 fontSize: 13,
                 color: "var(--text)",
-                animation: "toast-in 0.2s ease-out",
+                animation: t.exiting ? "toast-out 0.2s ease-in forwards" : "toast-in 0.2s ease-out",
               }}
             >
               {icons[t.type]}
@@ -100,7 +106,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               </button>
             </div>
           ))}
-          <style>{`@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+          <style>{`
+            @keyframes toast-in { from { opacity: 0; transform: translateY(8px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+            @keyframes toast-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(8px) scale(0.96); } }
+          `}</style>
         </div>
       )}
     </ToastContext>
