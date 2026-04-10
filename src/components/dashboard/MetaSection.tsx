@@ -974,24 +974,24 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
               </div>
             </div>
             <div style={{ overflowX: "auto", overflowY: "visible", borderRadius: "0 0 16px 16px" }}>
-              <table className="w-full text-xs" style={{ minWidth: 1080 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 1080 }}>
                 <thead>
-                  <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                    <th className="text-left px-6 py-4 font-medium" style={{ minWidth: 240 }}>Name</th>
-                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">Spend</th>
-                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">Impressions</th>
-                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">Clicks</th>
-                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">CTR</th>
-                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">CPC</th>
-                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">CPM</th>
-                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">{overview?.conversionLabel ?? "Conv."}</th>
-                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">CPA</th>
-                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">ROAS</th>
-                    <th className="text-right px-4 py-4 font-medium whitespace-nowrap">Freq.</th>
-                    <th className="text-right px-6 py-4 font-medium whitespace-nowrap">Budget</th>
+                  <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500, minWidth: 240 }}>Name</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Spend</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CPC</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CPM</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>{overview?.conversionLabel ?? "Conv."}</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CPA</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>ROAS</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Freq.</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Budget</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody>
                   {displayCampaigns.map((camp) => {
                     const prevC = prevCampaignsMap.get(camp.id);
                     const enriched = camp as CampaignEnriched;
@@ -1002,61 +1002,61 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                       <React.Fragment key={camp.id}>
                         {/* Campaign row */}
                         <tr
-                          className={`transition cursor-pointer ${isExpanded ? "bg-slate-50" : "hover:bg-slate-50"}`}
+                          className={`transition cursor-pointer ${isExpanded ? "bg-[var(--border-subtle)]" : "hover:bg-[var(--border-subtle)]"}`}
                           onClick={() => hasChildren && toggleCampaign(camp.id)}
                         >
-                          <td className="px-6 py-4" style={{ minWidth: 240 }}>
+                          <td style={{ padding: "12px 16px", color: "var(--text-2)", minWidth: 240 }}>
                             <div className="flex items-center gap-2">
                               {hasChildren ? (
-                                isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-[var(--text-3)] shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 text-[var(--text-3)] shrink-0" />
                               ) : <span className="w-3.5 shrink-0" />}
                               <div className="min-w-0">
-                                <p className="text-slate-800 font-semibold truncate">{camp.name}</p>
-                                <p className="text-slate-400 text-[11px] mt-0.5">
+                                <p className="text-[var(--text)] font-semibold truncate">{camp.name}</p>
+                                <p className="text-[var(--text-3)] text-[11px] mt-0.5">
                                   {enriched.objective || enriched.bidStrategy || camp.status}
                                   {campAdSets.length > 0 && ` · ${campAdSets.length} ad set${campAdSets.length > 1 ? "s" : ""}`}
                                 </p>
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             <div>{formatCurrency(camp.spend)}</div>
                             <Delta current={camp.spend} previous={prevC?.spend} format="currency" />
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             <div>{formatNumber(camp.impressions)}</div>
                             <Delta current={camp.impressions} previous={prevC?.impressions} format="count" />
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             <div>{formatNumber(camp.clicks)}</div>
                             <Delta current={camp.clicks} previous={prevC?.clicks} format="count" />
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             {camp.ctr.toFixed(2)}%
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             {formatCurrency(camp.cpc)}
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             {formatCurrency(camp.cpm)}
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             <div>{formatNumber(camp.conversions)}</div>
                             <Delta current={camp.conversions} previous={prevC?.conversions} format="count" />
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             {camp.conversions > 0 ? formatCurrency(camp.spend / camp.conversions) : "—"}
                           </td>
-                          <td className="px-4 py-4 text-right whitespace-nowrap">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             <span className={`font-semibold ${camp.roas >= 2 ? "text-emerald-600" : camp.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>
                               {camp.roas.toFixed(2)}x
                             </span>
                             <Delta current={camp.roas} previous={prevC?.roas} format="none" />
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600 whitespace-nowrap">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             {typeof enriched.frequency === "number" ? enriched.frequency.toFixed(2) : "—"}
                           </td>
-                          <td className="px-6 py-4 text-right text-slate-600 whitespace-nowrap">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             {enriched.dailyBudget != null
                               ? formatCurrency(enriched.dailyBudget) + "/d"
                               : enriched.lifetimeBudget != null
@@ -1073,45 +1073,45 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                             <React.Fragment key={adSet.id}>
                               {/* Ad set row */}
                               <tr
-                                className={`transition cursor-pointer ${asExpanded ? "bg-blue-50/40" : "hover:bg-slate-50"}`}
+                                className={`transition cursor-pointer ${asExpanded ? "bg-blue-50/40" : "hover:bg-[var(--border-subtle)]"}`}
                                 onClick={() => hasCreatives && toggleAdSet(adSet.id)}
                               >
-                                <td className="py-3" style={{ paddingLeft: 48 }}>
+                                <td style={{ padding: "12px 16px 12px 48px", color: "var(--text-2)" }}>
                                   <div className="flex items-center gap-2">
                                     {hasCreatives ? (
                                       asExpanded ? <ChevronDown className="h-3 w-3 text-blue-400 shrink-0" /> : <ChevronRight className="h-3 w-3 text-blue-400 shrink-0" />
                                     ) : <span className="w-3 shrink-0" />}
                                     <div className="min-w-0">
-                                      <p className="text-slate-700 font-medium truncate text-[11px]">
+                                      <p className="text-[var(--text)] font-medium truncate text-[11px]">
                                         <Layers className="h-3 w-3 inline-block mr-1 text-blue-400 -mt-0.5" />
                                         {adSet.name}
                                       </p>
-                                      <p className="text-slate-400 text-[10px] mt-0.5">
+                                      <p className="text-[var(--text-3)] text-[10px] mt-0.5">
                                         {adSet.optimizationGoal || adSet.status}
                                         {asCreatives.length > 0 && ` · ${asCreatives.length} ad${asCreatives.length > 1 ? "s" : ""}`}
                                       </p>
                                     </div>
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(adSet.spend)}</td>
-                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(adSet.impressions)}</td>
-                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(adSet.clicks)}</td>
-                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{adSet.ctr.toFixed(2)}%</td>
-                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(adSet.cpc)}</td>
-                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(adSet.cpm)}</td>
-                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(adSet.conversions)}</td>
-                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
+                                <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(adSet.spend)}</td>
+                                <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(adSet.impressions)}</td>
+                                <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(adSet.clicks)}</td>
+                                <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{adSet.ctr.toFixed(2)}%</td>
+                                <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(adSet.cpc)}</td>
+                                <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(adSet.cpm)}</td>
+                                <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(adSet.conversions)}</td>
+                                <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                                   {adSet.conversions > 0 ? formatCurrency(adSet.spend / adSet.conversions) : "—"}
                                 </td>
-                                <td className="px-4 py-3 text-right whitespace-nowrap">
+                                <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                                   <span className={`font-semibold text-[11px] ${adSet.roas >= 2 ? "text-emerald-600" : adSet.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>
                                     {adSet.roas.toFixed(2)}x
                                   </span>
                                 </td>
-                                <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
+                                <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                                   {adSet.frequency > 0 ? adSet.frequency.toFixed(2) : "—"}
                                 </td>
-                                <td className="px-6 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
+                                <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                                   {adSet.dailyBudget != null
                                     ? formatCurrency(adSet.dailyBudget) + "/d"
                                     : adSet.lifetimeBudget != null
@@ -1122,12 +1122,12 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                               {/* Expanded creatives */}
                               {asExpanded && asCreatives.map((cr) => (
                                 <tr key={cr.adId} className="hover:bg-violet-50/30 transition">
-                                  <td className="py-3" style={{ paddingLeft: 72 }}>
+                                  <td style={{ padding: "12px 16px 12px 72px", color: "var(--text-2)" }}>
                                     <div className="flex items-center gap-3">
                                       {/* Thumbnail — click to open lightbox */}
                                       <button
                                         type="button"
-                                        className="relative shrink-0 rounded-md overflow-hidden border border-slate-200 cursor-pointer hover:ring-2 hover:ring-indigo-300 transition-all"
+                                        className="relative shrink-0 rounded-md overflow-hidden border border-[var(--border)] cursor-pointer hover:ring-2 hover:ring-indigo-300 transition-all"
                                         style={{ width: 56, height: 56, background: "var(--bg)" }}
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -1154,7 +1154,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                                           />
                                         ) : (
                                           <div className="flex items-center justify-center w-full h-full">
-                                            <Image className="h-4 w-4 text-slate-300" />
+                                            <Image className="h-4 w-4 text-[var(--text-3)]" />
                                           </div>
                                         )}
                                         {cr.mediaType === "VIDEO" && (
@@ -1164,8 +1164,8 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                                         )}
                                       </button>
                                       <div className="min-w-0">
-                                        <p className="text-slate-700 font-medium truncate text-[11px]">{cr.adName}</p>
-                                        {cr.headline && <p className="text-slate-400 text-[10px] truncate mt-0.5">&ldquo;{cr.headline}&rdquo;</p>}
+                                        <p className="text-[var(--text)] font-medium truncate text-[11px]">{cr.adName}</p>
+                                        {cr.headline && <p className="text-[var(--text-3)] text-[10px] truncate mt-0.5">&ldquo;{cr.headline}&rdquo;</p>}
                                         <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider"
                                           style={{
                                             background: cr.mediaType === "VIDEO" ? "#ede9fe" : cr.mediaType === "CAROUSEL" ? "#dbeafe" : "#f1f5f9",
@@ -1176,25 +1176,25 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                                       </div>
                                     </div>
                                   </td>
-                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(cr.spend)}</td>
-                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(cr.impressions)}</td>
-                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(cr.clicks)}</td>
-                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{cr.ctr.toFixed(2)}%</td>
-                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(cr.cpc)}</td>
-                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatCurrency(cr.cpm)}</td>
-                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">{formatNumber(cr.conversions)}</td>
-                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
+                                  <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(cr.spend)}</td>
+                                  <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(cr.impressions)}</td>
+                                  <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(cr.clicks)}</td>
+                                  <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{cr.ctr.toFixed(2)}%</td>
+                                  <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(cr.cpc)}</td>
+                                  <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(cr.cpm)}</td>
+                                  <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(cr.conversions)}</td>
+                                  <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                                     {cr.conversions > 0 ? formatCurrency(cr.costPerConversion) : "—"}
                                   </td>
-                                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                                  <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                                     <span className={`font-semibold text-[11px] ${cr.roas >= 2 ? "text-emerald-600" : cr.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>
                                       {cr.roas.toFixed(2)}x
                                     </span>
                                   </td>
-                                  <td className="px-4 py-3 text-right text-slate-500 text-[11px] whitespace-nowrap">
+                                  <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                                     {cr.frequency > 0 ? cr.frequency.toFixed(2) : "—"}
                                   </td>
-                                  <td className="px-6 py-3 text-right text-slate-400 text-[11px] whitespace-nowrap">
+                                  <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                                     {cr.status}
                                   </td>
                                 </tr>
@@ -1334,22 +1334,22 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {show("lead_forms") && leadForms.length > 0 && (
         <SectionCard title="Lead Form Performance" subtitle={`${leadForms.length} form${leadForms.length !== 1 ? "s" : ""} with lead data`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 520 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 520 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Form Name</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Leads</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Cost per Lead</th>
-                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Total Spend</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Form Name</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Leads</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost per Lead</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Total Spend</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {leadForms.map((form) => (
-                  <tr key={form.formId} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{form.formName}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(form.leads)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(form.costPerLead)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(form.spend)}</td>
+                  <tr key={form.formId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{form.formName}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(form.leads)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(form.costPerLead)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(form.spend)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1362,17 +1362,17 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {show("relevance") && relevanceDiagnostics.length > 0 && (
         <SectionCard title="Ad Relevance Diagnostics" subtitle="Quality, engagement, and conversion ranking per ad">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 640 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Ad Name</th>
-                  <th className="text-center px-4 py-3 font-medium whitespace-nowrap">Quality</th>
-                  <th className="text-center px-4 py-3 font-medium whitespace-nowrap">Engagement</th>
-                  <th className="text-center px-4 py-3 font-medium whitespace-nowrap">Conversion</th>
-                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Impressions</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Ad Name</th>
+                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Quality</th>
+                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Engagement</th>
+                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conversion</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {relevanceDiagnostics.map((ad, idx) => {
                   const rankBadge = (rank: string | undefined | null) => {
                     const r = rank ?? "UNKNOWN";
@@ -1383,7 +1383,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                         ? "bg-amber-50 text-amber-700 border-amber-200"
                         : r === "BELOW_AVERAGE"
                           ? "bg-red-50 text-red-700 border-red-200"
-                          : "bg-slate-50 text-slate-500 border-slate-200";
+                          : "bg-[var(--border-subtle)] text-[var(--text-3)] border-[var(--border)]";
                     return (
                       <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`}>
                         {label}
@@ -1391,12 +1391,12 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                     );
                   };
                   return (
-                    <tr key={`${ad.adName}-${idx}`} className="hover:bg-slate-50 transition">
-                      <td className="px-6 py-3 text-slate-800 font-medium">{ad.adName}</td>
-                      <td className="px-4 py-3 text-center">{rankBadge(ad.qualityRanking)}</td>
-                      <td className="px-4 py-3 text-center">{rankBadge(ad.engagementRateRanking)}</td>
-                      <td className="px-4 py-3 text-center">{rankBadge(ad.conversionRateRanking)}</td>
-                      <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(ad.impressions)}</td>
+                    <tr key={`${ad.adName}-${idx}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{ad.adName}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>{rankBadge(ad.qualityRanking)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>{rankBadge(ad.engagementRateRanking)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>{rankBadge(ad.conversionRateRanking)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(ad.impressions)}</td>
                     </tr>
                   );
                 })}
@@ -1410,32 +1410,32 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {show("placements") && placements.length > 0 && (
         <SectionCard title="Placement Breakdown" subtitle={`Performance across ${placements.length} placement${placements.length !== 1 ? "s" : ""}`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 800 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 800 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Platform</th>
-                  <th className="text-left px-4 py-3 font-medium">Placement</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Spend</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Impressions</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Clicks</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">CTR</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">CPC</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Conv.</th>
-                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">ROAS</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Platform</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Placement</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Spend</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CPC</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>ROAS</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {placements.map((p, i) => (
-                  <tr key={`${p.publisherPlatform}-${p.placement}-${i}`} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium capitalize">{p.publisherPlatform}</td>
-                    <td className="px-4 py-3 text-slate-600 capitalize">{p.placement.replace(/_/g, " ")}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(p.spend)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(p.impressions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(p.clicks)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{p.ctr.toFixed(2)}%</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(p.cpc)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(p.conversions)}</td>
-                    <td className="px-6 py-3 text-right whitespace-nowrap">
+                  <tr key={`${p.publisherPlatform}-${p.placement}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{p.publisherPlatform}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{p.placement.replace(/_/g, " ")}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(p.spend)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.impressions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.clicks)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{p.ctr.toFixed(2)}%</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(p.cpc)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.conversions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                       <span className={`font-semibold ${p.roas >= 2 ? "text-emerald-600" : p.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>{p.roas.toFixed(2)}x</span>
                     </td>
                   </tr>
@@ -1450,26 +1450,26 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {show("audiences") && adSetAudiences.length > 0 && (
         <SectionCard title="Audience Targeting" subtitle={`Targeting details for ${adSetAudiences.length} ad set${adSetAudiences.length !== 1 ? "s" : ""}`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 700 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 700 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Ad Set</th>
-                  <th className="text-left px-4 py-3 font-medium">Age</th>
-                  <th className="text-left px-4 py-3 font-medium">Gender</th>
-                  <th className="text-left px-4 py-3 font-medium">Location</th>
-                  <th className="text-left px-4 py-3 font-medium">Interests</th>
-                  <th className="text-left px-6 py-3 font-medium">Custom Audiences</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Ad Set</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Age</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Gender</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Location</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Interests</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Custom Audiences</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {adSetAudiences.map((aud) => (
-                  <tr key={aud.adSetId} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{aud.adSetName}</td>
-                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{aud.ageMin != null && aud.ageMax != null ? `${aud.ageMin}–${aud.ageMax}` : "All"}</td>
-                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{aud.genders.length === 1 ? (aud.genders[0] === 1 ? "Male" : "Female") : "All"}</td>
-                    <td className="px-4 py-3 text-slate-600">{aud.geoSummary || "All locations"}</td>
-                    <td className="px-4 py-3 text-slate-600">{aud.interests.length > 0 ? aud.interests.slice(0, 3).join(", ") + (aud.interests.length > 3 ? ` +${aud.interests.length - 3}` : "") : "—"}</td>
-                    <td className="px-6 py-3 text-slate-600">{aud.customAudiences.length > 0 ? aud.customAudiences.map(c => c.name).join(", ") : "—"}</td>
+                  <tr key={aud.adSetId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{aud.adSetName}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{aud.ageMin != null && aud.ageMax != null ? `${aud.ageMin}–${aud.ageMax}` : "All"}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{aud.genders.length === 1 ? (aud.genders[0] === 1 ? "Male" : "Female") : "All"}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{aud.geoSummary || "All locations"}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{aud.interests.length > 0 ? aud.interests.slice(0, 3).join(", ") + (aud.interests.length > 3 ? ` +${aud.interests.length - 3}` : "") : "—"}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{aud.customAudiences.length > 0 ? aud.customAudiences.map(c => c.name).join(", ") : "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1502,30 +1502,30 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
               </BarChart>
             </ResponsiveContainer>
             <div style={{ overflowX: "auto", marginTop: 16 }}>
-              <table className="w-full text-xs" style={{ minWidth: 600 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
                 <thead>
-                  <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                    <th className="text-left px-6 py-3 font-medium">Age</th>
-                    <th className="text-left px-4 py-3 font-medium">Gender</th>
-                    <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Spend</th>
-                    <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Impressions</th>
-                    <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Clicks</th>
-                    <th className="text-right px-4 py-3 font-medium whitespace-nowrap">CTR</th>
-                    <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Conv.</th>
-                    <th className="text-right px-6 py-3 font-medium whitespace-nowrap">ROAS</th>
+                  <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Age</th>
+                    <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Gender</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Spend</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>ROAS</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody>
                   {demographicsData.map((d, i) => (
-                    <tr key={`${d.age}-${d.gender}-${i}`} className="hover:bg-slate-50 transition">
-                      <td className="px-6 py-3 text-slate-800 font-medium">{d.age}</td>
-                      <td className="px-4 py-3 text-slate-600 capitalize">{d.gender}</td>
-                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(d.spend)}</td>
-                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(d.impressions)}</td>
-                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(d.clicks)}</td>
-                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{d.ctr.toFixed(2)}%</td>
-                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(d.conversions)}</td>
-                      <td className="px-6 py-3 text-right whitespace-nowrap">
+                    <tr key={`${d.age}-${d.gender}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{d.age}</td>
+                      <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{d.gender}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(d.spend)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(d.impressions)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(d.clicks)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{d.ctr.toFixed(2)}%</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(d.conversions)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                         <span className={`font-semibold ${d.roas >= 2 ? "text-emerald-600" : d.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>{d.roas.toFixed(2)}x</span>
                       </td>
                     </tr>
@@ -1556,20 +1556,20 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {show("cost_per_action") && costPerAction.length > 0 && (
         <SectionCard title="Cost Per Action" subtitle="Breakdown by action type">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 400 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 400 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Action Type</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Count</th>
-                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Cost Per Action</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Action Type</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Count</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost Per Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {costPerAction.map((a) => (
-                  <tr key={a.actionType} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{a.actionType.replace(/_/g, " ").replace(/\./g, " › ").replace(/\b\w/g, c => c.toUpperCase())}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(a.value)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(a.costPerAction)}</td>
+                  <tr key={a.actionType} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{a.actionType.replace(/_/g, " ").replace(/\./g, " › ").replace(/\b\w/g, c => c.toUpperCase())}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(a.value)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(a.costPerAction)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1582,26 +1582,26 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {show("product_performance") && productPerformance.length > 0 && (
         <SectionCard title="Product Performance" subtitle={`${productPerformance.length} product${productPerformance.length !== 1 ? "s" : ""} with ad data`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 700 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 700 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Product</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Spend</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Impressions</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Clicks</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Purchases</th>
-                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Revenue</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Product</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Spend</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Purchases</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Revenue</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {productPerformance.map((p) => (
-                  <tr key={p.productId} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{p.productName}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(p.spend)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(p.impressions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(p.clicks)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(p.purchases)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(p.purchaseValue)}</td>
+                  <tr key={p.productId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{p.productName}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(p.spend)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.impressions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.clicks)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.purchases)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(p.purchaseValue)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1614,28 +1614,28 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {show("country_breakdown") && countryBreakdown.length > 0 && (
         <SectionCard title="Country Breakdown" subtitle={`Performance across ${countryBreakdown.length} ${countryBreakdown.length !== 1 ? "countries" : "country"}`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 600 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Country</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Spend</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Impressions</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Clicks</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">CTR</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">CPC</th>
-                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Conv.</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Country</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Spend</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CPC</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {countryBreakdown.map((c) => (
-                  <tr key={c.country} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{c.country}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(c.spend)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(c.impressions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(c.clicks)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{c.ctr.toFixed(2)}%</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(c.cpc)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(c.conversions)}</td>
+                  <tr key={c.country} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{c.country}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(c.spend)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(c.impressions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(c.clicks)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{c.ctr.toFixed(2)}%</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(c.cpc)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(c.conversions)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1648,15 +1648,15 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {show("attribution") && attributionSettings.length > 0 && (
         <SectionCard title="Attribution Settings" subtitle="Attribution windows per ad set">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 500 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 500 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Campaign</th>
-                  <th className="text-left px-4 py-3 font-medium">Ad Set</th>
-                  <th className="text-left px-6 py-3 font-medium">Attribution Window</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Campaign</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Ad Set</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Attribution Window</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {attributionSettings.map((a) => {
                   let windowLabel = a.attributionSpec;
                   try {
@@ -1664,10 +1664,10 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                     if (Array.isArray(spec)) windowLabel = spec.map((s: Record<string, string>) => `${s.event_type}: ${s.window_days}d`).join(", ");
                   } catch { /* use raw string */ }
                   return (
-                    <tr key={a.adSetId} className="hover:bg-slate-50 transition">
-                      <td className="px-6 py-3 text-slate-600">{a.campaignName}</td>
-                      <td className="px-4 py-3 text-slate-800 font-medium">{a.adSetName}</td>
-                      <td className="px-6 py-3 text-slate-600">{windowLabel}</td>
+                    <tr key={a.adSetId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{a.campaignName}</td>
+                      <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{a.adSetName}</td>
+                      <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{windowLabel}</td>
                     </tr>
                   );
                 })}
@@ -1681,20 +1681,20 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {show("action_breakdowns") && actionBreakdowns.length > 0 && (
         <SectionCard title="Action Breakdowns" subtitle="All tracked conversion actions">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 400 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 400 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Action Type</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Count</th>
-                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Cost Per Action</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Action Type</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Count</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost Per Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {actionBreakdowns.map((a) => (
-                  <tr key={a.actionType} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{a.actionType.replace(/_/g, " ").replace(/\./g, " › ").replace(/\b\w/g, c => c.toUpperCase())}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(a.value)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(a.costPerAction)}</td>
+                  <tr key={a.actionType} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{a.actionType.replace(/_/g, " ").replace(/\./g, " › ").replace(/\b\w/g, c => c.toUpperCase())}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(a.value)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(a.costPerAction)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1707,20 +1707,20 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {show("instant_experience") && instantExperience.length > 0 && (
         <SectionCard title="Instant Experience" subtitle="Canvas / instant experience engagement">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 480 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 480 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Ad Name</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Opens</th>
-                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Outbound Clicks</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Ad Name</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Opens</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Outbound Clicks</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {instantExperience.map((ie) => (
-                  <tr key={ie.adId} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{ie.adName}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(ie.clicksToOpen)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{formatNumber(ie.outboundClicks)}</td>
+                  <tr key={ie.adId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{ie.adName}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(ie.clicksToOpen)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(ie.outboundClicks)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1733,20 +1733,20 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {show("custom_conversions") && customConversions.length > 0 && (
         <SectionCard title="Custom Conversions" subtitle={`${customConversions.length} custom conversion${customConversions.length !== 1 ? "s" : ""} configured`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 480 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 480 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Name</th>
-                  <th className="text-left px-4 py-3 font-medium">Event Type</th>
-                  <th className="text-left px-6 py-3 font-medium">Rule</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Name</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Event Type</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Rule</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {customConversions.map((cc) => (
-                  <tr key={cc.id} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{cc.name}</td>
-                    <td className="px-4 py-3 text-slate-600">{cc.customEventType.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</td>
-                    <td className="px-6 py-3 text-slate-500 text-[10px] font-mono truncate max-w-[240px]">{cc.pixelRule}</td>
+                  <tr key={cc.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{cc.name}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{cc.customEventType.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 240 }}>{cc.pixelRule}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1759,22 +1759,22 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {show("saved_audiences") && savedAudiences.length > 0 && (
         <SectionCard title="Saved & Custom Audiences" subtitle={`${savedAudiences.length} audience${savedAudiences.length !== 1 ? "s" : ""} available`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 520 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 520 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Audience Name</th>
-                  <th className="text-left px-4 py-3 font-medium">Type</th>
-                  <th className="text-left px-4 py-3 font-medium">Subtype</th>
-                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Approx. Size</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Audience Name</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Type</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Subtype</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Approx. Size</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {savedAudiences.map((a) => (
-                  <tr key={a.id} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{a.name}</td>
-                    <td className="px-4 py-3 text-slate-600 capitalize">{a.type.replace(/_/g, " ")}</td>
-                    <td className="px-4 py-3 text-slate-600 capitalize">{a.subtype ? a.subtype.replace(/_/g, " ").toLowerCase() : "—"}</td>
-                    <td className="px-6 py-3 text-right text-slate-600 whitespace-nowrap">{a.approximateCount > 0 ? formatNumber(a.approximateCount) : "—"}</td>
+                  <tr key={a.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{a.name}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{a.type.replace(/_/g, " ")}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{a.subtype ? a.subtype.replace(/_/g, " ").toLowerCase() : "—"}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{a.approximateCount > 0 ? formatNumber(a.approximateCount) : "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1787,29 +1787,29 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {show("spending_limits") && spendingLimits.length > 0 && (
         <SectionCard title="Campaign Spending Limits" subtitle="Budget caps and current spend">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 640 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Campaign</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Spend Cap</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Daily Budget</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Lifetime Budget</th>
-                  <th className="text-right px-4 py-3 font-medium whitespace-nowrap">Amount Spent</th>
-                  <th className="text-right px-6 py-3 font-medium whitespace-nowrap">Utilisation</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Campaign</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Spend Cap</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Daily Budget</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Lifetime Budget</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Amount Spent</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Utilisation</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {spendingLimits.map((s) => {
                   const cap = s.spendingLimit ?? s.lifetimeBudget;
                   const util = cap && cap > 0 ? (s.amountSpent / cap) * 100 : null;
                   return (
-                    <tr key={s.campaignId} className="hover:bg-slate-50 transition">
-                      <td className="px-6 py-3 text-slate-800 font-medium">{s.campaignName}</td>
-                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{s.spendingLimit != null ? formatCurrency(s.spendingLimit) : "—"}</td>
-                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{s.dailyBudget != null ? formatCurrency(s.dailyBudget) : "—"}</td>
-                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{s.lifetimeBudget != null ? formatCurrency(s.lifetimeBudget) : "—"}</td>
-                      <td className="px-4 py-3 text-right text-slate-600 whitespace-nowrap">{formatCurrency(s.amountSpent)}</td>
-                      <td className="px-6 py-3 text-right whitespace-nowrap">
+                    <tr key={s.campaignId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{s.campaignName}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{s.spendingLimit != null ? formatCurrency(s.spendingLimit) : "—"}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{s.dailyBudget != null ? formatCurrency(s.dailyBudget) : "—"}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{s.lifetimeBudget != null ? formatCurrency(s.lifetimeBudget) : "—"}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(s.amountSpent)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                         {util != null ? (
                           <span className={`font-semibold ${util >= 90 ? "text-red-600" : util >= 70 ? "text-amber-600" : "text-emerald-600"}`}>{util.toFixed(0)}%</span>
                         ) : "—"}
@@ -1854,7 +1854,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
         >
           <button
             type="button"
-            className="absolute top-4 right-4 text-white hover:text-slate-300 z-10"
+            className="absolute top-4 right-4 text-white hover:text-[var(--text-3)] z-10"
             onClick={(e) => { e.stopPropagation(); setLightbox(null); }}
             aria-label="Close lightbox"
           >

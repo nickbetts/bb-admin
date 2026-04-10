@@ -646,38 +646,38 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="text-left py-2 pr-4 text-slate-400 font-medium text-xs">
+                <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>
                     Keyword
                   </th>
-                  <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">
+                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>
                     Position
                   </th>
-                  <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">
+                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>
                     Change
                   </th>
-                  <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>
                     Volume
                   </th>
-                  <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>
                     Traffic %
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
                 {keywords.map((kw, i) => {
                   const change = kw.previousPosition - kw.position; // positive = moved up
                   return (
-                    <tr key={i} className="hover:bg-slate-50 transition">
-                      <td className="py-3.5 pr-4">
-                        <p className="text-slate-800 font-medium truncate max-w-[200px]">
+                    <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>
+                        <p className="text-[var(--text)] font-medium truncate max-w-[200px]">
                           {kw.keyword}
                         </p>
-                        <p className="text-xs text-slate-500 truncate max-w-[200px]">
+                        <p className="text-xs text-[var(--text-3)] truncate max-w-[200px]">
                           {kw.url}
                         </p>
                       </td>
-                      <td className="py-2.5 px-3 text-center">
+                      <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
                         <span
                           className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold ${
                             kw.position <= 3
@@ -686,13 +686,13 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                               ? "bg-blue-50 text-blue-700"
                               : kw.position <= 20
                               ? "bg-amber-50 text-amber-700"
-                              : "bg-slate-100 text-slate-600"
+                              : "bg-[var(--border-subtle)] text-[var(--text-2)]"
                           }`}
                         >
                           {kw.position}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-center">
+                      <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
                         {change > 0 ? (
                           <span className="flex items-center justify-center gap-0.5 text-xs text-emerald-600">
                             <CssArrowUp />
@@ -704,15 +704,15 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                             {Math.abs(change)}
                           </span>
                         ) : (
-                          <span className="flex items-center justify-center text-slate-500">
+                          <span className="flex items-center justify-center text-[var(--text-3)]">
                             <CssMinus />
                           </span>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-right text-slate-600 text-xs">
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                         {formatNumber(kw.searchVolume)}
                       </td>
-                      <td className="py-2.5 px-3 text-right text-slate-600 text-xs">
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                         {kw.trafficPercent.toFixed(1)}%
                       </td>
                     </tr>
@@ -735,39 +735,39 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50">
-                    <th className="text-left py-2 pr-4 text-slate-400 font-medium text-xs">Keyword</th>
-                    <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Current</th>
-                    <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Previous</th>
-                    <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Gain</th>
-                    <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Volume</th>
-                    <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Traffic %</th>
+                  <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
+                    <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Keyword</th>
+                    <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Current</th>
+                    <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Previous</th>
+                    <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Gain</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Volume</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Traffic %</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
                   {rankMovers.map((kw, i) => {
                     const gain = kw.previousPosition - kw.position;
                     return (
-                      <tr key={i} className="hover:bg-slate-50 transition">
-                        <td className="py-3 pr-4">
-                          <p className="text-slate-800 font-medium truncate max-w-[200px]">{kw.keyword}</p>
-                          <p className="text-xs text-slate-500 truncate max-w-[200px]">{kw.url}</p>
+                      <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                        <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>
+                          <p className="text-[var(--text)] font-medium truncate max-w-[200px]">{kw.keyword}</p>
+                          <p className="text-xs text-[var(--text-3)] truncate max-w-[200px]">{kw.url}</p>
                         </td>
-                        <td className="py-2.5 px-3 text-center">
+                        <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
                           <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold ${
                             kw.position <= 3 ? "bg-emerald-50 text-emerald-700" :
                             kw.position <= 10 ? "bg-blue-50 text-blue-700" :
-                            kw.position <= 20 ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"
+                            kw.position <= 20 ? "bg-amber-50 text-amber-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"
                           }`}>{kw.position}</span>
                         </td>
-                        <td className="py-2.5 px-3 text-center text-slate-500 text-xs">{kw.previousPosition}</td>
-                        <td className="py-2.5 px-3 text-center">
+                        <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>{kw.previousPosition}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
                           <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
                             <CssArrowUp />+{gain}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 text-right text-slate-600 text-xs">{formatNumber(kw.searchVolume)}</td>
-                        <td className="py-2.5 px-3 text-right text-slate-600 text-xs">{kw.trafficPercent.toFixed(1)}%</td>
+                        <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(kw.searchVolume)}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{kw.trafficPercent.toFixed(1)}%</td>
                       </tr>
                     );
                   })}
@@ -791,15 +791,15 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="text-left py-2 pr-4 text-slate-400 font-medium text-xs">Keyword</th>
-                  <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Position</th>
-                  <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Prev</th>
-                  <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Change</th>
-                  <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Volume</th>
+                <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Keyword</th>
+                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Position</th>
+                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Prev</th>
+                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Change</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Volume</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
                 {trackedKeywords
                   .sort((a, b) => {
                     if (a.position === 0) return 1;
@@ -811,35 +811,35 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                     const change = kw.previousPosition != null && kw.previousPosition > 0 && kw.position > 0
                       ? kw.previousPosition - kw.position : null;
                     return (
-                      <tr key={i} className="hover:bg-slate-50 transition">
-                        <td className="py-3 pr-4">
-                          <p className="text-slate-800 font-medium truncate max-w-[220px]">{kw.keyword}</p>
-                          {kw.landingPage && <p className="text-xs text-slate-400 truncate max-w-[220px]">{kw.landingPage}</p>}
+                      <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                        <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>
+                          <p className="text-[var(--text)] font-medium truncate max-w-[220px]">{kw.keyword}</p>
+                          {kw.landingPage && <p className="text-xs text-[var(--text-3)] truncate max-w-[220px]">{kw.landingPage}</p>}
                         </td>
-                        <td className="py-2.5 px-3 text-center">
+                        <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
                           {kw.position > 0 ? (
                             <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold ${
                               kw.position <= 3 ? "bg-emerald-50 text-emerald-700" :
                               kw.position <= 10 ? "bg-blue-50 text-blue-700" :
-                              kw.position <= 20 ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"
+                              kw.position <= 20 ? "bg-amber-50 text-amber-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"
                             }`}>{kw.position}</span>
-                          ) : <span className="text-slate-400 text-xs">—</span>}
+                          ) : <span className="text-[var(--text-3)] text-xs">—</span>}
                         </td>
-                        <td className="py-2.5 px-3 text-center text-slate-500 text-xs">
+                        <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
                           {kw.previousPosition ?? "—"}
                         </td>
-                        <td className="py-2.5 px-3 text-center">
+                        <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
                           {change != null && (
                             <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
                               change > 0 ? "bg-emerald-50 text-emerald-700" :
-                              change < 0 ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-500"
+                              change < 0 ? "bg-red-50 text-red-700" : "bg-[var(--border-subtle)] text-[var(--text-3)]"
                             }`}>
                               {change > 0 ? <CssArrowUp /> : change < 0 ? <CssArrowDown /> : <CssMinus />}
                               {change > 0 ? `+${change}` : change < 0 ? `${change}` : "="}
                             </span>
                           )}
                         </td>
-                        <td className="py-2.5 px-3 text-right text-slate-600 text-xs">{formatNumber(kw.searchVolume)}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(kw.searchVolume)}</td>
                       </tr>
                     );
                   })}
@@ -858,35 +858,35 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="text-left py-2 px-4 text-slate-400 font-medium text-xs">Source Domain</th>
-                  <th className="text-left py-2 px-3 text-slate-400 font-medium text-xs">Target URL</th>
-                  <th className="text-left py-2 px-3 text-slate-400 font-medium text-xs">Anchor Text</th>
-                  <th className="text-right py-2 px-4 text-slate-400 font-medium text-xs">Authority</th>
+                <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Source Domain</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Target URL</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Anchor Text</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Authority</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
                 {backlinks.map((bl, i) => {
                   let sourceDomain = bl.sourceUrl;
                   try { sourceDomain = new URL(bl.sourceUrl).hostname; } catch {}
                   let targetPath = bl.targetUrl;
                   try { const u = new URL(bl.targetUrl); targetPath = u.pathname + u.search; } catch {}
                   return (
-                    <tr key={i} className="hover:bg-slate-50 transition">
-                      <td className="py-3 px-4">
+                    <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>
                         <a href={bl.sourceUrl} target="_blank" rel="noopener noreferrer"
-                          className="font-medium text-slate-800 hover:text-indigo-600 transition truncate max-w-[180px] block">
+                          className="font-medium text-[var(--text)] hover:text-indigo-600 transition truncate max-w-[180px] block">
                           {sourceDomain}
                         </a>
                       </td>
-                      <td className="py-3 px-3 text-slate-500 text-xs truncate max-w-[160px]">{targetPath}</td>
-                      <td className="py-3 px-3 text-slate-500 text-xs truncate max-w-[140px]">
-                        {bl.anchorText || <span className="italic text-slate-400">No anchor</span>}
+                      <td style={{ padding: "12px 16px", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 160 }}>{targetPath}</td>
+                      <td style={{ padding: "12px 16px", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 140 }}>
+                        {bl.anchorText || <span className="italic text-[var(--text-3)]">No anchor</span>}
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                         <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold ${
                           bl.authority >= 60 ? "bg-emerald-50 text-emerald-700" :
-                          bl.authority >= 30 ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-600"
+                          bl.authority >= 30 ? "bg-blue-50 text-blue-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"
                         }`}>{bl.authority}</span>
                       </td>
                     </tr>
@@ -912,63 +912,63 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           ) : (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                <div className="rounded-xl bg-slate-50 p-4 text-center">
-                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-1">AI Visibility Score</p>
+                <div className="rounded-xl bg-[var(--border-subtle)] p-4 text-center">
+                  <p className="text-xs text-[var(--text-3)] font-medium uppercase tracking-wide mb-1">AI Visibility Score</p>
                   <p className="text-2xl font-bold text-indigo-600">{aiVisibility.aiVisibilityScore.toFixed(1)}%</p>
-                  <p className="text-xs text-slate-400 mt-0.5">of tracked keywords</p>
+                  <p className="text-xs text-[var(--text-3)] mt-0.5">of tracked keywords</p>
                 </div>
-                <div className="rounded-xl bg-slate-50 p-4 text-center">
-                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-1">Brand Citations</p>
+                <div className="rounded-xl bg-[var(--border-subtle)] p-4 text-center">
+                  <p className="text-xs text-[var(--text-3)] font-medium uppercase tracking-wide mb-1">Brand Citations</p>
                   <p className="text-2xl font-bold text-emerald-600">{aiVisibility.brandCitations}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">in AI Overviews</p>
+                  <p className="text-xs text-[var(--text-3)] mt-0.5">in AI Overviews</p>
                 </div>
-                <div className="rounded-xl bg-slate-50 p-4 text-center">
-                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-1">AI Overview Keywords</p>
+                <div className="rounded-xl bg-[var(--border-subtle)] p-4 text-center">
+                  <p className="text-xs text-[var(--text-3)] font-medium uppercase tracking-wide mb-1">AI Overview Keywords</p>
                   <p className="text-2xl font-bold text-blue-600">{aiVisibility.aiOverviewKeywords}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">trigger AI Overviews</p>
+                  <p className="text-xs text-[var(--text-3)] mt-0.5">trigger AI Overviews</p>
                 </div>
-                <div className="rounded-xl bg-slate-50 p-4 text-center">
-                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-1">Total Tracked</p>
-                  <p className="text-2xl font-bold text-slate-700">{aiVisibility.totalTracked}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">keywords monitored</p>
+                <div className="rounded-xl bg-[var(--border-subtle)] p-4 text-center">
+                  <p className="text-xs text-[var(--text-3)] font-medium uppercase tracking-wide mb-1">Total Tracked</p>
+                  <p className="text-2xl font-bold text-[var(--text)]">{aiVisibility.totalTracked}</p>
+                  <p className="text-xs text-[var(--text-3)] mt-0.5">keywords monitored</p>
                 </div>
               </div>
               {aiVisibility.keywords.some((k) => k.hasAIOverview) && (
                 <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Keywords with AI Overview presence</p>
+                  <p className="text-xs font-semibold text-[var(--text-3)] uppercase tracking-wide mb-2">Keywords with AI Overview presence</p>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-slate-100 bg-slate-50">
-                          <th className="text-left py-2 px-4 text-slate-400 font-medium text-xs">Keyword</th>
-                          <th className="text-center py-2 px-3 text-slate-400 font-medium text-xs">Rank</th>
-                          <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Volume</th>
-                          <th className="text-center py-2 px-4 text-slate-400 font-medium text-xs">AI Overview</th>
-                          <th className="text-center py-2 px-4 text-slate-400 font-medium text-xs">Brand Cited</th>
+                        <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
+                          <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Keyword</th>
+                          <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Rank</th>
+                          <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Volume</th>
+                          <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>AI Overview</th>
+                          <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Brand Cited</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
                         {aiVisibility.keywords
                           .filter((k) => k.hasAIOverview)
                           .sort((a, b) => (b.brandInAIOverview ? 1 : 0) - (a.brandInAIOverview ? 1 : 0) || a.position - b.position)
                           .map((kw, i) => (
-                            <tr key={i} className="hover:bg-slate-50 transition">
-                              <td className="py-2.5 px-4 text-slate-800 font-medium max-w-[200px] truncate">{kw.keyword}</td>
-                              <td className="py-2.5 px-3 text-center">
+                            <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                              <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{kw.keyword}</td>
+                              <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
                                 <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold ${
                                   kw.position <= 3 ? "bg-emerald-50 text-emerald-700" :
-                                  kw.position <= 10 ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-600"
+                                  kw.position <= 10 ? "bg-blue-50 text-blue-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"
                                 }`}>{kw.position || "—"}</span>
                               </td>
-                              <td className="py-2.5 px-3 text-right text-slate-600 text-xs">{formatNumber(kw.searchVolume)}</td>
-                              <td className="py-2.5 px-4 text-center">
+                              <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(kw.searchVolume)}</td>
+                              <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
                                 <span className="inline-block w-2 h-2 rounded-full bg-blue-400" title="AI Overview present" />
                               </td>
-                              <td className="py-2.5 px-4 text-center">
+                              <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
                                 {kw.brandInAIOverview ? (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">✓ Cited</span>
                                 ) : (
-                                  <span className="text-slate-300 text-xs">—</span>
+                                  <span className="text-[var(--text-3)] text-xs">—</span>
                                 )}
                               </td>
                             </tr>
@@ -989,39 +989,39 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="text-left py-2 px-4 text-slate-400 font-medium text-xs">Domain</th>
-                  <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Common KW</th>
-                  <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Organic KW</th>
-                  <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Traffic</th>
-                  <th className="text-right py-2 px-4 text-slate-400 font-medium text-xs">Traffic Value</th>
+                <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Domain</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Common KW</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Organic KW</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Traffic</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Traffic Value</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
                 {competitors.map((comp, i) => (
-                  <tr key={i} className="hover:bg-slate-50 transition">
-                    <td className="py-3 px-4">
+                  <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>
                       <a
                         href={`https://${comp.domain}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-medium text-slate-800 hover:text-indigo-600 transition"
+                        className="font-medium text-[var(--text)] hover:text-indigo-600 transition"
                       >
                         {comp.domain}
                       </a>
                     </td>
-                    <td className="py-3 px-3 text-right">
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
                         {formatNumber(comp.commonKeywords)}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-right text-slate-600 text-xs">
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                       {formatNumber(comp.organicKeywords)}
                     </td>
-                    <td className="py-3 px-3 text-right text-slate-600 text-xs">
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                       {formatNumber(comp.organicTraffic)}
                     </td>
-                    <td className="py-3 px-4 text-right text-slate-600 text-xs">
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                       {formatCurrency(comp.organicCost)}
                     </td>
                   </tr>
@@ -1195,28 +1195,28 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       {show("topic_research") && topicResearch && (
         <SectionCard title="Topic Research" subtitle={`${topicResearch.topic} — volume ${formatNumber(topicResearch.volume)}, difficulty ${topicResearch.difficulty}`}>
           <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="bg-slate-50 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Volume</p>
-              <p className="text-lg font-bold text-slate-800">{formatNumber(topicResearch.volume)}</p>
+            <div className="bg-[var(--border-subtle)] rounded-lg p-3 text-center">
+              <p className="text-[10px] text-[var(--text-3)] uppercase tracking-wider">Volume</p>
+              <p className="text-lg font-bold text-[var(--text)]">{formatNumber(topicResearch.volume)}</p>
             </div>
-            <div className="bg-slate-50 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Difficulty</p>
-              <p className="text-lg font-bold text-slate-800">{topicResearch.difficulty}%</p>
+            <div className="bg-[var(--border-subtle)] rounded-lg p-3 text-center">
+              <p className="text-[10px] text-[var(--text-3)] uppercase tracking-wider">Difficulty</p>
+              <p className="text-lg font-bold text-[var(--text)]">{topicResearch.difficulty}%</p>
             </div>
-            <div className="bg-slate-50 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Efficiency</p>
-              <p className="text-lg font-bold text-slate-800">{topicResearch.topicEfficiency.toFixed(1)}</p>
+            <div className="bg-[var(--border-subtle)] rounded-lg p-3 text-center">
+              <p className="text-[10px] text-[var(--text-3)] uppercase tracking-wider">Efficiency</p>
+              <p className="text-lg font-bold text-[var(--text)]">{topicResearch.topicEfficiency.toFixed(1)}</p>
             </div>
           </div>
           {topicResearch.subtopics && topicResearch.subtopics.length > 0 && (
             <div className="space-y-3">
               {topicResearch.subtopics.slice(0, 10).map((st, i) => (
-                <div key={i} className="border border-slate-100 rounded-lg p-3">
-                  <p className="text-xs font-semibold text-slate-800">{st.headline}</p>
+                <div key={i} className="border border-[var(--border-subtle)] rounded-lg p-3">
+                  <p className="text-xs font-semibold text-[var(--text)]">{st.headline}</p>
                   {st.questions && st.questions.length > 0 && (
                     <ul className="mt-1 space-y-0.5">
                       {st.questions.slice(0, 3).map((q, qi) => (
-                        <li key={qi} className="text-[11px] text-slate-500">• {q}</li>
+                        <li key={qi} className="text-[11px] text-[var(--text-3)]">• {q}</li>
                       ))}
                     </ul>
                   )}
@@ -1231,8 +1231,8 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       {show("site_audit") && siteAudit && (
         <SectionCard title="Site Audit Summary" subtitle={`${formatNumber(siteAudit.totalPages)} pages crawled`}>
           <div className="grid grid-cols-4 gap-4 mb-4">
-            <div className="bg-slate-50 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Health Score</p>
+            <div className="bg-[var(--border-subtle)] rounded-lg p-3 text-center">
+              <p className="text-[10px] text-[var(--text-3)] uppercase tracking-wider">Health Score</p>
               <p className={`text-lg font-bold ${siteAudit.healthScore >= 80 ? "text-emerald-600" : siteAudit.healthScore >= 50 ? "text-amber-600" : "text-red-600"}`}>{siteAudit.healthScore}%</p>
             </div>
             <div className="bg-red-50 rounded-lg p-3 text-center">
@@ -1243,26 +1243,26 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
               <p className="text-[10px] text-amber-500 uppercase tracking-wider">Warnings</p>
               <p className="text-lg font-bold text-amber-600">{formatNumber(siteAudit.warnings)}</p>
             </div>
-            <div className="bg-slate-50 rounded-lg p-3 text-center">
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Notices</p>
-              <p className="text-lg font-bold text-slate-600">{formatNumber(siteAudit.notices)}</p>
+            <div className="bg-[var(--border-subtle)] rounded-lg p-3 text-center">
+              <p className="text-[10px] text-[var(--text-3)] uppercase tracking-wider">Notices</p>
+              <p className="text-lg font-bold text-[var(--text-2)]">{formatNumber(siteAudit.notices)}</p>
             </div>
           </div>
           {siteAudit.issues && siteAudit.issues.length > 0 && (
-            <table className="w-full text-xs">
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Issue</th>
-                  <th className="text-center px-4 py-3 font-medium">Severity</th>
-                  <th className="text-right px-6 py-3 font-medium">Count</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Issue</th>
+                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Severity</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Count</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {siteAudit.issues.map((issue, i) => (
-                  <tr key={i} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800">{issue.title}</td>
-                    <td className="px-4 py-3 text-center"><span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${issue.severity === "error" ? "bg-red-100 text-red-700" : issue.severity === "warning" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{issue.severity}</span></td>
-                    <td className="px-6 py-3 text-right text-slate-600">{formatNumber(issue.count)}</td>
+                  <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)" }}>{issue.title}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}><span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${issue.severity === "error" ? "bg-red-100 text-red-700" : issue.severity === "warning" ? "bg-amber-100 text-amber-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"}`}>{issue.severity}</span></td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(issue.count)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1276,10 +1276,10 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
         <SectionCard title="Ad Copy Intelligence" subtitle={`${adCopyIntelligence.length} competitor ad${adCopyIntelligence.length !== 1 ? "s" : ""} detected`}>
           <div className="space-y-3">
             {adCopyIntelligence.slice(0, 15).map((ad, i) => (
-              <div key={i} className="border border-slate-100 rounded-lg p-3">
+              <div key={i} className="border border-[var(--border-subtle)] rounded-lg p-3">
                 <p className="text-xs font-semibold text-indigo-600">{ad.title}</p>
-                <p className="text-[11px] text-slate-600 mt-0.5">{ad.description}</p>
-                <div className="flex items-center gap-3 mt-1 text-[10px] text-slate-400">
+                <p className="text-[11px] text-[var(--text-2)] mt-0.5">{ad.description}</p>
+                <div className="flex items-center gap-3 mt-1 text-[10px] text-[var(--text-3)]">
                   <span className="truncate max-w-[200px]">{ad.url}</span>
                   <span>Keyword: {ad.keyword}</span>
                   <span>Pos {ad.position}</span>
@@ -1295,22 +1295,22 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       {show("display_advertising") && displayAdvertising.length > 0 && (
         <SectionCard title="Display Advertising Competitors" subtitle={`${displayAdvertising.length} competitor${displayAdvertising.length !== 1 ? "s" : ""}`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 480 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 480 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Domain</th>
-                  <th className="text-right px-4 py-3 font-medium">Display Ads</th>
-                  <th className="text-right px-4 py-3 font-medium">Traffic</th>
-                  <th className="text-right px-6 py-3 font-medium">Est. Cost</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Domain</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Display Ads</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Traffic</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Est. Cost</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {displayAdvertising.map((da) => (
-                  <tr key={da.domain} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{da.domain}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(da.displayAds)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(da.displayTraffic)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(da.displayCost)}</td>
+                  <tr key={da.domain} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{da.domain}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(da.displayAds)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(da.displayTraffic)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(da.displayCost)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1323,22 +1323,22 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       {show("shopping_competitors") && shoppingCompetitors.length > 0 && (
         <SectionCard title="PLA / Shopping Competitors" subtitle={`${shoppingCompetitors.length} competitor${shoppingCompetitors.length !== 1 ? "s" : ""}`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 480 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 480 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Domain</th>
-                  <th className="text-right px-4 py-3 font-medium">Shopping KWs</th>
-                  <th className="text-right px-4 py-3 font-medium">Traffic</th>
-                  <th className="text-right px-6 py-3 font-medium">Est. Cost</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Domain</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Shopping KWs</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Traffic</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Est. Cost</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {shoppingCompetitors.map((sc) => (
-                  <tr key={sc.domain} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{sc.domain}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(sc.shoppingKeywords)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(sc.shoppingTraffic)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(sc.shoppingCost)}</td>
+                  <tr key={sc.domain} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{sc.domain}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(sc.shoppingKeywords)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(sc.shoppingTraffic)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(sc.shoppingCost)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1351,24 +1351,24 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       {show("keyword_trends") && keywordTrends.length > 0 && (
         <SectionCard title="Keyword Trends" subtitle={`${keywordTrends.length} keyword${keywordTrends.length !== 1 ? "s" : ""} tracked`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Keyword</th>
-                  <th className="text-right px-4 py-3 font-medium">Volume</th>
-                  <th className="text-center px-4 py-3 font-medium">Trend</th>
-                  <th className="text-right px-4 py-3 font-medium">CPC</th>
-                  <th className="text-right px-6 py-3 font-medium">Competition</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Keyword</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Volume</th>
+                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Trend</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CPC</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Competition</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {keywordTrends.map((kt) => (
-                  <tr key={kt.keyword} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{kt.keyword}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(kt.searchVolume)}</td>
-                    <td className="px-4 py-3 text-center"><span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${kt.trend === "up" ? "bg-emerald-100 text-emerald-700" : kt.trend === "down" ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-600"}`}>{kt.trend}</span></td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(kt.cpc)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600">{(kt.competition * 100).toFixed(0)}%</td>
+                  <tr key={kt.keyword} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{kt.keyword}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(kt.searchVolume)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}><span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${kt.trend === "up" ? "bg-emerald-100 text-emerald-700" : kt.trend === "down" ? "bg-red-100 text-red-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"}`}>{kt.trend}</span></td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(kt.cpc)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{(kt.competition * 100).toFixed(0)}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -1381,24 +1381,24 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       {show("referring_domains") && referringDomains.length > 0 && (
         <SectionCard title="Referring Domains" subtitle={`${referringDomains.length} domain${referringDomains.length !== 1 ? "s" : ""} linking`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 600 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Domain</th>
-                  <th className="text-right px-4 py-3 font-medium">Backlinks</th>
-                  <th className="text-left px-4 py-3 font-medium">Country</th>
-                  <th className="text-right px-4 py-3 font-medium">First Seen</th>
-                  <th className="text-right px-6 py-3 font-medium">Last Seen</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Domain</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Backlinks</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Country</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>First Seen</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Last Seen</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {referringDomains.slice(0, 50).map((rd) => (
-                  <tr key={rd.domain} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{rd.domain}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(rd.backlinks)}</td>
-                    <td className="px-4 py-3 text-slate-600">{rd.country || "—"}</td>
-                    <td className="px-4 py-3 text-right text-slate-400 text-[10px]">{rd.firstSeen ? formatDateDisplay(rd.firstSeen) : "—"}</td>
-                    <td className="px-6 py-3 text-right text-slate-400 text-[10px]">{rd.lastSeen ? formatDateDisplay(rd.lastSeen) : "—"}</td>
+                  <tr key={rd.domain} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{rd.domain}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(rd.backlinks)}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{rd.country || "—"}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{rd.firstSeen ? formatDateDisplay(rd.firstSeen) : "—"}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{rd.lastSeen ? formatDateDisplay(rd.lastSeen) : "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1411,24 +1411,24 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       {show("anchor_text") && anchorText.length > 0 && (
         <SectionCard title="Anchor Text Distribution" subtitle={`${anchorText.length} unique anchor${anchorText.length !== 1 ? "s" : ""}`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 520 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 520 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Anchor Text</th>
-                  <th className="text-right px-4 py-3 font-medium">Domains</th>
-                  <th className="text-right px-4 py-3 font-medium">Backlinks</th>
-                  <th className="text-right px-4 py-3 font-medium">First Seen</th>
-                  <th className="text-right px-6 py-3 font-medium">Last Seen</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Anchor Text</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Domains</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Backlinks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>First Seen</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Last Seen</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {anchorText.slice(0, 30).map((at, i) => (
-                  <tr key={`${at.anchor}-${i}`} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium truncate max-w-[200px]">{at.anchor || "(empty)"}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(at.domains)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(at.backlinks)}</td>
-                    <td className="px-4 py-3 text-right text-slate-400 text-[10px]">{at.firstSeen ? formatDateDisplay(at.firstSeen) : "—"}</td>
-                    <td className="px-6 py-3 text-right text-slate-400 text-[10px]">{at.lastSeen ? formatDateDisplay(at.lastSeen) : "—"}</td>
+                  <tr key={`${at.anchor}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{at.anchor || "(empty)"}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(at.domains)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(at.backlinks)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{at.firstSeen ? formatDateDisplay(at.firstSeen) : "—"}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{at.lastSeen ? formatDateDisplay(at.lastSeen) : "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1441,26 +1441,26 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       {show("backlink_comparison") && backlinkComparison.length > 0 && (
         <SectionCard title="Competitor Backlink Comparison" subtitle={`${backlinkComparison.length} domain${backlinkComparison.length !== 1 ? "s" : ""} compared`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 600 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Domain</th>
-                  <th className="text-right px-4 py-3 font-medium">Authority</th>
-                  <th className="text-right px-4 py-3 font-medium">Backlinks</th>
-                  <th className="text-right px-4 py-3 font-medium">Ref. Domains</th>
-                  <th className="text-right px-4 py-3 font-medium">Follow</th>
-                  <th className="text-right px-6 py-3 font-medium">Nofollow</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Domain</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Authority</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Backlinks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Ref. Domains</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Follow</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Nofollow</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {backlinkComparison.map((bc) => (
-                  <tr key={bc.domain} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{bc.domain}</td>
-                    <td className="px-4 py-3 text-right"><span className={`font-semibold ${bc.ascore >= 50 ? "text-emerald-600" : bc.ascore >= 30 ? "text-amber-600" : "text-red-600"}`}>{bc.ascore}</span></td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(bc.totalBacklinks)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(bc.referringDomains)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(bc.followLinks)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600">{formatNumber(bc.nofollowLinks)}</td>
+                  <tr key={bc.domain} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{bc.domain}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}><span className={`font-semibold ${bc.ascore >= 50 ? "text-emerald-600" : bc.ascore >= 30 ? "text-amber-600" : "text-red-600"}`}>{bc.ascore}</span></td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(bc.totalBacklinks)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(bc.referringDomains)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(bc.followLinks)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(bc.nofollowLinks)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1473,30 +1473,30 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       {show("position_changes") && positionChanges.length > 0 && (
         <SectionCard title="Organic Position Changes" subtitle={`${positionChanges.length} keyword${positionChanges.length !== 1 ? "s" : ""} with position changes`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 600 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Keyword</th>
-                  <th className="text-right px-4 py-3 font-medium">Previous</th>
-                  <th className="text-right px-4 py-3 font-medium">Current</th>
-                  <th className="text-right px-4 py-3 font-medium">Change</th>
-                  <th className="text-right px-4 py-3 font-medium">Volume</th>
-                  <th className="text-left px-6 py-3 font-medium">URL</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Keyword</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Previous</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Current</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Change</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Volume</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>URL</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {positionChanges.map((pc, i) => (
-                  <tr key={`${pc.keyword}-${i}`} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{pc.keyword}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{pc.previousPosition}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{pc.currentPosition}</td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={`inline-flex items-center gap-0.5 font-semibold ${pc.change > 0 ? "text-emerald-600" : pc.change < 0 ? "text-red-600" : "text-slate-400"}`}>
+                  <tr key={`${pc.keyword}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{pc.keyword}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{pc.previousPosition}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{pc.currentPosition}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
+                      <span className={`inline-flex items-center gap-0.5 font-semibold ${pc.change > 0 ? "text-emerald-600" : pc.change < 0 ? "text-red-600" : "text-[var(--text-3)]"}`}>
                         {pc.change > 0 ? <><CssArrowUp /> +{pc.change}</> : pc.change < 0 ? <><CssArrowDown /> {pc.change}</> : <><CssMinus /> 0</>}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(pc.searchVolume)}</td>
-                    <td className="px-6 py-3 text-slate-500 truncate max-w-[200px]" title={pc.url}>{pc.url.replace(/^https?:\/\/[^/]+/, "")}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(pc.searchVolume)}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }} title={pc.url}>{pc.url.replace(/^https?:\/\/[^/]+/, "")}</td>
                   </tr>
                 ))}
               </tbody>

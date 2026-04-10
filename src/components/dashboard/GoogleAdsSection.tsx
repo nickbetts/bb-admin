@@ -523,23 +523,23 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
         error.includes("DEVELOPER_TOKEN_NOT_APPROVED") ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-5 space-y-2">
             <p className="text-sm font-semibold text-amber-700">Google Ads Basic Access required</p>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-[var(--text-2)]">
               The Google Ads developer token is currently in test mode and cannot access real account data.
             </p>
-            <ol className="text-sm text-slate-500 list-decimal list-inside space-y-1">
+            <ol className="text-sm text-[var(--text-3)] list-decimal list-inside space-y-1">
               <li>Sign in to <span className="text-amber-700 font-mono">ads.google.com</span> with a manager account</li>
-              <li>Go to <strong className="text-slate-700">Tools → API Center</strong></li>
-              <li>Click <strong className="text-slate-700">Apply for Basic Access</strong> and submit the form</li>
+              <li>Go to <strong className="text-[var(--text)]">Tools → API Center</strong></li>
+              <li>Click <strong className="text-[var(--text)]">Apply for Basic Access</strong> and submit the form</li>
               <li>Approval typically takes 1–2 business days</li>
             </ol>
           </div>
         ) : error.includes("invalid_grant") ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-5 space-y-2">
             <p className="text-sm font-semibold text-amber-700">Google Ads OAuth token expired</p>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-[var(--text-2)]">
               The refresh token has expired or been revoked; this typically happens when the Google Cloud OAuth app is in <strong>Testing</strong> mode (tokens expire after 7 days).
             </p>
-            <ol className="text-sm text-slate-500 list-decimal list-inside space-y-1">
+            <ol className="text-sm text-[var(--text-3)] list-decimal list-inside space-y-1">
               <li>Run <span className="font-mono text-amber-700">node scripts/get-gads-refresh-token.mjs</span> to generate a new token</li>
               <li>Update <span className="font-mono text-amber-700">GOOGLE_ADS_REFRESH_TOKEN</span> in Vercel environment variables</li>
               <li>Redeploy or run <span className="font-mono text-amber-700">npx vercel env pull</span> locally</li>
@@ -846,49 +846,49 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
               <div className="flex flex-col gap-5">
                 <SectionCard title="Campaign Performance">
                   <div style={{ overflowX: "auto" }}>
-                  <table className="w-full text-xs" style={{ minWidth: 700 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 700 }}>
                     <thead>
-                      <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                        <th className="text-left px-6 py-4 font-medium">Campaign</th>
-                        <th className="text-right px-4 py-4 font-medium">Clicks</th>
-                        <th className="text-right px-4 py-4 font-medium">Cost</th>
-                        <th className="text-right px-4 py-4 font-medium">Conv.</th>
-                        <th className="text-right px-4 py-4 font-medium">Conv. Value</th>
-                        <th className="text-right px-4 py-4 font-medium">ROAS</th>
-                        <th className="text-right px-6 py-4 font-medium">CTR</th>
+                      <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                        <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Campaign</th>
+                        <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                        <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost</th>
+                        <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
+                        <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv. Value</th>
+                        <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>ROAS</th>
+                        <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
                       {visibleCampaigns.map((c) => {
                         const prevC = prevCampaignsMap.get(c.id);
                         return (
-                        <tr key={c.id} className="hover:bg-slate-50 transition">
-                          <td className="px-6 py-4 text-slate-800 font-medium max-w-[300px] truncate">
+                        <tr key={c.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                          <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 300 }}>
                             {c.name}
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             <div>{formatNumber(c.clicks)}</div>
                             <Delta current={c.clicks} previous={prevC?.clicks} format="count" />
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             <div>{formatCurrency(micros(c.costMicros))}</div>
                             <Delta current={micros(c.costMicros)} previous={prevC ? micros(prevC.costMicros) : undefined} format="currency" />
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             <div>{formatNumber(c.conversions)}</div>
                             <Delta current={c.conversions} previous={prevC?.conversions} format="count" />
                           </td>
-                          <td className="px-4 py-4 text-right text-slate-600">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             <div>{formatCurrency(c.conversionsValue)}</div>
                             <Delta current={c.conversionsValue} previous={prevC?.conversionsValue} format="currency" />
                           </td>
-                          <td className="px-4 py-4 text-right">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             <span className={`font-semibold ${roas(c.conversionsValue, c.costMicros) >= 2 ? "text-emerald-600" : roas(c.conversionsValue, c.costMicros) >= 1 ? "text-amber-600" : "text-red-600"}`}>
                               {roas(c.conversionsValue, c.costMicros).toFixed(2)}x
                             </span>
                             <Delta current={roas(c.conversionsValue, c.costMicros)} previous={prevC ? roas(prevC.conversionsValue, prevC.costMicros) : undefined} format="none" />
                           </td>
-                          <td className="px-6 py-4 text-right text-slate-600">
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                             <div>{formatPercent(ctr(c.clicks, c.impressions))}</div>
                             <Delta current={ctr(c.clicks, c.impressions)} previous={prevC ? ctr(prevC.clicks, prevC.impressions) : undefined} format="none" />
                           </td>
@@ -906,46 +906,46 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                   return (
                     <SectionCard title="Ad Group Performance">
                       <div style={{ overflowX: "auto" }}>
-                      <table className="w-full text-xs" style={{ minWidth: 700 }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 700 }}>
                         <thead>
-                          <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                            <th className="text-left px-6 py-4 font-medium">Ad Group</th>
-                            <th className="text-left px-4 py-4 font-medium text-slate-600">Campaign</th>
-                            <th className="text-right px-4 py-4 font-medium">Clicks</th>
-                            <th className="text-right px-4 py-4 font-medium">Cost</th>
-                            <th className="text-right px-4 py-4 font-medium">Conv.</th>
-                            <th className="text-right px-4 py-4 font-medium">Conv. Value</th>
-                            <th className="text-right px-6 py-4 font-medium">ROAS</th>
+                          <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                            <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Ad Group</th>
+                            <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Campaign</th>
+                            <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                            <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost</th>
+                            <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
+                            <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv. Value</th>
+                            <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>ROAS</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
                           {visibleAdGroups.map((ag) => {
                             const prevAg = prevAdGroupsMap.get(ag.id);
                             return (
-                            <tr key={ag.id} className="hover:bg-slate-50 transition">
-                              <td className="px-6 py-4 text-slate-800 font-medium max-w-[220px] truncate">
+                            <tr key={ag.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                              <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>
                                 {ag.name}
                               </td>
-                              <td className="px-4 py-4 text-slate-500 max-w-[200px] truncate">
+                              <td style={{ padding: "12px 16px", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>
                                 {ag.campaignName}
                               </td>
-                              <td className="px-4 py-4 text-right text-slate-600">
+                              <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                                 <div>{formatNumber(ag.clicks)}</div>
                                 <Delta current={ag.clicks} previous={prevAg?.clicks} format="count" />
                               </td>
-                              <td className="px-4 py-4 text-right text-slate-600">
+                              <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                                 <div>{formatCurrency(micros(ag.costMicros))}</div>
                                 <Delta current={micros(ag.costMicros)} previous={prevAg ? micros(prevAg.costMicros) : undefined} format="currency" />
                               </td>
-                              <td className="px-4 py-4 text-right text-slate-600">
+                              <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                                 <div>{formatNumber(ag.conversions)}</div>
                                 <Delta current={ag.conversions} previous={prevAg?.conversions} format="count" />
                               </td>
-                              <td className="px-4 py-4 text-right text-slate-600">
+                              <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                                 <div>{formatCurrency(ag.conversionsValue)}</div>
                                 <Delta current={ag.conversionsValue} previous={prevAg?.conversionsValue} format="currency" />
                               </td>
-                              <td className="px-6 py-4 text-right">
+                              <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                                 <span className={`font-semibold ${roas(ag.conversionsValue, ag.costMicros) >= 2 ? "text-emerald-600" : roas(ag.conversionsValue, ag.costMicros) >= 1 ? "text-amber-600" : "text-red-600"}`}>
                                   {roas(ag.conversionsValue, ag.costMicros).toFixed(2)}x
                                 </span>
@@ -967,36 +967,36 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           {/* Search terms report */}
           {show("search_terms") && (data.searchTerms ?? []).length > 0 && (
             <SectionCard title="Search Terms" subtitle="Top queries triggering your ads">
-              <table className="w-full text-xs">
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
-                  <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                    <th className="text-left px-6 py-4 font-medium">Search Term</th>
-                    <th className="text-right px-4 py-4 font-medium">Clicks</th>
-                    <th className="text-right px-4 py-4 font-medium">Impr.</th>
-                    <th className="text-right px-4 py-4 font-medium">CTR</th>
-                    <th className="text-right px-4 py-4 font-medium">Cost</th>
-                    <th className="text-right px-6 py-4 font-medium">Conv.</th>
+                  <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Search Term</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost</th>
+                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
                   {(data.searchTerms ?? []).map((st, i) => (
-                    <tr key={i} className="hover:bg-slate-50 transition">
-                      <td className="px-6 py-4 text-slate-800 font-medium max-w-[360px] truncate">
+                    <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 360 }}>
                         {st.searchTerm}
                       </td>
-                      <td className="px-4 py-4 text-right text-slate-700 font-semibold">
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>
                         {formatNumber(st.clicks)}
                       </td>
-                      <td className="px-4 py-4 text-right text-slate-600">
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                         {formatNumber(st.impressions)}
                       </td>
-                      <td className="px-4 py-4 text-right text-slate-600">
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                         {formatPercent(ctr(st.clicks, st.impressions))}
                       </td>
-                      <td className="px-4 py-4 text-right text-slate-600">
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                         {formatCurrency(micros(st.costMicros))}
                       </td>
-                      <td className="px-6 py-4 text-right text-slate-600">
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                         {st.conversions.toFixed(1)}
                       </td>
                     </tr>
@@ -1118,30 +1118,30 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       {!loading && !error && show("pmax") && (data?.pmaxInsights?.length ?? 0) > 0 && (
         <SectionCard title="Performance Max Insights" subtitle="Asset group performance across PMax campaigns">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 700 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 700 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-4 font-medium">Campaign</th>
-                  <th className="text-left px-4 py-4 font-medium">Asset Group</th>
-                  <th className="text-right px-4 py-4 font-medium">Clicks</th>
-                  <th className="text-right px-4 py-4 font-medium">Cost</th>
-                  <th className="text-right px-4 py-4 font-medium">Conv.</th>
-                  <th className="text-right px-4 py-4 font-medium">Conv. Value</th>
-                  <th className="text-right px-6 py-4 font-medium">ROAS</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Campaign</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Asset Group</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv. Value</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>ROAS</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
                 {data!.pmaxInsights!.map((p, i) => {
                   const pRoas = roas(p.conversionsValue, p.costMicros);
                   return (
-                    <tr key={i} className="hover:bg-slate-50 transition">
-                      <td className="px-6 py-4 text-slate-800 font-medium max-w-[200px] truncate">{p.campaignName}</td>
-                      <td className="px-4 py-4 text-slate-600 max-w-[200px] truncate">{p.assetGroupName}</td>
-                      <td className="px-4 py-4 text-right text-slate-600">{formatNumber(p.clicks)}</td>
-                      <td className="px-4 py-4 text-right text-slate-600">{formatCurrency(micros(p.costMicros))}</td>
-                      <td className="px-4 py-4 text-right text-slate-600">{formatNumber(p.conversions)}</td>
-                      <td className="px-4 py-4 text-right text-slate-600">{formatCurrency(p.conversionsValue)}</td>
-                      <td className="px-6 py-4 text-right">
+                    <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{p.campaignName}</td>
+                      <td style={{ padding: "12px 16px", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{p.assetGroupName}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.clicks)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(micros(p.costMicros))}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.conversions)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(p.conversionsValue)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
                         <span className={`font-semibold ${pRoas >= 2 ? "text-emerald-600" : pRoas >= 1 ? "text-amber-600" : "text-red-600"}`}>
                           {pRoas.toFixed(2)}x
                         </span>
@@ -1159,33 +1159,33 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       {!loading && !error && show("geo") && (data?.geoPerformance?.length ?? 0) > 0 && (
         <SectionCard title="Geographic Performance" subtitle="Top locations by click volume">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 600 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-4 font-medium">Country</th>
-                  <th className="text-left px-4 py-4 font-medium">Region</th>
-                  <th className="text-right px-4 py-4 font-medium">Clicks</th>
-                  <th className="text-right px-4 py-4 font-medium">Impr.</th>
-                  <th className="text-right px-4 py-4 font-medium">Cost</th>
-                  <th className="text-right px-4 py-4 font-medium">Conv.</th>
-                  <th className="text-right px-6 py-4 font-medium">CPA</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Country</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Region</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CPA</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
                 {[...data!.geoPerformance!]
                   .sort((a, b) => b.clicks - a.clicks)
                   .slice(0, 10)
                   .map((g, i) => {
                     const geoCpa = cpa(g.costMicros, g.conversions);
                     return (
-                      <tr key={i} className="hover:bg-slate-50 transition">
-                        <td className="px-6 py-4 text-slate-800 font-medium">{g.country}</td>
-                        <td className="px-4 py-4 text-slate-600">{g.region || "—"}</td>
-                        <td className="px-4 py-4 text-right text-slate-600">{formatNumber(g.clicks)}</td>
-                        <td className="px-4 py-4 text-right text-slate-600">{formatNumber(g.impressions)}</td>
-                        <td className="px-4 py-4 text-right text-slate-600">{formatCurrency(micros(g.costMicros))}</td>
-                        <td className="px-4 py-4 text-right text-slate-600">{formatNumber(g.conversions)}</td>
-                        <td className="px-6 py-4 text-right text-slate-600">{g.conversions > 0 ? formatCurrency(geoCpa) : "—"}</td>
+                      <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                        <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{g.country}</td>
+                        <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{g.region || "—"}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(g.clicks)}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(g.impressions)}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(micros(g.costMicros))}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(g.conversions)}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{g.conversions > 0 ? formatCurrency(geoCpa) : "—"}</td>
                       </tr>
                     );
                   })}
@@ -1241,25 +1241,25 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
         return (
           <SectionCard title="Ad Schedule Performance" subtitle="Conversion rate heatmap by day and time">
             <div style={{ overflowX: "auto" }}>
-              <table className="w-full text-xs" style={{ minWidth: 500 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 500 }}>
                 <thead>
-                  <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                    <th className="text-left px-4 py-3 font-medium">Day</th>
+                  <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Day</th>
                     {hourBuckets.map(b => (
                       <th key={b.label} className="text-center px-2 py-3 font-medium">{b.label}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
                   {dayOrder.map(day => (
                     <tr key={day}>
-                      <td className="px-4 py-3 text-slate-800 font-medium">{dayLabels[day]}</td>
+                      <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{dayLabels[day]}</td>
                       {hourBuckets.map(bucket => {
                         const cell = grid[day][bucket.label];
                         const convRate = cell.clicks > 0 ? cell.conversions / cell.clicks : 0;
                         const intensity = maxConvRate > 0 ? convRate / maxConvRate : 0;
                         const bg = cell.clicks === 0
-                          ? "bg-slate-50"
+                          ? "bg-[var(--border-subtle)]"
                           : intensity > 0.75
                             ? "bg-emerald-200 text-emerald-900"
                             : intensity > 0.5
@@ -1282,7 +1282,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                 </tbody>
               </table>
             </div>
-            <p className="text-[10px] text-slate-400 mt-3">Cell colour intensity = conversion rate relative to the best-performing slot. Hover for details.</p>
+            <p className="text-[10px] text-[var(--text-3)] mt-3">Cell colour intensity = conversion rate relative to the best-performing slot. Hover for details.</p>
           </SectionCard>
         );
       })()}
@@ -1319,35 +1319,35 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       {!loading && !error && show("keywords") && (data?.keywordQualityScores?.length ?? 0) > 0 && (
         <SectionCard title="Keyword Quality Scores" subtitle={`${data!.keywordQualityScores!.length} keyword${data!.keywordQualityScores!.length !== 1 ? "s" : ""} with quality data`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 800 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 800 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Keyword</th>
-                  <th className="text-left px-4 py-3 font-medium">Campaign</th>
-                  <th className="text-center px-4 py-3 font-medium">QS</th>
-                  <th className="text-center px-4 py-3 font-medium">Exp. CTR</th>
-                  <th className="text-center px-4 py-3 font-medium">Ad Relevance</th>
-                  <th className="text-center px-4 py-3 font-medium">Landing Page</th>
-                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
-                  <th className="text-right px-6 py-3 font-medium">Cost</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Keyword</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Campaign</th>
+                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>QS</th>
+                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Exp. CTR</th>
+                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Ad Relevance</th>
+                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Landing Page</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {data!.keywordQualityScores!.map((kw, i) => {
                   const qsBadge = (rank: string) => {
-                    const cls = rank === "ABOVE_AVERAGE" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : rank === "AVERAGE" ? "bg-amber-50 text-amber-700 border-amber-200" : rank === "BELOW_AVERAGE" ? "bg-red-50 text-red-700 border-red-200" : "bg-slate-50 text-slate-500 border-slate-200";
+                    const cls = rank === "ABOVE_AVERAGE" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : rank === "AVERAGE" ? "bg-amber-50 text-amber-700 border-amber-200" : rank === "BELOW_AVERAGE" ? "bg-red-50 text-red-700 border-red-200" : "bg-[var(--border-subtle)] text-[var(--text-3)] border-[var(--border)]";
                     return <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`}>{rank.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</span>;
                   };
                   return (
-                    <tr key={`${kw.keyword}-${i}`} className="hover:bg-slate-50 transition">
-                      <td className="px-6 py-3 text-slate-800 font-medium">{kw.keyword}</td>
-                      <td className="px-4 py-3 text-slate-500 text-[11px]">{kw.campaignName}</td>
-                      <td className="px-4 py-3 text-center"><span className={`font-bold ${(kw.qualityScore ?? 0) >= 7 ? "text-emerald-600" : (kw.qualityScore ?? 0) >= 5 ? "text-amber-600" : "text-red-600"}`}>{kw.qualityScore ?? "—"}</span></td>
-                      <td className="px-4 py-3 text-center">{qsBadge(kw.expectedCtr)}</td>
-                      <td className="px-4 py-3 text-center">{qsBadge(kw.adRelevance)}</td>
-                      <td className="px-4 py-3 text-center">{qsBadge(kw.landingPageExperience)}</td>
-                      <td className="px-4 py-3 text-right text-slate-600">{formatNumber(kw.clicks)}</td>
-                      <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(micros(kw.costMicros))}</td>
+                    <tr key={`${kw.keyword}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{kw.keyword}</td>
+                      <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{kw.campaignName}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}><span className={`font-bold ${(kw.qualityScore ?? 0) >= 7 ? "text-emerald-600" : (kw.qualityScore ?? 0) >= 5 ? "text-amber-600" : "text-red-600"}`}>{kw.qualityScore ?? "—"}</span></td>
+                      <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>{qsBadge(kw.expectedCtr)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>{qsBadge(kw.adRelevance)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>{qsBadge(kw.landingPageExperience)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(kw.clicks)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(micros(kw.costMicros))}</td>
                     </tr>
                   );
                 })}
@@ -1363,15 +1363,15 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
           <div className="grid grid-cols-3 gap-6">
             <div className="text-center">
               <p className="text-3xl font-bold" style={{ color: data.avgQualityScore >= 7 ? "#10b981" : data.avgQualityScore >= 5 ? "#f59e0b" : "#ef4444" }}>{data.avgQualityScore.toFixed(1)}</p>
-              <p className="text-xs text-slate-500 mt-1">Average Quality Score</p>
+              <p className="text-xs text-[var(--text-3)] mt-1">Average Quality Score</p>
             </div>
             <div className="text-center">
-              <p className="text-3xl font-bold text-slate-700">{data.keywordQualityScores?.filter(k => (k.qualityScore ?? 0) >= 7).length ?? 0}</p>
-              <p className="text-xs text-slate-500 mt-1">Keywords QS ≥ 7</p>
+              <p className="text-3xl font-bold text-[var(--text)]">{data.keywordQualityScores?.filter(k => (k.qualityScore ?? 0) >= 7).length ?? 0}</p>
+              <p className="text-xs text-[var(--text-3)] mt-1">Keywords QS ≥ 7</p>
             </div>
             <div className="text-center">
-              <p className="text-3xl font-bold text-slate-700">{data.keywordQualityScores?.filter(k => (k.qualityScore ?? 0) > 0 && (k.qualityScore ?? 0) < 5).length ?? 0}</p>
-              <p className="text-xs text-slate-500 mt-1">Keywords QS &lt; 5</p>
+              <p className="text-3xl font-bold text-[var(--text)]">{data.keywordQualityScores?.filter(k => (k.qualityScore ?? 0) > 0 && (k.qualityScore ?? 0) < 5).length ?? 0}</p>
+              <p className="text-xs text-[var(--text-3)] mt-1">Keywords QS &lt; 5</p>
             </div>
           </div>
         </SectionCard>
@@ -1381,26 +1381,26 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       {!loading && !error && show("device_breakdown") && (data?.deviceBreakdown?.length ?? 0) > 0 && (
         <SectionCard title="Device Breakdown" subtitle="Performance by device type">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 600 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Device</th>
-                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
-                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
-                  <th className="text-right px-4 py-3 font-medium">Cost</th>
-                  <th className="text-right px-4 py-3 font-medium">Conv.</th>
-                  <th className="text-right px-6 py-3 font-medium">ROAS</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Device</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>ROAS</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {data!.deviceBreakdown!.map((d) => (
-                  <tr key={d.device} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium capitalize">{d.device.toLowerCase().replace(/_/g, " ")}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(d.clicks)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(d.impressions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(micros(d.costMicros))}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(d.conversions)}</td>
-                    <td className="px-6 py-3 text-right"><span className={`font-semibold ${roas(d.conversionsValue, d.costMicros) >= 2 ? "text-emerald-600" : roas(d.conversionsValue, d.costMicros) >= 1 ? "text-amber-600" : "text-red-600"}`}>{roas(d.conversionsValue, d.costMicros).toFixed(2)}x</span></td>
+                  <tr key={d.device} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{d.device.toLowerCase().replace(/_/g, " ")}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(d.clicks)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(d.impressions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(micros(d.costMicros))}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(d.conversions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}><span className={`font-semibold ${roas(d.conversionsValue, d.costMicros) >= 2 ? "text-emerald-600" : roas(d.conversionsValue, d.costMicros) >= 1 ? "text-amber-600" : "text-red-600"}`}>{roas(d.conversionsValue, d.costMicros).toFixed(2)}x</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -1413,20 +1413,20 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       {!loading && !error && show("negative_keywords") && (data?.negativeKeywords?.length ?? 0) > 0 && (
         <SectionCard title="Negative Keywords" subtitle={`${data!.negativeKeywords!.length} negative keyword${data!.negativeKeywords!.length !== 1 ? "s" : ""} active`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 480 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 480 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Keyword</th>
-                  <th className="text-left px-4 py-3 font-medium">Match Type</th>
-                  <th className="text-left px-6 py-3 font-medium">Shared Set</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Keyword</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Match Type</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Shared Set</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {data!.negativeKeywords!.map((nk, i) => (
-                  <tr key={`${nk.keyword}-${i}`} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{nk.keyword}</td>
-                    <td className="px-4 py-3 text-slate-600 capitalize">{nk.matchType.toLowerCase().replace(/_/g, " ")}</td>
-                    <td className="px-6 py-3 text-slate-500">{nk.sharedSetName}</td>
+                  <tr key={`${nk.keyword}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{nk.keyword}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{nk.matchType.toLowerCase().replace(/_/g, " ")}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{nk.sharedSetName}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1439,26 +1439,26 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       {!loading && !error && show("demographics_paid") && (data?.demographics?.length ?? 0) > 0 && (
         <SectionCard title="Demographics" subtitle="Performance by age and gender">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Type</th>
-                  <th className="text-left px-4 py-3 font-medium">Segment</th>
-                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
-                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
-                  <th className="text-right px-4 py-3 font-medium">Cost</th>
-                  <th className="text-right px-6 py-3 font-medium">Conv.</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Type</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Segment</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {data!.demographics!.map((d, i) => (
-                  <tr key={`${d.type}-${d.segment}-${i}`} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium capitalize">{d.type}</td>
-                    <td className="px-4 py-3 text-slate-600">{d.segment.replace(/^AGE_/, "").replace(/_/g, "–")}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(d.clicks)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(d.impressions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(micros(d.costMicros))}</td>
-                    <td className="px-6 py-3 text-right text-slate-600">{formatNumber(d.conversions)}</td>
+                  <tr key={`${d.type}-${d.segment}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{d.type}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{d.segment.replace(/^AGE_/, "").replace(/_/g, "–")}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(d.clicks)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(d.impressions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(micros(d.costMicros))}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(d.conversions)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1471,26 +1471,26 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       {!loading && !error && show("shopping") && (data?.shoppingPerformance?.length ?? 0) > 0 && (
         <SectionCard title="Shopping Performance" subtitle={`${data!.shoppingPerformance!.length} product${data!.shoppingPerformance!.length !== 1 ? "s" : ""} with ad data`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 700 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 700 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Product</th>
-                  <th className="text-left px-4 py-3 font-medium">Brand</th>
-                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
-                  <th className="text-right px-4 py-3 font-medium">Cost</th>
-                  <th className="text-right px-4 py-3 font-medium">Conv.</th>
-                  <th className="text-right px-6 py-3 font-medium">ROAS</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Product</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Brand</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>ROAS</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {data!.shoppingPerformance!.map((p) => (
-                  <tr key={p.productId} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{p.productTitle}</td>
-                    <td className="px-4 py-3 text-slate-600">{p.productBrand || "—"}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(p.clicks)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(micros(p.costMicros))}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(p.conversions)}</td>
-                    <td className="px-6 py-3 text-right"><span className={`font-semibold ${roas(p.conversionsValue, p.costMicros) >= 2 ? "text-emerald-600" : roas(p.conversionsValue, p.costMicros) >= 1 ? "text-amber-600" : "text-red-600"}`}>{roas(p.conversionsValue, p.costMicros).toFixed(2)}x</span></td>
+                  <tr key={p.productId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{p.productTitle}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{p.productBrand || "—"}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.clicks)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(micros(p.costMicros))}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.conversions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}><span className={`font-semibold ${roas(p.conversionsValue, p.costMicros) >= 2 ? "text-emerald-600" : roas(p.conversionsValue, p.costMicros) >= 1 ? "text-amber-600" : "text-red-600"}`}>{roas(p.conversionsValue, p.costMicros).toFixed(2)}x</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -1503,24 +1503,24 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       {!loading && !error && show("conversion_actions") && (data?.conversionActions?.length ?? 0) > 0 && (
         <SectionCard title="Conversion Actions" subtitle="All tracked conversion types">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Action Name</th>
-                  <th className="text-left px-4 py-3 font-medium">Category</th>
-                  <th className="text-right px-4 py-3 font-medium">Conv.</th>
-                  <th className="text-right px-4 py-3 font-medium">Value</th>
-                  <th className="text-right px-6 py-3 font-medium">Cost/Conv.</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Action Name</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Category</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Value</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost/Conv.</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {data!.conversionActions!.map((ca) => (
-                  <tr key={ca.id} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{ca.name}</td>
-                    <td className="px-4 py-3 text-slate-600 capitalize">{ca.category.toLowerCase().replace(/_/g, " ")}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(ca.conversions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(ca.conversionsValue)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(ca.costPerConversion)}</td>
+                  <tr key={ca.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{ca.name}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{ca.category.toLowerCase().replace(/_/g, " ")}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(ca.conversions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(ca.conversionsValue)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(ca.costPerConversion)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1533,24 +1533,24 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       {!loading && !error && show("call_extensions") && (data?.callExtensions?.length ?? 0) > 0 && (
         <SectionCard title="Call Extensions" subtitle={`${data!.callExtensions!.length} call${data!.callExtensions!.length !== 1 ? "s" : ""} tracked`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 520 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 520 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Campaign</th>
-                  <th className="text-left px-4 py-3 font-medium">Status</th>
-                  <th className="text-left px-4 py-3 font-medium">Country</th>
-                  <th className="text-right px-4 py-3 font-medium">Duration (s)</th>
-                  <th className="text-left px-6 py-3 font-medium">Type</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Campaign</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Status</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Country</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Duration (s)</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Type</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {data!.callExtensions!.map((ce, i) => (
-                  <tr key={`${ce.campaignName}-${i}`} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{ce.campaignName}</td>
-                    <td className="px-4 py-3 text-slate-600 capitalize">{ce.callStatus.toLowerCase().replace(/_/g, " ")}</td>
-                    <td className="px-4 py-3 text-slate-600">{ce.callerCountryCode}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{ce.callDurationSeconds}</td>
-                    <td className="px-6 py-3 text-slate-500">{ce.callType}</td>
+                  <tr key={`${ce.campaignName}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{ce.campaignName}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{ce.callStatus.toLowerCase().replace(/_/g, " ")}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{ce.callerCountryCode}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{ce.callDurationSeconds}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{ce.callType}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1563,24 +1563,24 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       {!loading && !error && show("sitelinks") && (data?.sitelinkPerformance?.length ?? 0) > 0 && (
         <SectionCard title="Sitelink Performance" subtitle="Ad extension click-through data">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Sitelink Text</th>
-                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
-                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
-                  <th className="text-right px-4 py-3 font-medium">Cost</th>
-                  <th className="text-right px-6 py-3 font-medium">Conv.</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Sitelink Text</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {data!.sitelinkPerformance!.map((sl, i) => (
-                  <tr key={`${sl.sitelinkText}-${i}`} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{sl.sitelinkText}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(sl.clicks)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(sl.impressions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(micros(sl.costMicros))}</td>
-                    <td className="px-6 py-3 text-right text-slate-600">{formatNumber(sl.conversions)}</td>
+                  <tr key={`${sl.sitelinkText}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{sl.sitelinkText}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(sl.clicks)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(sl.impressions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(micros(sl.costMicros))}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(sl.conversions)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1593,28 +1593,28 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       {!loading && !error && show("display_video") && (data?.displayVideoData?.length ?? 0) > 0 && (
         <SectionCard title="Display & Video" subtitle="Performance across display and video campaigns">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 700 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 700 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Campaign</th>
-                  <th className="text-left px-4 py-3 font-medium">Type</th>
-                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
-                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
-                  <th className="text-right px-4 py-3 font-medium">Cost</th>
-                  <th className="text-right px-4 py-3 font-medium">Video Views</th>
-                  <th className="text-right px-6 py-3 font-medium">View Rate</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Campaign</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Type</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Video Views</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>View Rate</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {data!.displayVideoData!.map((dv) => (
-                  <tr key={dv.campaignId} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{dv.campaignName}</td>
-                    <td className="px-4 py-3 text-slate-600 capitalize">{dv.channelType.toLowerCase()}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(dv.clicks)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(dv.impressions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(micros(dv.costMicros))}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(dv.videoViews)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600">{(dv.videoViewRate * 100).toFixed(1)}%</td>
+                  <tr key={dv.campaignId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{dv.campaignName}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{dv.channelType.toLowerCase()}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(dv.clicks)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(dv.impressions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(micros(dv.costMicros))}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(dv.videoViews)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{(dv.videoViewRate * 100).toFixed(1)}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -1628,12 +1628,12 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
         <SectionCard title="Google Ads Recommendations" subtitle={`${data!.recommendations!.length} recommendation${data!.recommendations!.length !== 1 ? "s" : ""} from Google`}>
           <div className="flex flex-col gap-3">
             {data!.recommendations!.map((rec, i) => (
-              <div key={i} className="rounded-lg border border-slate-100 p-4">
+              <div key={i} className="rounded-lg border border-[var(--border-subtle)] p-4">
                 <div className="flex items-center gap-3 mb-1">
                   <span className="text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{rec.type.replace(/_/g, " ")}</span>
-                  <span className="text-xs text-slate-500">{rec.campaignName}</span>
+                  <span className="text-xs text-[var(--text-3)]">{rec.campaignName}</span>
                 </div>
-                <p className="text-xs text-slate-600">{(() => { try { const p = JSON.parse(rec.impact); return typeof p === "object" ? JSON.stringify(p, null, 0) : rec.impact; } catch { return rec.impact; } })()}</p>
+                <p className="text-xs text-[var(--text-2)]">{(() => { try { const p = JSON.parse(rec.impact); return typeof p === "object" ? JSON.stringify(p, null, 0) : rec.impact; } catch { return rec.impact; } })()}</p>
               </div>
             ))}
           </div>
@@ -1644,24 +1644,24 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       {!loading && !error && show("budget_utilisation") && (data?.budgetUtilisation?.length ?? 0) > 0 && (
         <SectionCard title="Budget Utilisation" subtitle="How much of each campaign budget is being spent">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Campaign</th>
-                  <th className="text-right px-4 py-3 font-medium">Daily Budget</th>
-                  <th className="text-right px-4 py-3 font-medium">Spend</th>
-                  <th className="text-right px-4 py-3 font-medium">Utilisation</th>
-                  <th className="text-left px-6 py-3 font-medium">Status</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Campaign</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Daily Budget</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Spend</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Utilisation</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {data!.budgetUtilisation!.map((bu) => (
-                  <tr key={bu.campaignId} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{bu.campaignName}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(micros(bu.dailyBudgetMicros))}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(micros(bu.spendMicros))}</td>
-                    <td className="px-4 py-3 text-right"><span className={`font-semibold ${bu.utilisationPercent >= 90 ? "text-red-600" : bu.utilisationPercent >= 70 ? "text-amber-600" : "text-emerald-600"}`}>{bu.utilisationPercent.toFixed(0)}%</span></td>
-                    <td className="px-6 py-3 text-slate-500 capitalize">{bu.budgetStatus.toLowerCase()}</td>
+                  <tr key={bu.campaignId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{bu.campaignName}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(micros(bu.dailyBudgetMicros))}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(micros(bu.spendMicros))}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}><span className={`font-semibold ${bu.utilisationPercent >= 90 ? "text-red-600" : bu.utilisationPercent >= 70 ? "text-amber-600" : "text-emerald-600"}`}>{bu.utilisationPercent.toFixed(0)}%</span></td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{bu.budgetStatus.toLowerCase()}</td>
                   </tr>
                 ))}
               </tbody>

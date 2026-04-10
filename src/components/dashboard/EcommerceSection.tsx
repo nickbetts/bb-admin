@@ -165,20 +165,20 @@ export function EcommerceSection({ clientId, clientName, platform, startDate, en
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50">
-                      <th className="text-left py-2 px-4 text-slate-400 font-medium text-xs">Product</th>
-                      <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Qty Sold</th>
-                      <th className="text-right py-2 px-4 text-slate-400 font-medium text-xs">Revenue</th>
+                    <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
+                      <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Product</th>
+                      <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Qty Sold</th>
+                      <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Revenue</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
                     {stats.topProducts.map((p, i) => (
-                      <tr key={i} className="hover:bg-slate-50 transition">
-                        <td className="py-3 px-4">
-                          <p className="text-slate-800 font-medium truncate max-w-[280px]">{p.name}</p>
+                      <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                        <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>
+                          <p className="text-[var(--text)] font-medium truncate max-w-[280px]">{p.name}</p>
                         </td>
-                        <td className="py-3 px-3 text-right text-slate-600 text-xs">{formatNumber(p.quantity)}</td>
-                        <td className="py-3 px-4 text-right font-semibold text-slate-800 text-sm">{formatCurrency(p.revenue)}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.quantity)}</td>
+                        <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>{formatCurrency(p.revenue)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -241,20 +241,20 @@ export function EcommerceSection({ clientId, clientName, platform, startDate, en
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50">
-                        <th className="text-left py-2 px-4 text-slate-400 font-medium text-xs">Customer</th>
-                        <th className="text-right py-2 px-3 text-slate-400 font-medium text-xs">Total Spent</th>
-                        <th className="text-right py-2 px-4 text-slate-400 font-medium text-xs">Orders</th>
+                      <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
+                        <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Customer</th>
+                        <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Total Spent</th>
+                        <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Orders</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
                       {customers.topCustomers.slice(0, 5).map((c, i) => (
-                        <tr key={i} className="hover:bg-slate-50 transition">
-                          <td className="py-3 px-4">
-                            <p className="text-slate-800 font-medium truncate max-w-[240px]">{c.name}</p>
+                        <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                          <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>
+                            <p className="text-[var(--text)] font-medium truncate max-w-[240px]">{c.name}</p>
                           </td>
-                          <td className="py-3 px-3 text-right font-semibold text-slate-800 text-sm">{formatCurrency(c.totalSpent)}</td>
-                          <td className="py-3 px-4 text-right text-slate-600 text-xs">{formatNumber(c.orderCount)}</td>
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>{formatCurrency(c.totalSpent)}</td>
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(c.orderCount)}</td>
                         </tr>
                       ))}
                     </tbody>

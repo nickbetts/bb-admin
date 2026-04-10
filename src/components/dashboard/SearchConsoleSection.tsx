@@ -494,7 +494,7 @@ export function SearchConsoleSection({
       {show("chart") && (
       <SectionCard title="Clicks & Impressions" subtitle="Search performance over time">
         {chartData.length === 0 ? (
-          <p className="text-sm text-slate-400 py-8 text-center">No data for this period</p>
+          <p className="text-sm text-[var(--text-3)] py-8 text-center">No data for this period</p>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
@@ -533,7 +533,7 @@ export function SearchConsoleSection({
         {show("top_queries") && (
         <SectionCard title="Top Queries" subtitle="Ranked by clicks">
           {queries.length === 0 ? (
-            <p className="text-sm text-slate-400 py-6 text-center">No query data</p>
+            <p className="text-sm text-[var(--text-3)] py-6 text-center">No query data</p>
           ) : (
             <div style={{ overflowX: "visible" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, tableLayout: "fixed" }}>
@@ -589,7 +589,7 @@ export function SearchConsoleSection({
         {show("top_pages") && (
         <SectionCard title="Top Pages" subtitle="Ranked by clicks">
           {pages.length === 0 ? (
-            <p className="text-sm text-slate-400 py-6 text-center">No page data</p>
+            <p className="text-sm text-[var(--text-3)] py-6 text-center">No page data</p>
           ) : (
             <div style={{ overflowX: "visible" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, tableLayout: "fixed" }}>
@@ -749,8 +749,8 @@ export function SearchConsoleSection({
               <div className="flex justify-around pt-1 pb-2">
                 {devices.map((d, i) => (
                   <div key={i} className="text-center">
-                    <p className="text-xs text-slate-500">{d.device.charAt(0) + d.device.slice(1).toLowerCase()}</p>
-                    <p className="text-sm font-semibold text-slate-800">{totalDeviceClicks > 0 ? ((d.clicks / totalDeviceClicks) * 100).toFixed(0) : 0}%</p>
+                    <p className="text-xs text-[var(--text-3)]">{d.device.charAt(0) + d.device.slice(1).toLowerCase()}</p>
+                    <p className="text-sm font-semibold text-[var(--text)]">{totalDeviceClicks > 0 ? ((d.clicks / totalDeviceClicks) * 100).toFixed(0) : 0}%</p>
                   </div>
                 ))}
               </div>
@@ -1018,26 +1018,26 @@ export function SearchConsoleSection({
       {show("query_page") && queryPage.length > 0 && (
         <SectionCard title="Query × Page" subtitle={`${queryPage.length} query/page combination${queryPage.length !== 1 ? "s" : ""}`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 640 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Query</th>
-                  <th className="text-left px-4 py-3 font-medium">Page</th>
-                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
-                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
-                  <th className="text-right px-4 py-3 font-medium">CTR</th>
-                  <th className="text-right px-6 py-3 font-medium">Position</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Query</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Page</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Position</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {queryPage.map((qp, i) => (
-                  <tr key={`${qp.query}-${qp.page}-${i}`} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{qp.query}</td>
-                    <td className="px-4 py-3 text-slate-600 truncate max-w-[200px]" title={qp.page}>{qp.page.replace(/^https?:\/\/[^/]+/, "")}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(qp.clicks)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(qp.impressions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{(qp.ctr * 100).toFixed(1)}%</td>
-                    <td className="px-6 py-3 text-right"><span className={positionBadgeClass(qp.position)}>{qp.position.toFixed(1)}</span></td>
+                  <tr key={`${qp.query}-${qp.page}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{qp.query}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }} title={qp.page}>{qp.page.replace(/^https?:\/\/[^/]+/, "")}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(qp.clicks)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(qp.impressions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{(qp.ctr * 100).toFixed(1)}%</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}><span className={positionBadgeClass(qp.position)}>{qp.position.toFixed(1)}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -1050,26 +1050,26 @@ export function SearchConsoleSection({
       {show("page_country") && pageCountry.length > 0 && (
         <SectionCard title="Page × Country" subtitle={`${pageCountry.length} page/country combination${pageCountry.length !== 1 ? "s" : ""}`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 640 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Page</th>
-                  <th className="text-left px-4 py-3 font-medium">Country</th>
-                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
-                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
-                  <th className="text-right px-4 py-3 font-medium">CTR</th>
-                  <th className="text-right px-6 py-3 font-medium">Position</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Page</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Country</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Position</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {pageCountry.map((pc, i) => (
-                  <tr key={`${pc.page}-${pc.country}-${i}`} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium truncate max-w-[200px]" title={pc.page}>{pc.page.replace(/^https?:\/\/[^/]+/, "")}</td>
-                    <td className="px-4 py-3 text-slate-600">{pc.country}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(pc.clicks)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(pc.impressions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{(pc.ctr * 100).toFixed(1)}%</td>
-                    <td className="px-6 py-3 text-right"><span className={positionBadgeClass(pc.position)}>{pc.position.toFixed(1)}</span></td>
+                  <tr key={`${pc.page}-${pc.country}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }} title={pc.page}>{pc.page.replace(/^https?:\/\/[^/]+/, "")}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{pc.country}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(pc.clicks)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(pc.impressions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{(pc.ctr * 100).toFixed(1)}%</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}><span className={positionBadgeClass(pc.position)}>{pc.position.toFixed(1)}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -1083,10 +1083,10 @@ export function SearchConsoleSection({
         <SectionCard title="Discover & News" subtitle="Google Discover and Google News performance">
           <div className="space-y-4">
             {discoverNews.map((dn) => (
-              <div key={dn.type} className="border border-slate-100 rounded-lg p-4">
+              <div key={dn.type} className="border border-[var(--border-subtle)] rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-slate-800">{dn.type}</span>
-                  <div className="flex gap-4 text-xs text-slate-500">
+                  <span className="text-sm font-semibold text-[var(--text)]">{dn.type}</span>
+                  <div className="flex gap-4 text-xs text-[var(--text-3)]">
                     <span>{formatNumber(dn.clicks)} clicks</span>
                     <span>{formatNumber(dn.impressions)} impressions</span>
                     <span>{(dn.ctr * 100).toFixed(1)}% CTR</span>
@@ -1095,18 +1095,18 @@ export function SearchConsoleSection({
                 {dn.pages && dn.pages.length > 0 && (
                   <table className="w-full text-xs mt-2">
                     <thead>
-                      <tr className="border-b border-slate-100 text-slate-500">
-                        <th className="text-left px-4 py-2 font-medium">Page</th>
-                        <th className="text-right px-4 py-2 font-medium">Clicks</th>
-                        <th className="text-right px-4 py-2 font-medium">Impressions</th>
+                      <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                        <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Page</th>
+                        <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                        <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-50">
+                    <tbody>
                       {dn.pages.map((pg, i) => (
-                        <tr key={`${pg.page}-${i}`} className="hover:bg-slate-50 transition">
-                          <td className="px-4 py-2 text-slate-700 truncate max-w-[300px]" title={pg.page}>{pg.page.replace(/^https?:\/\/[^/]+/, "")}</td>
-                          <td className="px-4 py-2 text-right text-slate-600">{formatNumber(pg.clicks)}</td>
-                          <td className="px-4 py-2 text-right text-slate-600">{formatNumber(pg.impressions)}</td>
+                        <tr key={`${pg.page}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                          <td style={{ padding: "12px 16px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 300 }} title={pg.page}>{pg.page.replace(/^https?:\/\/[^/]+/, "")}</td>
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(pg.clicks)}</td>
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(pg.impressions)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1123,34 +1123,34 @@ export function SearchConsoleSection({
         <SectionCard title="Sitemaps" subtitle={`${sitemaps.length} sitemap${sitemaps.length !== 1 ? "s" : ""} submitted`}>
           <div className="space-y-3">
             {sitemaps.map((sm) => (
-              <div key={sm.path} className="border border-slate-100 rounded-lg p-4">
+              <div key={sm.path} className="border border-[var(--border-subtle)] rounded-lg p-4">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-semibold text-slate-800 truncate max-w-[300px]" title={sm.path}>{sm.path}</span>
+                  <span className="text-xs font-semibold text-[var(--text)] truncate max-w-[300px]" title={sm.path}>{sm.path}</span>
                   <div className="flex gap-3 text-xs">
-                    <span className="text-slate-500">{sm.type}</span>
+                    <span className="text-[var(--text-3)]">{sm.type}</span>
                     {sm.isPending && <span className="text-amber-600 font-medium">Pending</span>}
                     {sm.errors > 0 && <span className="text-red-600 font-medium">{sm.errors} error{sm.errors !== 1 ? "s" : ""}</span>}
                     {sm.warnings > 0 && <span className="text-amber-600 font-medium">{sm.warnings} warning{sm.warnings !== 1 ? "s" : ""}</span>}
                   </div>
                 </div>
-                {sm.lastSubmitted && <p className="text-[10px] text-slate-400">Submitted: {new Date(sm.lastSubmitted).toLocaleDateString()}</p>}
+                {sm.lastSubmitted && <p className="text-[10px] text-[var(--text-3)]">Submitted: {new Date(sm.lastSubmitted).toLocaleDateString()}</p>}
                 {sm.contents && sm.contents.length > 0 && (
                   <table className="w-full text-xs mt-2">
                     <thead>
-                      <tr className="border-b border-slate-100 text-slate-500">
-                        <th className="text-left px-4 py-2 font-medium">Type</th>
-                        <th className="text-right px-4 py-2 font-medium">Submitted</th>
-                        <th className="text-right px-4 py-2 font-medium">Indexed</th>
-                        <th className="text-right px-4 py-2 font-medium">Coverage</th>
+                      <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                        <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Type</th>
+                        <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Submitted</th>
+                        <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Indexed</th>
+                        <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Coverage</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-50">
+                    <tbody>
                       {sm.contents.map((c, i) => (
                         <tr key={`${c.type}-${i}`}>
-                          <td className="px-4 py-2 text-slate-700">{c.type}</td>
-                          <td className="px-4 py-2 text-right text-slate-600">{formatNumber(c.submitted)}</td>
-                          <td className="px-4 py-2 text-right text-slate-600">{formatNumber(c.indexed)}</td>
-                          <td className="px-4 py-2 text-right"><span className={c.submitted > 0 ? ((c.indexed / c.submitted) >= 0.8 ? "text-emerald-600" : (c.indexed / c.submitted) >= 0.5 ? "text-amber-600" : "text-red-600") : "text-slate-400"}>{c.submitted > 0 ? ((c.indexed / c.submitted) * 100).toFixed(0) + "%" : "—"}</span></td>
+                          <td style={{ padding: "12px 16px", color: "var(--text)" }}>{c.type}</td>
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(c.submitted)}</td>
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(c.indexed)}</td>
+                          <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}><span className={c.submitted > 0 ? ((c.indexed / c.submitted) >= 0.8 ? "text-emerald-600" : (c.indexed / c.submitted) >= 0.5 ? "text-amber-600" : "text-red-600") : "text-[var(--text-3)]"}>{c.submitted > 0 ? ((c.indexed / c.submitted) * 100).toFixed(0) + "%" : "—"}</span></td>
                         </tr>
                       ))}
                     </tbody>
@@ -1166,26 +1166,26 @@ export function SearchConsoleSection({
       {show("query_device") && queryDevice.length > 0 && (
         <SectionCard title="Query × Device" subtitle={`${queryDevice.length} query/device combination${queryDevice.length !== 1 ? "s" : ""}`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Query</th>
-                  <th className="text-left px-4 py-3 font-medium">Device</th>
-                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
-                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
-                  <th className="text-right px-4 py-3 font-medium">CTR</th>
-                  <th className="text-right px-6 py-3 font-medium">Position</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Query</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Device</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Position</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {queryDevice.map((qd, i) => (
-                  <tr key={`${qd.query}-${qd.device}-${i}`} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{qd.query}</td>
-                    <td className="px-4 py-3 text-slate-600">{qd.device}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(qd.clicks)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(qd.impressions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{(qd.ctr * 100).toFixed(1)}%</td>
-                    <td className="px-6 py-3 text-right"><span className={positionBadgeClass(qd.position)}>{qd.position.toFixed(1)}</span></td>
+                  <tr key={`${qd.query}-${qd.device}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{qd.query}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{qd.device}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(qd.clicks)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(qd.impressions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{(qd.ctr * 100).toFixed(1)}%</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}><span className={positionBadgeClass(qd.position)}>{qd.position.toFixed(1)}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -1198,26 +1198,26 @@ export function SearchConsoleSection({
       {show("query_country") && queryCountry.length > 0 && (
         <SectionCard title="Query × Country" subtitle={`${queryCountry.length} query/country combination${queryCountry.length !== 1 ? "s" : ""}`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Query</th>
-                  <th className="text-left px-4 py-3 font-medium">Country</th>
-                  <th className="text-right px-4 py-3 font-medium">Clicks</th>
-                  <th className="text-right px-4 py-3 font-medium">Impressions</th>
-                  <th className="text-right px-4 py-3 font-medium">CTR</th>
-                  <th className="text-right px-6 py-3 font-medium">Position</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Query</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Country</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Position</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {queryCountry.map((qc, i) => (
-                  <tr key={`${qc.query}-${qc.country}-${i}`} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{qc.query}</td>
-                    <td className="px-4 py-3 text-slate-600">{qc.country}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(qc.clicks)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(qc.impressions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{(qc.ctr * 100).toFixed(1)}%</td>
-                    <td className="px-6 py-3 text-right"><span className={positionBadgeClass(qc.position)}>{qc.position.toFixed(1)}</span></td>
+                  <tr key={`${qc.query}-${qc.country}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{qc.query}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{qc.country}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(qc.clicks)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(qc.impressions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{(qc.ctr * 100).toFixed(1)}%</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}><span className={positionBadgeClass(qc.position)}>{qc.position.toFixed(1)}</span></td>
                   </tr>
                 ))}
               </tbody>

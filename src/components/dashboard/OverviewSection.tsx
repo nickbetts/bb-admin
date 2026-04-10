@@ -1604,7 +1604,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             {aiResult && (
               <button
                 onClick={() => setAiExpanded((v) => !v)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 transition"
+                className="p-1.5 rounded-lg hover:bg-[var(--border-subtle)] transition"
                 style={{ color: "var(--text-3)" }}
               >
                 {aiExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}

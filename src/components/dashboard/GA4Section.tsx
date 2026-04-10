@@ -633,21 +633,21 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         {/* Top pages table */}
         {show("top_pages") && pages.length > 0 && (
           <SectionCard title="Top Pages" subtitle="By sessions">
-            <div className="divide-y divide-slate-100">
+            <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
               {pages.slice(0, 6).map((page, i) => (
                 <div
                   key={i}
                   className="flex items-center gap-3 py-3.5"
                 >
-                  <span className="text-xs text-slate-400 w-5 shrink-0 text-right">
+                  <span className="text-xs text-[var(--text-3)] w-5 shrink-0 text-right">
                     {i + 1}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-800 truncate">{page.pagePath}</p>
-                    <p className="text-xs text-slate-500 truncate">{page.pageTitle}</p>
+                    <p className="text-sm text-[var(--text)] truncate">{page.pagePath}</p>
+                    <p className="text-xs text-[var(--text-3)] truncate">{page.pageTitle}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm text-slate-800 font-medium">{formatNumber(page.sessions)}</p>
+                    <p className="text-sm text-[var(--text)] font-medium">{formatNumber(page.sessions)}</p>
                     <Delta current={page.sessions} previous={prevPagesMap.get(page.pagePath)?.sessions} format="count" />
                   </div>
                 </div>
@@ -691,8 +691,8 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
               <div className="flex justify-around pt-1 pb-2">
                 {deviceSplit.map((d, i) => (
                   <div key={i} className="text-center">
-                    <p className="text-xs text-slate-500 capitalize">{d.device}</p>
-                    <p className="text-sm font-semibold text-slate-800">
+                    <p className="text-xs text-[var(--text-3)] capitalize">{d.device}</p>
+                    <p className="text-sm font-semibold text-[var(--text)]">
                       {totalDeviceSessions > 0 ? ((d.sessions / totalDeviceSessions) * 100).toFixed(0) : 0}%
                     </p>
                   </div>
@@ -704,16 +704,16 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
           {/* Top countries by sessions */}
           {show("countries") && geography.length > 0 && (
             <SectionCard title="Top Countries" subtitle="By sessions">
-              <div className="divide-y divide-slate-100">
+              <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
                 {geography.slice(0, 8).map((c, i) => {
                   const maxSessions = geography[0]?.sessions ?? 1;
                   const barWidth = Math.round((c.sessions / maxSessions) * 100);
                   return (
                     <div key={i} className="flex items-center gap-3 py-3">
-                      <span className="text-xs text-slate-400 w-5 shrink-0 text-right">{i + 1}</span>
+                      <span className="text-xs text-[var(--text-3)] w-5 shrink-0 text-right">{i + 1}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-slate-800">{c.country}</p>
-                        <div className="mt-1 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <p className="text-sm text-[var(--text)]">{c.country}</p>
+                        <div className="mt-1 h-1.5 w-full bg-[var(--border-subtle)] rounded-full overflow-hidden">
                           <div
                             className="h-full bg-blue-400 rounded-full"
                             style={{ width: `${barWidth}%` }}
@@ -721,8 +721,8 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-slate-800">{formatNumber(c.sessions)}</p>
-                        <p className="text-xs text-slate-500">{formatNumber(c.users)} users</p>
+                        <p className="text-sm font-semibold text-[var(--text)]">{formatNumber(c.sessions)}</p>
+                        <p className="text-xs text-[var(--text-3)]">{formatNumber(c.users)} users</p>
                       </div>
                     </div>
                   );
@@ -770,7 +770,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {demographics.ageGroups.length > 0 && (
             <SectionCard title="Age Groups" subtitle="User age distribution">
-              <div className="divide-y divide-slate-100">
+              <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
                 {demographics.ageGroups.map((a, i) => {
                   const max = demographics.ageGroups[0]?.users ?? 1;
                   return (
@@ -812,7 +812,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       {/* Conversion Events */}
       {show("conversion_events") && conversionEvents.length > 0 && (
         <SectionCard title="Conversion Events" subtitle="Key events tracked this period">
-          <div className="divide-y divide-slate-100">
+          <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
             {conversionEvents.map((ev, i) => (
               <div key={i} className="flex items-center justify-between py-2.5">
                 <span style={{ fontSize: 13, color: "var(--text)", fontFamily: "monospace" }}>{ev.eventName}</span>
@@ -828,7 +828,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         const maxConv = conversionsByChannel[0]?.conversions ?? 1;
         return (
           <SectionCard title="Conversions by Channel" subtitle="Which channels drive goals">
-            <div className="divide-y divide-slate-100">
+            <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
               {conversionsByChannel.map((ch, i) => (
                 <div key={i} className="py-2.5">
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
@@ -849,13 +849,13 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       {show("ai_referrals") && (
         <SectionCard title="AI Search Referrals" subtitle="Sessions from ChatGPT, Claude, Perplexity and other AI tools">
           {aiReferrals.length === 0 ? (
-            <p className="text-sm text-slate-400 py-2">No AI referral traffic detected in this period.</p>
+            <p className="text-sm text-[var(--text-3)] py-2">No AI referral traffic detected in this period.</p>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
               {aiReferrals.map((ref, i) => (
                 <div key={i} className="py-2.5 flex items-center justify-between">
-                  <span className="text-sm font-medium text-slate-800">{ref.source}</span>
-                  <div className="flex items-center gap-4 text-sm text-slate-600">
+                  <span className="text-sm font-medium text-[var(--text)]">{ref.source}</span>
+                  <div className="flex items-center gap-4 text-sm text-[var(--text-2)]">
                     <span><span className="font-semibold text-indigo-600">{formatNumber(ref.sessions)}</span> sessions</span>
                     <span><span className="font-semibold">{formatNumber(ref.users)}</span> users</span>
                   </div>
@@ -1054,20 +1054,20 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       {show("event_parameters") && eventParameters.length > 0 && (
         <SectionCard title="Event Parameters" subtitle={`${eventParameters.length} event${eventParameters.length !== 1 ? "s" : ""} tracked`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 400 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 400 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Event Name</th>
-                  <th className="text-right px-4 py-3 font-medium">Count</th>
-                  <th className="text-right px-6 py-3 font-medium">Value</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Event Name</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Count</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Value</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {eventParameters.map((e) => (
-                  <tr key={e.eventName} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{e.eventName}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(e.eventCount)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600">{e.eventValue > 0 ? formatCurrency(e.eventValue) : "—"}</td>
+                  <tr key={e.eventName} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{e.eventName}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(e.eventCount)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{e.eventValue > 0 ? formatCurrency(e.eventValue) : "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1080,24 +1080,24 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       {show("content_grouping") && contentGrouping.length > 0 && (
         <SectionCard title="Content Grouping" subtitle="Performance by content group">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 560 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Content Group</th>
-                  <th className="text-right px-4 py-3 font-medium">Sessions</th>
-                  <th className="text-right px-4 py-3 font-medium">Pageviews</th>
-                  <th className="text-right px-4 py-3 font-medium">Bounce Rate</th>
-                  <th className="text-right px-6 py-3 font-medium">Avg Duration</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Content Group</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Sessions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Pageviews</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Bounce Rate</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Avg Duration</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {contentGrouping.map((cg) => (
-                  <tr key={cg.contentGroup} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{cg.contentGroup || "(not set)"}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(cg.sessions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(cg.pageviews)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{(cg.bounceRate * 100).toFixed(1)}%</td>
-                    <td className="px-6 py-3 text-right text-slate-600">{formatDuration(cg.avgSessionDuration)}</td>
+                  <tr key={cg.contentGroup} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{cg.contentGroup || "(not set)"}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(cg.sessions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(cg.pageviews)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{(cg.bounceRate * 100).toFixed(1)}%</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatDuration(cg.avgSessionDuration)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1125,22 +1125,22 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       {show("browser_os") && browserOs.length > 0 && (
         <SectionCard title="Browser & OS" subtitle={`${browserOs.length} browser/OS combination${browserOs.length !== 1 ? "s" : ""}`}>
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 480 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 480 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Browser</th>
-                  <th className="text-left px-4 py-3 font-medium">Operating System</th>
-                  <th className="text-right px-4 py-3 font-medium">Sessions</th>
-                  <th className="text-right px-6 py-3 font-medium">Users</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Browser</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Operating System</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Sessions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Users</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {browserOs.map((bo, i) => (
-                  <tr key={`${bo.browser}-${bo.operatingSystem}-${i}`} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{bo.browser}</td>
-                    <td className="px-4 py-3 text-slate-600">{bo.operatingSystem}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(bo.sessions)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600">{formatNumber(bo.users)}</td>
+                  <tr key={`${bo.browser}-${bo.operatingSystem}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{bo.browser}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{bo.operatingSystem}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(bo.sessions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(bo.users)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1153,24 +1153,24 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       {show("ecommerce_revenue") && ecommerceRevenue.length > 0 && (
         <SectionCard title="Ecommerce Revenue" subtitle="Revenue by page and source">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 640 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Page</th>
-                  <th className="text-left px-4 py-3 font-medium">Source / Medium</th>
-                  <th className="text-right px-4 py-3 font-medium">Transactions</th>
-                  <th className="text-right px-4 py-3 font-medium">Purchase Revenue</th>
-                  <th className="text-right px-6 py-3 font-medium">Total Revenue</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Page</th>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Source / Medium</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Transactions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Purchase Revenue</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Total Revenue</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {ecommerceRevenue.map((er, i) => (
-                  <tr key={`${er.pagePath}-${er.source}-${i}`} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium truncate max-w-[200px]">{er.pagePath}</td>
-                    <td className="px-4 py-3 text-slate-600">{er.source} / {er.medium}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(er.transactions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(er.purchaseRevenue)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(er.totalRevenue)}</td>
+                  <tr key={`${er.pagePath}-${er.source}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{er.pagePath}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{er.source} / {er.medium}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(er.transactions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(er.purchaseRevenue)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(er.totalRevenue)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1183,24 +1183,24 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       {show("user_acquisition") && userAcquisition.length > 0 && (
         <SectionCard title="User Acquisition" subtitle="First-touch source for new users">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 600 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">First Source / Medium</th>
-                  <th className="text-right px-4 py-3 font-medium">New Users</th>
-                  <th className="text-right px-4 py-3 font-medium">Sessions</th>
-                  <th className="text-right px-4 py-3 font-medium">Engaged</th>
-                  <th className="text-right px-6 py-3 font-medium">Conversions</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>First Source / Medium</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>New Users</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Sessions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Engaged</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conversions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {userAcquisition.map((ua, i) => (
-                  <tr key={`${ua.firstUserSource}-${ua.firstUserMedium}-${i}`} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{ua.firstUserSource} / {ua.firstUserMedium}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(ua.newUsers)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(ua.sessions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(ua.engagedSessions)}</td>
-                    <td className="px-6 py-3 text-right text-slate-600">{formatNumber(ua.conversions)}</td>
+                  <tr key={`${ua.firstUserSource}-${ua.firstUserMedium}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{ua.firstUserSource} / {ua.firstUserMedium}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(ua.newUsers)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(ua.sessions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(ua.engagedSessions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(ua.conversions)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1213,22 +1213,28 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       {show("revenue_per_session") && revenuePerSession.length > 0 && (
         <SectionCard title="Revenue Per Session" subtitle="Revenue efficiency by traffic source">
           <div style={{ overflowX: "auto" }}>
-            <table className="w-full text-xs" style={{ minWidth: 520 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, tableLayout: "fixed", minWidth: 520 }}>
+              <colgroup>
+                <col style={{ width: "40%" }} />
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "22%" }} />
+                <col style={{ width: "23%" }} />
+              </colgroup>
               <thead>
-                <tr className="border-b border-slate-100 text-slate-500 bg-slate-50">
-                  <th className="text-left px-6 py-3 font-medium">Source / Medium</th>
-                  <th className="text-right px-4 py-3 font-medium">Sessions</th>
-                  <th className="text-right px-4 py-3 font-medium">Total Revenue</th>
-                  <th className="text-right px-6 py-3 font-medium">Rev / Session</th>
+                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Source / Medium</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Sessions</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Total Revenue</th>
+                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Rev / Session</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody>
                 {revenuePerSession.map((rps, i) => (
-                  <tr key={`${rps.source}-${rps.medium}-${i}`} className="hover:bg-slate-50 transition">
-                    <td className="px-6 py-3 text-slate-800 font-medium">{rps.source} / {rps.medium}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatNumber(rps.sessions)}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(rps.totalRevenue)}</td>
-                    <td className="px-6 py-3 text-right"><span className="font-semibold text-emerald-600">{formatCurrency(rps.revenuePerSession)}</span></td>
+                  <tr key={`${rps.source}-${rps.medium}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rps.source} / {rps.medium}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(rps.sessions)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(rps.totalRevenue)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "right" }}><span style={{ fontWeight: 600, color: "var(--success)" }}>{formatCurrency(rps.revenuePerSession)}</span></td>
                   </tr>
                 ))}
               </tbody>
