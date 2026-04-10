@@ -1,7 +1,7 @@
 # UI/UX Audit & Improvement Plan
 
 > Full platform audit — 10 April 2026  
-> Last updated: Phase 1 ✅ implemented — commit `8564e2c`
+> Last updated: Continuation phase ✅ implemented — commit `2347206`
 > Covers: dashboards, channel sections, metric cards, tables, charts, reports, tools, settings, admin, portal, forms, modals, navigation, loading/error states, accessibility, responsive, and design-system foundations.
 
 ---
@@ -42,6 +42,7 @@
 18. [Colour System & Dark Mode Prep](#18-colour-system--dark-mode-prep)
 19. [Typography](#19-typography)
 20. [Implementation Priority](#20-implementation-priority)
+21. [Main Dashboard Page](#21-main-dashboard-page)
 
 ---
 
@@ -709,6 +710,60 @@ interface ModalProps {
 
 ---
 
+## 21. Main Dashboard Page
+
+> `src/app/dashboard/page.tsx` — the first screen a user sees after login. Currently functional but sparse.
+
+### Current State
+- Server component: fetches total clients, total reports, 5 recent clients, 5 recent reports, integration counts
+- Three `stat-card` elements (Total Clients, Total Reports, Active Integrations)
+- Two list cards side-by-side (Recent Clients, Recent Reports)
+- A small Quick Actions grid at the bottom with only 2 actions
+- Personalised greeting (`Good morning, Nik 👋`)
+- **Not covered elsewhere in this plan** — omission corrected here
+
+### Findings
+
+| # | Finding | Fix | Priority |
+|---|---------|-----|----------|
+| 21.1 | `stat-card` uses hardcoded icon background hex values (`#eef2ff`, `#eff6ff`, `#ecfdf5`) | Replace with design tokens or channel/status colour maps | High |
+| 21.2 | `stat-card` is a completely separate pattern from `MetricCard` (acknowledged in §4.6 but never resolved) | Either promote stat-card to a `MetricCard variant="stat"` or clearly document the intentional split and standardise the icon styling | Medium |
+| 21.3 | Empty states in Recent Clients and Recent Reports use plain inline `<div>` text | Replace both with `<EmptyState>` — e.g. `<EmptyState icon={<Users/>} title="No clients yet" description="Add your first client to get started." actions={[{label:"Add client",href:"/clients/new"}]} />` | High |
+| 21.4 | Quick Actions grid has only 2 links; "New Report" also links to `/clients` not a report flow | Expand to 4–6 actions: Add Client, Keyword Planner, New Proposal, View Reports, Settings; fix the New Report href | Medium |
+| 21.5 | No anomaly/signal feed on the home dashboard | Add a "Latest Signals" card pulling 3–5 most recent `DetectedAnomaly` records across all clients — gives teams an at-a-glance exception summary | High |
+| 21.6 | No drafts-due or review-pending indicator | Add a "Reports needing attention" banner (count of `status: 'draft'` or `status: 'review'` reports) so account managers know what's in-flight | Medium |
+| 21.7 | Integration count only surfaces 5 channels out of 15 | Either list all active integrations with per-channel client counts (e.g. "Meta: 3 clients") or show a horizontal integration health strip | Low |
+| 21.8 | No portfolio health overview on the home screen | Add a compact link card to `/portfolio` for teams using the portfolio health feature | Low |
+| 21.9 | Client list rows use fully inline styles duplicated from the clients list page | Extract into a shared `ClientListRow` pattern or at minimum a shared CSS class | Low |
+| 21.10 | Greeting computed server-side but server time ≠ user local timezone | Move greeting computation client-side (small `GreetingHeader` client component) so it respects the browser's local hour | Low |
+
+### Recommended Layout (next iteration)
+
+```
+┌──────────────── Good morning, Nik ────────────────────────────────────────────┐
+│  Friday, 10 April 2026  ·  Week 15                                            │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌──── Clients ────┐  ┌──── Reports ────┐  ┌── Integrations ──┐  ┌── In Review ──┐
+│       12        │  │      47         │  │    8 active      │  │  3 drafts     │
+└─────────────────┘  └─────────────────┘  └──────────────────┘  └───────────────┘
+
+┌─────────────────────────────────┐  ┌──────────────────────────────────────────┐
+│  Recent Clients (5)             │  │  Recent Reports (5)                      │
+│  (with report count badge)      │  │  (with status badge + client name)       │
+└─────────────────────────────────┘  └──────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Latest Signals  (3 most recent anomalies across all clients)                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────── Quick Actions ───────────────────────────────────────────────┐
+│  + Add Client   📊 Keyword Planner   📄 Proposals   📈 Portfolio   ⚙ Settings │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## Appendix A: Component Inventory
 
 | Component | Location | Purpose | Status |
@@ -739,18 +794,30 @@ interface ModalProps {
 
 ## Appendix C: Files That Need the Most Work
 
-Ranked by number of inconsistencies found:
+Ranked by remaining inconsistencies as of **10 April 2026** (commit `2347206`).
 
-1. **GA4Section.tsx** — largest component, most inline styles, needs DataTable + chart config migration
-2. **MetaSection.tsx** — second largest, same issues as GA4
+### Still outstanding
+
+1. **GA4Section.tsx** — largest component (~700 LOC), heaviest inline styles, no `DataTable`, no shared chart config, no `SectionHeader`, no `SectionErrorBoundary`
+2. **MetaSection.tsx** — second largest, same pattern as GA4
 3. **GoogleAdsSection.tsx** — third largest, same pattern
-4. **SemrushSection.tsx** — complex table + chart combinations
-5. **TikTokSection.tsx** — uses no MetricCard, no DataTable, custom loading/error
-6. **LinkedInSection.tsx** — same as TikTok
-7. **MicrosoftAdsSection.tsx** — same as TikTok
-8. **YouTubeSection.tsx** — same as TikTok
-9. **HubSpotSection.tsx** — same as TikTok
-10. **CallRailSection.tsx** — same as TikTok
-11. **KlaviyoSection.tsx** — same as TikTok, plus broken JSX comments (now fixed)
-12. **EcommerceSection.tsx** — chart config migration needed
-13. **globals.css** — needs dark mode block, semantic tokens, missing form classes
+4. **SemrushSection.tsx** — complex table + chart combinations, no `DataTable`, no shared chart config
+5. **EcommerceSection.tsx** — chart config migration needed; not using shared section wrappers
+6. **dashboard/page.tsx** — see §21 for full finding list; stat-card hardcoded colours, inline empty states, missing signals feed, Quick Actions incomplete
+7. **ReportView.tsx** — ~1,600 LOC; deeply inline-styled toolbar and section editor; toolbar buttons inconsistently sized
+8. **globals.css** — dark mode `@media (prefers-color-scheme: dark)` block still not implemented; some form-input classes missing
+
+### Resolved ✅
+
+| File | What was fixed | Commit |
+|------|---------------|--------|
+| `TikTokSection.tsx` | `SectionHeader` adopted | `2347206` |
+| `LinkedInSection.tsx` | `SectionHeader` with `iconNode` for custom SVG | `2347206` |
+| `MicrosoftAdsSection.tsx` | `SectionHeader` adopted | `2347206` |
+| `YouTubeSection.tsx` | `EmptyState` replaces inline not-configured div; unused `AlertCircle` removed | `2347206` |
+| `HubSpotSection.tsx` | `EmptyState` replaces inline not-configured div | `2347206` |
+| `CallRailSection.tsx` | `EmptyState` replaces inline not-configured div; unused `AlertCircle` removed | `2347206` |
+| `KlaviyoSection.tsx` | Full rewrite — local `MetricCard` stub removed; all shared components adopted | `2347206` |
+| `SectionHeader.tsx` | `iconNode?: ReactNode` prop added for custom SVG icons | `2347206` |
+| `globals.css` | Recharts `break-inside: avoid` print rule; table print compression 10px; sticky `.page-header` with `backdrop-filter` | `2347206` |
+| `clients/[slug]/page.tsx` | `ArrowLeft` back link replaced with `<Breadcrumb>` component | `2347206` |
