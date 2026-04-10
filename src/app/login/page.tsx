@@ -1,8 +1,55 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, ArrowRight } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  Brain,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Code2,
+  FileText,
+  Globe,
+  Layers,
+  Mail,
+  MessageSquare,
+  Puzzle,
+  Radar,
+  Search,
+  Settings,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Users,
+  Zap,
+  BookOpen,
+  Briefcase,
+  Building2,
+  Database,
+  FileSearch,
+  Gauge,
+  GitBranch,
+  Hash,
+  Layout,
+  ListTodo,
+  Megaphone,
+  Monitor,
+  Palette,
+  Rocket,
+  Send,
+  Share2,
+  ShieldCheck,
+  Terminal,
+  Trophy,
+  Wand2,
+  Workflow,
+} from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -32,7 +79,27 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    const ids = ["problems", "channels", "stratum", "signals", "budget", "reports", "forecasting", "ai-analyst", "portal", "how-it-works", "about", "access"];
+    const ids = [
+      "problems",
+      "stats",
+      "channels",
+      "stratum",
+      "signals",
+      "portfolio",
+      "actions",
+      "budget",
+      "reports",
+      "forecasting",
+      "ai-analyst",
+      "notifications",
+      "portal",
+      "toolkit",
+      "mid-cta",
+      "also-in-stratos",
+      "how-it-works",
+      "about",
+      "access",
+    ];
     const observers: IntersectionObserver[] = [];
     ids.forEach((id) => {
       const el = document.getElementById(id);
@@ -174,14 +241,19 @@ export default function LoginPage() {
       >
         {([
           { id: "problems", label: "Problems" },
+          { id: "stats", label: "Platform" },
           { id: "channels", label: "Channels" },
           { id: "stratum", label: "Stratum" },
           { id: "signals", label: "Signals" },
+          { id: "portfolio", label: "Portfolio" },
+          { id: "actions", label: "Actions" },
           { id: "budget", label: "Budget" },
           { id: "reports", label: "Reports" },
           { id: "forecasting", label: "Forecasting" },
           { id: "ai-analyst", label: "Stratum™" },
+          { id: "notifications", label: "Alerts" },
           { id: "portal", label: "Portal" },
+          { id: "toolkit", label: "Toolkit" },
           { id: "how-it-works", label: "How it works" },
           { id: "about", label: "About" },
           { id: "access", label: "Get access" },
@@ -319,34 +391,35 @@ export default function LoginPage() {
               fontSize: 18, color: "rgba(255,255,255,0.55)", lineHeight: 1.75,
               maxWidth: 520, marginBottom: 40,
             }}>
-              After 20 years running campaigns for ambitious brands, we built what we always wanted: 15 marketing channels in one place, anomalies flagged before your client notices, and client reports that write themselves.
+              After 20+ years running campaigns for ambitious brands, we built what we always wanted: 16 marketing channels in one place, anomalies flagged before your client notices, and client reports that write themselves.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
               {[
-                "15 channels connected. Fully live, no manual exports.",
-                "Stratum™ flags issues before your client ever notices.",
-                "Reports with commentary done in minutes, not an afternoon.",
-                "Ask Stratum™ anything. It reads every connected channel at once.",
-                "90-day forecasting built from your own data, not benchmarks.",
-                "Budget advisor shows exactly where to move the spend and why.",
-                "Branded client portals with live goals and key metrics.",
+                { icon: <Globe style={{ width: 13, height: 13 }} />, text: "16 channels connected. Fully live, no manual exports." },
+                { icon: <Radar style={{ width: 13, height: 13 }} />, text: "Stratum™ flags issues before your client ever notices." },
+                { icon: <FileText style={{ width: 13, height: 13 }} />, text: "Reports with commentary done in minutes, not an afternoon." },
+                { icon: <Brain style={{ width: 13, height: 13 }} />, text: "Ask Stratum™ anything. It reads every connected channel at once." },
+                { icon: <TrendingUp style={{ width: 13, height: 13 }} />, text: "90-day forecasting built from your own data, not benchmarks." },
+                { icon: <Target style={{ width: 13, height: 13 }} />, text: "Budget adviser shows exactly where to move the spend and why." },
+                { icon: <Monitor style={{ width: 13, height: 13 }} />, text: "Branded client portals with live goals and key metrics." },
+                { icon: <Zap style={{ width: 13, height: 13 }} />, text: "19 AI endpoints analysing performance 24/7." },
               ].map((f) => (
-                <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
+                <div key={f.text} style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
                   <div style={{
                     width: 17, height: 17, borderRadius: "50%", flexShrink: 0, marginTop: 2,
                     background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.35)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#818cf8", fontSize: 9, fontWeight: 900,
-                  }}>✓</div>
-                  <span style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>{f}</span>
+                    color: "#818cf8",
+                  }}>{f.icon}</div>
+                  <span style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>{f.text}</span>
                 </div>
               ))}
             </div>
             <div style={{ display: "flex", marginTop: 28, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
               {[
-                { val: "15", label: "channels" },
+                { val: "16", label: "channels" },
                 { val: "<30m", label: "onboarding" },
-                { val: "90 days", label: "forecasting" },
+                { val: "19", label: "AI endpoints" },
                 { val: "20+", label: "years\u2019 experience" },
               ].map((s, i) => (
                 <div key={s.label} style={{ flex: 1, textAlign: "center", paddingLeft: i === 0 ? 0 : 8, borderLeft: i === 0 ? "none" : "1px solid rgba(255,255,255,0.07)" }}>
@@ -519,6 +592,136 @@ export default function LoginPage() {
         </div>
       </section>
 
+      {/* ── SECTION 2.5: STATS BAR ── */}
+      <section id="stats" className="reveal-section" style={{
+        padding: "80px 40px",
+        borderTop: "1px solid rgba(255,255,255,0.06)",
+        background: "linear-gradient(180deg, rgba(99,102,241,0.025) 0%, rgba(168,85,247,0.02) 100%)",
+      }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 48 }}>
+            <h2 style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 14, color: "white" }}>
+              Built to scale. Engineered to perform.
+            </h2>
+            <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", maxWidth: 600, margin: "0 auto" }}>
+              These aren&apos;t vanity metrics. This is the infrastructure that powers insight generation across every connected account.
+            </p>
+          </div>
+          
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(6, 1fr)",
+            gap: 14,
+          }} className="stats-grid">
+            {[
+              { icon: <Layers style={{ width: 18, height: 18 }} />, val: "16", label: "Channels Connected", color: "#6366f1" },
+              { icon: <Brain style={{ width: 18, height: 18 }} />, val: "19", label: "AI Endpoints", color: "#a855f7" },
+              { icon: <Layout style={{ width: 18, height: 18 }} />, val: "90+", label: "Report Blocks", color: "#ec4899" },
+              { icon: <Code2 style={{ width: 18, height: 18 }} />, val: "120+", label: "API Routes", color: "#f59e0b" },
+              { icon: <Database style={{ width: 18, height: 18 }} />, val: "22", label: "Section Types", color: "#10b981" },
+              { icon: <GitBranch style={{ width: 18, height: 18 }} />, val: "5", label: "Attribution Models", color: "#3b82f6" },
+            ].map((stat) => (
+              <div key={stat.label} className="stat-card" style={{
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 14,
+                padding: "28px 20px",
+                textAlign: "center",
+                position: "relative",
+                overflow: "hidden",
+                transition: "all 0.3s ease",
+              }}>
+                <div style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 2,
+                  background: `linear-gradient(90deg, ${stat.color}, transparent)`,
+                  opacity: 0.6,
+                }} />
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  background: `rgba(${stat.color === "#6366f1" ? "99,102,241" : stat.color === "#a855f7" ? "168,85,247" : stat.color === "#ec4899" ? "236,72,153" : stat.color === "#f59e0b" ? "245,158,11" : stat.color === "#10b981" ? "16,185,129" : "59,130,246"},0.12)`,
+                  border: `1px solid rgba(${stat.color === "#6366f1" ? "99,102,241" : stat.color === "#a855f7" ? "168,85,247" : stat.color === "#ec4899" ? "236,72,153" : stat.color === "#f59e0b" ? "245,158,11" : stat.color === "#10b981" ? "16,185,129" : "59,130,246"},0.3)`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 16px",
+                  color: stat.color,
+                }}>
+                  {stat.icon}
+                </div>
+                <div style={{
+                  fontSize: 32,
+                  fontWeight: 900,
+                  color: "white",
+                  letterSpacing: "-0.04em",
+                  lineHeight: 1,
+                  marginBottom: 10,
+                }}>{stat.val}</div>
+                <div style={{
+                  fontSize: 11,
+                  color: "rgba(255,255,255,0.35)",
+                  fontWeight: 600,
+                  letterSpacing: "0.03em",
+                  lineHeight: 1.3,
+                }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+          
+          <div style={{
+            marginTop: 48,
+            padding: "24px 32px",
+            borderRadius: 14,
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 32,
+            flexWrap: "wrap",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Clock style={{ width: 20, height: 20, color: "#818cf8" }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>
+                  Nightly automated snapshots
+                </div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                  Every account, every channel, every night
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <TrendingUp style={{ width: 20, height: 20, color: "#818cf8" }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>
+                  90-day forecasting
+                </div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                  With confidence intervals
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Sparkles style={{ width: 20, height: 20, color: "#818cf8" }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>
+                  14+ AI capabilities
+                </div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                  Cross-channel intelligence
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── SECTION 3: CHANNELS ── */}
       <section id="channels" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
@@ -557,15 +760,14 @@ export default function LoginPage() {
             </div>
           </div>
           <p style={{ textAlign: "center", marginTop: 32, fontSize: 13, color: "rgba(255,255,255,0.22)" }}>
-            15 platforms. One login. Updated automatically, no Monday morning setup ritual.
+            16 platforms. One login. Updated automatically, no Monday morning setup ritual.
           </p>
         </div>
       </section>
 
-      {/* ── SECTION 4: STRATUM ── */}
-      <section id="stratum" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden", background: "rgba(99,102,241,0.015)" }}>
-        <div className="stratum-grid-bg" style={
-          {
+      {/* ── SECTION 4: STRATUM™ — MASSIVELY EXPANDED ── */}
+      <section id="stratum" className="reveal-section" style={{ padding: "120px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden", background: "rgba(99,102,241,0.015)" }}>
+        <div className="stratum-grid-bg" style={{
           position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.04,
           backgroundImage: "linear-gradient(rgba(99,102,241,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.9) 1px, transparent 1px)",
           backgroundSize: "28px 28px",
@@ -577,7 +779,7 @@ export default function LoginPage() {
           background: "radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 60%)",
         }} />
 
-        <div style={{ maxWidth: 880, margin: "0 auto", position: "relative", textAlign: "center" }}>
+        <div style={{ maxWidth: 1140, margin: "0 auto", position: "relative", textAlign: "center" }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 28, padding: "6px 16px", borderRadius: 20, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.3)" }}>
             <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#818cf8", boxShadow: "0 0 10px rgba(129,140,248,0.9)" }} className="stratum-pulse" />
             <span style={{ fontSize: 11, fontWeight: 800, color: "#a5b4fc", letterSpacing: "0.12em", textTransform: "uppercase" }}>Proprietary technology · i3MEDIA</span>
@@ -586,12 +788,96 @@ export default function LoginPage() {
           <h2 className="stratum-shimmer" style={{ fontSize: 72, fontWeight: 900, letterSpacing: "-0.05em", lineHeight: 0.9, marginBottom: 20 }}>
             Stratum<sup style={{ fontSize: "0.28em", verticalAlign: "super", letterSpacing: 0 }}>™</sup>
           </h2>
-          <p style={{ fontSize: 18, color: "rgba(99,102,241,0.75)", fontWeight: 700, letterSpacing: "0.04em", marginBottom: 32, textTransform: "uppercase" }}>
+          <p style={{ fontSize: 18, color: "rgba(99,102,241,0.75)", fontWeight: 700, letterSpacing: "0.04em", marginBottom: 20, textTransform: "uppercase" }}>
             Cross-channel intelligence framework
           </p>
-          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 640, margin: "0 auto 52px" }}>
-            Stratum is the intelligence layer beneath everything you see in StratOS. It works across all 15 connected channels simultaneously, reading signals, finding correlations, and surfacing insights that only emerge when you stop looking at platforms in isolation. We&apos;ve spent years building it. You won&apos;t find it anywhere else.
+          <p style={{ fontSize: 20, color: "#818cf8", fontWeight: 800, letterSpacing: "0.02em", marginBottom: 38, lineHeight: 1.4 }}>
+            Stratum™ reads from all 16 channels before writing a single word.
           </p>
+          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 680, margin: "0 auto 64px" }}>
+            Stratum is the intelligence layer beneath everything you see in StratOS. It works across all 16 connected channels simultaneously, reading signals, finding correlations, and surfacing insights that only emerge when you stop looking at platforms in isolation. We&apos;ve spent years building it. You won&apos;t find it anywhere else.
+          </p>
+
+          <div style={{
+            background: "rgba(99,102,241,0.05)",
+            border: "1px solid rgba(99,102,241,0.15)",
+            borderRadius: 16,
+            padding: "48px 40px",
+            marginBottom: 64,
+            textAlign: "left",
+          }}>
+            <h3 style={{
+              fontSize: 22,
+              fontWeight: 800,
+              color: "#a5b4fc",
+              marginBottom: 28,
+              textAlign: "center",
+              letterSpacing: "-0.02em",
+            }}>
+              14+ AI capabilities. All reading from all 16 channels.
+            </h3>
+            
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: 14,
+            }} className="stratum-ai-grid">
+              {[
+                { icon: <Radar style={{ width: 16, height: 16 }} />, label: "Cross-channel anomaly detection", desc: "Reads all 16 channels simultaneously" },
+                { icon: <Search style={{ width: 16, height: 16 }} />, label: "Root cause analysis", desc: "Explains WHY metrics moved" },
+                { icon: <TrendingUp style={{ width: 16, height: 16 }} />, label: "Predictive forecasting", desc: "30/60/90-day with confidence bands" },
+                { icon: <Target style={{ width: 16, height: 16 }} />, label: "Budget optimisation", desc: "Where to move spend, projected £ impact" },
+                { icon: <Palette style={{ width: 16, height: 16 }} />, label: "Creative intelligence", desc: "Ad performance analysis" },
+                { icon: <MessageSquare style={{ width: 16, height: 16 }} />, label: "Conversational analyst", desc: "Ask anything in plain English" },
+                { icon: <FileText style={{ width: 16, height: 16 }} />, label: "Report commentary", desc: "Auto-writes what happened and why" },
+                { icon: <Briefcase style={{ width: 16, height: 16 }} />, label: "Executive summaries", desc: "Cross-channel narrative generation" },
+                { icon: <BookOpen style={{ width: 16, height: 16 }} />, label: "Strategy documents", desc: "SEO, content, media plans" },
+                { icon: <Monitor style={{ width: 16, height: 16 }} />, label: "Landing page analysis", desc: "CRO/SEO/Mobile/Forms scoring" },
+                { icon: <GitBranch style={{ width: 16, height: 16 }} />, label: "Attribution modelling", desc: "5 models available" },
+                { icon: <Activity style={{ width: 16, height: 16 }} />, label: "Seasonality detection", desc: "Automatic pattern recognition" },
+                { icon: <Share2 style={{ width: 16, height: 16 }} />, label: "Competitor intelligence", desc: "Share of voice tracking" },
+                { icon: <Sparkles style={{ width: 16, height: 16 }} />, label: "Super-summary journey", desc: "Full customer path analysis" },
+              ].map((cap) => (
+                <div key={cap.label} style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(99,102,241,0.2)",
+                  borderRadius: 10,
+                  padding: "16px 18px",
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "flex-start",
+                  transition: "all 0.25s ease",
+                }}>
+                  <div style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: "rgba(99,102,241,0.15)",
+                    border: "1px solid rgba(99,102,241,0.3)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#818cf8",
+                    flexShrink: 0,
+                  }}>{cap.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "rgba(255,255,255,0.85)",
+                      marginBottom: 4,
+                      lineHeight: 1.3,
+                    }}>{cap.label}</div>
+                    <div style={{
+                      fontSize: 11,
+                      color: "rgba(255,255,255,0.35)",
+                      lineHeight: 1.4,
+                    }}>{cap.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 52 }} className="stratum-grid">
             {[
@@ -631,14 +917,25 @@ export default function LoginPage() {
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {[
-                  "Automatic anomaly detection across all 15 channels simultaneously",
-                  "Severity-ranked feed: critical finds always surface to the top",
-                  "Context attached: what changed, by how much, and when it started",
-                  "Powered by Stratum's cross-channel correlation engine",
+                  { icon: <Radar style={{ width: 14, height: 14 }} />, text: "Automatic anomaly detection across all 16 channels simultaneously" },
+                  { icon: <BarChart3 style={{ width: 14, height: 14 }} />, text: "Severity-ranked feed: critical finds always surface to the top" },
+                  { icon: <FileSearch style={{ width: 14, height: 14 }} />, text: "Context attached: what changed, by how much, and when it started" },
+                  { icon: <Brain style={{ width: 14, height: 14 }} />, text: "Powered by Stratum™'s cross-channel correlation engine" },
                 ].map((b) => (
-                  <div key={b} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />
-                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b}</span>
+                  <div key={b.text} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 6,
+                      background: "rgba(99,102,241,0.12)",
+                      border: "1px solid rgba(99,102,241,0.25)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#818cf8",
+                      flexShrink: 0,
+                    }}>{b.icon}</div>
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b.text}</span>
                   </div>
                 ))}
               </div>
@@ -1047,8 +1344,476 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ── ALSO IN STRATOS ── */}
-      <section className="reveal-section" style={{ padding: "80px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.01)" }}>
+      {/* ── NEW: PORTFOLIO HEALTH DASHBOARD ── */}
+      <section id="portfolio" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(168,85,247,0.015)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#a855f7", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
+                <Building2 style={{ width: 14, height: 14, display: "inline", marginRight: 6, verticalAlign: "middle" }} />
+                Portfolio Health
+              </p>
+              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
+                Every account.<br />One view. Zero chaos.
+              </h2>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
+                The Portfolio Health Dashboard gives you an agency-wide view: every client, their health score, churn risk, anomaly count, and goal achievement — all in one place. No more hopping between accounts to see who needs attention.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  { icon: <Gauge style={{ width: 14, height: 14 }} />, text: "Colour-coded health scores for every client at a glance" },
+                  { icon: <AlertTriangle style={{ width: 14, height: 14 }} />, text: "Churn risk indicators based on performance trends" },
+                  { icon: <ListTodo style={{ width: 14, height: 14 }} />, text: "Open actions count per client, straight to task management" },
+                  { icon: <Trophy style={{ width: 14, height: 14 }} />, text: "Goal achievement rates show who's flying and who needs help" },
+                ].map((b) => (
+                  <div key={b.text} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 6,
+                      background: "rgba(168,85,247,0.12)",
+                      border: "1px solid rgba(168,85,247,0.25)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#a855f7",
+                      flexShrink: 0,
+                    }}>{b.icon}</div>
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>Portfolio Health · i3MEDIA</span>
+              </div>
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+                {([
+                  { name: "Acme Corp", health: 92, churn: "Low", actions: 2, goals: 88, color: "#10b981" },
+                  { name: "Riverside Fitness", health: 78, churn: "Medium", actions: 5, goals: 72, color: "#f59e0b" },
+                  { name: "TechFlow Ltd", health: 45, churn: "High", actions: 12, goals: 41, color: "#ef4444" },
+                  { name: "Blue Horizon", health: 85, churn: "Low", actions: 1, goals: 91, color: "#10b981" },
+                ] as { name: string; health: number; churn: string; actions: number; goals: number; color: string }[]).map((c) => (
+                  <div key={c.name} style={{
+                    padding: "12px 14px",
+                    borderRadius: 10,
+                    background: "rgba(255,255,255,0.025)",
+                    border: `1px solid ${c.color}40`,
+                    borderLeft: `3px solid ${c.color}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.85)", marginBottom: 3 }}>{c.name}</div>
+                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>Health: {c.health}% · Churn: {c.churn}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: c.actions > 5 ? "#ef4444" : "rgba(255,255,255,0.6)" }}>{c.actions}</div>
+                        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)" }}>actions</div>
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: "rgba(255,255,255,0.6)" }}>{c.goals}%</div>
+                        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)" }}>goals</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── NEW: ACTION TRACKING & LIFECYCLE ── */}
+      <section id="actions" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 64 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
+              <Workflow style={{ width: 14, height: 14, display: "inline", marginRight: 6, verticalAlign: "middle" }} />
+              Action Tracking
+            </p>
+            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
+              From insight to outcome.<br />All tracked, all measurable.
+            </h2>
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 600, margin: "0 auto", lineHeight: 1.7 }}>
+              Stratum™ spots the issue. You assign it to the team. StratOS tracks it to completion and measures the outcome. Every recommendation becomes a trackable action with a full lifecycle.
+            </p>
+          </div>
+          
+          <div style={{
+            background: "rgba(255,255,255,0.025)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 16,
+            padding: "48px 40px",
+            position: "relative",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 32 }}>
+              {([
+                { icon: <Radar style={{ width: 20, height: 20 }} />, label: "AI spots issue", color: "#ef4444" },
+                { icon: <ChevronRight style={{ width: 16, height: 16, opacity: 0.3 }} />, label: "", color: "" },
+                { icon: <Wand2 style={{ width: 20, height: 20 }} />, label: "Creates recommendation", color: "#f59e0b" },
+                { icon: <ChevronRight style={{ width: 16, height: 16, opacity: 0.3 }} />, label: "", color: "" },
+                { icon: <Users style={{ width: 20, height: 20 }} />, label: "Assigned to team", color: "#3b82f6" },
+                { icon: <ChevronRight style={{ width: 16, height: 16, opacity: 0.3 }} />, label: "", color: "" },
+                { icon: <CheckCircle2 style={{ width: 20, height: 20 }} />, label: "Tracked to completion", color: "#10b981" },
+                { icon: <ChevronRight style={{ width: 16, height: 16, opacity: 0.3 }} />, label: "", color: "" },
+                { icon: <BarChart3 style={{ width: 20, height: 20 }} />, label: "Measured outcome", color: "#a855f7" },
+              ] as { icon: ReactNode; label: string; color: string }[]).map((step, idx) => (
+                <div key={idx} style={{
+                  flex: step.label ? 1 : 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 12,
+                }}>
+                  {step.label ? (
+                    <>
+                      <div style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: "50%",
+                        background: `${step.color}15`,
+                        border: `2px solid ${step.color}40`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: step.color,
+                      }}>{step.icon}</div>
+                      <div style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "rgba(255,255,255,0.6)",
+                        textAlign: "center",
+                        lineHeight: 1.3,
+                      }}>{step.label}</div>
+                    </>
+                  ) : (
+                    <div style={{ marginTop: 24, color: "rgba(255,255,255,0.15)" }}>{step.icon}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 48, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+            {[
+              { icon: <ListTodo style={{ width: 18, height: 18 }} />, label: "Full task assignment", desc: "Assign, track, complete" },
+              { icon: <Clock style={{ width: 18, height: 18 }} />, label: "Outcome measurement", desc: "See if it actually worked" },
+              { icon: <Users style={{ width: 18, height: 18 }} />, label: "Team accountability", desc: "Know who's handling what" },
+              { icon: <Activity style={{ width: 18, height: 18 }} />, label: "Historical view", desc: "Every action, every outcome" },
+            ].map((feat) => (
+              <div key={feat.label} style={{
+                background: "rgba(255,255,255,0.02)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                borderRadius: 12,
+                padding: "20px 18px",
+                textAlign: "center",
+              }}>
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  background: "rgba(99,102,241,0.12)",
+                  border: "1px solid rgba(99,102,241,0.25)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#818cf8",
+                  margin: "0 auto 12px",
+                }}>{feat.icon}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.75)", marginBottom: 4 }}>{feat.label}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{feat.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── NEW: NOTIFICATIONS & ALERTS ── */}
+      <section id="notifications" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(59,130,246,0.015)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
+            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
+                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>Notification Settings</span>
+              </div>
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                {([
+                  { icon: <Mail style={{ width: 14, height: 14 }} />, label: "Email delivery", enabled: true },
+                  { icon: <Hash style={{ width: 14, height: 14 }} />, label: "Slack #alerts channel", enabled: true },
+                  { icon: <AlertTriangle style={{ width: 14, height: 14 }} />, label: "Anomaly alerts", enabled: true },
+                  { icon: <FileText style={{ width: 14, height: 14 }} />, label: "Report events", enabled: true },
+                  { icon: <Target style={{ width: 14, height: 14 }} />, label: "Goals at risk", enabled: true },
+                  { icon: <Clock style={{ width: 14, height: 14 }} />, label: "Quiet hours (22:00-08:00)", enabled: true },
+                ] as { icon: ReactNode; label: string; enabled: boolean }[]).map((n) => (
+                  <div key={n.label} style={{
+                    padding: "12px 14px",
+                    borderRadius: 10,
+                    background: "rgba(255,255,255,0.025)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ color: "rgba(255,255,255,0.4)" }}>{n.icon}</div>
+                      <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>{n.label}</span>
+                    </div>
+                    <div style={{
+                      width: 36,
+                      height: 20,
+                      borderRadius: 10,
+                      background: n.enabled ? "rgba(59,130,246,0.3)" : "rgba(255,255,255,0.1)",
+                      border: `1px solid ${n.enabled ? "rgba(59,130,246,0.5)" : "rgba(255,255,255,0.15)"}`,
+                      position: "relative",
+                    }}>
+                      <div style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: "50%",
+                        background: n.enabled ? "#3b82f6" : "rgba(255,255,255,0.3)",
+                        position: "absolute",
+                        top: 2,
+                        left: n.enabled ? 19 : 2,
+                        transition: "left 0.2s ease",
+                      }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#3b82f6", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
+                <Send style={{ width: 14, height: 14, display: "inline", marginRight: 6, verticalAlign: "middle" }} />
+                Notifications & Alerts
+              </p>
+              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
+                Know when it matters.<br />Not every five minutes.
+              </h2>
+              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
+                Stratum™ sends alerts when anomalies hit, reports are ready, or goals fall behind. Email, Slack, or both. You control the frequency, quiet hours, and which events you actually want to hear about.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  { icon: <Mail style={{ width: 14, height: 14 }} />, text: "Email delivery via Resend (reliable, fast, no spam folder)" },
+                  { icon: <Hash style={{ width: 14, height: 14 }} />, text: "Slack integration for team channels" },
+                  { icon: <Settings style={{ width: 14, height: 14 }} />, text: "Per-user preferences: frequency, quiet hours, digest mode" },
+                  { icon: <Puzzle style={{ width: 14, height: 14 }} />, text: "Per-type enable/disable: only get the alerts you need" },
+                ].map((b) => (
+                  <div key={b.text} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 6,
+                      background: "rgba(59,130,246,0.12)",
+                      border: "1px solid rgba(59,130,246,0.25)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#3b82f6",
+                      flexShrink: 0,
+                    }}>{b.icon}</div>
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── NEW: AGENCY TOOLKIT ── */}
+      <section id="toolkit" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(236,72,153,0.015)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 64 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "#ec4899", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
+              <Briefcase style={{ width: 14, height: 14, display: "inline", marginRight: 6, verticalAlign: "middle" }} />
+              Agency Toolkit
+            </p>
+            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
+              Every tool you need.<br />All in one place.
+            </h2>
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 660, margin: "0 auto", lineHeight: 1.7 }}>
+              StratOS isn&apos;t just reporting. It&apos;s keyword research, proposal generation, landing page analysis, content strategy, media planning, and competitive intelligence. All powered by Stratum™.
+            </p>
+          </div>
+          
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+            {[
+              {
+                icon: <Search style={{ width: 20, height: 20 }} />,
+                title: "Keyword Planner",
+                desc: "SemRush-backed research with volume, difficulty, CPC, and trend data. Export to CSV or use inline.",
+                color: "#3b82f6",
+              },
+              {
+                icon: <Rocket style={{ width: 20, height: 20 }} />,
+                title: "PPC Proposal Generator",
+                desc: "Interactive forecaster, pipeline CRM, view tracking, enquiry capture. Close more business.",
+                color: "#10b981",
+              },
+              {
+                icon: <Layout style={{ width: 20, height: 20 }} />,
+                title: "Media Plan Builder",
+                desc: "Multi-channel budget allocation with AI forecast outputs and shareable strategy docs.",
+                color: "#f59e0b",
+              },
+              {
+                icon: <BookOpen style={{ width: 20, height: 20 }} />,
+                title: "Content Strategy Generator",
+                desc: "Sector-specific content plans with topics, keywords, and publishing schedules.",
+                color: "#a855f7",
+              },
+              {
+                icon: <Monitor style={{ width: 20, height: 20 }} />,
+                title: "Landing Page Analyser",
+                desc: "CRO/SEO/Mobile/Forms scoring with AI recommendations. Know what's broken before you publish.",
+                color: "#ef4444",
+              },
+              {
+                icon: <Terminal style={{ width: 20, height: 20 }} />,
+                title: "LLM.txt Generator",
+                desc: "Sector-specific LLM context files for AI-ready brand visibility.",
+                color: "#6366f1",
+              },
+              {
+                icon: <Share2 style={{ width: 20, height: 20 }} />,
+                title: "Competitor Intelligence",
+                desc: "Share of voice, competitive monitoring, and ongoing snapshots with Stratum™ commentary.",
+                color: "#ec4899",
+              },
+            ].map((tool) => (
+              <div key={tool.title} style={{
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 14,
+                padding: "28px 24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 14,
+                transition: "all 0.25s ease",
+              }}>
+                <div style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 12,
+                  background: `${tool.color}15`,
+                  border: `1px solid ${tool.color}30`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: tool.color,
+                }}>{tool.icon}</div>
+                <div>
+                  <h3 style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: "rgba(255,255,255,0.85)",
+                    marginBottom: 8,
+                    lineHeight: 1.3,
+                  }}>{tool.title}</h3>
+                  <p style={{
+                    fontSize: 13,
+                    color: "rgba(255,255,255,0.4)",
+                    lineHeight: 1.6,
+                  }}>{tool.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── MID-PAGE CTA ── */}
+      <section id="mid-cta" className="reveal-section" style={{
+        padding: "100px 40px",
+        borderTop: "1px solid rgba(255,255,255,0.06)",
+        background: "linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(168,85,247,0.06) 100%)",
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute",
+          width: "50%",
+          paddingBottom: "50%",
+          top: "-10%",
+          right: "-10%",
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }} />
+        <div style={{ maxWidth: 800, margin: "0 auto", textAlign: "center", position: "relative" }}>
+          <div style={{
+            width: 64,
+            height: 64,
+            borderRadius: "50%",
+            background: "rgba(99,102,241,0.15)",
+            border: "2px solid rgba(99,102,241,0.3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 24px",
+          }}>
+            <Sparkles style={{ width: 28, height: 28, color: "#818cf8" }} />
+          </div>
+          <h2 style={{
+            fontSize: 48,
+            fontWeight: 900,
+            letterSpacing: "-0.04em",
+            lineHeight: 1.1,
+            marginBottom: 20,
+            background: "linear-gradient(135deg, #ffffff, #a5b4fc)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}>
+            Stop stitching platforms together.<br />Start seeing the whole picture.
+          </h2>
+          <p style={{
+            fontSize: 17,
+            color: "rgba(255,255,255,0.5)",
+            lineHeight: 1.75,
+            marginBottom: 36,
+            maxWidth: 600,
+            margin: "0 auto 36px",
+          }}>
+            16 channels. 19 AI endpoints. 90+ report blocks. One login. This is what it looks like when an agency builds the tool it actually needs.
+          </p>
+          <a
+            href="#access"
+            className="cta-primary"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "16px 32px",
+              borderRadius: 12,
+              background: "linear-gradient(135deg, #6366f1, #7c3aed)",
+              border: "none",
+              color: "white",
+              fontSize: 16,
+              fontWeight: 700,
+              textDecoration: "none",
+              boxShadow: "0 0 40px rgba(99,102,241,0.5), 0 8px 24px rgba(0,0,0,0.3)",
+            }}
+          >
+            Get access
+            <ArrowRight style={{ width: 18, height: 18 }} />
+          </a>
+        </div>
+      </section>
+
+      {/* ── ALSO IN STRATOS — EXPANDED ── */}
+      <section id="also-in-stratos" className="reveal-section" style={{ padding: "80px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.01)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 48 }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 12 }}>Also in StratOS</p>
@@ -1056,16 +1821,44 @@ export default function LoginPage() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }} className="also-grid">
             {[
-              { title: "Multi-touch attribution", desc: "Five models side by side: last-click, first-click, linear, time-decay, position-based. See who actually gets the credit." },
-              { title: "Seasonality intelligence", desc: "Automatic pattern detection across historical snapshots. Catch seasonal trends before they catch you out." },
-              { title: "Share of voice tracking", desc: "Organic and paid competitive position against your rivals, updated with live SemRush data." },
-              { title: "Quarterly strategy documents", desc: "Forward-looking strategy docs per client, generated by Stratum™ and shareable via link. No more building decks from scratch." },
-              { title: "Competitor monitoring", desc: "Ongoing competitive snapshots with Stratum™ commentary, saved to history so you can see how the landscape is shifting." },
-              { title: "Keyword planning & proposals", desc: "Research keywords, build proposals with projected traffic and value, and share them with link-tracked engagement." },
+              { icon: <GitBranch style={{ width: 16, height: 16 }} />, title: "Multi-touch attribution", desc: "Five models side by side: last-click, first-click, linear, time-decay, position-based. See who actually gets the credit." },
+              { icon: <Activity style={{ width: 16, height: 16 }} />, title: "Seasonality intelligence", desc: "Automatic pattern detection across historical snapshots. Catch seasonal trends before they catch you out." },
+              { icon: <Megaphone style={{ width: 16, height: 16 }} />, title: "Share of voice tracking", desc: "Organic and paid competitive position against your rivals, updated with live SemRush data." },
+              { icon: <BookOpen style={{ width: 16, height: 16 }} />, title: "Strategy documents", desc: "Forward-looking strategy docs per client, generated by Stratum™ and shareable via link. No more building decks from scratch." },
+              { icon: <Radar style={{ width: 16, height: 16 }} />, title: "Competitor monitoring", desc: "Ongoing competitive snapshots with Stratum™ commentary, saved to history so you can see how the landscape is shifting." },
+              { icon: <Search style={{ width: 16, height: 16 }} />, title: "Keyword planning & proposals", desc: "Research keywords, build proposals with projected traffic and value, and share them with link-tracked engagement." },
+              { icon: <MessageSquare style={{ width: 16, height: 16 }} />, title: "Communications hub", desc: "Centralised log for emails, calls, meetings, notes with email drafting. Never lose track of a client conversation." },
+              { icon: <ShieldCheck style={{ width: 16, height: 16 }} />, title: "Role-based access", desc: "11 granular permissions with a role editor. Control who sees what, down to the individual client level." },
+              { icon: <Clock style={{ width: 16, height: 16 }} />, title: "Nightly automated snapshots", desc: "Every account, every channel, every night. Historical data that powers forecasting and trend detection." },
+              { icon: <Target style={{ width: 16, height: 16 }} />, title: "Goals & KPI tracking", desc: "Full goal tracking with auto-syncing currentValue from snapshots, targets, progress bars." },
+              { icon: <FileText style={{ width: 16, height: 16 }} />, title: "Automated monthly reports", desc: "Cron-triggered report generation on a schedule. Set it, forget it, approve it." },
+              { icon: <Layout style={{ width: 16, height: 16 }} />, title: "Media plan builder", desc: "Multi-channel budget allocation with AI-backed forecast outputs and shareable documents." },
             ].map((item) => (
-              <div key={item.title} style={{ padding: "20px 22px", borderRadius: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <p style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.72)", marginBottom: 6 }}>{item.title}</p>
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>{item.desc}</p>
+              <div key={item.title} style={{
+                padding: "20px 22px",
+                borderRadius: 12,
+                background: "rgba(255,255,255,0.02)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                display: "flex",
+                gap: 14,
+                alignItems: "flex-start",
+              }}>
+                <div style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  background: "rgba(99,102,241,0.1)",
+                  border: "1px solid rgba(99,102,241,0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#818cf8",
+                  flexShrink: 0,
+                }}>{item.icon}</div>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.72)", marginBottom: 6 }}>{item.title}</p>
+                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>{item.desc}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -1148,13 +1941,27 @@ export default function LoginPage() {
           >
             Learn more about i3MEDIA <ArrowRight style={{ width: 14, height: 14 }} />
           </a>
-          <div style={{ display: "flex", justifyContent: "center", gap: 48, marginTop: 64 }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: 48, marginTop: 64, flexWrap: "wrap" }}>
             {[
-              { stat: "20+", label: "Years in marketing" },
-              { stat: "52", label: "In-house team members" },
-              { stat: "15", label: "Channels connected" },
+              { stat: "20+", label: "Years in marketing", icon: <Building2 style={{ width: 20, height: 20 }} /> },
+              { stat: "52", label: "In-house team members", icon: <Users style={{ width: 20, height: 20 }} /> },
+              { stat: "16", label: "Channels connected", icon: <Layers style={{ width: 20, height: 20 }} /> },
+              { stat: "19", label: "AI endpoints", icon: <Brain style={{ width: 20, height: 20 }} /> },
+              { stat: "90+", label: "Report blocks", icon: <Layout style={{ width: 20, height: 20 }} /> },
             ].map((s) => (
               <div key={s.label} style={{ textAlign: "center" }}>
+                <div style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: "rgba(99,102,241,0.1)",
+                  border: "1px solid rgba(99,102,241,0.2)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#818cf8",
+                  margin: "0 auto 14px",
+                }}>{s.icon}</div>
                 <div style={{ fontSize: 44, fontWeight: 900, color: "white", letterSpacing: "-0.04em", lineHeight: 1 }}>{s.stat}</div>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", marginTop: 8, fontWeight: 500 }}>{s.label}</div>
               </div>
@@ -1409,12 +2216,34 @@ export default function LoginPage() {
         .cta-secondary { transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease; }
         .cta-secondary:hover { transform: translateY(-2px); background: rgba(255,255,255,0.1) !important; border-color: rgba(255,255,255,0.2) !important; }
 
+        /* ─── STAT CARDS ─── */
+        .stat-card {
+          transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        .stat-card:hover {
+          transform: translateY(-4px) scale(1.02);
+          box-shadow: 0 12px 40px rgba(99,102,241,0.18);
+          border-color: rgba(99,102,241,0.15) !important;
+        }
+
+        /* ─── STRATUM AI GRID HOVER ─── */
+        .stratum-ai-grid > div {
+          transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+        }
+        .stratum-ai-grid > div:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 8px 28px rgba(99,102,241,0.15);
+          border-color: rgba(99,102,241,0.35) !important;
+        }
+
         /* ─── RESPONSIVE ─── */
         @media (max-width: 960px) {
           .hero-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
           .hero-headline { font-size: 48px !important; }
           .pains-grid { grid-template-columns: 1fr 1fr !important; }
           .stratum-grid { grid-template-columns: 1fr 1fr !important; }
+          .stratum-ai-grid { grid-template-columns: 1fr 1fr !important; }
+          .stats-grid { grid-template-columns: repeat(3, 1fr) !important; }
           .steps-grid { grid-template-columns: 1fr 1fr !important; }
           .steps-line { display: none !important; }
         }
@@ -1431,8 +2260,10 @@ export default function LoginPage() {
           .hero-headline { font-size: 40px !important; }
           .pains-grid { grid-template-columns: 1fr !important; }
           .also-grid { grid-template-columns: 1fr !important; }
+          .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .steps-grid { grid-template-columns: 1fr !important; }
-          .stratum-grid { grid-template-columns: 1fr 1fr !important; }
+          .stratum-grid { grid-template-columns: 1fr !important; }
+          .stratum-ai-grid { grid-template-columns: 1fr !important; }
         }
         @media (prefers-reduced-motion: reduce) {
           .mockup-card { animation: none !important; }
