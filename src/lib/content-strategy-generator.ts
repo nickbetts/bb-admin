@@ -82,6 +82,57 @@ interface CollectedData {
   // GSC data — present when client has Search Console connected
   gscQueryPages: GSCQueryPageCombo[];
   dataSource: "gsc+semrush" | "semrush-only";
+  // Sitemap URLs — existing pages on the site
+  sitemapUrls: string[];
+}
+
+// ─── Sitemap fetcher ────────────────────────────────────────────────────────
+
+async function fetchSitemapUrls(domain: string): Promise<string[]> {
+  const urls: string[] = [];
+  const protocols = ["https", "http"];
+  const paths = ["/sitemap.xml", "/sitemap_index.xml", "/wp-sitemap.xml"];
+
+  for (const proto of protocols) {
+    for (const path of paths) {
+      try {
+        const res = await fetch(`${proto}://${domain}${path}`, {
+          signal: AbortSignal.timeout(8000),
+          headers: { "User-Agent": "i3media-report/1.0" },
+        });
+        if (!res.ok) continue;
+        const xml = await res.text();
+        if (!xml.includes("<url") && !xml.includes("<sitemap")) continue;
+
+        // Extract <loc> values
+        const locMatches = xml.matchAll(/<loc>\s*(.*?)\s*<\/loc>/gi);
+        for (const m of locMatches) {
+          const loc = m[1].trim();
+          // If it's a sub-sitemap, fetch it too (one level deep)
+          if (loc.endsWith(".xml") || loc.includes("sitemap")) {
+            try {
+              const subRes = await fetch(loc, {
+                signal: AbortSignal.timeout(5000),
+                headers: { "User-Agent": "i3media-report/1.0" },
+              });
+              if (subRes.ok) {
+                const subXml = await subRes.text();
+                const subLocs = subXml.matchAll(/<loc>\s*(.*?)\s*<\/loc>/gi);
+                for (const sl of subLocs) {
+                  const subLoc = sl[1].trim();
+                  if (!subLoc.endsWith(".xml")) urls.push(subLoc);
+                }
+              }
+            } catch { /* skip failed sub-sitemaps */ }
+          } else {
+            urls.push(loc);
+          }
+        }
+        if (urls.length > 0) return [...new Set(urls)].slice(0, 500);
+      } catch { /* try next */ }
+    }
+  }
+  return urls;
 }
 
 // Page grouped structure for analysis
@@ -105,17 +156,16 @@ export async function collectSemrushData(
   const endDate = new Date().toISOString().split("T")[0];
   const startDate = new Date(Date.now() - 90 * 86400000).toISOString().split("T")[0];
 
-  // Phase 1: Fetch organic data + competitors + overview in parallel
-  // If GSC is available, use it for organic keyword/page data instead of SEMrush (free, real data)
-  const [organicKeywords, gscQueryPages, detectedCompetitors, overview] = await Promise.all([
-    hasGsc
-      ? Promise.resolve([] as SemrushKeywordData[])
-      : withApiCache(`cs:organic:${domain}:${database}`, 168, () =>
-          getTopOrganicKeywords(domain, database, 300)
-        ),
+  // Phase 1: Fetch organic data + competitors + overview + sitemap in parallel
+  // Always fetch SEMrush organic keywords (needed for volume data even with GSC)
+  // GSC adds real click/impression/CTR data on top
+  const [organicKeywords, gscQueryPages, detectedCompetitors, overview, sitemapUrls] = await Promise.all([
+    withApiCache(`cs:organic:${domain}:${database}`, 168, () =>
+      getTopOrganicKeywords(domain, database, 500)
+    ),
     hasGsc
       ? withApiCache(`cs:gsc:${searchConsoleSiteUrl}`, 24, () =>
-          getGSCQueryPageCombos(searchConsoleSiteUrl!, startDate, endDate, 500)
+          getGSCQueryPageCombos(searchConsoleSiteUrl!, startDate, endDate, 1000)
         )
       : Promise.resolve([] as GSCQueryPageCombo[]),
     competitors.length > 0
@@ -126,6 +176,9 @@ export async function collectSemrushData(
     withApiCache(`cs:overview:${domain}:${database}`, 168, () =>
       getDomainOverview(domain, database)
     ),
+    withApiCache(`cs:sitemap:${domain}`, 168, () =>
+      fetchSitemapUrls(domain)
+    ),
   ]);
 
   // Use provided competitors or auto-detected ones
@@ -134,11 +187,13 @@ export async function collectSemrushData(
       ? competitors
       : detectedCompetitors.slice(0, 3).map((c) => c.domain);
 
-  // Build keyword list for difficulty check — from GSC or SEMrush
-  // Only send 30 (down from 100) to save ~70 SEMrush units
-  const topKeywordPhrases = hasGsc
-    ? [...new Set(gscQueryPages.map((q) => q.query))].slice(0, 30)
-    : organicKeywords.slice(0, 30).map((k) => k.keyword);
+  // Build keyword list for difficulty check — combine GSC + SEMrush unique keywords
+  const allKeywords = new Set<string>();
+  if (hasGsc) {
+    for (const q of gscQueryPages) allKeywords.add(q.query);
+  }
+  for (const k of organicKeywords) allKeywords.add(k.keyword);
+  const topKeywordPhrases = [...allKeywords].slice(0, 50);
 
   // Phase 2: Content gap (needs competitors), difficulty (needs keyword list),
   // backlinks + anchors (independent)
@@ -176,6 +231,7 @@ export async function collectSemrushData(
     anchorTexts,
     gscQueryPages,
     dataSource: hasGsc ? "gsc+semrush" : "semrush-only",
+    sitemapUrls,
   };
 }
 
@@ -269,13 +325,13 @@ export function estimateApiUnits(hasCompetitors: boolean, hasGsc: boolean = fals
 } {
   const breakdown: { call: string; units: number }[] = [
     { call: "Domain overview", units: 1 },
+    { call: "Top organic keywords (500)", units: 50 },
   ];
   if (hasGsc) {
-    breakdown.push({ call: "Google Search Console (query×page, free)", units: 0 });
-  } else {
-    breakdown.push({ call: "Top organic keywords (300)", units: 30 });
+    breakdown.push({ call: "Google Search Console (1000 query×page, free)", units: 0 });
   }
-  breakdown.push({ call: "Keyword difficulty (30 keywords)", units: 30 });
+  breakdown.push({ call: "Sitemap crawl (free)", units: 0 });
+  breakdown.push({ call: "Keyword difficulty (50 keywords)", units: 50 });
   breakdown.push({ call: "Backlinks (30)", units: 3 });
   breakdown.push({ call: "Anchor text distribution", units: 2 });
   if (!hasCompetitors) {
@@ -295,86 +351,63 @@ function buildAnalysisPrompt(
   data: CollectedData,
 ): string {
   const useGsc = data.dataSource === "gsc+semrush" && data.gscQueryPages.length > 0;
+  const pages = groupKeywordsByPage(data.organicKeywords);
 
   // Build difficulty lookup
   const difficultyMap = new Map(
     data.keywordDifficulty.map((kd) => [kd.keyword, kd]),
   );
 
-  let strugglingPagesText: string;
-  let topPagesText: string;
+  // ── Struggling pages (always from SEMrush for search volume accuracy) ──
+  const strugglingPages = pages.filter((p) =>
+    p.keywords.some(
+      (kw) => kw.position >= 4 && kw.position <= 30 && kw.volume >= 30,
+    ),
+  );
 
+  const strugglingPagesText = strugglingPages
+    .slice(0, 50)
+    .map((p) => {
+      const kws = p.keywords
+        .filter((k) => k.position >= 4 && k.volume >= 30)
+        .slice(0, 10)
+        .map((k) => {
+          const diff = difficultyMap.get(k.keyword);
+          return `    - "${k.keyword}" pos:${k.position} vol:${k.volume}${diff ? ` KD:${diff.difficulty} intent:${diff.intent}` : ""}`;
+        })
+        .join("\n");
+      return `  ${p.url}\n${kws}`;
+    })
+    .join("\n") || "  (none found)";
+
+  // ── GSC enrichment: real click/CTR data for top pages ──
+  let gscEnrichmentText = "";
   if (useGsc) {
-    // ── GSC path: real Google data with clicks, impressions, CTR ──────
     const gscPages = groupGscByPage(data.gscQueryPages);
-
-    // Struggling pages: position 5-30, have impressions
-    const gscStruggling = gscPages.filter((p) =>
-      p.keywords.some(
-        (kw) => kw.position >= 5 && kw.position <= 30 && kw.impressions >= 50,
-      ),
-    );
-
-    strugglingPagesText = gscStruggling
-      .slice(0, 40)
-      .map((p) => {
-        const kws = p.keywords
-          .filter((k) => k.position >= 5 && k.impressions >= 50)
-          .slice(0, 8)
-          .map((k) => {
-            const diff = difficultyMap.get(k.keyword);
-            return `    - "${k.keyword}" pos:${k.position} impressions:${k.impressions} clicks:${k.clicks} CTR:${(k.ctr * 100).toFixed(1)}%${diff ? ` KD:${diff.difficulty} intent:${diff.intent}` : ""}`;
-          })
-          .join("\n");
-        return `  ${p.url} (${p.totalClicks} clicks/3mo, ${p.totalImpressions.toLocaleString()} impressions)\n${kws}`;
-      })
-      .join("\n") || "  (none found)";
-
-    // Top pages by real traffic
-    topPagesText = gscPages
-      .slice(0, 15)
-      .map(
-        (p) =>
-          `  ${p.url} — ${p.keywords.length} keywords, ${p.totalClicks} clicks/3mo, top: "${p.keywords[0]?.keyword}" (${p.keywords[0]?.impressions.toLocaleString()} impressions)`,
-      )
-      .join("\n");
-  } else {
-    // ── SEMrush path: estimated traffic data ─────────────────────────
-    const pages = groupKeywordsByPage(data.organicKeywords);
-
-    const strugglingPages = pages.filter((p) =>
-      p.keywords.some(
-        (kw) => kw.position >= 5 && kw.position <= 30 && kw.volume >= 50,
-      ),
-    );
-
-    strugglingPagesText = strugglingPages
-      .slice(0, 40)
-      .map((p) => {
-        const kws = p.keywords
-          .filter((k) => k.position >= 5 && k.volume >= 50)
-          .slice(0, 8)
-          .map((k) => {
-            const diff = difficultyMap.get(k.keyword);
-            return `    - "${k.keyword}" pos:${k.position} vol:${k.volume}${diff ? ` KD:${diff.difficulty} intent:${diff.intent}` : ""}`;
-          })
-          .join("\n");
-        return `  ${p.url}\n${kws}`;
-      })
-      .join("\n") || "  (none found)";
-
-    topPagesText = pages
-      .slice(0, 15)
-      .map(
-        (p) =>
-          `  ${p.url} — ${p.keywords.length} keywords, top: "${p.keywords[0]?.keyword}" (vol:${p.keywords[0]?.volume})`,
-      )
-      .join("\n");
+    gscEnrichmentText = `\n═══ REAL GOOGLE PERFORMANCE (Search Console, last 3 months) ═══\nThis shows actual clicks and CTR from Google — use to prioritise which pages matter most.\n` +
+      gscPages
+        .slice(0, 30)
+        .map((p) => {
+          const topKws = p.keywords.slice(0, 5).map((k) =>
+            `    - "${k.keyword}" pos:${k.position} clicks:${k.clicks} impressions:${k.impressions} CTR:${(k.ctr * 100).toFixed(1)}%`
+          ).join("\n");
+          return `  ${p.url} (${p.totalClicks} clicks, ${p.totalImpressions.toLocaleString()} impressions)\n${topKws}`;
+        })
+        .join("\n");
   }
 
-  // Format content gap (always from SEMrush — only they have this)
+  // ── Top pages for link targets ──
+  const topPagesText = pages
+    .slice(0, 20)
+    .map(
+      (p) =>
+        `  ${p.url} — ${p.keywords.length} keywords, top: "${p.keywords[0]?.keyword}" (vol:${p.keywords[0]?.volume})`,
+    )
+    .join("\n");
+
+  // ── Content gap (always from SEMrush) ──
   const gapText = data.contentGap
-    .slice(0, 80)
+    .slice(0, 100)
     .map((g) => {
       const compPositions = g.competitorPositions
         .map((cp) => `${cp.domain}:${cp.position}`)
@@ -383,21 +416,60 @@ function buildAnalysisPrompt(
     })
     .join("\n");
 
-  // Format anchor text distribution
+  // ── Sitemap: existing site pages ──
+  let sitemapText = "";
+  if (data.sitemapUrls.length > 0) {
+    // Categorise URLs
+    const blogUrls: string[] = [];
+    const serviceUrls: string[] = [];
+    const otherUrls: string[] = [];
+    for (const url of data.sitemapUrls) {
+      const path = url.replace(/^https?:\/\/[^/]+/, "").toLowerCase();
+      if (path.includes("/blog") || path.includes("/news") || path.includes("/article") || path.includes("/post") || path.includes("/journal") || path.includes("/resource")) {
+        blogUrls.push(url);
+      } else if (path.includes("/service") || path.includes("/product") || path.includes("/solution") || path.includes("/work") || path.includes("/case-stud") || path.includes("/portfolio")) {
+        serviceUrls.push(url);
+      } else {
+        otherUrls.push(url);
+      }
+    }
+
+    const lines: string[] = [];
+    lines.push(`\n═══ EXISTING SITE PAGES (from sitemap, ${data.sitemapUrls.length} total) ═══`);
+    lines.push("Use this to understand what pages ALREADY EXIST. Do NOT suggest landing pages or blog posts that duplicate existing content. Instead, identify GAPS — topics the site doesn't cover yet.");
+    if (blogUrls.length > 0) {
+      lines.push(`\nBlog/resource pages (${blogUrls.length}):`);
+      for (const u of blogUrls.slice(0, 30)) {
+        lines.push(`  ${u.replace(/^https?:\/\/[^/]+/, "")}`);
+      }
+      if (blogUrls.length > 30) lines.push(`  ... and ${blogUrls.length - 30} more`);
+    }
+    if (serviceUrls.length > 0) {
+      lines.push(`\nService/product pages (${serviceUrls.length}):`);
+      for (const u of serviceUrls.slice(0, 20)) {
+        lines.push(`  ${u.replace(/^https?:\/\/[^/]+/, "")}`);
+      }
+      if (serviceUrls.length > 20) lines.push(`  ... and ${serviceUrls.length - 20} more`);
+    }
+    lines.push(`\nOther pages: ${otherUrls.length}`);
+    sitemapText = lines.join("\n");
+  }
+
+  // ── Anchor text distribution ──
   const anchorText = data.anchorTexts
-    .slice(0, 10)
+    .slice(0, 15)
     .map((a) => `  - "${a.anchor}" (${a.backlinks} backlinks from ${a.domains} domains)`)
     .join("\n");
 
-  // Format backlinks
+  // ── Backlinks ──
   const backlinkText = data.backlinks
-    .slice(0, 15)
+    .slice(0, 20)
     .map((b) => `  - ${b.sourceUrl} → ${b.targetUrl} anchor:"${b.anchorText}" DA:${b.authority}`)
     .join("\n");
 
   const dataSourceNote = useGsc
-    ? "DATA SOURCE: Google Search Console (real clicks/impressions from last 3 months) + SEMrush (competitive data)\nNote: For GSC data, 'impressions' represents how often the page appeared in search results — use it as a search volume proxy. 'clicks' is actual traffic."
-    : "DATA SOURCE: SEMrush (estimated traffic data)";
+    ? "DATA SOURCES: SEMrush (keyword volumes, difficulty, competitors, content gap) + Google Search Console (real clicks/impressions) + Sitemap"
+    : "DATA SOURCES: SEMrush (all data) + Sitemap";
 
   return `DOMAIN: ${domain}
 CLIENT: ${clientName}
@@ -406,16 +478,16 @@ ORGANIC KEYWORDS: ${data.overview.organicKeywords.toLocaleString()} ranking keyw
 ${dataSourceNote}
 
 ${brief ? `CLIENT BRIEF:\n${brief}\n` : ""}
-═══ STRUGGLING PAGES (position 5–30, have search volume) ═══
-These are existing pages that rank but could improve. Select the best candidates for page optimisations.
+═══ STRUGGLING PAGES (position 4–30, have search volume) ═══
+These are existing pages that rank but could improve with content updates. Select the best candidates for page optimisations.
 ${strugglingPagesText}
-
-═══ CONTENT GAP (keywords competitors rank for, you don't) ═══
-These are opportunities for new landing pages or blog posts.
-${gapText || "  (none found)"}
-
+${gscEnrichmentText}
+═══ CONTENT GAP (${data.contentGap.length} keywords competitors rank for, you don't) ═══
+These are opportunities for NEW landing pages and blog posts. Cluster related keywords into logical page topics.
+${gapText || "  (none found — consider suggesting pages based on the brief and existing site structure)"}
+${sitemapText}
 ═══ TOP PAGES BY TRAFFIC ═══
-Use these to select the best link building targets.
+Use these to select the best link building targets. Every important commercial page should have link targets.
 ${topPagesText}
 
 ═══ CURRENT BACKLINK PROFILE ═══
@@ -425,36 +497,38 @@ ${backlinkText || "  (no backlinks found)"}
 ${anchorText || "  (no anchor data)"}`;
 }
 
-const STRATEGY_SYSTEM_PROMPT = `You are an expert SEO Content Strategist at a UK digital marketing agency. Given SEMrush data for a client's website, you must produce a content strategy in EXACT JSON format.
+const STRATEGY_SYSTEM_PROMPT = `You are an expert SEO Content Strategist at a UK digital marketing agency producing a COMPREHENSIVE content strategy for a client. This strategy will be presented as a professional deliverable. It must be thorough and substantial — not a skeleton.
 
 RULES:
-1. ONLY use data provided. NEVER invent keywords, URLs, volumes, or positions.
-2. Keyword volumes must be exact numbers from the provided data.
-3. URLs must be copied exactly from the data.
-4. Write all notes/titles in British English.
-5. Be strategic — don't include every keyword. Select the most impactful opportunities.
+1. Use keywords and volumes from the data provided. Do NOT invent volumes.
+2. URLs must be copied exactly from the data.
+3. Write all notes/titles in British English.
+4. Be THOROUGH. A good content strategy is comprehensive. Include EVERY worthwhile opportunity.
+5. If SITEMAP data is provided, use it to identify gaps — topics/services/products NOT yet covered by existing content.
+6. For landing pages and blog posts, you may suggest topics based on the content gap keywords, the client's industry (inferred from their site), and common sense about what their audience would search for.
+7. Group related keywords together under single pages/posts for topical authority.
 
 OUTPUT FORMAT (strict JSON, no markdown):
 {
   "pageOptimisations": [
     {
       "url": "domain.com/page/",
-      "keywords": [{"keyword": "exact keyword from data", "volume": 1000}],
-      "notes": "Brief note on why this page needs optimising and what to focus on"
+      "keywords": [{"keyword": "keyword from data", "volume": 1000}],
+      "notes": "Specific, actionable note on what to improve and why"
     }
   ],
   "landingPages": [
     {
       "title": "Descriptive Page Title",
-      "keywords": [{"keyword": "exact keyword from data", "volume": 500}],
-      "notes": "Brief description of what this page should cover and why"
+      "keywords": [{"keyword": "keyword from data", "volume": 500}],
+      "notes": "What this page should cover, target audience, and conversion goal"
     }
   ],
   "blogPosts": [
     {
       "title": "Blog Post Title",
-      "keywords": [{"keyword": "exact keyword from data", "volume": 200}],
-      "notes": "Brief description of the article angle"
+      "keywords": [{"keyword": "keyword from data", "volume": 200}],
+      "notes": "Article angle, target audience, and how it supports the overall strategy"
     }
   ],
   "linkTargets": [
@@ -466,40 +540,43 @@ OUTPUT FORMAT (strict JSON, no markdown):
   ]
 }
 
-STRATEGY GUIDANCE:
+MANDATORY MINIMUMS — you MUST meet these or the strategy will be rejected:
 
-**Page Optimisations** (existing pages that need content updates):
-- Pick pages ranking position 5–20 for keywords with decent volume (50+)
+**Page Optimisations** (MINIMUM 10, aim for 15–30):
+- ANY page ranking position 4–30 for keywords with volume 30+ is a candidate
 - Group multiple keywords under the same URL
-- Prioritise pages with the most keyword opportunities
-- Notes should explain what to add/change (e.g. "Expand content to target related long-tail queries")
-- Aim for 10–30 page optimisations
+- Even pages ranking well (pos 4–10) can be optimised to dominate
+- Include pages that are "almost there" (pos 11–20) — these are quick wins
+- Notes must be specific: "Add FAQ section targeting [keyword]", "Expand content to cover [related terms]", "Improve title tag to include [keyword]"
 
-**Proposed Landing Pages** (new pages to create):
-- Use content gap keywords where competitors rank but the client doesn't
+**Proposed Landing Pages** (MINIMUM 8, aim for 10–25):
+- Create pages from content gap keywords (competitors rank, client doesn't)
 - Cluster related gap keywords into logical page topics
-- Consider location-based pages, product/service pages, and campaign pages if mentioned in the brief
-- Choose titles that are descriptive and would make good H1 tags
-- Only propose pages with commercial or transactional intent keywords
-- Aim for 5–20 landing pages
+- Consider location-based pages if the business is local/regional
+- Consider product/service category pages
+- If sitemap data shows missing topics, create pages for those gaps
+- Choose titles that would make good H1 tags
+- Focus on commercial and transactional intent keywords
+- Include a notes field explaining the page's purpose and target audience
 
-**Blog Posts** (new articles):
-- Use informational-intent gap keywords
-- Group related questions/topics into single article concepts
-- Write titles that would work as actual blog post headlines
-- Aim for 5–15 blog posts
+**Blog Posts** (MINIMUM 8, aim for 10–20):
+- Use informational-intent keywords from the content gap
+- Group related questions into single articles
+- Consider "how to", "guide to", "what is", "best", "vs" style content
+- If the sitemap shows the client has a blog, identify topics they haven't covered yet
+- If they DON'T have a blog, suggest starting one with foundational articles
+- Write titles that work as real headlines
+- Include a mix of top-of-funnel (awareness) and mid-funnel (consideration) content
 
-**Link Targets** (pages to build backlinks to):
-- Pick the most important pages by traffic and commercial value
-- Select the highest-volume keyword as the anchor keyword for each URL
-- Use Exact, Broad, or Brand anchor types:
-  - Exact: the primary target keyword verbatim
-  - Broad: a natural variation or partial match
-  - Brand: the brand name or domain
-- Include 2–3 anchor variations per URL if possible
-- Aim for 3–8 unique target URLs
+**Link Targets** (MINIMUM 5, aim for 8–15):
+- Every important commercial page should have link building support
+- Select 2–3 anchor keyword variations per URL
+- Use a mix of Exact, Broad, and Brand anchor types
+- Include the homepage as a link target with brand anchors
+- Include top service/product pages
+- Include key blog posts that can attract editorial links
 
-If the client brief mentions specific areas to target (locations, products, campaigns), weight those heavily in your recommendations.`;
+If the content gap data is limited, use the struggling pages data and sitemap to identify additional opportunities. A THIN strategy is worse than no strategy — be comprehensive.`;
 
 // ─── Generate the strategy ──────────────────────────────────────────────────
 
@@ -536,8 +613,8 @@ export async function generateContentStrategy(
       { role: "system", content: STRATEGY_SYSTEM_PROMPT },
       { role: "user", content: analysisPrompt },
     ],
-    temperature: 0.4,
-    max_tokens: 8000,
+    temperature: 0.5,
+    max_tokens: 12000,
     response_format: { type: "json_object" },
   });
 

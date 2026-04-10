@@ -601,18 +601,47 @@ export function SearchConsoleSection({
         if (!movers.length) return null;
         return (
           <SectionCard title="Position Movers" subtitle="Queries with biggest rank improvements vs previous period">
-            <DataTable<(typeof movers)[number]>
-              data={movers}
-              columns={[
-                { key: "query", label: "Query", render: (_v, row) => <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{row.query}</span> },
-                { key: "position", label: "Current", align: "center", render: (_v, row) => <span className={positionBadgeClass(row.position)}>{row.position.toFixed(1)}</span> },
-                { key: "prevPosition", label: "Previous", align: "center", render: (_v, row) => <span style={{ color: "var(--text-3)", fontSize: 12 }}>{row.prevPosition.toFixed(1)}</span> },
-                { key: "gain", label: "Gain", align: "center", render: (_v, row) => <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: "#ecfdf5", color: "var(--success-text)" }}>+{row.gain.toFixed(1)}</span> },
-                { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => <span style={{ fontWeight: 600 }}>{formatNumber(row.clicks)}</span> },
-                { key: "impressions", label: "Impr.", align: "right", sortable: true, render: (_v, row) => formatNumber(row.impressions) },
-              ]}
-              pageSize={0}
-            />
+            <div style={{ overflowX: "visible" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "40%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                </colgroup>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <th style={{ textAlign: "left", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Query</th>
+                    <th style={{ textAlign: "center", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Current</th>
+                    <th style={{ textAlign: "center", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Previous</th>
+                    <th style={{ textAlign: "center", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Gain</th>
+                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
+                    <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Impr.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {movers.map((q, i) => (
+                    <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "10px 12px", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.query}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "center" }}>
+                        <span className={positionBadgeClass(q.position)}>{q.position.toFixed(1)}</span>
+                      </td>
+                      <td style={{ padding: "10px 12px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>{q.prevPosition.toFixed(1)}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "center" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: "#ecfdf5", color: "var(--success-text)" }}>
+                          <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "3.5px solid transparent", borderRight: "3.5px solid transparent", borderBottom: "5px solid currentColor" }} />
+                          +{q.gain.toFixed(1)}
+                        </span>
+                      </td>
+                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text)", fontWeight: 600 }}>{formatNumber(q.clicks)}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(q.impressions)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </SectionCard>
         );
       })()}
@@ -733,20 +762,42 @@ export function SearchConsoleSection({
               </button>
 
               {overlapExpanded && (
-                <DataTable<CannibalPair>
-                  data={keywordOverlaps}
-                  columns={[
-                    { key: "query", label: "Keyword", render: (_v, row) => <span style={{ color: "var(--text-1)", fontWeight: 500 }}>{row.query}</span> },
-                    { key: "organicPosition", label: "Org. Pos", align: "right", sortable: true, render: (_v, row) => row.organicPosition.toFixed(1) },
-                    { key: "organicClicks", label: "Org. Clicks", align: "right", sortable: true, render: (_v, row) => formatNumber(row.organicClicks) },
-                    { key: "paidClicks", label: "Paid Clicks", align: "right", sortable: true, render: (_v, row) => formatNumber(row.paidClicks) },
-                    { key: "paidSpend", label: "Paid Spend", align: "right", sortable: true, render: (_v, row) => `$${row.paidSpend.toFixed(2)}` },
-                    { key: "paidConversions", label: "Paid Conv.", align: "right", sortable: true, render: (_v, row) => row.paidConversions.toFixed(0) },
-                    { key: "risk", label: "Risk", align: "center", render: (_v, row) => <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff", background: row.risk === "high" ? "#dc2626" : row.risk === "medium" ? "#d97706" : "#6b7280", borderRadius: 4, padding: "1px 6px" }}>{row.risk}</span> },
-                  ]}
-                  pageSize={20}
-                  searchable
-                />
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                        <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>Keyword</th>
+                        <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Org. Pos</th>
+                        <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Org. Clicks</th>
+                        <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Paid Clicks</th>
+                        <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Paid Spend</th>
+                        <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Paid Conv.</th>
+                        <th style={{ padding: "8px 12px", textAlign: "center", fontWeight: 600, color: "var(--text-2)" }}>Risk</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {keywordOverlaps.map((kw, i) => (
+                        <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}>
+                          <td style={{ padding: "8px 12px", color: "var(--text-1)", fontWeight: 500 }}>{kw.query}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>{kw.organicPosition.toFixed(1)}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(kw.organicClicks)}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(kw.paidClicks)}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>${kw.paidSpend.toFixed(2)}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>{kw.paidConversions.toFixed(0)}</td>
+                          <td style={{ padding: "8px 12px", textAlign: "center" }}>
+                            <span style={{
+                              fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff",
+                              background: kw.risk === "high" ? "#dc2626" : kw.risk === "medium" ? "#d97706" : "#6b7280",
+                              borderRadius: 4, padding: "1px 6px"
+                            }}>
+                              {kw.risk}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}
