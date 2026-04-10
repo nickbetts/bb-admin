@@ -494,14 +494,7 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
     return n.toLocaleString("en-GB");
   }
 
-  function renderScores(impact?: number, effort?: number): string {
-    if (!impact && !effort) return "";
-    const imp = impact ? `<span class="score-chip score-impact">Impact ${impact}/5</span>` : "";
-    const eff = effort ? `<span class="score-chip score-effort">Effort ${effort}/5</span>` : "";
-    return `<div class="score-row">${imp}${eff}</div>`;
-  }
-
-  // Sort by impact desc, then priority
+  // Sort by impact desc
   function sortByImpact<T extends { keywords: ParsedKeyword[]; impact?: number }>(arr: T[], volThreshold: number): T[] {
     return [...arr].sort((a, b) => {
       const bImp = (b.impact ?? 0) * 10 + (b.keywords.some(k => k.volume >= volThreshold) ? 1 : 0);
@@ -515,15 +508,10 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
   let quickWinsHtml = "";
   if (hasQuickWins) {
     for (const opt of quickWins!) {
-      const isPriority = opt.keywords.some(k => k.volume >= 1000);
       quickWinsHtml += `
           <div class="opt-block qw-block">
             <div class="opt-block-hdr">
               <div class="opt-block-url"><a href="https://${esc(opt.url)}" target="_blank" rel="noopener">${esc(opt.url)}</a></div>
-              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                ${isPriority ? '<span class="priority-badge">Priority</span>' : ""}
-                ${renderScores(opt.impact, opt.effort)}
-              </div>
             </div>
             <p class="opt-notes">${esc(opt.notes)}</p>
             <table class="kw-table">
@@ -540,15 +528,10 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
   const sortedPageOpts = sortByImpact(pageOptimisations, 1000);
   let pageOptsHtml = "";
   for (const opt of sortedPageOpts) {
-    const isPriority = opt.keywords.some(k => k.volume >= 1000);
     pageOptsHtml += `
           <div class="opt-block">
             <div class="opt-block-hdr">
               <div class="opt-block-url"><a href="https://${esc(opt.url)}" target="_blank" rel="noopener">${esc(opt.url)}</a></div>
-              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                ${isPriority ? '<span class="priority-badge">Priority</span>' : ""}
-                ${renderScores(opt.impact, opt.effort)}
-              </div>
             </div>
             ${opt.notes ? `<p class="opt-notes">${esc(opt.notes)}</p>` : ""}
             <table class="kw-table">
@@ -564,16 +547,11 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
   const allLandingPages = sortByImpact([...landingPages, ...categoryPages], 500);
   let landingPagesHtml = "";
   for (const page of allLandingPages) {
-    const isPriority = page.keywords.some(k => k.volume >= 500);
     const desc = aiContent[`landing_${page.title}`] || page.notes || "";
     landingPagesHtml += `
-          <div class="new-page-card${isPriority ? " priority" : ""}">
+          <div class="new-page-card">
             <div class="new-page-card-hdr">
               <div class="new-page-title">${esc(page.title)}</div>
-              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px;">
-                ${isPriority ? '<span class="priority-badge">Priority</span>' : ""}
-                ${renderScores(page.impact, page.effort)}
-              </div>
             </div>
             <p class="new-page-desc">${esc(desc)}</p>
             <div class="new-page-kws">
@@ -609,20 +587,15 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
     }
     for (const post of clusterPosts) {
       globalPostIdx++;
-      const isPriority = post.keywords.some(k => k.volume >= 1000);
       const desc = aiContent[`blog_${post.title}`] || post.notes || "";
       blogPostsHtml += `
-          <div class="blog-item${isPriority ? " priority" : ""}">
+          <div class="blog-item">
             <div class="blog-item-left">
               <div class="blog-num">${String(globalPostIdx).padStart(2, "0")}</div>
             </div>
             <div class="blog-item-body">
               <div class="blog-item-top">
                 <div class="blog-title">${esc(post.title)}</div>
-                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px;">
-                  ${isPriority ? '<span class="priority-badge">Priority</span>' : ""}
-                  ${renderScores(post.impact, post.effort)}
-                </div>
               </div>
               <p class="blog-desc">${esc(desc)}</p>
               <div class="blog-kw-row">
@@ -680,11 +653,11 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
 
   // Overview descriptions from AI
   const overviewOpportunity = aiContent.overviewOpportunity || "A comprehensive content strategy targeting high-value keyword opportunities.";
-  const overviewPlan = aiContent.overviewPlan || "The strategy covers page optimisations, new landing pages, blog content, and link building — all delivered by i3media on your behalf.";
+  const overviewPlan = aiContent.overviewPlan || "The strategy covers page optimisations, new landing pages, blog content, and link building, all delivered by i3media on your behalf.";
   const overviewPriority = aiContent.overviewPriority || "We'll focus on the highest-impact quick wins first, then build out the new content over the following months.";
   const overviewScope = aiContent.overviewScope || `We're targeting ${bestByKeyword.size} unique keywords across all content types.`;
   const sectionDescOpts = aiContent.sectionDescOpts || "These are existing pages on your site that we'll refresh and expand. Improving them strengthens rankings for terms they already appear for and opens up new keyword opportunities within the same topic cluster.";
-  const sectionDescLanding = aiContent.sectionDescLanding || "New pages we will write and publish on your behalf. Each targets a keyword cluster not currently served by your existing content — turning search demand into enquiries.";
+  const sectionDescLanding = aiContent.sectionDescLanding || "New pages we will write and publish on your behalf. Each targets a keyword cluster not currently served by your existing content, turning search demand into enquiries.";
   const sectionDescBlog = aiContent.sectionDescBlog || "New informational articles we will research and write. These drive organic traffic at the top of the funnel, build topical authority, and internally link to your key commercial pages.";
   const sectionDescLinks = aiContent.sectionDescLinks || "These are the pages our outreach campaign will build backlinks towards. Earning links to these specific URLs strengthens their individual authority and improves the site's ability to rank competitively across the board.";
 
@@ -693,7 +666,7 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${esc(clientName)} — Content Strategy | i3</title>
+<title>${esc(clientName)}: Content Strategy | i3</title>
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -796,11 +769,6 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 .opt-notes { font-size: .8rem; color: var(--muted); padding: .5rem 1rem; border-bottom: 1px solid #f1f5f9; background: #fff; }
 .qw-block { border-color: #a7f3d0; }
 .qw-block .opt-block-hdr { background: #f0fdf4; }
-.priority-badge { font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; background: #fef3c7; color: #92400e; padding: .2rem .55rem; border-radius: 4px; white-space: nowrap; }
-.score-row { display: flex; gap: 4px; flex-wrap: wrap; }
-.score-chip { font-size: .6rem; font-weight: 700; padding: .2rem .5rem; border-radius: 4px; white-space: nowrap; }
-.score-impact { background: #dbeafe; color: #1e40af; }
-.score-effort { background: #fce7f3; color: #9d174d; }
 .kw-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
 .kw-table th { text-align: left; padding: .55rem 1rem; background: #f8fafc; color: var(--muted); font-weight: 600; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); }
 .kw-table th:last-child { text-align: right; }
@@ -816,7 +784,6 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 @media (max-width: 700px) { .new-pages-grid { grid-template-columns: 1fr; } }
 .new-page-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; transition: .15s; }
 .new-page-card:hover { box-shadow: var(--shadow-lg); }
-.new-page-card.priority { border-color: #c4b5fd; background: #faf5ff; }
 .new-page-card-hdr { margin-bottom: .5rem; }
 .new-page-title { font-weight: 700; font-size: .95rem; }
 .new-page-desc { font-size: .82rem; color: var(--muted); margin-bottom: .75rem; }
@@ -830,7 +797,6 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 .cluster-header { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); padding: .5rem 0 .25rem; border-bottom: 2px solid var(--accent-light); margin-bottom: .25rem; }
 .blog-item { display: flex; gap: 1.25rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; transition: .15s; }
 .blog-item:hover { box-shadow: var(--shadow-lg); }
-.blog-item.priority { border-color: #c4b5fd; background: #faf5ff; }
 .blog-item-left { flex-shrink: 0; display: flex; align-items: start; }
 .blog-num { font-size: 1.5rem; font-weight: 900; color: var(--border); line-height: 1; }
 .blog-item-body { flex: 1; min-width: 0; }
@@ -851,7 +817,6 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 .lt-url { font-weight: 600; }
 .lt-url a { color: var(--text); text-decoration: none; }
 .lt-url a:hover { color: var(--accent); }
-.lt-priority { display: inline-block; font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #92400e; background: #fef3c7; padding: .15rem .45rem; border-radius: 4px; margin-left: .5rem; }
 .lt-sep td { border-top: 2px solid var(--border); }
 .anchor-badge { display: inline-block; font-size: .65rem; font-weight: 600; padding: .15rem .5rem; border-radius: 4px; }
 .anchor-exact { background: var(--accent-light); color: var(--accent); }
@@ -925,7 +890,7 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
     <nav class="side-nav">
       <h3>On this page</h3>
       <a class="nav-link active" href="#overview">Overview</a>
-      ${hasQuickWins ? '<a class="nav-link" href="#quick-wins">⚡ Quick Wins</a>' : ""}
+      ${hasQuickWins ? '<a class="nav-link" href="#quick-wins">Quick Wins</a>' : ""}
       ${stats.totalPageOptimisations > 0 ? '<a class="nav-link" href="#page-optimisations">Page Optimisations</a>' : ""}
       ${stats.totalLandingPages > 0 ? '<a class="nav-link" href="#landing-pages">New Landing Pages</a>' : ""}
       ${stats.totalBlogPosts > 0 ? '<a class="nav-link" href="#blog-pages">Blog Posts</a>' : ""}
@@ -963,8 +928,8 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
     <div class="section" id="quick-wins">
       <div class="section-hdr">
         <span class="section-tag tag-green">Fast results</span>
-        <h2>⚡ Quick Wins</h2>
-        <p>These pages already rank on page 1 or 2 for keywords with real search volume. Small content improvements — a tightened title tag, an added FAQ section, a clearer call to action — can push them to the top 3 and deliver traffic gains quickly.</p>
+        <h2>Quick Wins</h2>
+        <p>These pages already rank on page 1 or 2 for keywords with real search volume. Small content improvements (a tightened title tag, an added FAQ section, a clearer call to action) can push them to the top 3 and deliver traffic gains quickly.</p>
       </div>
       <div class="section-body">
         <div class="opt-table-wrap">
@@ -1051,26 +1016,26 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
       <div class="section-hdr">
         <span class="section-tag tag-purple">Delivery plan</span>
         <h2>Delivery Roadmap</h2>
-        <p>How we'll sequence the work across the retainer. Quick wins and high-impact, low-effort tasks come first — so you see results early while we build out the deeper content programme.</p>
+        <p>How we'll sequence the work across the retainer. Quick wins and high-impact, low-effort tasks come first, so you see results early while we build out the deeper content programme.</p>
       </div>
       <div class="section-body">
         <div class="roadmap-grid">
           <div class="roadmap-col col-green">
-            <div class="roadmap-col-hdr hdr-green">Month 1 — Quick Wins</div>
+            <div class="roadmap-col-hdr hdr-green">Phase 1: Quick Wins</div>
             <div class="roadmap-items">
               ${(roadmap.month1).map(item => `<div class="roadmap-item">${esc(item)}</div>`).join("\n              ")}
               ${roadmap.month1.length === 0 ? '<div class="roadmap-item" style="color:var(--muted)">To be confirmed</div>' : ""}
             </div>
           </div>
           <div class="roadmap-col col-blue">
-            <div class="roadmap-col-hdr hdr-blue">Months 2–3 — Core Build</div>
+            <div class="roadmap-col-hdr hdr-blue">Phase 2: Core Build</div>
             <div class="roadmap-items">
               ${(roadmap.months2to3).map(item => `<div class="roadmap-item">${esc(item)}</div>`).join("\n              ")}
               ${roadmap.months2to3.length === 0 ? '<div class="roadmap-item" style="color:var(--muted)">To be confirmed</div>' : ""}
             </div>
           </div>
           <div class="roadmap-col col-purple">
-            <div class="roadmap-col-hdr hdr-purple">Months 4+ — Authority</div>
+            <div class="roadmap-col-hdr hdr-purple">Phase 3: Authority</div>
             <div class="roadmap-items">
               ${(roadmap.months4plus).map(item => `<div class="roadmap-item">${esc(item)}</div>`).join("\n              ")}
               ${roadmap.months4plus.length === 0 ? '<div class="roadmap-item" style="color:var(--muted)">To be confirmed</div>' : ""}
@@ -1096,7 +1061,7 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
           </svg>
         </div>
       </div>
-      <div class="footer-small">Prepared by i3MEDIA &nbsp;&middot;&nbsp; ${esc(period)} &nbsp;&middot;&nbsp; Confidential — for ${esc(clientName)} internal use only</div>
+      <div class="footer-small">Prepared by i3MEDIA &nbsp;&middot;&nbsp; ${esc(period)} &nbsp;&middot;&nbsp; Confidential, for ${esc(clientName)} internal use only</div>
     </div>
   </main>
 </div>
