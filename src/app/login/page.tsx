@@ -175,10 +175,10 @@ export default function LoginPage() {
 
   const pains = [
     { q: "\"Why did traffic drop last week?\"", a: "Every account manager's least favourite question. You know the answer is in there somewhere. It just takes 45 minutes to find it." },
-    { q: "Reporting day. Again.", a: "Block out Tuesday afternoon, open 11 tabs, copy numbers into a spreadsheet, write the same commentary you wrote last month. There's got to be a better way." },
+    { q: "Reporting day. Again.", a: "Block out Tuesday afternoon, open 11 tabs, copy numbers into a spreadsheet, write the same commentary you wrote last month. There has got to be a better way." },
     { q: "ROAS is tanking. When did that happen?", a: "The worst version of this is your client telling you before you've noticed. StratOS spots these shifts automatically and puts them front and centre." },
-    { q: "Where should we move the budget?", a: "You know Meta's underperforming and Google Ads is flying. But without hard numbers side by side, it's still a gut-feel conversation." },
-    { q: "Three platforms. Three numbers. None of them match.", a: "GA4 says one thing. Google Ads says another. Meta has its own view. Someone has to reconcile all of this. Every. Single. Week." },
+    { q: "Where should we move the budget?", a: "You know Meta's underperforming and Google Ads is flying. Without hard numbers side by side, it's still a gut-feel conversation." },
+    { q: "Three platforms. Three numbers. None of them match.", a: "GA4 says one thing. Google Ads says another. Meta has its own view. Someone has to reconcile all of this. Every single week." },
     { q: "Is this account actually performing well?", a: "Without a cross-channel view, you're always looking at a piece of the puzzle. StratOS shows the whole board." },
   ];
 
@@ -285,7 +285,7 @@ export default function LoginPage() {
       </nav>
 
       {/* ── NAV ── */}
-      <nav style={{
+      <nav className="top-nav" style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
         backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
         background: "rgba(9,9,15,0.88)",
@@ -567,7 +567,7 @@ export default function LoginPage() {
             <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
               We&apos;ve been there.<br />Got the t-shirt.
             </h2>
-            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
+          <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
               These are the conversations we were having at i3MEDIA before we built StratOS. If any of them land, you&apos;re in the right place.
             </p>
           </div>
@@ -601,10 +601,10 @@ export default function LoginPage() {
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 48 }}>
             <h2 style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 14, color: "white" }}>
-              Built to scale. Engineered to perform.
+              The platform, in numbers.
             </h2>
             <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", maxWidth: 600, margin: "0 auto" }}>
-              These aren&apos;t vanity metrics. This is the infrastructure that powers insight generation across every connected account.
+              No marketing speak. Just what&apos;s actually running under the bonnet.
             </p>
           </div>
           
@@ -684,7 +684,7 @@ export default function LoginPage() {
             justifyContent: "space-between",
             gap: 32,
             flexWrap: "wrap",
-          }}>
+          }} className="stats-feature-bar">
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <Clock style={{ width: 20, height: 20, color: "#818cf8" }} />
               <div>
@@ -733,7 +733,7 @@ export default function LoginPage() {
               All your platforms. Finally in one place.
             </h2>
             <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
-              Connect once, read everything. No manual exports, no copy-pasting, no version-control nightmares.
+              Connect once, read everything. No manual exports, no copy-pasting, no Monday morning data rituals.
             </p>
           </div>
 
@@ -789,13 +789,13 @@ export default function LoginPage() {
             Stratum<sup style={{ fontSize: "0.28em", verticalAlign: "super", letterSpacing: 0 }}>™</sup>
           </h2>
           <p style={{ fontSize: 18, color: "rgba(99,102,241,0.75)", fontWeight: 700, letterSpacing: "0.04em", marginBottom: 20, textTransform: "uppercase" }}>
-            Cross-channel intelligence framework
+            The AI layer that reads everything at once
           </p>
           <p style={{ fontSize: 20, color: "#818cf8", fontWeight: 800, letterSpacing: "0.02em", marginBottom: 38, lineHeight: 1.4 }}>
             Stratum™ reads from all 16 channels before writing a single word.
           </p>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 680, margin: "0 auto 64px" }}>
-            Stratum is the intelligence layer beneath everything you see in StratOS. It works across all 16 connected channels simultaneously, reading signals, finding correlations, and surfacing insights that only emerge when you stop looking at platforms in isolation. We&apos;ve spent years building it. You won&apos;t find it anywhere else.
+            Stratum™ is the intelligence layer beneath everything in StratOS. It reads all 16 connected channels at once, finds correlations across them, and surfaces the kind of insights you only get when you stop looking at platforms in isolation. Built in-house over years of agency work. You won&apos;t find it anywhere else.
           </p>
 
           <div style={{
@@ -805,7 +805,7 @@ export default function LoginPage() {
             padding: "48px 40px",
             marginBottom: 64,
             textAlign: "left",
-          }}>
+          }} className="stratum-ai-box">
             <h3 style={{
               fontSize: 22,
               fontWeight: 800,
@@ -814,7 +814,7 @@ export default function LoginPage() {
               textAlign: "center",
               letterSpacing: "-0.02em",
             }}>
-              14+ AI capabilities. All reading from all 16 channels.
+              14+ AI capabilities. Every one reads from all 16 channels.
             </h3>
             
             <div style={{
@@ -1216,7 +1216,7 @@ export default function LoginPage() {
                   "Full cross-channel context, not just one platform at a time",
                   "Ask in plain English. It handles the analysis, not you.",
                   "Every answer links back to the underlying data",
-                  "Powered by Stratum: surfaces insights invisible to single-channel views",
+                  "Powered by Stratum™: surfaces insights invisible to single-channel views",
                 ].map((b) => (
                   <div key={b} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />
@@ -1357,7 +1357,7 @@ export default function LoginPage() {
                 Every account.<br />One view. Zero chaos.
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                The Portfolio Health Dashboard gives you an agency-wide view: every client, their health score, churn risk, anomaly count, and goal achievement — all in one place. No more hopping between accounts to see who needs attention.
+                The Portfolio Health Dashboard gives you an agency-wide view: every client, their health score, churn risk, anomaly count, and goal achievement, all in one place. No more hopping between accounts to see who needs attention.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {[
@@ -1454,7 +1454,7 @@ export default function LoginPage() {
             padding: "48px 40px",
             position: "relative",
           }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 32 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 32 }} className="actions-flow">
               {([
                 { icon: <Radar style={{ width: 20, height: 20 }} />, label: "AI spots issue", color: "#ef4444" },
                 { icon: <ChevronRight style={{ width: 16, height: 16, opacity: 0.3 }} />, label: "", color: "" },
@@ -1644,11 +1644,11 @@ export default function LoginPage() {
               Every tool you need.<br />All in one place.
             </h2>
             <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 660, margin: "0 auto", lineHeight: 1.7 }}>
-              StratOS isn&apos;t just reporting. It&apos;s keyword research, proposal generation, landing page analysis, content strategy, media planning, and competitive intelligence. All powered by Stratum™.
+              Keyword research, proposal generation, landing page analysis, content strategy, media planning, and competitive intelligence. All powered by Stratum™. All in the same login.
             </p>
           </div>
           
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }} className="toolkit-grid">
             {[
               {
                 icon: <Search style={{ width: 20, height: 20 }} />,
@@ -1659,7 +1659,7 @@ export default function LoginPage() {
               {
                 icon: <Rocket style={{ width: 20, height: 20 }} />,
                 title: "PPC Proposal Generator",
-                desc: "Interactive forecaster, pipeline CRM, view tracking, enquiry capture. Close more business.",
+                desc: "Interactive forecaster, pipeline CRM, view tracking, and enquiry capture. Share a proposal link and see exactly who's read it.",
                 color: "#10b981",
               },
               {
@@ -1766,7 +1766,7 @@ export default function LoginPage() {
           }}>
             <Sparkles style={{ width: 28, height: 28, color: "#818cf8" }} />
           </div>
-          <h2 style={{
+          <h2 className="mid-cta-h2" style={{
             fontSize: 48,
             fontWeight: 900,
             letterSpacing: "-0.04em",
@@ -1786,7 +1786,7 @@ export default function LoginPage() {
             maxWidth: 600,
             margin: "0 auto 36px",
           }}>
-            16 channels. 19 AI endpoints. 90+ report blocks. One login. This is what it looks like when an agency builds the tool it actually needs.
+            16 channels. One login. No more context-switching, no more Monday morning spreadsheet rituals, no more finding out about problems from your client.
           </p>
           <a
             href="#access"
@@ -1824,7 +1824,7 @@ export default function LoginPage() {
               { icon: <GitBranch style={{ width: 16, height: 16 }} />, title: "Multi-touch attribution", desc: "Five models side by side: last-click, first-click, linear, time-decay, position-based. See who actually gets the credit." },
               { icon: <Activity style={{ width: 16, height: 16 }} />, title: "Seasonality intelligence", desc: "Automatic pattern detection across historical snapshots. Catch seasonal trends before they catch you out." },
               { icon: <Megaphone style={{ width: 16, height: 16 }} />, title: "Share of voice tracking", desc: "Organic and paid competitive position against your rivals, updated with live SemRush data." },
-              { icon: <BookOpen style={{ width: 16, height: 16 }} />, title: "Strategy documents", desc: "Forward-looking strategy docs per client, generated by Stratum™ and shareable via link. No more building decks from scratch." },
+              { icon: <BookOpen style={{ width: 16, height: 16 }} />, title: "Strategy documents", desc: "Forward-looking strategy docs per client, generated by Stratum™ and shareable via link." },
               { icon: <Radar style={{ width: 16, height: 16 }} />, title: "Competitor monitoring", desc: "Ongoing competitive snapshots with Stratum™ commentary, saved to history so you can see how the landscape is shifting." },
               { icon: <Search style={{ width: 16, height: 16 }} />, title: "Keyword planning & proposals", desc: "Research keywords, build proposals with projected traffic and value, and share them with link-tracked engagement." },
               { icon: <MessageSquare style={{ width: 16, height: 16 }} />, title: "Communications hub", desc: "Centralised log for emails, calls, meetings, notes with email drafting. Never lose track of a client conversation." },
@@ -1916,17 +1916,17 @@ export default function LoginPage() {
           <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 24 }}>
             The story behind it
           </p>
-          <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.15, marginBottom: 28, color: "white" }}>
+          <h2 className="about-h2" style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.15, marginBottom: 28, color: "white" }}>
             We&apos;re not a startup.<br />We&apos;re an agency that got fed up.
           </h2>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 680, margin: "0 auto 20px" }}>
             i3MEDIA has been running digital campaigns for ambitious brands for over 20 years. Websites, SEO, paid social, PPC: we&apos;ve done it all, for clients of all shapes and sizes, across two continents.
           </p>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 680, margin: "0 auto 20px" }}>
-            And for 20 years, we had the same problem every other agency has. Too many platforms. Too much time pulling data. Not enough time actually using it. So we built StratOS: for ourselves first, and now for the wider world.
+            For 20 years we had the same problem every other agency has. Too many platforms. Too much time pulling data. Not enough time actually using it. So we built StratOS: for ourselves first, and now for anyone who recognises the problem.
           </p>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 680, margin: "0 auto 44px" }}>
-            It&apos;s opinionated because we&apos;ve made every mistake in the book. It&apos;s fast because slow tools don&apos;t get used. And it&apos;s honest because that&apos;s how we work.
+            It&apos;s opinionated because we&apos;ve made every mistake in the book. It&apos;s fast because slow tools don&apos;t get used. And it&apos;s honest, because that&apos;s how we work.
           </p>
           <a
             href="https://i3media.net"
@@ -1980,11 +1980,11 @@ export default function LoginPage() {
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 8px rgba(16,185,129,0.8)" }} className="stratum-pulse" />
             <span style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.1em", textTransform: "uppercase" }}>Right then</span>
           </div>
-          <h2 style={{ fontSize: 60, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.0, marginBottom: 24, color: "white" }}>
+          <h2 className="access-h2" style={{ fontSize: 60, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.0, marginBottom: 24, color: "white" }}>
             Ready to stop<br />flying blind?
           </h2>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.45)", lineHeight: 1.75, maxWidth: 480, margin: "0 auto 48px" }}>
-            Already have a StratOS account? Sign in above. Want to get set up? Drop us a line. We&apos;re a real team and we actually reply.
+            Already got an account? Sign in above. Want to get set up? Drop us a line. We&apos;re a real team and we actually reply.
           </p>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
             <a
@@ -2246,6 +2246,8 @@ export default function LoginPage() {
           .stats-grid { grid-template-columns: repeat(3, 1fr) !important; }
           .steps-grid { grid-template-columns: 1fr 1fr !important; }
           .steps-line { display: none !important; }
+          .toolkit-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .also-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
         @media (max-width: 1200px) {
           .side-nav { display: none !important; }
@@ -2264,6 +2266,21 @@ export default function LoginPage() {
           .steps-grid { grid-template-columns: 1fr !important; }
           .stratum-grid { grid-template-columns: 1fr !important; }
           .stratum-ai-grid { grid-template-columns: 1fr !important; }
+          .toolkit-grid { grid-template-columns: 1fr !important; }
+          section { padding-left: 20px !important; padding-right: 20px !important; }
+          .top-nav { padding-left: 16px !important; padding-right: 16px !important; }
+          .hero-grid { padding-left: 20px !important; padding-right: 20px !important; padding-top: 56px !important; padding-bottom: 56px !important; }
+          .stratum-shimmer { font-size: 48px !important; }
+          .mid-cta-h2 { font-size: 32px !important; }
+          .about-h2 { font-size: 30px !important; }
+          .access-h2 { font-size: 40px !important; }
+          .actions-flow { flex-wrap: wrap !important; justify-content: flex-start !important; }
+          .actions-flow > div { flex: 1 1 40% !important; min-width: 80px !important; }
+          .stats-feature-bar { flex-direction: column !important; align-items: flex-start !important; padding: 20px !important; }
+          .stratum-ai-box { padding: 24px 16px !important; }
+          #access { padding-top: 80px !important; padding-bottom: 80px !important; }
+          #mid-cta { padding-top: 60px !important; padding-bottom: 60px !important; }
+          .cta-primary, .cta-secondary { width: 100% !important; justify-content: center !important; box-sizing: border-box !important; }
         }
         @media (prefers-reduced-motion: reduce) {
           .mockup-card { animation: none !important; }

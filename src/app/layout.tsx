@@ -6,8 +6,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "i3media | Client Performance Dashboard",
-  description: "Digital performance reporting for web design, PPC, paid social and SEO",
+  title: "StratOS by i3MEDIA — Marketing intelligence for agencies",
+  description: "16-channel marketing performance platform. GA4, Google Ads, Meta, TikTok, LinkedIn, Klaviyo and more. AI-powered insights, automated reporting, and 90-day forecasting.",
 };
 
 export default function RootLayout({
