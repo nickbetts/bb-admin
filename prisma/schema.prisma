@@ -100,6 +100,8 @@ model Client {
   competitorDomains     String?   // JSON: string[] — domains to monitor
   // Click fraud protection snippet token
   clickFraudToken       String?   @unique  // Unique token for website protection snippet
+  // Microsoft 365 email sync
+  contactEmails         String?   // JSON: string[] — client contact email addresses for email sync
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   reports               Report[]
@@ -415,6 +417,7 @@ model ClientCommunication {
   body        String?
   status      String    @default("logged")    // "draft" | "sent" | "logged"
   sentAt      DateTime?
+  externalMessageId String? @unique           // Dedup key for MS365-synced messages/events
   metadata    String?   // JSON: { reportId?, proposalId?, duration?, participants?: string[] }
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -562,4 +565,14 @@ model UserActivityLog {
   @@index([userId, createdAt])
   @@index([clientId, createdAt])
   @@index([action, createdAt])
+}
+
+// Microsoft 365 connected accounts for email/calendar sync
+model Ms365Connection {
+  id           String   @id @default(cuid())
+  label        String   // Display name / email address
+  email        String   @unique
+  refreshToken String   // OAuth2 refresh token
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

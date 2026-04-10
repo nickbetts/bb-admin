@@ -647,7 +647,7 @@ async function main() {
   // ── ClientCommunication.externalMessageId (MS365 dedup) ───────────────
   if (!(await columnExists("ClientCommunication", "externalMessageId"))) {
     await db.execute('ALTER TABLE "ClientCommunication" ADD COLUMN "externalMessageId" TEXT');
-    await db.execute('CREATE INDEX IF NOT EXISTS "ClientCommunication_externalMessageId_idx" ON "ClientCommunication"("externalMessageId")');
+    await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS "ClientCommunication_externalMessageId_key" ON "ClientCommunication"("externalMessageId")');
     console.log("✓ Added ClientCommunication.externalMessageId");
   } else {
     console.log("✓ ClientCommunication.externalMessageId already present");
@@ -660,11 +660,18 @@ async function main() {
       "label" TEXT NOT NULL,
       "email" TEXT NOT NULL UNIQUE,
       "refreshToken" TEXT NOT NULL,
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`);
     console.log("✓ Created Ms365Connection table");
   } else {
-    console.log("✓ Ms365Connection table already present");
+    // Ensure updatedAt column exists (added later)
+    if (!(await columnExists("Ms365Connection", "updatedAt"))) {
+      await db.execute('ALTER TABLE "Ms365Connection" ADD COLUMN "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP');
+      console.log("✓ Added Ms365Connection.updatedAt");
+    } else {
+      console.log("✓ Ms365Connection table already present");
+    }
   }
 
   await db.close();

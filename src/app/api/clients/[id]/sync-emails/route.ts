@@ -28,14 +28,13 @@ export async function POST(
 
     // Parse the stored contact email addresses
     let contactEmails: string[] = [];
-    const clientAny = client as any;
-    if (clientAny.contactEmails) {
+    if (client.contactEmails) {
       try {
-        const parsed = JSON.parse(clientAny.contactEmails as string);
-        if (Array.isArray(parsed)) contactEmails = parsed as string[];
+        const parsed = JSON.parse(client.contactEmails) as string[];
+        if (Array.isArray(parsed)) contactEmails = parsed;
       } catch {
         // Fallback: treat as comma-separated
-        contactEmails = (clientAny.contactEmails as string)
+        contactEmails = client.contactEmails
           .split(",")
           .map((e: string) => e.trim())
           .filter(Boolean);
@@ -49,7 +48,7 @@ export async function POST(
       );
     }
 
-    const connections = await (prisma as any).ms365Connection.findMany();
+    const connections = await prisma.ms365Connection.findMany();
     if (connections.length === 0) {
       return NextResponse.json(
         { error: "No Microsoft 365 accounts connected" },
@@ -60,11 +59,7 @@ export async function POST(
     let emailsSynced = 0;
     let meetingsSynced = 0;
 
-    for (const connection of connections as Array<{
-      id: string;
-      email: string;
-      refreshToken: string;
-    }>) {
+    for (const connection of connections) {
       // ── Emails ────────────────────────────────────────────────────────────
       try {
         const messages = await fetchMailForClientAddresses(
@@ -75,7 +70,7 @@ export async function POST(
 
         for (const msg of messages) {
           // Skip if already synced
-          const existing = await (prisma as any).clientCommunication.findFirst({
+          const existing = await prisma.clientCommunication.findFirst({
             where: { externalMessageId: msg.id },
           });
           if (existing) continue;
@@ -84,9 +79,8 @@ export async function POST(
           const toList = msg.toRecipients
             .map((r) => `${r.emailAddress.name} <${r.emailAddress.address}>`)
             .join(", ");
-          const fromStr = `${msg.from?.emailAddress?.name ?? ""} <${msg.from?.emailAddress?.address ?? ""}>`;
 
-          await (prisma as any).clientCommunication.create({
+          await prisma.clientCommunication.create({
             data: {
               clientId: id,
               userId: session.user.id,
@@ -124,7 +118,7 @@ export async function POST(
         );
 
         for (const event of events) {
-          const existing = await (prisma as any).clientCommunication.findFirst({
+          const existing = await prisma.clientCommunication.findFirst({
             where: { externalMessageId: event.id },
           });
           if (existing) continue;
@@ -137,7 +131,7 @@ export async function POST(
             .map((a) => `${a.emailAddress.name} <${a.emailAddress.address}>`)
             .join(", ");
 
-          await (prisma as any).clientCommunication.create({
+          await prisma.clientCommunication.create({
             data: {
               clientId: id,
               userId: session.user.id,

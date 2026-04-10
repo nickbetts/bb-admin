@@ -10,7 +10,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const connections = await (prisma as any).ms365Connection.findMany({
+  const connections = await prisma.ms365Connection.findMany({
     orderBy: { createdAt: "asc" },
     select: { id: true, label: true, email: true, createdAt: true },
   });
@@ -33,6 +33,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
-  await (prisma as any).ms365Connection.delete({ where: { id } });
+  await prisma.ms365Connection.delete({ where: { id } });
   return NextResponse.json({ success: true });
 }
