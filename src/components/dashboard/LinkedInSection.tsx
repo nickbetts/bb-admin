@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
+import { MetricCard } from "@/components/ui/MetricCard";
+import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
+import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 import { formatDateDisplay } from "@/lib/utils";
@@ -60,16 +64,6 @@ interface LinkedInSectionProps {
   visibleBlocks?: string[];
 }
 
-function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", padding: 14 }}>
-      <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{sub}</div>}
-    </div>
-  );
-}
-
 export function LinkedInSection({ clientId, clientName, accountId, accessToken, startDate, endDate, crossPlatformContext, visibleBlocks }: LinkedInSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [loading, setLoading] = useState(false);
@@ -116,27 +110,19 @@ export function LinkedInSection({ clientId, clientName, accountId, accessToken, 
         <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", margin: 0 }}>LinkedIn Ads</h2>
       </div>
 
-      {error && (
-        <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-sm)", fontSize: 13, color: "#b91c1c" }}>
-          {error}
-        </div>
-      )}
+      {error && <SectionError message={error} onRetry={fetchData} />}
 
-      {loading && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)", fontSize: 13 }}>
-          <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} /> Loading LinkedIn data…
-        </div>
-      )}
+      {loading && <SectionLoading color="#0a66c2" message="Loading LinkedIn data…" />}
 
       {overview && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-            <MetricCard label="Impressions" value={overview.impressions.toLocaleString()} />
-            <MetricCard label="Clicks" value={overview.clicks.toLocaleString()} sub={`CTR: ${overview.ctr.toFixed(2)}%`} />
-            <MetricCard label="Spend" value={`£${overview.spend.toFixed(2)}`} sub={`CPC: £${overview.cpc.toFixed(2)}`} />
-            <MetricCard label="Conversions / Leads" value={overview.conversions.toLocaleString()} sub={overview.conversions > 0 ? `CPL: £${overview.cpl.toFixed(2)}` : undefined} />
-            <MetricCard label="Reach" value={overview.reach.toLocaleString()} />
-          </div>
+          <MetricGrid cols={5}>
+            <MetricCard title="Impressions" value={overview.impressions.toLocaleString()} channel="linkedin" />
+            <MetricCard title="Clicks" value={overview.clicks.toLocaleString()} subtitle={`CTR: ${overview.ctr.toFixed(2)}%`} channel="linkedin" />
+            <MetricCard title="Spend" value={`£${overview.spend.toFixed(2)}`} subtitle={`CPC: £${overview.cpc.toFixed(2)}`} channel="linkedin" />
+            <MetricCard title="Conversions / Leads" value={overview.conversions.toLocaleString()} subtitle={overview.conversions > 0 ? `CPL: £${overview.cpl.toFixed(2)}` : undefined} channel="linkedin" />
+            <MetricCard title="Reach" value={overview.reach.toLocaleString()} channel="linkedin" />
+          </MetricGrid>
 
           {show("campaigns") && campaigns.length > 0 && (
             <div className="card">

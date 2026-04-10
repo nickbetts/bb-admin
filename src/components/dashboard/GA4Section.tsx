@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
+import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE, CHART_BAR_STYLE } from "@/lib/chart-config";
 import { formatNumber, formatCurrency, formatPercent, formatDuration, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import { Users, UserPlus, Eye, MousePointer, Clock, TrendingUp, AlertTriangle, Leaf, BarChart2 } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
@@ -584,35 +585,12 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
                   <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 10 }} />
-              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} />
-              <Tooltip
-                contentStyle={{
-                  background: "#ffffff",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "8px",
-                  color: "#0f172a",
-                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.08)",
-                }}
-                labelStyle={{ color: "#64748b", fontSize: "11px" }}
-              />
-              <Area
-                type="monotone"
-                dataKey="sessions"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                fill="url(#sessGrad)"
-                name="Sessions"
-              />
-              <Area
-                type="monotone"
-                dataKey="users"
-                stroke="#6366f1"
-                strokeWidth={2}
-                fill="url(#userGrad)"
-                name="Users"
-              />
+              <CartesianGrid {...CHART_GRID_STYLE} />
+              <XAxis dataKey="date" {...CHART_AXIS_STYLE} />
+              <YAxis {...CHART_AXIS_STYLE} />
+              <Tooltip {...CHART_TOOLTIP_STYLE} />
+              <Area {...CHART_AREA_STYLE} dataKey="sessions" stroke="#3b82f6" fill="url(#sessGrad)" name="Sessions" />
+              <Area {...CHART_AREA_STYLE} dataKey="users" stroke="#6366f1" fill="url(#userGrad)" name="Users" />
               <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
             </AreaChart>
           </ResponsiveContainer>
@@ -643,14 +621,8 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{
-                    background: "#ffffff",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "8px",
-                    color: "#0f172a",
-                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.08)",
-                  }}
-                  labelStyle={{ color: "#64748b", fontSize: "11px" }}
+                  contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
+                  labelStyle={CHART_TOOLTIP_STYLE.labelStyle}
                   formatter={(v) => [formatNumber(Number(v)), "Sessions"]}
                 />
                 <Legend
@@ -718,12 +690,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{
-                      background: "#ffffff",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      color: "#0f172a",
-                    }}
+                    contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
                     formatter={(v) => [formatNumber(Number(v)), "Sessions"]}
                   />
                 </PieChart>
@@ -1080,11 +1047,11 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         <SectionCard title="Session Duration Distribution" subtitle="How long users spend per session">
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={sessionDuration} barSize={32}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="bucket" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
-              <Tooltip contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }} />
-              <Bar dataKey="sessions" fill="#6366f1" radius={[4, 4, 0, 0]} name="Sessions" />
+              <CartesianGrid {...CHART_GRID_STYLE} />
+              <XAxis dataKey="bucket" {...CHART_AXIS_STYLE} />
+              <YAxis {...CHART_AXIS_STYLE} tickFormatter={(v) => formatNumber(v)} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE.contentStyle} />
+              <Bar {...CHART_BAR_STYLE} dataKey="sessions" fill="#6366f1" name="Sessions" />
             </BarChart>
           </ResponsiveContainer>
         </SectionCard>
@@ -1151,11 +1118,11 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         <SectionCard title="Scroll Depth" subtitle="How far users scroll on pages">
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={scrollDepth} barSize={32}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="percentScrolled" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
-              <Tooltip contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }} />
-              <Bar dataKey="users" fill="#10b981" radius={[4, 4, 0, 0]} name="Users" />
+              <CartesianGrid {...CHART_GRID_STYLE} />
+              <XAxis dataKey="percentScrolled" {...CHART_AXIS_STYLE} />
+              <YAxis {...CHART_AXIS_STYLE} tickFormatter={(v) => formatNumber(v)} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE.contentStyle} />
+              <Bar {...CHART_BAR_STYLE} dataKey="users" fill="#10b981" name="Users" />
             </BarChart>
           </ResponsiveContainer>
         </SectionCard>

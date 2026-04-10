@@ -35,6 +35,59 @@
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
   --shadow:    0 4px 8px -2px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
 
+  /* ── Semantic status tokens ── */
+  --success-bg:      #f0fdf4;
+  --success-border:  #bbf7d0;
+  --success-text:    #14532d;
+  --warning-bg:      #fffbeb;
+  --warning-border:  #fde68a;
+  --warning-text:    #92400e;
+  --danger-bg:       #fef2f2;
+  --danger-border:   #fecaca;
+  --danger-text:     #7f1d1d;
+  --info:            #2563eb;
+  --info-bg:         #eff6ff;
+  --info-border:     #bfdbfe;
+  --info-text:       #1e40af;
+
+  /* ── Channel brand colors ── */
+  --channel-ga4:            #f97316;
+  --channel-google_ads:     #4285f4;
+  --channel-meta:           #1877f2;
+  --channel-linkedin:       #0a66c2;
+  --channel-tiktok:         #000000;
+  --channel-microsoft_ads:  #00a4ef;
+  --channel-klaviyo:        #8b5cf6;
+  --channel-hubspot:        #ff7a59;
+  --channel-semrush:        #ff642d;
+  --channel-youtube:        #ff0000;
+  --channel-shopify:        #96bf48;
+  --channel-woocommerce:    #7f54b3;
+  --channel-callrail:       #16a34a;
+  --channel-search_console: #34a853;
+  --channel-moz:            #0598e1;
+
+  /* ── Z-index scale ── */
+  --z-below:    -1;
+  --z-base:      0;
+  --z-raised:    1;
+  --z-dropdown:  10;
+  --z-sticky:    20;
+  --z-overlay:   30;
+  --z-modal:     40;
+  --z-toast:     50;
+  --z-tooltip:   60;
+
+  /* ── Transition tokens ── */
+  --transition-fast:   0.1s ease;
+  --transition-base:   0.2s ease;
+  --transition-slow:   0.35s ease;
+  --transition-spring: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Elevation / shadow extended ── */
+  --shadow-lg:  0 10px 20px -4px rgb(0 0 0 / 0.10), 0 4px 8px -4px rgb(0 0 0 / 0.06);
+  --shadow-xl:  0 20px 40px -8px rgb(0 0 0 / 0.14), 0 8px 16px -8px rgb(0 0 0 / 0.08);
+
   /* Compatibility aliases — map legacy token names to canonical tokens */
   --text-1:    var(--text);
   --surface-2: var(--bg);
@@ -1080,4 +1133,139 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
     margin-top: 24px !important;
     padding-top: 16px !important;
   }
+}
+
+/* =============================================
+   DARK MODE
+============================================= */
+[data-theme="dark"] {
+  --bg:            #0f1117;
+  --surface:       #1a1d27;
+  --border:        #2d3148;
+  --border-subtle: #232638;
+
+  --text:          #f1f5f9;
+  --text-2:        #94a3b8;
+  --text-3:        #64748b;
+  --text-4:        #475569;
+
+  --accent:        #818cf8;
+  --accent-hover:  #6366f1;
+  --accent-bg:     #1e1f3a;
+  --accent-text:   #a5b4fc;
+
+  --success:       #34d399;
+  --warning:       #fbbf24;
+  --danger:        #f87171;
+  --info:          #60a5fa;
+
+  --success-bg:     #052e16;
+  --success-border: #14532d;
+  --success-text:   #bbf7d0;
+  --warning-bg:     #1c1400;
+  --warning-border: #713f12;
+  --warning-text:   #fde68a;
+  --danger-bg:      #1c0505;
+  --danger-border:  #7f1d1d;
+  --danger-text:    #fecaca;
+  --info-bg:        #071731;
+  --info-border:    #1e3a5f;
+  --info-text:      #bfdbfe;
+
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.30);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.40), 0 1px 2px -1px rgb(0 0 0 / 0.30);
+  --shadow:    0 4px 8px -2px rgb(0 0 0 / 0.50), 0 2px 4px -2px rgb(0 0 0 / 0.35);
+  --shadow-lg: 0 10px 20px -4px rgb(0 0 0 / 0.60), 0 4px 8px -4px rgb(0 0 0 / 0.40);
+  --shadow-xl: 0 20px 40px -8px rgb(0 0 0 / 0.70), 0 8px 16px -8px rgb(0 0 0 / 0.50);
+}
+
+/* =============================================
+   FORM UTILITIES
+============================================= */
+:where(.form-select) {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px !important;
+}
+
+:where(.form-textarea) {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.6;
+}
+
+:where(.form-error) {
+  font-size: 12px;
+  color: var(--danger);
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+:where(.form-hint) {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 4px;
+}
+
+/* =============================================
+   DATA TABLE
+============================================= */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+}
+
+.data-table tbody tr:hover {
+  background: var(--border-subtle);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* =============================================
+   BUTTON UTILITIES
+============================================= */
+:where(.btn-icon) {
+  padding: 6px !important;
+  min-width: 0 !important;
+}
+
+:where(.btn-sm) {
+  padding: 5px 10px;
+  font-size: 12px;
+  gap: 4px;
+}
+
+/* =============================================
+   KEYFRAMES
+============================================= */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes modalOpen {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes sparklineIn {
+  from { stroke-dashoffset: var(--path-length, 200); }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }

@@ -18,6 +18,7 @@ import {
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard } from "@/components/ui/index";
 import { LoadingSpinner } from "@/components/ui/index";
+import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE, CHART_BAR_STYLE } from "@/lib/chart-config";
 import { formatNumber, formatCurrency, formatDateDisplay, pctChange } from "@/lib/utils";
 import { TrendingUp, Search, AlertTriangle } from "lucide-react";
 
@@ -560,31 +561,19 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                   <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <CartesianGrid {...CHART_GRID_STYLE} />
               <XAxis
                 dataKey="date"
-                tick={{ fill: "#64748b", fontSize: 11 }}
+                {...CHART_AXIS_STYLE}
                 tickFormatter={(v: string) => v.slice(0, 7)}
               />
-              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} />
+              <YAxis {...CHART_AXIS_STYLE} />
               <Tooltip
-                contentStyle={{
-                  background: "#ffffff",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "8px",
-                  color: "#0f172a",
-                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.08)",
-                }}
-                labelStyle={{ color: "#64748b", fontSize: "11px" }}
+                contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
+                labelStyle={CHART_TOOLTIP_STYLE.labelStyle}
                 formatter={(value) => [formatNumber(Number(value)), "Traffic"]}
               />
-              <Area
-                type="monotone"
-                dataKey="organicTraffic"
-                stroke="#6366f1"
-                strokeWidth={2}
-                fill="url(#trafficGrad)"
-              />
+              <Area {...CHART_AREA_STYLE} dataKey="organicTraffic" stroke="#6366f1" fill="url(#trafficGrad)" />
             </AreaChart>
           </ResponsiveContainer>
         </SectionCard>
@@ -600,20 +589,14 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           >
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={distribution} barSize={32}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="range" tick={{ fill: "#64748b", fontSize: 11 }} />
-                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} />
+                <CartesianGrid {...CHART_GRID_STYLE} />
+                <XAxis dataKey="range" {...CHART_AXIS_STYLE} />
+                <YAxis {...CHART_AXIS_STYLE} />
                 <Tooltip
-                  contentStyle={{
-                    background: "#ffffff",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "8px",
-                    color: "#0f172a",
-                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.08)",
-                  }}
-                  labelStyle={{ color: "#64748b", fontSize: "11px" }}
+                  contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
+                  labelStyle={CHART_TOOLTIP_STYLE.labelStyle}
                 />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                <Bar {...CHART_BAR_STYLE} dataKey="count">
                   {distribution.map((_, index) => (
                     <Cell
                       key={`cell-${index}`}
@@ -640,31 +623,19 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <CartesianGrid {...CHART_GRID_STYLE} />
                 <XAxis
                   dataKey="date"
-                  tick={{ fill: "#64748b", fontSize: 11 }}
+                  {...CHART_AXIS_STYLE}
                   tickFormatter={(v: string) => v.slice(0, 7)}
                 />
-                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} />
+                <YAxis {...CHART_AXIS_STYLE} />
                 <Tooltip
-                  contentStyle={{
-                    background: "#ffffff",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "8px",
-                    color: "#0f172a",
-                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.08)",
-                  }}
-                  labelStyle={{ color: "#64748b", fontSize: "11px" }}
+                  contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
+                  labelStyle={CHART_TOOLTIP_STYLE.labelStyle}
                   formatter={(value) => [formatNumber(Number(value)), "Keywords"]}
                 />
-                <Area
-                  type="monotone"
-                  dataKey="organicKeywords"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  fill="url(#kwGrad)"
-                />
+                <Area {...CHART_AREA_STYLE} dataKey="organicKeywords" stroke="#10b981" fill="url(#kwGrad)" />
               </AreaChart>
             </ResponsiveContainer>
           </SectionCard>

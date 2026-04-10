@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { Sparkline } from "./Sparkline";
 
 const CssArrowUp = () => (
   <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "3.5px solid transparent", borderRight: "3.5px solid transparent", borderBottom: "5px solid currentColor", verticalAlign: "middle", marginRight: 3 }} />
@@ -22,6 +23,10 @@ interface MetricCardProps {
   color?: "purple" | "blue" | "green" | "orange" | "red";
   /** Optional channel identifier — maps to brand colour for icon tint */
   channel?: string;
+  /** Sparkline data series for mini trend chart */
+  sparkline?: number[];
+  /** Show loading skeleton instead of content */
+  loading?: boolean;
 }
 
 const iconColorMap = {
@@ -62,10 +67,24 @@ export function MetricCard({
   className,
   color = "purple",
   channel,
+  sparkline,
+  loading = false,
 }: MetricCardProps) {
   const isPositive = change !== undefined && change >= 0;
   const isYoyPositive = yoyChange !== undefined && yoyChange >= 0;
   const brandColor = channel ? (channelColorMap[channel] ?? channelColorMap.default) : null;
+
+  if (loading) {
+    return (
+      <div className={cn("metric-card", className)} aria-busy="true">
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ height: 11, width: "55%", borderRadius: 6, background: "var(--border)", animation: "shimmer 1.4s ease-in-out infinite", backgroundImage: "linear-gradient(90deg, var(--border) 0%, var(--border-subtle) 50%, var(--border) 100%)", backgroundSize: "400% 100%" }} />
+          <div style={{ height: 22, width: "70%", borderRadius: 6, background: "var(--border)", animation: "shimmer 1.4s ease-in-out infinite", backgroundImage: "linear-gradient(90deg, var(--border) 0%, var(--border-subtle) 50%, var(--border) 100%)", backgroundSize: "400% 100%" }} />
+          <div style={{ height: 10, width: "40%", borderRadius: 6, background: "var(--border)", animation: "shimmer 1.4s ease-in-out infinite", backgroundImage: "linear-gradient(90deg, var(--border) 0%, var(--border-subtle) 50%, var(--border) 100%)", backgroundSize: "400% 100%" }} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("metric-card", className)}>
@@ -80,7 +99,19 @@ export function MetricCard({
           </span>
         )}
       </div>
-      <p className="metric-value">{value}</p>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
+        <p className="metric-value">{value}</p>
+        {sparkline && sparkline.length >= 2 && (
+          <div style={{ flexShrink: 0, marginBottom: 4 }}>
+            <Sparkline
+              data={sparkline}
+              color={brandColor ?? (change !== undefined && change < 0 ? "var(--danger)" : "var(--success)")}
+              height={28}
+              width={72}
+            />
+          </div>
+        )}
+      </div>
       {(subtitle || change !== undefined || yoyChange !== undefined) && (
         <div className="metric-footer">
           <div className="metric-footer-row">

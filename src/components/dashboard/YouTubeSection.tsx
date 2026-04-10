@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Play, Eye, Clock, Users, ThumbsUp, Loader2, AlertCircle } from "lucide-react";
+import { Play, Eye, Clock, Users, ThumbsUp, AlertCircle } from "lucide-react";
+import { MetricCard } from "@/components/ui/MetricCard";
+import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
+import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 
@@ -79,14 +82,7 @@ export function YouTubeSection({ clientId, clientName, crossPlatformContext, vis
 
   useEffect(() => { void load(); }, [load]);
 
-  if (loading) {
-    return (
-      <div style={{ padding: 40, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--text-3)" }}>
-        <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
-        <span style={{ fontSize: 13 }}>Loading YouTube data…</span>
-      </div>
-    );
-  }
+  if (loading) return <SectionLoading color="#ff0000" message="Loading YouTube data…" />;
 
   if (!data?.configured) {
     return (
@@ -118,21 +114,13 @@ export function YouTubeSection({ clientId, clientName, crossPlatformContext, vis
       )}
 
       {show("kpis") && analytics && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
-          {[
-            { label: "Views", value: analytics.views.toLocaleString(), icon: <Eye style={{ width: 13, height: 13 }} />, color: "#ef4444" },
-            { label: "Watch Time", value: `${analytics.watchTimeHours.toLocaleString()}h`, icon: <Clock style={{ width: 13, height: 13 }} />, color: "#6366f1" },
-            { label: "New Subs", value: `+${analytics.subscribers.toLocaleString()}`, icon: <Users style={{ width: 13, height: 13 }} />, color: "#22c55e" },
-            { label: "Avg Duration", value: analytics.avgViewDuration, icon: <Play style={{ width: 13, height: 13 }} />, color: "#f59e0b" },
-            { label: "Click-Through Rate", value: `${analytics.ctr}%`, icon: <ThumbsUp style={{ width: 13, height: 13 }} />, color: "#3b82f6" },
-          ].map((stat) => (
-            <div key={stat.label} style={{ background: `${stat.color}08`, border: `1px solid ${stat.color}20`, borderRadius: "var(--r-sm)", padding: "10px 14px" }}>
-              <div style={{ color: stat.color, marginBottom: 5 }}>{stat.icon}</div>
-              <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>{stat.label}</p>
-              <p style={{ fontSize: 18, fontWeight: 700, color: stat.color }}>{stat.value}</p>
-            </div>
-          ))}
-        </div>
+        <MetricGrid cols={5} className="mb-5">
+          <MetricCard title="Views" value={analytics.views.toLocaleString()} icon={<Eye style={{ width: 13, height: 13 }} />} channel="youtube" />
+          <MetricCard title="Watch Time" value={`${analytics.watchTimeHours.toLocaleString()}h`} icon={<Clock style={{ width: 13, height: 13 }} />} channel="youtube" />
+          <MetricCard title="New Subs" value={`+${analytics.subscribers.toLocaleString()}`} icon={<Users style={{ width: 13, height: 13 }} />} channel="youtube" />
+          <MetricCard title="Avg Duration" value={analytics.avgViewDuration} icon={<Play style={{ width: 13, height: 13 }} />} channel="youtube" />
+          <MetricCard title="Click-Through Rate" value={`${analytics.ctr}%`} icon={<ThumbsUp style={{ width: 13, height: 13 }} />} channel="youtube" />
+        </MetricGrid>
       )}
 
       {show("videos") && videos && videos.length > 0 && (

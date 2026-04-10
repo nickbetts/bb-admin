@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, Delta } from "@/components/ui/index";
+import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE } from "@/lib/chart-config";
 import { formatCurrency, formatNumber, formatPercent, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import {
   AreaChart,
@@ -693,37 +694,26 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <CartesianGrid {...CHART_GRID_STYLE} />
                   <XAxis
                     dataKey="date"
-                    tick={{ fill: "#64748b", fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
+                    {...CHART_AXIS_STYLE}
                     interval="preserveStartEnd"
                   />
                   <YAxis
                     yAxisId="cost"
-                    tick={{ fill: "#64748b", fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
+                    {...CHART_AXIS_STYLE}
                     tickFormatter={(v) => `£${v}`}
                     width={50}
                   />
                   <YAxis
                     yAxisId="clicks"
                     orientation="right"
-                    tick={{ fill: "#64748b", fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
+                    {...CHART_AXIS_STYLE}
                     width={40}
                   />
                   <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#ffffff",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "8px",
-                      fontSize: "12px",
-                    }}
+                    contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
                     labelStyle={{ color: "#64748b" }}
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     formatter={(value: any, name: any) => {
@@ -735,33 +725,27 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
                     }}
                   />
                   <Area
+                    {...CHART_AREA_STYLE}
                     yAxisId="cost"
-                    type="monotone"
                     dataKey="cost"
                     stroke="#eab308"
-                    strokeWidth={2}
                     fill="url(#gadsGradCost)"
-                    dot={false}
                     name="Cost"
                   />
                   <Area
+                    {...CHART_AREA_STYLE}
                     yAxisId="clicks"
-                    type="monotone"
                     dataKey="clicks"
                     stroke="#6366f1"
-                    strokeWidth={2}
                     fill="url(#gadsGradClicks)"
-                    dot={false}
                     name="Clicks"
                   />
                   <Area
+                    {...CHART_AREA_STYLE}
                     yAxisId="clicks"
-                    type="monotone"
                     dataKey="conversions"
                     stroke="#10b981"
-                    strokeWidth={2}
                     fill="url(#gadsGradConversions)"
-                    dot={false}
                     name="Conversions"
                   />
                   <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />

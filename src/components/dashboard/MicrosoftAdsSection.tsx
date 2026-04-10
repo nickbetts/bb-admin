@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Loader2, AlertTriangle, RefreshCw, Search } from "lucide-react";
+import { RefreshCw, Search } from "lucide-react";
 import { formatCurrency, formatNumber, formatDateDisplay } from "@/lib/utils";
+import { MetricCard } from "@/components/ui/MetricCard";
+import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
+import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 
@@ -95,26 +99,9 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  if (loading) {
-    return (
-      <div className="section-loading">
-        <Loader2 style={{ width: 24, height: 24, animation: "spin 1s linear infinite" }} />
-        <span>Loading Microsoft Ads data...</span>
-      </div>
-    );
-  }
+  if (loading) return <SectionLoading color="#00a4ef" message="Loading Microsoft Ads data…" />;
 
-  if (error) {
-    return (
-      <div className="section-error">
-        <AlertTriangle style={{ width: 20, height: 20 }} />
-        <span>{error}</span>
-        <button onClick={fetchData} className="btn btn-sm">
-          <RefreshCw style={{ width: 14, height: 14 }} /> Retry
-        </button>
-      </div>
-    );
-  }
+  if (error) return <SectionError message={error} onRetry={fetchData} />;
 
   if (!data) return null;
 
@@ -135,29 +122,19 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
       </div>
 
       {/* Overview KPI Cards */}
-      {show("kpis") && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
-        {[
-          { label: "Spend", value: formatCurrency(overview.spend), color: "#00a4ef" },
-          { label: "Impressions", value: formatNumber(overview.impressions), color: "#6366f1" },
-          { label: "Clicks", value: formatNumber(overview.clicks), color: "#2563eb" },
-          { label: "CTR", value: `${overview.ctr.toFixed(2)}%`, color: "#0891b2" },
-          { label: "CPC", value: formatCurrency(overview.cpc), color: "#059669" },
-          { label: "Conversions", value: formatNumber(overview.conversions), color: "#dc2626" },
-          { label: "Revenue", value: formatCurrency(overview.revenue), color: "#16a34a" },
-          { label: "ROAS", value: `${overview.roas.toFixed(2)}×`, color: "#7c3aed" },
-          { label: "Cost/Conv", value: formatCurrency(overview.costPerConversion), color: "#ea580c" },
-        ].map((kpi) => (
-          <div key={kpi.label} style={{
-            padding: 16,
-            borderRadius: 10,
-            border: "1px solid var(--border, #e5e7eb)",
-            background: "var(--card-bg, #fff)",
-          }}>
-            <div style={{ fontSize: 12, color: "var(--text-3, #888)", marginBottom: 4 }}>{kpi.label}</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: kpi.color }}>{kpi.value}</div>
-          </div>
-        ))}
-      </div>}
+      {show("kpis") && (
+        <MetricGrid cols={4}>
+          <MetricCard title="Spend" value={formatCurrency(overview.spend)} channel="microsoft_ads" />
+          <MetricCard title="Impressions" value={formatNumber(overview.impressions)} channel="microsoft_ads" />
+          <MetricCard title="Clicks" value={formatNumber(overview.clicks)} channel="microsoft_ads" />
+          <MetricCard title="CTR" value={`${overview.ctr.toFixed(2)}%`} channel="microsoft_ads" />
+          <MetricCard title="CPC" value={formatCurrency(overview.cpc)} channel="microsoft_ads" />
+          <MetricCard title="Conversions" value={formatNumber(overview.conversions)} channel="microsoft_ads" />
+          <MetricCard title="Revenue" value={formatCurrency(overview.revenue)} channel="microsoft_ads" />
+          <MetricCard title="ROAS" value={`${overview.roas.toFixed(2)}×`} channel="microsoft_ads" />
+          <MetricCard title="Cost/Conv" value={formatCurrency(overview.costPerConversion)} channel="microsoft_ads" />
+        </MetricGrid>
+      )}
 
       {/* Campaigns table */}
       {show("campaigns") && campaigns.length > 0 && (

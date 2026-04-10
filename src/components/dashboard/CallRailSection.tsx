@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Phone, PhoneCall, PhoneMissed, Loader2, AlertCircle } from "lucide-react";
+import { Phone, PhoneCall, PhoneMissed, AlertCircle } from "lucide-react";
+import { MetricCard } from "@/components/ui/MetricCard";
+import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
+import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 
@@ -79,14 +83,7 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext, vi
 
   useEffect(() => { void load(); }, [load]);
 
-  if (loading) {
-    return (
-      <div style={{ padding: 40, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--text-3)" }}>
-        <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
-        <span style={{ fontSize: 13 }}>Loading CallRail data…</span>
-      </div>
-    );
-  }
+  if (loading) return <SectionLoading color="#16a34a" message="Loading CallRail data…" />;
 
   if (!data?.configured) {
     return (
@@ -99,7 +96,7 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext, vi
   }
 
   if (data.error) {
-    return <div style={{ padding: 24, color: "#ef4444", fontSize: 13 }}>Error: {data.error}</div>;
+    return <SectionError message={data.error} onRetry={load} />;
   }
 
   const { summary, calls } = data;
@@ -110,20 +107,12 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext, vi
   return (
     <div>
       {show("kpis") && summary && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
-          {[
-            { label: "Total Calls", value: summary.totalCalls, icon: <Phone style={{ width: 14, height: 14 }} />, color: "#6366f1" },
-            { label: "Answered", value: `${answeredPct}%`, icon: <PhoneCall style={{ width: 14, height: 14 }} />, color: "#22c55e" },
-            { label: "Missed", value: summary.missedCalls, icon: <PhoneMissed style={{ width: 14, height: 14 }} />, color: "#ef4444" },
-            { label: "Avg Duration", value: summary.avgDuration, icon: <Phone style={{ width: 14, height: 14 }} />, color: "#f59e0b" },
-          ].map((stat) => (
-            <div key={stat.label} style={{ background: `${stat.color}08`, border: `1px solid ${stat.color}20`, borderRadius: "var(--r-sm)", padding: "12px 16px" }}>
-              <div style={{ color: stat.color, marginBottom: 5 }}>{stat.icon}</div>
-              <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>{stat.label}</p>
-              <p style={{ fontSize: 20, fontWeight: 700, color: stat.color }}>{stat.value}</p>
-            </div>
-          ))}
-        </div>
+        <MetricGrid cols={4} className="mb-5">
+          <MetricCard title="Total Calls" value={summary.totalCalls} icon={<Phone style={{ width: 14, height: 14 }} />} channel="callrail" />
+          <MetricCard title="Answered" value={`${answeredPct}%`} icon={<PhoneCall style={{ width: 14, height: 14 }} />} channel="callrail" />
+          <MetricCard title="Missed" value={summary.missedCalls} icon={<PhoneMissed style={{ width: 14, height: 14 }} />} channel="callrail" />
+          <MetricCard title="Avg Duration" value={summary.avgDuration} icon={<Phone style={{ width: 14, height: 14 }} />} channel="callrail" />
+        </MetricGrid>
       )}
 
       {show("by_source") && summary?.bySource && summary.bySource.length > 0 && (
@@ -183,18 +172,11 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext, vi
 
       {/* Caller Breakdown */}
       {data.callerBreakdown && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 20 }}>
-          {[
-            { label: "First-Time Callers", value: data.callerBreakdown.firstTimeCalls, color: "#6366f1" },
-            { label: "Repeat Callers", value: data.callerBreakdown.repeatCalls, color: "#f59e0b" },
-            { label: "Unique Callers", value: data.callerBreakdown.uniqueCallers, color: "#22c55e" },
-          ].map((stat) => (
-            <div key={stat.label} style={{ background: `${stat.color}08`, border: `1px solid ${stat.color}20`, borderRadius: "var(--r-sm)", padding: "12px 16px" }}>
-              <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>{stat.label}</p>
-              <p style={{ fontSize: 20, fontWeight: 700, color: stat.color }}>{stat.value.toLocaleString()}</p>
-            </div>
-          ))}
-        </div>
+        <MetricGrid cols={3} className="mt-5">
+          <MetricCard title="First-Time Callers" value={data.callerBreakdown.firstTimeCalls.toLocaleString()} channel="callrail" />
+          <MetricCard title="Repeat Callers" value={data.callerBreakdown.repeatCalls.toLocaleString()} channel="callrail" />
+          <MetricCard title="Unique Callers" value={data.callerBreakdown.uniqueCallers.toLocaleString()} channel="callrail" />
+        </MetricGrid>
       )}
 
       {/* Hourly Distribution */}

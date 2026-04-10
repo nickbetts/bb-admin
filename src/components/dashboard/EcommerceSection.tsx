@@ -13,6 +13,7 @@ import {
   Bar,
   Cell,
 } from "recharts";
+import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE, CHART_BAR_STYLE } from "@/lib/chart-config";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard } from "@/components/ui/index";
 import { LoadingSpinner } from "@/components/ui/index";
@@ -150,15 +151,15 @@ export function EcommerceSection({ clientId, clientName, platform, startDate, en
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 10 }} />
-                  <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickFormatter={(v) => `£${(v / 1000).toFixed(1)}k`} />
+                  <CartesianGrid {...CHART_GRID_STYLE} />
+                  <XAxis dataKey="date" {...CHART_AXIS_STYLE} />
+                  <YAxis {...CHART_AXIS_STYLE} tickFormatter={(v) => `£${(v / 1000).toFixed(1)}k`} />
                   <Tooltip
                     formatter={(value) => [formatCurrency(Number(value ?? 0)), "Revenue"]}
                     labelStyle={{ color: "#1e293b", fontWeight: 600 }}
-                    contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }}
+                    contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
                   />
-                  <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fill="url(#revGrad)" />
+                  <Area {...CHART_AREA_STYLE} dataKey="revenue" stroke="#10b981" fill="url(#revGrad)" />
                 </AreaChart>
               </ResponsiveContainer>
             </SectionCard>
@@ -197,14 +198,14 @@ export function EcommerceSection({ clientId, clientName, platform, startDate, en
             <SectionCard title="Orders by Status" subtitle="Breakdown of orders in period">
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={stats.ordersByStatus} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-                  <XAxis type="number" tick={{ fill: "#64748b", fontSize: 11 }} />
-                  <YAxis dataKey="status" type="category" tick={{ fill: "#64748b", fontSize: 11 }} width={90} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" horizontal={false} />
+                  <XAxis type="number" {...CHART_AXIS_STYLE} />
+                  <YAxis dataKey="status" type="category" {...CHART_AXIS_STYLE} width={90} />
                   <Tooltip
                     formatter={(value) => [formatNumber(Number(value ?? 0)), "Orders"]}
-                    contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0" }}
+                    contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
                   />
-                  <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                  <Bar {...CHART_BAR_STYLE} dataKey="count" radius={[0, 4, 4, 0]}>
                     {stats.ordersByStatus.map((_, idx) => (
                       <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
                     ))}

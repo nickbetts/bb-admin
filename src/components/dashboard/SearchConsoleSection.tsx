@@ -14,6 +14,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE } from "@/lib/chart-config";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
 import { formatNumber, formatDateDisplay, pctChange } from "@/lib/utils";
@@ -511,32 +512,18 @@ export function SearchConsoleSection({
                   <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <CartesianGrid {...CHART_GRID_STYLE} />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 11, fill: "#94a3b8" }}
-                tickLine={false}
-                axisLine={false}
+                {...CHART_AXIS_STYLE}
                 interval="preserveStartEnd"
               />
-              <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
+              <YAxis {...CHART_AXIS_STYLE} />
               <Tooltip
-                contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
               />
-              <Area
-                type="monotone"
-                dataKey="Clicks"
-                stroke="#6366f1"
-                strokeWidth={2}
-                fill="url(#gscClicks)"
-              />
-              <Area
-                type="monotone"
-                dataKey="Impressions"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                fill="url(#gscImpressions)"
-              />
+              <Area {...CHART_AREA_STYLE} dataKey="Clicks" stroke="#6366f1" fill="url(#gscClicks)" />
+              <Area {...CHART_AREA_STYLE} dataKey="Impressions" stroke="#3b82f6" fill="url(#gscImpressions)" />
               <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
             </AreaChart>
           </ResponsiveContainer>
@@ -758,7 +745,7 @@ export function SearchConsoleSection({
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0" }}
+                  contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
                     formatter={(v) => [formatNumber(Number(v)), "Clicks"]}
                   />
                 </PieChart>

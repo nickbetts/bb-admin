@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
+import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE, CHART_BAR_STYLE } from "@/lib/chart-config";
 import { formatNumber, formatCurrency, formatPercent, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import { DollarSign, MousePointer, Eye, TrendingUp, AlertTriangle, ChevronRight, ChevronDown, Play, Image, Layers, X } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
@@ -746,12 +747,12 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                   <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis yAxisId="spend" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `£${v}`} width={50} />
-              <YAxis yAxisId="cpm" orientation="right" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `£${Number(v).toFixed(1)}`} width={48} />
+              <CartesianGrid {...CHART_GRID_STYLE} />
+              <XAxis dataKey="date" {...CHART_AXIS_STYLE} interval="preserveStartEnd" />
+              <YAxis yAxisId="spend" {...CHART_AXIS_STYLE} tickFormatter={(v) => `£${v}`} width={50} />
+              <YAxis yAxisId="cpm" orientation="right" {...CHART_AXIS_STYLE} tickFormatter={(v) => `£${Number(v).toFixed(1)}`} width={48} />
               <Tooltip
-                contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }}
+                contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
                 labelStyle={{ color: "#64748b" }}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 formatter={(value: any, name: any) => {
@@ -761,8 +762,8 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                   return [num, name];
                 }}
               />
-              <Area yAxisId="spend" type="monotone" dataKey="spend" stroke="#ef4444" strokeWidth={2} fill="url(#metaSpendGrad)" dot={false} name="Spend" />
-              <Area yAxisId="cpm" type="monotone" dataKey="cpm" stroke="#f59e0b" strokeWidth={2} fill="url(#metaCpmGrad)" dot={false} name="CPM" />
+              <Area {...CHART_AREA_STYLE} yAxisId="spend" dataKey="spend" stroke="#ef4444" fill="url(#metaSpendGrad)" name="Spend" />
+              <Area {...CHART_AREA_STYLE} yAxisId="cpm" dataKey="cpm" stroke="#f59e0b" fill="url(#metaCpmGrad)" name="CPM" />
               <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
             </AreaChart>
           </ResponsiveContainer>
@@ -775,15 +776,15 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
         <SectionCard title="Clicks & Conversions">
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={daily} barSize={8}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <CartesianGrid {...CHART_GRID_STYLE} />
+              <XAxis dataKey="date" {...CHART_AXIS_STYLE} interval="preserveStartEnd" />
+              <YAxis {...CHART_AXIS_STYLE} />
               <Tooltip
-                contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }}
+                contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
                 labelStyle={{ color: "#64748b" }}
               />
-              <Bar dataKey="clicks" fill="#3b82f6" name="Clicks" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="conversions" fill="#10b981" name="Conversions" radius={[2, 2, 0, 0]} />
+              <Bar {...CHART_BAR_STYLE} dataKey="clicks" fill="#3b82f6" name="Clicks" />
+              <Bar {...CHART_BAR_STYLE} dataKey="conversions" fill="#10b981" name="Conversions" />
               <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
             </BarChart>
           </ResponsiveContainer>
@@ -1500,11 +1501,11 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
           <SectionCard title="Demographics" subtitle="Performance by age and gender">
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={byAge} barSize={24}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="age" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `£${v}`} />
-                <Tooltip contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }} />
-                <Bar dataKey="spend" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Spend" />
+                <CartesianGrid {...CHART_GRID_STYLE} />
+                <XAxis dataKey="age" {...CHART_AXIS_STYLE} />
+                <YAxis {...CHART_AXIS_STYLE} tickFormatter={(v) => `£${v}`} />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE.contentStyle} />
+                <Bar {...CHART_BAR_STYLE} dataKey="spend" fill="#8b5cf6" name="Spend" />
               </BarChart>
             </ResponsiveContainer>
             <div style={{ overflowX: "auto", marginTop: 16 }}>
@@ -1548,11 +1549,11 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
         <SectionCard title="Frequency Distribution" subtitle="How often users see your ads">
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={frequencyDist} barSize={32}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="frequencyValue" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => formatNumber(v)} />
-              <Tooltip contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }} />
-              <Bar dataKey="reach" fill="#6366f1" radius={[4, 4, 0, 0]} name="Unique Users" />
+              <CartesianGrid {...CHART_GRID_STYLE} />
+              <XAxis dataKey="frequencyValue" {...CHART_AXIS_STYLE} />
+              <YAxis {...CHART_AXIS_STYLE} tickFormatter={(v) => formatNumber(v)} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE.contentStyle} />
+              <Bar {...CHART_BAR_STYLE} dataKey="reach" fill="#6366f1" name="Unique Users" />
             </BarChart>
           </ResponsiveContainer>
         </SectionCard>
@@ -1834,13 +1835,13 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
         <SectionCard title="Hourly Performance" subtitle="Performance by hour of day">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={hourlyBreakdown} barSize={16}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="hourOfDay" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}:00`} />
-              <YAxis yAxisId="spend" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `£${v}`} width={50} />
-              <YAxis yAxisId="clicks" orientation="right" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
-              <Tooltip contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "12px" }} labelFormatter={(v) => `${v}:00`} />
-              <Bar yAxisId="spend" dataKey="spend" fill="#ef4444" radius={[4, 4, 0, 0]} name="Spend" />
-              <Bar yAxisId="clicks" dataKey="clicks" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Clicks" />
+              <CartesianGrid {...CHART_GRID_STYLE} />
+              <XAxis dataKey="hourOfDay" {...CHART_AXIS_STYLE} tickFormatter={(v) => `${v}:00`} />
+              <YAxis yAxisId="spend" {...CHART_AXIS_STYLE} tickFormatter={(v) => `£${v}`} width={50} />
+              <YAxis yAxisId="clicks" orientation="right" {...CHART_AXIS_STYLE} width={40} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE.contentStyle} labelFormatter={(v) => `${v}:00`} />
+              <Bar {...CHART_BAR_STYLE} yAxisId="spend" dataKey="spend" fill="#ef4444" name="Spend" />
+              <Bar {...CHART_BAR_STYLE} yAxisId="clicks" dataKey="clicks" fill="#3b82f6" name="Clicks" />
               <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
             </BarChart>
           </ResponsiveContainer>

@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Users, DollarSign, TrendingUp, Loader2, AlertCircle } from "lucide-react";
+import { Users, DollarSign, TrendingUp } from "lucide-react";
+import { MetricCard } from "@/components/ui/MetricCard";
+import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
+import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 
@@ -79,19 +83,11 @@ export function HubSpotSection({ clientId, clientName, crossPlatformContext, vis
 
   useEffect(() => { void load(); }, [load]);
 
-  if (loading) {
-    return (
-      <div style={{ padding: 40, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--text-3)" }}>
-        <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
-        <span style={{ fontSize: 13 }}>Loading HubSpot data…</span>
-      </div>
-    );
-  }
+  if (loading) return <SectionLoading color="#ff7a59" message="Loading HubSpot data…" />;
 
   if (!data?.configured) {
     return (
       <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
-        <AlertCircle style={{ width: 24, height: 24, margin: "0 auto 8px", display: "block" }} />
         <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)" }}>HubSpot not connected</p>
         <p style={{ fontSize: 13, marginTop: 4 }}>Add your HubSpot access token in client settings.</p>
       </div>
@@ -99,9 +95,7 @@ export function HubSpotSection({ clientId, clientName, crossPlatformContext, vis
   }
 
   if (data.error) {
-    return (
-      <div style={{ padding: 24, color: "#ef4444", fontSize: 13 }}>Error: {data.error}</div>
-    );
+    return <SectionError message={data.error} onRetry={load} />;
   }
 
   const summary = data.summary;
@@ -109,20 +103,12 @@ export function HubSpotSection({ clientId, clientName, crossPlatformContext, vis
   return (
     <div>
       {summary && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
-          {[
-            { label: "Total Contacts", value: summary.totalContacts, icon: <Users style={{ width: 14, height: 14 }} />, color: "#6366f1" },
-            { label: "Open Deals", value: summary.openDeals, icon: <TrendingUp style={{ width: 14, height: 14 }} />, color: "#f59e0b" },
-            { label: "Pipeline Value", value: formatCurrency(summary.pipelineValue), icon: <DollarSign style={{ width: 14, height: 14 }} />, color: "#3b82f6" },
-            { label: "Closed Won", value: formatCurrency(summary.closedWonValue), icon: <DollarSign style={{ width: 14, height: 14 }} />, color: "#22c55e" },
-          ].map((stat) => (
-            <div key={stat.label} style={{ background: `${stat.color}08`, border: `1px solid ${stat.color}20`, borderRadius: "var(--r-sm)", padding: "12px 16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: stat.color }}>{stat.icon}</div>
-              <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>{stat.label}</p>
-              <p style={{ fontSize: 20, fontWeight: 700, color: stat.color }}>{stat.value}</p>
-            </div>
-          ))}
-        </div>
+        <MetricGrid cols={4} className="mb-5">
+          <MetricCard title="Total Contacts" value={summary.totalContacts} icon={<Users style={{ width: 14, height: 14 }} />} channel="hubspot" />
+          <MetricCard title="Open Deals" value={summary.openDeals} icon={<TrendingUp style={{ width: 14, height: 14 }} />} channel="hubspot" />
+          <MetricCard title="Pipeline Value" value={formatCurrency(summary.pipelineValue)} icon={<DollarSign style={{ width: 14, height: 14 }} />} channel="hubspot" />
+          <MetricCard title="Closed Won" value={formatCurrency(summary.closedWonValue)} icon={<DollarSign style={{ width: 14, height: 14 }} />} channel="hubspot" />
+        </MetricGrid>
       )}
 
       {show("deals") && data.deals && data.deals.length > 0 && (
@@ -201,13 +187,9 @@ export function HubSpotSection({ clientId, clientName, crossPlatformContext, vis
 
       {/* Deal Velocity */}
       {data.dealVelocityDays != null && (
-        <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-          <div style={{ background: "#3b82f608", border: "1px solid #3b82f620", borderRadius: "var(--r-sm)", padding: "12px 16px" }}>
-            <div style={{ color: "#3b82f6", marginBottom: 5 }}><TrendingUp style={{ width: 14, height: 14 }} /></div>
-            <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 2 }}>Deal Velocity</p>
-            <p style={{ fontSize: 20, fontWeight: 700, color: "#3b82f6" }}>{data.dealVelocityDays} days</p>
-          </div>
-        </div>
+        <MetricGrid cols={4} className="mt-5">
+          <MetricCard title="Deal Velocity" value={`${data.dealVelocityDays} days`} icon={<TrendingUp style={{ width: 14, height: 14 }} />} channel="hubspot" />
+        </MetricGrid>
       )}
 
       {/* Form Submissions */}
