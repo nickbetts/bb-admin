@@ -298,16 +298,7 @@ function SignalCard({ signal, isLast, aiLoading }: { signal: Signal; isLast: boo
         )}
       </div>
 
-      {/* Source badge */}
-      <span style={{
-        fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
-        padding: "2px 6px", borderRadius: 4, flexShrink: 0, marginTop: 2,
-        background: signal.source === "ai" ? "#eef2ff" : "#f8fafc",
-        color: signal.source === "ai" ? "#4338ca" : "#64748b",
-        border: signal.source === "ai" ? "1px solid rgb(99 102 241 / 0.25)" : "1px solid var(--border)",
-      }}>
-        {signal.source === "ai" ? "AI" : "Auto"}
-      </span>
+
     </div>
   );
 }
@@ -616,47 +607,6 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
         return buildCreativeSummary(creatives ?? [], adSetsArr ?? []);
       })();
 
-      // GA4 traffic sources
-      const ga4SourcesContext: string | undefined = Array.isArray(ga4Sources) && ga4Sources.length
-        ? [
-            "Top traffic sources this period:",
-            ...ga4Sources.slice(0, 6).map((s: { source: string; medium: string; sessions: number; users: number; bounceRate: number; conversions: number }) =>
-              `  \u2022 ${s.source} / ${s.medium} \u2014 ${s.sessions.toLocaleString()} sessions, ${s.users.toLocaleString()} users, ${(s.bounceRate * 100).toFixed(0)}% bounce, ${s.conversions} conversions`
-            ),
-          ].join("\n")
-        : undefined;
-
-      // Search Console top queries
-      const scQueriesContext: string | undefined = (() => {
-        const queries: Array<{ query: string; clicks: number; ctr: number; position: number }> = scData?.queries ?? [];
-        const prevQ: Array<{ query: string; position: number }> = scData?.prevQueries ?? [];
-        if (!queries.length) return undefined;
-        const prevMap = new Map(prevQ.map(q => [q.query, q]));
-        return [
-          "Top search queries:",
-          ...queries.slice(0, 10).map((q: { query: string; clicks: number; ctr: number; position: number }) => {
-            const prev = prevMap.get(q.query);
-            const posChange = prev != null ? (prev.position - q.position) : null;
-            const posStr = posChange != null
-              ? (posChange > 0.5 ? ` (\u2191${posChange.toFixed(1)} pos)` : posChange < -0.5 ? ` (\u2193${Math.abs(posChange).toFixed(1)} pos)` : "")
-              : "";
-            return `  \u2022 "${q.query}" \u2014 pos ${q.position.toFixed(1)}${posStr}, ${q.clicks} clicks, ${(q.ctr * 100).toFixed(1)}% CTR`;
-          }),
-        ].join("\n");
-      })();
-
-      // SEMrush top keywords
-      const semrushKeywordsContext: string | undefined = Array.isArray(semrushKeywords) && semrushKeywords.length
-        ? [
-            "Top organic keywords:",
-            ...semrushKeywords.slice(0, 10).map((kw: { keyword: string; position: number; previousPosition: number; searchVolume: number; trafficPercent: number }) => {
-              const delta = kw.previousPosition > 0 ? kw.previousPosition - kw.position : null;
-              const deltaStr = delta != null ? (delta > 0 ? ` (\u2191${delta})` : delta < 0 ? ` (\u2193${Math.abs(delta)})` : " (=)") : "";
-              return `  \u2022 "${kw.keyword}" \u2014 pos ${kw.position}${deltaStr}, vol ${kw.searchVolume.toLocaleString()}, ${kw.trafficPercent.toFixed(1)}% traffic`;
-            }),
-          ].join("\n")
-        : undefined;
-
       // Cross-platform summary for all AI calls
       const crossPlatformContext: string | undefined = (() => {
         const lines: string[] = [`Cross-platform summary for ${client.name} (${startDate} to ${endDate}):`];
@@ -704,142 +654,54 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
         if (adComparisonData?.summary) {
           lines.push(`\u2022 Ad Platform Comparison: ${adComparisonData.summary}`);
         }
+        // GA4 top traffic sources (detailed)
+        if (Array.isArray(ga4Sources) && ga4Sources.length) {
+          const sourcesStr = ga4Sources.slice(0, 8).map((s: { source: string; medium: string; sessions: number; users: number; bounceRate: number; conversions: number }) =>
+            `${s.source}/${s.medium}: ${s.sessions.toLocaleString()} sessions, ${s.conversions} conv, ${(s.bounceRate * 100).toFixed(0)}% bounce`
+          ).join(" | ");
+          lines.push(`\u2022 GA4 Traffic Sources: ${sourcesStr}`);
+        }
+        // Search Console top queries (with position and CTR)
+        if (scData?.queries?.length) {
+          const queries = (scData.queries as Array<{ query: string; clicks: number; ctr: number; position: number }>).slice(0, 10);
+          const prevQMap = new Map(((scData.prevQueries ?? []) as Array<{ query: string; position: number }>).map((q: { query: string; position: number }) => [q.query, q]));
+          const qStr = queries.map(q => {
+            const prev = prevQMap.get(q.query);
+            const posChange = prev != null ? (prev.position - q.position) : null;
+            const posStr = posChange != null ? (posChange > 0.5 ? ` \u2191${posChange.toFixed(1)}` : posChange < -0.5 ? ` \u2193${Math.abs(posChange).toFixed(1)}` : "") : "";
+            return `"${q.query}" pos ${q.position.toFixed(1)}${posStr} (${q.clicks}cl, ${(q.ctr * 100).toFixed(1)}%CTR)`;
+          }).join(" | ");
+          lines.push(`\u2022 Search Console Top Queries: ${qStr}`);
+        }
+        // SEMrush top organic keywords (with volume and position change)
+        if (Array.isArray(semrushKeywords) && semrushKeywords.length) {
+          const kwStr = (semrushKeywords as Array<{ keyword: string; position: number; previousPosition: number; searchVolume: number; trafficPercent: number }>).slice(0, 10).map(kw => {
+            const delta = kw.previousPosition > 0 ? kw.previousPosition - kw.position : null;
+            const dStr = delta != null ? (delta > 0 ? ` \u2191${delta}` : delta < 0 ? ` \u2193${Math.abs(delta)}` : "") : "";
+            return `"${kw.keyword}" pos${kw.position}${dStr} vol${kw.searchVolume.toLocaleString()}`;
+          }).join(" | ");
+          lines.push(`\u2022 SEMrush Top Keywords: ${kwStr}`);
+        }
+        // Google Ads top search terms (what people actually typed)
+        if (gadsData?.searchTerms?.length) {
+          const terms = (gadsData.searchTerms as Array<{ searchTerm: string; clicks: number; conversions: number; costMicros: number }>).slice(0, 10);
+          const termsStr = terms.map(t => {
+            const cost = t.costMicros ? `\u00a3${(t.costMicros / 1_000_000).toFixed(0)}` : "";
+            return `"${t.searchTerm}" ${t.clicks}cl ${t.conversions}conv${cost ? ` ${cost}` : ""}`;
+          }).join(" | ");
+          lines.push(`\u2022 Google Ads Top Search Terms: ${termsStr}`);
+        }
+        // Google Ads landing pages (top by clicks)
+        if (gadsData?.landingPages?.length) {
+          const pages = (gadsData.landingPages as Array<{ url: string; clicks: number; conversions: number; conversionRate: number }>).slice(0, 5);
+          const pagesStr = pages.map(p => {
+            const path = p.url.replace(/^https?:\/\/[^/]+/, "") || "/";
+            return `${path} ${p.clicks}cl ${p.conversions}conv ${(p.conversionRate * 100).toFixed(1)}%CVR`;
+          }).join(" | ");
+          lines.push(`\u2022 Google Ads Landing Pages: ${pagesStr}`);
+        }
         return lines.length > 1 ? lines.join("\n") : undefined;
       })();
-
-      // ── AI SUMMARY CALLS ──────────────────────────────────────────────────
-      const aiCalls: Promise<{ platform: string; anomalies: Array<{ metric: string; severity: string; direction: string; description: string; context?: string }> }>[] = [];
-
-      // Meta AI — frequency, ROAS, CTR fatigue anomalies with creative hierarchy context
-      if (metaData) {
-        const [campaignsEnriched, , , overview, prevMetaOverview] = (metaData as unknown) as [Array<SignalsCampaign> | null, unknown, unknown, Record<string, number> | null, Record<string, number> | null];
-        if (overview && campaignsEnriched?.length) {
-          aiCalls.push(
-            fetch("/api/ai/summary", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                sectionType: "meta",
-                metrics: overview,
-                previousMetrics: prevMetaOverview ?? undefined,
-                clientName: client.name,
-                dateRange: `${startDate} to ${endDate}`,
-                campaignData: campaignsEnriched,
-                extraContext: metaCreativeContext,
-                crossPlatformContext,
-              }),
-            })
-              .then(r => r.ok ? r.json() : { anomalies: [] })
-              .then(json => ({ platform: "Meta", anomalies: json.anomalies ?? [] }))
-              .catch(() => ({ platform: "Meta", anomalies: [] }))
-          );
-        }
-      }
-
-      // Google Ads AI — impression share, quality score, landing page anomalies
-      if (gadsData?.overview) {
-        aiCalls.push(
-          fetch("/api/ai/summary", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sectionType: "googleads",
-              metrics: gadsData.overview,
-              clientName: client.name,
-              dateRange: `${startDate} to ${endDate}`,
-              campaignData: gadsData.campaignsEnriched ?? [],
-              landingPages: (gadsData.landingPages ?? []).slice(0, 10),
-              crossPlatformContext,
-            }),
-          })
-            .then(r => r.ok ? r.json() : { anomalies: [] })
-            .then(json => ({ platform: "Google Ads", anomalies: json.anomalies ?? [] }))
-            .catch(() => ({ platform: "Google Ads", anomalies: [] }))
-        );
-      }
-
-      // GA4 AI — period-over-period anomalies with traffic source breakdown
-      if (ga4Data) {
-        aiCalls.push(
-          fetch("/api/ai/summary", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sectionType: "ga4",
-              metrics: ga4Data,
-              previousMetrics: ga4PrevData ?? undefined,
-              clientName: client.name,
-              dateRange: `${startDate} to ${endDate}`,
-              extraContext: ga4SourcesContext,
-              crossPlatformContext,
-            }),
-          })
-            .then(r => r.ok ? r.json() : { anomalies: [] })
-            .then(json => ({ platform: "GA4", anomalies: json.anomalies ?? [] }))
-            .catch(() => ({ platform: "GA4", anomalies: [] }))
-        );
-      }
-
-      // Search Console AI — period-over-period + structural anomalies + top queries
-      if (scData?.overview) {
-        aiCalls.push(
-          fetch("/api/ai/summary", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sectionType: "searchconsole",
-              metrics: scData.overview,
-              previousMetrics: scData.prevOverview ?? undefined,
-              clientName: client.name,
-              dateRange: `${startDate} to ${endDate}`,
-              extraContext: scQueriesContext,
-              crossPlatformContext,
-            }),
-          })
-            .then(r => r.ok ? r.json() : { anomalies: [] })
-            .then(json => ({ platform: "Search Console", anomalies: json.anomalies ?? [] }))
-            .catch(() => ({ platform: "Search Console", anomalies: [] }))
-        );
-      }
-
-      // SEMrush AI — organic visibility anomalies with keyword context
-      if (semrushOverview) {
-        aiCalls.push(
-          fetch("/api/ai/summary", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sectionType: "seo",
-              metrics: semrushOverview,
-              clientName: client.name,
-              dateRange: `${startDate} to ${endDate}`,
-              extraContext: semrushKeywordsContext,
-              crossPlatformContext,
-            }),
-          })
-            .then(r => r.ok ? r.json() : { anomalies: [] })
-            .then(json => ({ platform: "SEMrush", anomalies: json.anomalies ?? [] }))
-            .catch(() => ({ platform: "SEMrush", anomalies: [] }))
-        );
-      }
-
-      // Run all AI calls in parallel
-      const aiResults = await Promise.all(aiCalls);
-
-      // Map AI anomalies to Signal objects
-      for (const { platform, anomalies } of aiResults) {
-        for (const a of anomalies) {
-          allSignals.push({
-            platform,
-            source: "ai",
-            severity: a.severity as "high" | "medium" | "low",
-            metric: a.metric,
-            label: a.context,
-            detail: a.description,
-            direction: a.direction as "up" | "down" | undefined,
-          });
-        }
-      }
 
       // Cross-platform alerts as computed signals
       if (crossAlertsData?.alerts && Array.isArray(crossAlertsData.alerts)) {

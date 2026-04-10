@@ -7,6 +7,7 @@ import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { DataTable } from "@/components/ui/DataTable";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 
@@ -139,36 +140,22 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext, vi
       )}
 
       {show("recent_calls") && calls && calls.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Recent Calls</div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Caller", "Direction", "Source", "Duration", "Status", "Time"].map((h) => (
-                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {calls.map((call, i) => (
-                <tr key={call.id} style={{ borderBottom: i < calls.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  <td style={{ padding: "8px 16px", fontWeight: 500, color: "var(--text)" }}>{call.callerNumber}</td>
-                  <td style={{ padding: "8px 16px", color: "var(--text-2)", textTransform: "capitalize" }}>{call.direction}</td>
-                  <td style={{ padding: "8px 16px", color: "var(--text-2)" }}>{call.source}</td>
-                  <td style={{ padding: "8px 16px", color: "var(--text-3)" }}>{call.duration}s</td>
-                  <td style={{ padding: "8px 16px" }}>
-                    <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 99, background: call.answered ? "#22c55e20" : "#ef444420", color: call.answered ? "#22c55e" : "#ef4444", fontWeight: 600 }}>
-                      {call.answered ? "Answered" : "Missed"}
-                    </span>
-                  </td>
-                  <td style={{ padding: "8px 16px", color: "var(--text-3)", fontSize: 11 }}>
-                    {new Date(call.startTime).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<RecentCall>
+          data={calls}
+          columns={[
+            { key: "callerNumber", label: "Caller", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.callerNumber}</span> },
+            { key: "direction", label: "Direction", render: (_v, row) => <span style={{ textTransform: "capitalize" }}>{row.direction}</span> },
+            { key: "source", label: "Source" },
+            { key: "duration", label: "Duration", align: "right", render: (_v, row) => `${row.duration}s` },
+            { key: "answered", label: "Status", render: (_v, row) => (
+              <span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 99, background: row.answered ? "var(--success-bg)" : "#ef444420", color: row.answered ? "var(--success)" : "#ef4444", fontWeight: 600 }}>
+                {row.answered ? "Answered" : "Missed"}
+              </span>
+            )},
+            { key: "startTime", label: "Time", render: (_v, row) => new Date(row.startTime).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) },
+          ]}
+          pageSize={20}
+        />
       )}
 
       {/* Caller Breakdown */}
@@ -201,50 +188,28 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext, vi
 
       {/* Keywords */}
       {data.keywords && data.keywords.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 20 }}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Top Keywords</div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Keyword", "Calls"].map((h) => (
-                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.keywords.map((kw, i) => (
-                <tr key={`kw-${i}`} style={{ borderBottom: i < data.keywords!.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  <td style={{ padding: "8px 16px", fontWeight: 500, color: "var(--text)" }}>{kw.keyword}</td>
-                  <td style={{ padding: "8px 16px", color: "var(--text-2)" }}>{kw.calls.toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<CallRailKeyword>
+          data={data.keywords}
+          columns={[
+            { key: "keyword", label: "Keyword", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.keyword}</span> },
+            { key: "calls", label: "Calls", align: "right", sortable: true, render: (_v, row) => row.calls.toLocaleString() },
+          ]}
+          pageSize={0}
+          className="mt-5"
+        />
       )}
 
       {/* UTM Sources */}
       {data.utmSources && data.utmSources.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: "hidden", marginTop: 20 }}>
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Top UTM Sources</div>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Source", "Calls"].map((h) => (
-                  <th key={h} style={{ padding: "8px 16px", textAlign: "left", fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.utmSources.map((utm, i) => (
-                <tr key={`utm-${i}`} style={{ borderBottom: i < data.utmSources!.length - 1 ? "1px solid var(--border)" : "none" }}>
-                  <td style={{ padding: "8px 16px", fontWeight: 500, color: "var(--text)" }}>{utm.source}</td>
-                  <td style={{ padding: "8px 16px", color: "var(--text-2)" }}>{utm.calls.toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<CallRailUtmSource>
+          data={data.utmSources}
+          columns={[
+            { key: "source", label: "Source", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.source}</span> },
+            { key: "calls", label: "Calls", align: "right", sortable: true, render: (_v, row) => row.calls.toLocaleString() },
+          ]}
+          pageSize={0}
+          className="mt-5"
+        />
       )}
 
       {/* Full Journey Analysis */}

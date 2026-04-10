@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, Delta } from "@/components/ui/index";
+import { DataTable } from "@/components/ui/DataTable";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
@@ -864,41 +865,28 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                     {campAdSets.length > 0 && (
                       <div style={{ marginBottom: campCreatives.length > 0 ? 28 : 0 }}>
                         <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 10 }}>Ad Sets</p>
-                        <table className="w-full" style={{ borderCollapse: "collapse", fontSize: 12 }}>
-                          <thead>
-                            <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                              <th style={{ textAlign: "left", padding: "8px 0", color: "var(--text-3)", fontWeight: 500 }}>Name</th>
-                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Spend</th>
-                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
-                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Purchases</th>
-                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Value</th>
-                              <th style={{ textAlign: "right", padding: "8px 0", color: "var(--text-3)", fontWeight: 500 }}>ROAS</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {campAdSets.map((as) => {
-                              const asCreativesCount = (creativesByAdSet.get(as.id) ?? []).length;
-                              const asValue = as.roas * as.spend;
-                              return (
-                                <tr key={as.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                                  <td style={{ padding: "10px 0" }}>
-                                    <p style={{ fontWeight: 600, color: "var(--text)" }}>{as.name}</p>
-                                    <p style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>{[as.optimizationGoal || as.status, asCreativesCount > 0 ? `${asCreativesCount} ad${asCreativesCount !== 1 ? "s" : ""}` : null].filter(Boolean).join(" · ")}</p>
-                                  </td>
-                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatCurrency(as.spend)}</td>
-                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatNumber(as.impressions)}</td>
-                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatNumber(as.clicks)}</td>
-                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatNumber(as.conversions)}</td>
-                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatCurrency(asValue)}</td>
-                                  <td style={{ textAlign: "right", padding: "10px 0", whiteSpace: "nowrap" }}>
-                                    <span style={{ fontWeight: 700, color: as.roas >= 2 ? "#10b981" : as.roas >= 1 ? "#f59e0b" : "#ef4444" }}>{as.roas.toFixed(2)}x</span>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                        <DataTable<MetaAdSet>
+                          data={campAdSets}
+                          pageSize={0}
+                          columns={[
+                            {
+                              key: "name",
+                              label: "Name",
+                              render: (_, adSet) => (
+                                <div>
+                                  <p style={{ fontWeight: 600, color: "var(--text)" }}>{adSet.name}</p>
+                                  <p style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>{[adSet.optimizationGoal || adSet.status, (creativesByAdSet.get(adSet.id) ?? []).length > 0 ? `${(creativesByAdSet.get(adSet.id) ?? []).length} ad${(creativesByAdSet.get(adSet.id) ?? []).length !== 1 ? "s" : ""}` : null].filter(Boolean).join(" · ")}</p>
+                                </div>
+                              ),
+                            },
+                            { key: "spend", label: "Spend", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+                            { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                            { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                            { key: "conversions", label: "Purchases", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                            { key: "_value", label: "Value", align: "right", render: (_, adSet) => formatCurrency(adSet.roas * adSet.spend) },
+                            { key: "roas", label: "ROAS", align: "right", sortable: true, render: (v) => <span style={{ fontWeight: 700, color: (v as number) >= 2 ? "#10b981" : (v as number) >= 1 ? "#f59e0b" : "#ef4444" }}>{(v as number).toFixed(2)}x</span> },
+                          ]}
+                        />
                       </div>
                     )}
 
@@ -906,55 +894,44 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                     {campCreatives.length > 0 && (
                       <div>
                         <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 10 }}>Ads</p>
-                        <table className="w-full" style={{ borderCollapse: "collapse", fontSize: 12 }}>
-                          <thead>
-                            <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                              <th style={{ textAlign: "left", padding: "8px 0", color: "var(--text-3)", fontWeight: 500 }}>Ad</th>
-                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Spend</th>
-                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
-                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Purchases</th>
-                              <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-3)", fontWeight: 500 }}>Value</th>
-                              <th style={{ textAlign: "right", padding: "8px 0", color: "var(--text-3)", fontWeight: 500 }}>ROAS</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {campCreatives.map((cr) => {
-                              const crValue = cr.roas * cr.spend;
-                              return (
-                                <tr key={cr.adId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                                  <td style={{ padding: "10px 0" }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                      {(cr.imageUrl || cr.thumbnailUrl) && (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img
-                                          src={cr.imageUrl || cr.thumbnailUrl || ""}
-                                          alt={cr.adName}
-                                          style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", flexShrink: 0, border: "1px solid var(--border)" }}
-                                        />
-                                      )}
-                                      <div style={{ minWidth: 0 }}>
-                                        <p style={{ fontWeight: 600, color: "var(--text)" }}>{cr.adName}</p>
-                                        {cr.headline && <p style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>&ldquo;{cr.headline}&rdquo;</p>}
-                                        <span style={{ display: "inline-block", marginTop: 3, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", background: cr.mediaType === "VIDEO" ? "#ede9fe" : cr.mediaType === "CAROUSEL" ? "#dbeafe" : "#f1f5f9", color: cr.mediaType === "VIDEO" ? "#7c3aed" : cr.mediaType === "CAROUSEL" ? "#2563eb" : "#64748b", padding: "1px 5px", borderRadius: 3 }}>
-                                          {cr.mediaType === "UNKNOWN" ? "AD" : cr.mediaType}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatCurrency(cr.spend)}</td>
-                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatNumber(cr.impressions)}</td>
-                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatNumber(cr.clicks)}</td>
-                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatNumber(cr.conversions)}</td>
-                                  <td style={{ textAlign: "right", padding: "10px 12px", color: "var(--text-2)", whiteSpace: "nowrap" }}>{formatCurrency(crValue)}</td>
-                                  <td style={{ textAlign: "right", padding: "10px 0", whiteSpace: "nowrap" }}>
-                                    <span style={{ fontWeight: 700, color: cr.roas >= 2 ? "#10b981" : cr.roas >= 1 ? "#f59e0b" : "#ef4444" }}>{cr.roas.toFixed(2)}x</span>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                        <DataTable<MetaAdCreative>
+                          data={campCreatives}
+                          pageSize={0}
+                          searchable
+                          exportable
+                          exportFilename="meta-ads"
+                          columns={[
+                            {
+                              key: "adName",
+                              label: "Ad",
+                              render: (_, cr) => (
+                                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                  {(cr.imageUrl || cr.thumbnailUrl) && (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={cr.imageUrl || cr.thumbnailUrl || ""}
+                                      alt={cr.adName}
+                                      style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", flexShrink: 0, border: "1px solid var(--border)" }}
+                                    />
+                                  )}
+                                  <div style={{ minWidth: 0 }}>
+                                    <p style={{ fontWeight: 600, color: "var(--text)" }}>{cr.adName}</p>
+                                    {cr.headline && <p style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>&ldquo;{cr.headline}&rdquo;</p>}
+                                    <span style={{ display: "inline-block", marginTop: 3, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", background: cr.mediaType === "VIDEO" ? "#ede9fe" : cr.mediaType === "CAROUSEL" ? "#dbeafe" : "#f1f5f9", color: cr.mediaType === "VIDEO" ? "#7c3aed" : cr.mediaType === "CAROUSEL" ? "#2563eb" : "#64748b", padding: "1px 5px", borderRadius: 3 }}>
+                                      {cr.mediaType === "UNKNOWN" ? "AD" : cr.mediaType}
+                                    </span>
+                                  </div>
+                                </div>
+                              ),
+                            },
+                            { key: "spend", label: "Spend", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+                            { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                            { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                            { key: "conversions", label: "Purchases", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                            { key: "_value", label: "Value", align: "right", render: (_, cr) => formatCurrency(cr.roas * cr.spend) },
+                            { key: "roas", label: "ROAS", align: "right", sortable: true, render: (v) => <span style={{ fontWeight: 700, color: (v as number) >= 2 ? "#10b981" : (v as number) >= 1 ? "#f59e0b" : "#ef4444" }}>{(v as number).toFixed(2)}x</span> },
+                          ]}
+                        />
                       </div>
                     )}
                   </SectionCard>
@@ -1333,148 +1310,105 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {/* Lead Form Performance */}
       {show("lead_forms") && leadForms.length > 0 && (
         <SectionCard title="Lead Form Performance" subtitle={`${leadForms.length} form${leadForms.length !== 1 ? "s" : ""} with lead data`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 520 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Form Name</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Leads</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost per Lead</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Total Spend</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leadForms.map((form) => (
-                  <tr key={form.formId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{form.formName}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(form.leads)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(form.costPerLead)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(form.spend)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            data={leadForms}
+            pageSize={0}
+            columns={[
+              { key: "formName", label: "Form Name" },
+              { key: "leads", label: "Leads", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+              { key: "costPerLead", label: "Cost per Lead", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+              { key: "spend", label: "Total Spend", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Ad Relevance Diagnostics */}
       {show("relevance") && relevanceDiagnostics.length > 0 && (
         <SectionCard title="Ad Relevance Diagnostics" subtitle="Quality, engagement, and conversion ranking per ad">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Ad Name</th>
-                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Quality</th>
-                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Engagement</th>
-                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conversion</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {relevanceDiagnostics.map((ad, idx) => {
-                  const rankBadge = (rank: string | undefined | null) => {
-                    const r = rank ?? "UNKNOWN";
-                    const label = r.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
-                    const cls = r === "ABOVE_AVERAGE"
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : r === "AVERAGE"
-                        ? "bg-amber-50 text-amber-700 border-amber-200"
-                        : r === "BELOW_AVERAGE"
-                          ? "bg-red-50 text-red-700 border-red-200"
-                          : "bg-[var(--border-subtle)] text-[var(--text-3)] border-[var(--border)]";
-                    return (
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`}>
-                        {label}
-                      </span>
-                    );
-                  };
-                  return (
-                    <tr key={`${ad.adName}-${idx}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                      <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{ad.adName}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>{rankBadge(ad.qualityRanking)}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>{rankBadge(ad.engagementRateRanking)}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>{rankBadge(ad.conversionRateRanking)}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(ad.impressions)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            data={relevanceDiagnostics}
+            pageSize={0}
+            searchable
+            columns={[
+              { key: "adName", label: "Ad Name" },
+              {
+                key: "qualityRanking",
+                label: "Quality",
+                align: "center",
+                render: (v) => {
+                  const r = (v as string) ?? "UNKNOWN";
+                  const label = r.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+                  const cls = r === "ABOVE_AVERAGE" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : r === "AVERAGE" ? "bg-amber-50 text-amber-700 border-amber-200" : r === "BELOW_AVERAGE" ? "bg-red-50 text-red-700 border-red-200" : "bg-[var(--border-subtle)] text-[var(--text-3)] border-[var(--border)]";
+                  return <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`}>{label}</span>;
+                },
+              },
+              {
+                key: "engagementRateRanking",
+                label: "Engagement",
+                align: "center",
+                render: (v) => {
+                  const r = (v as string) ?? "UNKNOWN";
+                  const label = r.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+                  const cls = r === "ABOVE_AVERAGE" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : r === "AVERAGE" ? "bg-amber-50 text-amber-700 border-amber-200" : r === "BELOW_AVERAGE" ? "bg-red-50 text-red-700 border-red-200" : "bg-[var(--border-subtle)] text-[var(--text-3)] border-[var(--border)]";
+                  return <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`}>{label}</span>;
+                },
+              },
+              {
+                key: "conversionRateRanking",
+                label: "Conversion",
+                align: "center",
+                render: (v) => {
+                  const r = (v as string) ?? "UNKNOWN";
+                  const label = r.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+                  const cls = r === "ABOVE_AVERAGE" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : r === "AVERAGE" ? "bg-amber-50 text-amber-700 border-amber-200" : r === "BELOW_AVERAGE" ? "bg-red-50 text-red-700 border-red-200" : "bg-[var(--border-subtle)] text-[var(--text-3)] border-[var(--border)]";
+                  return <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`}>{label}</span>;
+                },
+              },
+              { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Placement Breakdown */}
       {show("placements") && placements.length > 0 && (
         <SectionCard title="Placement Breakdown" subtitle={`Performance across ${placements.length} placement${placements.length !== 1 ? "s" : ""}`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 800 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Platform</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Placement</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Spend</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CPC</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>ROAS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {placements.map((p, i) => (
-                  <tr key={`${p.publisherPlatform}-${p.placement}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{p.publisherPlatform}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{p.placement.replace(/_/g, " ")}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(p.spend)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.impressions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.clicks)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{p.ctr.toFixed(2)}%</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(p.cpc)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.conversions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
-                      <span className={`font-semibold ${p.roas >= 2 ? "text-emerald-600" : p.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>{p.roas.toFixed(2)}x</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<MetaPlacement>
+            data={placements}
+            pageSize={0}
+            exportable
+            exportFilename="meta-placements"
+            columns={[
+              { key: "publisherPlatform", label: "Platform" },
+              { key: "placement", label: "Placement", render: (v) => (v as string).replace(/_/g, " ") },
+              { key: "spend", label: "Spend", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+              { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+              { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+              { key: "ctr", label: "CTR", align: "right", sortable: true, render: (v) => `${(v as number).toFixed(2)}%` },
+              { key: "cpc", label: "CPC", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+              { key: "conversions", label: "Conv.", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+              { key: "roas", label: "ROAS", align: "right", sortable: true, render: (v) => <span className={`font-semibold ${(v as number) >= 2 ? "text-emerald-600" : (v as number) >= 1 ? "text-amber-600" : "text-red-600"}`}>{(v as number).toFixed(2)}x</span> },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Audience Targeting */}
       {show("audiences") && adSetAudiences.length > 0 && (
         <SectionCard title="Audience Targeting" subtitle={`Targeting details for ${adSetAudiences.length} ad set${adSetAudiences.length !== 1 ? "s" : ""}`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 700 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Ad Set</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Age</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Gender</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Location</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Interests</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Custom Audiences</th>
-                </tr>
-              </thead>
-              <tbody>
-                {adSetAudiences.map((aud) => (
-                  <tr key={aud.adSetId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{aud.adSetName}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{aud.ageMin != null && aud.ageMax != null ? `${aud.ageMin}–${aud.ageMax}` : "All"}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{aud.genders.length === 1 ? (aud.genders[0] === 1 ? "Male" : "Female") : "All"}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{aud.geoSummary || "All locations"}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{aud.interests.length > 0 ? aud.interests.slice(0, 3).join(", ") + (aud.interests.length > 3 ? ` +${aud.interests.length - 3}` : "") : "—"}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{aud.customAudiences.length > 0 ? aud.customAudiences.map(c => c.name).join(", ") : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<AdSetAudience>
+            data={adSetAudiences}
+            pageSize={0}
+            columns={[
+              { key: "adSetName", label: "Ad Set" },
+              { key: "ageMin", label: "Age", render: (_, aud) => aud.ageMin != null && aud.ageMax != null ? `${aud.ageMin}–${aud.ageMax}` : "All" },
+              { key: "genders", label: "Gender", render: (_, aud) => aud.genders.length === 1 ? (aud.genders[0] === 1 ? "Male" : "Female") : "All" },
+              { key: "geoSummary", label: "Location", render: (v) => (v as string) || "All locations" },
+              { key: "interests", label: "Interests", render: (_, aud) => aud.interests.length > 0 ? aud.interests.slice(0, 3).join(", ") + (aud.interests.length > 3 ? ` +${aud.interests.length - 3}` : "") : "—" },
+              { key: "customAudiences", label: "Custom Audiences", render: (_, aud) => aud.customAudiences.length > 0 ? aud.customAudiences.map(c => c.name).join(", ") : "—" },
+            ]}
+          />
         </SectionCard>
       )}
 
@@ -1501,38 +1435,21 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                 <Bar {...CHART_BAR_STYLE} dataKey="spend" fill="#8b5cf6" name="Spend" />
               </BarChart>
             </ResponsiveContainer>
-            <div style={{ overflowX: "auto", marginTop: 16 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Age</th>
-                    <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Gender</th>
-                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Spend</th>
-                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
-                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
-                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
-                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>ROAS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {demographicsData.map((d, i) => (
-                    <tr key={`${d.age}-${d.gender}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                      <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{d.age}</td>
-                      <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{d.gender}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(d.spend)}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(d.impressions)}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(d.clicks)}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{d.ctr.toFixed(2)}%</td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(d.conversions)}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
-                        <span className={`font-semibold ${d.roas >= 2 ? "text-emerald-600" : d.roas >= 1 ? "text-amber-600" : "text-red-600"}`}>{d.roas.toFixed(2)}x</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable<MetaDemographic>
+              data={demographicsData}
+              pageSize={0}
+              className="mt-4"
+              columns={[
+                { key: "age", label: "Age" },
+                { key: "gender", label: "Gender" },
+                { key: "spend", label: "Spend", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+                { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                { key: "ctr", label: "CTR", align: "right", sortable: true, render: (v) => `${(v as number).toFixed(2)}%` },
+                { key: "conversions", label: "Conv.", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                { key: "roas", label: "ROAS", align: "right", sortable: true, render: (v) => <span className={`font-semibold ${(v as number) >= 2 ? "text-emerald-600" : (v as number) >= 1 ? "text-amber-600" : "text-red-600"}`}>{(v as number).toFixed(2)}x</span> },
+              ]}
+            />
           </SectionCard>
         );
       })()}
@@ -1555,271 +1472,172 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {/* Cost Per Action */}
       {show("cost_per_action") && costPerAction.length > 0 && (
         <SectionCard title="Cost Per Action" subtitle="Breakdown by action type">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 400 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Action Type</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Count</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost Per Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {costPerAction.map((a) => (
-                  <tr key={a.actionType} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{a.actionType.replace(/_/g, " ").replace(/\./g, " › ").replace(/\b\w/g, c => c.toUpperCase())}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(a.value)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(a.costPerAction)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<MetaCostPerAction>
+            data={costPerAction}
+            pageSize={0}
+            columns={[
+              { key: "actionType", label: "Action Type", render: (v) => (v as string).replace(/_/g, " ").replace(/\./g, " › ").replace(/\b\w/g, c => c.toUpperCase()) },
+              { key: "value", label: "Count", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+              { key: "costPerAction", label: "Cost Per Action", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Product Performance */}
       {show("product_performance") && productPerformance.length > 0 && (
         <SectionCard title="Product Performance" subtitle={`${productPerformance.length} product${productPerformance.length !== 1 ? "s" : ""} with ad data`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 700 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Product</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Spend</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Purchases</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Revenue</th>
-                </tr>
-              </thead>
-              <tbody>
-                {productPerformance.map((p) => (
-                  <tr key={p.productId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{p.productName}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(p.spend)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.impressions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.clicks)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(p.purchases)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(p.purchaseValue)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<MetaProductPerf>
+            data={productPerformance}
+            pageSize={0}
+            exportable
+            exportFilename="meta-products"
+            columns={[
+              { key: "productName", label: "Product" },
+              { key: "spend", label: "Spend", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+              { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+              { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+              { key: "purchases", label: "Purchases", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+              { key: "purchaseValue", label: "Revenue", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Country Breakdown */}
       {show("country_breakdown") && countryBreakdown.length > 0 && (
         <SectionCard title="Country Breakdown" subtitle={`Performance across ${countryBreakdown.length} ${countryBreakdown.length !== 1 ? "countries" : "country"}`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Country</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Spend</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CTR</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CPC</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {countryBreakdown.map((c) => (
-                  <tr key={c.country} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{c.country}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(c.spend)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(c.impressions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(c.clicks)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{c.ctr.toFixed(2)}%</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(c.cpc)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(c.conversions)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<MetaCountryRow>
+            data={countryBreakdown}
+            pageSize={0}
+            exportable
+            exportFilename="meta-country-breakdown"
+            columns={[
+              { key: "country", label: "Country" },
+              { key: "spend", label: "Spend", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+              { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+              { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+              { key: "ctr", label: "CTR", align: "right", sortable: true, render: (v) => `${(v as number).toFixed(2)}%` },
+              { key: "cpc", label: "CPC", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+              { key: "conversions", label: "Conv.", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Attribution Settings */}
       {show("attribution") && attributionSettings.length > 0 && (
         <SectionCard title="Attribution Settings" subtitle="Attribution windows per ad set">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 500 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Campaign</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Ad Set</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Attribution Window</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attributionSettings.map((a) => {
-                  let windowLabel = a.attributionSpec;
+          <DataTable<MetaAttribution>
+            data={attributionSettings}
+            pageSize={0}
+            columns={[
+              { key: "campaignName", label: "Campaign" },
+              { key: "adSetName", label: "Ad Set" },
+              {
+                key: "attributionSpec",
+                label: "Attribution Window",
+                render: (v) => {
+                  let windowLabel = v as string;
                   try {
-                    const spec = JSON.parse(a.attributionSpec);
+                    const spec = JSON.parse(v as string);
                     if (Array.isArray(spec)) windowLabel = spec.map((s: Record<string, string>) => `${s.event_type}: ${s.window_days}d`).join(", ");
                   } catch { /* use raw string */ }
-                  return (
-                    <tr key={a.adSetId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                      <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{a.campaignName}</td>
-                      <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{a.adSetName}</td>
-                      <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{windowLabel}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  return windowLabel;
+                },
+              },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Action Breakdowns */}
       {show("action_breakdowns") && actionBreakdowns.length > 0 && (
         <SectionCard title="Action Breakdowns" subtitle="All tracked conversion actions">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 400 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Action Type</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Count</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost Per Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {actionBreakdowns.map((a) => (
-                  <tr key={a.actionType} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{a.actionType.replace(/_/g, " ").replace(/\./g, " › ").replace(/\b\w/g, c => c.toUpperCase())}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(a.value)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(a.costPerAction)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<MetaActionBreakdown>
+            data={actionBreakdowns}
+            pageSize={0}
+            columns={[
+              { key: "actionType", label: "Action Type", render: (v) => (v as string).replace(/_/g, " ").replace(/\./g, " › ").replace(/\b\w/g, c => c.toUpperCase()) },
+              { key: "value", label: "Count", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+              { key: "costPerAction", label: "Cost Per Action", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Instant Experience */}
       {show("instant_experience") && instantExperience.length > 0 && (
         <SectionCard title="Instant Experience" subtitle="Canvas / instant experience engagement">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 480 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Ad Name</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Opens</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Outbound Clicks</th>
-                </tr>
-              </thead>
-              <tbody>
-                {instantExperience.map((ie) => (
-                  <tr key={ie.adId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{ie.adName}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(ie.clicksToOpen)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(ie.outboundClicks)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<MetaInstantExp>
+            data={instantExperience}
+            pageSize={0}
+            columns={[
+              { key: "adName", label: "Ad Name" },
+              { key: "clicksToOpen", label: "Opens", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+              { key: "outboundClicks", label: "Outbound Clicks", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Custom Conversions */}
       {show("custom_conversions") && customConversions.length > 0 && (
         <SectionCard title="Custom Conversions" subtitle={`${customConversions.length} custom conversion${customConversions.length !== 1 ? "s" : ""} configured`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 480 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Name</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Event Type</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Rule</th>
-                </tr>
-              </thead>
-              <tbody>
-                {customConversions.map((cc) => (
-                  <tr key={cc.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{cc.name}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{cc.customEventType.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 240 }}>{cc.pixelRule}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<MetaCustomConv>
+            data={customConversions}
+            pageSize={0}
+            columns={[
+              { key: "name", label: "Name" },
+              { key: "customEventType", label: "Event Type", render: (v) => (v as string).replace(/_/g, " ").toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) },
+              { key: "pixelRule", label: "Rule", render: (v) => <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 240, display: "block" }}>{v as string}</span> },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Saved & Custom Audiences */}
       {show("saved_audiences") && savedAudiences.length > 0 && (
         <SectionCard title="Saved & Custom Audiences" subtitle={`${savedAudiences.length} audience${savedAudiences.length !== 1 ? "s" : ""} available`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 520 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Audience Name</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Type</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Subtype</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Approx. Size</th>
-                </tr>
-              </thead>
-              <tbody>
-                {savedAudiences.map((a) => (
-                  <tr key={a.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{a.name}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{a.type.replace(/_/g, " ")}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{a.subtype ? a.subtype.replace(/_/g, " ").toLowerCase() : "—"}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{a.approximateCount > 0 ? formatNumber(a.approximateCount) : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<MetaSavedAud>
+            data={savedAudiences}
+            pageSize={0}
+            columns={[
+              { key: "name", label: "Audience Name" },
+              { key: "type", label: "Type", render: (v) => (v as string).replace(/_/g, " ") },
+              { key: "subtype", label: "Subtype", render: (v) => v ? (v as string).replace(/_/g, " ").toLowerCase() : "—" },
+              { key: "approximateCount", label: "Approx. Size", align: "right", sortable: true, render: (v) => (v as number) > 0 ? formatNumber(v as number) : "—" },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Campaign Spending Limits */}
       {show("spending_limits") && spendingLimits.length > 0 && (
         <SectionCard title="Campaign Spending Limits" subtitle="Budget caps and current spend">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Campaign</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Spend Cap</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Daily Budget</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Lifetime Budget</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Amount Spent</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Utilisation</th>
-                </tr>
-              </thead>
-              <tbody>
-                {spendingLimits.map((s) => {
+          <DataTable<MetaSpendLimit>
+            data={spendingLimits}
+            pageSize={0}
+            exportable
+            exportFilename="meta-spending-limits"
+            columns={[
+              { key: "campaignName", label: "Campaign" },
+              { key: "spendingLimit", label: "Spend Cap", align: "right", sortable: true, render: (v) => v != null ? formatCurrency(v as number) : "—" },
+              { key: "dailyBudget", label: "Daily Budget", align: "right", sortable: true, render: (v) => v != null ? formatCurrency(v as number) : "—" },
+              { key: "lifetimeBudget", label: "Lifetime Budget", align: "right", sortable: true, render: (v) => v != null ? formatCurrency(v as number) : "—" },
+              { key: "amountSpent", label: "Amount Spent", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+              {
+                key: "_utilisation",
+                label: "Utilisation",
+                align: "right",
+                render: (_, s) => {
                   const cap = s.spendingLimit ?? s.lifetimeBudget;
                   const util = cap && cap > 0 ? (s.amountSpent / cap) * 100 : null;
-                  return (
-                    <tr key={s.campaignId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                      <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{s.campaignName}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{s.spendingLimit != null ? formatCurrency(s.spendingLimit) : "—"}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{s.dailyBudget != null ? formatCurrency(s.dailyBudget) : "—"}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{s.lifetimeBudget != null ? formatCurrency(s.lifetimeBudget) : "—"}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(s.amountSpent)}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
-                        {util != null ? (
-                          <span className={`font-semibold ${util >= 90 ? "text-red-600" : util >= 70 ? "text-amber-600" : "text-emerald-600"}`}>{util.toFixed(0)}%</span>
-                        ) : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  return util != null ? <span className={`font-semibold ${util >= 90 ? "text-red-600" : util >= 70 ? "text-amber-600" : "text-emerald-600"}`}>{util.toFixed(0)}%</span> : "—";
+                },
+              },
+            ]}
+          />
         </SectionCard>
       )}
 

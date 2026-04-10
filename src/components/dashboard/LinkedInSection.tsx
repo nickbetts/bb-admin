@@ -7,6 +7,7 @@ import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
+import { DataTable } from "@/components/ui/DataTable";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 import { formatDateDisplay } from "@/lib/utils";
@@ -127,122 +128,61 @@ export function LinkedInSection({ clientId, clientName, accountId, accessToken, 
           </MetricGrid>
 
           {show("campaigns") && campaigns.length > 0 && (
-            <div className="card">
-              <div className="card-header">
-                <h3 className="card-title">Campaign Breakdown</h3>
-              </div>
-              <div className="card-body" style={{ padding: 0 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Campaign</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Impressions</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Clicks</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Spend</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Conversions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {campaigns.slice(0, 20).map((c, i) => (
-                      <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td style={{ padding: "10px 16px", color: "var(--text)" }}>{c.pivotValues?.[0] ?? `Campaign ${i + 1}`}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{(c.impressions ?? 0).toLocaleString()}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{(c.clicks ?? 0).toLocaleString()}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>£{parseFloat(c.costInLocalCurrency ?? "0").toFixed(2)}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{(c.externalWebsiteConversions ?? 0).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <DataTable<LinkedInCampaign>
+              data={campaigns}
+              columns={[
+                { key: "pivotValues", label: "Campaign", render: (_v, row) => row.pivotValues?.[0] ?? "—" },
+                { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => (row.impressions ?? 0).toLocaleString() },
+                { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => (row.clicks ?? 0).toLocaleString() },
+                { key: "costInLocalCurrency", label: "Spend", align: "right", sortable: true, render: (_v, row) => `£${parseFloat(row.costInLocalCurrency ?? "0").toFixed(2)}` },
+                { key: "externalWebsiteConversions", label: "Conversions", align: "right", sortable: true, render: (_v, row) => (row.externalWebsiteConversions ?? 0).toLocaleString() },
+              ]}
+              pageSize={20}
+              exportable
+              exportFilename="linkedin-campaigns"
+            />
           )}
 
           {/* Demographics — Industry */}
           {show("demographics") && demographics?.industry && demographics.industry.length > 0 && (
-            <div className="card" style={{ marginTop: 4 }}>
-              <div className="card-header"><h3 className="card-title">Industry</h3></div>
-              <div className="card-body" style={{ padding: 0 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Industry</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Impressions</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Clicks</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Spend</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {demographics.industry.map((row, i) => (
-                      <tr key={`ind-${i}`} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td style={{ padding: "10px 16px", color: "var(--text)" }}>{row.name}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{row.impressions.toLocaleString()}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{row.clicks.toLocaleString()}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>£{row.spend.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <DataTable<LinkedInDemoRow>
+              data={demographics.industry}
+              columns={[
+                { key: "name", label: "Industry", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.name}</span> },
+                { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => row.impressions.toLocaleString() },
+                { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => row.clicks.toLocaleString() },
+                { key: "spend", label: "Spend", align: "right", sortable: true, render: (_v, row) => `£${row.spend.toFixed(2)}` },
+              ]}
+              pageSize={0}
+            />
           )}
 
           {/* Demographics — Job Function */}
           {show("demographics") && demographics?.jobFunction && demographics.jobFunction.length > 0 && (
-            <div className="card" style={{ marginTop: 4 }}>
-              <div className="card-header"><h3 className="card-title">Job Function</h3></div>
-              <div className="card-body" style={{ padding: 0 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Job Function</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Impressions</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Clicks</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Spend</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {demographics.jobFunction.map((row, i) => (
-                      <tr key={`jf-${i}`} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td style={{ padding: "10px 16px", color: "var(--text)" }}>{row.name}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{row.impressions.toLocaleString()}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{row.clicks.toLocaleString()}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>£{row.spend.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <DataTable<LinkedInDemoRow>
+              data={demographics.jobFunction}
+              columns={[
+                { key: "name", label: "Job Function", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.name}</span> },
+                { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => row.impressions.toLocaleString() },
+                { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => row.clicks.toLocaleString() },
+                { key: "spend", label: "Spend", align: "right", sortable: true, render: (_v, row) => `£${row.spend.toFixed(2)}` },
+              ]}
+              pageSize={0}
+            />
           )}
 
           {/* Demographics — Company Size */}
           {show("demographics") && demographics?.companySize && demographics.companySize.length > 0 && (
-            <div className="card" style={{ marginTop: 4 }}>
-              <div className="card-header"><h3 className="card-title">Company Size</h3></div>
-              <div className="card-body" style={{ padding: 0 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Company Size</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Impressions</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Clicks</th>
-                      <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 600, color: "var(--text-2)", fontSize: 12 }}>Spend</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {demographics.companySize.map((row, i) => (
-                      <tr key={`cs-${i}`} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td style={{ padding: "10px 16px", color: "var(--text)" }}>{row.name}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{row.impressions.toLocaleString()}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>{row.clicks.toLocaleString()}</td>
-                        <td style={{ padding: "10px 16px", textAlign: "right", color: "var(--text-2)" }}>£{row.spend.toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <DataTable<LinkedInDemoRow>
+              data={demographics.companySize}
+              columns={[
+                { key: "name", label: "Company Size", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.name}</span> },
+                { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => row.impressions.toLocaleString() },
+                { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => row.clicks.toLocaleString() },
+                { key: "spend", label: "Spend", align: "right", sortable: true, render: (_v, row) => `£${row.spend.toFixed(2)}` },
+              ]}
+              pageSize={0}
+            />
           )}
         </>
       )}

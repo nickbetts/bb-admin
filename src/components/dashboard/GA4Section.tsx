@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, Delta } from "@/components/ui/index";
+import { DataTable } from "@/components/ui/DataTable";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
@@ -1053,56 +1054,24 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       {/* Event Parameters */}
       {show("event_parameters") && eventParameters.length > 0 && (
         <SectionCard title="Event Parameters" subtitle={`${eventParameters.length} event${eventParameters.length !== 1 ? "s" : ""} tracked`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 400 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Event Name</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Count</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {eventParameters.map((e) => (
-                  <tr key={e.eventName} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{e.eventName}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(e.eventCount)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{e.eventValue > 0 ? formatCurrency(e.eventValue) : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable data={eventParameters} columns={[
+            { key: "eventName", label: "Event Name" },
+            { key: "eventCount", label: "Count", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+            { key: "eventValue", label: "Value", align: "right", sortable: true, render: (v) => (v as number) > 0 ? formatCurrency(v as number) : "—" },
+          ]} pageSize={0} />
         </SectionCard>
       )}
 
       {/* Content Grouping */}
       {show("content_grouping") && contentGrouping.length > 0 && (
         <SectionCard title="Content Grouping" subtitle="Performance by content group">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Content Group</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Sessions</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Pageviews</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Bounce Rate</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Avg Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                {contentGrouping.map((cg) => (
-                  <tr key={cg.contentGroup} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{cg.contentGroup || "(not set)"}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(cg.sessions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(cg.pageviews)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{(cg.bounceRate * 100).toFixed(1)}%</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatDuration(cg.avgSessionDuration)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable data={contentGrouping} columns={[
+            { key: "contentGroup", label: "Content Group", render: (v) => (v as string) || "(not set)" },
+            { key: "sessions", label: "Sessions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+            { key: "pageviews", label: "Pageviews", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+            { key: "bounceRate", label: "Bounce Rate", align: "right", sortable: true, render: (v) => `${((v as number) * 100).toFixed(1)}%` },
+            { key: "avgSessionDuration", label: "Avg Duration", align: "right", sortable: true, render: (v) => formatDuration(v as number) },
+          ]} pageSize={0} />
         </SectionCard>
       )}
 
@@ -1124,122 +1093,50 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       {/* Browser & OS */}
       {show("browser_os") && browserOs.length > 0 && (
         <SectionCard title="Browser & OS" subtitle={`${browserOs.length} browser/OS combination${browserOs.length !== 1 ? "s" : ""}`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 480 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Browser</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Operating System</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Sessions</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Users</th>
-                </tr>
-              </thead>
-              <tbody>
-                {browserOs.map((bo, i) => (
-                  <tr key={`${bo.browser}-${bo.operatingSystem}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{bo.browser}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{bo.operatingSystem}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(bo.sessions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(bo.users)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable data={browserOs} columns={[
+            { key: "browser", label: "Browser" },
+            { key: "operatingSystem", label: "Operating System" },
+            { key: "sessions", label: "Sessions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+            { key: "users", label: "Users", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+          ]} pageSize={20} />
         </SectionCard>
       )}
 
       {/* Ecommerce Revenue */}
       {show("ecommerce_revenue") && ecommerceRevenue.length > 0 && (
         <SectionCard title="Ecommerce Revenue" subtitle="Revenue by page and source">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 640 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Page</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Source / Medium</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Transactions</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Purchase Revenue</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Total Revenue</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ecommerceRevenue.map((er, i) => (
-                  <tr key={`${er.pagePath}-${er.source}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{er.pagePath}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{er.source} / {er.medium}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(er.transactions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(er.purchaseRevenue)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(er.totalRevenue)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable data={ecommerceRevenue} columns={[
+            { key: "pagePath", label: "Page" },
+            { key: "source", label: "Source / Medium", render: (_v, row) => `${row.source} / ${row.medium}` },
+            { key: "transactions", label: "Transactions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+            { key: "purchaseRevenue", label: "Purchase Revenue", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+            { key: "totalRevenue", label: "Total Revenue", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+          ]} pageSize={20} exportable />
         </SectionCard>
       )}
 
       {/* User Acquisition */}
       {show("user_acquisition") && userAcquisition.length > 0 && (
         <SectionCard title="User Acquisition" subtitle="First-touch source for new users">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>First Source / Medium</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>New Users</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Sessions</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Engaged</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conversions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {userAcquisition.map((ua, i) => (
-                  <tr key={`${ua.firstUserSource}-${ua.firstUserMedium}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{ua.firstUserSource} / {ua.firstUserMedium}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(ua.newUsers)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(ua.sessions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(ua.engagedSessions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(ua.conversions)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable data={userAcquisition} columns={[
+            { key: "firstUserSource", label: "First Source / Medium", render: (_v, row) => `${row.firstUserSource} / ${row.firstUserMedium}` },
+            { key: "newUsers", label: "New Users", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+            { key: "sessions", label: "Sessions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+            { key: "engagedSessions", label: "Engaged", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+            { key: "conversions", label: "Conversions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+          ]} pageSize={20} />
         </SectionCard>
       )}
 
       {/* Revenue Per Session */}
       {show("revenue_per_session") && revenuePerSession.length > 0 && (
         <SectionCard title="Revenue Per Session" subtitle="Revenue efficiency by traffic source">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, tableLayout: "fixed", minWidth: 520 }}>
-              <colgroup>
-                <col style={{ width: "40%" }} />
-                <col style={{ width: "15%" }} />
-                <col style={{ width: "22%" }} />
-                <col style={{ width: "23%" }} />
-              </colgroup>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Source / Medium</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Sessions</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Total Revenue</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Rev / Session</th>
-                </tr>
-              </thead>
-              <tbody>
-                {revenuePerSession.map((rps, i) => (
-                  <tr key={`${rps.source}-${rps.medium}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{rps.source} / {rps.medium}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(rps.sessions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(rps.totalRevenue)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right" }}><span style={{ fontWeight: 600, color: "var(--success)" }}>{formatCurrency(rps.revenuePerSession)}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable data={revenuePerSession} columns={[
+            { key: "source", label: "Source / Medium", render: (_v, row) => `${row.source} / ${row.medium}` },
+            { key: "sessions", label: "Sessions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+            { key: "totalRevenue", label: "Total Revenue", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+            { key: "revenuePerSession", label: "Rev / Session", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+          ]} pageSize={20} exportable />
         </SectionCard>
       )}
 

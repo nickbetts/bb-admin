@@ -905,10 +905,12 @@ INSTRUCTIONS:
 4. Each action must include: WHAT to do, WHERE (specific campaign/channel names), WHY (link to the signal data), and EXPECTED IMPACT.
 5. Where budget changes are recommended, state the specific amount (e.g. "Increase from £20/day to £28/day") if the data supports it.
 6. For bid strategy changes, name the exact strategy to apply (e.g. "Switch to Target CPA at £18" or "Apply a +15% mobile bid adjustment") and the exact location in the platform (e.g. "Google Ads → Campaigns → [name] → Settings → Bidding").
-7. For audience changes, name the exact audience segments to create or exclude (e.g. "Create a custom audience of website visitors in the last 30 days and exclude them from the 'New Sales' ad set in Meta Ads Manager → Audiences").
-8. For landing page recommendations, list the specific page URL from the data, name the exact elements to improve (e.g. headline copy, CTA button text, form length, page load speed, trust signals above the fold), and reference the specific GA4 metrics that indicate the problem (e.g. bounce rate, session duration, conversion rate for that URL).
-9. Identify any signals that CONTRADICT each other and explain the trade-off.
-10. Do NOT repeat signals verbatim — synthesise them into a strategic narrative.
+7. For audience changes, name the exact audience segments to create or exclude and reference specific ad sets or campaigns by name.
+8. USE THE KEYWORD AND SEARCH TERM DATA: if crossPlatformContext includes "Google Ads Top Search Terms", identify wasted spend terms (clicks + cost, 0 conversions) and name them as negatives to add. Identify high-converting terms and flag them for exact-match campaigns or bid adjustments. If it includes "Search Console Top Queries" or "SEMrush Top Keywords", identify queries with: (a) position 4–10 with decent volume → content or bid optimisation opportunity; (b) position worsening vs previous period → content refresh needed; (c) high impressions but low CTR → title/meta description fix. Name the specific queries in your recommendation.
+9. USE THE GA4 TRAFFIC SOURCE DATA: if crossPlatformContext includes "GA4 Traffic Sources", identify which source/medium combinations have high bounce rate or low conversions despite session volume — name them and recommend specific actions (e.g. "google/cpc has 12% bounce but 0 conversions — check landing page alignment").
+10. Identify any signals that CONTRADICT each other and explain the trade-off.
+11. Do NOT repeat signals verbatim — synthesise them into a strategic narrative.
+12. Begin with a one-paragraph executive summary of the client's overall performance position before the action list.
 
 Output the result as clean HTML only — no markdown, no code fences, no preamble. Use <h3> for the main heading, <ol> for the numbered action list, <strong> for the WHAT/WHERE/WHY/EXPECTED IMPACT labels, and <ul> with <li></li> items for sub-points within each action. Use a <h3> for the Contradictory Signals section if applicable. British English.`;
 
