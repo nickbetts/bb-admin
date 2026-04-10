@@ -1,55 +1,58 @@
 "use client";
 
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Eye,
   EyeOff,
-  ArrowRight,
-  Activity,
-  AlertTriangle,
-  BarChart3,
-  Brain,
-  CheckCircle2,
-  ChevronRight,
-  Clock,
-  Code2,
-  FileText,
-  Globe,
-  Layers,
-  Mail,
-  MessageSquare,
-  Puzzle,
   Radar,
-  Search,
-  Settings,
-  Sparkles,
-  Target,
+  FileText,
+  Brain,
   TrendingUp,
-  Users,
-  Zap,
-  BookOpen,
-  Briefcase,
-  Building2,
-  Database,
-  FileSearch,
-  Gauge,
-  GitBranch,
-  Hash,
-  Layout,
-  ListTodo,
-  Megaphone,
+  Target,
   Monitor,
-  Palette,
-  Rocket,
-  Send,
+  Activity,
+  MessageSquare,
+  Briefcase,
+  CheckCircle2,
+  Sparkles,
+  BarChart3,
+  DollarSign,
   Share2,
-  ShieldCheck,
+  ListTodo,
+  Layers,
+  Search,
+  Palette,
+  BookOpen,
+  Rocket,
   Terminal,
-  Trophy,
-  Wand2,
-  Workflow,
 } from "lucide-react";
+
+// Animated counter hook
+function useCountUp(end: number, duration = 2000, shouldStart = false) {
+  const [count, setCount] = useState(0);
+  
+  useEffect(() => {
+    if (!shouldStart) return;
+    let startTime: number | null = null;
+    let animationFrame: number;
+    
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      setCount(Math.floor(progress * end));
+      
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      }
+    };
+    
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [end, duration, shouldStart]);
+  
+  return count;
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -62,11 +65,16 @@ export default function LoginPage() {
   const [activeSection, setActiveSection] = useState("");
   const [scrollPct, setScrollPct] = useState(0);
   const [mouse, setMouse] = useState({ x: -999, y: -999 });
+  const [parallaxY, setParallaxY] = useState(0);
+  
+  // Stats animation trigger
+  const [statsVisible, setStatsVisible] = useState(false);
 
   useEffect(() => {
     const onScroll = () => {
       const el = document.documentElement;
       setScrollPct((el.scrollTop / (el.scrollHeight - el.clientHeight)) * 100);
+      setParallaxY(el.scrollTop * 0.3);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -85,17 +93,10 @@ export default function LoginPage() {
       "channels",
       "stratum",
       "signals",
-      "portfolio",
-      "actions",
-      "budget",
-      "reports",
-      "forecasting",
       "ai-analyst",
-      "notifications",
-      "portal",
+      "reports",
+      "features",
       "toolkit",
-      "mid-cta",
-      "also-in-stratos",
       "how-it-works",
       "about",
       "access",
@@ -118,10 +119,13 @@ export default function LoginPage() {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) entry.target.classList.add("section-visible");
+          if (entry.isIntersecting) {
+            entry.target.classList.add("section-visible");
+            if (entry.target.id === "stats") setStatsVisible(true);
+          }
         });
       },
-      { threshold: 0.07 }
+      { threshold: 0.1 }
     );
     document.querySelectorAll<Element>(".reveal-section").forEach((el) => observer.observe(el));
     return () => observer.disconnect();
@@ -175,11 +179,9 @@ export default function LoginPage() {
 
   const pains = [
     { q: "\"Why did traffic drop last week?\"", a: "Every account manager's least favourite question. You know the answer is in there somewhere. It just takes 45 minutes to find it." },
-    { q: "Reporting day. Again.", a: "Block out Tuesday afternoon, open 11 tabs, copy numbers into a spreadsheet, write the same commentary you wrote last month. There has got to be a better way." },
-    { q: "ROAS is tanking. When did that happen?", a: "The worst version of this is your client telling you before you've noticed. StratOS spots these shifts automatically and puts them front and centre." },
-    { q: "Where should we move the budget?", a: "You know Meta's underperforming and Google Ads is flying. Without hard numbers side by side, it's still a gut-feel conversation." },
-    { q: "Three platforms. Three numbers. None of them match.", a: "GA4 says one thing. Google Ads says another. Meta has its own view. Someone has to reconcile all of this. Every single week." },
-    { q: "Is this account actually performing well?", a: "Without a cross-channel view, you're always looking at a piece of the puzzle. StratOS shows the whole board." },
+    { q: "Reporting day. Again.", a: "Block out Tuesday afternoon, open 11 tabs, copy numbers into a spreadsheet, write the same commentary you wrote last month. There's got to be a better way." },
+    { q: "ROAS is tanking. When did that happen?", a: "The worst version of this is your client telling you before you've noticed. StratOS spots these shifts automatically." },
+    { q: "Three platforms. Three numbers. None match.", a: "GA4 says one thing. Google Ads says another. Meta has its own view. Someone has to reconcile all of this. Every single week." },
   ];
 
   const steps = [
@@ -191,7 +193,7 @@ export default function LoginPage() {
     {
       n: "02",
       title: "See what moved overnight",
-      desc: "Open Signals first thing. Every anomaly across every channel is already surfaced, sorted by severity, with context attached. The important stuff is at the top.",
+      desc: "Open Signals first thing. Every anomaly across every channel is already surfaced, sorted by severity, with context attached.",
     },
     {
       n: "03",
@@ -204,6 +206,12 @@ export default function LoginPage() {
       desc: "Assign actions to the team, generate a client report with a click, share a strategy document. From spotting the issue to presenting the solution, all in one place.",
     },
   ];
+  
+  // Animated stat values
+  const stat1 = useCountUp(16, 1800, statsVisible);
+  const stat2 = useCountUp(19, 2000, statsVisible);
+  const stat3 = useCountUp(30, 1600, statsVisible);
+  const stat4 = useCountUp(20, 1900, statsVisible);
 
   return (
     <div style={{ background: "#09090f", color: "white", fontFamily: "inherit" }}>
@@ -243,16 +251,11 @@ export default function LoginPage() {
           { id: "problems", label: "Problems" },
           { id: "stats", label: "Platform" },
           { id: "channels", label: "Channels" },
-          { id: "stratum", label: "Stratum" },
+          { id: "stratum", label: "Stratum™" },
           { id: "signals", label: "Signals" },
-          { id: "portfolio", label: "Portfolio" },
-          { id: "actions", label: "Actions" },
-          { id: "budget", label: "Budget" },
+          { id: "ai-analyst", label: "AI Analyst" },
           { id: "reports", label: "Reports" },
-          { id: "forecasting", label: "Forecasting" },
-          { id: "ai-analyst", label: "Stratum™" },
-          { id: "notifications", label: "Alerts" },
-          { id: "portal", label: "Portal" },
+          { id: "features", label: "Features" },
           { id: "toolkit", label: "Toolkit" },
           { id: "how-it-works", label: "How it works" },
           { id: "about", label: "About" },
@@ -300,12 +303,16 @@ export default function LoginPage() {
           <span style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "0.02em" }}>StratOS</span>
         </div>
         <a
-          href="#login-form"
+          href="#access"
           style={{
-            padding: "8px 18px", borderRadius: 8,
-            background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)",
-            color: "#a5b4fc", fontSize: 13, fontWeight: 600, textDecoration: "none",
+            padding: "9px 20px", borderRadius: 8,
+            background: "linear-gradient(135deg, #6366f1, #a855f7)", 
+            border: "none",
+            color: "white", fontSize: 13, fontWeight: 600, textDecoration: "none",
+            boxShadow: "0 0 20px rgba(99,102,241,0.3)",
+            transition: "all 0.3s ease",
           }}
+          className="cta-pulse"
         >
           Sign in →
         </a>
@@ -321,26 +328,20 @@ export default function LoginPage() {
           position: "absolute", width: "70%", paddingBottom: "70%",
           top: "-20%", left: "-18%", pointerEvents: "none", borderRadius: "50%",
           background: "radial-gradient(circle, rgba(99,102,241,0.42) 0%, transparent 65%)",
+          transform: `translateY(${parallaxY * -0.3}px)`,
+          transition: "transform 0.1s ease-out",
         }} />
         <div className="login-orb-2" style={{
           position: "absolute", width: "60%", paddingBottom: "60%",
           bottom: "-20%", right: "-12%", pointerEvents: "none", borderRadius: "50%",
           background: "radial-gradient(circle, rgba(168,85,247,0.35) 0%, transparent 65%)",
-        }} />
-        <div className="login-orb-3" style={{
-          position: "absolute", width: "45%", paddingBottom: "45%",
-          top: "30%", left: "30%", pointerEvents: "none", borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 65%)",
+          transform: `translateY(${parallaxY * -0.2}px)`,
+          transition: "transform 0.1s ease-out",
         }} />
         <div style={{
           position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.022,
           backgroundImage: "linear-gradient(rgba(255,255,255,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.9) 1px, transparent 1px)",
           backgroundSize: "40px 40px",
-        }} />
-        {/* Vignette */}
-        <div style={{
-          position: "absolute", inset: 0, pointerEvents: "none",
-          background: "radial-gradient(ellipse 80% 70% at 50% 50%, transparent 40%, rgba(9,9,15,0.6) 100%)",
         }} />
         {/* Floating particles */}
         {particles.map((p) => (
@@ -388,43 +389,26 @@ export default function LoginPage() {
               </span>
             </h1>
             <p style={{
-              fontSize: 18, color: "rgba(255,255,255,0.55)", lineHeight: 1.75,
-              maxWidth: 520, marginBottom: 40,
+              fontSize: 19, color: "rgba(255,255,255,0.65)", lineHeight: 1.75,
+              maxWidth: 520, marginBottom: 40, fontWeight: 400,
             }}>
-              After 20+ years running campaigns for ambitious brands, we built what we always wanted: 16 marketing channels in one place, anomalies flagged before your client notices, and client reports that write themselves.
+              StratOS connects 16 marketing channels, flags anomalies before your client does, and turns hours of manual reporting into minutes.
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
               {[
-                { icon: <Globe style={{ width: 13, height: 13 }} />, text: "16 channels connected. Fully live, no manual exports." },
-                { icon: <Radar style={{ width: 13, height: 13 }} />, text: "Stratum™ flags issues before your client ever notices." },
-                { icon: <FileText style={{ width: 13, height: 13 }} />, text: "Reports with commentary done in minutes, not an afternoon." },
-                { icon: <Brain style={{ width: 13, height: 13 }} />, text: "Ask Stratum™ anything. It reads every connected channel at once." },
-                { icon: <TrendingUp style={{ width: 13, height: 13 }} />, text: "90-day forecasting built from your own data, not benchmarks." },
-                { icon: <Target style={{ width: 13, height: 13 }} />, text: "Budget adviser shows exactly where to move the spend and why." },
-                { icon: <Monitor style={{ width: 13, height: 13 }} />, text: "Branded client portals with live goals and key metrics." },
-                { icon: <Zap style={{ width: 13, height: 13 }} />, text: "19 AI endpoints analysing performance 24/7." },
+                { icon: <Radar style={{ width: 14, height: 14 }} />, text: "Anomaly detection across all channels—surfaced automatically" },
+                { icon: <Brain style={{ width: 14, height: 14 }} />, text: "AI that reads every platform before giving you an answer" },
+                { icon: <FileText style={{ width: 14, height: 14 }} />, text: "Client reports generated in minutes, not Tuesday afternoons" },
+                { icon: <Monitor style={{ width: 14, height: 14 }} />, text: "Branded client portals—they see what you want them to see" },
               ].map((f) => (
-                <div key={f.text} style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
+                <div key={f.text} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                   <div style={{
-                    width: 17, height: 17, borderRadius: "50%", flexShrink: 0, marginTop: 2,
-                    background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.35)",
+                    width: 19, height: 19, borderRadius: "50%", flexShrink: 0, marginTop: 3,
+                    background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.4)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#818cf8",
+                    color: "#a5b4fc",
                   }}>{f.icon}</div>
-                  <span style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>{f.text}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: "flex", marginTop: 28, paddingTop: 24, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-              {[
-                { val: "16", label: "channels" },
-                { val: "<30m", label: "onboarding" },
-                { val: "19", label: "AI endpoints" },
-                { val: "20+", label: "years\u2019 experience" },
-              ].map((s, i) => (
-                <div key={s.label} style={{ flex: 1, textAlign: "center", paddingLeft: i === 0 ? 0 : 8, borderLeft: i === 0 ? "none" : "1px solid rgba(255,255,255,0.07)" }}>
-                  <div style={{ fontSize: 19, fontWeight: 900, color: "white", letterSpacing: "-0.03em", lineHeight: 1 }}>{s.val}</div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.28)", marginTop: 4, fontWeight: 500 }}>{s.label}</div>
+                  <span style={{ fontSize: 14, color: "rgba(255,255,255,0.65)", lineHeight: 1.6, fontWeight: 400 }}>{f.text}</span>
                 </div>
               ))}
             </div>
@@ -433,11 +417,13 @@ export default function LoginPage() {
           {/* Right — login card */}
           <div
             id="login-form"
+            className="login-card-3d"
             style={{
               background: "rgba(255,255,255,0.04)",
               border: "1px solid rgba(255,255,255,0.1)",
               borderRadius: 20, padding: "36px 32px",
               backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+              transition: "transform 0.3s ease, box-shadow 0.3s ease",
             }}
           >
             <div style={{ marginBottom: 28 }}>
@@ -504,24 +490,20 @@ export default function LoginPage() {
                     onClick={() => setShowPassword(!showPassword)}
                     style={{
                       position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
-                      background: "none", border: "none", cursor: "pointer",
-                      color: "rgba(255,255,255,0.35)", padding: 0, display: "flex",
-                      transition: "color 0.15s",
+                      background: "none", border: "none", color: "rgba(255,255,255,0.3)",
+                      cursor: "pointer", padding: 4, display: "flex",
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.7)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.35)")}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? <EyeOff style={{ width: 15, height: 15 }} /> : <Eye style={{ width: 15, height: 15 }} />}
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>
 
               {error && (
-                <div role="alert" style={{
-                  padding: "11px 14px", borderRadius: 8,
+                <div style={{
+                  padding: "10px 14px", borderRadius: 8,
                   background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
-                  fontSize: 13, color: "#fca5a5",
+                  color: "#fca5a5", fontSize: 12,
                 }}>
                   {error}
                 </div>
@@ -531,59 +513,91 @@ export default function LoginPage() {
                 type="submit"
                 disabled={loading}
                 style={{
-                  width: "100%", padding: "13px 20px", borderRadius: 10, marginTop: 4,
-                  background: loading ? "rgba(99,102,241,0.5)" : "linear-gradient(135deg, #6366f1, #7c3aed)",
-                  border: "none", color: "white", fontSize: 14, fontWeight: 700,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  boxShadow: loading ? "none" : "0 0 28px rgba(99,102,241,0.4)",
-                  transition: "opacity 0.15s, box-shadow 0.15s",
+                  padding: "13px 20px", borderRadius: 10,
+                  background: loading ? "rgba(99,102,241,0.3)" : "linear-gradient(135deg, #6366f1, #a855f7)",
+                  border: "none", color: "white",
+                  fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer",
+                  transition: "all 0.3s ease",
+                  boxShadow: loading ? "none" : "0 0 20px rgba(99,102,241,0.4)",
                 }}
-                onMouseEnter={(e) => { if (!loading) e.currentTarget.style.opacity = "0.9"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+                className={loading ? "" : "cta-pulse"}
               >
-                {loading ? "Signing in…" : "Access StratOS →"}
+                {loading ? "Signing in..." : "Sign in"}
+              </button>
+
+              <div style={{ textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 12, margin: "8px 0" }}>or</div>
+
+              <button
+                type="button"
+                onClick={() => window.location.href = "/api/auth/google"}
+                style={{
+                  padding: "13px 20px", borderRadius: 10,
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  color: "rgba(255,255,255,0.85)",
+                  fontSize: 14, fontWeight: 600, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.09)";
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+                  <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+                  <path d="M9.003 18c2.43 0 4.467-.806 5.956-2.18L12.05 13.56c-.806.54-1.836.86-3.047.86-2.344 0-4.328-1.584-5.036-3.711H.96v2.332C2.44 15.983 5.485 18 9.003 18z" fill="#34A853"/>
+                  <path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                  <path d="M9.003 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.464.891 11.426 0 9.003 0 5.485 0 2.44 2.017.96 4.958L3.967 7.29c.708-2.127 2.692-3.71 5.036-3.71z" fill="#EA4335"/>
+                </svg>
+                Sign in with Google
               </button>
             </form>
-
-            <p style={{ marginTop: 20, textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.2)" }}>
-              Don&apos;t have access? <a href="mailto:hello@i3media.net" style={{ color: "rgba(99,102,241,0.7)", textDecoration: "none" }}>Get in touch</a>.
-            </p>
           </div>
-        </div>
-        {/* Scroll hint */}
-        <div style={{ position: "absolute", bottom: 32, left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.18)", letterSpacing: "0.12em", textTransform: "uppercase" }}>Scroll</span>
-          <div className="scroll-chevron" style={{ width: 16, height: 16, borderRight: "1.5px solid rgba(255,255,255,0.18)", borderBottom: "1.5px solid rgba(255,255,255,0.18)", transform: "rotate(45deg)" }} />
+
         </div>
       </section>
 
       {/* ── SECTION 2: PAIN POINTS ── */}
-      <section id="problems" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      <section id="problems" className="reveal-section" style={{
+        padding: "120px 40px",
+        background: "linear-gradient(180deg, #09090f 0%, rgba(99,102,241,0.02) 50%, #09090f 100%)",
+      }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }} className="blur-reveal">
               Sound familiar?
             </p>
-            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
+            <h2 style={{ fontSize: 46, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 18, color: "white" }} className="blur-reveal">
               We&apos;ve been there.<br />Got the t-shirt.
             </h2>
-            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 540, margin: "0 auto", lineHeight: 1.7 }}>
               These are the conversations we were having at i3MEDIA before we built StratOS. If any of them land, you&apos;re in the right place.
             </p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="pains-grid">
-            {pains.map((p) => (
-              <div key={p.q} className="pain-card" style={{
-                background: "rgba(255,255,255,0.025)",
-                border: "1px solid rgba(255,255,255,0.06)",
-                borderRadius: 16, padding: "28px 28px 32px",
-                display: "flex", flexDirection: "column", gap: 12,
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: 24,
+          }} className="pains-grid">
+            {pains.map((p, i) => (
+              <div key={p.q} className="pain-card stagger-in" style={{
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 18,
+                padding: "32px",
+                transition: "all 0.4s ease",
+                animationDelay: `${i * 0.1}s`,
               }}>
-                <p style={{ fontSize: 15, fontWeight: 700, color: "rgba(255,255,255,0.85)", lineHeight: 1.35, fontStyle: "italic" }}>
+                <p style={{ fontSize: 16, fontWeight: 700, color: "rgba(255,255,255,0.9)", lineHeight: 1.4, fontStyle: "italic", marginBottom: 14 }}>
                   {p.q}
                 </p>
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.65 }}>
+                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
                   {p.a}
                 </p>
               </div>
@@ -592,16 +606,15 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ── SECTION 2.5: STATS BAR ── */}
+      {/* ── SECTION 3: STATS WITH ANIMATED NUMBERS ── */}
       <section id="stats" className="reveal-section" style={{
-        padding: "80px 40px",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
-        background: "linear-gradient(180deg, rgba(99,102,241,0.025) 0%, rgba(168,85,247,0.02) 100%)",
+        padding: "100px 40px",
+        background: "linear-gradient(180deg, rgba(99,102,241,0.04) 0%, rgba(168,85,247,0.03) 100%)",
       }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 48 }}>
-            <h2 style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 14, color: "white" }}>
-              The platform, in numbers.
+          <div style={{ textAlign: "center", marginBottom: 56 }}>
+            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }} className="blur-reveal">
+              The platform, in numbers
             </h2>
             <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", maxWidth: 600, margin: "0 auto" }}>
               No marketing speak. Just what&apos;s actually running under the bonnet.
@@ -610,337 +623,263 @@ export default function LoginPage() {
           
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(6, 1fr)",
-            gap: 14,
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 20,
           }} className="stats-grid">
             {[
-              { icon: <Layers style={{ width: 18, height: 18 }} />, val: "16", label: "Channels Connected", color: "#6366f1" },
-              { icon: <Brain style={{ width: 18, height: 18 }} />, val: "19", label: "AI Endpoints", color: "#a855f7" },
-              { icon: <Layout style={{ width: 18, height: 18 }} />, val: "90+", label: "Report Blocks", color: "#ec4899" },
-              { icon: <Code2 style={{ width: 18, height: 18 }} />, val: "120+", label: "API Routes", color: "#f59e0b" },
-              { icon: <Database style={{ width: 18, height: 18 }} />, val: "22", label: "Section Types", color: "#10b981" },
-              { icon: <GitBranch style={{ width: 18, height: 18 }} />, val: "5", label: "Attribution Models", color: "#3b82f6" },
-            ].map((stat) => (
-              <div key={stat.label} className="stat-card" style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 14,
-                padding: "28px 20px",
+              { val: stat1, label: "Channels\nConnected", suffix: "", color: "#6366f1" },
+              { val: stat2, label: "AI\nEndpoints", suffix: "", color: "#a855f7" },
+              { val: `<${stat3}`, label: "Min to\nOnboard", suffix: "m", color: "#ec4899" },
+              { val: stat4, label: "Years'\nExperience", suffix: "+", color: "#f59e0b" },
+            ].map((stat, i) => (
+              <div key={i} className="stat-card-3d stagger-in" style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 16,
+                padding: "40px 24px",
                 textAlign: "center",
                 position: "relative",
                 overflow: "hidden",
-                transition: "all 0.3s ease",
+                transition: "all 0.4s ease",
+                animationDelay: `${i * 0.12}s`,
               }}>
                 <div style={{
                   position: "absolute",
                   top: 0,
                   left: 0,
                   right: 0,
-                  height: 2,
+                  height: 3,
                   background: `linear-gradient(90deg, ${stat.color}, transparent)`,
-                  opacity: 0.6,
+                  opacity: 0.8,
                 }} />
                 <div style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: "50%",
-                  background: `rgba(${stat.color === "#6366f1" ? "99,102,241" : stat.color === "#a855f7" ? "168,85,247" : stat.color === "#ec4899" ? "236,72,153" : stat.color === "#f59e0b" ? "245,158,11" : stat.color === "#10b981" ? "16,185,129" : "59,130,246"},0.12)`,
-                  border: `1px solid rgba(${stat.color === "#6366f1" ? "99,102,241" : stat.color === "#a855f7" ? "168,85,247" : stat.color === "#ec4899" ? "236,72,153" : stat.color === "#f59e0b" ? "245,158,11" : stat.color === "#10b981" ? "16,185,129" : "59,130,246"},0.3)`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 16px",
-                  color: stat.color,
-                }}>
-                  {stat.icon}
-                </div>
-                <div style={{
-                  fontSize: 32,
+                  fontSize: 52,
                   fontWeight: 900,
                   color: "white",
-                  letterSpacing: "-0.04em",
+                  letterSpacing: "-0.05em",
                   lineHeight: 1,
-                  marginBottom: 10,
-                }}>{stat.val}</div>
+                  marginBottom: 14,
+                  background: `linear-gradient(135deg, ${stat.color}, rgba(255,255,255,0.9))`,
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}>{typeof stat.val === "string" ? stat.val : stat.val}{stat.suffix}</div>
                 <div style={{
-                  fontSize: 11,
-                  color: "rgba(255,255,255,0.35)",
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.4)",
                   fontWeight: 600,
-                  letterSpacing: "0.03em",
-                  lineHeight: 1.3,
+                  letterSpacing: "0.04em",
+                  lineHeight: 1.5,
+                  whiteSpace: "pre-line",
                 }}>{stat.label}</div>
               </div>
             ))}
           </div>
-          
-          <div style={{
-            marginTop: 48,
-            padding: "24px 32px",
-            borderRadius: 14,
-            background: "rgba(255,255,255,0.02)",
-            border: "1px solid rgba(255,255,255,0.06)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 32,
-            flexWrap: "wrap",
-          }} className="stats-feature-bar">
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Clock style={{ width: 20, height: 20, color: "#818cf8" }} />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>
-                  Nightly automated snapshots
-                </div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-                  Every account, every channel, every night
-                </div>
-              </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <TrendingUp style={{ width: 20, height: 20, color: "#818cf8" }} />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>
-                  90-day forecasting
-                </div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-                  With confidence intervals
-                </div>
-              </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Sparkles style={{ width: 20, height: 20, color: "#818cf8" }} />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.85)", marginBottom: 2 }}>
-                  14+ AI capabilities
-                </div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-                  Cross-channel intelligence
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
-      {/* ── SECTION 3: CHANNELS ── */}
-      <section id="channels" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 64 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
-              Integrations
-            </p>
-            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
-              All your platforms. Finally in one place.
-            </h2>
-            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
-              Connect once, read everything. No manual exports, no copy-pasting, no Monday morning data rituals.
-            </p>
-          </div>
-
-          <div className="marquee-wrap" style={{ overflow: "hidden", margin: "0 -40px", padding: "8px 0", position: "relative" }}>
-            <div className="marquee-row" style={{ display: "flex", gap: 14 }}>
-              {[...channelList, ...channelList, ...channelList].map((ch, i) => (
-                <span key={i} style={{
-                  whiteSpace: "nowrap", flexShrink: 0,
-                  padding: "10px 22px", borderRadius: 100,
-                  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-                  fontSize: 13, color: "rgba(255,255,255,0.6)", fontWeight: 500,
-                }}>{ch}</span>
-              ))}
-            </div>
-            <div className="marquee-row-rev" style={{ display: "flex", gap: 14, marginTop: 14 }}>
-              {[...channelList, ...channelList, ...channelList].reverse().map((ch, i) => (
-                <span key={i} style={{
-                  whiteSpace: "nowrap", flexShrink: 0,
-                  padding: "10px 22px", borderRadius: 100,
-                  background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)",
-                  fontSize: 13, color: "rgba(255,255,255,0.45)", fontWeight: 500,
-                }}>{ch}</span>
-              ))}
-            </div>
-          </div>
-          <p style={{ textAlign: "center", marginTop: 32, fontSize: 13, color: "rgba(255,255,255,0.22)" }}>
-            16 platforms. One login. Updated automatically, no Monday morning setup ritual.
-          </p>
-        </div>
-      </section>
-
-      {/* ── SECTION 4: STRATUM™ — MASSIVELY EXPANDED ── */}
-      <section id="stratum" className="reveal-section" style={{ padding: "120px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden", background: "rgba(99,102,241,0.015)" }}>
-        <div className="stratum-grid-bg" style={{
-          position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.04,
-          backgroundImage: "linear-gradient(rgba(99,102,241,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.9) 1px, transparent 1px)",
-          backgroundSize: "28px 28px",
-        }} />
-        <div style={{
-          position: "absolute", width: "60%", paddingBottom: "60%",
-          top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-          pointerEvents: "none", borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 60%)",
-        }} />
-
-        <div style={{ maxWidth: 1140, margin: "0 auto", position: "relative", textAlign: "center" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 28, padding: "6px 16px", borderRadius: 20, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.3)" }}>
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#818cf8", boxShadow: "0 0 10px rgba(129,140,248,0.9)" }} className="stratum-pulse" />
-            <span style={{ fontSize: 11, fontWeight: 800, color: "#a5b4fc", letterSpacing: "0.12em", textTransform: "uppercase" }}>Proprietary technology · i3MEDIA</span>
-          </div>
-
-          <h2 className="stratum-shimmer" style={{ fontSize: 72, fontWeight: 900, letterSpacing: "-0.05em", lineHeight: 0.9, marginBottom: 20 }}>
-            Stratum<sup style={{ fontSize: "0.28em", verticalAlign: "super", letterSpacing: 0 }}>™</sup>
+      {/* ── SECTION 4: CHANNEL MARQUEE ── */}
+      <section id="channels" style={{
+        padding: "80px 0",
+        overflow: "hidden",
+        background: "linear-gradient(180deg, rgba(99,102,241,0.02) 0%, #09090f 100%)",
+      }}>
+        <div style={{ textAlign: "center", marginBottom: 48, padding: "0 40px" }}>
+          <h2 style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 14, color: "white" }}>
+            {channelList.length} channels. One dashboard.
           </h2>
-          <p style={{ fontSize: 18, color: "rgba(99,102,241,0.75)", fontWeight: 700, letterSpacing: "0.04em", marginBottom: 20, textTransform: "uppercase" }}>
-            The AI layer that reads everything at once
+          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", maxWidth: 600, margin: "0 auto" }}>
+            All your platforms feeding live data. No exports, no copy-paste, no matching row 47 to campaign X.
           </p>
-          <p style={{ fontSize: 20, color: "#818cf8", fontWeight: 800, letterSpacing: "0.02em", marginBottom: 38, lineHeight: 1.4 }}>
-            Stratum™ reads from all 16 channels before writing a single word.
-          </p>
-          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 680, margin: "0 auto 64px" }}>
-            Stratum™ is the intelligence layer beneath everything in StratOS. It reads all 16 connected channels at once, finds correlations across them, and surfaces the kind of insights you only get when you stop looking at platforms in isolation. Built in-house over years of agency work. You won&apos;t find it anywhere else.
-          </p>
+        </div>
 
-          <div style={{
-            background: "rgba(99,102,241,0.05)",
-            border: "1px solid rgba(99,102,241,0.15)",
-            borderRadius: 16,
-            padding: "48px 40px",
-            marginBottom: 64,
-            textAlign: "left",
-          }} className="stratum-ai-box">
-            <h3 style={{
-              fontSize: 22,
-              fontWeight: 800,
-              color: "#a5b4fc",
-              marginBottom: 28,
-              textAlign: "center",
-              letterSpacing: "-0.02em",
+        <div className="marquee-wrap" style={{ position: "relative", overflow: "hidden" }}>
+          <div className="marquee-row" style={{ display: "flex", gap: 16 }}>
+            {[...channelList, ...channelList, ...channelList].map((ch, i) => (
+              <div key={`a-${i}`} style={{
+                padding: "12px 22px",
+                borderRadius: 100,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                whiteSpace: "nowrap",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "rgba(255,255,255,0.65)",
+                flexShrink: 0,
+              }}>
+                {ch}
+              </div>
+            ))}
+          </div>
+          <div className="marquee-row-rev" style={{ display: "flex", gap: 16, marginTop: 14 }}>
+            {[...channelList, ...channelList, ...channelList].reverse().map((ch, i) => (
+              <div key={`b-${i}`} style={{
+                padding: "12px 22px",
+                borderRadius: 100,
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                whiteSpace: "nowrap",
+                fontSize: 13,
+                fontWeight: 500,
+                color: "rgba(255,255,255,0.45)",
+                flexShrink: 0,
+              }}>
+                {ch}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── SECTION 5: STRATUM™ (SIMPLIFIED) ── */}
+      <section id="stratum" className="reveal-section" style={{
+        padding: "120px 40px",
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        <div className="stratum-glow" style={{
+          position: "absolute",
+          inset: "-50%",
+          background: "radial-gradient(circle at 50% 50%, rgba(99,102,241,0.15) 0%, transparent 50%)",
+          pointerEvents: "none",
+        }} />
+        
+        <div style={{ maxWidth: 1000, margin: "0 auto", position: "relative" }}>
+          <div style={{ textAlign: "center", marginBottom: 64 }}>
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 18px",
+              borderRadius: 24,
+              background: "rgba(99,102,241,0.12)",
+              border: "1px solid rgba(99,102,241,0.3)",
+              marginBottom: 20,
             }}>
-              14+ AI capabilities. Every one reads from all 16 channels.
-            </h3>
+              <Brain style={{ width: 16, height: 16, color: "#a5b4fc" }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                Powered by Stratum™
+              </span>
+            </div>
             
+            <h2 style={{
+              fontSize: 52,
+              fontWeight: 900,
+              letterSpacing: "-0.04em",
+              marginBottom: 20,
+              color: "white",
+              background: "linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.6) 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }} className="blur-reveal">
+              AI that actually understands<br />your marketing data
+            </h2>
+            <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", maxWidth: 680, margin: "0 auto", lineHeight: 1.8 }}>
+              Stratum™ doesn&apos;t just read one platform. It reads every connected channel before it gives you an answer—cross-referencing GA4, ads platforms, CRM data, and site performance to surface insights you&apos;d miss looking at channels in isolation.
+            </p>
+          </div>
+
+          <div className="gradient-border-rotating" style={{
+            background: "rgba(255,255,255,0.03)",
+            borderRadius: 20,
+            padding: 48,
+            position: "relative",
+          }}>
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 14,
-            }} className="stratum-ai-grid">
+              gap: 24,
+            }}>
               {[
-                { icon: <Radar style={{ width: 16, height: 16 }} />, label: "Cross-channel anomaly detection", desc: "Reads all 16 channels simultaneously" },
-                { icon: <Search style={{ width: 16, height: 16 }} />, label: "Root cause analysis", desc: "Explains WHY metrics moved" },
-                { icon: <TrendingUp style={{ width: 16, height: 16 }} />, label: "Predictive forecasting", desc: "30/60/90-day with confidence bands" },
-                { icon: <Target style={{ width: 16, height: 16 }} />, label: "Budget optimisation", desc: "Where to move spend, projected £ impact" },
-                { icon: <Palette style={{ width: 16, height: 16 }} />, label: "Creative intelligence", desc: "Ad performance analysis" },
-                { icon: <MessageSquare style={{ width: 16, height: 16 }} />, label: "Conversational analyst", desc: "Ask anything in plain English" },
-                { icon: <FileText style={{ width: 16, height: 16 }} />, label: "Report commentary", desc: "Auto-writes what happened and why" },
-                { icon: <Briefcase style={{ width: 16, height: 16 }} />, label: "Executive summaries", desc: "Cross-channel narrative generation" },
-                { icon: <BookOpen style={{ width: 16, height: 16 }} />, label: "Strategy documents", desc: "SEO, content, media plans" },
-                { icon: <Monitor style={{ width: 16, height: 16 }} />, label: "Landing page analysis", desc: "CRO/SEO/Mobile/Forms scoring" },
-                { icon: <GitBranch style={{ width: 16, height: 16 }} />, label: "Attribution modelling", desc: "5 models available" },
-                { icon: <Activity style={{ width: 16, height: 16 }} />, label: "Seasonality detection", desc: "Automatic pattern recognition" },
-                { icon: <Share2 style={{ width: 16, height: 16 }} />, label: "Competitor intelligence", desc: "Share of voice tracking" },
-                { icon: <Sparkles style={{ width: 16, height: 16 }} />, label: "Super-summary journey", desc: "Full customer path analysis" },
-              ].map((cap) => (
-                <div key={cap.label} style={{
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(99,102,241,0.2)",
-                  borderRadius: 10,
-                  padding: "16px 18px",
-                  display: "flex",
-                  gap: 12,
-                  alignItems: "flex-start",
-                  transition: "all 0.25s ease",
+                { icon: <Activity style={{ width: 20, height: 20 }} />, title: "Anomaly Detection", desc: "Automatically flags performance shifts across all channels" },
+                { icon: <MessageSquare style={{ width: 20, height: 20 }} />, title: "Natural Language Queries", desc: "Ask questions in plain English, get answers with full context" },
+                { icon: <TrendingUp style={{ width: 20, height: 20 }} />, title: "Predictive Forecasting", desc: "90-day forecasts with confidence intervals, per channel" },
+                { icon: <Target style={{ width: 20, height: 20 }} />, title: "Budget Intelligence", desc: "Shows exactly where to reallocate spend and why" },
+                { icon: <BarChart3 style={{ width: 20, height: 20 }} />, title: "Cross-Channel Attribution", desc: "5 attribution models to understand the full customer journey" },
+                { icon: <Sparkles style={{ width: 20, height: 20 }} />, title: "Auto Commentary", desc: "Generates report commentary that reads like you wrote it" },
+              ].map((item, i) => (
+                <div key={i} className="stagger-in" style={{
+                  animationDelay: `${i * 0.08}s`,
                 }}>
                   <div style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
+                    width: 44,
+                    height: 44,
+                    borderRadius: "50%",
                     background: "rgba(99,102,241,0.15)",
                     border: "1px solid rgba(99,102,241,0.3)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "#818cf8",
-                    flexShrink: 0,
-                  }}>{cap.icon}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: "rgba(255,255,255,0.85)",
-                      marginBottom: 4,
-                      lineHeight: 1.3,
-                    }}>{cap.label}</div>
-                    <div style={{
-                      fontSize: 11,
-                      color: "rgba(255,255,255,0.35)",
-                      lineHeight: 1.4,
-                    }}>{cap.desc}</div>
+                    color: "#a5b4fc",
+                    marginBottom: 16,
+                  }}>
+                    {item.icon}
                   </div>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "rgba(255,255,255,0.9)", marginBottom: 8, letterSpacing: "-0.01em" }}>
+                    {item.title}
+                  </h3>
+                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>
+                    {item.desc}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 52 }} className="stratum-grid">
-            {[
-              "Cross-channel signal weighting",
-              "Continuous model refinement",
-              "Anomaly correlation engine",
-              "Predictive pattern extraction",
-            ].map((label) => (
-              <div key={label} style={{
-                padding: "18px 16px", borderRadius: 12,
-                background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)",
-                fontSize: 12, color: "rgba(129,140,248,0.9)", fontWeight: 700,
-                letterSpacing: "0.03em", lineHeight: 1.45, textAlign: "center",
-              }}>
-                {label}
-              </div>
-            ))}
-          </div>
-
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.18)", fontStyle: "italic", letterSpacing: "0.02em" }}>
-            We could explain exactly how it works. We just choose not to.
-          </p>
         </div>
       </section>
 
-      {/* ── FEATURE: SIGNALS ── */}
-      <section id="signals" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      {/* ── SECTION 6: HERO FEATURE 1 - SIGNALS ── */}
+      <section id="signals" className="reveal-section" style={{
+        padding: "120px 40px",
+        background: "linear-gradient(180deg, #09090f 0%, rgba(168,85,247,0.02) 100%)",
+      }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 80,
+            alignItems: "center",
+          }} className="feature-hero-grid">
             <div>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Early warning</p>
-              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
-                You&apos;ll know before<br />your client does
-              </h2>
-              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                StratOS watches every connected channel around the clock. The moment ROAS tanks, a campaign breaks, spend spikes unexpectedly, or rankings slip, you get the alert with context before anyone else sees it.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {[
-                  { icon: <Radar style={{ width: 14, height: 14 }} />, text: "Automatic anomaly detection across all 16 channels simultaneously" },
-                  { icon: <BarChart3 style={{ width: 14, height: 14 }} />, text: "Severity-ranked feed: critical finds always surface to the top" },
-                  { icon: <FileSearch style={{ width: 14, height: 14 }} />, text: "Context attached: what changed, by how much, and when it started" },
-                  { icon: <Brain style={{ width: 14, height: 14 }} />, text: "Powered by Stratum™'s cross-channel correlation engine" },
-                ].map((b) => (
-                  <div key={b.text} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 6,
-                      background: "rgba(99,102,241,0.12)",
-                      border: "1px solid rgba(99,102,241,0.25)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#818cf8",
-                      flexShrink: 0,
-                    }}>{b.icon}</div>
-                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b.text}</span>
-                  </div>
-                ))}
+              <div style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 14px",
+                borderRadius: 20,
+                background: "rgba(236,72,153,0.1)",
+                border: "1px solid rgba(236,72,153,0.25)",
+                marginBottom: 20,
+              }}>
+                <Radar style={{ width: 14, height: 14, color: "#f9a8d4" }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#f9a8d4", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  Signals
+                </span>
               </div>
+              
+              <h2 style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 20, color: "white", lineHeight: 1.15 }}>
+                See what moved<br />before your client does
+              </h2>
+              
+              <p style={{ fontSize: 16, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
+                Signals is the first thing you open. Every morning, every anomaly across every channel is already surfaced, sorted by severity, with full context attached. The stuff that matters is at the top.
+              </p>
+              
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+                {[
+                  "Automatic anomaly detection across all 16 channels",
+                  "Severity scoring—know what needs attention first",
+                  "Historical context and pattern recognition",
+                  "One-click drill-down to channel detail",
+                ].map((item, i) => (
+                  <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <CheckCircle2 style={{ width: 18, height: 18, color: "#10b981", flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.65)", lineHeight: 1.6 }}>{item}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
+
+            <div className="mockup-3d" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
               <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
@@ -976,104 +915,149 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ── FEATURE: BUDGET ADVISOR ── */}
-      <section id="budget" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      {/* ── SECTION 7: HERO FEATURE 2 - AI ANALYST / CHAT ── */}
+      <section id="ai-analyst" className="reveal-section" style={{
+        padding: "120px 40px",
+        background: "linear-gradient(180deg, rgba(168,85,247,0.02) 0%, rgba(99,102,241,0.02) 100%)",
+      }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
-            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 80,
+            alignItems: "center",
+          }} className="feature-hero-grid">
+            <div className="mockup-3d" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
               <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>Budget Advisor · This week</span>
+                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>Stratum™ · Acme Corp</span>
               </div>
-              <div style={{ padding: 20 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14 }}>Channel efficiency · ROAS by spend</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {([
-                    { ch: "Google Search", spend: "£2,800", roas: "6.2×", width: "88%", color: "#10b981", tag: "Best performer" },
-                    { ch: "Google Shopping", spend: "£1,400", roas: "4.8×", width: "68%", color: "#6366f1", tag: "Stable" },
-                    { ch: "Meta Ads", spend: "£3,200", roas: "1.9×", width: "27%", color: "#ef4444", tag: "Underperforming" },
-                    { ch: "LinkedIn Ads", spend: "£800", roas: "2.1×", width: "30%", color: "#f59e0b", tag: "Low volume" },
-                  ] as { ch: string; spend: string; roas: string; width: string; color: string; tag: string }[]).map((c, ci) => (
-                    <div key={c.ch}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>{c.ch}</span>
-                          <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 20, background: `${c.color}20`, color: c.color, fontWeight: 700 }}>{c.tag}</span>
-                        </div>
-                        <div>
-                          <span style={{ fontSize: 12, fontWeight: 800, color: "white" }}>{c.roas}</span>
-                          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginLeft: 6 }}>{c.spend}</span>
-                        </div>
-                      </div>
-                      <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 3 }}>
-                        <div className={`b-bar b${ci + 1}`} style={{ height: 6, width: c.width, background: c.color, borderRadius: 3, opacity: 0.7 }} />
-                      </div>
-                    </div>
-                  ))}
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <div style={{ padding: "10px 14px", borderRadius: "12px 12px 4px 12px", background: "rgba(99,102,241,0.18)", border: "1px solid rgba(99,102,241,0.28)", maxWidth: "80%", fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>
+                    Why did sessions drop on Thursday?
+                  </div>
                 </div>
-                <div style={{ marginTop: 20, padding: "14px 16px", borderRadius: 12, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)" }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", marginBottom: 5 }}>Recommendation</p>
-                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.55 }}>
-                    Move <strong style={{ color: "white" }}>£1,200</strong> from Meta Ads to Google Search. Projected improvement: <strong style={{ color: "#10b981" }}>+£7,400 ROAS/mo</strong>
-                  </p>
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.35)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, color: "#818cf8", marginTop: 2 }}>S</div>
+                  <div style={{ padding: "12px 14px", borderRadius: "4px 12px 12px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", flex: 1, fontSize: 12, color: "rgba(255,255,255,0.62)", lineHeight: 1.7 }}>
+                    Thursday saw a <span style={{ color: "#ef4444", fontWeight: 700 }}>−31% drop</span> in organic sessions (1,247 vs 7-day avg of 1,803). Cross-referencing Search Console, avg. position for non-brand terms fell from <strong style={{ color: "white" }}>4.2 to 6.8</strong>. Paid traffic was unaffected (+3%). <span style={{ color: "rgba(129,140,248,0.8)" }}>Recommend refreshing content on your 3 highest-traffic landing pages.</span>
+                  </div>
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <div style={{ padding: "10px 14px", borderRadius: "12px 12px 4px 12px", background: "rgba(99,102,241,0.18)", border: "1px solid rgba(99,102,241,0.28)", maxWidth: "80%", fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>
+                    Which campaign should we pause?
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.35)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, color: "#818cf8", marginTop: 2 }}>S</div>
+                  <div style={{ padding: "12px 16px", borderRadius: "4px 12px 12px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", gap: 5, alignItems: "center" }}>
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#818cf8" }} className="stratum-pulse" />
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#818cf8", opacity: 0.6 }} className="stratum-pulse" />
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#818cf8", opacity: 0.35 }} className="stratum-pulse" />
+                  </div>
                 </div>
               </div>
             </div>
+
             <div>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Budget advisor</p>
-              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
-                Stop guessing where<br />to put the money
-              </h2>
-              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                Every paid channel laid out side by side: ROAS, spend and efficiency, with a clear recommendation on where a budget shift would have the biggest return. It shows you the projected numbers. You make the call.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {[
-                  "Compares every active paid channel in the same view",
-                  "ROAS, CPA and efficiency scores updated daily from live data",
-                  "Projected £/$ impact shown before you move a penny",
-                  "Pairs with 90-day forecasting to model the downstream effect",
-                ].map((b) => (
-                  <div key={b} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />
-                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b}</span>
-                  </div>
-                ))}
+              <div style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 14px",
+                borderRadius: 20,
+                background: "rgba(99,102,241,0.12)",
+                border: "1px solid rgba(99,102,241,0.3)",
+                marginBottom: 20,
+              }}>
+                <Brain style={{ width: 14, height: 14, color: "#a5b4fc" }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  AI Analyst
+                </span>
               </div>
+              
+              <h2 style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 20, color: "white", lineHeight: 1.15 }}>
+                Ask anything.<br />Get answers that actually make sense.
+              </h2>
+              
+              <p style={{ fontSize: 16, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
+                Stratum™ reads every connected platform before it answers. Ask it why CPC spiked on Thursday, and it&apos;ll check GA4, Google Ads, Meta, landing page performance, and historical patterns before it responds.
+              </p>
+              
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+                {[
+                  "Natural language queries—ask like you're talking to a human",
+                  "Cross-platform analysis before every response",
+                  "Cites sources with drill-down links to the data",
+                  "Remembers conversation context for follow-up questions",
+                ].map((item, i) => (
+                  <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <CheckCircle2 style={{ width: 18, height: 18, color: "#10b981", flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.65)", lineHeight: 1.6 }}>{item}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── FEATURE: REPORTS ── */}
-      <section id="reports" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      {/* ── SECTION 8: HERO FEATURE 3 - REPORTS ── */}
+      <section id="reports" className="reveal-section" style={{
+        padding: "120px 40px",
+        background: "linear-gradient(180deg, rgba(99,102,241,0.02) 0%, #09090f 100%)",
+      }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 80,
+            alignItems: "center",
+          }} className="feature-hero-grid">
             <div>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Reporting</p>
-              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
-                Reports that don&apos;t<br />wreck your Wednesday
-              </h2>
-              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                Pull data from every connected channel, drag the sections into the order you want, generate Stratum™ commentary in one click, and share a live link or export a branded PDF. The whole thing takes under 20 minutes.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {[
-                  "Data pulled directly from each channel, no copy-pasting required",
-                  "Stratum™ writes the commentary: what moved, why, what to do about it",
-                  "Drag-to-reorder sections, add custom text, include screenshots",
-                  "Share as a live link or export as a branded PDF",
-                ].map((b) => (
-                  <div key={b} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />
-                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b}</span>
-                  </div>
-                ))}
+              <div style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 14px",
+                borderRadius: 20,
+                background: "rgba(16,185,129,0.1)",
+                border: "1px solid rgba(16,185,129,0.25)",
+                marginBottom: 20,
+              }}>
+                <FileText style={{ width: 14, height: 14, color: "#6ee7b7" }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#6ee7b7", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  Reports
+                </span>
               </div>
+              
+              <h2 style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 20, color: "white", lineHeight: 1.15 }}>
+                Client reports in minutes,<br />not Tuesday afternoon
+              </h2>
+              
+              <p style={{ fontSize: 16, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
+                Drag in the blocks you want. Stratum™ writes the commentary. You tweak if needed. Generate a PDF or share a live link. The entire process takes 10 minutes instead of three hours.
+              </p>
+              
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+                {[
+                  "90+ pre-built report blocks across all 16 channels",
+                  "AI-generated commentary that reads like you wrote it",
+                  "Branded PDFs or live shareable links",
+                  "Schedule reports to generate and send automatically",
+                ].map((item, i) => (
+                  <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <CheckCircle2 style={{ width: 18, height: 18, color: "#10b981", flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.65)", lineHeight: 1.6 }}>{item}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
+
+            <div className="mockup-3d" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
               <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
@@ -1101,9 +1085,9 @@ export default function LoginPage() {
                   ))}
                 </div>
                 <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(99,102,241,0.07)", border: "1px solid rgba(99,102,241,0.15)", marginBottom: 12 }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", marginBottom: 5 }}>Stratum<sup style={{ fontSize: "0.7em", verticalAlign: "super" }}>™</sup> Commentary: Executive Summary</p>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", marginBottom: 5 }}>Stratum<sup style={{ fontSize: "0.7em", verticalAlign: "super" }}>™</sup> Commentary</p>
                   <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
-                    &ldquo;Sessions were up 14% on the previous period, driven primarily by organic (+22%) and paid search (+9%). ROAS across paid channels averaged 4.2×, though Meta underperformed expectations…&rdquo;
+                    &ldquo;Sessions were up 14% on the previous period, driven primarily by organic (+22%) and paid search (+9%). ROAS across paid channels averaged 4.2×, though Meta underperformed…&rdquo;
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -1116,788 +1100,316 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ── FEATURE: FORECASTING ── */}
-      <section id="forecasting" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
-            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
-              <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>90-Day Forecast · Revenue · Acme Corp</span>
-              </div>
-              <div style={{ padding: 20 }}>
-                <div style={{ display: "flex", gap: 20, marginBottom: 20 }}>
-                  {[
-                    { val: "£48,200", label: "Expected · 90 days", color: "#a5b4fc" },
-                    { val: "£58,400", label: "Best case", color: "#10b981" },
-                    { val: "£36,100", label: "Worst case", color: "rgba(239,68,68,0.75)" },
-                  ].map((s) => (
-                    <div key={s.label} style={{ textAlign: "center", flex: 1 }}>
-                      <div style={{ fontSize: 18, fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.val}</div>
-                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 4, fontWeight: 600 }}>{s.label}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 10, padding: "16px 8px 8px" }}>
-                  <svg viewBox="0 0 440 160" style={{ width: "100%", height: "auto", display: "block" }}>
-                    <line x1="0" y1="40" x2="440" y2="40" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-                    <line x1="0" y1="80" x2="440" y2="80" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-                    <line x1="0" y1="120" x2="440" y2="120" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-                    <line x1="190" y1="0" x2="190" y2="150" stroke="rgba(99,102,241,0.25)" strokeWidth="1" strokeDasharray="4,3" />
-                    <path className="fc-fill" d="M190,90 L250,78 L310,64 L370,48 L430,36 L430,116 L370,106 L310,100 L250,98 L190,90Z" fill="rgba(99,102,241,0.1)" />
-                    <polyline className="fc-hist" points="20,138 65,124 110,110 150,100 190,90" fill="none" stroke="rgba(129,140,248,0.55)" strokeWidth="2.5" strokeLinecap="round" />
-                    <polyline className="fc-exp" points="190,90 250,86 310,80 370,74 430,66" fill="none" stroke="#818cf8" strokeWidth="2.5" strokeDasharray="7,3" strokeLinecap="round" />
-                    <polyline className="fc-best" points="190,90 250,78 310,64 370,48 430,36" fill="none" stroke="rgba(16,185,129,0.6)" strokeWidth="1.5" strokeDasharray="4,4" />
-                    <polyline className="fc-worst" points="190,90 250,98 310,100 370,106 430,116" fill="none" stroke="rgba(239,68,68,0.45)" strokeWidth="1.5" strokeDasharray="4,4" />
-                    <circle className="fc-fill" cx="190" cy="90" r="4" fill="#818cf8" />
-                    <text x="95" y="154" textAnchor="middle" fill="rgba(255,255,255,0.18)" fontSize="9" fontFamily="sans-serif">Historical</text>
-                    <text x="190" y="154" textAnchor="middle" fill="rgba(99,102,241,0.55)" fontSize="9" fontFamily="sans-serif">Now</text>
-                    <text x="315" y="154" textAnchor="middle" fill="rgba(99,102,241,0.6)" fontSize="9" fontFamily="sans-serif">90-day forecast</text>
-                  </svg>
-                </div>
-                <div style={{ display: "flex", gap: 16, marginTop: 10, justifyContent: "flex-end" }}>
-                  {([
-                    { label: "Best", color: "rgba(16,185,129,0.5)", dash: "4,4" },
-                    { label: "Expected", color: "#818cf8", dash: "7,3" },
-                    { label: "Worst", color: "rgba(239,68,68,0.38)", dash: "4,4" },
-                  ] as { label: string; color: string; dash: string }[]).map((l) => (
-                    <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                      <svg width="18" height="3" style={{ display: "block" }}>
-                        <line x1="0" y1="1.5" x2="18" y2="1.5" stroke={l.color} strokeWidth="2" strokeDasharray={l.dash} />
-                      </svg>
-                      <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>{l.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Forecasting</p>
-              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
-                See 90 days ahead,<br />not just last month
-              </h2>
-              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                Real projections built from your actual historical data, not generic benchmarks. Best, expected, and worst-case bands for 30, 60 and 90 days out. The kind of forward visibility that turns account reviews into genuine strategic conversations.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {[
-                  "Built from your own historical data, not industry averages",
-                  "30, 60 and 90-day projections with confidence bands",
-                  "Seasonality patterns detected and factored in automatically",
-                  "Per-channel and rolled-up cross-channel forecasting",
-                ].map((b) => (
-                  <div key={b} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />
-                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FEATURE: STRATUM ANALYST ── */}
-      <section id="ai-analyst" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
-            <div>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Stratum<sup style={{ fontSize: "0.7em", verticalAlign: "super" }}>™</sup> Analyst</p>
-              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
-                Just ask it
-              </h2>
-              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                Every client dashboard has a conversational Stratum<sup style={{ fontSize: "0.65em", verticalAlign: "super" }}>™</sup> analyst built in. It&apos;s read all the data from every connected channel, knows the account&apos;s history, and can answer questions you&apos;d normally spend an hour digging for answers to yourself.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {[
-                  "Full cross-channel context, not just one platform at a time",
-                  "Ask in plain English. It handles the analysis, not you.",
-                  "Every answer links back to the underlying data",
-                  "Powered by Stratum™: surfaces insights invisible to single-channel views",
-                ].map((b) => (
-                  <div key={b} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />
-                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
-              <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>Stratum™ · Acme Corp</span>
-              </div>
-              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <div style={{ padding: "10px 14px", borderRadius: "12px 12px 4px 12px", background: "rgba(99,102,241,0.18)", border: "1px solid rgba(99,102,241,0.28)", maxWidth: "80%", fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>
-                    Why did sessions drop on Thursday?
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.35)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, color: "#818cf8", marginTop: 2 }}>S</div>
-                  <div style={{ padding: "12px 14px", borderRadius: "4px 12px 12px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", flex: 1, fontSize: 12, color: "rgba(255,255,255,0.62)", lineHeight: 1.7 }}>
-                    Thursday saw a <span style={{ color: "#ef4444", fontWeight: 700 }}>−31% drop</span> in organic sessions (1,247 vs 7-day avg of 1,803). Cross-referencing Search Console, avg. position for non-brand terms fell from <strong style={{ color: "white" }}>4.2 to 6.8</strong>, consistent with a broad core update. Paid traffic was unaffected (+3%). <span style={{ color: "rgba(129,140,248,0.8)" }}>Recommend refreshing content on your 3 highest-traffic landing pages.</span>
-                  </div>
-                </div>
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <div style={{ padding: "10px 14px", borderRadius: "12px 12px 4px 12px", background: "rgba(99,102,241,0.18)", border: "1px solid rgba(99,102,241,0.28)", maxWidth: "80%", fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 1.5 }}>
-                    Which campaign should we pause?
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(99,102,241,0.2)", border: "1px solid rgba(99,102,241,0.35)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, color: "#818cf8", marginTop: 2 }}>S</div>
-                  <div style={{ padding: "12px 16px", borderRadius: "4px 12px 12px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", gap: 5, alignItems: "center" }}>
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#818cf8" }} className="stratum-pulse" />
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#818cf8", opacity: 0.6 }} className="stratum-pulse" />
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#818cf8", opacity: 0.35 }} className="stratum-pulse" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FEATURE: CLIENT PORTAL ── */}
-      <section id="portal" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
-            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
-              <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>Client Portal · Riverside Fitness</span>
-              </div>
-              <div style={{ padding: 20 }}>
-                <div style={{ marginBottom: 18 }}>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.6)", marginBottom: 3 }}>Good morning, Sarah</p>
-                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>Here&apos;s how your marketing is performing this month.</p>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
-                  {([
-                    { label: "Sessions", value: "24,831", change: "+8%", up: true },
-                    { label: "ROAS", value: "4.2×", change: "+0.3", up: true },
-                    { label: "Conversions", value: "842", change: "+12%", up: true },
-                  ] as { label: string; value: string; change: string; up: boolean }[]).map((m) => (
-                    <div key={m.label} style={{ padding: "12px 10px", borderRadius: 10, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: "white", marginBottom: 2 }}>{m.value}</div>
-                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>{m.label}</div>
-                      <div style={{ fontSize: 10, color: m.up ? "#10b981" : "#ef4444", fontWeight: 700, marginTop: 3 }}>{m.change}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ marginBottom: 14 }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Goals this month</p>
-                  {([
-                    { label: "Monthly revenue target", pct: 78 },
-                    { label: "Lead volume target", pct: 91 },
-                  ] as { label: string; pct: number }[]).map((g, gi) => (
-                    <div key={g.label} style={{ marginBottom: 10 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>{g.label}</span>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(129,140,248,0.8)" }}>{g.pct}%</span>
-                      </div>
-                      <div style={{ height: 5, background: "rgba(255,255,255,0.06)", borderRadius: 3 }}>
-                        <div className={`goal-bar g${gi + 1}`} style={{ height: 5, width: `${g.pct}%`, background: "rgba(99,102,241,0.65)", borderRadius: 3 }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.6)" }}>March 2026 Report</p>
-                    <p style={{ fontSize: 10, color: "rgba(255,255,255,0.22)" }}>Shared 2 Apr 2026</p>
-                  </div>
-                  <span style={{ fontSize: 11, color: "#a5b4fc", fontWeight: 600 }}>View →</span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>Client portal</p>
-              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
-                Clients get a view<br />that makes sense
-              </h2>
-              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                Each client gets their own portal: goals, reports, and the key numbers that matter to them. Not raw data. Not 15 different platform logins. Just a clean view that keeps them informed and out of your hair.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {[
-                  "Magic link login, no extra account to manage for your client",
-                  "Customised to show only the metrics that matter for that account",
-                  "Reports shared directly: clients read them here, not in email threads",
-                  "Goals and targets tracked with progress bars so progress is always visible",
-                ].map((b) => (
-                  <div key={b} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366f1", flexShrink: 0, marginTop: 6 }} />
-                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── NEW: PORTFOLIO HEALTH DASHBOARD ── */}
-      <section id="portfolio" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(168,85,247,0.015)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
-            <div>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#a855f7", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
-                <Building2 style={{ width: 14, height: 14, display: "inline", marginRight: 6, verticalAlign: "middle" }} />
-                Portfolio Health
-              </p>
-              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
-                Every account.<br />One view. Zero chaos.
-              </h2>
-              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                The Portfolio Health Dashboard gives you an agency-wide view: every client, their health score, churn risk, anomaly count, and goal achievement, all in one place. No more hopping between accounts to see who needs attention.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {[
-                  { icon: <Gauge style={{ width: 14, height: 14 }} />, text: "Colour-coded health scores for every client at a glance" },
-                  { icon: <AlertTriangle style={{ width: 14, height: 14 }} />, text: "Churn risk indicators based on performance trends" },
-                  { icon: <ListTodo style={{ width: 14, height: 14 }} />, text: "Open actions count per client, straight to task management" },
-                  { icon: <Trophy style={{ width: 14, height: 14 }} />, text: "Goal achievement rates show who's flying and who needs help" },
-                ].map((b) => (
-                  <div key={b.text} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 6,
-                      background: "rgba(168,85,247,0.12)",
-                      border: "1px solid rgba(168,85,247,0.25)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#a855f7",
-                      flexShrink: 0,
-                    }}>{b.icon}</div>
-                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b.text}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
-              <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>Portfolio Health · i3MEDIA</span>
-              </div>
-              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-                {([
-                  { name: "Acme Corp", health: 92, churn: "Low", actions: 2, goals: 88, color: "#10b981" },
-                  { name: "Riverside Fitness", health: 78, churn: "Medium", actions: 5, goals: 72, color: "#f59e0b" },
-                  { name: "TechFlow Ltd", health: 45, churn: "High", actions: 12, goals: 41, color: "#ef4444" },
-                  { name: "Blue Horizon", health: 85, churn: "Low", actions: 1, goals: 91, color: "#10b981" },
-                ] as { name: string; health: number; churn: string; actions: number; goals: number; color: string }[]).map((c) => (
-                  <div key={c.name} style={{
-                    padding: "12px 14px",
-                    borderRadius: 10,
-                    background: "rgba(255,255,255,0.025)",
-                    border: `1px solid ${c.color}40`,
-                    borderLeft: `3px solid ${c.color}`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                  }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.85)", marginBottom: 3 }}>{c.name}</div>
-                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>Health: {c.health}% · Churn: {c.churn}</div>
-                    </div>
-                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                      <div style={{ textAlign: "center" }}>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: c.actions > 5 ? "#ef4444" : "rgba(255,255,255,0.6)" }}>{c.actions}</div>
-                        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)" }}>actions</div>
-                      </div>
-                      <div style={{ textAlign: "center" }}>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: "rgba(255,255,255,0.6)" }}>{c.goals}%</div>
-                        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)" }}>goals</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── NEW: ACTION TRACKING & LIFECYCLE ── */}
-      <section id="actions" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+      {/* ── SECTION 9: BENTO GRID - REMAINING FEATURES ── */}
+      <section id="features" className="reveal-section" style={{
+        padding: "120px 40px",
+        background: "linear-gradient(180deg, #09090f 0%, rgba(99,102,241,0.02) 50%, #09090f 100%)",
+      }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
-              <Workflow style={{ width: 14, height: 14, display: "inline", marginRight: 6, verticalAlign: "middle" }} />
-              Action Tracking
-            </p>
-            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
-              From insight to outcome.<br />All tracked, all measurable.
+            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }} className="blur-reveal">
+              Everything else you need
             </h2>
-            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 600, margin: "0 auto", lineHeight: 1.7 }}>
-              Stratum™ spots the issue. You assign it to the team. StratOS tracks it to completion and measures the outcome. Every recommendation becomes a trackable action with a full lifecycle.
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 620, margin: "0 auto", lineHeight: 1.7 }}>
+              Beyond the headline features, StratOS includes all the tools a modern agency needs to run client accounts efficiently.
             </p>
-          </div>
-          
-          <div style={{
-            background: "rgba(255,255,255,0.025)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 16,
-            padding: "48px 40px",
-            position: "relative",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 32 }} className="actions-flow">
-              {([
-                { icon: <Radar style={{ width: 20, height: 20 }} />, label: "AI spots issue", color: "#ef4444" },
-                { icon: <ChevronRight style={{ width: 16, height: 16, opacity: 0.3 }} />, label: "", color: "" },
-                { icon: <Wand2 style={{ width: 20, height: 20 }} />, label: "Creates recommendation", color: "#f59e0b" },
-                { icon: <ChevronRight style={{ width: 16, height: 16, opacity: 0.3 }} />, label: "", color: "" },
-                { icon: <Users style={{ width: 20, height: 20 }} />, label: "Assigned to team", color: "#3b82f6" },
-                { icon: <ChevronRight style={{ width: 16, height: 16, opacity: 0.3 }} />, label: "", color: "" },
-                { icon: <CheckCircle2 style={{ width: 20, height: 20 }} />, label: "Tracked to completion", color: "#10b981" },
-                { icon: <ChevronRight style={{ width: 16, height: 16, opacity: 0.3 }} />, label: "", color: "" },
-                { icon: <BarChart3 style={{ width: 20, height: 20 }} />, label: "Measured outcome", color: "#a855f7" },
-              ] as { icon: ReactNode; label: string; color: string }[]).map((step, idx) => (
-                <div key={idx} style={{
-                  flex: step.label ? 1 : 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 12,
-                }}>
-                  {step.label ? (
-                    <>
-                      <div style={{
-                        width: 56,
-                        height: 56,
-                        borderRadius: "50%",
-                        background: `${step.color}15`,
-                        border: `2px solid ${step.color}40`,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: step.color,
-                      }}>{step.icon}</div>
-                      <div style={{
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: "rgba(255,255,255,0.6)",
-                        textAlign: "center",
-                        lineHeight: 1.3,
-                      }}>{step.label}</div>
-                    </>
-                  ) : (
-                    <div style={{ marginTop: 24, color: "rgba(255,255,255,0.15)" }}>{step.icon}</div>
-                  )}
-                </div>
-              ))}
-            </div>
           </div>
 
-          <div style={{ marginTop: 48, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
-            {[
-              { icon: <ListTodo style={{ width: 18, height: 18 }} />, label: "Full task assignment", desc: "Assign, track, complete" },
-              { icon: <Clock style={{ width: 18, height: 18 }} />, label: "Outcome measurement", desc: "See if it actually worked" },
-              { icon: <Users style={{ width: 18, height: 18 }} />, label: "Team accountability", desc: "Know who's handling what" },
-              { icon: <Activity style={{ width: 18, height: 18 }} />, label: "Historical view", desc: "Every action, every outcome" },
-            ].map((feat) => (
-              <div key={feat.label} style={{
-                background: "rgba(255,255,255,0.02)",
-                border: "1px solid rgba(255,255,255,0.06)",
-                borderRadius: 12,
-                padding: "20px 18px",
-                textAlign: "center",
-              }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(6, 1fr)",
+            gridTemplateRows: "repeat(4, 200px)",
+            gap: 20,
+          }} className="bento-grid">
+            {/* Budget Intelligence - Large */}
+            <div className="bento-card stagger-in" style={{
+              gridColumn: "span 3",
+              gridRow: "span 2",
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 20,
+              padding: 32,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              transition: "all 0.4s ease",
+              animationDelay: "0s",
+            }}>
+              <div>
                 <div style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 10,
-                  background: "rgba(99,102,241,0.12)",
-                  border: "1px solid rgba(99,102,241,0.25)",
+                  width: 48,
+                  height: 48,
+                  borderRadius: "50%",
+                  background: "rgba(245,158,11,0.15)",
+                  border: "1px solid rgba(245,158,11,0.3)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: "#818cf8",
-                  margin: "0 auto 12px",
-                }}>{feat.icon}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.75)", marginBottom: 4 }}>{feat.label}</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{feat.desc}</div>
+                  marginBottom: 20,
+                }}>
+                  <DollarSign style={{ width: 22, height: 22, color: "#fbbf24" }} />
+                </div>
+                <h3 style={{ fontSize: 22, fontWeight: 700, color: "white", marginBottom: 12, letterSpacing: "-0.02em" }}>
+                  Budget Intelligence
+                </h3>
+                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
+                  Cross-channel budget recommendations. StratOS shows you exactly where to move the spend and backs it up with performance data.
+                </p>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── NEW: NOTIFICATIONS & ALERTS ── */}
-      <section id="notifications" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(59,130,246,0.015)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }} className="feature-grid">
-            <div className="mockup-card" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden" }}>
-              <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>Notification Settings</span>
-              </div>
-              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-                {([
-                  { icon: <Mail style={{ width: 14, height: 14 }} />, label: "Email delivery", enabled: true },
-                  { icon: <Hash style={{ width: 14, height: 14 }} />, label: "Slack #alerts channel", enabled: true },
-                  { icon: <AlertTriangle style={{ width: 14, height: 14 }} />, label: "Anomaly alerts", enabled: true },
-                  { icon: <FileText style={{ width: 14, height: 14 }} />, label: "Report events", enabled: true },
-                  { icon: <Target style={{ width: 14, height: 14 }} />, label: "Goals at risk", enabled: true },
-                  { icon: <Clock style={{ width: 14, height: 14 }} />, label: "Quiet hours (22:00-08:00)", enabled: true },
-                ] as { icon: ReactNode; label: string; enabled: boolean }[]).map((n) => (
-                  <div key={n.label} style={{
-                    padding: "12px 14px",
-                    borderRadius: 10,
-                    background: "rgba(255,255,255,0.025)",
-                    border: "1px solid rgba(255,255,255,0.06)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ color: "rgba(255,255,255,0.4)" }}>{n.icon}</div>
-                      <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>{n.label}</span>
+              <div style={{
+                background: "rgba(245,158,11,0.05)",
+                borderRadius: 12,
+                padding: 16,
+              }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Channel ROAS</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {([
+                    { ch: "Google Search", roas: "6.2×", w: "88%", color: "#10b981" },
+                    { ch: "Meta Ads", roas: "1.9×", w: "27%", color: "#ef4444" },
+                    { ch: "LinkedIn", roas: "2.1×", w: "30%", color: "#f59e0b" },
+                  ] as { ch: string; roas: string; w: string; color: string }[]).map((c) => (
+                    <div key={c.ch}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{c.ch}</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: "white" }}>{c.roas}</span>
+                      </div>
+                      <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2 }}>
+                        <div style={{ height: 4, width: c.w, background: c.color, borderRadius: 2, opacity: 0.7 }} />
+                      </div>
                     </div>
-                    <div style={{
-                      width: 36,
-                      height: 20,
-                      borderRadius: 10,
-                      background: n.enabled ? "rgba(59,130,246,0.3)" : "rgba(255,255,255,0.1)",
-                      border: `1px solid ${n.enabled ? "rgba(59,130,246,0.5)" : "rgba(255,255,255,0.15)"}`,
-                      position: "relative",
-                    }}>
-                      <div style={{
-                        width: 14,
-                        height: 14,
-                        borderRadius: "50%",
-                        background: n.enabled ? "#3b82f6" : "rgba(255,255,255,0.3)",
-                        position: "absolute",
-                        top: 2,
-                        left: n.enabled ? 19 : 2,
-                        transition: "left 0.2s ease",
-                      }} />
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
-            <div>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#3b82f6", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
-                <Send style={{ width: 14, height: 14, display: "inline", marginRight: 6, verticalAlign: "middle" }} />
-                Notifications & Alerts
-              </p>
-              <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
-                Know when it matters.<br />Not every five minutes.
-              </h2>
-              <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                Stratum™ sends alerts when anomalies hit, reports are ready, or goals fall behind. Email, Slack, or both. You control the frequency, quiet hours, and which events you actually want to hear about.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {[
-                  { icon: <Mail style={{ width: 14, height: 14 }} />, text: "Email delivery via Resend (reliable, fast, no spam folder)" },
-                  { icon: <Hash style={{ width: 14, height: 14 }} />, text: "Slack integration for team channels" },
-                  { icon: <Settings style={{ width: 14, height: 14 }} />, text: "Per-user preferences: frequency, quiet hours, digest mode" },
-                  { icon: <Puzzle style={{ width: 14, height: 14 }} />, text: "Per-type enable/disable: only get the alerts you need" },
-                ].map((b) => (
-                  <div key={b.text} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 6,
-                      background: "rgba(59,130,246,0.12)",
-                      border: "1px solid rgba(59,130,246,0.25)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#3b82f6",
-                      flexShrink: 0,
-                    }}>{b.icon}</div>
-                    <span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.55 }}>{b.text}</span>
-                  </div>
-                ))}
+
+            {/* Forecasting */}
+            <div className="bento-card stagger-in" style={{
+              gridColumn: "span 3",
+              gridRow: "span 2",
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 20,
+              padding: 32,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              transition: "all 0.4s ease",
+              animationDelay: "0.1s",
+            }}>
+              <div>
+                <div style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: "50%",
+                  background: "rgba(59,130,246,0.15)",
+                  border: "1px solid rgba(59,130,246,0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 20,
+                }}>
+                  <TrendingUp style={{ width: 22, height: 22, color: "#60a5fa" }} />
+                </div>
+                <h3 style={{ fontSize: 22, fontWeight: 700, color: "white", marginBottom: 12, letterSpacing: "-0.02em" }}>
+                  90-Day Forecasting
+                </h3>
+                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
+                  Predictive forecasting with confidence intervals. Built from your actual data, not industry benchmarks.
+                </p>
+              </div>
+              <div style={{
+                background: "rgba(59,130,246,0.05)",
+                borderRadius: 12,
+                padding: 16,
+              }}>
+                <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
+                  {[
+                    { val: "£48.2k", label: "Expected", color: "#a5b4fc" },
+                    { val: "£58.4k", label: "Best", color: "#10b981" },
+                    { val: "£36.1k", label: "Worst", color: "rgba(239,68,68,0.75)" },
+                  ].map((s) => (
+                    <div key={s.label} style={{ textAlign: "center", flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.val}</div>
+                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", marginTop: 3 }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+                <svg viewBox="0 0 300 80" style={{ width: "100%", height: "auto", display: "block" }}>
+                  <line x1="0" y1="20" x2="300" y2="20" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                  <line x1="0" y1="40" x2="300" y2="40" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                  <line x1="0" y1="60" x2="300" y2="60" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+                  <line x1="130" y1="0" x2="130" y2="75" stroke="rgba(99,102,241,0.25)" strokeWidth="1" strokeDasharray="3,2" />
+                  <polyline points="10,65 50,55 90,48 130,42" fill="none" stroke="rgba(129,140,248,0.55)" strokeWidth="2" strokeLinecap="round" />
+                  <polyline points="130,42 180,38 230,34 280,28" fill="none" stroke="#818cf8" strokeWidth="2" strokeDasharray="5,3" strokeLinecap="round" />
+                  <polyline points="130,42 180,34 230,26 280,16" fill="none" stroke="rgba(16,185,129,0.5)" strokeWidth="1" strokeDasharray="3,3" />
+                  <polyline points="130,42 180,46 230,52 280,60" fill="none" stroke="rgba(239,68,68,0.4)" strokeWidth="1" strokeDasharray="3,3" />
+                  <circle cx="130" cy="42" r="3" fill="#818cf8" />
+                </svg>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* ── NEW: AGENCY TOOLKIT ── */}
-      <section id="toolkit" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(236,72,153,0.015)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 64 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#ec4899", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
-              <Briefcase style={{ width: 14, height: 14, display: "inline", marginRight: 6, verticalAlign: "middle" }} />
-              Agency Toolkit
-            </p>
-            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
-              Every tool you need.<br />All in one place.
-            </h2>
-            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 660, margin: "0 auto", lineHeight: 1.7 }}>
-              Keyword research, proposal generation, landing page analysis, content strategy, media planning, and competitive intelligence. All powered by Stratum™. All in the same login.
-            </p>
-          </div>
-          
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }} className="toolkit-grid">
-            {[
-              {
-                icon: <Search style={{ width: 20, height: 20 }} />,
-                title: "Keyword Planner",
-                desc: "SemRush-backed research with volume, difficulty, CPC, and trend data. Export to CSV or use inline.",
-                color: "#3b82f6",
-              },
-              {
-                icon: <Rocket style={{ width: 20, height: 20 }} />,
-                title: "PPC Proposal Generator",
-                desc: "Interactive forecaster, pipeline CRM, view tracking, and enquiry capture. Share a proposal link and see exactly who's read it.",
-                color: "#10b981",
-              },
-              {
-                icon: <Layout style={{ width: 20, height: 20 }} />,
-                title: "Media Plan Builder",
-                desc: "Multi-channel budget allocation with AI forecast outputs and shareable strategy docs.",
-                color: "#f59e0b",
-              },
-              {
-                icon: <BookOpen style={{ width: 20, height: 20 }} />,
-                title: "Content Strategy Generator",
-                desc: "Sector-specific content plans with topics, keywords, and publishing schedules.",
-                color: "#a855f7",
-              },
-              {
-                icon: <Monitor style={{ width: 20, height: 20 }} />,
-                title: "Landing Page Analyser",
-                desc: "CRO/SEO/Mobile/Forms scoring with AI recommendations. Know what's broken before you publish.",
-                color: "#ef4444",
-              },
-              {
-                icon: <Terminal style={{ width: 20, height: 20 }} />,
-                title: "LLM.txt Generator",
-                desc: "Sector-specific LLM context files for AI-ready brand visibility.",
-                color: "#6366f1",
-              },
-              {
-                icon: <Share2 style={{ width: 20, height: 20 }} />,
-                title: "Competitor Intelligence",
-                desc: "Share of voice, competitive monitoring, and ongoing snapshots with Stratum™ commentary.",
-                color: "#ec4899",
-              },
-            ].map((tool) => (
-              <div key={tool.title} style={{
-                background: "rgba(255,255,255,0.025)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 14,
-                padding: "28px 24px",
+            {/* Client Portal */}
+            <div className="bento-card stagger-in" style={{
+              gridColumn: "span 2",
+              gridRow: "span 2",
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 20,
+              padding: 28,
+              display: "flex",
+              flexDirection: "column",
+              transition: "all 0.4s ease",
+              animationDelay: "0.2s",
+            }}>
+              <div style={{
+                width: 44,
+                height: 44,
+                borderRadius: "50%",
+                background: "rgba(168,85,247,0.15)",
+                border: "1px solid rgba(168,85,247,0.3)",
                 display: "flex",
-                flexDirection: "column",
-                gap: 14,
-                transition: "all 0.25s ease",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 18,
+              }}>
+                <Monitor style={{ width: 20, height: 20, color: "#c084fc" }} />
+              </div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: "white", marginBottom: 10, letterSpacing: "-0.01em" }}>
+                Client Portal
+              </h3>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>
+                Branded dashboards. Clients see the KPIs you choose. Magic-link login. No passwords.
+              </p>
+            </div>
+
+            {/* Portfolio View */}
+            <div className="bento-card stagger-in" style={{
+              gridColumn: "span 2",
+              gridRow: "span 2",
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 20,
+              padding: 28,
+              display: "flex",
+              flexDirection: "column",
+              transition: "all 0.4s ease",
+              animationDelay: "0.25s",
+            }}>
+              <div style={{
+                width: 44,
+                height: 44,
+                borderRadius: "50%",
+                background: "rgba(236,72,153,0.15)",
+                border: "1px solid rgba(236,72,153,0.3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 18,
+              }}>
+                <Briefcase style={{ width: 20, height: 20, color: "#f9a8d4" }} />
+              </div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: "white", marginBottom: 10, letterSpacing: "-0.01em" }}>
+                Portfolio View
+              </h3>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>
+                See all client accounts at once. Spot trends across your entire book. Surface issues before the client calls.
+              </p>
+            </div>
+
+            {/* Actions & Tasks */}
+            <div className="bento-card stagger-in" style={{
+              gridColumn: "span 2",
+              gridRow: "span 2",
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 20,
+              padding: 28,
+              display: "flex",
+              flexDirection: "column",
+              transition: "all 0.4s ease",
+              animationDelay: "0.3s",
+            }}>
+              <div style={{
+                width: 44,
+                height: 44,
+                borderRadius: "50%",
+                background: "rgba(16,185,129,0.15)",
+                border: "1px solid rgba(16,185,129,0.3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 18,
+              }}>
+                <ListTodo style={{ width: 20, height: 20, color: "#6ee7b7" }} />
+              </div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: "white", marginBottom: 10, letterSpacing: "-0.01em" }}>
+                Actions & Tasks
+              </h3>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>
+                Assign actions to team members. Track follow-up. Turn insights into accountable next steps.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── SECTION 10: AGENCY TOOLKIT ── */}
+      <section id="toolkit" className="reveal-section" style={{
+        padding: "120px 40px",
+        background: "linear-gradient(180deg, #09090f 0%, rgba(168,85,247,0.02) 100%)",
+      }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 56 }}>
+            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }} className="blur-reveal">
+              Built-in agency tools
+            </h2>
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 640, margin: "0 auto", lineHeight: 1.7 }}>
+              StratOS isn&apos;t just reporting. We&apos;ve built the tools agencies actually use day-to-day—all AI-powered, all in one place.
+            </p>
+          </div>
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 20,
+          }} className="toolkit-grid">
+            {[
+              { icon: <Search style={{ width: 22, height: 22 }} />, title: "Keyword Planner", desc: "SemRush-backed research with volume, difficulty, CPC, and trend data. Export to CSV or use inline.", color: "#3b82f6" },
+              { icon: <Rocket style={{ width: 22, height: 22 }} />, title: "PPC Proposal Generator", desc: "Interactive forecaster with pipeline CRM, view tracking, and enquiry capture. Share a link and see who's read it.", color: "#10b981" },
+              { icon: <Layers style={{ width: 22, height: 22 }} />, title: "Media Plan Builder", desc: "Multi-channel budget allocation with AI forecast outputs and shareable strategy docs.", color: "#f59e0b" },
+              { icon: <BookOpen style={{ width: 22, height: 22 }} />, title: "Content Strategy", desc: "Sector-specific content plans with topics, keywords, and publishing schedules.", color: "#a855f7" },
+              { icon: <Monitor style={{ width: 22, height: 22 }} />, title: "Landing Page Analyser", desc: "CRO/SEO/Mobile/Forms scoring with AI recommendations. Know what's broken before you publish.", color: "#ef4444" },
+              { icon: <Terminal style={{ width: 22, height: 22 }} />, title: "LLM.txt Generator", desc: "Sector-specific LLM context files for AI-ready brand visibility.", color: "#6366f1" },
+              { icon: <Share2 style={{ width: 22, height: 22 }} />, title: "Competitor Intelligence", desc: "Share of voice, competitive monitoring, and ongoing snapshots with Stratum™ commentary.", color: "#ec4899" },
+              { icon: <Palette style={{ width: 22, height: 22 }} />, title: "Creative Intelligence", desc: "Ad creative performance analysis and fatigue detection across all paid channels.", color: "#14b8a6" },
+            ].map((tool, i) => (
+              <div key={i} className="tool-card stagger-in" style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 16,
+                padding: 32,
+                transition: "all 0.4s ease",
+                animationDelay: `${i * 0.08}s`,
               }}>
                 <div style={{
                   width: 52,
                   height: 52,
-                  borderRadius: 12,
-                  background: `${tool.color}15`,
-                  border: `1px solid ${tool.color}30`,
+                  borderRadius: "50%",
+                  background: `${tool.color}18`,
+                  border: `1px solid ${tool.color}35`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   color: tool.color,
-                }}>{tool.icon}</div>
-                <div>
-                  <h3 style={{
-                    fontSize: 16,
-                    fontWeight: 700,
-                    color: "rgba(255,255,255,0.85)",
-                    marginBottom: 8,
-                    lineHeight: 1.3,
-                  }}>{tool.title}</h3>
-                  <p style={{
-                    fontSize: 13,
-                    color: "rgba(255,255,255,0.4)",
-                    lineHeight: 1.6,
-                  }}>{tool.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── MID-PAGE CTA ── */}
-      <section id="mid-cta" className="reveal-section" style={{
-        padding: "100px 40px",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
-        background: "linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(168,85,247,0.06) 100%)",
-        position: "relative",
-        overflow: "hidden",
-      }}>
-        <div style={{
-          position: "absolute",
-          width: "50%",
-          paddingBottom: "50%",
-          top: "-10%",
-          right: "-10%",
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }} />
-        <div style={{ maxWidth: 800, margin: "0 auto", textAlign: "center", position: "relative" }}>
-          <div style={{
-            width: 64,
-            height: 64,
-            borderRadius: "50%",
-            background: "rgba(99,102,241,0.15)",
-            border: "2px solid rgba(99,102,241,0.3)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 24px",
-          }}>
-            <Sparkles style={{ width: 28, height: 28, color: "#818cf8" }} />
-          </div>
-          <h2 className="mid-cta-h2" style={{
-            fontSize: 48,
-            fontWeight: 900,
-            letterSpacing: "-0.04em",
-            lineHeight: 1.1,
-            marginBottom: 20,
-            background: "linear-gradient(135deg, #ffffff, #a5b4fc)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}>
-            Stop stitching platforms together.<br />Start seeing the whole picture.
-          </h2>
-          <p style={{
-            fontSize: 17,
-            color: "rgba(255,255,255,0.5)",
-            lineHeight: 1.75,
-            marginBottom: 36,
-            maxWidth: 600,
-            margin: "0 auto 36px",
-          }}>
-            16 channels. One login. No more context-switching, no more Monday morning spreadsheet rituals, no more finding out about problems from your client.
-          </p>
-          <a
-            href="#access"
-            className="cta-primary"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "16px 32px",
-              borderRadius: 12,
-              background: "linear-gradient(135deg, #6366f1, #7c3aed)",
-              border: "none",
-              color: "white",
-              fontSize: 16,
-              fontWeight: 700,
-              textDecoration: "none",
-              boxShadow: "0 0 40px rgba(99,102,241,0.5), 0 8px 24px rgba(0,0,0,0.3)",
-            }}
-          >
-            Get access
-            <ArrowRight style={{ width: 18, height: 18 }} />
-          </a>
-        </div>
-      </section>
-
-      {/* ── ALSO IN STRATOS — EXPANDED ── */}
-      <section id="also-in-stratos" className="reveal-section" style={{ padding: "80px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.01)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 48 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 12 }}>Also in StratOS</p>
-            <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", color: "white", lineHeight: 1.15 }}>There&apos;s a lot more under the bonnet</h2>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }} className="also-grid">
-            {[
-              { icon: <GitBranch style={{ width: 16, height: 16 }} />, title: "Multi-touch attribution", desc: "Five models side by side: last-click, first-click, linear, time-decay, position-based. See who actually gets the credit." },
-              { icon: <Activity style={{ width: 16, height: 16 }} />, title: "Seasonality intelligence", desc: "Automatic pattern detection across historical snapshots. Catch seasonal trends before they catch you out." },
-              { icon: <Megaphone style={{ width: 16, height: 16 }} />, title: "Share of voice tracking", desc: "Organic and paid competitive position against your rivals, updated with live SemRush data." },
-              { icon: <BookOpen style={{ width: 16, height: 16 }} />, title: "Strategy documents", desc: "Forward-looking strategy docs per client, generated by Stratum™ and shareable via link." },
-              { icon: <Radar style={{ width: 16, height: 16 }} />, title: "Competitor monitoring", desc: "Ongoing competitive snapshots with Stratum™ commentary, saved to history so you can see how the landscape is shifting." },
-              { icon: <Search style={{ width: 16, height: 16 }} />, title: "Keyword planning & proposals", desc: "Research keywords, build proposals with projected traffic and value, and share them with link-tracked engagement." },
-              { icon: <MessageSquare style={{ width: 16, height: 16 }} />, title: "Communications hub", desc: "Centralised log for emails, calls, meetings, notes with email drafting. Never lose track of a client conversation." },
-              { icon: <ShieldCheck style={{ width: 16, height: 16 }} />, title: "Role-based access", desc: "11 granular permissions with a role editor. Control who sees what, down to the individual client level." },
-              { icon: <Clock style={{ width: 16, height: 16 }} />, title: "Nightly automated snapshots", desc: "Every account, every channel, every night. Historical data that powers forecasting and trend detection." },
-              { icon: <Target style={{ width: 16, height: 16 }} />, title: "Goals & KPI tracking", desc: "Full goal tracking with auto-syncing currentValue from snapshots, targets, progress bars." },
-              { icon: <FileText style={{ width: 16, height: 16 }} />, title: "Automated monthly reports", desc: "Cron-triggered report generation on a schedule. Set it, forget it, approve it." },
-              { icon: <Layout style={{ width: 16, height: 16 }} />, title: "Media plan builder", desc: "Multi-channel budget allocation with AI-backed forecast outputs and shareable documents." },
-            ].map((item) => (
-              <div key={item.title} style={{
-                padding: "20px 22px",
-                borderRadius: 12,
-                background: "rgba(255,255,255,0.02)",
-                border: "1px solid rgba(255,255,255,0.06)",
-                display: "flex",
-                gap: 14,
-                alignItems: "flex-start",
-              }}>
-                <div style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  background: "rgba(99,102,241,0.1)",
-                  border: "1px solid rgba(99,102,241,0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#818cf8",
-                  flexShrink: 0,
-                }}>{item.icon}</div>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.72)", marginBottom: 6 }}>{item.title}</p>
-                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", lineHeight: 1.6 }}>{item.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 6: HOW IT WORKS ── */}
-      <section id="how-it-works" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 64 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }}>
-              How it works
-            </p>
-            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
-              You&apos;re up and running faster than you&apos;d expect
-            </h2>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 32, position: "relative" }} className="steps-grid">
-            <div style={{
-              position: "absolute", top: 35, left: "12.5%", right: "12.5%", height: 1,
-              background: "linear-gradient(90deg, transparent, rgba(99,102,241,0.3) 20%, rgba(99,102,241,0.3) 80%, transparent)",
-              pointerEvents: "none",
-            }} className="steps-line" />
-            {steps.map((step) => (
-              <div key={step.n} style={{ position: "relative" }}>
-                <div style={{
-                  width: 70, height: 70, borderRadius: "50%", marginBottom: 24,
-                  background: "rgba(99,102,241,0.1)", border: "2px solid rgba(99,102,241,0.3)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 15, fontWeight: 800, color: "#818cf8",
+                  marginBottom: 20,
                 }}>
-                  {step.n}
+                  {tool.icon}
                 </div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "white", marginBottom: 10 }}>
-                  {step.title}
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: "white", marginBottom: 10, letterSpacing: "-0.01em" }}>
+                  {tool.title}
                 </h3>
-                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>
-                  {step.desc}
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
+                  {tool.desc}
                 </p>
               </div>
             ))}
@@ -1905,133 +1417,293 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ── SECTION 7: BUILT BY i3MEDIA ── */}
-      <section id="about" className="reveal-section" style={{ padding: "100px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
-        <div style={{
-          position: "absolute", width: "60%", paddingBottom: "40%",
-          bottom: "-20%", left: "-10%", pointerEvents: "none", borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(168,85,247,0.1) 0%, transparent 70%)",
-        }} />
-        <div style={{ maxWidth: 900, margin: "0 auto", position: "relative", textAlign: "center" }}>
-          <p style={{ fontSize: 12, fontWeight: 700, color: "#818cf8", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 24 }}>
-            The story behind it
-          </p>
-          <h2 className="about-h2" style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.15, marginBottom: 28, color: "white" }}>
-            We&apos;re not a startup.<br />We&apos;re an agency that got fed up.
-          </h2>
-          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 680, margin: "0 auto 20px" }}>
-            i3MEDIA has been running digital campaigns for ambitious brands for over 20 years. Websites, SEO, paid social, PPC: we&apos;ve done it all, for clients of all shapes and sizes, across two continents.
-          </p>
-          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 680, margin: "0 auto 20px" }}>
-            For 20 years we had the same problem every other agency has. Too many platforms. Too much time pulling data. Not enough time actually using it. So we built StratOS: for ourselves first, and now for anyone who recognises the problem.
-          </p>
-          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, maxWidth: 680, margin: "0 auto 44px" }}>
-            It&apos;s opinionated because we&apos;ve made every mistake in the book. It&apos;s fast because slow tools don&apos;t get used. And it&apos;s honest, because that&apos;s how we work.
-          </p>
-          <a
-            href="https://i3media.net"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              padding: "12px 22px", borderRadius: 10,
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-              color: "rgba(255,255,255,0.6)", fontSize: 14, fontWeight: 600, textDecoration: "none",
-            }}
-          >
-            Learn more about i3MEDIA <ArrowRight style={{ width: 14, height: 14 }} />
-          </a>
-          <div style={{ display: "flex", justifyContent: "center", gap: 48, marginTop: 64, flexWrap: "wrap" }}>
-            {[
-              { stat: "20+", label: "Years in marketing", icon: <Building2 style={{ width: 20, height: 20 }} /> },
-              { stat: "52", label: "In-house team members", icon: <Users style={{ width: 20, height: 20 }} /> },
-              { stat: "16", label: "Channels connected", icon: <Layers style={{ width: 20, height: 20 }} /> },
-              { stat: "19", label: "AI endpoints", icon: <Brain style={{ width: 20, height: 20 }} /> },
-              { stat: "90+", label: "Report blocks", icon: <Layout style={{ width: 20, height: 20 }} /> },
-            ].map((s) => (
-              <div key={s.label} style={{ textAlign: "center" }}>
-                <div style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: "50%",
-                  background: "rgba(99,102,241,0.1)",
-                  border: "1px solid rgba(99,102,241,0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#818cf8",
-                  margin: "0 auto 14px",
-                }}>{s.icon}</div>
-                <div style={{ fontSize: 44, fontWeight: 900, color: "white", letterSpacing: "-0.04em", lineHeight: 1 }}>{s.stat}</div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", marginTop: 8, fontWeight: 500 }}>{s.label}</div>
-              </div>
-            ))}
+      {/* ── SECTION 11: HOW IT WORKS ── */}
+      <section id="how-it-works" className="reveal-section" style={{
+        padding: "120px 40px",
+        background: "linear-gradient(180deg, rgba(168,85,247,0.02) 0%, #09090f 100%)",
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto", position: "relative" }}>
+          <div style={{ textAlign: "center", marginBottom: 64 }}>
+            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }} className="blur-reveal">
+              How it works
+            </h2>
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 560, margin: "0 auto", lineHeight: 1.7 }}>
+              From setup to daily workflow. Here&apos;s how StratOS fits into your agency&apos;s operations.
+            </p>
+          </div>
+
+          <div style={{ position: "relative" }}>
+            {/* Animated connector line */}
+            <svg style={{
+              position: "absolute",
+              top: 60,
+              left: "10%",
+              width: "80%",
+              height: "calc(100% - 120px)",
+              pointerEvents: "none",
+              zIndex: 0,
+            }}>
+              <path
+                d="M 0,0 Q 50,25 100,50 T 200,100 T 300,150 T 400,200"
+                stroke="url(#gradient)"
+                strokeWidth="2"
+                fill="none"
+                opacity="0.3"
+                className="connector-line"
+              />
+              <defs>
+                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#6366f1" />
+                  <stop offset="50%" stopColor="#a855f7" />
+                  <stop offset="100%" stopColor="#ec4899" />
+                </linearGradient>
+              </defs>
+            </svg>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 48, position: "relative", zIndex: 1 }}>
+              {steps.map((step, i) => (
+                <div key={i} className="step-card stagger-in" style={{
+                  display: "grid",
+                  gridTemplateColumns: "80px 1fr",
+                  gap: 28,
+                  alignItems: "flex-start",
+                  animationDelay: `${i * 0.15}s`,
+                }}>
+                  <div style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(168,85,247,0.2))",
+                    border: "2px solid rgba(99,102,241,0.4)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 28,
+                    fontWeight: 900,
+                    color: "#a5b4fc",
+                    boxShadow: "0 0 24px rgba(99,102,241,0.3)",
+                  }}>
+                    {step.n}
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: 24, fontWeight: 700, color: "white", marginBottom: 12, letterSpacing: "-0.02em" }}>
+                      {step.title}
+                    </h3>
+                    <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.75 }}>
+                      {step.desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── BOTTOM CTA ── */}
-      <section id="access" className="reveal-section" style={{ padding: "140px 40px", borderTop: "1px solid rgba(255,255,255,0.06)", position: "relative", overflow: "hidden" }}>
-        {/* CTA orbs */}
-        <div className="login-orb-1" style={{ position: "absolute", width: "55%", paddingBottom: "55%", top: "-30%", right: "-15%", pointerEvents: "none", borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 65%)" }} />
-        <div className="login-orb-2" style={{ position: "absolute", width: "45%", paddingBottom: "45%", bottom: "-20%", left: "-10%", pointerEvents: "none", borderRadius: "50%", background: "radial-gradient(circle, rgba(168,85,247,0.25) 0%, transparent 65%)" }} />
-        <div style={{ maxWidth: 680, margin: "0 auto", textAlign: "center", position: "relative" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 28, padding: "6px 16px", borderRadius: 20, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.3)" }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 8px rgba(16,185,129,0.8)" }} className="stratum-pulse" />
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.1em", textTransform: "uppercase" }}>Right then</span>
-          </div>
-          <h2 className="access-h2" style={{ fontSize: 60, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.0, marginBottom: 24, color: "white" }}>
-            Ready to stop<br />flying blind?
+      {/* ── SECTION 12: ABOUT ── */}
+      <section id="about" className="reveal-section" style={{
+        padding: "120px 40px",
+        background: "linear-gradient(180deg, #09090f 0%, rgba(99,102,241,0.03) 100%)",
+      }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", textAlign: "center" }}>
+          <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 20, color: "white" }} className="blur-reveal">
+            Built by i3MEDIA
           </h2>
-          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.45)", lineHeight: 1.75, maxWidth: 480, margin: "0 auto 48px" }}>
-            Already got an account? Sign in above. Want to get set up? Drop us a line. We&apos;re a real team and we actually reply.
+          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", lineHeight: 1.85, marginBottom: 24 }}>
+            We&apos;ve been running digital campaigns for ambitious brands for over 20 years. StratOS is what we built for ourselves—because we were tired of opening 11 tabs every morning, reconciling numbers that don&apos;t match, and spending Tuesday afternoons writing reports.
           </p>
-          <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-            <a
-              href="#login-form"
-              className="cta-primary"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 10,
-                padding: "16px 32px", borderRadius: 14,
-                background: "linear-gradient(135deg, #6366f1, #7c3aed)",
-                color: "white", fontSize: 16, fontWeight: 700,
-                textDecoration: "none",
-                boxShadow: "0 0 40px rgba(99,102,241,0.5), 0 0 0 1px rgba(99,102,241,0.3)",
-              }}
-            >
-              Sign in to StratOS <ArrowRight style={{ width: 18, height: 18 }} />
-            </a>
-            <a
-              href="mailto:hello@i3media.net"
-              className="cta-secondary"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 10,
-                padding: "16px 32px", borderRadius: 14,
-                background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
-                color: "rgba(255,255,255,0.75)", fontSize: 16, fontWeight: 600,
-                textDecoration: "none",
-              }}
-            >
-              Request access
-            </a>
+          <p style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", lineHeight: 1.85, marginBottom: 40 }}>
+            This isn&apos;t a product built by developers who&apos;ve never run a campaign. It&apos;s built by people who do this work every day. That&apos;s why it feels different.
+          </p>
+
+          <div style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "12px 24px",
+            borderRadius: 12,
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}>
+            <img src="/primary-logo.svg" style={{ height: 24, width: "auto", opacity: 0.8 }} alt="i3MEDIA" />
+            <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.12)" }} />
+            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>
+              Est. 2004 · Manchester, UK
+            </span>
           </div>
+        </div>
+      </section>
+
+      {/* ── SECTION 13: BOTTOM CTA + LOGIN ── */}
+      <section id="access" className="reveal-section" style={{
+        padding: "120px 40px 80px",
+        background: "linear-gradient(180deg, rgba(99,102,241,0.03) 0%, #09090f 100%)",
+      }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", textAlign: "center" }}>
+          <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 18, color: "white" }} className="blur-reveal">
+            Get access
+          </h2>
+          <p style={{ fontSize: 16, color: "rgba(255,255,255,0.5)", marginBottom: 48, lineHeight: 1.75 }}>
+            StratOS is currently available to i3MEDIA clients and select agency partners. If you&apos;re already set up, sign in below.
+          </p>
+
+          <div style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 20,
+            padding: "40px",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
+            textAlign: "left",
+          }}>
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              <div>
+                <label htmlFor="access-email" style={{ display: "block", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.45)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  Email
+                </label>
+                <input
+                  id="access-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@youragency.com"
+                  required
+                  autoComplete="email"
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    padding: "14px 16px", borderRadius: 10,
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "white", fontSize: 14,
+                    outline: "none", transition: "border-color 0.15s, box-shadow 0.15s",
+                  }}
+                  onFocus={(e) => { e.target.style.borderColor = "rgba(99,102,241,0.7)"; e.target.style.boxShadow = "0 0 0 3px rgba(99,102,241,0.15)"; }}
+                  onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="access-password" style={{ display: "block", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.45)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  Password
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    id="access-password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    autoComplete="current-password"
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      padding: "14px 44px 14px 16px", borderRadius: 10,
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      color: "white", fontSize: 14,
+                      outline: "none", transition: "border-color 0.15s, box-shadow 0.15s",
+                    }}
+                    onFocus={(e) => { e.target.style.borderColor = "rgba(99,102,241,0.7)"; e.target.style.boxShadow = "0 0 0 3px rgba(99,102,241,0.15)"; }}
+                    onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)",
+                      background: "none", border: "none", color: "rgba(255,255,255,0.3)",
+                      cursor: "pointer", padding: 4, display: "flex",
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div style={{
+                  padding: "12px 16px", borderRadius: 10,
+                  background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
+                  color: "#fca5a5", fontSize: 13,
+                }}>
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  padding: "15px 24px", borderRadius: 10,
+                  background: loading ? "rgba(99,102,241,0.3)" : "linear-gradient(135deg, #6366f1, #a855f7)",
+                  border: "none", color: "white",
+                  fontSize: 15, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer",
+                  transition: "all 0.3s ease",
+                  boxShadow: loading ? "none" : "0 0 24px rgba(99,102,241,0.5)",
+                }}
+                className={loading ? "" : "cta-pulse"}
+              >
+                {loading ? "Signing in..." : "Sign in"}
+              </button>
+
+              <div style={{ textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 13, margin: "8px 0" }}>or</div>
+
+              <button
+                type="button"
+                onClick={() => window.location.href = "/api/auth/google"}
+                style={{
+                  padding: "15px 24px", borderRadius: 10,
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  color: "rgba(255,255,255,0.85)",
+                  fontSize: 15, fontWeight: 600, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.09)";
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+                  <path d="M9.003 18c2.43 0 4.467-.806 5.956-2.18L12.05 13.56c-.806.54-1.836.86-3.047.86-2.344 0-4.328-1.584-5.036-3.711H.96v2.332C2.44 15.983 5.485 18 9.003 18z" fill="#34A853"/>
+                  <path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                  <path d="M9.003 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.464.891 11.426 0 9.003 0 5.485 0 2.44 2.017.96 4.958L3.967 7.29c.708-2.127 2.692-3.71 5.036-3.71z" fill="#EA4335"/>
+                </svg>
+                Sign in with Google
+              </button>
+            </form>
+          </div>
+
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", marginTop: 32, lineHeight: 1.6 }}>
+            New to StratOS? Get in touch:{" "}
+            <a href="mailto:hello@i3media.net" style={{ color: "#818cf8", textDecoration: "underline" }}>hello@i3media.net</a>
+          </p>
         </div>
       </section>
 
       {/* ── FOOTER ── */}
       <footer style={{
-        padding: "28px 40px",
+        padding: "40px",
         borderTop: "1px solid rgba(255,255,255,0.06)",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        flexWrap: "wrap", gap: 12,
+        textAlign: "center",
+        color: "rgba(255,255,255,0.25)",
+        fontSize: 12,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <img src="/primary-logo.svg" style={{ height: 20, opacity: 0.35 }} alt="i3MEDIA" />
-          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", fontWeight: 500 }}>StratOS</span>
+        <div style={{ marginBottom: 16 }}>
+          <img src="/primary-logo.svg" style={{ height: 20, width: "auto", opacity: 0.4, margin: "0 auto" }} alt="i3MEDIA" />
         </div>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.15)" }}>
-          © {new Date().getFullYear()} i3MEDIA Ltd. All rights reserved. &nbsp;·&nbsp;{" "}
-          <a href="https://i3media.net" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,0.25)", textDecoration: "none" }}>i3media.net</a>
+        <p>© {new Date().getFullYear()} i3MEDIA Ltd. All rights reserved.</p>
+        <p style={{ marginTop: 8 }}>
+          <a href="https://i3media.net" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,0.35)", textDecoration: "none", marginRight: 16 }}>i3media.net</a>
+          <a href="https://i3media.net/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,0.35)", textDecoration: "none" }}>Privacy</a>
         </p>
       </footer>
 
@@ -2049,66 +1721,34 @@ export default function LoginPage() {
           33% { transform: translate(-40px, 30px) scale(0.88); }
           66% { transform: translate(35px, -50px) scale(1.14); }
         }
-        @keyframes orb3 {
-          0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
-          50% { transform: translate(20px, -20px) scale(1.1); opacity: 1; }
-        }
-        .login-orb-1 { animation: orb1 12s ease-in-out infinite; }
-        .login-orb-2 { animation: orb2 16s ease-in-out infinite; }
-        .login-orb-3 { animation: orb3 20s ease-in-out infinite; }
-
-        /* ─── DOTS / STRATUM PULSE ─── */
-        @keyframes stratum-pulse {
-          0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(129,140,248,0.9); }
-          50% { opacity: 0.4; box-shadow: 0 0 24px rgba(129,140,248,0.25); }
-        }
-        .stratum-pulse { animation: stratum-pulse 2.5s ease-in-out infinite; }
+        .login-orb-1 { animation: orb1 14s ease-in-out infinite; }
+        .login-orb-2 { animation: orb2 18s ease-in-out infinite; }
 
         /* ─── HERO WORD STAGGER ─── */
         @keyframes hw-in {
-          from { opacity: 0; transform: translateY(24px) rotate(-1.5deg); filter: blur(4px); }
+          from { opacity: 0; transform: translateY(24px) rotate(-1.5deg); filter: blur(6px); }
           to   { opacity: 1; transform: translateY(0) rotate(0deg); filter: blur(0); }
         }
-        .hw { display: inline-block; animation: hw-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .hw { display: inline-block; animation: hw-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
         .hw1 { animation-delay: 0.05s; }
         .hw2 { animation-delay: 0.15s; }
-        .hw3 { animation-delay: 0.25s; }
-        .hw4 { animation-delay: 0.38s; }
-        .hw5 { animation-delay: 0.48s; }
-        .hw6 { animation-delay: 0.58s; }
+        .hw3 { animation-delay: 0.6s; }
+        .hw4 { animation-delay: 0.3s; }
+        .hw5 { animation-delay: 0.42s; }
 
-        /* ─── HERO PARTICLES ─── */
+        /* ─── PARTICLES ─── */
         @keyframes particle-float {
           0%, 100% { transform: translateY(0) scale(1); }
           50% { transform: translateY(-22px) scale(1.4); }
         }
         .hero-particle { animation: particle-float linear infinite; }
 
-        /* ─── SCROLL CHEVRON BOUNCE ─── */
-        @keyframes chevron-bounce {
-          0%, 100% { transform: rotate(45deg) translateY(0); opacity: 0.4; }
-          50% { transform: rotate(45deg) translateY(5px); opacity: 0.8; }
+        /* ─── STRATUM PULSE ─── */
+        @keyframes stratum-pulse-anim {
+          0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(129,140,248,0.9); }
+          50% { opacity: 0.35; box-shadow: 0 0 24px rgba(129,140,248,0.25); }
         }
-        .scroll-chevron { animation: chevron-bounce 1.8s ease-in-out infinite; }
-
-        /* ─── PAIN CARDS HOVER ─── */
-        .pain-card {
-          transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.28s ease, box-shadow 0.28s ease;
-          cursor: default;
-        }
-        .pain-card:hover {
-          transform: translateY(-6px) scale(1.015);
-          border-color: rgba(99,102,241,0.3) !important;
-          box-shadow: 0 12px 40px rgba(99,102,241,0.15), 0 0 0 1px rgba(99,102,241,0.1);
-        }
-
-        /* ─── CHANNEL MARQUEE FADE MASKS ─── */
-        .marquee-wrap::before, .marquee-wrap::after {
-          content: ''; position: absolute; top: 0; bottom: 0; width: 140px; z-index: 2; pointer-events: none;
-        }
-        .marquee-wrap::before { left: 0; background: linear-gradient(90deg, #09090f 20%, transparent); }
-        .marquee-wrap::after  { right: 0; background: linear-gradient(-90deg, #09090f 20%, transparent); }
-        .marquee-row:hover, .marquee-row-rev:hover { animation-play-state: paused; }
+        .stratum-pulse { animation: stratum-pulse-anim 2.5s ease-in-out infinite; }
 
         /* ─── MARQUEE ─── */
         @keyframes marquee {
@@ -2119,44 +1759,97 @@ export default function LoginPage() {
           0% { transform: translateX(-33.333%); }
           100% { transform: translateX(0); }
         }
-        .marquee-row { animation: marquee 30s linear infinite; }
-        .marquee-row-rev { animation: marqueeRev 36s linear infinite; }
+        .marquee-row { animation: marquee 35s linear infinite; }
+        .marquee-row-rev { animation: marqueeRev 40s linear infinite; }
+        .marquee-row:hover, .marquee-row-rev:hover { animation-play-state: paused; }
 
-        /* ─── STRATUM SHIMMER TEXT ─── */
-        @keyframes shimmer-sweep {
-          0%   { background-position: -300% center; }
-          100% { background-position: 300% center; }
+        .marquee-wrap::before, .marquee-wrap::after {
+          content: ''; position: absolute; top: 0; bottom: 0; width: 140px; z-index: 2; pointer-events: none;
         }
-        .stratum-shimmer {
-          background: linear-gradient(
-            90deg,
-            rgba(255,255,255,0.9) 0%,
-            rgba(255,255,255,0.9) 35%,
-            rgba(165,180,252,1) 50%,
-            rgba(255,255,255,0.9) 65%,
-            rgba(255,255,255,0.9) 100%
-          );
-          background-size: 300% auto;
-          -webkit-background-clip: text; background-clip: text;
-          -webkit-text-fill-color: transparent;
-          animation: shimmer-sweep 5s linear infinite;
+        .marquee-wrap::before { left: 0; background: linear-gradient(90deg, #09090f 20%, transparent); }
+        .marquee-wrap::after  { right: 0; background: linear-gradient(-90deg, #09090f 20%, transparent); }
+
+        /* ─── SCROLL REVEAL ─── */
+        .reveal-section {
+          opacity: 0;
+          transform: translateY(40px);
+          transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal-section.section-visible { opacity: 1; transform: translateY(0); }
+
+        /* ─── BLUR REVEAL ─── */
+        @keyframes fadeInBlur {
+          from { opacity: 0; filter: blur(10px); transform: translateY(12px); }
+          to   { opacity: 1; filter: blur(0);   transform: translateY(0); }
+        }
+        .blur-reveal {
+          opacity: 0;
+          animation: none;
+        }
+        .section-visible .blur-reveal {
+          animation: fadeInBlur 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
         }
 
-        /* ─── STRATUM GRID SCROLL ─── */
-        @keyframes grid-drift {
-          0%   { transform: translate(0, 0); }
-          100% { transform: translate(28px, 28px); }
+        /* ─── STAGGER IN (only triggers when parent section is visible) ─── */
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(28px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
-        .stratum-grid-bg { animation: grid-drift 12s linear infinite; }
+        .stagger-in {
+          opacity: 0;
+          transform: translateY(28px);
+        }
+        .section-visible .stagger-in {
+          animation: fadeInUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
 
-        /* ─── MOCKUP CARD: FLOAT + GLOW + SCAN LINE ─── */
+        /* ─── SIGNAL CARDS STAGGER ─── */
+        .signal-card { opacity: 0; transform: translateX(20px); transition: opacity 0.5s ease, transform 0.5s ease; }
+        .section-visible .sc1 { opacity: 1; transform: none; transition-delay: 0.35s; }
+        .section-visible .sc2 { opacity: 1; transform: none; transition-delay: 0.55s; }
+        .section-visible .sc3 { opacity: 1; transform: none; transition-delay: 0.75s; }
+        .section-visible .sc4 { opacity: 1; transform: none; transition-delay: 0.95s; }
+
+        /* ─── CTA PULSE GLOW ─── */
+        @keyframes pulse-glow {
+          0%, 100% { box-shadow: 0 0 20px rgba(99,102,241,0.4); }
+          50% { box-shadow: 0 0 40px rgba(99,102,241,0.75), 0 0 80px rgba(99,102,241,0.15); }
+        }
+        .cta-pulse { animation: pulse-glow 2.5s ease-in-out infinite; }
+        .cta-pulse:hover { transform: translateY(-2px) scale(1.02); }
+
+        /* ─── CARD HOVER EFFECTS ─── */
+        .pain-card {
+          transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+          cursor: default;
+        }
+        .pain-card:hover {
+          transform: translateY(-6px) scale(1.015);
+          border-color: rgba(99,102,241,0.3) !important;
+          box-shadow: 0 16px 48px rgba(99,102,241,0.18), 0 0 0 1px rgba(99,102,241,0.1);
+        }
+
+        .stat-card-3d,
+        .tool-card,
+        .bento-card {
+          transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .stat-card-3d:hover,
+        .tool-card:hover,
+        .bento-card:hover {
+          transform: translateY(-6px) scale(1.025);
+          border-color: rgba(99,102,241,0.2) !important;
+          box-shadow: 0 16px 48px rgba(99,102,241,0.18);
+        }
+
+        /* ─── MOCKUP 3D TILT + GLOW + SCAN LINE ─── */
         @keyframes card-float {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-10px); }
         }
         @keyframes card-glow {
           0%, 100% { box-shadow: 0 4px 32px rgba(99,102,241,0.12), 0 0 0 1px rgba(99,102,241,0.1); }
-          50% { box-shadow: 0 8px 48px rgba(99,102,241,0.28), 0 0 0 1px rgba(99,102,241,0.22); }
+          50% { box-shadow: 0 8px 48px rgba(99,102,241,0.3), 0 0 0 1px rgba(99,102,241,0.22); }
         }
         @keyframes scan-line {
           0%   { transform: translateY(-2px); opacity: 0; }
@@ -2164,10 +1857,14 @@ export default function LoginPage() {
           92%  { opacity: 0.5; }
           100% { transform: translateY(550px); opacity: 0; }
         }
-        .mockup-card {
+        .mockup-3d {
           animation: card-float 6s ease-in-out infinite, card-glow 4s ease-in-out infinite;
+          transition: transform 0.4s ease;
         }
-        .mockup-card::after {
+        .mockup-3d:hover {
+          transform: perspective(1000px) rotateY(2deg) rotateX(2deg) scale(1.02);
+        }
+        .mockup-3d::after {
           content: '';
           position: absolute; left: 0; right: 0; top: 0; height: 1px;
           background: linear-gradient(90deg, transparent 0%, rgba(165,180,252,0.6) 40%, rgba(99,102,241,0.8) 50%, rgba(165,180,252,0.6) 60%, transparent 100%);
@@ -2175,119 +1872,84 @@ export default function LoginPage() {
           pointer-events: none;
         }
 
-        /* ─── SCROLL REVEAL ─── */
-        .reveal-section { opacity: 0; transform: translateY(32px); transition: opacity 0.7s ease, transform 0.7s ease; }
-        .reveal-section.section-visible { opacity: 1; transform: translateY(0); }
-
-        /* ─── SIGNALS: STAGGER IN ─── */
-        .signal-card { opacity: 0; transform: translateX(20px); transition: opacity 0.5s ease, transform 0.5s ease; }
-        .section-visible .sc1 { opacity: 1; transform: none; transition-delay: 0.35s; }
-        .section-visible .sc2 { opacity: 1; transform: none; transition-delay: 0.55s; }
-        .section-visible .sc3 { opacity: 1; transform: none; transition-delay: 0.75s; }
-        .section-visible .sc4 { opacity: 1; transform: none; transition-delay: 0.95s; }
-
-        /* ─── BUDGET BARS: ANIMATE WIDTH ─── */
-        .b-bar { width: 0 !important; transition: width 1.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .section-visible .b1 { width: 88% !important; transition-delay: 0.45s; }
-        .section-visible .b2 { width: 68% !important; transition-delay: 0.65s; }
-        .section-visible .b3 { width: 27% !important; transition-delay: 0.85s; }
-        .section-visible .b4 { width: 30% !important; transition-delay: 1.05s; }
-
-        /* ─── FORECASTING SVG ─── */
-        .fc-hist { stroke-dasharray: 320; stroke-dashoffset: 320; transition: stroke-dashoffset 1.8s cubic-bezier(0.4, 0, 0.2, 1) 0.3s; }
-        .section-visible .fc-hist { stroke-dashoffset: 0; }
-        .fc-fill  { opacity: 0; transition: opacity 1s ease 0.6s; }
-        .section-visible .fc-fill  { opacity: 1; }
-        .fc-exp   { opacity: 0; transition: opacity 0.8s ease 1.0s; }
-        .section-visible .fc-exp   { opacity: 1; }
-        .fc-best  { opacity: 0; transition: opacity 0.8s ease 1.3s; }
-        .section-visible .fc-best  { opacity: 1; }
-        .fc-worst { opacity: 0; transition: opacity 0.8s ease 1.5s; }
-        .section-visible .fc-worst { opacity: 1; }
-
-        /* ─── PORTAL GOAL BARS ─── */
-        .goal-bar { width: 0 !important; transition: width 1.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .section-visible .g1 { width: 78% !important; transition-delay: 0.5s; }
-        .section-visible .g2 { width: 91% !important; transition-delay: 0.7s; }
-
-        /* ─── CTA BUTTONS ─── */
-        .cta-primary  { transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease; }
-        .cta-primary:hover  { transform: translateY(-2px) scale(1.02); box-shadow: 0 0 56px rgba(99,102,241,0.65), 0 0 0 1px rgba(99,102,241,0.4) !important; }
-        .cta-secondary { transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease; }
-        .cta-secondary:hover { transform: translateY(-2px); background: rgba(255,255,255,0.1) !important; border-color: rgba(255,255,255,0.2) !important; }
-
-        /* ─── STAT CARDS ─── */
-        .stat-card {
-          transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-        }
-        .stat-card:hover {
-          transform: translateY(-4px) scale(1.02);
-          box-shadow: 0 12px 40px rgba(99,102,241,0.18);
-          border-color: rgba(99,102,241,0.15) !important;
+        /* ─── LOGIN CARD 3D ─── */
+        .login-card-3d:hover {
+          transform: perspective(1200px) rotateY(-2deg);
+          box-shadow: 0 20px 60px rgba(99,102,241,0.2);
         }
 
-        /* ─── STRATUM AI GRID HOVER ─── */
-        .stratum-ai-grid > div {
-          transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+        /* ─── GRADIENT BORDER ROTATION ─── */
+        @keyframes rotate-border {
+          0% { --angle: 0deg; }
+          100% { --angle: 360deg; }
         }
-        .stratum-ai-grid > div:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 8px 28px rgba(99,102,241,0.15);
-          border-color: rgba(99,102,241,0.35) !important;
+        .gradient-border-rotating {
+          position: relative;
+          overflow: hidden;
+        }
+        .gradient-border-rotating::before {
+          content: '';
+          position: absolute;
+          inset: -2px;
+          border-radius: 22px;
+          padding: 2px;
+          background: conic-gradient(from 0deg, #6366f1, #a855f7, #ec4899, #6366f1);
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          animation: rotate-border-spin 4s linear infinite;
+          pointer-events: none;
+          opacity: 0.5;
+        }
+        @keyframes rotate-border-spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+
+        /* ─── HOW-IT-WORKS CONNECTOR ─── */
+        @keyframes draw-line {
+          to { stroke-dashoffset: 0; }
+        }
+        .connector-line {
+          stroke-dasharray: 1000;
+          stroke-dashoffset: 1000;
+        }
+        .section-visible .connector-line {
+          animation: draw-line 2.5s ease forwards 0.5s;
         }
 
         /* ─── RESPONSIVE ─── */
+        @media (max-width: 1100px) {
+          .side-nav { display: none !important; }
+        }
         @media (max-width: 960px) {
           .hero-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
           .hero-headline { font-size: 48px !important; }
-          .pains-grid { grid-template-columns: 1fr 1fr !important; }
-          .stratum-grid { grid-template-columns: 1fr 1fr !important; }
-          .stratum-ai-grid { grid-template-columns: 1fr 1fr !important; }
-          .stats-grid { grid-template-columns: repeat(3, 1fr) !important; }
-          .steps-grid { grid-template-columns: 1fr 1fr !important; }
-          .steps-line { display: none !important; }
+          .feature-hero-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
+          .pains-grid { grid-template-columns: 1fr !important; }
+          .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .toolkit-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .also-grid { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-        @media (max-width: 1200px) {
-          .side-nav { display: none !important; }
-        }
-        @media (max-width: 1000px) {
-          .feature-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
-          .mockup-card { animation: card-glow 4s ease-in-out infinite; }
-          .marquee-row { animation-duration: 20s !important; }
-          .marquee-row-rev { animation-duration: 24s !important; }
+          .bento-grid { grid-template-columns: 1fr !important; grid-template-rows: auto !important; }
+          .bento-card { grid-column: span 1 !important; grid-row: span 1 !important; }
+          .marquee-row { animation-duration: 22s !important; }
+          .marquee-row-rev { animation-duration: 26s !important; }
+          .mockup-3d { animation: card-glow 4s ease-in-out infinite; }
         }
         @media (max-width: 700px) {
-          .hero-headline { font-size: 40px !important; }
-          .pains-grid { grid-template-columns: 1fr !important; }
-          .also-grid { grid-template-columns: 1fr !important; }
-          .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .steps-grid { grid-template-columns: 1fr !important; }
-          .stratum-grid { grid-template-columns: 1fr !important; }
-          .stratum-ai-grid { grid-template-columns: 1fr !important; }
+          .hero-headline { font-size: 38px !important; }
           .toolkit-grid { grid-template-columns: 1fr !important; }
           section { padding-left: 20px !important; padding-right: 20px !important; }
           .top-nav { padding-left: 16px !important; padding-right: 16px !important; }
           .hero-grid { padding-left: 20px !important; padding-right: 20px !important; padding-top: 56px !important; padding-bottom: 56px !important; }
-          .stratum-shimmer { font-size: 48px !important; }
-          .mid-cta-h2 { font-size: 32px !important; }
-          .about-h2 { font-size: 30px !important; }
-          .access-h2 { font-size: 40px !important; }
-          .actions-flow { flex-wrap: wrap !important; justify-content: flex-start !important; }
-          .actions-flow > div { flex: 1 1 40% !important; min-width: 80px !important; }
-          .stats-feature-bar { flex-direction: column !important; align-items: flex-start !important; padding: 20px !important; }
-          .stratum-ai-box { padding: 24px 16px !important; }
-          #access { padding-top: 80px !important; padding-bottom: 80px !important; }
-          #mid-cta { padding-top: 60px !important; padding-bottom: 60px !important; }
-          .cta-primary, .cta-secondary { width: 100% !important; justify-content: center !important; box-sizing: border-box !important; }
+          .cta-pulse { width: 100% !important; justify-content: center !important; box-sizing: border-box !important; }
         }
         @media (prefers-reduced-motion: reduce) {
-          .mockup-card { animation: none !important; }
-          .mockup-card::after { display: none !important; }
+          .mockup-3d { animation: none !important; }
+          .mockup-3d::after { display: none !important; }
           .hero-particle { animation: none !important; }
-          .stratum-shimmer { animation: none !important; -webkit-text-fill-color: white; }
-          .hw { animation: none !important; }
+          .hw { animation: none !important; opacity: 1 !important; }
+          .stagger-in { animation: none !important; opacity: 1 !important; transform: none !important; }
+          .blur-reveal { animation: none !important; opacity: 1 !important; }
         }
 
         .side-nav { display: flex; }
