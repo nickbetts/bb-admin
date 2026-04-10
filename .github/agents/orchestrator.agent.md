@@ -1,7 +1,7 @@
 ---
 description: "Use when: routing a task to the right specialist agent, orchestrating multi-step features, not sure which agent to use, adding a new feature end-to-end, need to coordinate across DB + API + component + docs, or when the task spans multiple layers of the codebase."
 name: "Orchestrator"
-tools: [read, search, agent, run_in_terminal]
+tools: [read, search, agent, run_in_terminal, todo, web]
 user-invocable: true
 ---
 

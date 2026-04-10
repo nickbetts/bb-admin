@@ -1,7 +1,7 @@
 ---
 description: "Use when: creating or updating developer documentation, writing API reference docs, updating README, recording architecture decisions, writing a changelog, documenting a new feature, updating the roadmap or master plan, or registering a new agent in copilot-instructions.md."
 name: "Developer Docs"
-tools: [read, edit, search, run_in_terminal]
+tools: [read, edit, search, run_in_terminal, todo, web]
 user-invocable: true
 ---
 
