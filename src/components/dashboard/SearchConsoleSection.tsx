@@ -698,7 +698,7 @@ export function SearchConsoleSection({
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "center", color: "var(--text-3)", fontSize: 12 }}>{q.prevPosition.toFixed(1)}</td>
                       <td style={{ padding: "10px 12px", textAlign: "center" }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: "#ecfdf5", color: "#065f46" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: "#ecfdf5", color: "var(--success-text)" }}>
                           <span style={{ display: "inline-block", width: 0, height: 0, borderLeft: "3.5px solid transparent", borderRight: "3.5px solid transparent", borderBottom: "5px solid currentColor" }} />
                           +{q.gain.toFixed(1)}
                         </span>
@@ -819,7 +819,7 @@ export function SearchConsoleSection({
               {overlapSummary && (
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
                   {overlapSummary.highRisk > 0 && (
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "#fff", background: "#dc2626", borderRadius: 6, padding: "3px 10px" }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#fff", background: "var(--danger)", borderRadius: 6, padding: "3px 10px" }}>
                       {overlapSummary.highRisk} High Risk
                     </span>
                   )}
@@ -834,7 +834,7 @@ export function SearchConsoleSection({
                     </span>
                   )}
                   {overlapSummary.potentialSavings > 0 && (
-                    <span style={{ fontSize: 11, fontWeight: 500, color: "#065f46", background: "#d1fae5", borderRadius: 6, padding: "3px 10px" }}>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: "var(--success-text)", background: "var(--success-bg)", borderRadius: 6, padding: "3px 10px" }}>
                       Potential savings: ${overlapSummary.potentialSavings.toFixed(2)}
                     </span>
                   )}
@@ -842,14 +842,14 @@ export function SearchConsoleSection({
               )}
 
               {/* Info box */}
-              <div style={{ fontSize: 11, color: "#64748b", background: "#f8fafc", borderRadius: 8, padding: "8px 12px", marginBottom: 12, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 11, color: "#64748b", background: "var(--bg)", borderRadius: 8, padding: "8px 12px", marginBottom: 12, lineHeight: 1.5 }}>
                 Keywords where you rank organically <strong>and</strong> pay for ads. High-risk = position ≤3 with active spend (you&apos;re paying for clicks you might get organically).
               </div>
 
               {/* Collapsible table */}
               <button
                 onClick={() => setOverlapExpanded(!overlapExpanded)}
-                style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 500, color: "#6366f1", background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: overlapExpanded ? 8 : 0 }}
+                style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 500, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: overlapExpanded ? 8 : 0 }}
               >
                 {overlapExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                 {overlapExpanded ? "Hide details" : `Show ${keywordOverlaps.length} keyword${keywordOverlaps.length !== 1 ? "s" : ""}`}
@@ -903,8 +903,8 @@ export function SearchConsoleSection({
         <SectionCard title="Branded vs Non-Branded" subtitle="Search performance split by branded and non-branded queries">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             {/* Branded column */}
-            <div style={{ background: "#f8fafc", borderRadius: 12, padding: 16 }}>
-              <h4 style={{ fontSize: 13, fontWeight: 700, color: "#6366f1", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>Branded</h4>
+            <div style={{ background: "var(--bg)", borderRadius: 12, padding: 16 }}>
+              <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>Branded</h4>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
                   <p style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>Clicks</p>
@@ -925,8 +925,8 @@ export function SearchConsoleSection({
               </div>
             </div>
             {/* Non-Branded column */}
-            <div style={{ background: "#f8fafc", borderRadius: 12, padding: 16 }}>
-              <h4 style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>Non-Branded</h4>
+            <div style={{ background: "var(--bg)", borderRadius: 12, padding: 16 }}>
+              <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--warning)", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>Non-Branded</h4>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
                   <p style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>Clicks</p>

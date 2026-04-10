@@ -301,17 +301,17 @@ export default function PricingPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: "40px 48px", color: "var(--text-3)", fontSize: 14 }}>Loading pricing…</div>
+      <div className="page" style={{ color: "var(--text-3)", fontSize: 14 }}>Loading pricing…</div>
     );
   }
 
   return (
-    <div style={{ padding: "40px 48px", maxWidth: 960, margin: "0 auto" }}>
+    <div className="page" style={{ maxWidth: 960 }}>
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 36 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, #6366f1, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <PoundSterling style={{ width: 20, height: 20, color: "white" }} />
           </div>
           <div>
@@ -388,7 +388,7 @@ export default function PricingPage() {
                       onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")} />
                   </td>
                   <td style={{ padding: "6px 12px", borderBottom: "1px solid var(--border-subtle)", width: 40, textAlign: "center" }}>
-                    <button onClick={() => removeSingleService(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 4 }}>
+                    <button onClick={() => removeSingleService(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", padding: 4 }}>
                       <Trash2 style={{ width: 13, height: 13 }} />
                     </button>
                   </td>
@@ -451,7 +451,7 @@ export default function PricingPage() {
                       <input style={{ ...inputStyle, flex: 1 }} value={line} onChange={e => updateFocusInclude(i, j, e.target.value)}
                         onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
                         onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")} />
-                      <button onClick={() => removeFocusInclude(i, j)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 4, flexShrink: 0 }}>
+                      <button onClick={() => removeFocusInclude(i, j)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", padding: 4, flexShrink: 0 }}>
                         <Trash2 style={{ width: 12, height: 12 }} />
                       </button>
                     </div>
@@ -501,7 +501,7 @@ export default function PricingPage() {
                         </td>
                       ))}
                       <td style={{ padding: "4px 8px", borderBottom: "1px solid var(--border-subtle)", width: 30 }}>
-                        <button onClick={() => removeAddOn(focus, i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2 }}>
+                        <button onClick={() => removeAddOn(focus, i)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", padding: 2 }}>
                           <Trash2 style={{ width: 11, height: 11 }} />
                         </button>
                       </td>
@@ -562,7 +562,7 @@ export default function PricingPage() {
                           onChange={e => updateRetainerInclude(i, j, e.target.value)}
                           onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
                           onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")} />
-                        <button onClick={() => removeRetainerInclude(i, j)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2, flexShrink: 0 }}>
+                        <button onClick={() => removeRetainerInclude(i, j)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", padding: 2, flexShrink: 0 }}>
                           <Trash2 style={{ width: 11, height: 11 }} />
                         </button>
                       </div>
@@ -583,7 +583,7 @@ export default function PricingPage() {
                           onChange={e => updateRetainerQA(i, j, e.target.value)}
                           onFocus={e => (e.currentTarget.style.borderColor = "var(--accent)")}
                           onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")} />
-                        <button onClick={() => removeRetainerQA(i, j)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 2, flexShrink: 0 }}>
+                        <button onClick={() => removeRetainerQA(i, j)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", padding: 2, flexShrink: 0 }}>
                           <Trash2 style={{ width: 11, height: 11 }} />
                         </button>
                       </div>
@@ -637,7 +637,7 @@ export default function PricingPage() {
                       onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")} />
                   </td>
                   <td style={{ padding: "6px 12px", borderBottom: "1px solid var(--border-subtle)", width: 40, textAlign: "center" }}>
-                    <button onClick={() => removeOtherService(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444", padding: 4 }}>
+                    <button onClick={() => removeOtherService(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", padding: 4 }}>
                       <Trash2 style={{ width: 13, height: 13 }} />
                     </button>
                   </td>

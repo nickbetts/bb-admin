@@ -113,7 +113,7 @@ export function ClientPortalManager({ clientId, clientName }: ClientPortalManage
       <div className="card" style={{ padding: 20, marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#6366f1,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Shield style={{ width: 18, height: 18, color: "white" }} />
             </div>
             <div>
@@ -168,7 +168,7 @@ export function ClientPortalManager({ clientId, clientName }: ClientPortalManage
               </div>
             </div>
             {formError && (
-              <p style={{ fontSize: 12, color: "#ef4444" }}>{formError}</p>
+              <p style={{ fontSize: 12, color: "var(--danger)" }}>{formError}</p>
             )}
             <div style={{ display: "flex", gap: 8 }}>
               <button type="submit" disabled={saving} className="btn btn-primary btn-sm" style={{ gap: 5, display: "inline-flex", alignItems: "center" }}>
@@ -212,13 +212,13 @@ export function ClientPortalManager({ clientId, clientName }: ClientPortalManage
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{user.name ?? user.email}</span>
                     {!user.isActive && (
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "#f3f4f6", color: "#6b7280" }}>DISABLED</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "var(--bg)", color: "var(--text-2)" }}>DISABLED</span>
                     )}
                   </div>
                   <p style={{ fontSize: 12, color: "var(--text-3)" }}>{user.email}</p>
                   <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
                     {perms.map((p) => (
-                      <span key={p} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 99, background: "#6366f115", color: "#6366f1", textTransform: "capitalize" }}>{p}</span>
+                      <span key={p} style={{ fontSize: 10, padding: "1px 6px", borderRadius: 99, background: "var(--accent-bg)", color: "var(--accent)", textTransform: "capitalize" }}>{p}</span>
                     ))}
                   </div>
                 </div>
@@ -239,7 +239,7 @@ export function ClientPortalManager({ clientId, clientName }: ClientPortalManage
                     {generatingLink === user.id ? (
                       <Loader2 style={{ width: 12, height: 12 }} className="animate-spin" />
                     ) : copiedLink === user.id ? (
-                      <Check style={{ width: 12, height: 12, color: "#22c55e" }} />
+                      <Check style={{ width: 12, height: 12, color: "var(--success)" }} />
                     ) : (
                       <LinkIcon style={{ width: 12, height: 12 }} />
                     )}
@@ -257,7 +257,7 @@ export function ClientPortalManager({ clientId, clientName }: ClientPortalManage
                     onClick={() => void handleDelete(user.id)}
                     disabled={deleting === user.id}
                     className="btn btn-ghost btn-sm"
-                    style={{ padding: "5px 7px", color: "#ef4444" }}
+                    style={{ padding: "5px 7px", color: "var(--danger)" }}
                   >
                     {deleting === user.id ? <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" /> : <Trash2 style={{ width: 13, height: 13 }} />}
                   </button>

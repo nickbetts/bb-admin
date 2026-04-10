@@ -75,7 +75,7 @@ export function Toggle({
               width: 14,
               height: 14,
               borderRadius: "50%",
-              background: "#fff",
+              background: "var(--surface)",
               boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
               transition: "left 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
             }}

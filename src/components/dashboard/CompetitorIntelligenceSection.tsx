@@ -56,7 +56,7 @@ export function CompetitorIntelligenceSection({ clientId, visibleBlocks }: Compe
     <div style={{ marginTop: 24 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <TrendingUp style={{ width: 16, height: 16, color: "#6366f1" }} />
+          <TrendingUp style={{ width: 16, height: 16, color: "var(--accent)" }} />
           <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>Competitor Intelligence</h3>
         </div>
         <Link
@@ -75,7 +75,7 @@ export function CompetitorIntelligenceSection({ clientId, visibleBlocks }: Compe
       ) : topDomains.length === 0 ? (
         <div style={{ padding: "16px 0", color: "var(--text-3)", fontSize: 13 }}>
           No competitor data yet.{" "}
-          <Link href="/tools/competitor-intelligence" style={{ color: "#6366f1" }}>Run analysis →</Link>
+          <Link href="/tools/competitor-intelligence" style={{ color: "var(--accent)" }}>Run analysis →</Link>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -84,8 +84,8 @@ export function CompetitorIntelligenceSection({ clientId, visibleBlocks }: Compe
             try { metrics = JSON.parse(snap.metrics) as ParsedMetrics; } catch { /* ignore */ }
             return (
               <div key={snap.domain} style={{ padding: "10px 14px", background: "var(--bg-2)", borderRadius: "var(--r-sm)", display: "flex", alignItems: "flex-start", gap: 10 }}>
-                <div style={{ width: 28, height: 28, borderRadius: 6, background: "#6366f115", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Globe style={{ width: 13, height: 13, color: "#6366f1" }} />
+                <div style={{ width: 28, height: 28, borderRadius: 6, background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Globe style={{ width: 13, height: 13, color: "var(--accent)" }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{snap.domain}</p>

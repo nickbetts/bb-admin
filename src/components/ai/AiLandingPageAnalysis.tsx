@@ -232,7 +232,7 @@ function PageAnalysisCard({ result }: { result: LandingPageAnalysisResult }) {
 
           {/* Top recommendations */}
           {result.topRecommendations.length > 0 && (
-            <div style={{ background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r)", padding: "14px 16px" }}>
+            <div style={{ background: "var(--accent-bg)", border: "1px solid rgb(99 102 241 / 0.25)", borderRadius: "var(--r)", padding: "14px 16px" }}>
               <div className="flex items-center gap-1.5" style={{ marginBottom: 10 }}>
                 <Lightbulb className="h-3.5 w-3.5" style={{ color: "var(--accent)" }} />
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--accent-text)" }}>Top Recommendations</p>
@@ -329,7 +329,7 @@ export function AiLandingPageAnalysis({
             onClick={analyse}
             disabled={loading}
             className="btn btn-primary btn-sm inline-flex items-center gap-1.5"
-            style={{ fontSize: 13, padding: "7px 14px", background: "#0d9488" }}
+            style={{ fontSize: 13, padding: "7px 14px", background: "var(--success)" }}
           >
             {loading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -355,7 +355,7 @@ export function AiLandingPageAnalysis({
       {loading && !results && (
         <div className="card-body" style={{ paddingTop: 24, paddingBottom: 24, display: "flex", flexDirection: "column", gap: 10 }}>
           {[100, 80, 90, 70, 85].map((w, i) => (
-            <div key={i} style={{ height: i < 3 ? 13 : 10, background: "#e2e8f0", borderRadius: 6, width: `${w}%`, animation: "pulse 1.5s ease-in-out infinite" }} />
+            <div key={i} style={{ height: i < 3 ? 13 : 10, background: "var(--border)", borderRadius: 6, width: `${w}%`, animation: "pulse 1.5s ease-in-out infinite" }} />
           ))}
         </div>
       )}

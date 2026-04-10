@@ -1127,7 +1127,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
               return (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <span style={{ minWidth: 140, fontSize: 12, fontWeight: 500, color: "var(--text)" }}>{item.feature}</span>
-                  <div style={{ flex: 1, background: "#f1f5f9", borderRadius: 4, height: 22, position: "relative", overflow: "hidden" }}>
+                  <div style={{ flex: 1, background: "var(--border-subtle)", borderRadius: 4, height: 22, position: "relative", overflow: "hidden" }}>
                     <div style={{
                       width: `${(item.percentage / maxPct) * 100}%`,
                       height: "100%",
@@ -1166,7 +1166,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                 {backlinkChanges.slice(0, 20).map((item, i) => (
                   <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                     <td style={{ padding: "8px 12px", color: "var(--text)", fontWeight: 500, maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: "#6366f1", textDecoration: "none" }}>
+                      <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", textDecoration: "none" }}>
                         {item.url}
                       </a>
                     </td>

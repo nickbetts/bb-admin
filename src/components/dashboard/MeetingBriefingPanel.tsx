@@ -128,7 +128,7 @@ export function MeetingBriefingPanel({ clientId, clientName }: MeetingBriefingPa
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {/* Talking points — open with */}
         {b.talkingPoints && b.talkingPoints.length > 0 && (
-          <div style={{ background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r-sm)", padding: 14 }}>
+          <div style={{ background: "var(--accent-bg)", border: "1px solid rgb(99 102 241 / 0.25)", borderRadius: "var(--r-sm)", padding: 14 }}>
             <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--accent-text)", marginBottom: 8 }}>
               <List style={{ width: 12, height: 12, display: "inline", marginRight: 4 }} />
               Opening Talking Points
@@ -144,14 +144,14 @@ export function MeetingBriefingPanel({ clientId, clientName }: MeetingBriefingPa
         {/* Wins */}
         {b.wins && b.wins.length > 0 && (
           <div>
-            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#22c55e", marginBottom: 8 }}>Wins to Highlight</p>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--success)", marginBottom: 8 }}>Wins to Highlight</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {b.wins.map((w, i) => (
-                <div key={i} style={{ display: "flex", gap: 10, padding: "10px 14px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "var(--r-sm)", alignItems: "flex-start" }}>
-                  <CheckCircle2 style={{ width: 14, height: 14, color: "#22c55e", flexShrink: 0, marginTop: 1 }} />
+                <div key={i} style={{ display: "flex", gap: 10, padding: "10px 14px", background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: "var(--r-sm)", alignItems: "flex-start" }}>
+                  <CheckCircle2 style={{ width: 14, height: 14, color: "var(--success)", flexShrink: 0, marginTop: 1 }} />
                   <div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: "#166534", marginBottom: 2 }}>{w.title}</p>
-                    <p style={{ fontSize: 12, color: "#15803d" }}>{w.detail}</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--success-text)", marginBottom: 2 }}>{w.title}</p>
+                    <p style={{ fontSize: 12, color: "var(--success-text)" }}>{w.detail}</p>
                   </div>
                 </div>
               ))}
@@ -182,7 +182,7 @@ export function MeetingBriefingPanel({ clientId, clientName }: MeetingBriefingPa
         {/* Decisions needed */}
         {b.decisionsNeeded && b.decisionsNeeded.length > 0 && (
           <div>
-            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#6366f1", marginBottom: 8 }}>Decisions Needed</p>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--accent)", marginBottom: 8 }}>Decisions Needed</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {b.decisionsNeeded.map((d, i) => (
                 <div key={i} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", padding: "10px 14px" }}>
@@ -236,19 +236,19 @@ export function MeetingBriefingPanel({ clientId, clientName }: MeetingBriefingPa
         {/* Risks */}
         {b.risks && b.risks.length > 0 && (
           <div>
-            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#ef4444", marginBottom: 8 }}>Risks &amp; Watch Points</p>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--danger)", marginBottom: 8 }}>Risks &amp; Watch Points</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {b.risks.map((r, i) => (
-                <div key={i} style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-sm)", padding: "10px 14px" }}>
+                <div key={i} style={{ background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-sm)", padding: "10px 14px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <AlertTriangle style={{ width: 13, height: 13, color: "#ef4444", flexShrink: 0 }} />
-                    <p style={{ fontSize: 13, fontWeight: 600, color: "#991b1b" }}>{r.title}</p>
+                    <AlertTriangle style={{ width: 13, height: 13, color: "var(--danger)", flexShrink: 0 }} />
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "var(--danger-text)" }}>{r.title}</p>
                     <span style={{ fontSize: 10, color: LIKELIHOOD_COLOR[r.likelihood.toLowerCase()] ?? "#ef4444", background: `${LIKELIHOOD_COLOR[r.likelihood.toLowerCase()] ?? "#ef4444"}20`, padding: "1px 6px", borderRadius: 99, fontWeight: 600 }}>
                       {r.likelihood} likelihood
                     </span>
                   </div>
-                  <p style={{ fontSize: 12, color: "#b91c1c", marginBottom: 4 }}>Impact: {r.impact}</p>
-                  <p style={{ fontSize: 12, color: "#7f1d1d" }}>Mitigation: {r.mitigation}</p>
+                  <p style={{ fontSize: 12, color: "var(--danger-text)", marginBottom: 4 }}>Impact: {r.impact}</p>
+                  <p style={{ fontSize: 12, color: "var(--danger-text)" }}>Mitigation: {r.mitigation}</p>
                 </div>
               ))}
             </div>
@@ -265,7 +265,7 @@ export function MeetingBriefingPanel({ clientId, clientName }: MeetingBriefingPa
         onClick={() => setExpanded((e) => !e)}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <CalendarRange style={{ width: 18, height: 18, color: "#f59e0b" }} />
+          <CalendarRange style={{ width: 18, height: 18, color: "var(--warning)" }} />
           <span style={{ fontWeight: 600, fontSize: 15, color: "var(--text)" }}>Meeting Briefing</span>
           <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--border)", padding: "2px 8px", borderRadius: 99 }}>pre-meeting 1-pager</span>
         </div>
@@ -291,7 +291,7 @@ export function MeetingBriefingPanel({ clientId, clientName }: MeetingBriefingPa
       {expanded && (
         <div style={{ padding: 20 }}>
           {error && (
-            <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-sm)", fontSize: 13, color: "#b91c1c", marginBottom: 16 }}>
+            <div style={{ padding: "10px 14px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-sm)", fontSize: 13, color: "var(--danger-text)", marginBottom: 16 }}>
               {error}
             </div>
           )}
@@ -325,7 +325,7 @@ export function MeetingBriefingPanel({ clientId, clientName }: MeetingBriefingPa
           {briefing && !viewingDoc && (
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "#166534", background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "4px 10px", borderRadius: 99 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--success-text)", background: "var(--success-bg)", border: "1px solid var(--success-border)", padding: "4px 10px", borderRadius: 99 }}>
                   ✓ Briefing ready for {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                 </p>
                 <div style={{ display: "flex", gap: 8 }}>

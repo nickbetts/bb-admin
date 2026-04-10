@@ -112,7 +112,7 @@ export function ForecastSection({ clientId, currentMetrics }: ForecastSectionPro
         onClick={() => setExpanded(e => !e)}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <TrendingUp style={{ width: 18, height: 18, color: "#6366f1" }} />
+          <TrendingUp style={{ width: 18, height: 18, color: "var(--accent)" }} />
           <span style={{ fontWeight: 600, fontSize: 15, color: "var(--text)" }}>Performance Forecast</span>
           <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--border)", padding: "2px 8px", borderRadius: 99 }}>30 / 60 / 90 day projections</span>
         </div>
@@ -134,7 +134,7 @@ export function ForecastSection({ clientId, currentMetrics }: ForecastSectionPro
       {expanded && (
         <div style={{ padding: 20 }}>
           {error && (
-            <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-sm)", fontSize: 13, color: "#b91c1c", marginBottom: 16 }}>
+            <div style={{ padding: "10px 14px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-sm)", fontSize: 13, color: "var(--danger-text)", marginBottom: 16 }}>
               {error}
             </div>
           )}

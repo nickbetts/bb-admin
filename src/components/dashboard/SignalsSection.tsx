@@ -284,7 +284,7 @@ function SignalCard({ signal, isLast, aiLoading }: { signal: Signal; isLast: boo
         padding: "2px 6px", borderRadius: 4, flexShrink: 0, marginTop: 2,
         background: signal.source === "ai" ? "#eef2ff" : "#f8fafc",
         color: signal.source === "ai" ? "#4338ca" : "#64748b",
-        border: signal.source === "ai" ? "1px solid #c7d2fe" : "1px solid #e2e8f0",
+        border: signal.source === "ai" ? "1px solid rgb(99 102 241 / 0.25)" : "1px solid var(--border)",
       }}>
         {signal.source === "ai" ? "AI" : "Auto"}
       </span>
@@ -1095,25 +1095,25 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
         <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, flexWrap: "wrap" }}>
           {signals.length === 0 ? (
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <CheckCircle className="h-4 w-4" style={{ color: "#22c55e" }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#15803d" }}>All clear</span>
+              <CheckCircle className="h-4 w-4" style={{ color: "var(--success)" }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--success-text)" }}>All clear</span>
             </div>
           ) : (
             <>
               {high.length > 0 && (
-                <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" }}>
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#dc2626", display: "inline-block", flexShrink: 0 }} />
+                <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: "var(--danger-bg)", color: "var(--danger-text)", border: "1px solid var(--danger-border)" }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--danger)", display: "inline-block", flexShrink: 0 }} />
                   {high.length} High
                 </span>
               )}
               {medium.length > 0 && (
-                <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: "var(--warning-bg)", color: "var(--warning-text)", border: "1px solid var(--warning-border)" }}>
                   <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#d97706", display: "inline-block", flexShrink: 0 }} />
                   {medium.length} Medium
                 </span>
               )}
               {low.length > 0 && (
-                <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: "#dbeafe", color: "#1e40af", border: "1px solid #bfdbfe" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: "var(--info-bg)", color: "var(--info-text)", border: "1px solid var(--info-border)" }}>
                   <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#2563eb", display: "inline-block", flexShrink: 0 }} />
                   {low.length} Low
                 </span>
@@ -1172,7 +1172,7 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
       {/* All-clear state */}
       {signals.length === 0 && (
         <div style={{
-          borderRadius: 12, border: "1px solid #bbf7d0", background: "#f0fdf4",
+          borderRadius: 12, border: "1px solid var(--success-border)", background: "var(--success-bg)",
           padding: "36px 24px", textAlign: "center",
         }}>
           <div style={{
@@ -1181,12 +1181,12 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
             display: "flex", alignItems: "center", justifyContent: "center",
             margin: "0 auto 14px",
           }}>
-            <CheckCircle className="h-6 w-6" style={{ color: "#22c55e" }} />
+            <CheckCircle className="h-6 w-6" style={{ color: "var(--success)" }} />
           </div>
-          <p style={{ fontSize: 15, fontWeight: 600, color: "#166534", marginBottom: 6 }}>
+          <p style={{ fontSize: 15, fontWeight: 600, color: "var(--success-text)", marginBottom: 6 }}>
             No anomalies detected
           </p>
-          <p style={{ fontSize: 13, color: "#15803d", maxWidth: 420, margin: "0 auto" }}>
+          <p style={{ fontSize: 13, color: "var(--success-text)", maxWidth: 420, margin: "0 auto" }}>
             All connected platforms are performing within normal thresholds for this period.
           </p>
         </div>
@@ -1234,7 +1234,7 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
       {/* ── Holistic Game Plan ──────────────────────────────────────────────── */}
       {(gamePlan || gamePlanLoading) && (
         <div style={{
-          borderRadius: 14, border: "1px solid #c7d2fe",
+          borderRadius: 14, border: "1px solid rgb(99 102 241 / 0.25)",
           background: "#fafbff",
           overflow: "hidden",
           boxShadow: "0 1px 3px rgba(99,102,241,0.08)",
@@ -1243,11 +1243,11 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
           <div style={{
             display: "flex", alignItems: "center", gap: 10, padding: "14px 20px",
             background: "linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%)",
-            borderBottom: "1px solid #c7d2fe",
+            borderBottom: "1px solid rgb(99 102 241 / 0.25)",
           }}>
             <div style={{
               width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-              background: "linear-gradient(135deg, #6366f1, #7c3aed)",
+              background: "var(--gradient-accent)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               <Zap style={{ width: 14, height: 14, color: "white" }} />
@@ -1256,19 +1256,19 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
               <span style={{ fontSize: 13, fontWeight: 700, color: "#312e81", display: "block", lineHeight: 1 }}>
                 Cross-Channel Game Plan
               </span>
-              <span style={{ fontSize: 11, color: "#6366f1", marginTop: 2, display: "block" }}>
+              <span style={{ fontSize: 11, color: "var(--accent)", marginTop: 2, display: "block" }}>
                 AI-synthesised action plan across all signals
               </span>
             </div>
             {gamePlanLoading && (
-              <Loader2 style={{ width: 14, height: 14, marginLeft: "auto", color: "#6366f1", animation: "spin 1s linear infinite" }} />
+              <Loader2 style={{ width: 14, height: 14, marginLeft: "auto", color: "var(--accent)", animation: "spin 1s linear infinite" }} />
             )}
           </div>
           <div style={{ padding: "16px 20px" }}>
             {gamePlanLoading && !gamePlan ? (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
-                <Loader2 style={{ width: 14, height: 14, color: "#6366f1", flexShrink: 0, animation: "spin 1s linear infinite" }} />
-                <p style={{ fontSize: 12, color: "#6366f1", margin: 0, fontStyle: "italic" }}>
+                <Loader2 style={{ width: 14, height: 14, color: "var(--accent)", flexShrink: 0, animation: "spin 1s linear infinite" }} />
+                <p style={{ fontSize: 12, color: "var(--accent)", margin: 0, fontStyle: "italic" }}>
                   Analysing all signals together to build a unified action plan&hellip;
                 </p>
               </div>

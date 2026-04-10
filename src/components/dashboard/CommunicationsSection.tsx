@@ -79,27 +79,27 @@ function CommMeta({ comm }: { comm: Communication }) {
       )}
       <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
         {isExternal && (
-          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#e0e7ff", color: "#4f46e5" }}>
+          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#e0e7ff", color: "var(--accent-hover)" }}>
             MS365
           </span>
         )}
         {comm.direction === "inbound" && (
-          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#f0fdf4", color: "#15803d" }}>
+          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "var(--success-bg)", color: "var(--success-text)" }}>
             inbound
           </span>
         )}
         {comm.direction === "outbound" && comm.type !== "note" && (
-          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#eff6ff", color: "#1d4ed8" }}>
+          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "var(--info-bg)", color: "var(--info-text)" }}>
             outbound
           </span>
         )}
         {isTeams && (
-          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "#f0f4ff", color: "#4f46e5", display: "inline-flex", alignItems: "center", gap: 3 }}>
+          <span style={{ fontSize: 10, padding: "1px 6px", borderRadius: 4, background: "var(--accent-bg)", color: "var(--accent-hover)", display: "inline-flex", alignItems: "center", gap: 3 }}>
             <Video style={{ width: 9, height: 9 }} /> Teams
           </span>
         )}
         {isTeams && joinUrl && (
-          <a href={joinUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: "#6366f1", textDecoration: "underline" }}>
+          <a href={joinUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: "var(--accent)", textDecoration: "underline" }}>
             Join link
           </a>
         )}
@@ -169,7 +169,7 @@ export function CommunicationsSection({ clientId }: CommunicationsSectionProps) 
     <div style={{ marginTop: 24 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <MessageSquare style={{ width: 16, height: 16, color: "#f59e0b" }} />
+          <MessageSquare style={{ width: 16, height: 16, color: "var(--warning)" }} />
           <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>Communications</h3>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
@@ -194,12 +194,12 @@ export function CommunicationsSection({ clientId }: CommunicationsSectionProps) 
       </div>
 
       {syncResult && (
-        <div style={{ fontSize: 12, color: "#15803d", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "var(--r-sm)", padding: "8px 12px", marginBottom: 10 }}>
+        <div style={{ fontSize: 12, color: "var(--success-text)", background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: "var(--r-sm)", padding: "8px 12px", marginBottom: 10 }}>
           Synced {syncResult.emailsSynced} email{syncResult.emailsSynced !== 1 ? "s" : ""} and {syncResult.meetingsSynced} meeting{syncResult.meetingsSynced !== 1 ? "s" : ""}.
         </div>
       )}
       {syncError && (
-        <div style={{ fontSize: 12, color: "#b91c1c", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-sm)", padding: "8px 12px", marginBottom: 10 }}>
+        <div style={{ fontSize: 12, color: "var(--danger-text)", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-sm)", padding: "8px 12px", marginBottom: 10 }}>
           {syncError}
         </div>
       )}

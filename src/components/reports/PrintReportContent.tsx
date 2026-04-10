@@ -38,7 +38,7 @@ const PRINT_STYLES = `
     .avoid-break { page-break-inside: avoid; }
     @page { margin: 16mm 14mm; }
   }
-  .cover { background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%); color: #fff; padding: 52px 56px; }
+  .cover { background: var(--gradient-accent); color: #fff; padding: 52px 56px; }
   .cover h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.2; margin-bottom: 10px; }
   .cover p { font-size: 14px; color: rgba(255,255,255,0.72); }
   .cover-meta { display: flex; align-items: center; justify-content: space-between; padding: 14px 56px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #64748b; }
@@ -99,7 +99,7 @@ export function PrintReportContent({ report, baseUrl = "", showToolbar = false }
             className="print-only-hide"
             style={{
               position: "fixed", top: 16, right: 16, zIndex: 100, gap: 8,
-              background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10,
+              background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10,
               padding: "8px 12px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
             }}
           >
@@ -107,7 +107,7 @@ export function PrintReportContent({ report, baseUrl = "", showToolbar = false }
               id="btn-print"
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "7px 16px", background: "#6366f1", color: "#fff",
+                padding: "7px 16px", background: "var(--accent)", color: "#fff",
                 border: "none", borderRadius: 7, fontSize: 13, fontWeight: 600,
                 cursor: "pointer", fontFamily: "inherit",
               }}
@@ -118,7 +118,7 @@ export function PrintReportContent({ report, baseUrl = "", showToolbar = false }
               id="btn-close"
               style={{
                 display: "inline-flex", alignItems: "center",
-                padding: "7px 14px", background: "#f1f5f9", color: "#475569",
+                padding: "7px 14px", background: "var(--border-subtle)", color: "#475569",
                 border: "none", borderRadius: 7, fontSize: 13, fontWeight: 600,
                 cursor: "pointer", fontFamily: "inherit",
               }}

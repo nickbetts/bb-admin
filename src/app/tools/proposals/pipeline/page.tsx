@@ -20,12 +20,12 @@ interface Proposal {
 }
 
 const STAGES = [
-  { id: "prospect", label: "Prospect", color: "#6366f1" },
+  { id: "prospect", label: "Prospect", color: "var(--accent)" },
   { id: "sent", label: "Sent", color: "#3b82f6" },
-  { id: "viewed", label: "Viewed", color: "#f59e0b" },
+  { id: "viewed", label: "Viewed", color: "var(--warning)" },
   { id: "negotiating", label: "Negotiating", color: "#f97316" },
-  { id: "won", label: "Won", color: "#22c55e" },
-  { id: "lost", label: "Lost", color: "#9ca3af" },
+  { id: "won", label: "Won", color: "var(--success)" },
+  { id: "lost", label: "Lost", color: "var(--text-3)" },
 ];
 
 function formatCurrency(v: number | null) {
@@ -108,10 +108,10 @@ export default function PipelinePage() {
     .reduce((s, p) => s + (p.expectedValue ?? 0), 0);
 
   return (
-    <div style={{ padding: "40px 48px", maxWidth: 1400, margin: "0 auto" }}>
+    <div className="page" style={{ maxWidth: 1400 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#6366f1,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <LayoutGrid style={{ width: 20, height: 20, color: "white" }} />
           </div>
           <div>
@@ -122,11 +122,11 @@ export default function PipelinePage() {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ textAlign: "right" }}>
             <p style={{ fontSize: 11, color: "var(--text-3)" }}>Pipeline Value</p>
-            <p style={{ fontSize: 16, fontWeight: 700, color: "#6366f1" }}>{formatCurrency(totalPipeline) ?? "£0"}</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: "var(--accent)" }}>{formatCurrency(totalPipeline) ?? "£0"}</p>
           </div>
           <div style={{ textAlign: "right" }}>
             <p style={{ fontSize: 11, color: "var(--text-3)" }}>Won This Period</p>
-            <p style={{ fontSize: 16, fontWeight: 700, color: "#22c55e" }}>{formatCurrency(wonValue) ?? "£0"}</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: "var(--success)" }}>{formatCurrency(wonValue) ?? "£0"}</p>
           </div>
         </div>
       </div>
@@ -166,7 +166,7 @@ export default function PipelinePage() {
                       <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>{p.clientName}</p>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         {p.expectedValue != null && (
-                          <span style={{ fontSize: 11, color: "#22c55e", display: "flex", alignItems: "center", gap: 2 }}>
+                          <span style={{ fontSize: 11, color: "var(--success)", display: "flex", alignItems: "center", gap: 2 }}>
                             <DollarSign style={{ width: 10, height: 10 }} />{formatCurrency(p.expectedValue)}
                           </span>
                         )}

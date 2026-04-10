@@ -232,7 +232,7 @@ export function BudgetAdvisorPanel({ client, startDate, endDate }: BudgetAdvisor
         onClick={() => setExpanded(e => !e)}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <DollarSign style={{ width: 18, height: 18, color: "#22c55e" }} />
+          <DollarSign style={{ width: 18, height: 18, color: "var(--success)" }} />
           <span style={{ fontWeight: 600, fontSize: 15, color: "var(--text)" }}>Budget Optimisation Advisor</span>
           <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--border)", padding: "2px 8px", borderRadius: 99 }}>campaign &amp; ad set analysis</span>
         </div>
@@ -254,7 +254,7 @@ export function BudgetAdvisorPanel({ client, startDate, endDate }: BudgetAdvisor
       {expanded && (
         <div style={{ padding: 20 }}>
           {error && (
-            <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-sm)", fontSize: 13, color: "#b91c1c", marginBottom: 16 }}>
+            <div style={{ padding: "10px 14px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-sm)", fontSize: 13, color: "var(--danger-text)", marginBottom: 16 }}>
               {error}
             </div>
           )}
@@ -274,7 +274,7 @@ export function BudgetAdvisorPanel({ client, startDate, endDate }: BudgetAdvisor
 
           {loading && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "32px 0" }}>
-              <Loader2 style={{ width: 22, height: 22, animation: "spin 1s linear infinite", color: "#6366f1" }} />
+              <Loader2 style={{ width: 22, height: 22, animation: "spin 1s linear infinite", color: "var(--accent)" }} />
               <p style={{ fontSize: 13, color: "var(--text-3)" }}>Fetching campaign data and analysing budgets…</p>
               {scannedChannels.length > 0 && (
                 <p style={{ fontSize: 11, color: "var(--text-4)" }}>Scanned: {scannedChannels.join(", ")}</p>
@@ -288,7 +288,7 @@ export function BudgetAdvisorPanel({ client, startDate, endDate }: BudgetAdvisor
               {scannedChannels.length > 0 && (
                 <div style={{ display: "flex", gap: 6 }}>
                   {scannedChannels.map(ch => (
-                    <span key={ch} style={{ fontSize: 11, fontWeight: 600, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", padding: "2px 8px", borderRadius: 99 }}>
+                    <span key={ch} style={{ fontSize: 11, fontWeight: 600, background: "var(--success-bg)", color: "var(--success-text)", border: "1px solid var(--success-border)", padding: "2px 8px", borderRadius: 99 }}>
                       ✓ {ch}
                     </span>
                   ))}
@@ -313,11 +313,11 @@ export function BudgetAdvisorPanel({ client, startDate, endDate }: BudgetAdvisor
                   <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
                     <ArrowRight style={{ width: 18, height: 18, color: "var(--text-3)" }} />
                   </div>
-                  <div style={{ flex: 1, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "var(--r-sm)", padding: "12px 16px" }}>
-                    <div style={{ fontSize: 11, color: "#166534", fontWeight: 500, marginBottom: 4 }}>Recommended Daily Budget</div>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: "#15803d" }}>£{fmt(result.totalRecommendedBudget)}</div>
+                  <div style={{ flex: 1, background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: "var(--r-sm)", padding: "12px 16px" }}>
+                    <div style={{ fontSize: 11, color: "var(--success-text)", fontWeight: 500, marginBottom: 4 }}>Recommended Daily Budget</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: "var(--success-text)" }}>£{fmt(result.totalRecommendedBudget)}</div>
                     {result.projectedROASImprovement && (
-                      <div style={{ fontSize: 11, color: "#22c55e", marginTop: 2, fontWeight: 600 }}>{result.projectedROASImprovement}</div>
+                      <div style={{ fontSize: 11, color: "var(--success)", marginTop: 2, fontWeight: 600 }}>{result.projectedROASImprovement}</div>
                     )}
                   </div>
                 </div>

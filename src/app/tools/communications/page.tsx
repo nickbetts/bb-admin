@@ -97,10 +97,10 @@ export default function CommunicationsPage() {
   });
 
   return (
-    <div style={{ padding: "40px 48px", maxWidth: 900, margin: "0 auto" }}>
+    <div className="page" style={{ maxWidth: 900 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#6366f1,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <MessageSquare style={{ width: 20, height: 20, color: "white" }} />
           </div>
           <div>

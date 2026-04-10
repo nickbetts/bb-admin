@@ -85,7 +85,7 @@ export default function NotificationPreferencesPage() {
   return (
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 32 }}>
-        <Bell style={{ width: 28, height: 28, color: "#6366f1" }} />
+        <Bell style={{ width: 28, height: 28, color: "var(--accent)" }} />
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: "var(--text-1)" }}>
             Notification Preferences
@@ -310,7 +310,7 @@ export default function NotificationPreferencesPage() {
       {/* Save button */}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
         {saved && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#16a34a", fontSize: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--success)", fontSize: 14 }}>
             <Check style={{ width: 18, height: 18 }} /> Saved
           </div>
         )}
@@ -324,7 +324,7 @@ export default function NotificationPreferencesPage() {
             gap: 8,
             padding: "10px 24px",
             borderRadius: 10,
-            background: "#6366f1",
+            background: "var(--accent)",
             color: "white",
             border: "none",
             fontWeight: 600,

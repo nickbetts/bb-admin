@@ -120,7 +120,7 @@ export function ChangePasswordForm() {
         <div role="alert" style={{
           padding: "12px 16px", borderRadius: 10,
           background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
-          fontSize: 13, color: "#fca5a5",
+          fontSize: 13, color: "var(--danger-border)",
         }}>
           {error}
         </div>
@@ -131,7 +131,7 @@ export function ChangePasswordForm() {
         disabled={loading}
         style={{
           width: "100%", padding: "14px 20px", borderRadius: 12, marginTop: 4,
-          background: loading ? "rgba(99,102,241,0.5)" : "linear-gradient(135deg, #6366f1, #7c3aed)",
+          background: loading ? "rgba(99,102,241,0.5)" : "var(--gradient-accent)",
           border: "none", color: "white", fontSize: 14, fontWeight: 600,
           cursor: loading ? "not-allowed" : "pointer",
           boxShadow: loading ? "none" : "0 0 32px rgba(99,102,241,0.4)",

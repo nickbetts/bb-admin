@@ -1229,7 +1229,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           className="print:hidden"
           style={{
             position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
-            zIndex: 1000, background: "#ef4444", color: "#fff",
+            zIndex: 1000, background: "var(--danger)", color: "#fff",
             padding: "10px 18px", borderRadius: "var(--r)",
             fontSize: 13, fontWeight: 500,
             display: "flex", alignItems: "center", gap: 10,
@@ -1328,7 +1328,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                 onClick={handleRevokeShareToken}
                 disabled={shareLoading}
                 className="btn btn-secondary btn-sm"
-                style={{ padding: "5px 8px", color: "#ef4444" }}
+                style={{ padding: "5px 8px", color: "var(--danger)" }}
                 title="Revoke share link"
                 aria-label="Revoke share link"
               >
@@ -1522,9 +1522,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
 
       {/* ── Body ────────────────────────────────────────────────────────── */}
       {isChaosTone && (
-        <div style={{ background: "#fef3c7", borderBottom: "1px solid #fbbf24", padding: "8px 40px", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ background: "var(--warning-bg)", borderBottom: "1px solid #fbbf24", padding: "8px 40px", display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 16 }}>⚠️</span>
-          <p style={{ fontSize: 12, fontWeight: 600, color: "#92400e" }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: "var(--warning-text)" }}>
             INTERNAL PREVIEW ONLY — chaos tone active. Export PDF and Share are disabled until you switch back to a sensible tone.
           </p>
         </div>
@@ -1540,7 +1540,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           {/* Cover card */}
           <div className="card report-cover-card" style={{ marginBottom: 36 }}>
             <div style={{
-              background: "linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)",
+              background: "var(--gradient-accent)",
               padding: "36px 40px",
             }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
@@ -1587,7 +1587,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   {report.screenshots.length > 0 && ` · ${report.screenshots.length} screenshot${report.screenshots.length !== 1 ? "s" : ""}`}
                 </p>
                 {shareUrl && (
-                  <span style={{ fontSize: 11, color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: 3 }}>
+                  <span style={{ fontSize: 11, color: "var(--success)", fontWeight: 600, display: "flex", alignItems: "center", gap: 3 }}>
                     <Globe2 size={11} /> Shared
                   </span>
                 )}
@@ -1752,7 +1752,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                     return (
                       <>
                         {section.sectionType === "overview" && narrativeResult ? (
-                          <div style={{ background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r)", padding: "14px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
+                          <div style={{ background: "var(--accent-bg)", border: "1px solid rgb(99 102 241 / 0.25)", borderRadius: "var(--r)", padding: "14px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
                             <p style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                               Report Narrative
                             </p>
@@ -1780,7 +1780,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                           </div>
                         ) : section.commentary ? (
                           <div style={{
-                            background: "var(--accent-bg)", border: "1px solid #c7d2fe",
+                            background: "var(--accent-bg)", border: "1px solid rgb(99 102 241 / 0.25)",
                             borderRadius: "var(--r)", padding: "14px 18px",
                           }}>
                             <p style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>
@@ -1813,7 +1813,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                                         placeholder="Add caption…"
                                         style={{ flex: 1, fontSize: 12, padding: "4px 8px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", outline: "none" }}
                                       />
-                                      <button onClick={() => handleUpdateCaption(ss.id, captionEditValue)} style={{ background: "none", border: "none", cursor: "pointer", color: "#10b981", padding: 4, display: "flex" }}><Check size={13} /></button>
+                                      <button onClick={() => handleUpdateCaption(ss.id, captionEditValue)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--success)", padding: 4, display: "flex" }}><Check size={13} /></button>
                                       <button onClick={() => setEditingCaptionId(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 4, display: "flex" }}><X size={13} /></button>
                                     </div>
                                   ) : (
@@ -1923,7 +1923,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                             </div>
                           </div>
                         ) : section.commentary ? (
-                          <div style={{ background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r)", padding: "14px 18px" }}>
+                          <div style={{ background: "var(--accent-bg)", border: "1px solid rgb(99 102 241 / 0.25)", borderRadius: "var(--r)", padding: "14px 18px" }}>
                             <p style={{ fontSize: 11, fontWeight: 700, color: "var(--accent-text)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Executive Summary</p>
                             <p style={{ fontSize: 14, color: "var(--text)", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{section.commentary}</p>
                           </div>
@@ -2095,7 +2095,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                             placeholder="Add caption…"
                             style={{ flex: 1, fontSize: 12, padding: "4px 8px", borderRadius: "var(--r-sm)", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", outline: "none" }}
                           />
-                          <button onClick={() => handleUpdateCaption(screenshot.id, captionEditValue)} style={{ background: "none", border: "none", cursor: "pointer", color: "#10b981", padding: 4, display: "flex" }}><Check size={13} /></button>
+                          <button onClick={() => handleUpdateCaption(screenshot.id, captionEditValue)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--success)", padding: 4, display: "flex" }}><Check size={13} /></button>
                           <button onClick={() => setEditingCaptionId(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 4, display: "flex" }}><X size={13} /></button>
                         </div>
                       ) : (

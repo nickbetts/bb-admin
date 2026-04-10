@@ -64,7 +64,7 @@ export function CreativeIntelligencePanel({ clientId, platform, creativeData }: 
         onClick={() => setExpanded(e => !e)}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Sparkles style={{ width: 18, height: 18, color: "#8b5cf6" }} />
+          <Sparkles style={{ width: 18, height: 18, color: "var(--accent-2)" }} />
           <span style={{ fontWeight: 600, fontSize: 15, color: "var(--text)" }}>{platformLabel} Creative Intelligence</span>
           <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--border)", padding: "2px 8px", borderRadius: 99 }}>AI creative analysis</span>
         </div>
@@ -84,7 +84,7 @@ export function CreativeIntelligencePanel({ clientId, platform, creativeData }: 
       {expanded && (
         <div style={{ padding: 20 }}>
           {error && (
-            <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-sm)", fontSize: 13, color: "#b91c1c", marginBottom: 16 }}>
+            <div style={{ padding: "10px 14px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-sm)", fontSize: 13, color: "var(--danger-text)", marginBottom: 16 }}>
               {error}
             </div>
           )}
@@ -110,7 +110,7 @@ export function CreativeIntelligencePanel({ clientId, platform, creativeData }: 
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {result.insights.map((insight, i) => (
                       <div key={i} style={{ display: "flex", gap: 8, fontSize: 13, color: "var(--text)" }}>
-                        <span style={{ color: "#8b5cf6", flexShrink: 0, fontWeight: 700 }}>→</span>
+                        <span style={{ color: "var(--accent-2)", flexShrink: 0, fontWeight: 700 }}>→</span>
                         {insight}
                       </div>
                     ))}
@@ -123,7 +123,7 @@ export function CreativeIntelligencePanel({ clientId, platform, creativeData }: 
                   <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Top-Performing Patterns</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {result.topPatterns.map((p, i) => (
-                      <span key={i} style={{ fontSize: 12, color: "#166534", background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "4px 10px", borderRadius: 99 }}>{p}</span>
+                      <span key={i} style={{ fontSize: 12, color: "var(--success-text)", background: "var(--success-bg)", border: "1px solid var(--success-border)", padding: "4px 10px", borderRadius: 99 }}>{p}</span>
                     ))}
                   </div>
                 </div>
@@ -149,10 +149,10 @@ export function CreativeIntelligencePanel({ clientId, platform, creativeData }: 
 
               {result.pauseRecommendations && result.pauseRecommendations.length > 0 && (
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#b91c1c", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Consider Pausing</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--danger-text)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Consider Pausing</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     {result.pauseRecommendations.map((r, i) => (
-                      <div key={i} style={{ fontSize: 12, color: "#b91c1c", display: "flex", gap: 6 }}>
+                      <div key={i} style={{ fontSize: 12, color: "var(--danger-text)", display: "flex", gap: 6 }}>
                         <span>⏸</span> {r}
                       </div>
                     ))}

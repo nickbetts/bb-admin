@@ -81,10 +81,10 @@ const INTEGRATIONS: Integration[] = [
     clientCount: (d) => Math.max(d.platformCounts.ga4 ?? 0, d.platformCounts.googleads ?? 0, d.platformCounts.searchconsole ?? 0),
     badge: (d) =>
       d.env.googleOAuth && d.googleConnections.count > 0
-        ? { label: `${d.googleConnections.count} connected`, color: "#15803d", bg: "#dcfce7" }
+        ? { label: `${d.googleConnections.count} connected`, color: "var(--success-text)", bg: "#dcfce7" }
         : d.env.googleOAuth
-        ? { label: "Env configured", color: "#1d4ed8", bg: "#dbeafe" }
-        : { label: "Not configured", color: "#6b7280", bg: "#f3f4f6" },
+        ? { label: "Env configured", color: "var(--info-text)", bg: "#dbeafe" }
+        : { label: "Not configured", color: "var(--text-2)", bg: "#f3f4f6" },
     detail: (d) =>
       d.googleConnections.accounts.length > 0
         ? d.googleConnections.accounts.map((a) => a.email).join(", ")
@@ -105,11 +105,11 @@ const INTEGRATIONS: Integration[] = [
     configured: (d) => d.semrush.configured,
     clientCount: (d) => d.platformCounts.seo ?? 0,
     badge: (d) => {
-      if (!d.semrush.configured) return { label: "Not configured", color: "#6b7280", bg: "#f3f4f6" };
-      if (d.semrush.units === null) return { label: "API key set", color: "#1d4ed8", bg: "#dbeafe" };
-      if (d.semrush.units === 0) return { label: "0 units — top up!", color: "#b91c1c", bg: "#fee2e2" };
+      if (!d.semrush.configured) return { label: "Not configured", color: "var(--text-2)", bg: "#f3f4f6" };
+      if (d.semrush.units === null) return { label: "API key set", color: "var(--info-text)", bg: "#dbeafe" };
+      if (d.semrush.units === 0) return { label: "0 units — top up!", color: "var(--danger-text)", bg: "#fee2e2" };
       if (d.semrush.units < 1000) return { label: `${d.semrush.units.toLocaleString()} units left`, color: "#d97706", bg: "#fef3c7" };
-      return { label: `${d.semrush.units.toLocaleString()} units`, color: "#15803d", bg: "#dcfce7" };
+      return { label: `${d.semrush.units.toLocaleString()} units`, color: "var(--success-text)", bg: "#dcfce7" };
     },
     detail: (d) =>
       d.semrush.units !== null
@@ -132,7 +132,7 @@ const INTEGRATIONS: Integration[] = [
     configured: (d) => d.openai.configured,
     clientCount: () => 0,
     badge: (d) => {
-      if (!d.openai.configured) return { label: "Not configured", color: "#6b7280", bg: "#f3f4f6" };
+      if (!d.openai.configured) return { label: "Not configured", color: "var(--text-2)", bg: "#f3f4f6" };
       if (d.openai.usage) {
         return {
           label: `$${d.openai.usage.estimatedCostUsd.toFixed(2)} est. cost (30d)`,
@@ -140,7 +140,7 @@ const INTEGRATIONS: Integration[] = [
           bg: d.openai.usage.estimatedCostUsd > 50 ? "#fee2e2" : d.openai.usage.estimatedCostUsd > 20 ? "#fef3c7" : "#dcfce7",
         };
       }
-      return { label: "API key set", color: "#15803d", bg: "#dcfce7" };
+      return { label: "API key set", color: "var(--success-text)", bg: "#dcfce7" };
     },
     detail: (d) => {
       if (!d.openai.configured) return "Add your OpenAI API key in Settings → OpenAI API Key";
@@ -165,8 +165,8 @@ const INTEGRATIONS: Integration[] = [
     clientCount: (d) => d.platformCounts.meta ?? 0,
     badge: (d) =>
       d.env.meta
-        ? { label: "Access token set", color: "#15803d", bg: "#dcfce7" }
-        : { label: "Not configured", color: "#6b7280", bg: "#f3f4f6" },
+        ? { label: "Access token set", color: "var(--success-text)", bg: "#dcfce7" }
+        : { label: "Not configured", color: "var(--text-2)", bg: "#f3f4f6" },
     detail: () => "Per-client account IDs configured in client settings",
   },
   {
@@ -184,8 +184,8 @@ const INTEGRATIONS: Integration[] = [
     clientCount: (d) => d.platformCounts.microsoftads ?? 0,
     badge: (d) =>
       d.env.microsoftAds
-        ? { label: "Credentials set", color: "#15803d", bg: "#dcfce7" }
-        : { label: "Not configured", color: "#6b7280", bg: "#f3f4f6" },
+        ? { label: "Credentials set", color: "var(--success-text)", bg: "#dcfce7" }
+        : { label: "Not configured", color: "var(--text-2)", bg: "#f3f4f6" },
     detail: () => "Refresh token + client ID/secret required in environment",
   },
   {
@@ -202,8 +202,8 @@ const INTEGRATIONS: Integration[] = [
     clientCount: (d) => d.platformCounts.tiktok ?? 0,
     badge: (d) =>
       (d.platformCounts.tiktok ?? 0) > 0
-        ? { label: `${d.platformCounts.tiktok} clients`, color: "#15803d", bg: "#dcfce7" }
-        : { label: "No clients configured", color: "#6b7280", bg: "#f3f4f6" },
+        ? { label: `${d.platformCounts.tiktok} clients`, color: "var(--success-text)", bg: "#dcfce7" }
+        : { label: "No clients configured", color: "var(--text-2)", bg: "#f3f4f6" },
     detail: () => "Advertiser ID and access token configured per client",
   },
   {
@@ -220,8 +220,8 @@ const INTEGRATIONS: Integration[] = [
     clientCount: (d) => d.platformCounts.woocommerce ?? 0,
     badge: (d) =>
       (d.platformCounts.woocommerce ?? 0) > 0
-        ? { label: `${d.platformCounts.woocommerce} clients`, color: "#15803d", bg: "#dcfce7" }
-        : { label: "No clients configured", color: "#6b7280", bg: "#f3f4f6" },
+        ? { label: `${d.platformCounts.woocommerce} clients`, color: "var(--success-text)", bg: "#dcfce7" }
+        : { label: "No clients configured", color: "var(--text-2)", bg: "#f3f4f6" },
     detail: () => "Store URL, consumer key and secret configured per client",
   },
   {
@@ -239,8 +239,8 @@ const INTEGRATIONS: Integration[] = [
     clientCount: (d) => d.platformCounts.shopify ?? 0,
     badge: (d) =>
       (d.platformCounts.shopify ?? 0) > 0
-        ? { label: `${d.platformCounts.shopify} clients`, color: "#15803d", bg: "#dcfce7" }
-        : { label: "No clients configured", color: "#6b7280", bg: "#f3f4f6" },
+        ? { label: `${d.platformCounts.shopify} clients`, color: "var(--success-text)", bg: "#dcfce7" }
+        : { label: "No clients configured", color: "var(--text-2)", bg: "#f3f4f6" },
     detail: () => "Store domain and access token configured per client",
   },
   {
@@ -256,8 +256,8 @@ const INTEGRATIONS: Integration[] = [
     clientCount: (d) => d.platformCounts.cwv ?? 0,
     badge: (d) =>
       (d.platformCounts.cwv ?? 0) > 0
-        ? { label: `${d.platformCounts.cwv} clients`, color: "#15803d", bg: "#dcfce7" }
-        : { label: "No clients configured", color: "#6b7280", bg: "#f3f4f6" },
+        ? { label: `${d.platformCounts.cwv} clients`, color: "var(--success-text)", bg: "#dcfce7" }
+        : { label: "No clients configured", color: "var(--text-2)", bg: "#f3f4f6" },
     detail: () => "Site URL configured per client",
   },
 ];
@@ -413,7 +413,7 @@ export function ApiStatusDashboard() {
                           </span>
                         )}
                         {hasErrors && (
-                          <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: "#fee2e2", color: "#b91c1c" }}>
+                          <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: "var(--danger-bg)", color: "var(--danger-text)" }}>
                             Errors in last 5 runs
                           </span>
                         )}
@@ -659,7 +659,7 @@ export function ApiStatusDashboard() {
         <div className="card" style={{ marginTop: 8 }}>
           <div className="card-header">
             <div>
-              <h2 className="card-title" style={{ color: "#b91c1c" }}>Recent Pipeline Errors</h2>
+              <h2 className="card-title" style={{ color: "var(--danger-text)" }}>Recent Pipeline Errors</h2>
               <p className="card-subtitle">Error counts across last 5 cron runs, grouped by platform</p>
             </div>
           </div>
@@ -674,12 +674,12 @@ export function ApiStatusDashboard() {
                     gap: 8,
                     padding: "6px 14px",
                     borderRadius: 8,
-                    background: "#fef2f2",
-                    border: "1px solid #fecaca",
+                    background: "var(--danger-bg)",
+                    border: "1px solid var(--danger-border)",
                   }}
                 >
                   <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", fontFamily: "monospace" }}>{key}</span>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: "#b91c1c" }}>{count}×</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--danger-text)" }}>{count}×</span>
                 </div>
               ))}
             </div>

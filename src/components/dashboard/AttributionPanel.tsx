@@ -92,7 +92,7 @@ export function AttributionPanel({ clientId, channelData }: AttributionPanelProp
         onClick={() => setExpanded(e => !e)}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <GitBranch style={{ width: 18, height: 18, color: "#f59e0b" }} />
+          <GitBranch style={{ width: 18, height: 18, color: "var(--warning)" }} />
           <span style={{ fontWeight: 600, fontSize: 15, color: "var(--text)" }}>Attribution Modelling</span>
           <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--border)", padding: "2px 8px", borderRadius: 99 }}>multi-touch comparison</span>
         </div>
@@ -114,7 +114,7 @@ export function AttributionPanel({ clientId, channelData }: AttributionPanelProp
       {expanded && (
         <div style={{ padding: 20 }}>
           {error && (
-            <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-sm)", fontSize: 13, color: "#b91c1c", marginBottom: 16 }}>
+            <div style={{ padding: "10px 14px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-sm)", fontSize: 13, color: "var(--danger-text)", marginBottom: 16 }}>
               {error}
             </div>
           )}
@@ -135,7 +135,7 @@ export function AttributionPanel({ clientId, channelData }: AttributionPanelProp
           {result && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {result.narrative && (
-                <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "var(--r-sm)", padding: 14, fontSize: 13, color: "#92400e", lineHeight: 1.6 }}>
+                <div style={{ background: "var(--warning-bg)", border: "1px solid var(--warning-border)", borderRadius: "var(--r-sm)", padding: 14, fontSize: 13, color: "var(--warning-text)", lineHeight: 1.6 }}>
                   {result.narrative}
                 </div>
               )}

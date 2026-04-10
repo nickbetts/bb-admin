@@ -102,8 +102,8 @@ function competitionLabel(c: string) {
 
 function intentColor(intent: string): { bg: string; color: string } {
   if (intent === "Transactional") return { bg: "#d1fae5", color: "#065f46" };
-  if (intent === "Commercial") return { bg: "#dbeafe", color: "#1e40af" };
-  return { bg: "#fef3c7", color: "#92400e" };
+  if (intent === "Commercial") return { bg: "#dbeafe", color: "var(--info-text)" };
+  return { bg: "#fef3c7", color: "var(--warning-text)" };
 }
 
 // ─── PPC Bar Chart ─────────────────────────────────────────────────────────────
@@ -127,11 +127,11 @@ function PPCBarChart({ months }: { months: Array<{ label: string; clicks: number
             >
               <div style={{
                 position: "absolute", top: -20, left: "50%", transform: "translateX(-50%)",
-                fontSize: 9, color: "#6366f1", fontWeight: 700, whiteSpace: "nowrap",
+                fontSize: 9, color: "var(--accent)", fontWeight: 700, whiteSpace: "nowrap",
               }}>{fmtNum(m.clicks)}</div>
             </div>
           </div>
-          <div style={{ fontSize: 10, color: "#94a3b8", textAlign: "center" }}>{m.label}</div>
+          <div style={{ fontSize: 10, color: "var(--text-3)", textAlign: "center" }}>{m.label}</div>
         </div>
       ))}
     </div>
@@ -148,9 +148,9 @@ function Slider({ label, value, min, max, step, format, onChange }: {
   return (
     <div style={{ marginBottom: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, color: "#475569" }}>{label}</label>
+        <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>{label}</label>
         <span style={{
-          fontSize: 14, fontWeight: 700, color: "#6366f1",
+          fontSize: 14, fontWeight: 700, color: "var(--accent)",
           background: "#ede9fe", padding: "3px 10px", borderRadius: 99,
         }}>{format(value)}</span>
       </div>
@@ -158,7 +158,7 @@ function Slider({ label, value, min, max, step, format, onChange }: {
         {/* Track background */}
         <div style={{
           position: "absolute", left: 0, right: 0, height: 6,
-          background: "#e2e8f0", borderRadius: 99,
+          background: "var(--border)", borderRadius: 99,
         }}>
           <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(to right, #6366f1, #818cf8)", borderRadius: 99 }} />
         </div>
@@ -167,7 +167,7 @@ function Slider({ label, value, min, max, step, format, onChange }: {
           position: "absolute",
           left: `calc(${pct}% - 10px)`,
           width: 20, height: 20, borderRadius: "50%",
-          background: "linear-gradient(135deg, #6366f1, #7c3aed)",
+          background: "var(--gradient-accent)",
           border: "2.5px solid #fff",
           boxShadow: "0 2px 8px rgba(99,102,241,0.5)",
           pointerEvents: "none",
@@ -184,8 +184,8 @@ function Slider({ label, value, min, max, step, format, onChange }: {
         />
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
-        <span style={{ fontSize: 10, color: "#94a3b8" }}>{format(min)}</span>
-        <span style={{ fontSize: 10, color: "#94a3b8" }}>{format(max)}</span>
+        <span style={{ fontSize: 10, color: "var(--text-3)" }}>{format(min)}</span>
+        <span style={{ fontSize: 10, color: "var(--text-3)" }}>{format(max)}</span>
       </div>
     </div>
   );
@@ -205,13 +205,13 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
       <div style={{ width: 32, height: 3, background: "linear-gradient(to right, #6366f1, #818cf8)", borderRadius: 99 }} />
-      <span style={{ fontSize: 12, fontWeight: 700, color: "#6366f1", letterSpacing: "0.08em", textTransform: "uppercase" }}>{children}</span>
+      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", letterSpacing: "0.08em", textTransform: "uppercase" }}>{children}</span>
     </div>
   );
 }
 
 function H2({ children }: { children: React.ReactNode }) {
-  return <h2 style={{ fontSize: 28, fontWeight: 800, color: "#1e293b", lineHeight: 1.2, margin: "0 0 16px" }}>{children}</h2>;
+  return <h2 style={{ fontSize: 28, fontWeight: 800, color: "var(--text)", lineHeight: 1.2, margin: "0 0 16px" }}>{children}</h2>;
 }
 
 // ─── Ad mockup helpers ────────────────────────────────────────────────────────
@@ -246,7 +246,7 @@ function GoogleSearchAdCard({
 }) {
   return (
     <div style={{
-      background: "#fff", border: "1px solid #dadce0", borderRadius: 12,
+      background: "var(--surface)", border: "1px solid #dadce0", borderRadius: 12,
       padding: "16px 20px", fontFamily: "Arial, sans-serif",
     }}>
       {/* Ad badge + display URL */}
@@ -285,7 +285,7 @@ function MetaAdCard({
 }) {
   return (
     <div style={{
-      background: "#fff", border: "1px solid #dde3ef", borderRadius: 12,
+      background: "var(--surface)", border: "1px solid #dde3ef", borderRadius: 12,
       overflow: "hidden", maxWidth: 380,
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     }}>
@@ -293,7 +293,7 @@ function MetaAdCard({
       <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{
           width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
-          background: "linear-gradient(135deg, #6366f1, #7c3aed)",
+          background: "var(--gradient-accent)",
           display: "flex", alignItems: "center", justifyContent: "center",
           color: "#fff", fontWeight: 800, fontSize: 15,
         }}>
@@ -414,7 +414,7 @@ function StickyNav({ clientName, token }: { clientName: string; token: string })
               onClick={() => scrollTo(nav.id)}
               style={{
                 background: activeSection === nav.id ? "rgba(99,102,241,0.2)" : "transparent",
-                border: "none", color: activeSection === nav.id ? "#a5b4fc" : "#94a3b8",
+                border: "none", color: activeSection === nav.id ? "#a5b4fc" : "var(--text-3)",
                 padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600,
                 cursor: "pointer", transition: "all 0.15s",
               }}
@@ -425,7 +425,7 @@ function StickyNav({ clientName, token }: { clientName: string; token: string })
           <button
             onClick={() => scrollTo("contact")}
             style={{
-              marginLeft: 8, background: "linear-gradient(135deg, #6366f1, #7c3aed)",
+              marginLeft: 8, background: "var(--gradient-accent)",
               border: "none", color: "#fff", padding: "7px 16px", borderRadius: 8,
               fontSize: 12, fontWeight: 700, cursor: "pointer",
             }}
@@ -437,7 +437,7 @@ function StickyNav({ clientName, token }: { clientName: string; token: string })
         {/* Mobile hamburger */}
         <button
           onClick={() => setMobileOpen((v) => !v)}
-          style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", padding: 4 }}
+          style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", padding: 4 }}
           className="show-mobile"
         >
           {mobileOpen ? <XIcon style={{ width: 18, height: 18 }} /> : <Menu style={{ width: 18, height: 18 }} />}
@@ -453,7 +453,7 @@ function StickyNav({ clientName, token }: { clientName: string; token: string })
               onClick={() => scrollTo(nav.id)}
               style={{
                 display: "block", width: "100%", textAlign: "left",
-                background: "none", border: "none", color: "#94a3b8",
+                background: "none", border: "none", color: "var(--text-3)",
                 padding: "10px 0", fontSize: 14, fontWeight: 500, cursor: "pointer",
                 borderBottom: "1px solid rgba(255,255,255,0.06)",
               }}
@@ -577,7 +577,7 @@ function EnquiryForm({ token, clientName }: { token: string; clientName: string 
         disabled={submitting}
         style={{
           display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-          padding: "14px 24px", background: "linear-gradient(135deg, #6366f1, #7c3aed)",
+          padding: "14px 24px", background: "var(--gradient-accent)",
           border: "none", borderRadius: 12, color: "#fff", fontSize: 15, fontWeight: 700,
           cursor: submitting ? "default" : "pointer", opacity: submitting ? 0.7 : 1,
           transition: "opacity 0.2s",
@@ -701,10 +701,10 @@ export default function ShareProposalPage({ params }: Props) {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)" }}>
         <div style={{ textAlign: "center" }}>
-          <Loader2 style={{ width: 32, height: 32, color: "#6366f1", margin: "0 auto 12px" }} className="animate-spin" />
-          <p style={{ color: "#64748b", fontSize: 14 }}>Loading proposal…</p>
+          <Loader2 style={{ width: 32, height: 32, color: "var(--accent)", margin: "0 auto 12px" }} className="animate-spin" />
+          <p style={{ color: "var(--text-2)", fontSize: 14 }}>Loading proposal…</p>
         </div>
       </div>
     );
@@ -712,10 +712,10 @@ export default function ShareProposalPage({ params }: Props) {
 
   if (notFound || !meta) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)" }}>
         <div style={{ textAlign: "center", padding: 40 }}>
-          <p style={{ fontSize: 20, fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>Proposal not found</p>
-          <p style={{ color: "#64748b", fontSize: 14 }}>This link may have expired or been revoked.</p>
+          <p style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>Proposal not found</p>
+          <p style={{ color: "var(--text-2)", fontSize: 14 }}>This link may have expired or been revoked.</p>
         </div>
       </div>
     );
@@ -730,7 +730,7 @@ export default function ShareProposalPage({ params }: Props) {
 
   return (
     <div
-      style={{ minHeight: "100vh", background: "#fff", fontFamily: "'Inter', -apple-system, sans-serif", userSelect: "none", WebkitUserSelect: "none" }}
+      style={{ minHeight: "100vh", background: "var(--surface)", fontFamily: "'Inter', -apple-system, sans-serif", userSelect: "none", WebkitUserSelect: "none" }}
       onCopy={(e) => {
         // Allow copy within form inputs so the enquiry form works normally
         const target = e.target as HTMLElement;
@@ -816,15 +816,15 @@ export default function ShareProposalPage({ params }: Props) {
         <div style={{ maxWidth: 900, margin: "0 auto", position: "relative", zIndex: 1 }}>
           {/* Kicker label with line */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
-            <div style={{ width: 28, height: 1, background: "#64748b" }} />
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.18em", color: "#64748b" }}>Digital Strategy Proposal</span>
+            <div style={{ width: 28, height: 1, background: "var(--text-2)" }} />
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--text-2)" }}>Digital Strategy Proposal</span>
           </div>
           <h1 style={{ fontSize: "clamp(2rem, 5vw, 4rem)", fontWeight: 900, lineHeight: 1.06, margin: "0 0 20px", letterSpacing: "-1.5px", color: "#fff" }}>
             {ai?.hero?.tagline ?? `Growing ${meta.clientName} Online`}
           </h1>
           {/* Blue accent divider */}
           <div style={{ width: 48, height: 3, background: "#3b82f6", borderRadius: 2, marginBottom: 24 }} />
-          <p style={{ fontSize: 17, color: "#94a3b8", lineHeight: 1.75, maxWidth: 580, margin: "0 0 48px" }}>
+          <p style={{ fontSize: 17, color: "var(--text-3)", lineHeight: 1.75, maxWidth: 580, margin: "0 0 48px" }}>
             {ai?.hero?.description ?? `A comprehensive digital marketing strategy for ${meta.clientName}.`}
           </p>
 
@@ -839,7 +839,7 @@ export default function ShareProposalPage({ params }: Props) {
               ].map((s) => (
                 <div key={s.label} style={{ textAlign: "center", minWidth: 90 }}>
                   <p style={{ fontSize: "clamp(24px, 4vw, 40px)", fontWeight: 900, color: "#fff", margin: 0, lineHeight: 1, letterSpacing: "-1.5px" }}>{s.value}</p>
-                  <p style={{ fontSize: 11, color: "#64748b", margin: "6px 0 0", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.label}</p>
+                  <p style={{ fontSize: 11, color: "var(--text-2)", margin: "6px 0 0", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>{s.label}</p>
                 </div>
               ))}
             </div>
@@ -848,27 +848,27 @@ export default function ShareProposalPage({ params }: Props) {
           {/* Hero meta strip */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 32, borderTop: "1px solid rgba(255,255,255,.08)", paddingTop: 28 }}>
             <div>
-              <strong style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#475569", marginBottom: 3 }}>Client</strong>
-              <span style={{ color: "#94a3b8", fontSize: 13 }}>{meta.clientName}</span>
+              <strong style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-2)", marginBottom: 3 }}>Client</strong>
+              <span style={{ color: "var(--text-3)", fontSize: 13 }}>{meta.clientName}</span>
             </div>
             {meta.website && (
               <div>
-                <strong style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#475569", marginBottom: 3 }}>Website</strong>
+                <strong style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-2)", marginBottom: 3 }}>Website</strong>
                 <a href={meta.website.startsWith("http") ? meta.website : `https://${meta.website}`}
                   target="_blank" rel="noopener noreferrer"
-                  style={{ color: "#94a3b8", fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  style={{ color: "var(--text-3)", fontSize: 13, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
                   <ExternalLink style={{ width: 12, height: 12 }} />
                   {meta.website.replace(/^https?:\/\/(www\.)?/, "")}
                 </a>
               </div>
             )}
             <div>
-              <strong style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#475569", marginBottom: 3 }}>Prepared</strong>
-              <span style={{ color: "#94a3b8", fontSize: 13 }}>{new Date(meta.updatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</span>
+              <strong style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-2)", marginBottom: 3 }}>Prepared</strong>
+              <span style={{ color: "var(--text-3)", fontSize: 13 }}>{new Date(meta.updatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</span>
             </div>
             <div>
-              <strong style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#475569", marginBottom: 3 }}>Services</strong>
-              <span style={{ color: "#94a3b8", fontSize: 13 }}>{services.length} included</span>
+              <strong style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-2)", marginBottom: 3 }}>Services</strong>
+              <span style={{ color: "var(--text-3)", fontSize: 13 }}>{services.length} included</span>
             </div>
           </div>
         </div>
@@ -892,7 +892,7 @@ export default function ShareProposalPage({ params }: Props) {
               <span style={{ fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)", fontWeight: 800, letterSpacing: "-2px", color: "#fff", lineHeight: 1, display: "block", marginBottom: 6 }}>
                 {s.value}
               </span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
                 {s.label}
               </span>
             </div>
@@ -901,16 +901,16 @@ export default function ShareProposalPage({ params }: Props) {
       </div>
 
       {/* ── Objectives ── */}
-      <div style={{ background: "#fff", padding: "80px 24px" }}>
+      <div style={{ background: "var(--surface)", padding: "80px 24px" }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <div style={{ width: 24, height: 1, background: "#94a3b8" }} />
-            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.15em", color: "#94a3b8" }}>The Objective</span>
+            <div style={{ width: 24, height: 1, background: "var(--text-3)" }} />
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.15em", color: "var(--text-3)" }}>The Objective</span>
           </div>
-          <h2 style={{ fontSize: "clamp(1.5rem, 3.5vw, 2.5rem)", fontWeight: 800, color: "#0f172a", letterSpacing: "-1px", lineHeight: 1.15, margin: "0 0 14px" }}>
+          <h2 style={{ fontSize: "clamp(1.5rem, 3.5vw, 2.5rem)", fontWeight: 800, color: "var(--text)", letterSpacing: "-1px", lineHeight: 1.15, margin: "0 0 14px" }}>
             From invisible to inbound.
           </h2>
-          <p style={{ fontSize: 15, color: "#64748b", maxWidth: 620, lineHeight: 1.75, marginBottom: 40 }}>
+          <p style={{ fontSize: 15, color: "var(--text-2)", maxWidth: 620, lineHeight: 1.75, marginBottom: 40 }}>
             {ai?.whereYouAreNow?.summary ?? `This proposal identifies the gaps holding ${meta.clientName} back and maps out the opportunities a focused digital strategy can unlock.`}
           </p>
           <div className="prop-obj-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
@@ -932,12 +932,12 @@ export default function ShareProposalPage({ params }: Props) {
                 { badge: "Opportunity 02", title: "Content that compounds; paid media that converts", body: "A structured content strategy builds long-term organic visibility while targeted paid campaigns deliver immediate traffic — compounding ROI from the same underlying research." },
               ]),
             ] as Array<{ badge: string; title: string; body: string }>).map((card) => (
-              <div key={card.badge} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, padding: 28 }}>
-                <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.14em", color: "#94a3b8", background: "#f1f5f9", border: "1px solid #e2e8f0", display: "inline-block", padding: "3px 10px", borderRadius: 20, marginBottom: 14 }}>
+              <div key={card.badge} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 28 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.14em", color: "var(--text-3)", background: "var(--border-subtle)", border: "1px solid var(--border)", display: "inline-block", padding: "3px 10px", borderRadius: 20, marginBottom: 14 }}>
                   {card.badge}
                 </div>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", margin: "0 0 8px" }}>{card.title}</h3>
-                <p style={{ fontSize: 13.5, color: "#334155", lineHeight: 1.7, margin: 0 }}>{card.body}</p>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: "0 0 8px" }}>{card.title}</h3>
+                <p style={{ fontSize: 13.5, color: "var(--text)", lineHeight: 1.7, margin: 0 }}>{card.body}</p>
               </div>
             ))}
           </div>
@@ -946,11 +946,11 @@ export default function ShareProposalPage({ params }: Props) {
 
       {/* ── Where You Are Now ── */}
       {ai?.whereYouAreNow && (
-        <div style={{ background: "#f8fafc" }}>
+        <div style={{ background: "var(--bg)" }}>
           <Section>
             <SectionLabel>Current Position</SectionLabel>
             <H2>Where You Are Now</H2>
-            <p style={{ fontSize: 16, color: "#475569", lineHeight: 1.7, marginBottom: 40 }}>
+            <p style={{ fontSize: 16, color: "var(--text-2)", lineHeight: 1.7, marginBottom: 40 }}>
               {ai.whereYouAreNow.summary}
             </p>
             {(ai.whereYouAreNow.positives ?? []).length > 0 && (
@@ -958,27 +958,27 @@ export default function ShareProposalPage({ params }: Props) {
                 <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#16a34a", marginBottom: 16 }}>What you do well</p>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, marginBottom: 32 }}>
                   {(ai.whereYouAreNow.positives ?? []).map((pos, i) => (
-                    <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 24, borderLeft: "4px solid #22c55e" }}>
+                    <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 24, borderLeft: "4px solid var(--success)" }}>
                       <div style={{ width: 32, height: 32, borderRadius: 8, background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
                       </div>
-                      <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", margin: "0 0 8px" }}>{pos.title}</h3>
-                      <p style={{ fontSize: 13, color: "#475569", lineHeight: 1.6, margin: 0 }}>{pos.description}</p>
+                      <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: "0 0 8px" }}>{pos.title}</h3>
+                      <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6, margin: 0 }}>{pos.description}</p>
                     </div>
                   ))}
                 </div>
               </>
             )}
-            <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#ef4444", marginBottom: 16 }}>Where the gaps are</p>
+            <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--danger)", marginBottom: 16 }}>Where the gaps are</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20 }}>
               {(ai.whereYouAreNow.gaps ?? []).map((gap, i) => (
-                <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 24, borderLeft: "4px solid #ef4444" }}>
+                <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 24, borderLeft: "4px solid var(--danger)" }}>
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                   </div>
-                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", margin: "0 0 8px" }}>{gap.title}</h3>
-                  <p style={{ fontSize: 13, color: "#475569", lineHeight: 1.6, margin: "0 0 8px" }}>{gap.description}</p>
-                  <p style={{ fontSize: 12, color: "#ef4444", fontWeight: 600, margin: 0 }}>Impact: {gap.impact}</p>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: "0 0 8px" }}>{gap.title}</h3>
+                  <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6, margin: "0 0 8px" }}>{gap.description}</p>
+                  <p style={{ fontSize: 12, color: "var(--danger)", fontWeight: 600, margin: 0 }}>Impact: {gap.impact}</p>
                 </div>
               ))}
             </div>
@@ -996,7 +996,7 @@ export default function ShareProposalPage({ params }: Props) {
           <h2 style={{ fontSize: "clamp(1.6rem, 3.5vw, 2.5rem)", fontWeight: 800, color: "#fff", letterSpacing: "-0.05em", lineHeight: 1.15, margin: "0 0 14px" }}>
             Three pillars. One coherent plan.
           </h2>
-          <p style={{ fontSize: 15, color: "#64748b", maxWidth: 600, lineHeight: 1.75, marginBottom: 40 }}>
+          <p style={{ fontSize: 15, color: "var(--text-2)", maxWidth: 600, lineHeight: 1.75, marginBottom: 40 }}>
             Every element of this strategy — content, paid search, and keyword research — is built around the same underlying data. They reinforce each other rather than running in parallel.
           </p>
           <div className="prop-pillars" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
@@ -1044,14 +1044,14 @@ export default function ShareProposalPage({ params }: Props) {
 
       {/* ── Deliverables Grid ── */}
       {services.length > 0 && (
-        <div style={{ background: "#f8fafc", padding: "80px 24px" }}>
+        <div style={{ background: "var(--bg)", padding: "80px 24px" }}>
           <div style={{ maxWidth: 900, margin: "0 auto" }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
               <div style={{ width: 32, height: 3, background: "linear-gradient(to right, #6366f1, #818cf8)", borderRadius: 99 }} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#6366f1", letterSpacing: "0.08em", textTransform: "uppercase" as const }}>Scope of Work</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", letterSpacing: "0.08em", textTransform: "uppercase" as const }}>Scope of Work</span>
             </div>
-            <h2 style={{ fontSize: 28, fontWeight: 800, color: "#1e293b", lineHeight: 1.2, margin: "0 0 14px" }}>Every deliverable, documented and ready.</h2>
-            <p style={{ fontSize: 15, color: "#475569", lineHeight: 1.7, maxWidth: 600, marginBottom: 40 }}>
+            <h2 style={{ fontSize: 28, fontWeight: 800, color: "var(--text)", lineHeight: 1.2, margin: "0 0 14px" }}>Every deliverable, documented and ready.</h2>
+            <p style={{ fontSize: 15, color: "var(--text-2)", lineHeight: 1.7, maxWidth: 600, marginBottom: 40 }}>
               This is not a strategy deck. Every campaign has been structured, every keyword list researched, and every content brief is ready to act on from day one.
             </p>
             <div className="prop-deliv-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
@@ -1065,15 +1065,15 @@ export default function ShareProposalPage({ params }: Props) {
                   ...(svc.hoursPerMonth ? [`${svc.hoursPerMonth}h / month allocated`] : []),
                 ];
                 return (
-                  <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14, overflow: "hidden" }}>
+                  <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
                     <div style={{ background: color, padding: "11px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, fontSize: 12, fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: "0.08em", color: "#fff" }}>
                       <span>{svc.name}</span>
                       <span style={{ opacity: 0.75, fontWeight: 600, fontSize: 13 }}>{svc.price}</span>
                     </div>
                     <div style={{ padding: "14px 18px" }}>
                       {rows.map((row, j) => (
-                        <div key={j} style={{ display: "flex", alignItems: "flex-start", gap: 9, padding: "5px 0", borderBottom: j < rows.length - 1 ? "1px solid #f1f5f9" : "none", fontSize: 13, color: "#334155" }}>
-                          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#94a3b8", flexShrink: 0, marginTop: 6 }} />
+                        <div key={j} style={{ display: "flex", alignItems: "flex-start", gap: 9, padding: "5px 0", borderBottom: j < rows.length - 1 ? "1px solid var(--border-subtle)" : "none", fontSize: 13, color: "var(--text)" }}>
+                          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--text-3)", flexShrink: 0, marginTop: 6 }} />
                           <span>{row}</span>
                         </div>
                       ))}
@@ -1090,14 +1090,14 @@ export default function ShareProposalPage({ params }: Props) {
       <Section id="ppc-forecaster">
         <SectionLabel>PPC Forecasting</SectionLabel>
         <H2>Your PPC Performance Forecast</H2>
-        <p style={{ fontSize: 15, color: "#475569", lineHeight: 1.7, marginBottom: 40 }}>
+        <p style={{ fontSize: 15, color: "var(--text-2)", lineHeight: 1.7, marginBottom: 40 }}>
           Use the sliders below to model different PPC scenarios. Adjust your CPC, monthly budget, and expected conversion rate to see how your campaigns could perform.
         </p>
 
         <div className="prop-forecast-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
           {/* Sliders */}
-          <div style={{ background: "#f8fafc", borderRadius: 16, padding: 28, border: "1px solid #e2e8f0" }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1e293b", margin: "0 0 24px" }}>Adjust Your Inputs</h3>
+          <div style={{ background: "var(--bg)", borderRadius: 16, padding: 28, border: "1px solid var(--border)" }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: "0 0 24px" }}>Adjust Your Inputs</h3>
             <Slider
               label="Average CPC"
               value={cpc} min={0.1} max={15} step={0.1}
@@ -1120,11 +1120,11 @@ export default function ShareProposalPage({ params }: Props) {
 
           {/* Results */}
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ background: "linear-gradient(135deg, #6366f1, #7c3aed)", borderRadius: 16, padding: 24, color: "#fff" }}>
+            <div style={{ background: "var(--gradient-accent)", borderRadius: 16, padding: 24, color: "#fff" }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: "#c4b5fd", margin: "0 0 4px", letterSpacing: "0.06em", textTransform: "uppercase" }}>Est. Monthly Clicks</p>
               <p style={{ fontSize: 40, fontWeight: 900, margin: 0, lineHeight: 1 }}>{fmtNum(ppcMetrics.clicks)}</p>
             </div>
-            <div style={{ background: "#f0fdf4", borderRadius: 16, padding: 24, border: "1px solid #bbf7d0" }}>
+            <div style={{ background: "var(--success-bg)", borderRadius: 16, padding: 24, border: "1px solid #bbf7d0" }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: "#16a34a", margin: "0 0 4px", letterSpacing: "0.06em", textTransform: "uppercase" }}>Est. Conversions/Month</p>
               <p style={{ fontSize: 40, fontWeight: 900, color: "#15803d", margin: 0, lineHeight: 1 }}>{ppcMetrics.conversions}</p>
             </div>
@@ -1138,10 +1138,10 @@ export default function ShareProposalPage({ params }: Props) {
         </div>
 
         {/* 6-month chart */}
-        <div style={{ background: "#f8fafc", borderRadius: 16, padding: 28, border: "1px solid #e2e8f0", marginTop: 24 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: "#1e293b", margin: "0 0 20px" }}>6-Month Performance Ramp</h3>
+        <div style={{ background: "var(--bg)", borderRadius: 16, padding: 28, border: "1px solid var(--border)", marginTop: 24 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", margin: "0 0 20px" }}>6-Month Performance Ramp</h3>
           <PPCBarChart months={ppcMetrics.months} />
-          <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 12, textAlign: "center" }}>
+          <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 12, textAlign: "center" }}>
             Campaigns typically ramp up over 6 months as optimisation improves Quality Scores and ad relevancy.
           </p>
         </div>
@@ -1149,11 +1149,11 @@ export default function ShareProposalPage({ params }: Props) {
 
       {/* ── Ad Creatives / Mockups ── */}
       {(adGroups.length > 0 || meta.website) && (
-        <div style={{ background: "#f8fafc" }}>
+        <div style={{ background: "var(--bg)" }}>
           <Section id="ad-previews">
             <SectionLabel>Ad Creatives</SectionLabel>
             <H2>How Your Ads Will Look</H2>
-            <p style={{ fontSize: 15, color: "#475569", lineHeight: 1.7, marginBottom: 48 }}>
+            <p style={{ fontSize: 15, color: "var(--text-2)", lineHeight: 1.7, marginBottom: 48 }}>
               Below are mockups of how your ads will appear across Google Search and Meta (Facebook &amp; Instagram). Each ad is built around your target keywords and campaign goals.
             </p>
 
@@ -1191,18 +1191,18 @@ export default function ShareProposalPage({ params }: Props) {
                   ],
                 },
               ] as Array<{ title: string; sub: string; icon: string; gradient: string; rows: Array<[string, string]> }>).map((ch) => (
-                <div key={ch.title} style={{ borderRadius: 14, overflow: "hidden", border: "1px solid #e2e8f0" }}>
+                <div key={ch.title} style={{ borderRadius: 14, overflow: "hidden", border: "1px solid var(--border)" }}>
                   <div style={{ background: ch.gradient, padding: "22px 20px 18px", color: "#fff", position: "relative" }}>
                     <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.12)" }} />
                     <span style={{ fontSize: "1.6rem", display: "block", marginBottom: 8, position: "relative" }}>{ch.icon}</span>
                     <h3 style={{ fontSize: "1.05rem", fontWeight: 800, margin: "0 0 3px", position: "relative" }}>{ch.title}</h3>
                     <span style={{ fontSize: 12, opacity: 0.88, position: "relative" }}>{ch.sub}</span>
                   </div>
-                  <div style={{ background: "#fff", padding: "14px 18px" }}>
+                  <div style={{ background: "var(--surface)", padding: "14px 18px" }}>
                     {ch.rows.map(([k, v]) => (
-                      <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #f1f5f9", fontSize: 13, color: "#334155" }}>
+                      <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid var(--border-subtle)", fontSize: 13, color: "var(--text)" }}>
                         <span>{k}</span>
-                        <strong style={{ color: "#0f172a", fontWeight: 700 }}>{v}</strong>
+                        <strong style={{ color: "var(--text)", fontWeight: 700 }}>{v}</strong>
                       </div>
                     ))}
                   </div>
@@ -1214,9 +1214,9 @@ export default function ShareProposalPage({ params }: Props) {
             <div style={{ marginBottom: 48 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                 <span style={{ fontSize: 22 }}>🔍</span>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: "#1e293b", margin: 0 }}>Google Search Ads</h3>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", margin: 0 }}>Google Search Ads</h3>
               </div>
-              <p style={{ fontSize: 14, color: "#64748b", margin: "0 0 20px", lineHeight: 1.6 }}>
+              <p style={{ fontSize: 14, color: "var(--text-2)", margin: "0 0 20px", lineHeight: 1.6 }}>
                 Your ads will appear at the top of Google Search results when potential customers search for your target keywords.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1258,9 +1258,9 @@ export default function ShareProposalPage({ params }: Props) {
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                 <span style={{ fontSize: 22 }}>📱</span>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: "#1e293b", margin: 0 }}>Meta (Facebook &amp; Instagram) Ads</h3>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)", margin: 0 }}>Meta (Facebook &amp; Instagram) Ads</h3>
               </div>
-              <p style={{ fontSize: 14, color: "#64748b", margin: "0 0 20px", lineHeight: 1.6 }}>
+              <p style={{ fontSize: 14, color: "var(--text-2)", margin: "0 0 20px", lineHeight: 1.6 }}>
                 Targeted social media ads designed to reach your ideal customers on Facebook and Instagram.
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
@@ -1282,25 +1282,25 @@ export default function ShareProposalPage({ params }: Props) {
 
       {/* ── Services & Hours ── */}
       {services.length > 0 && (
-        <div style={{ background: "#fff" }}>
+        <div style={{ background: "var(--surface)" }}>
           <Section id="services">
             <SectionLabel>Our Services</SectionLabel>
             <H2>What&apos;s Included</H2>
-            <p style={{ fontSize: 15, color: "#475569", lineHeight: 1.7, marginBottom: 40 }}>
+            <p style={{ fontSize: 15, color: "var(--text-2)", lineHeight: 1.7, marginBottom: 40 }}>
               Each service includes a dedicated monthly allocation of hours. Use the sliders to explore how adjusting your hours allocation affects your package.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {(serviceTotal ?? services.map((s, i) => ({ ...s, hours: serviceHours[i] ?? 0 }))).map((svc, i) => (
-                <div key={i} style={{ background: "#fff", borderRadius: 16, padding: 24, border: "1px solid #e2e8f0" }}>
+                <div key={i} style={{ background: "var(--surface)", borderRadius: 16, padding: 24, border: "1px solid var(--border)" }}>
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: svc.hours > 0 ? 20 : 0 }}>
                     <div style={{ flex: 1, minWidth: 180 }}>
-                      <p style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", margin: "0 0 4px" }}>{svc.name}</p>
-                      {svc.description && <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>{svc.description}</p>}
+                      <p style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", margin: "0 0 4px" }}>{svc.name}</p>
+                      {svc.description && <p style={{ fontSize: 13, color: "var(--text-2)", margin: 0 }}>{svc.description}</p>}
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <p style={{ fontSize: 18, fontWeight: 800, color: "#6366f1", margin: 0 }}>{svc.price}</p>
+                      <p style={{ fontSize: 18, fontWeight: 800, color: "var(--accent)", margin: 0 }}>{svc.price}</p>
                       {svc.hours > 0 && (
-                        <p style={{ fontSize: 12, color: "#94a3b8", margin: "2px 0 0" }}>{svc.hours}h/month allocated</p>
+                        <p style={{ fontSize: 12, color: "var(--text-3)", margin: "2px 0 0" }}>{svc.hours}h/month allocated</p>
                       )}
                     </div>
                   </div>
@@ -1325,24 +1325,24 @@ export default function ShareProposalPage({ params }: Props) {
         <Section id="keywords">
           <SectionLabel>Keyword Strategy</SectionLabel>
           <H2>Search Intent Clusters</H2>
-          <p style={{ fontSize: 15, color: "#475569", lineHeight: 1.7, marginBottom: 32 }}>
+          <p style={{ fontSize: 15, color: "var(--text-2)", lineHeight: 1.7, marginBottom: 32 }}>
             We&apos;ve grouped your target keywords by search intent to ensure campaigns reach the right audiences at each stage of the buying journey.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {(ai?.keywordClusters ?? []).map((cluster, i) => {
               const { bg, color } = intentColor(cluster.intent);
               return (
-                <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 12, padding: 20 }}>
+                <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 20 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span style={{ padding: "4px 12px", borderRadius: 99, fontSize: 11, fontWeight: 700, background: bg, color }}>{cluster.intent}</span>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "#6366f1" }}>{fmtNum(cluster.searchVolume)}/mo searches</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>{fmtNum(cluster.searchVolume)}/mo searches</span>
                     </div>
-                    <p style={{ fontSize: 13, color: "#475569", margin: 0, flex: 1, textAlign: "right", minWidth: 140 }}>{cluster.opportunity}</p>
+                    <p style={{ fontSize: 13, color: "var(--text-2)", margin: 0, flex: 1, textAlign: "right", minWidth: 140 }}>{cluster.opportunity}</p>
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {cluster.keywords.map((kw, j) => (
-                      <span key={j} style={{ padding: "4px 10px", background: "#f1f5f9", borderRadius: 6, fontSize: 12, color: "#475569" }}>{kw}</span>
+                      <span key={j} style={{ padding: "4px 10px", background: "var(--border-subtle)", borderRadius: 6, fontSize: 12, color: "var(--text-2)" }}>{kw}</span>
                     ))}
                   </div>
                 </div>
@@ -1354,18 +1354,18 @@ export default function ShareProposalPage({ params }: Props) {
 
       {/* ── Content Cluster ── */}
       {ai?.contentCluster && (
-        <div style={{ background: "#f8fafc" }}>
+        <div style={{ background: "var(--bg)" }}>
           <Section id="content">
             <SectionLabel>Content Strategy</SectionLabel>
             <H2>Content Hub Plan</H2>
-            <div style={{ background: "linear-gradient(135deg, #6366f1, #7c3aed)", borderRadius: 16, padding: 28, color: "#fff", marginBottom: 24 }}>
+            <div style={{ background: "var(--gradient-accent)", borderRadius: 16, padding: 28, color: "#fff", marginBottom: 24 }}>
               <p style={{ fontSize: 12, fontWeight: 700, color: "#c4b5fd", margin: "0 0 8px", letterSpacing: "0.06em", textTransform: "uppercase" }}>Pillar Page</p>
               <h3 style={{ fontSize: 20, fontWeight: 800, margin: "0 0 8px" }}>{ai.contentCluster.pillarPage.title}</h3>
               <p style={{ fontSize: 14, color: "#c4b5fd", margin: 0, lineHeight: 1.6 }}>{ai.contentCluster.pillarPage.description}</p>
             </div>
 
             {/* Content architecture breakdown */}
-            <div style={{ borderTop: "1px solid #e2e8f0", margin: "8px 0 24px" }}>
+            <div style={{ borderTop: "1px solid var(--border)", margin: "8px 0 24px" }}>
               {([
                 {
                   type: "Pillar Page", isPillar: true, count: 1, countLabel: "total",
@@ -1381,20 +1381,20 @@ export default function ShareProposalPage({ params }: Props) {
                   title: "Topic cluster coverage",
                   desc: "Each article targets a defined keyword, covering the full range of searches a potential client makes across their decision journey.",
                   chips: [
-                    { label: "Mixed intent", color: "#92400e", bg: "#fef3c7", border: "#fde68a" },
-                    { label: "Long-tail coverage", color: "#92400e", bg: "#fef3c7", border: "#fde68a" },
+                    { label: "Mixed intent", color: "var(--warning-text)", bg: "#fef3c7", border: "var(--warning-border)" },
+                    { label: "Long-tail coverage", color: "var(--warning-text)", bg: "#fef3c7", border: "var(--warning-border)" },
                   ],
                 },
               ] as Array<{ type: string; isPillar: boolean; count: number; countLabel: string; title: string; desc: string; chips: Array<{ label: string; color: string; bg: string; border: string }> }>).map((row, i, arr) => (
-                <div key={i} className="prop-arch-row" style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 24, alignItems: "start", padding: "22px 0", borderBottom: i < arr.length - 1 ? "1px solid #e2e8f0" : "none" }}>
+                <div key={i} className="prop-arch-row" style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 24, alignItems: "start", padding: "22px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
                   <div>
-                    <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", padding: "4px 12px", borderRadius: 6, display: "inline-block", marginBottom: 10, ...(row.isPillar ? { background: "#0f172a", color: "#fff" } : { background: "#f1f5f9", color: "#334155", border: "1px solid #e2e8f0" }) }}>{row.type}</span>
-                    <span style={{ fontSize: "1.5rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.05em", display: "block" }}>{row.count}</span>
-                    <span style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em" }}>{row.countLabel}</span>
+                    <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", padding: "4px 12px", borderRadius: 6, display: "inline-block", marginBottom: 10, ...(row.isPillar ? { background: "#0f172a", color: "#fff" } : { background: "var(--border-subtle)", color: "var(--text)", border: "1px solid var(--border)" }) }}>{row.type}</span>
+                    <span style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text)", letterSpacing: "-0.05em", display: "block" }}>{row.count}</span>
+                    <span style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{row.countLabel}</span>
                   </div>
                   <div>
-                    <h4 style={{ fontSize: "0.9rem", fontWeight: 700, color: "#0f172a", margin: "0 0 6px" }}>{row.title}</h4>
-                    <p style={{ fontSize: 13.5, color: "#334155", lineHeight: 1.7, margin: "0 0 10px" }}>{row.desc}</p>
+                    <h4 style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--text)", margin: "0 0 6px" }}>{row.title}</h4>
+                    <p style={{ fontSize: 13.5, color: "var(--text)", lineHeight: 1.7, margin: "0 0 10px" }}>{row.desc}</p>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {row.chips.map((chip, j) => (
                         <span key={j} style={{ fontSize: 11.5, padding: "3px 12px", borderRadius: 20, border: `1px solid ${chip.border}`, background: chip.bg, color: chip.color }}>{chip.label}</span>
@@ -1405,12 +1405,12 @@ export default function ShareProposalPage({ params }: Props) {
               ))}
             </div>
 
-            <h3 style={{ fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 12px" }}>All Articles</h3>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 12px" }}>All Articles</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
               {ai.contentCluster.articles.map((article, i) => (
-                <div key={i} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 16 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", margin: "0 0 4px" }}>{article.title}</p>
-                  <p style={{ fontSize: 11, color: "#6366f1", margin: 0 }}>Target: {article.targetKeyword}</p>
+                <div key={i} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 16 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", margin: "0 0 4px" }}>{article.title}</p>
+                  <p style={{ fontSize: 11, color: "var(--accent)", margin: 0 }}>Target: {article.targetKeyword}</p>
                 </div>
               ))}
             </div>
@@ -1423,22 +1423,22 @@ export default function ShareProposalPage({ params }: Props) {
         <Section id="keyword-data">
           <SectionLabel>Keyword Research</SectionLabel>
           <H2>Top Keywords by Search Volume</H2>
-          <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid #e2e8f0" }}>
+          <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid var(--border)" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr style={{ background: "#f8fafc" }}>
+                <tr style={{ background: "var(--bg)" }}>
                   {["Keyword", "Monthly Searches", "Competition", "CPC (High)"].map((h) => (
-                    <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>{h}</th>
+                    <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid var(--border)" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {topKws.slice(0, 15).map((kw, i) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
-                    <td style={{ padding: "10px 16px", fontWeight: 500, color: "#1e293b" }}>{kw.text}</td>
-                    <td style={{ padding: "10px 16px", color: "#6366f1", fontWeight: 600 }}>{fmtNum(kw.avgMonthlySearches)}</td>
-                    <td style={{ padding: "10px 16px", color: "#475569" }}>{competitionLabel(kw.competition)}</td>
-                    <td style={{ padding: "10px 16px", color: "#475569" }}>{kw.highTopOfPageBidMicros ? `£${(kw.highTopOfPageBidMicros / 1_000_000).toFixed(2)}` : "—"}</td>
+                  <tr key={i} style={{ background: i % 2 === 0 ? "var(--surface)" : "var(--bg)" }}>
+                    <td style={{ padding: "10px 16px", fontWeight: 500, color: "var(--text)" }}>{kw.text}</td>
+                    <td style={{ padding: "10px 16px", color: "var(--accent)", fontWeight: 600 }}>{fmtNum(kw.avgMonthlySearches)}</td>
+                    <td style={{ padding: "10px 16px", color: "var(--text-2)" }}>{competitionLabel(kw.competition)}</td>
+                    <td style={{ padding: "10px 16px", color: "var(--text-2)" }}>{kw.highTopOfPageBidMicros ? `£${(kw.highTopOfPageBidMicros / 1_000_000).toFixed(2)}` : "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1449,20 +1449,20 @@ export default function ShareProposalPage({ params }: Props) {
 
       {/* ── Timeline ── */}
       {timeline.length > 0 && (
-        <div style={{ background: "#f8fafc" }}>
+        <div style={{ background: "var(--bg)" }}>
           <Section id="timeline">
             <SectionLabel>Project Timeline</SectionLabel>
             <H2>Your Roadmap to Growth</H2>
             <div style={{ display: "flex", flexDirection: "column" }}>
               {timeline.map((phase, i) => (
-                <div key={i} style={{ display: "flex", gap: 20, alignItems: "flex-start", padding: "20px 0", borderBottom: i < timeline.length - 1 ? "1px solid #e2e8f0" : "none" }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg, #6366f1, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 16, flexShrink: 0 }}>{i + 1}</div>
+                <div key={i} style={{ display: "flex", gap: 20, alignItems: "flex-start", padding: "20px 0", borderBottom: i < timeline.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 16, flexShrink: 0 }}>{i + 1}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
-                      <p style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", margin: 0 }}>{phase.title}</p>
-                      <span style={{ padding: "4px 12px", background: "#ede9fe", color: "#6366f1", borderRadius: 99, fontSize: 12, fontWeight: 600 }}>{phase.duration}</span>
+                      <p style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", margin: 0 }}>{phase.title}</p>
+                      <span style={{ padding: "4px 12px", background: "#ede9fe", color: "var(--accent)", borderRadius: 99, fontSize: 12, fontWeight: 600 }}>{phase.duration}</span>
                     </div>
-                    <p style={{ fontSize: 14, color: "#475569", margin: 0, lineHeight: 1.6 }}>{phase.description}</p>
+                    <p style={{ fontSize: 14, color: "var(--text-2)", margin: 0, lineHeight: 1.6 }}>{phase.description}</p>
                   </div>
                 </div>
               ))}
@@ -1535,12 +1535,12 @@ export default function ShareProposalPage({ params }: Props) {
             <div>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
                 <div style={{ width: 32, height: 3, background: "linear-gradient(to right, #6366f1, #818cf8)", borderRadius: 99 }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#6366f1", letterSpacing: "0.08em", textTransform: "uppercase" }}>Next Steps</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Next Steps</span>
               </div>
               <h2 style={{ fontSize: 36, fontWeight: 900, color: "#fff", lineHeight: 1.1, margin: "0 0 20px" }}>
                 {ai?.cta?.headline ?? `Ready to grow ${meta.clientName}?`}
               </h2>
-              <p style={{ fontSize: 16, color: "#94a3b8", lineHeight: 1.7, margin: "0 0 32px" }}>
+              <p style={{ fontSize: 16, color: "var(--text-3)", lineHeight: 1.7, margin: "0 0 32px" }}>
                 {ai?.cta?.body ?? "Get in touch and we'll set up a discovery call to walk you through the strategy, answer your questions, and get things moving."}
               </p>
 
@@ -1554,7 +1554,7 @@ export default function ShareProposalPage({ params }: Props) {
                     <span style={{ fontSize: 20, flexShrink: 0 }}>{item.icon}</span>
                     <div>
                       <p style={{ fontSize: 14, fontWeight: 700, color: "#e2e8f0", margin: 0 }}>{item.title}</p>
-                      <p style={{ fontSize: 13, color: "#64748b", margin: "2px 0 0" }}>{item.desc}</p>
+                      <p style={{ fontSize: 13, color: "var(--text-2)", margin: "2px 0 0" }}>{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -1577,8 +1577,8 @@ export default function ShareProposalPage({ params }: Props) {
               { Icon: MessageSquare, text: "Live chat on our website" },
             ].map(({ Icon, text }) => (
               <div key={text} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Icon style={{ width: 16, height: 16, color: "#6366f1" }} />
-                <span style={{ fontSize: 13, color: "#64748b" }}>{text}</span>
+                <Icon style={{ width: 16, height: 16, color: "var(--accent)" }} />
+                <span style={{ fontSize: 13, color: "var(--text-2)" }}>{text}</span>
               </div>
             ))}
           </div>
@@ -1587,13 +1587,13 @@ export default function ShareProposalPage({ params }: Props) {
 
       {/* ── Footer ── */}
       <div style={{ background: "#080614", padding: "32px 24px", textAlign: "center" }}>
-        <p style={{ fontSize: 13, color: "#475569", margin: "0 0 4px" }}>
+        <p style={{ fontSize: 13, color: "var(--text-2)", margin: "0 0 4px" }}>
           Prepared by <strong style={{ color: "#a5b4fc" }}>i3media</strong> · Digital Marketing Agency
         </p>
-        <p style={{ fontSize: 11, color: "#334155", margin: "0 0 12px" }}>
+        <p style={{ fontSize: 11, color: "var(--text)", margin: "0 0 12px" }}>
           {new Date(meta.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
         </p>
-        <p style={{ fontSize: 11, color: "#1e293b", margin: 0, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 11, color: "var(--text)", margin: 0, lineHeight: 1.5 }}>
           🔒 This proposal is confidential and prepared exclusively for {meta.clientName}.
           Unauthorised sharing, reproduction or use by third parties is strictly prohibited.
         </p>

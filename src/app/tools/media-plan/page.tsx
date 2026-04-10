@@ -84,10 +84,10 @@ export default function MediaPlanListPage() {
   }
 
   return (
-    <div style={{ padding: "40px 48px", maxWidth: 1000, margin: "0 auto" }}>
+    <div className="page" style={{ maxWidth: 1000 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#6366f1,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <PieChart style={{ width: 20, height: 20, color: "white" }} />
           </div>
           <div>
@@ -161,7 +161,7 @@ export default function MediaPlanListPage() {
                 <Link href={`/tools/media-plan/${plan.id}`} className="btn btn-secondary btn-sm" style={{ gap: 5, display: "inline-flex", alignItems: "center" }}>
                   <Pencil style={{ width: 12, height: 12 }} /> Edit
                 </Link>
-                <button onClick={() => void handleDelete(plan.id)} disabled={deleting === plan.id} className="btn btn-ghost btn-sm" style={{ color: "#ef4444", padding: "5px 8px" }}>
+                <button onClick={() => void handleDelete(plan.id)} disabled={deleting === plan.id} className="btn btn-ghost btn-sm" style={{ color: "var(--danger)", padding: "5px 8px" }}>
                   <Trash2 style={{ width: 13, height: 13 }} />
                 </button>
               </div>

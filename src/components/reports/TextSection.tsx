@@ -77,7 +77,7 @@ export function TextSection({ sectionId, reportId, sectionType, title, contentTe
           <span style={{ fontSize: 11, color: "var(--text-4)", fontStyle: "italic" }}>Saving…</span>
         )}
         {saveError && !saving && (
-          <span style={{ fontSize: 11, color: "#ef4444", fontStyle: "italic" }}>Save failed — check your connection</span>
+          <span style={{ fontSize: 11, color: "var(--danger)", fontStyle: "italic" }}>Save failed — check your connection</span>
         )}
       </div>
 
@@ -130,7 +130,7 @@ export function TextSection({ sectionId, reportId, sectionType, title, contentTe
             style={{
               display: "none",
               background: "var(--accent-bg)",
-              border: "1px solid #c7d2fe",
+              border: "1px solid rgb(99 102 241 / 0.25)",
               borderRadius: "var(--r)",
               padding: "14px 18px",
               marginTop: 12,

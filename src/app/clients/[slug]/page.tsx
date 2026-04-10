@@ -58,7 +58,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
 
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <div style={{ width: 72, height: 72, borderRadius: 18, background: "linear-gradient(135deg, #6366f1, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 28, fontWeight: 700, flexShrink: 0, boxShadow: "0 8px 24px rgb(99 102 241 / 0.25)" }}>
+            <div style={{ width: 72, height: 72, borderRadius: 20, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 28, fontWeight: 700, flexShrink: 0, boxShadow: "0 8px 24px rgb(99 102 241 / 0.25)" }}>
               {client.name.charAt(0).toUpperCase()}
             </div>
             <div>
@@ -91,7 +91,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 28 }}>
           {client.semrushDomain ? (
             <span className="badge badge-orange" style={{ padding: "6px 14px", fontSize: 13 }} title={`SemRush: ${client.semrushDomain}`}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f97316", display: "inline-block" }} />
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--channel-semrush)", display: "inline-block" }} />
               SemRush · {client.semrushDomain}
             </span>
           ) : (
@@ -99,7 +99,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
           )}
           {client.ga4PropertyId ? (
             <span className="badge badge-blue" style={{ padding: "6px 14px", fontSize: 13 }} title={`GA4: ${client.ga4PropertyName ?? client.ga4PropertyId}`}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#3b82f6", display: "inline-block" }} />
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--channel-google_ads)", display: "inline-block" }} />
               GA4 · {client.ga4PropertyName ?? client.ga4PropertyId}
             </span>
           ) : (
@@ -107,7 +107,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
           )}
           {client.metaAccountId ? (
             <span className="badge badge-indigo" style={{ padding: "6px 14px", fontSize: 13 }} title={`Meta Ads: ${client.metaAccountName ?? client.metaAccountId}`}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#6366f1", display: "inline-block" }} />
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--channel-meta)", display: "inline-block" }} />
               Meta Ads · {client.metaAccountName ?? client.metaAccountId}
             </span>
           ) : (
@@ -115,7 +115,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
           )}
           {client.googleAdsCustomerId ? (
             <span className="badge badge-green" style={{ padding: "6px 14px", fontSize: 13 }} title={`Google Ads: ${client.googleAdsAccountName ?? client.googleAdsCustomerId}`}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--success)", display: "inline-block" }} />
               Google Ads · {client.googleAdsAccountName ?? client.googleAdsCustomerId}
             </span>
           ) : (
@@ -123,7 +123,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
           )}
           {client.searchConsoleSiteUrl ? (
             <span className="badge badge-purple" style={{ padding: "6px 14px", fontSize: 13 }} title={`Search Console: ${client.searchConsoleSiteUrl}`}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#8b5cf6", display: "inline-block" }} />
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--channel-search_console)", display: "inline-block" }} />
               Search Console · {client.searchConsoleSiteUrl.replace(/^https?:\/\//, "").replace(/^sc-domain:/, "").replace(/\/$/, "")}
             </span>
           ) : (

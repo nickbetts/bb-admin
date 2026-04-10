@@ -51,12 +51,12 @@ export default async function SharedReportPage({
   const preparedDate = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f8fafc" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
       <style>{`.toc-link:hover { background: #f1f5f9 !important; color: #1e293b !important; }`}</style>
       {/* Top navigation bar */}
       <div style={{
-        background: "#fff",
-        borderBottom: "1px solid #e2e8f0",
+        background: "var(--surface)",
+        borderBottom: "1px solid var(--border)",
         padding: "12px 24px",
         display: "flex",
         alignItems: "center",
@@ -101,7 +101,7 @@ export default async function SharedReportPage({
                           transition: "all 0.15s",
                         }}
                       >
-                        <span style={{ fontSize: 10, color: "#c8d3e0", fontWeight: 600, minWidth: 16 }}>{i + 1}.</span>
+                        <span style={{ fontSize: 10, color: "var(--text-4)", fontWeight: 600, minWidth: 16 }}>{i + 1}.</span>
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayTitle}</span>
                       </a>
                     </li>
@@ -118,7 +118,7 @@ export default async function SharedReportPage({
           {/* Cover card */}
           <div style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 24px rgba(0,0,0,0.08)", marginBottom: 40 }}>
             <div style={{
-              background: "linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)",
+              background: "var(--gradient-accent)",
               padding: "40px 44px",
             }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
@@ -147,13 +147,13 @@ export default async function SharedReportPage({
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
               padding: "14px 44px",
-              background: "#fff",
-              borderTop: "1px solid #f1f5f9",
+              background: "var(--surface)",
+              borderTop: "1px solid var(--border-subtle)",
             }}>
               <p style={{ fontSize: 12, color: "#94a3b8" }}>
                 Prepared by i3media · {preparedDate}
               </p>
-              <p style={{ fontSize: 12, color: "#c8d3e0" }}>
+              <p style={{ fontSize: 12, color: "var(--text-4)" }}>
                 {enabledSections.length} section{enabledSections.length !== 1 ? "s" : ""}
               </p>
             </div>
@@ -171,8 +171,8 @@ export default async function SharedReportPage({
             if (isTextSection(section.sectionType) && section.sectionType !== "text_screenshots") {
               if (!section.contentText && !section.commentary) return null;
               return (
-                <div key={section.id} id={`section-${section.id}`} style={{ marginBottom: 32, background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }}>
-                  <div style={{ padding: "18px 24px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 8 }}>
+                <div key={section.id} id={`section-${section.id}`} style={{ marginBottom: 32, background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
+                  <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", gap: 8 }}>
                     <span className={`badge ${meta}`} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                       <SectionIcon type={section.sectionType} />
                       {displayTitle}
@@ -199,11 +199,11 @@ export default async function SharedReportPage({
                   <p style={{ fontWeight: 700, fontSize: 15, color: "#1e293b", marginBottom: 16 }}>Additional Screenshots</p>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 16 }}>
                     {globalScreenshots.map((ss) => (
-                      <div key={ss.id} style={{ borderRadius: 10, overflow: "hidden", border: "1px solid #e2e8f0" }}>
+                      <div key={ss.id} style={{ borderRadius: 10, overflow: "hidden", border: "1px solid var(--border)" }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={ss.url} alt={ss.caption ?? ss.filename} style={{ width: "100%", display: "block", objectFit: "cover" }} />
                         {ss.caption && (
-                          <div style={{ padding: "8px 12px", background: "#fff", borderTop: "1px solid #f1f5f9" }}>
+                          <div style={{ padding: "8px 12px", background: "var(--surface)", borderTop: "1px solid var(--border-subtle)" }}>
                             <p style={{ fontSize: 12, color: "#64748b" }}>{ss.caption}</p>
                           </div>
                         )}
@@ -218,8 +218,8 @@ export default async function SharedReportPage({
             if (!section.commentary && sectionScreenshots.length === 0) return null;
 
             return (
-              <div key={section.id} id={`section-${section.id}`} style={{ marginBottom: 32, background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }}>
-                <div style={{ padding: "18px 24px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 8 }}>
+              <div key={section.id} id={`section-${section.id}`} style={{ marginBottom: 32, background: "var(--surface)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
+                <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", gap: 8 }}>
                   <span className={`badge ${meta}`} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                     <SectionIcon type={section.sectionType} />
                     {displayTitle}
@@ -246,11 +246,11 @@ export default async function SharedReportPage({
                   {sectionScreenshots.length > 0 && (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12 }}>
                       {sectionScreenshots.map((ss) => (
-                        <div key={ss.id} style={{ borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0" }}>
+                        <div key={ss.id} style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={ss.url} alt={ss.caption ?? ss.filename} style={{ width: "100%", display: "block", objectFit: "cover" }} />
                           {ss.caption && (
-                            <div style={{ padding: "8px 12px", background: "#fff", borderTop: "1px solid #f1f5f9" }}>
+                            <div style={{ padding: "8px 12px", background: "var(--surface)", borderTop: "1px solid var(--border-subtle)" }}>
                               <p style={{ fontSize: 12, color: "#64748b" }}>{ss.caption}</p>
                             </div>
                           )}
@@ -273,11 +273,11 @@ export default async function SharedReportPage({
                   <p style={{ fontWeight: 700, fontSize: 15, color: "#1e293b", marginBottom: 16 }}>Additional Screenshots</p>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 16 }}>
                     {globalScreenshots.map((ss) => (
-                      <div key={ss.id} style={{ borderRadius: 10, overflow: "hidden", border: "1px solid #e2e8f0" }}>
+                      <div key={ss.id} style={{ borderRadius: 10, overflow: "hidden", border: "1px solid var(--border)" }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={ss.url} alt={ss.caption ?? ss.filename} style={{ width: "100%", display: "block", objectFit: "cover" }} />
                         {ss.caption && (
-                          <div style={{ padding: "8px 12px", background: "#fff", borderTop: "1px solid #f1f5f9" }}>
+                          <div style={{ padding: "8px 12px", background: "var(--surface)", borderTop: "1px solid var(--border-subtle)" }}>
                             <p style={{ fontSize: 12, color: "#64748b" }}>{ss.caption}</p>
                           </div>
                         )}
@@ -290,7 +290,7 @@ export default async function SharedReportPage({
           )}
 
           {/* Footer */}
-          <div style={{ marginTop: 60, paddingTop: 24, borderTop: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ marginTop: 60, paddingTop: 24, borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/primary-logo.svg" alt="i3media" style={{ height: 24, filter: "brightness(0) opacity(0.3)" }} />
             <p style={{ fontSize: 12, color: "#94a3b8" }}>

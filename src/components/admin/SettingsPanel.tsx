@@ -375,8 +375,8 @@ function SettingsPanelInner() {
             padding: "12px 18px", borderRadius: "var(--r-sm)", fontSize: 14, fontWeight: 500,
             display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24,
             ...(banner.type === "success"
-              ? { background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d" }
-              : { background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c" }),
+              ? { background: "var(--success-bg)", border: "1px solid var(--success-border)", color: "var(--success-text)" }
+              : { background: "var(--danger-bg)", border: "1px solid var(--danger-border)", color: "var(--danger-text)" }),
           }}
         >
           <span>{banner.message}</span>
@@ -400,24 +400,24 @@ function SettingsPanelInner() {
           </a>
         </div>
         <div className="card-body">
-          <div style={{ marginBottom: 24, borderRadius: "var(--r)", border: "1px solid #fcd34d", background: "#fffbeb", overflow: "hidden" }}>
+          <div style={{ marginBottom: 24, borderRadius: "var(--r)", border: "1px solid #fcd34d", background: "var(--warning-bg)", overflow: "hidden" }}>
             <button onClick={() => setPrereqOpen((o) => !o)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <svg style={{ width: 16, height: 16, color: "#f59e0b", flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#92400e" }}>Getting a &ldquo;This app is blocked&rdquo; error? Two possible fixes</span>
+                <svg style={{ width: 16, height: 16, color: "var(--warning)", flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--warning-text)" }}>Getting a &ldquo;This app is blocked&rdquo; error? Two possible fixes</span>
               </div>
-              <svg style={{ width: 16, height: 16, color: "#f59e0b", flexShrink: 0, transition: "transform 0.2s", transform: prereqOpen ? "rotate(180deg)" : "rotate(0deg)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              <svg style={{ width: 16, height: 16, color: "var(--warning)", flexShrink: 0, transition: "transform 0.2s", transform: prereqOpen ? "rotate(180deg)" : "rotate(0deg)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </button>
             {prereqOpen && (
               <div style={{ padding: "12px 16px 16px", borderTop: "1px solid #fcd34d", display: "flex", flexDirection: "column", gap: 16 }}>
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#78350f", marginBottom: 6 }}>Fix 1: Any Google account (most common cause)</p>
-                  <p style={{ fontSize: 13, color: "#78350f", marginBottom: 8 }}>The OAuth app is in <strong>Testing mode</strong>, which blocks all accounts that haven&apos;t been explicitly added as test users.</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--warning-text)", marginBottom: 6 }}>Fix 1: Any Google account (most common cause)</p>
+                  <p style={{ fontSize: 13, color: "var(--warning-text)", marginBottom: 8 }}>The OAuth app is in <strong>Testing mode</strong>, which blocks all accounts that haven&apos;t been explicitly added as test users.</p>
                   <ol style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
                     {["Open Google Cloud Console → APIs &amp; Services → OAuth consent screen", "Scroll to Test users and click Add users", "Add the email address of the Google account you want to connect, then save"].map((step, i) => (
                       <li key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                        <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "#fde68a", color: "#92400e", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
-                        <span style={{ fontSize: 13, color: "#78350f" }} dangerouslySetInnerHTML={{ __html: step }} />
+                        <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: "50%", background: "var(--warning-border)", color: "var(--warning-text)", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
+                        <span style={{ fontSize: 13, color: "var(--warning-text)" }} dangerouslySetInnerHTML={{ __html: step }} />
                       </li>
                     ))}
                   </ol>
@@ -428,11 +428,11 @@ function SettingsPanelInner() {
                 </div>
                 <div style={{ borderTop: "1px solid #fcd34d" }} />
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#78350f", marginBottom: 6 }}>Fix 2: Google Workspace accounts only</p>
-                  <p style={{ fontSize: 13, color: "#78350f", marginBottom: 8 }}>Workspace admins can block third-party OAuth apps. The admin needs to trust this app&apos;s Client ID:</p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #fcd34d", borderRadius: "var(--r-sm)", padding: "8px 12px", marginTop: 8 }}>
-                    <code style={{ flex: 1, fontSize: 11, fontFamily: "monospace", color: "#374151", wordBreak: "break-all", userSelect: "all" as const }}>960440447654-l1mh1bcondon0eaauab53kt4r8um4d9j.apps.googleusercontent.com</code>
-                    <button onClick={copyClientId} style={{ flexShrink: 0, fontSize: 11, fontWeight: 500, background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: "#78350f" }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--warning-text)", marginBottom: 6 }}>Fix 2: Google Workspace accounts only</p>
+                  <p style={{ fontSize: 13, color: "var(--warning-text)", marginBottom: 8 }}>Workspace admins can block third-party OAuth apps. The admin needs to trust this app&apos;s Client ID:</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--surface)", border: "1px solid #fcd34d", borderRadius: "var(--r-sm)", padding: "8px 12px", marginTop: 8 }}>
+                    <code style={{ flex: 1, fontSize: 11, fontFamily: "monospace", color: "var(--text)", wordBreak: "break-all", userSelect: "all" as const }}>960440447654-l1mh1bcondon0eaauab53kt4r8um4d9j.apps.googleusercontent.com</code>
+                    <button onClick={copyClientId} style={{ flexShrink: 0, fontSize: 11, fontWeight: 500, background: "var(--warning-bg)", border: "1px solid #fcd34d", borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: "var(--warning-text)" }}>
                       {clientIdCopied ? "Copied ✓" : "Copy"}
                     </button>
                   </div>
@@ -468,12 +468,12 @@ function SettingsPanelInner() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conn.email}</p>
                       <p style={{ fontSize: 12, color: "var(--text-3)" }}>Connected {new Date(conn.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
-                      {isExpired && <p style={{ fontSize: 12, color: "#b91c1c", marginTop: 2 }}>Token expired — reconnect to restore access.</p>}
+                      {isExpired && <p style={{ fontSize: 12, color: "var(--danger-text)", marginTop: 2 }}>Token expired — reconnect to restore access.</p>}
                     </div>
                     {tokenStatus === "checking" ? (
                       <span className="badge" style={{ background: "var(--border-subtle)", color: "var(--text-3)" }}>Checking…</span>
                     ) : isExpired ? (
-                      <span className="badge" style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }}>Expired</span>
+                      <span className="badge" style={{ background: "var(--danger-bg)", color: "var(--danger-text)", border: "1px solid var(--danger-border)" }}>Expired</span>
                     ) : (
                       <span className="badge badge-green">Active</span>
                     )}
@@ -521,7 +521,7 @@ function SettingsPanelInner() {
                 <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
                   {ms365Connections.map((conn) => (
                     <div key={conn.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 0", borderBottom: "1px solid var(--border-subtle)" }}>
-                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#f0f4ff", border: "1px solid #c7d2fe", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--accent-bg)", border: "1px solid rgb(99 102 241 / 0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         <svg viewBox="0 0 23 23" style={{ width: 18, height: 18 }} aria-hidden="true">
                           <path fill="#f25022" d="M1 1h10v10H1z" />
                           <path fill="#00a4ef" d="M12 1h10v10H12z" />
@@ -639,7 +639,7 @@ function SettingsPanelInner() {
                   <input type="number" min="0" step="0.25" className="form-input" style={{ fontSize: 13, width: 90, textAlign: "right" }} value={b.hours || ""} onChange={(e) => setBenchmarks((prev) => prev.map((r, idx) => idx === i ? { ...r, hours: parseFloat(e.target.value) || 0 } : r))} />
                   <span style={{ fontSize: 12, color: "var(--text-3)", whiteSpace: "nowrap" }}>hours</span>
                 </div>
-                <button className="btn btn-ghost btn-sm" style={{ padding: 6, color: "#ef4444" }} onClick={() => setBenchmarks((prev) => prev.filter((_, idx) => idx !== i))}><Trash2 size={13} /></button>
+                <button className="btn btn-ghost btn-sm" style={{ padding: 6, color: "var(--danger)" }} onClick={() => setBenchmarks((prev) => prev.filter((_, idx) => idx !== i))}><Trash2 size={13} /></button>
               </div>
             ))}
           </div>
@@ -690,7 +690,7 @@ function SettingsPanelInner() {
                 {[
                   { val: snapshotResult.clientsProcessed, label: "clients", color: "var(--text)" },
                   { val: snapshotResult.periodsProcessed, label: "months", color: "var(--text)" },
-                  { val: snapshotResult.totalSnapshots, label: "new snapshots", color: "#16a34a" },
+                  { val: snapshotResult.totalSnapshots, label: "new snapshots", color: "var(--success)" },
                   { val: snapshotResult.totalSkipped, label: "already existed", color: "var(--text-3)" },
                 ].map((s) => (
                   <div key={s.label} style={{ fontSize: 13 }}>
@@ -712,7 +712,7 @@ function SettingsPanelInner() {
                       <span style={{ color: "var(--text-3)", fontFamily: "monospace" }}>{r.period}</span>
                       <span style={{ fontWeight: 500, color: "var(--text)" }}>{r.clientName}</span>
                       <span>
-                        {r.sections.length > 0 && <span style={{ color: "#16a34a" }}>{r.sections.join(", ")}</span>}
+                        {r.sections.length > 0 && <span style={{ color: "var(--success)" }}>{r.sections.join(", ")}</span>}
                         {r.errors.length > 0 && <span style={{ color: "var(--danger)", marginLeft: r.sections.length ? 8 : 0 }}>{r.errors.join("; ")}</span>}
                       </span>
                     </div>
@@ -762,7 +762,7 @@ function SettingsPanelInner() {
                               return (
                                 <td key={p} style={{ textAlign: "center", padding: "7px 8px" }}>
                                   <span title={label} style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-                                    <span style={{ fontWeight: 600, color: "#16a34a" }}>{entry.count}</span>
+                                    <span style={{ fontWeight: 600, color: "var(--success)" }}>{entry.count}</span>
                                     <span style={{ fontSize: 10, color: "var(--text-3)", whiteSpace: "nowrap" }}>{label}</span>
                                   </span>
                                 </td>
@@ -771,7 +771,7 @@ function SettingsPanelInner() {
                             <td style={{ textAlign: "center", padding: "7px 12px", fontWeight: 600, color: "var(--text)" }}>{client.totalSnapshots > 0 ? client.totalSnapshots : <span style={{ color: "var(--text-3)" }}>0</span>}</td>
                             <td style={{ textAlign: "center", padding: "7px 12px" }}>
                               {seasonalityReady
-                                ? <span style={{ color: "#16a34a", fontWeight: 600 }} title={`${ga4Count} GA4 months`}>✓ {ga4Count}mo</span>
+                                ? <span style={{ color: "var(--success)", fontWeight: 600 }} title={`${ga4Count} GA4 months`}>✓ {ga4Count}mo</span>
                                 : <span style={{ color: ga4Count > 0 ? "#d97706" : "var(--text-3)", fontSize: 11 }}>{ga4Count > 0 ? `${ga4Count}/3 mo` : "No GA4"}</span>}
                             </td>
                             <td style={{ padding: "7px 12px", textAlign: "right", whiteSpace: "nowrap" }}>

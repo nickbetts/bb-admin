@@ -34,27 +34,28 @@ export function SectionHeader({
         justifyContent: "space-between",
         gap: 12,
         flexWrap: "wrap",
-        marginBottom: 20,
+        marginBottom: 24,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
         {hasIcon && (
           <div
             aria-hidden="true"
             style={{
-              width: 32,
-              height: 32,
+              width: 36,
+              height: 36,
               borderRadius: "var(--r)",
-              background: `${iconColor}18`,
-              border: `1px solid ${iconColor}30`,
+              background: `linear-gradient(135deg, ${iconColor}18, ${iconColor}08)`,
+              border: `1px solid ${iconColor}20`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
+              boxShadow: `0 2px 8px -2px ${iconColor}20`,
             }}
           >
             {Icon ? (
-              <Icon style={{ width: 16, height: 16, color: iconColor }} />
+              <Icon style={{ width: 17, height: 17, color: iconColor }} />
             ) : (
               iconNode
             )}
@@ -64,9 +65,10 @@ export function SectionHeader({
           <h2
             style={{
               margin: 0,
-              fontSize: 15,
-              fontWeight: 600,
+              fontSize: 16,
+              fontWeight: 650,
               color: "var(--text)",
+              letterSpacing: "-0.2px",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",

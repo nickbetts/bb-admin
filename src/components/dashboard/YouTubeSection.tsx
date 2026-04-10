@@ -165,7 +165,7 @@ export function YouTubeSection({ clientId, clientName, crossPlatformContext, vis
                     <span style={{ color: "var(--text-3)" }}>{src.views.toLocaleString()} views · {src.watchTimeHours.toLocaleString()}h</span>
                   </div>
                   <div style={{ height: 5, background: "var(--border)", borderRadius: 99 }}>
-                    <div style={{ height: "100%", width: `${pct}%`, background: "#ef4444", borderRadius: 99 }} />
+                    <div style={{ height: "100%", width: `${pct}%`, background: "var(--danger)", borderRadius: 99 }} />
                   </div>
                 </div>
               );

@@ -84,11 +84,11 @@ function stalenessColor(lastFetched: string): string {
 
 function statusBadge(status: string) {
   const map: Record<string, { bg: string; color: string; label: string }> = {
-    success: { bg: "#dcfce7", color: "#15803d", label: "Success" },
-    error:   { bg: "#fee2e2", color: "#b91c1c", label: "Error" },
-    running: { bg: "#dbeafe", color: "#1d4ed8", label: "Running" },
+    success: { bg: "#dcfce7", color: "var(--success-text)", label: "Success" },
+    error:   { bg: "#fee2e2", color: "var(--danger-text)", label: "Error" },
+    running: { bg: "#dbeafe", color: "var(--info-text)", label: "Running" },
   };
-  const s = map[status] ?? { bg: "#f3f4f6", color: "#6b7280", label: status };
+  const s = map[status] ?? { bg: "#f3f4f6", color: "var(--text-2)", label: status };
   return (
     <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: s.bg, color: s.color }}>
       {s.label}
@@ -230,9 +230,9 @@ export function CronDashboard() {
           <div className="card" style={{ padding: "16px 20px" }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Last Run Results</div>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 13 }}><span style={{ fontWeight: 700, color: "#16a34a" }}>{lastRun.snapshotsNew}</span> <span style={{ color: "var(--text-3)" }}>new</span></span>
+              <span style={{ fontSize: 13 }}><span style={{ fontWeight: 700, color: "var(--success)" }}>{lastRun.snapshotsNew}</span> <span style={{ color: "var(--text-3)" }}>new</span></span>
               <span style={{ fontSize: 13 }}><span style={{ fontWeight: 700, color: "var(--text-2)" }}>{lastRun.snapshotsSkipped}</span> <span style={{ color: "var(--text-3)" }}>skipped</span></span>
-              {lastRun.errors > 0 && <span style={{ fontSize: 13 }}><span style={{ fontWeight: 700, color: "#dc2626" }}>{lastRun.errors}</span> <span style={{ color: "var(--text-3)" }}>errors</span></span>}
+              {lastRun.errors > 0 && <span style={{ fontSize: 13 }}><span style={{ fontWeight: 700, color: "var(--danger)" }}>{lastRun.errors}</span> <span style={{ color: "var(--text-3)" }}>errors</span></span>}
             </div>
           </div>
         )}
@@ -312,7 +312,7 @@ export function CronDashboard() {
                         <td style={{ padding: "8px 12px", color: "var(--text-3)" }}>{run.triggeredBy}</td>
                         <td style={{ padding: "8px 12px" }}>{statusBadge(run.status)}</td>
                         <td style={{ padding: "8px 12px", color: "var(--text-3)" }}>{formatDuration(run.startedAt, run.completedAt)}</td>
-                        <td style={{ padding: "8px 12px", fontWeight: 600, color: "#16a34a" }}>{run.snapshotsNew}</td>
+                        <td style={{ padding: "8px 12px", fontWeight: 600, color: "var(--success)" }}>{run.snapshotsNew}</td>
                         <td style={{ padding: "8px 12px", color: "var(--text-3)" }}>{run.snapshotsSkipped}</td>
                         <td style={{ padding: "8px 12px", fontWeight: run.errors > 0 ? 600 : 400, color: run.errors > 0 ? "#dc2626" : "var(--text-3)" }}>{run.errors}</td>
                         <td style={{ padding: "8px 12px", color: "var(--text-3)" }}>{run.clientsTotal}</td>
@@ -336,8 +336,8 @@ export function CronDashboard() {
                                 .map((r, i) => (
                                   <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, fontSize: 11, paddingBottom: 2 }}>
                                     <span style={{ fontWeight: 500, color: "var(--text)" }}>{r.clientName}</span>
-                                    <span style={{ color: "#16a34a" }}>{r.sections?.join(", ")}</span>
-                                    <span style={{ color: "#dc2626" }}>{r.errors?.join("; ")}</span>
+                                    <span style={{ color: "var(--success)" }}>{r.sections?.join(", ")}</span>
+                                    <span style={{ color: "var(--danger)" }}>{r.errors?.join("; ")}</span>
                                   </div>
                                 ))}
                             </div>
@@ -359,7 +359,7 @@ export function CronDashboard() {
           <div>
             <h3 className="card-title" style={{ fontSize: 14 }}>Snapshot Coverage</h3>
             <p className="card-subtitle" style={{ fontSize: 12 }}>
-              Colour indicates recency: <span style={{ color: "#16a34a", fontWeight: 600 }}>green</span> = fetched ≤24h, <span style={{ color: "#d97706", fontWeight: 600 }}>amber</span> = 1–7 days, <span style={{ color: "#dc2626", fontWeight: 600 }}>red</span> = stale/never. — = not configured.
+              Colour indicates recency: <span style={{ color: "var(--success)", fontWeight: 600 }}>green</span> = fetched ≤24h, <span style={{ color: "#d97706", fontWeight: 600 }}>amber</span> = 1–7 days, <span style={{ color: "var(--danger)", fontWeight: 600 }}>red</span> = stale/never. — = not configured.
             </p>
           </div>
         </div>
@@ -389,7 +389,7 @@ export function CronDashboard() {
                     if (!p.lastFetched || p.count === 0) {
                       return (
                         <td key={key} style={{ textAlign: "center", padding: "7px 8px" }}>
-                          <span style={{ fontSize: 11, color: "#dc2626", fontWeight: 600 }}>Missing</span>
+                          <span style={{ fontSize: 11, color: "var(--danger)", fontWeight: 600 }}>Missing</span>
                         </td>
                       );
                     }

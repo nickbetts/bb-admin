@@ -132,14 +132,14 @@ export default function MediaPlanDetailPage({ params }: { params: Promise<{ id: 
   if (!plan) return null;
 
   return (
-    <div style={{ padding: "40px 48px", maxWidth: 1000, margin: "0 auto" }}>
+    <div className="page" style={{ maxWidth: 1000 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Link href="/tools/media-plan" className="btn btn-ghost btn-sm" style={{ padding: 6 }}>
             <ArrowLeft style={{ width: 16, height: 16 }} />
           </Link>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#6366f1,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <PieChart style={{ width: 18, height: 18, color: "white" }} />
             </div>
             <div>
@@ -149,7 +149,7 @@ export default function MediaPlanDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={handleDelete} className="btn btn-ghost btn-sm" style={{ color: "#ef4444", gap: 5, display: "inline-flex", alignItems: "center" }}>
+          <button onClick={handleDelete} className="btn btn-ghost btn-sm" style={{ color: "var(--danger)", gap: 5, display: "inline-flex", alignItems: "center" }}>
             <Trash2 style={{ width: 13, height: 13 }} /> Delete
           </button>
           <button onClick={handleSave} disabled={saving} className="btn btn-secondary btn-sm" style={{ gap: 5, display: "inline-flex", alignItems: "center" }}>
@@ -236,11 +236,11 @@ export default function MediaPlanDetailPage({ params }: { params: Promise<{ id: 
       {forecast && (
         <div className="card" style={{ padding: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
-            <Sparkles style={{ width: 16, height: 16, color: "#6366f1" }} />
+            <Sparkles style={{ width: 16, height: 16, color: "var(--accent)" }} />
             <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>AI Forecast</h2>
           </div>
           {forecast.summary && (
-            <div style={{ padding: "12px 14px", background: "#6366f108", border: "1px solid #6366f120", borderRadius: "var(--r-sm)", marginBottom: 16 }}>
+            <div style={{ padding: "12px 14px", background: "rgb(99 102 241 / 0.03)", border: "1px solid rgb(99 102 241 / 0.13)", borderRadius: "var(--r-sm)", marginBottom: 16 }}>
               <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6 }}>{forecast.summary}</p>
             </div>
           )}

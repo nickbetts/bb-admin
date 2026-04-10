@@ -29,10 +29,10 @@ interface CoreWebVitalsSectionProps {
 }
 
 const CATEGORY_CONFIG = {
-  good: { color: "#16a34a", bg: "#f0fdf4", border: "#bbf7d0", label: "Good", Icon: CheckCircle },
+  good: { color: "var(--success)", bg: "#f0fdf4", border: "#bbf7d0", label: "Good", Icon: CheckCircle },
   "needs-improvement": { color: "#ca8a04", bg: "#fefce8", border: "#fef08a", label: "Needs Improvement", Icon: MinusCircle },
-  poor: { color: "#dc2626", bg: "#fef2f2", border: "#fecaca", label: "Poor", Icon: AlertTriangle },
-  unknown: { color: "#6b7280", bg: "#f9fafb", border: "#e5e7eb", label: "No Data", Icon: Globe },
+  poor: { color: "var(--danger)", bg: "#fef2f2", border: "#fecaca", label: "Poor", Icon: AlertTriangle },
+  unknown: { color: "var(--text-2)", bg: "#f9fafb", border: "#e5e7eb", label: "No Data", Icon: Globe },
 };
 
 const METRIC_INFO: Record<string, { label: string; unit: string; description: string }> = {
@@ -83,12 +83,12 @@ function MetricCard({ name, data }: { name: string; data: MetricData | null }) {
       <div style={{ display: "flex", borderRadius: 4, overflow: "hidden", height: 8, gap: 1 }}>
         <div style={{ width: `${data.good}%`, background: "#16a34a", minWidth: data.good > 0 ? 2 : 0 }} />
         <div style={{ width: `${data.needsImprovement}%`, background: "#ca8a04", minWidth: data.needsImprovement > 0 ? 2 : 0 }} />
-        <div style={{ width: `${data.poor}%`, background: "#dc2626", minWidth: data.poor > 0 ? 2 : 0 }} />
+        <div style={{ width: `${data.poor}%`, background: "var(--danger)", minWidth: data.poor > 0 ? 2 : 0 }} />
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 11, color: "var(--text-3, #888)" }}>
-        <span style={{ color: "#16a34a" }}>{data.good.toFixed(0)}% good</span>
+        <span style={{ color: "var(--success)" }}>{data.good.toFixed(0)}% good</span>
         <span style={{ color: "#ca8a04" }}>{data.needsImprovement.toFixed(0)}% ok</span>
-        <span style={{ color: "#dc2626" }}>{data.poor.toFixed(0)}% poor</span>
+        <span style={{ color: "var(--danger)" }}>{data.poor.toFixed(0)}% poor</span>
       </div>
     </div>
   );
@@ -258,10 +258,10 @@ export function CoreWebVitalsSection({ url, visibleBlocks }: CoreWebVitalsSectio
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: "2px solid #e5e7eb" }}>
-                  <th style={{ textAlign: "left", padding: "8px 12px", color: "#6b7280", fontWeight: 600, fontSize: 12 }}>Date</th>
-                  <th style={{ textAlign: "right", padding: "8px 12px", color: "#6b7280", fontWeight: 600, fontSize: 12 }}>LCP (ms)</th>
-                  <th style={{ textAlign: "right", padding: "8px 12px", color: "#6b7280", fontWeight: 600, fontSize: 12 }}>CLS</th>
-                  <th style={{ textAlign: "right", padding: "8px 12px", color: "#6b7280", fontWeight: 600, fontSize: 12 }}>INP (ms)</th>
+                  <th style={{ textAlign: "left", padding: "8px 12px", color: "var(--text-2)", fontWeight: 600, fontSize: 12 }}>Date</th>
+                  <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-2)", fontWeight: 600, fontSize: 12 }}>LCP (ms)</th>
+                  <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-2)", fontWeight: 600, fontSize: 12 }}>CLS</th>
+                  <th style={{ textAlign: "right", padding: "8px 12px", color: "var(--text-2)", fontWeight: 600, fontSize: 12 }}>INP (ms)</th>
                 </tr>
               </thead>
               <tbody>
@@ -283,9 +283,9 @@ export function CoreWebVitalsSection({ url, visibleBlocks }: CoreWebVitalsSectio
             </table>
           </div>
           <div style={{ fontSize: 11, color: "var(--text-3, #888)" }}>
-            <span style={{ color: "#16a34a", fontWeight: 600 }}>■</span> Improved
-            {" "}<span style={{ color: "#dc2626", fontWeight: 600 }}>■</span> Degraded
-            {" "}<span style={{ color: "#6b7280", fontWeight: 600 }}>■</span> Unchanged
+            <span style={{ color: "var(--success)", fontWeight: 600 }}>■</span> Improved
+            {" "}<span style={{ color: "var(--danger)", fontWeight: 600 }}>■</span> Degraded
+            {" "}<span style={{ color: "var(--text-2)", fontWeight: 600 }}>■</span> Unchanged
           </div>
         </div>
       )}

@@ -12,7 +12,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: 24, background: "var(--bg)" }}>
       <div style={{ textAlign: "center", maxWidth: 560 }}>
-        <div style={{ width: 56, height: 56, borderRadius: 16, background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 24 }}>
+        <div style={{ width: 56, height: 56, borderRadius: 16, background: "var(--danger-bg)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 24 }}>
           !
         </div>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>Something went wrong</h2>
@@ -48,7 +48,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
                   marginTop: 8,
                   padding: "12px 14px",
                   borderRadius: 6,
-                  background: "#1e1e2e",
+                  background: "var(--text)",
                   color: "#cdd6f4",
                   fontSize: 11,
                   lineHeight: 1.6,

@@ -905,7 +905,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: "var(--text-3)" }}>Active platforms:</span>
             {activePlatforms.map((p) => (
-              <span key={p as string} style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 999, background: "var(--accent-bg)", color: "var(--accent-text)", border: "1px solid #c7d2fe" }}>
+              <span key={p as string} style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 999, background: "var(--accent-bg)", color: "var(--accent-text)", border: "1px solid rgb(99 102 241 / 0.25)" }}>
                 {p as string}
               </span>
             ))}
@@ -931,7 +931,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
                       )}
                     </div>
                     {i > 0 && stage.rate != null && (
-                      <div style={{ position: "absolute", top: 6, left: -1, transform: "translateX(-50%)", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6, padding: "1px 6px", fontSize: 9, fontWeight: 700, color: "#15803d", whiteSpace: "nowrap" as const, zIndex: 2 }}>
+                      <div style={{ position: "absolute", top: 6, left: -1, transform: "translateX(-50%)", background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: 6, padding: "1px 6px", fontSize: 9, fontWeight: 700, color: "var(--success-text)", whiteSpace: "nowrap" as const, zIndex: 2 }}>
                         {stage.label === "Revenue" ? formatCurrency(stage.rate) : `${stage.rate.toFixed(1)}%`}
                       </div>
                     )}
@@ -1069,8 +1069,8 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
                   </div>
                   <p style={{ fontSize: 12, color: "var(--text-2)", margin: 0, lineHeight: 1.6 }}>
                     <strong>{keywordOverlapSummary.total}</strong> keyword{keywordOverlapSummary.total !== 1 ? "s" : ""} appear in both organic and paid campaigns.
-                    {keywordOverlapSummary.highRisk > 0 && <> <strong style={{ color: "#dc2626" }}>{keywordOverlapSummary.highRisk}</strong> are high-risk.</>}
-                    {keywordOverlapSummary.potentialSavings > 0 && <> Potential savings: <strong style={{ color: "#065f46" }}>{formatCurrency(keywordOverlapSummary.potentialSavings)}</strong>.</>}
+                    {keywordOverlapSummary.highRisk > 0 && <> <strong style={{ color: "var(--danger)" }}>{keywordOverlapSummary.highRisk}</strong> are high-risk.</>}
+                    {keywordOverlapSummary.potentialSavings > 0 && <> Potential savings: <strong style={{ color: "var(--success-text)" }}>{formatCurrency(keywordOverlapSummary.potentialSavings)}</strong>.</>}
                   </p>
                 </div>
               )}
@@ -1128,7 +1128,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
               {sinceLastReport.highlights.slice(0, 8).map((ch, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 14px", borderBottom: i < Math.min(sinceLastReport.highlights.length, 8) - 1 ? "1px solid var(--border)" : "none", background: i % 2 === 0 ? "var(--surface)" : "transparent" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 3, background: "#eef2ff", color: "#6366f1" }}>{ch.platform}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 3, background: "var(--accent-bg)", color: "var(--accent)" }}>{ch.platform}</span>
                     <span style={{ fontSize: 12, color: "var(--text)" }}>{ch.metric}</span>
                   </div>
                   <span style={{ fontSize: 12, fontWeight: 600, color: ch.changePercent >= 0 ? "#16a34a" : "#dc2626" }}>
@@ -1197,7 +1197,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
                   </div>
                   {/* Conversion rate connector */}
                   {i > 0 && stage.rate != null && (
-                    <div style={{ position: "absolute", top: 6, left: -1, transform: "translateX(-50%)", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 6, padding: "1px 6px", fontSize: 9, fontWeight: 700, color: "#15803d", whiteSpace: "nowrap", zIndex: 2 }}>
+                    <div style={{ position: "absolute", top: 6, left: -1, transform: "translateX(-50%)", background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: 6, padding: "1px 6px", fontSize: 9, fontWeight: 700, color: "var(--success-text)", whiteSpace: "nowrap", zIndex: 2 }}>
                       {stage.label === "Revenue" ? formatCurrency(stage.rate) : `${stage.rate.toFixed(1)}%`}
                     </div>
                   )}
@@ -1308,8 +1308,8 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
           </div>
           <p style={{ fontSize: 12, color: "var(--text-2)", margin: 0, lineHeight: 1.6 }}>
             <strong>{keywordOverlapSummary.total}</strong> keyword{keywordOverlapSummary.total !== 1 ? "s" : ""} appear in both organic results and paid campaigns.
-            {keywordOverlapSummary.highRisk > 0 && <> <strong style={{ color: "#dc2626" }}>{keywordOverlapSummary.highRisk}</strong> are high-risk (ranking top 3 with active spend).</>}
-            {keywordOverlapSummary.potentialSavings > 0 && <> Potential savings: <strong style={{ color: "#065f46" }}>${keywordOverlapSummary.potentialSavings.toFixed(2)}</strong>.</>}
+            {keywordOverlapSummary.highRisk > 0 && <> <strong style={{ color: "var(--danger)" }}>{keywordOverlapSummary.highRisk}</strong> are high-risk (ranking top 3 with active spend).</>}
+            {keywordOverlapSummary.potentialSavings > 0 && <> Potential savings: <strong style={{ color: "var(--success-text)" }}>${keywordOverlapSummary.potentialSavings.toFixed(2)}</strong>.</>}
             {" "}See the Search Console section for full details.
           </p>
         </div>
@@ -1363,7 +1363,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
       {show("since_last_report") && sinceLastReport && sinceLastReport.highlights.length > 0 && (
         <div style={{ borderRadius: 12, border: "1px solid var(--border)", padding: "14px 18px", background: "var(--surface)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <BarChart3 className="h-4 w-4" style={{ color: "#6366f1" }} />
+            <BarChart3 className="h-4 w-4" style={{ color: "var(--accent)" }} />
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Since Last Report</span>
           </div>
           {sinceLastReport.narrative && (
@@ -1373,7 +1373,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             {sinceLastReport.highlights.slice(0, 8).map((ch, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 12px", borderBottom: i < Math.min(sinceLastReport.highlights.length, 8) - 1 ? "1px solid var(--border)" : "none", background: i % 2 === 0 ? "var(--surface)" : "transparent" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 3, background: "#eef2ff", color: "#6366f1" }}>{ch.platform}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 3, background: "var(--accent-bg)", color: "var(--accent)" }}>{ch.platform}</span>
                   <span style={{ fontSize: 12, color: "var(--text)" }}>{ch.metric}</span>
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 600, color: ch.changePercent >= 0 ? "#16a34a" : "#dc2626" }}>
@@ -1582,13 +1582,13 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
       )}
 
       {/* ── AI Cross-Channel Overview ────────────────────────────────────── */}
-      <div className="card" style={{ borderImage: "linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7) 1", borderWidth: 1, borderStyle: "solid" }}>
+      <div className="card" style={{ borderImage: "var(--gradient-accent) 1", borderWidth: 1, borderStyle: "solid" }}>
         {/* Header */}
         <div className="card-header">
           <div className="flex items-center gap-2.5">
             <div style={{
               width: 34, height: 34, borderRadius: 10,
-              background: "linear-gradient(135deg, #6366f1, #a855f7)",
+              background: "var(--gradient-accent)",
               display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
             }}>
               <Sparkles className="h-4 w-4 text-white" />
@@ -1616,7 +1616,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
               className="btn btn-primary btn-sm inline-flex items-center gap-1.5"
               style={{
                 fontSize: 13, padding: "7px 16px",
-                background: "linear-gradient(135deg, #6366f1, #a855f7)", border: "none",
+                background: "var(--gradient-accent)", border: "none",
               }}
             >
               {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
@@ -1644,7 +1644,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
                 background: "linear-gradient(135deg, #eef2ff, #f5f3ff)",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
-                <Loader2 className="h-5 w-5 animate-spin" style={{ color: "#6366f1" }} />
+                <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--accent)" }} />
               </div>
               <div style={{ textAlign: "center" }}>
                 <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Analysing all channels…</p>
@@ -1664,7 +1664,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
               background: "linear-gradient(135deg, #eef2ff, #f5f3ff)",
               display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px",
             }}>
-              <Sparkles className="h-5 w-5" style={{ color: "#6366f1" }} />
+              <Sparkles className="h-5 w-5" style={{ color: "var(--accent)" }} />
             </div>
             <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>
               Cross-Channel Overview
@@ -1735,18 +1735,18 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             {aiResult.crossChannelInsights.length > 0 && (
               <div style={{
                 background: "linear-gradient(135deg, #eef2ff, #f5f3ff)",
-                border: "1px solid #c7d2fe", borderRadius: "var(--r)", padding: "14px 16px",
+                border: "1px solid rgb(99 102 241 / 0.25)", borderRadius: "var(--r)", padding: "14px 16px",
               }}>
                 <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
-                  <ArrowRight className="h-3.5 w-3.5" style={{ color: "#6366f1" }} />
-                  <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#4338ca" }}>
+                  <ArrowRight className="h-3.5 w-3.5" style={{ color: "var(--accent)" }} />
+                  <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--accent-text)" }}>
                     Cross-Channel Insights
                   </p>
                 </div>
                 <ul style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {aiResult.crossChannelInsights.map((insight, i) => (
                     <li key={i} style={{ fontSize: 12, color: "#3730a3", lineHeight: 1.6, paddingLeft: 14, position: "relative" }}>
-                      <span style={{ position: "absolute", left: 0, color: "#6366f1" }}>•</span>
+                      <span style={{ position: "absolute", left: 0, color: "var(--accent)" }}>•</span>
                       {insight}
                     </li>
                   ))}
@@ -1757,15 +1757,15 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             {/* Budget recommendation */}
             {aiResult.budgetRecommendation && (
               <div style={{
-                background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "var(--r)", padding: "14px 16px",
+                background: "var(--warning-bg)", border: "1px solid var(--warning-border)", borderRadius: "var(--r)", padding: "14px 16px",
               }}>
                 <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
                   <Wallet className="h-3.5 w-3.5" style={{ color: "#d97706" }} />
-                  <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#92400e" }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--warning-text)" }}>
                     Budget Recommendation
                   </p>
                 </div>
-                <p style={{ fontSize: 12, color: "#78350f", lineHeight: 1.7 }}>
+                <p style={{ fontSize: 12, color: "var(--warning-text)", lineHeight: 1.7 }}>
                   {aiResult.budgetRecommendation}
                 </p>
               </div>
@@ -1774,17 +1774,17 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             {/* Wins + Issues */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {aiResult.wins.length > 0 && (
-                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "var(--r)", padding: "14px 16px" }}>
+                <div style={{ background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: "var(--r)", padding: "14px 16px" }}>
                   <div className="flex items-center gap-1.5" style={{ marginBottom: 10 }}>
-                    <TrendingUp className="h-3.5 w-3.5" style={{ color: "#16a34a" }} />
-                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#15803d" }}>
+                    <TrendingUp className="h-3.5 w-3.5" style={{ color: "var(--success)" }} />
+                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--success-text)" }}>
                       What&apos;s Working
                     </p>
                   </div>
                   <ul style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {aiResult.wins.map((win, i) => (
-                      <li key={i} className="flex items-start gap-1.5" style={{ fontSize: 12, color: "#166534", lineHeight: 1.6 }}>
-                        <CheckCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" style={{ color: "#22c55e" }} />
+                      <li key={i} className="flex items-start gap-1.5" style={{ fontSize: 12, color: "var(--success-text)", lineHeight: 1.6 }}>
+                        <CheckCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" style={{ color: "var(--success)" }} />
                         {win}
                       </li>
                     ))}
@@ -1792,17 +1792,17 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
                 </div>
               )}
               {aiResult.issues.length > 0 && (
-                <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r)", padding: "14px 16px" }}>
+                <div style={{ background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r)", padding: "14px 16px" }}>
                   <div className="flex items-center gap-1.5" style={{ marginBottom: 10 }}>
-                    <AlertTriangle className="h-3.5 w-3.5" style={{ color: "#dc2626" }} />
-                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#991b1b" }}>
+                    <AlertTriangle className="h-3.5 w-3.5" style={{ color: "var(--danger)" }} />
+                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--danger-text)" }}>
                       Key Issues
                     </p>
                   </div>
                   <ul style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {aiResult.issues.map((issue, i) => (
-                      <li key={i} className="flex items-start gap-1.5" style={{ fontSize: 12, color: "#991b1b", lineHeight: 1.6 }}>
-                        <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" style={{ color: "#ef4444" }} />
+                      <li key={i} className="flex items-start gap-1.5" style={{ fontSize: 12, color: "var(--danger-text)", lineHeight: 1.6 }}>
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" style={{ color: "var(--danger)" }} />
                         {issue}
                       </li>
                     ))}
@@ -1813,7 +1813,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
 
             {/* Actions */}
             {aiResult.actions.length > 0 && (
-              <div style={{ background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r)", padding: "14px 16px" }}>
+              <div style={{ background: "var(--accent-bg)", border: "1px solid rgb(99 102 241 / 0.25)", borderRadius: "var(--r)", padding: "14px 16px" }}>
                 <div className="flex items-center gap-1.5" style={{ marginBottom: 10 }}>
                   <Lightbulb className="h-3.5 w-3.5" style={{ color: "var(--accent)" }} />
                   <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--accent-text)" }}>

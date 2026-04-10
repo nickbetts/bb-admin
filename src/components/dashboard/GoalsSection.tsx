@@ -24,11 +24,11 @@ interface GoalsSectionProps {
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  active: { label: "Active", color: "#6366f1", icon: <Target style={{ width: 12, height: 12 }} /> },
-  achieved: { label: "Achieved", color: "#22c55e", icon: <Check style={{ width: 12, height: 12 }} /> },
-  at_risk: { label: "At Risk", color: "#f59e0b", icon: <AlertTriangle style={{ width: 12, height: 12 }} /> },
-  off_track: { label: "Off Track", color: "#ef4444", icon: <X style={{ width: 12, height: 12 }} /> },
-  cancelled: { label: "Cancelled", color: "#9ca3af", icon: <X style={{ width: 12, height: 12 }} /> },
+  active: { label: "Active", color: "var(--accent)", icon: <Target style={{ width: 12, height: 12 }} /> },
+  achieved: { label: "Achieved", color: "var(--success)", icon: <Check style={{ width: 12, height: 12 }} /> },
+  at_risk: { label: "At Risk", color: "var(--warning)", icon: <AlertTriangle style={{ width: 12, height: 12 }} /> },
+  off_track: { label: "Off Track", color: "var(--danger)", icon: <X style={{ width: 12, height: 12 }} /> },
+  cancelled: { label: "Cancelled", color: "var(--text-3)", icon: <X style={{ width: 12, height: 12 }} /> },
 };
 
 const metricOptions = [
@@ -229,7 +229,7 @@ export function GoalsSection({ clientId, visibleBlocks }: GoalsSectionProps) {
     <div className="card">
       <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Target style={{ width: 20, height: 20, color: "#6366f1" }} />
+          <Target style={{ width: 20, height: 20, color: "var(--accent)" }} />
           <div>
             <h2 className="card-title">Goals & KPI Tracking</h2>
             <p className="card-subtitle">Track progress towards client performance targets</p>
@@ -286,7 +286,7 @@ export function GoalsSection({ clientId, visibleBlocks }: GoalsSectionProps) {
                   </button>
                   <span style={{ fontSize: 11, color: "var(--text-3)" }}>Get AI-suggested conservative / moderate / aggressive targets based on historical data</span>
                 </div>
-                {benchmarkError && <p style={{ fontSize: 12, color: "#b91c1c", marginTop: 6 }}>{benchmarkError}</p>}
+                {benchmarkError && <p style={{ fontSize: 12, color: "var(--danger-text)", marginTop: 6 }}>{benchmarkError}</p>}
                 {benchmarkResult && (
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
                     {benchmarkResult.currentTrend && (
@@ -345,7 +345,7 @@ export function GoalsSection({ clientId, visibleBlocks }: GoalsSectionProps) {
               </div>
             </div>
 
-            {error && <div style={{ fontSize: 12, color: "#b91c1c", marginTop: 8 }}>{error}</div>}
+            {error && <div style={{ fontSize: 12, color: "var(--danger-text)", marginTop: 8 }}>{error}</div>}
 
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
               <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving || !form.title || !form.targetValue || !form.targetDate}>
@@ -397,7 +397,7 @@ export function GoalsSection({ clientId, visibleBlocks }: GoalsSectionProps) {
                   </button>
                   <button
                     className="btn btn-ghost btn-sm"
-                    style={{ padding: 5, color: "#ef4444" }}
+                    style={{ padding: 5, color: "var(--danger)" }}
                     onClick={() => handleDelete(goal.id)}
                     title="Delete goal"
                   >

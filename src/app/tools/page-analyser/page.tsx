@@ -219,11 +219,11 @@ export default function PageAnalyserPage() {
   const a = result?.analysis;
 
   return (
-    <div style={{ padding: "40px 48px", maxWidth: 1100, margin: "0 auto" }}>
+    <div className="page" style={{ maxWidth: 1100 }}>
       {/* Page header */}
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, #6366f1, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Zap style={{ width: 20, height: 20, color: "white" }} />
           </div>
           <div>
@@ -278,9 +278,9 @@ export default function PageAnalyserPage() {
 
       {/* Error */}
       {error && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r)", marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r)", marginBottom: 24 }}>
           <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
-          <p style={{ fontSize: 13, color: "#b91c1c" }}>{error}</p>
+          <p style={{ fontSize: 13, color: "var(--danger-text)" }}>{error}</p>
         </div>
       )}
 
@@ -289,9 +289,9 @@ export default function PageAnalyserPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {[...Array(4)].map((_, i) => (
             <div key={i} className="card" style={{ padding: 28 }}>
-              <div style={{ height: 14, background: "#e2e8f0", borderRadius: 6, width: "60%", animation: "pulse 1.5s ease-in-out infinite" }} />
-              <div style={{ height: 10, background: "#f1f5f9", borderRadius: 6, width: "80%", marginTop: 12, animation: "pulse 1.5s ease-in-out infinite" }} />
-              <div style={{ height: 10, background: "#f1f5f9", borderRadius: 6, width: "70%", marginTop: 8, animation: "pulse 1.5s ease-in-out infinite" }} />
+              <div style={{ height: 14, background: "var(--border)", borderRadius: 6, width: "60%", animation: "pulse 1.5s ease-in-out infinite" }} />
+              <div style={{ height: 10, background: "var(--border-subtle)", borderRadius: 6, width: "80%", marginTop: 12, animation: "pulse 1.5s ease-in-out infinite" }} />
+              <div style={{ height: 10, background: "var(--border-subtle)", borderRadius: 6, width: "70%", marginTop: 8, animation: "pulse 1.5s ease-in-out infinite" }} />
             </div>
           ))}
         </div>
@@ -351,7 +351,7 @@ export default function PageAnalyserPage() {
 
               {/* Top recommendations */}
               {a.topRecommendations && a.topRecommendations.length > 0 && (
-                <div style={{ background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r)", padding: "18px 20px" }}>
+                <div style={{ background: "var(--accent-bg)", border: "1px solid rgb(99 102 241 / 0.25)", borderRadius: "var(--r)", padding: "18px 20px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                     <Lightbulb className="h-4 w-4" style={{ color: "var(--accent)" }} />
                     <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--accent-text)" }}>Top Recommendations</p>
@@ -512,9 +512,9 @@ export default function PageAnalyserPage() {
           )}
 
           {result.pageSignals?.fetchError && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "var(--r)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", background: "var(--warning-bg)", border: "1px solid var(--warning-border)", borderRadius: "var(--r)" }}>
               <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
-              <p style={{ fontSize: 13, color: "#92400e" }}>
+              <p style={{ fontSize: 13, color: "var(--warning-text)" }}>
                 <strong>Page fetch note:</strong> {result.pageSignals.fetchError}. AI analysis was based on SemRush data and URL context only.
               </p>
             </div>

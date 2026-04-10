@@ -337,7 +337,7 @@ export function AiInsightsPanel({
       {/* Header */}
       <div className="card-header">
         <div className="flex items-center gap-2.5">
-          <div style={{ width: 32, height: 32, borderRadius: 10, background: "linear-gradient(135deg, #6366f1, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Sparkles className="h-4 w-4 text-white" />
           </div>
           <div>
@@ -384,7 +384,7 @@ export function AiInsightsPanel({
       {loading && !result && (
         <div className="card-body" style={{ paddingTop: 24, paddingBottom: 24, display: "flex", flexDirection: "column", gap: 10 }}>
           {[100, 80, 90, 70, 85].map((w, i) => (
-            <div key={i} style={{ height: i < 3 ? 13 : 10, background: "#e2e8f0", borderRadius: 6, width: `${w}%`, animation: "pulse 1.5s ease-in-out infinite" }} />
+            <div key={i} style={{ height: i < 3 ? 13 : 10, background: "var(--border)", borderRadius: 6, width: `${w}%`, animation: "pulse 1.5s ease-in-out infinite" }} />
           ))}
         </div>
       )}
@@ -463,7 +463,7 @@ export function AiInsightsPanel({
               <ul style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {result.recommendations.map((rec, i) => (
                   <li key={i} className="flex items-start gap-2.5">
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", marginTop: 7, flexShrink: 0 }} />
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--warning)", marginTop: 7, flexShrink: 0 }} />
                     <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6 }}>{rec}</p>
                   </li>
                 ))}

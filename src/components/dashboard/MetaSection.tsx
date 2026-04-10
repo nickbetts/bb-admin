@@ -1128,7 +1128,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                                       <button
                                         type="button"
                                         className="relative shrink-0 rounded-md overflow-hidden border border-slate-200 cursor-pointer hover:ring-2 hover:ring-indigo-300 transition-all"
-                                        style={{ width: 56, height: 56, background: "#f8fafc" }}
+                                        style={{ width: 56, height: 56, background: "var(--bg)" }}
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           const isVideo = cr.mediaType === "VIDEO" && (cr.videoId || cr.videoUrl);

@@ -385,7 +385,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                   <button
                     type="button"
                     onClick={() => setLogoUrl(null)}
-                    style={{ position: "absolute", top: 2, right: 2, background: "#dc2626", border: "none", borderRadius: 4, padding: "1px 3px", cursor: "pointer", lineHeight: 1 }}
+                    style={{ position: "absolute", top: 2, right: 2, background: "var(--danger)", border: "none", borderRadius: 4, padding: "1px 3px", cursor: "pointer", lineHeight: 1 }}
                   >
                     <X size={10} color="#fff" />
                   </button>
@@ -402,7 +402,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                   {logoUploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
                   {logoUploading ? "Uploading…" : "Upload Logo"}
                 </button>
-                {logoError && <p className="text-xs" style={{ color: "#dc2626" }}>{logoError}</p>}
+                {logoError && <p className="text-xs" style={{ color: "var(--danger)" }}>{logoError}</p>}
                 <p className="text-xs" style={{ color: "var(--text-4)" }}>PNG, JPG or SVG — max 5MB</p>
               </div>
             </div>
@@ -539,22 +539,22 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
           </div>
 
           {/* Property not in the list? Instructions */}
-          <div style={{ borderRadius: "var(--r)", border: "1px solid #bfdbfe", background: "#eff6ff", padding: "12px 16px", fontSize: 13, color: "#1e40af" }}>
+          <div style={{ borderRadius: "var(--r)", border: "1px solid var(--info-border)", background: "var(--info-bg)", padding: "12px 16px", fontSize: 13, color: "var(--info-text)" }}>
             <p style={{ fontWeight: 600, marginBottom: 6 }}>Property not in the list?</p>
-            <p style={{ marginBottom: 8, color: "#1d4ed8", lineHeight: 1.5 }}>
+            <p style={{ marginBottom: 8, color: "var(--info-text)", lineHeight: 1.5 }}>
               This app uses a Google service account to read Analytics data. The property will only appear here
               once that service account has been granted <strong>Viewer</strong> access inside Google Analytics.
             </p>
-            <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 5, color: "#1d4ed8", lineHeight: 1.5 }}>
-              <li>Open <a href="https://analytics.google.com" target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", textDecoration: "underline" }}>analytics.google.com</a> and go to the GA4 property you want to add</li>
+            <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 5, color: "var(--info-text)", lineHeight: 1.5 }}>
+              <li>Open <a href="https://analytics.google.com" target="_blank" rel="noopener noreferrer" style={{ color: "var(--info)", textDecoration: "underline" }}>analytics.google.com</a> and go to the GA4 property you want to add</li>
               <li>Click <strong>Admin</strong> (bottom-left) → <strong>Property Access Management</strong></li>
               <li>Click <strong>+ Add users</strong> and paste the service account email below</li>
               <li>Set the role to <strong>Viewer</strong> and click <strong>Add</strong></li>
               <li>Come back here and refresh — the property will appear in the dropdown</li>
             </ol>
             {ga4ServiceAccountEmail && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #bfdbfe", borderRadius: "var(--r-sm)", padding: "8px 12px", marginTop: 12 }}>
-                <code style={{ flex: 1, fontSize: 12, fontFamily: "monospace", color: "#1e3a8a", wordBreak: "break-all", userSelect: "all" as const }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--surface)", border: "1px solid var(--info-border)", borderRadius: "var(--r-sm)", padding: "8px 12px", marginTop: 12 }}>
+                <code style={{ flex: 1, fontSize: 12, fontFamily: "monospace", color: "var(--info-text)", wordBreak: "break-all", userSelect: "all" as const }}>
                   {ga4ServiceAccountEmail}
                 </code>
                 <button
@@ -564,14 +564,14 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                     setGa4EmailCopied(true);
                     setTimeout(() => setGa4EmailCopied(false), 2000);
                   }}
-                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 500, background: "#dbeafe", border: "1px solid #bfdbfe", borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: "#1e40af" }}
+                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 500, background: "var(--info-bg)", border: "1px solid var(--info-border)", borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: "var(--info-text)" }}
                 >
                   {ga4EmailCopied ? "Copied ✓" : "Copy"}
                 </button>
               </div>
             )}
             {ga4ServiceAccountEmailError && (
-              <p style={{ fontSize: 12, color: "#b45309", marginTop: 10, background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 6, padding: "6px 10px" }}>
+              <p style={{ fontSize: 12, color: "var(--warning-text)", marginTop: 10, background: "var(--warning-bg)", border: "1px solid var(--warning-border)", borderRadius: 6, padding: "6px 10px" }}>
                 Could not fetch service account email — verify <code>GA4_CLIENT_EMAIL</code> is set in environment variables.
               </p>
             )}
@@ -743,22 +743,22 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                 <p className="text-xs text-slate-500 mt-1.5">Not in the list? Paste the site URL directly above.</p>
               </>
             )}
-          </div>          <div style={{ borderRadius: "var(--r)", border: "1px solid #bbf7d0", background: "#f0fdf4", padding: "12px 16px", fontSize: 13, color: "#14532d" }}>
+          </div>          <div style={{ borderRadius: "var(--r)", border: "1px solid var(--success-border)", background: "var(--success-bg)", padding: "12px 16px", fontSize: 13, color: "var(--success-text)" }}>
             <p style={{ fontWeight: 600, marginBottom: 6 }}>Site not in the list?</p>
-            <p style={{ marginBottom: 8, color: "#166534", lineHeight: 1.5 }}>
+            <p style={{ marginBottom: 8, color: "var(--success-text)", lineHeight: 1.5 }}>
               This app uses a Google service account to read Search Console data. The site will only appear
               once that service account has been added as a <strong>Full User</strong> inside Google Search Console.
             </p>
-            <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 5, color: "#166534", lineHeight: 1.5 }}>
-              <li>Open <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style={{ color: "#15803d", textDecoration: "underline" }}>search.google.com/search-console</a> and select the property</li>
+            <ol style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 5, color: "var(--success-text)", lineHeight: 1.5 }}>
+              <li>Open <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style={{ color: "var(--success-text)", textDecoration: "underline" }}>search.google.com/search-console</a> and select the property</li>
               <li>Click <strong>Settings</strong> (bottom-left) → <strong>Users and permissions</strong></li>
               <li>Click <strong>Add user</strong> and paste the service account email below</li>
               <li>Set the permission to <strong>Full</strong> and click <strong>Add</strong></li>
               <li>Come back here and refresh — the site will appear in the dropdown</li>
             </ol>
             {ga4ServiceAccountEmail && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid #bbf7d0", borderRadius: "var(--r-sm)", padding: "8px 12px", marginTop: 12 }}>
-                <code style={{ flex: 1, fontSize: 12, fontFamily: "monospace", color: "#14532d", wordBreak: "break-all", userSelect: "all" as const }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--surface)", border: "1px solid var(--success-border)", borderRadius: "var(--r-sm)", padding: "8px 12px", marginTop: 12 }}>
+                <code style={{ flex: 1, fontSize: 12, fontFamily: "monospace", color: "var(--success-text)", wordBreak: "break-all", userSelect: "all" as const }}>
                   {ga4ServiceAccountEmail}
                 </code>
                 <button
@@ -768,14 +768,14 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                     setGscEmailCopied(true);
                     setTimeout(() => setGscEmailCopied(false), 2000);
                   }}
-                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 500, background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: "#14532d" }}
+                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 500, background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: 6, padding: "4px 10px", cursor: "pointer", color: "var(--success-text)" }}
                 >
                   {gscEmailCopied ? "Copied ✓" : "Copy"}
                 </button>
               </div>
             )}
             {ga4ServiceAccountEmailError && (
-              <p style={{ fontSize: 12, color: "#b45309", marginTop: 10, background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 6, padding: "6px 10px" }}>
+              <p style={{ fontSize: 12, color: "var(--warning-text)", marginTop: 10, background: "var(--warning-bg)", border: "1px solid var(--warning-border)", borderRadius: 6, padding: "6px 10px" }}>
                 Could not fetch service account email — verify <code>GA4_CLIENT_EMAIL</code> is set in environment variables.
               </p>
             )}
@@ -1114,13 +1114,13 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
       </div>
 
       {error && (
-        <div style={{ padding: "12px 16px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-sm)", fontSize: 14, color: "#b91c1c" }}>
+        <div style={{ padding: "12px 16px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-sm)", fontSize: 14, color: "var(--danger-text)" }}>
           {error}
         </div>
       )}
 
       {success && (
-        <div style={{ padding: "12px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "var(--r-sm)", fontSize: 14, color: "#15803d" }}>
+        <div style={{ padding: "12px 16px", background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: "var(--r-sm)", fontSize: 14, color: "var(--success-text)" }}>
           Settings saved successfully!
         </div>
       )}
@@ -1177,7 +1177,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"
-                    style={{ padding: 6, color: "#ef4444" }}
+                    style={{ padding: 6, color: "var(--danger)" }}
                     onClick={() => setContractedHours((prev) => prev.filter((_, idx) => idx !== i))}
                   >
                     <Trash2 size={13} />
@@ -1257,7 +1257,7 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             return (
               <div style={{ position: "relative" }}>
                 <pre style={{
-                  background: "#1e293b",
+                  background: "var(--text)",
                   color: "#e2e8f0",
                   borderRadius: 8,
                   padding: "16px 20px",

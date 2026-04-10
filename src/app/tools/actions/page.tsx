@@ -157,10 +157,10 @@ export default function ActionsPage() {
   }, {});
 
   return (
-    <div style={{ padding: "40px 48px", maxWidth: 1200, margin: "0 auto" }}>
+    <div className="page" style={{ maxWidth: 1200 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#6366f1,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CheckSquare style={{ width: 20, height: 20, color: "white" }} />
           </div>
           <div>
@@ -289,7 +289,7 @@ export default function ActionsPage() {
                           <button className="btn btn-ghost btn-sm" style={{ padding: 4 }} onClick={() => startEdit(action)}>
                             <Pencil style={{ width: 11, height: 11 }} />
                           </button>
-                          <button className="btn btn-ghost btn-sm" style={{ padding: 4, color: "#ef4444" }} onClick={() => handleDelete(action)}>
+                          <button className="btn btn-ghost btn-sm" style={{ padding: 4, color: "var(--danger)" }} onClick={() => handleDelete(action)}>
                             <Trash2 style={{ width: 11, height: 11 }} />
                           </button>
                         </div>

@@ -163,7 +163,7 @@ export default function ProposalViewPage({ params }: Props) {
 
   if (loading) {
     return (
-      <div style={{ padding: "40px 48px", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300 }}>
+      <div className="page" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300 }}>
         <Loader2 style={{ width: 24, height: 24, color: "var(--text-3)" }} className="animate-spin" />
       </div>
     );
@@ -171,7 +171,7 @@ export default function ProposalViewPage({ params }: Props) {
 
   if (notFound || !proposal) {
     return (
-      <div style={{ padding: "40px 48px", textAlign: "center" }}>
+      <div className="page" style={{ textAlign: "center" }}>
         <p style={{ fontSize: 14, color: "var(--text-3)" }}>Proposal not found.</p>
         <Link href="/tools/proposals" className="btn btn-ghost btn-sm" style={{ marginTop: 16, display: "inline-flex", alignItems: "center", gap: 5 }}>
           <ArrowLeft style={{ width: 14, height: 14 }} /> Back to Proposals
@@ -268,7 +268,7 @@ export default function ProposalViewPage({ params }: Props) {
         </button>
         <button
           className="btn btn-ghost btn-sm"
-          style={{ gap: 5, color: "#ef4444" }}
+          style={{ gap: 5, color: "var(--danger)" }}
           disabled={deleting}
           onClick={handleDelete}
         >
@@ -281,12 +281,12 @@ export default function ProposalViewPage({ params }: Props) {
       {proposal.shareToken && (
         <div style={{
           display: "flex", alignItems: "center", gap: 10, padding: "8px 20px",
-          background: "#f0fdf4", borderBottom: "1px solid #bbf7d0", flexShrink: 0, flexWrap: "wrap",
+          background: "var(--success-bg)", borderBottom: "1px solid var(--success-border)", flexShrink: 0, flexWrap: "wrap",
         }}>
-          <Share2 style={{ width: 13, height: 13, color: "#16a34a", flexShrink: 0 }} />
-          <span style={{ fontSize: 12, color: "#15803d", flex: 1, minWidth: 0 }}>
+          <Share2 style={{ width: 13, height: 13, color: "var(--success)", flexShrink: 0 }} />
+          <span style={{ fontSize: 12, color: "var(--success-text)", flex: 1, minWidth: 0 }}>
             Client link:{" "}
-            <span style={{ fontFamily: "monospace", fontSize: 11, color: "#166534", wordBreak: "break-all" }}>
+            <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--success-text)", wordBreak: "break-all" }}>
               {typeof window !== "undefined" ? `${window.location.origin}/share/proposal/${proposal.shareToken}` : ""}
             </span>
           </span>
@@ -322,11 +322,11 @@ export default function ProposalViewPage({ params }: Props) {
                 cursor: "pointer", padding: 0,
               }}
             >
-              <MessageSquare style={{ width: 13, height: 13, color: "#6366f1" }} />
-              <span style={{ fontSize: 12, color: "#6366f1", fontWeight: 600 }}>
+              <MessageSquare style={{ width: 13, height: 13, color: "var(--accent)" }} />
+              <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 600 }}>
                 {proposal.enquiryCount} {proposal.enquiryCount === 1 ? "enquiry" : "enquiries"}
               </span>
-              {enquiriesOpen ? <ChevronUp style={{ width: 12, height: 12, color: "#6366f1" }} /> : <ChevronDown style={{ width: 12, height: 12, color: "#6366f1" }} />}
+              {enquiriesOpen ? <ChevronUp style={{ width: 12, height: 12, color: "var(--accent)" }} /> : <ChevronDown style={{ width: 12, height: 12, color: "var(--accent)" }} />}
             </button>
           )}
         </div>
@@ -335,7 +335,7 @@ export default function ProposalViewPage({ params }: Props) {
       {/* Enquiries panel */}
       {enquiriesOpen && (
         <div style={{
-          background: "#fafafa", borderBottom: "1px solid var(--border-subtle)", flexShrink: 0,
+          background: "var(--bg)", borderBottom: "1px solid var(--border-subtle)", flexShrink: 0,
           maxHeight: 320, overflowY: "auto", padding: "12px 20px",
         }}>
           {enquiriesLoading ? (
@@ -349,12 +349,12 @@ export default function ProposalViewPage({ params }: Props) {
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {enquiries.map((enq) => (
                 <div key={enq.id} style={{
-                  background: "#fff", border: "1px solid var(--border-subtle)", borderRadius: 8, padding: 14,
+                  background: "var(--surface)", border: "1px solid var(--border-subtle)", borderRadius: 8, padding: 14,
                 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6, flexWrap: "wrap" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <strong style={{ fontSize: 13, color: "var(--text)" }}>{enq.name}</strong>
-                      <a href={`mailto:${enq.email}`} style={{ fontSize: 12, color: "#6366f1", textDecoration: "none" }}>{enq.email}</a>
+                      <a href={`mailto:${enq.email}`} style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>{enq.email}</a>
                       {enq.phone && <span style={{ fontSize: 12, color: "var(--text-3)" }}>{enq.phone}</span>}
                     </div>
                     <span style={{ fontSize: 11, color: "var(--text-4)" }}>{timeAgo(enq.createdAt)}</span>
@@ -371,19 +371,19 @@ export default function ProposalViewPage({ params }: Props) {
       {proposal.shareToken ? (
         <iframe
           src={`/share/proposal/${proposal.shareToken}`}
-          style={{ flex: 1, border: "none", background: "#fff" }}
+          style={{ flex: 1, border: "none", background: "var(--surface)" }}
           title="Proposal Preview"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
         />
       ) : blobUrl ? (
         <iframe
           src={blobUrl}
-          style={{ flex: 1, border: "none", background: "#fff" }}
+          style={{ flex: 1, border: "none", background: "var(--surface)" }}
           title="Proposal Preview"
           sandbox="allow-same-origin"
         />
       ) : (
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc" }}>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)" }}>
           <div style={{ textAlign: "center", padding: 40 }}>
             <p style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 8 }}>Preview unavailable</p>
             <p style={{ fontSize: 13, color: "#64748b", marginBottom: 20 }}>Share this proposal with the client to preview the interactive version.</p>

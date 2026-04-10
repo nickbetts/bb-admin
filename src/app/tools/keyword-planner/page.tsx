@@ -112,9 +112,9 @@ function fmtNum(n: number): string {
 
 function competitionBadgeStyle(level: string): React.CSSProperties {
   switch (level) {
-    case "LOW":    return { background: "#d1fae5", color: "#065f46" };
-    case "MEDIUM": return { background: "#fef3c7", color: "#92400e" };
-    case "HIGH":   return { background: "#fee2e2", color: "#991b1b" };
+    case "LOW":    return { background: "var(--success-bg)", color: "var(--success-text)" };
+    case "MEDIUM": return { background: "var(--warning-bg)", color: "var(--warning-text)" };
+    case "HIGH":   return { background: "var(--danger-bg)", color: "var(--danger-text)" };
     default:       return { background: "var(--border-subtle)", color: "var(--text-3)" };
   }
 }
@@ -785,12 +785,12 @@ export default function KeywordPlannerPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ padding: "40px 48px", maxWidth: 1200, margin: "0 auto" }}>
+    <div className="page" style={{ maxWidth: 1200 }}>
 
       {/* Header */}
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, #6366f1, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <FileText style={{ width: 20, height: 20, color: "white" }} />
           </div>
           <div>
@@ -849,7 +849,7 @@ export default function KeywordPlannerPage() {
                         title="Rename" onClick={() => { setRenamingId(r.id); setRenameValue(r.title); }}>
                         <Pencil style={{ width: 13, height: 13 }} />
                       </button>
-                      <button className="btn btn-ghost btn-sm" style={{ padding: "4px 8px", flexShrink: 0, color: "#ef4444" }}
+                      <button className="btn btn-ghost btn-sm" style={{ padding: "4px 8px", flexShrink: 0, color: "var(--danger)" }}
                         title="Delete" onClick={() => handleDeleteResearch(r.id)}>
                         <Trash2 style={{ width: 13, height: 13 }} />
                       </button>
@@ -993,7 +993,7 @@ export default function KeywordPlannerPage() {
             </div>
 
             {suggestError && (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "var(--r)", fontSize: 13, color: "#991b1b" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r)", fontSize: 13, color: "var(--danger-text)" }}>
                 <AlertTriangle style={{ width: 15, height: 15, flexShrink: 0, marginTop: 1 }} />{suggestError}
               </div>
             )}
@@ -1010,9 +1010,9 @@ export default function KeywordPlannerPage() {
       {step === 2 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {rationale && (
-            <div style={{ padding: "16px 20px", background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r-lg)", fontSize: 13, maxWidth: 860 }}>
+            <div style={{ padding: "16px 20px", background: "var(--accent-bg)", border: "1px solid rgb(99 102 241 / 0.25)", borderRadius: "var(--r-lg)", fontSize: 13, maxWidth: 860 }}>
               <p style={{ fontWeight: 600, color: "var(--accent-text)", marginBottom: 4 }}>AI Strategy Note</p>
-              <p style={{ color: "#4338ca", lineHeight: 1.6 }}>{rationale}</p>
+              <p style={{ color: "var(--accent-text)", lineHeight: 1.6 }}>{rationale}</p>
             </div>
           )}
 
@@ -1103,7 +1103,7 @@ export default function KeywordPlannerPage() {
           })}
 
           {researchError && (
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "var(--r)", fontSize: 13, color: "#991b1b", maxWidth: 860 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r)", fontSize: 13, color: "var(--danger-text)", maxWidth: 860 }}>
               <AlertTriangle style={{ width: 15, height: 15, flexShrink: 0, marginTop: 1 }} />{researchError}
             </div>
           )}
@@ -1136,7 +1136,7 @@ export default function KeywordPlannerPage() {
                       onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
                       onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")} />
                     {cpcAutoFilled && (
-                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: "#10b981", background: "#d1fae5", border: "1px solid #6ee7b7", borderRadius: 4, padding: "2px 6px", whiteSpace: "nowrap" }}>AUTO</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: "var(--success)", background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: 4, padding: "2px 6px", whiteSpace: "nowrap" }}>AUTO</span>
                     )}
                   </div>
                   <button className="btn btn-ghost btn-sm" onClick={() => setGroupedView((v) => !v)} style={{ gap: 6 }}>
@@ -1201,8 +1201,8 @@ export default function KeywordPlannerPage() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
                 {[
                   { icon: <BarChart2 style={{ width: 16, height: 16, color: "var(--accent)" }} />, label: "Total Monthly Searches", value: fmtNum(totalSearches), sub: `${ideas.length} keywords with volume` },
-                  { icon: <Target style={{ width: 16, height: 16, color: "#f59e0b" }} />, label: "Avg Competition", value: String(avgCompIndex), sub: "0\u2013100 index" },
-                  { icon: <DollarSign style={{ width: 16, height: 16, color: "#10b981" }} />, label: "Avg CPC", value: `\xa3${avgCpc.toFixed(2)}`, sub: "mid-range bid estimate" },
+                  { icon: <Target style={{ width: 16, height: 16, color: "var(--warning)" }} />, label: "Avg Competition", value: String(avgCompIndex), sub: "0\u2013100 index" },
+                  { icon: <DollarSign style={{ width: 16, height: 16, color: "var(--success)" }} />, label: "Avg CPC", value: `\xa3${avgCpc.toFixed(2)}`, sub: "mid-range bid estimate" },
                   { icon: <Zap style={{ width: 16, height: 16, color: "#0ea5e9" }} />, label: "Est. Monthly Clicks", value: fmtNum(totalClicks), sub: cpcMicros ? `~\xa3${totalCost.toFixed(0)}/mo` : "enter Max CPC to estimate" },
                 ].map((m) => (
                   <div key={m.label} className="metric-card">
@@ -1228,7 +1228,7 @@ export default function KeywordPlannerPage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                         <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={{ stroke: "#e2e8f0" }} interval="preserveStartEnd" />
                         <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickLine={false} axisLine={false} tickFormatter={fmtNum} />
-                        <Tooltip formatter={(v: unknown) => [fmtNum(Number(v ?? 0)), "Searches"]} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0", boxShadow: "0 4px 8px -2px rgb(0 0 0/0.08)" }} />
+                        <Tooltip formatter={(v: unknown) => [fmtNum(Number(v ?? 0)), "Searches"]} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid var(--border)", boxShadow: "0 4px 8px -2px rgb(0 0 0/0.08)" }} />
                         <Line type="monotone" dataKey="volume" stroke="#6366f1" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#6366f1" }} />
                       </LineChart>
                     </ResponsiveContainer>
@@ -1420,7 +1420,7 @@ export default function KeywordPlannerPage() {
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                       <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Max CPC (\xa3)</label>
                       {cpcAutoFilled && (
-                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: "#10b981", background: "#d1fae5", border: "1px solid #6ee7b7", borderRadius: 4, padding: "1px 6px" }}>AUTO</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: "var(--success)", background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: 4, padding: "1px 6px" }}>AUTO</span>
                       )}
                     </div>
                     <input type="number" min="0" step="0.01"
@@ -1439,7 +1439,7 @@ export default function KeywordPlannerPage() {
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                       <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Conversion Rate (%)</label>
                       {crAutoFilled && (
-                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: "#6366f1", background: "#ede9fe", border: "1px solid #c4b5fd", borderRadius: 4, padding: "1px 6px" }}>AI</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", color: "var(--accent)", background: "var(--accent-bg)", border: "1px solid rgb(99 102 241 / 0.3)", borderRadius: 4, padding: "1px 6px" }}>AI</span>
                       )}
                     </div>
                     <input type="number" min="0" step="0.01"
@@ -1462,9 +1462,9 @@ export default function KeywordPlannerPage() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
                     {([
                       { icon: <MousePointer style={{ width: 16, height: 16, color: "var(--accent)" }} />, label: "Est. Clicks", value: fmtNum(forecastMetrics.clicks), sub: `at \xa3${budgetPounds.toFixed(0)}/mo budget` },
-                      { icon: <Eye style={{ width: 16, height: 16, color: "#6366f1" }} />, label: "Est. Impressions", value: fmtNum(forecastMetrics.impressions), sub: `CTR: ${forecastMetrics.ctr.toFixed(1)}%` },
-                      { icon: <Users style={{ width: 16, height: 16, color: "#10b981" }} />, label: "Est. Conversions", value: fmtNum(forecastMetrics.conversions), sub: `at ${convRatePct.toFixed(1)}% conv. rate` },
-                      { icon: <DollarSign style={{ width: 16, height: 16, color: "#f59e0b" }} />, label: "Avg CPA", value: forecastMetrics.avgCpa > 0 ? `\xa3${forecastMetrics.avgCpa.toFixed(2)}` : "\u2014", sub: "cost per conversion" },
+                      { icon: <Eye style={{ width: 16, height: 16, color: "var(--accent)" }} />, label: "Est. Impressions", value: fmtNum(forecastMetrics.impressions), sub: `CTR: ${forecastMetrics.ctr.toFixed(1)}%` },
+                      { icon: <Users style={{ width: 16, height: 16, color: "var(--success)" }} />, label: "Est. Conversions", value: fmtNum(forecastMetrics.conversions), sub: `at ${convRatePct.toFixed(1)}% conv. rate` },
+                      { icon: <DollarSign style={{ width: 16, height: 16, color: "var(--warning)" }} />, label: "Avg CPA", value: forecastMetrics.avgCpa > 0 ? `\xa3${forecastMetrics.avgCpa.toFixed(2)}` : "\u2014", sub: "cost per conversion" },
                     ] as { icon: React.ReactNode; label: string; value: string; sub: string }[]).map((m) => (
                       <div key={m.label} className="metric-card">
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>{m.icon}<span className="metric-label">{m.label}</span></div>
@@ -1475,8 +1475,8 @@ export default function KeywordPlannerPage() {
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
                     {([
-                      { icon: <DollarSign style={{ width: 16, height: 16, color: "#ef4444" }} />, label: "Total Cost", value: `\xa3${forecastMetrics.cost.toFixed(0)}`, sub: "estimated monthly spend" },
-                      { icon: <Target style={{ width: 16, height: 16, color: "#8b5cf6" }} />, label: "Avg CTR", value: `${forecastMetrics.ctr.toFixed(2)}%`, sub: "click-through rate" },
+                      { icon: <DollarSign style={{ width: 16, height: 16, color: "var(--danger)" }} />, label: "Total Cost", value: `\xa3${forecastMetrics.cost.toFixed(0)}`, sub: "estimated monthly spend" },
+                      { icon: <Target style={{ width: 16, height: 16, color: "var(--accent-2)" }} />, label: "Avg CTR", value: `${forecastMetrics.ctr.toFixed(2)}%`, sub: "click-through rate" },
                       { icon: <Zap style={{ width: 16, height: 16, color: "#0ea5e9" }} />, label: "Avg CPC", value: forecastMetrics.avgCpc > 0 ? `\xa3${forecastMetrics.avgCpc.toFixed(2)}` : "\u2014", sub: "average cost per click" },
                     ] as { icon: React.ReactNode; label: string; value: string; sub: string }[]).map((m) => (
                       <div key={m.label} className="metric-card">
@@ -1511,7 +1511,7 @@ export default function KeywordPlannerPage() {
                                 String(name) === "conversions" ? "Conversions" : "Clicks",
                               ]}
                               labelFormatter={(l) => `Budget: \xa3${fmtNum(Number(l))}`}
-                              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e2e8f0", boxShadow: "0 4px 8px -2px rgb(0 0 0/0.08)" }} />
+                              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid var(--border)", boxShadow: "0 4px 8px -2px rgb(0 0 0/0.08)" }} />
                             <Line type="monotone" dataKey="conversions" stroke="#6366f1" strokeWidth={2.5} dot={(props) => {
                               const { cx, cy, payload } = props as { cx: number; cy: number; payload: { budget: number } };
                               if (payload.budget !== Math.round(budgetPounds)) return <g key={`no-dot-${cx}`} />;
@@ -1561,7 +1561,7 @@ export default function KeywordPlannerPage() {
             {/* Modal header */}
             <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg,#6366f1,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <FileText style={{ width: 16, height: 16, color: "white" }} />
                 </div>
                 <div>
@@ -1591,13 +1591,13 @@ export default function KeywordPlannerPage() {
               </div>
 
               {proposalError && (
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "var(--r)", fontSize: 13, color: "#991b1b" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r)", fontSize: 13, color: "var(--danger-text)" }}>
                   <AlertTriangle style={{ width: 15, height: 15, flexShrink: 0, marginTop: 1 }} />{proposalError}
                 </div>
               )}
 
               {generatedProposalId && !generatingProposal && (
-                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "var(--r)", fontSize: 13, color: "#15803d" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: "var(--r)", fontSize: 13, color: "var(--success-text)" }}>
                   <Check style={{ width: 15, height: 15, flexShrink: 0 }} />
                   <span style={{ flex: 1 }}>Proposal created and saved!</span>
                   <Link href={`/tools/proposals/${generatedProposalId}`} className="btn btn-primary btn-sm" style={{ gap: 5 }}

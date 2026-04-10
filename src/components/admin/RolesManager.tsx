@@ -157,7 +157,7 @@ function RoleForm({
         <label className="form-label" style={{ marginBottom: 12, display: "block" }}>Permissions</label>
         <PermissionChecklist value={permissions} onChange={setPermissions} />
       </div>
-      {error && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{error}</p>}
+      {error && <p style={{ color: "var(--danger)", fontSize: 13, marginBottom: 12 }}>{error}</p>}
       <div style={{ display: "flex", gap: 10 }}>
         <button type="submit" className="btn btn-primary" disabled={saving}>
           <Check size={14} />
@@ -306,7 +306,7 @@ export function RolesManager() {
         {loading ? (
           <div style={{ padding: 48, textAlign: "center", color: "var(--text-3)", fontSize: 14 }}>Loading…</div>
         ) : error ? (
-          <div style={{ padding: 48, textAlign: "center", color: "#ef4444", fontSize: 14 }}>{error}</div>
+          <div style={{ padding: 48, textAlign: "center", color: "var(--danger)", fontSize: 14 }}>{error}</div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -350,7 +350,7 @@ export function RolesManager() {
                               padding: "2px 7px",
                               borderRadius: 9999,
                               background: "rgb(99 102 241 / 0.1)",
-                              color: "#6366f1",
+                              color: "var(--accent)",
                             }}
                           >
                             <Lock size={9} /> Built-in
@@ -401,7 +401,7 @@ export function RolesManager() {
                         {!role.isSystem && (
                           <button
                             className="btn btn-ghost"
-                            style={{ padding: "5px 10px", color: "#ef4444" }}
+                            style={{ padding: "5px 10px", color: "var(--danger)" }}
                             onClick={() => setDeletingId(role.id)}
                             title="Delete"
                             aria-label="Delete role"
@@ -442,7 +442,7 @@ export function RolesManager() {
                           </span>
                           <button
                             className="btn"
-                            style={{ background: "#ef4444", color: "#fff", padding: "6px 14px", fontSize: 13 }}
+                            style={{ background: "var(--danger)", color: "#fff", padding: "6px 14px", fontSize: 13 }}
                             onClick={() => handleDelete(role.id)}
                             disabled={deleteLoading}
                           >

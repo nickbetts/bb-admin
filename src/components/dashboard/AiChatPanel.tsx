@@ -103,7 +103,7 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
             width: 56,
             height: 56,
             borderRadius: "50%",
-            background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+            background: "var(--gradient-accent)",
             color: "white",
             border: "none",
             cursor: "pointer",
@@ -147,7 +147,7 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
           <div
             style={{
               padding: "16px 20px",
-              background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+              background: "var(--gradient-accent)",
               color: "white",
               display: "flex",
               alignItems: "center",
@@ -182,7 +182,7 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
           <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
             {messages.length === 0 && (
               <div style={{ textAlign: "center", padding: "24px 0" }}>
-                <Sparkles style={{ width: 32, height: 32, color: "#6366f1", margin: "0 auto 12px" }} />
+                <Sparkles style={{ width: 32, height: 32, color: "var(--accent)", margin: "0 auto 12px" }} />
                 <p style={{ fontWeight: 600, color: "var(--text-1, #1a1a1a)", margin: "0 0 8px" }}>
                   Ask anything about {clientName}
                 </p>
@@ -224,7 +224,7 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
                   padding: "10px 14px",
                   borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
                   background: msg.role === "user"
-                    ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
+                    ? "var(--gradient-accent)"
                     : "var(--bg-2, #f3f4f6)",
                   color: msg.role === "user" ? "white" : "var(--text-1, #1a1a1a)",
                   fontSize: 14,
@@ -277,7 +277,7 @@ export function AiChatPanel({ clientId, clientName }: AiChatPanelProps) {
                   width: 42,
                   height: 42,
                   borderRadius: 12,
-                  background: input.trim() ? "linear-gradient(135deg, #6366f1, #8b5cf6)" : "var(--bg-3, #e5e7eb)",
+                  background: input.trim() ? "var(--gradient-accent)" : "var(--bg-3, #e5e7eb)",
                   color: "white",
                   border: "none",
                   cursor: input.trim() ? "pointer" : "default",

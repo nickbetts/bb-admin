@@ -171,7 +171,7 @@ export function SuperSummary({
   }
 
   return (
-    <div className="card" style={{ borderImage: "linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7) 1", borderWidth: 1, borderStyle: "solid" }}>
+    <div className="card" style={{ borderImage: "var(--gradient-accent) 1", borderWidth: 1, borderStyle: "solid" }}>
       {/* Header */}
       <div className="card-header">
         <div className="flex items-center gap-2.5">
@@ -180,7 +180,7 @@ export function SuperSummary({
               width: 34,
               height: 34,
               borderRadius: 10,
-              background: "linear-gradient(135deg, #6366f1, #a855f7)",
+              background: "var(--gradient-accent)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -214,7 +214,7 @@ export function SuperSummary({
             style={{
               fontSize: 13,
               padding: "7px 16px",
-              background: "linear-gradient(135deg, #6366f1, #a855f7)",
+              background: "var(--gradient-accent)",
               border: "none",
             }}
           >
@@ -257,7 +257,7 @@ export function SuperSummary({
                 justifyContent: "center",
               }}
             >
-              <Loader2 className="h-5 w-5 animate-spin" style={{ color: "#6366f1" }} />
+              <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--accent)" }} />
             </div>
             <div style={{ textAlign: "center" }}>
               <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
@@ -289,7 +289,7 @@ export function SuperSummary({
               margin: "0 auto 14px",
             }}
           >
-            <Sparkles className="h-5 w-5" style={{ color: "#6366f1" }} />
+            <Sparkles className="h-5 w-5" style={{ color: "var(--accent)" }} />
           </div>
           <p
             style={{
@@ -338,20 +338,20 @@ export function SuperSummary({
             <div
               style={{
                 background: "linear-gradient(135deg, #eef2ff, #f5f3ff)",
-                border: "1px solid #c7d2fe",
+                border: "1px solid rgb(99 102 241 / 0.25)",
                 borderRadius: "var(--r)",
                 padding: "14px 16px",
               }}
             >
               <div className="flex items-center gap-1.5" style={{ marginBottom: 8 }}>
-                <ArrowRight className="h-3.5 w-3.5" style={{ color: "#6366f1" }} />
+                <ArrowRight className="h-3.5 w-3.5" style={{ color: "var(--accent)" }} />
                 <p
                   style={{
                     fontSize: 10,
                     fontWeight: 700,
                     textTransform: "uppercase",
                     letterSpacing: "0.06em",
-                    color: "#4338ca",
+                    color: "var(--accent-text)",
                   }}
                 >
                   User Journey Assessment
@@ -369,21 +369,21 @@ export function SuperSummary({
             {result.wins.length > 0 && (
               <div
                 style={{
-                  background: "#f0fdf4",
-                  border: "1px solid #bbf7d0",
+                  background: "var(--success-bg)",
+                  border: "1px solid var(--success-border)",
                   borderRadius: "var(--r)",
                   padding: "14px 16px",
                 }}
               >
                 <div className="flex items-center gap-1.5" style={{ marginBottom: 10 }}>
-                  <TrendingUp className="h-3.5 w-3.5" style={{ color: "#16a34a" }} />
+                  <TrendingUp className="h-3.5 w-3.5" style={{ color: "var(--success)" }} />
                   <p
                     style={{
                       fontSize: 10,
                       fontWeight: 700,
                       textTransform: "uppercase",
                       letterSpacing: "0.06em",
-                      color: "#15803d",
+                      color: "var(--success-text)",
                     }}
                   >
                     What&apos;s Working
@@ -394,9 +394,9 @@ export function SuperSummary({
                     <li
                       key={i}
                       className="flex items-start gap-1.5"
-                      style={{ fontSize: 12, color: "#166534", lineHeight: 1.6 }}
+                      style={{ fontSize: 12, color: "var(--success-text)", lineHeight: 1.6 }}
                     >
-                      <CheckCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" style={{ color: "#22c55e" }} />
+                      <CheckCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" style={{ color: "var(--success)" }} />
                       {win}
                     </li>
                   ))}
@@ -408,21 +408,21 @@ export function SuperSummary({
             {result.issues.length > 0 && (
               <div
                 style={{
-                  background: "#fef2f2",
-                  border: "1px solid #fecaca",
+                  background: "var(--danger-bg)",
+                  border: "1px solid var(--danger-border)",
                   borderRadius: "var(--r)",
                   padding: "14px 16px",
                 }}
               >
                 <div className="flex items-center gap-1.5" style={{ marginBottom: 10 }}>
-                  <TrendingDown className="h-3.5 w-3.5" style={{ color: "#dc2626" }} />
+                  <TrendingDown className="h-3.5 w-3.5" style={{ color: "var(--danger)" }} />
                   <p
                     style={{
                       fontSize: 10,
                       fontWeight: 700,
                       textTransform: "uppercase",
                       letterSpacing: "0.06em",
-                      color: "#991b1b",
+                      color: "var(--danger-text)",
                     }}
                   >
                     Key Issues
@@ -433,9 +433,9 @@ export function SuperSummary({
                     <li
                       key={i}
                       className="flex items-start gap-1.5"
-                      style={{ fontSize: 12, color: "#991b1b", lineHeight: 1.6 }}
+                      style={{ fontSize: 12, color: "var(--danger-text)", lineHeight: 1.6 }}
                     >
-                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" style={{ color: "#ef4444" }} />
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" style={{ color: "var(--danger)" }} />
                       {issue}
                     </li>
                   ))}
@@ -449,7 +449,7 @@ export function SuperSummary({
             <div
               style={{
                 background: "var(--accent-bg)",
-                border: "1px solid #c7d2fe",
+                border: "1px solid rgb(99 102 241 / 0.25)",
                 borderRadius: "var(--r)",
                 padding: "14px 16px",
               }}

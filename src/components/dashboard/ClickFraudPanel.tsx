@@ -281,7 +281,7 @@ export function ClickFraudPanel({
                     <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>Reason breakdown</div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {Object.entries(stats.reasonBreakdown).map(([r, c]) => (
-                        <span key={r} style={{ fontSize: 11, background: "#fee2e2", color: "#b91c1c", borderRadius: 4, padding: "2px 8px" }}>
+                        <span key={r} style={{ fontSize: 11, background: "var(--danger-bg)", color: "var(--danger-text)", borderRadius: 4, padding: "2px 8px" }}>
                           {REASON_LABELS[r] ?? r}: {c}
                         </span>
                       ))}
@@ -333,7 +333,7 @@ export function ClickFraudPanel({
             {token && snippet ? (
               <div style={{ position: "relative" }}>
                 <pre style={{
-                  background: "#1e293b",
+                  background: "var(--text)",
                   color: "#e2e8f0",
                   borderRadius: 8,
                   padding: "16px 20px",

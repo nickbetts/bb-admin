@@ -121,12 +121,12 @@ export function MetricCard({
               </span>
             )}
             {changeDiff !== undefined && change !== undefined && (
-              <span style={{ fontSize: 11, fontWeight: 600, color: isPositive ? "#065f46" : "#991b1b" }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: isPositive ? "var(--success-text)" : "var(--danger-text)" }}>
                 {changeDiff}
               </span>
             )}
             {yoyChange !== undefined && (
-              <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 5px", borderRadius: 4, background: isYoyPositive ? "#dbeafe" : "#fee2e2", color: isYoyPositive ? "#1d4ed8" : "#dc2626", marginLeft: 2 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 6, background: isYoyPositive ? "var(--info-bg)" : "var(--danger-bg)", color: isYoyPositive ? "var(--info-text)" : "var(--danger-text)", marginLeft: 2 }}>
                 YoY {isYoyPositive ? "+" : ""}{yoyChange.toFixed(1)}%
               </span>
             )}

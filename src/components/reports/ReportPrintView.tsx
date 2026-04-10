@@ -108,13 +108,13 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
     <div
       style={{
         marginBottom: 20,
-        background: "#eef2ff",
-        border: "1px solid #c7d2fe",
+        background: "var(--accent-bg)",
+        border: "1px solid rgb(99 102 241 / 0.25)",
         borderRadius: 10,
         padding: "20px 24px",
       }}
     >
-      <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#4f46e5", marginBottom: 12 }}>
+      <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--accent-hover)", marginBottom: 12 }}>
         Report Narrative
       </p>
       {narrativeResult.executiveSummary && (
@@ -125,16 +125,16 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
       {narrativeResult.keyThemes && narrativeResult.keyThemes.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: narrativeResult.crossSectionStories ? 12 : 0 }}>
           {narrativeResult.keyThemes.map((theme, i) => (
-            <span key={i} style={{ fontSize: 11, fontWeight: 500, color: "#4f46e5", background: "rgba(99,102,241,0.12)", padding: "2px 10px", borderRadius: 99 }}>{theme}</span>
+            <span key={i} style={{ fontSize: 11, fontWeight: 500, color: "var(--accent-hover)", background: "rgba(99,102,241,0.12)", padding: "2px 10px", borderRadius: 99 }}>{theme}</span>
           ))}
         </div>
       )}
       {narrativeResult.crossSectionStories && narrativeResult.crossSectionStories.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#4f46e5", opacity: 0.7, marginBottom: 4 }}>Cross-channel stories</p>
+          <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--accent-hover)", opacity: 0.7, marginBottom: 4 }}>Cross-channel stories</p>
           {narrativeResult.crossSectionStories.map((story, i) => (
             <div key={i} style={{ background: "rgba(255,255,255,0.6)", borderRadius: 6, padding: "8px 12px" }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: "#4f46e5", marginBottom: 3 }}>{story.sections.map(formatSectionLabel).join(" + ")}</p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: "var(--accent-hover)", marginBottom: 3 }}>{story.sections.map(formatSectionLabel).join(" + ")}</p>
               <p style={{ fontSize: 13, color: "#1e293b", lineHeight: 1.55 }}>{story.narrative}</p>
             </div>
           ))}
@@ -159,8 +159,8 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
     section.commentary ? (
       <div
         style={{
-          background: "#eef2ff",
-          border: "1px solid #c7d2fe",
+          background: "var(--accent-bg)",
+          border: "1px solid rgb(99 102 241 / 0.25)",
           borderRadius: 8,
           padding: "14px 18px",
           marginBottom: 16,
@@ -170,7 +170,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
           style={{
             fontSize: 11,
             fontWeight: 700,
-            color: "#4f46e5",
+            color: "var(--accent-hover)",
             textTransform: "uppercase",
             letterSpacing: "0.06em",
             marginBottom: 6,
@@ -189,7 +189,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
       style={{
         fontFamily:
           "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-        background: "#fff",
+        background: "var(--surface)",
         color: "#1e293b",
         maxWidth: 900,
         margin: "0 auto",
@@ -201,14 +201,14 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
         style={{
           borderRadius: 12,
           overflow: "hidden",
-          border: "1px solid #e2e8f0",
+          border: "1px solid var(--border)",
           marginBottom: 36,
           pageBreakInside: "avoid",
         }}
       >
         <div
           style={{
-            background: "linear-gradient(135deg, #6366f1 0%, #7c3aed 100%)",
+            background: "var(--gradient-accent)",
             padding: "36px 40px",
           }}
         >
@@ -268,8 +268,8 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
             alignItems: "center",
             justifyContent: "space-between",
             padding: "12px 40px",
-            background: "#f8fafc",
-            borderTop: "1px solid #e2e8f0",
+            background: "var(--bg)",
+            borderTop: "1px solid var(--border)",
             fontSize: 12,
             color: "#64748b",
           }}
@@ -308,7 +308,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                   style={{
                     borderRadius: 8,
                     overflow: "hidden",
-                    border: "1px solid #e2e8f0",
+                    border: "1px solid var(--border)",
                   }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -323,8 +323,8 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                         fontSize: 12,
                         color: "#64748b",
                         padding: "7px 12px",
-                        background: "#f8fafc",
-                        borderTop: "1px solid #f1f5f9",
+                        background: "var(--bg)",
+                        borderTop: "1px solid var(--border-subtle)",
                       }}
                     >
                       {ss.caption}
@@ -383,7 +383,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
             >
               <div
                 style={{
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid var(--border)",
                   borderRadius: 10,
                   overflow: "hidden",
                 }}
@@ -391,7 +391,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                 <div
                   style={{
                     padding: "14px 24px",
-                    borderBottom: "1px solid #f1f5f9",
+                    borderBottom: "1px solid var(--border-subtle)",
                     background: "#fafbfc",
                   }}
                 >
@@ -405,8 +405,8 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                       fontSize: 11,
                       fontWeight: 700,
                       letterSpacing: "0.05em",
-                      background: "#fffbeb",
-                      color: "#b45309",
+                      background: "var(--warning-bg)",
+                      color: "var(--warning-text)",
                     }}
                   >
                     ★ {section.title || "Executive Summary"}
@@ -457,7 +457,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
         const unconfiguredNotice = (msg: string) => (
           <div
             style={{
-              border: "1px solid #e2e8f0",
+              border: "1px solid var(--border)",
               borderRadius: 10,
               padding: "20px 24px",
               fontSize: 13,
@@ -628,7 +628,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
               .map((screenshot) => (
                 <div
                   key={screenshot.id}
-                  style={{ borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0" }}
+                  style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -642,8 +642,8 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                         fontSize: 12,
                         color: "#64748b",
                         padding: "7px 12px",
-                        background: "#f8fafc",
-                        borderTop: "1px solid #f1f5f9",
+                        background: "var(--bg)",
+                        borderTop: "1px solid var(--border-subtle)",
                       }}
                     >
                       {screenshot.caption}
@@ -660,7 +660,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
         style={{
           marginTop: 40,
           paddingTop: 20,
-          borderTop: "1px solid #e2e8f0",
+          borderTop: "1px solid var(--border)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",

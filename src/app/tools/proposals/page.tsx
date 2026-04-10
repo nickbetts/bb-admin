@@ -57,11 +57,11 @@ export default function ProposalsPage() {
   }
 
   return (
-    <div style={{ padding: "40px 48px", maxWidth: 1000, margin: "0 auto" }}>
+    <div className="page" style={{ maxWidth: 1000 }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#6366f1,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <FileText style={{ width: 20, height: 20, color: "white" }} />
           </div>
           <div>
@@ -133,7 +133,7 @@ export default function ProposalsPage() {
                     {p._count.enquiries > 0 && (
                       <>
                         <span style={{ color: "var(--text-4)" }}>·</span>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "#6366f1", fontWeight: 600 }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>
                           <MessageSquare style={{ width: 10, height: 10 }} />
                           {p._count.enquiries} enquir{p._count.enquiries !== 1 ? "ies" : "y"}
                         </span>
@@ -147,7 +147,7 @@ export default function ProposalsPage() {
                       href={`/share/proposal/${p.shareToken}`}
                       target="_blank"
                       className="btn btn-ghost btn-sm"
-                      style={{ gap: 4, color: "#16a34a", fontSize: 11 }}
+                      style={{ gap: 4, color: "var(--success)", fontSize: 11 }}
                       title="Open client link"
                     >
                       <Share2 style={{ width: 11, height: 11 }} /> Shared
@@ -163,7 +163,7 @@ export default function ProposalsPage() {
                   )}
                   <button
                     className="btn btn-ghost btn-sm"
-                    style={{ padding: "5px 8px", color: "#ef4444" }}
+                    style={{ padding: "5px 8px", color: "var(--danger)" }}
                     disabled={deleting === p.id}
                     onClick={() => handleDelete(p.id)}
                   >

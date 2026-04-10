@@ -60,7 +60,7 @@ export default async function DashboardPage() {
   return (
     <div className="page">
       {/* Header */}
-      <div style={{ marginBottom: 52 }}>
+      <div className="animate-in" style={{ marginBottom: 52 }}>
         <h1 className="page-title">
           Welcome back, {session?.user.name ?? "there"} 👋
         </h1>
@@ -68,7 +68,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 32 }}>
+      <div className="stat-card-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, marginBottom: 36 }}>
         <div className="stat-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <p className="stat-card-label">Total Clients</p>
@@ -137,7 +137,7 @@ export default async function DashboardPage() {
                   className="flex items-center justify-between px-7 py-4 border-b border-[var(--border-subtle)] no-underline transition-colors hover:bg-[var(--border-subtle)]"
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: "linear-gradient(135deg, #6366f1, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 16, fontWeight: 700, flexShrink: 0, boxShadow: "0 2px 8px rgb(99 102 241 / 0.25)" }}>
                       {client.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -244,7 +244,7 @@ export default async function DashboardPage() {
       )}
 
       {/* Quick Actions */}
-      <div className="card" style={{ marginTop: 24 }}>
+      <div className="card animate-in-slow" style={{ marginTop: 28 }}>
         <div className="card-header">
           <h2 className="card-title">Quick Actions</h2>
         </div>

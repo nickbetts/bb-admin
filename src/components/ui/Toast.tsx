@@ -40,10 +40,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const icons: Record<ToastType, React.ReactNode> = {
-    success: <CheckCircle2 style={{ width: 16, height: 16, color: "#10b981", flexShrink: 0 }} />,
-    error: <XCircle style={{ width: 16, height: 16, color: "#ef4444", flexShrink: 0 }} />,
-    warning: <AlertTriangle style={{ width: 16, height: 16, color: "#f59e0b", flexShrink: 0 }} />,
-    info: <Info style={{ width: 16, height: 16, color: "#6366f1", flexShrink: 0 }} />,
+    success: <CheckCircle2 style={{ width: 16, height: 16, color: "var(--success)", flexShrink: 0 }} />,
+    error: <XCircle style={{ width: 16, height: 16, color: "var(--danger)", flexShrink: 0 }} />,
+    warning: <AlertTriangle style={{ width: 16, height: 16, color: "var(--warning)", flexShrink: 0 }} />,
+    info: <Info style={{ width: 16, height: 16, color: "var(--accent)", flexShrink: 0 }} />,
   };
 
   const borderColors: Record<ToastType, string> = {

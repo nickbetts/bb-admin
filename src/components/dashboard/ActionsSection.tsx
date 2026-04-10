@@ -87,10 +87,10 @@ export function ActionsSection({ clientId }: ActionsSectionProps) {
     <div style={{ marginTop: 24 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <CheckSquare style={{ width: 16, height: 16, color: "#6366f1" }} />
+          <CheckSquare style={{ width: 16, height: 16, color: "var(--accent)" }} />
           <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--text)" }}>Actions</h3>
           {openActions.length > 0 && (
-            <span style={{ fontSize: 11, padding: "1px 7px", borderRadius: 99, background: "#6366f115", color: "#6366f1", fontWeight: 600 }}>
+            <span style={{ fontSize: 11, padding: "1px 7px", borderRadius: 99, background: "var(--accent-bg)", color: "var(--accent)", fontWeight: 600 }}>
               {openActions.length} open
             </span>
           )}
@@ -168,7 +168,7 @@ export function ActionsSection({ clientId }: ActionsSectionProps) {
                   <button
                     onClick={() => void updateStatus(action.id, "in_progress")}
                     className="btn btn-ghost btn-sm"
-                    style={{ fontSize: 10, padding: "2px 6px", color: "#f59e0b" }}
+                    style={{ fontSize: 10, padding: "2px 6px", color: "var(--warning)" }}
                   >
                     <Pencil style={{ width: 10, height: 10 }} />
                   </button>
@@ -176,7 +176,7 @@ export function ActionsSection({ clientId }: ActionsSectionProps) {
                 <button
                   onClick={() => void updateStatus(action.id, "cancelled")}
                   className="btn btn-ghost btn-sm"
-                  style={{ fontSize: 10, padding: "2px 6px", color: "#9ca3af" }}
+                  style={{ fontSize: 10, padding: "2px 6px", color: "var(--text-3)" }}
                   title="Cancel"
                 >
                   <X style={{ width: 10, height: 10 }} />

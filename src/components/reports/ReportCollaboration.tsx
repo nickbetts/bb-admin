@@ -27,9 +27,9 @@ function timeAgo(dateStr: string): string {
 }
 
 const APPROVAL_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  pending: { label: "Pending Approval", color: "#f59e0b", icon: <Clock style={{ width: 13, height: 13 }} /> },
-  approved: { label: "Approved", color: "#22c55e", icon: <CheckCircle style={{ width: 13, height: 13 }} /> },
-  changes_requested: { label: "Changes Requested", color: "#ef4444", icon: <XCircle style={{ width: 13, height: 13 }} /> },
+  pending: { label: "Pending Approval", color: "var(--warning)", icon: <Clock style={{ width: 13, height: 13 }} /> },
+  approved: { label: "Approved", color: "var(--success)", icon: <CheckCircle style={{ width: 13, height: 13 }} /> },
+  changes_requested: { label: "Changes Requested", color: "var(--danger)", icon: <XCircle style={{ width: 13, height: 13 }} /> },
 };
 
 export function ReportCollaboration({ reportId, currentUserId, approvalStatus: initialApproval }: ReportCollaborationProps) {
@@ -132,7 +132,7 @@ export function ReportCollaboration({ reportId, currentUserId, approvalStatus: i
               <button onClick={() => void submitApproval("pending")} disabled={approving} className="btn btn-secondary btn-sm" style={{ gap: 4, display: "inline-flex", alignItems: "center" }}>
                 <Clock style={{ width: 11, height: 11 }} /> Request Approval
               </button>
-              <button onClick={() => void submitApproval("approved")} disabled={approving} className="btn btn-primary btn-sm" style={{ gap: 4, display: "inline-flex", alignItems: "center", background: "#22c55e", borderColor: "#22c55e" }}>
+              <button onClick={() => void submitApproval("approved")} disabled={approving} className="btn btn-primary btn-sm" style={{ gap: 4, display: "inline-flex", alignItems: "center", background: "var(--success)", borderColor: "#22c55e" }}>
                 <CheckCircle style={{ width: 11, height: 11 }} /> Approve
               </button>
               <button onClick={() => void submitApproval("changes_requested")} disabled={approving} className="btn btn-danger btn-sm" style={{ gap: 4, display: "inline-flex", alignItems: "center" }}>
@@ -179,7 +179,7 @@ export function ReportCollaboration({ reportId, currentUserId, approvalStatus: i
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {activeComments.map((c) => (
               <div key={c.id} style={{ padding: "10px 14px", background: "var(--bg-2)", borderRadius: "var(--r-sm)", display: "flex", gap: 10 }}>
-                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#6366f115", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 12, fontWeight: 700, color: "#6366f1" }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 12, fontWeight: 700, color: "var(--accent)" }}>
                   {c.userId.slice(-2).toUpperCase()}
                 </div>
                 <div style={{ flex: 1 }}>
@@ -187,7 +187,7 @@ export function ReportCollaboration({ reportId, currentUserId, approvalStatus: i
                   <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>{timeAgo(c.createdAt)}</p>
                 </div>
                 {(c.userId === currentUserId || true) && (
-                  <button onClick={() => void resolveComment(c.id)} className="btn btn-ghost btn-sm" style={{ padding: 4, color: "#22c55e", flexShrink: 0 }} title="Mark resolved">
+                  <button onClick={() => void resolveComment(c.id)} className="btn btn-ghost btn-sm" style={{ padding: 4, color: "var(--success)", flexShrink: 0 }} title="Mark resolved">
                     <Check style={{ width: 12, height: 12 }} />
                   </button>
                 )}

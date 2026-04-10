@@ -129,7 +129,7 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext, vi
                     <span style={{ color: "var(--text-3)" }}>{src.calls} ({pct.toFixed(0)}%)</span>
                   </div>
                   <div style={{ height: 5, background: "var(--border)", borderRadius: 99 }}>
-                    <div style={{ height: "100%", width: `${pct}%`, background: "#6366f1", borderRadius: 99 }} />
+                    <div style={{ height: "100%", width: `${pct}%`, background: "var(--accent)", borderRadius: 99 }} />
                   </div>
                 </div>
               );
@@ -190,7 +190,7 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext, vi
               const pct = (h.calls / maxCalls) * 100;
               return (
                 <div key={h.hour} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                  <div style={{ width: "100%", height: `${pct}%`, minHeight: 2, background: "#6366f1", borderRadius: "2px 2px 0 0" }} title={`${h.hour}:00 — ${h.calls} calls`} />
+                  <div style={{ width: "100%", height: `${pct}%`, minHeight: 2, background: "var(--accent)", borderRadius: "2px 2px 0 0" }} title={`${h.hour}:00 — ${h.calls} calls`} />
                   <span style={{ fontSize: 9, color: "var(--text-3)" }}>{h.hour}</span>
                 </div>
               );

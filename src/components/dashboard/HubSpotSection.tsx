@@ -128,7 +128,7 @@ export function HubSpotSection({ clientId, clientName, crossPlatformContext, vis
               {data.deals.map((deal) => (
                 <tr key={deal.id} style={{ borderBottom: "1px solid var(--border)" }}>
                   <td style={{ padding: "10px 16px", fontWeight: 500, color: "var(--text)" }}>{deal.dealname}</td>
-                  <td style={{ padding: "10px 16px", color: "#22c55e", fontWeight: 600 }}>{formatCurrency(deal.amount)}</td>
+                  <td style={{ padding: "10px 16px", color: "var(--success)", fontWeight: 600 }}>{formatCurrency(deal.amount)}</td>
                   <td style={{ padding: "10px 16px", color: "var(--text-2)", textTransform: "capitalize" }}>{deal.dealstage.replace(/([a-z])([A-Z])/g, "$1 $2")}</td>
                   <td style={{ padding: "10px 16px", color: "var(--text-3)" }}>{deal.closedate ? new Date(deal.closedate).toLocaleDateString("en-GB") : "—"}</td>
                 </tr>
@@ -155,7 +155,7 @@ export function HubSpotSection({ clientId, clientName, crossPlatformContext, vis
                 <tr key={`ps-${i}`} style={{ borderBottom: i < data.pipelineStages!.length - 1 ? "1px solid var(--border)" : "none" }}>
                   <td style={{ padding: "10px 16px", fontWeight: 500, color: "var(--text)" }}>{ps.stageName}</td>
                   <td style={{ padding: "10px 16px", color: "var(--text-2)" }}>{ps.count}</td>
-                  <td style={{ padding: "10px 16px", color: "#22c55e", fontWeight: 600 }}>{formatCurrency(ps.value)}</td>
+                  <td style={{ padding: "10px 16px", color: "var(--success)", fontWeight: 600 }}>{formatCurrency(ps.value)}</td>
                 </tr>
               ))}
             </tbody>

@@ -83,7 +83,7 @@ export default function PortalDashboardPage() {
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Loader2 style={{ width: 24, height: 24, color: "#6366f1" }} className="animate-spin" />
+        <Loader2 style={{ width: 24, height: 24, color: "var(--accent)" }} className="animate-spin" />
       </div>
     );
   }
@@ -119,7 +119,7 @@ export default function PortalDashboardPage() {
           {permissions.includes("reports") && (
             <div className="card" style={{ padding: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                <FileText style={{ width: 16, height: 16, color: "#6366f1" }} />
+                <FileText style={{ width: 16, height: 16, color: "var(--accent)" }} />
                 <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Recent Reports</h2>
               </div>
               {!data?.reports?.length ? (
@@ -148,7 +148,7 @@ export default function PortalDashboardPage() {
           {permissions.includes("goals") && (
             <div className="card" style={{ padding: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                <Target style={{ width: 16, height: 16, color: "#22c55e" }} />
+                <Target style={{ width: 16, height: 16, color: "var(--success)" }} />
                 <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Active Goals</h2>
               </div>
               {!data?.goals?.length ? (
@@ -181,7 +181,7 @@ export default function PortalDashboardPage() {
           {permissions.includes("communications") && (
             <div className="card" style={{ padding: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                <MessageSquare style={{ width: 16, height: 16, color: "#f59e0b" }} />
+                <MessageSquare style={{ width: 16, height: 16, color: "var(--warning)" }} />
                 <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Recent Updates</h2>
               </div>
               {!data?.communications?.length ? (

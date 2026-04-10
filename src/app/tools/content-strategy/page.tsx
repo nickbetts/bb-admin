@@ -247,15 +247,15 @@ export default function ContentStrategyPage() {
 
       {/* Alerts */}
       {error && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", marginBottom: 20, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r)", color: "#b91c1c", fontSize: 13 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", marginBottom: 20, background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r)", color: "var(--danger-text)", fontSize: 13 }}>
           <span>{error}</span>
-          <button onClick={() => setError("")} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#b91c1c" }}><X style={{ width: 14, height: 14 }} /></button>
+          <button onClick={() => setError("")} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--danger-text)" }}><X style={{ width: 14, height: 14 }} /></button>
         </div>
       )}
       {success && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", marginBottom: 20, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "var(--r)", color: "#15803d", fontSize: 13 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", marginBottom: 20, background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: "var(--r)", color: "var(--success-text)", fontSize: 13 }}>
           <span>{success}</span>
-          <button onClick={() => setSuccess("")} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#15803d" }}><X style={{ width: 14, height: 14 }} /></button>
+          <button onClick={() => setSuccess("")} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--success-text)" }}><X style={{ width: 14, height: 14 }} /></button>
         </div>
       )}
 
@@ -288,8 +288,8 @@ export default function ContentStrategyPage() {
             >
               {file ? (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "var(--r-sm)", background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <FileSpreadsheet style={{ width: 20, height: 20, color: "#16a34a" }} />
+                  <div style={{ width: 40, height: 40, borderRadius: "var(--r-sm)", background: "var(--success-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <FileSpreadsheet style={{ width: 20, height: 20, color: "var(--success)" }} />
                   </div>
                   <div style={{ textAlign: "left" }}>
                     <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", margin: 0 }}>{file.name}</p>

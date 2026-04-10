@@ -73,7 +73,7 @@ export function ShareOfVoicePanel({ domain, startDate: _startDate, endDate: _end
       <div className="card">
         <div className="card-header">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <BarChart2 style={{ width: 20, height: 20, color: "#f59e0b" }} />
+            <BarChart2 style={{ width: 20, height: 20, color: "var(--warning)" }} />
             <h2 className="card-title">Share of Voice</h2>
           </div>
         </div>
@@ -90,7 +90,7 @@ export function ShareOfVoicePanel({ domain, startDate: _startDate, endDate: _end
     <div className="card">
       <div className="card-header">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <BarChart2 style={{ width: 20, height: 20, color: "#f59e0b" }} />
+          <BarChart2 style={{ width: 20, height: 20, color: "var(--warning)" }} />
           <div>
             <h2 className="card-title">Share of Voice</h2>
             <p className="card-subtitle">Competitive organic & paid visibility — {domain}</p>
@@ -105,7 +105,7 @@ export function ShareOfVoicePanel({ domain, startDate: _startDate, endDate: _end
         )}
 
         {error && (
-          <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-sm)", fontSize: 13, color: "#b91c1c" }}>
+          <div style={{ padding: "10px 14px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-sm)", fontSize: 13, color: "var(--danger-text)" }}>
             {error}
           </div>
         )}
@@ -160,15 +160,15 @@ export function ShareOfVoicePanel({ domain, startDate: _startDate, endDate: _end
                   .map(c => (
                     <div key="client-stats" style={{ display: "contents" }}>
                       {c.organicKeywords != null && (
-                        <div style={{ background: "#eef2ff", border: "1px solid #c7d2fe", borderRadius: "var(--r-sm)", padding: 12 }}>
-                          <div style={{ fontSize: 11, color: "#4338ca" }}>Your Organic Keywords</div>
+                        <div style={{ background: "var(--accent-bg)", border: "1px solid rgb(99 102 241 / 0.25)", borderRadius: "var(--r-sm)", padding: 12 }}>
+                          <div style={{ fontSize: 11, color: "var(--accent-text)" }}>Your Organic Keywords</div>
                           <div style={{ fontSize: 20, fontWeight: 700, color: "#312e81" }}>{c.organicKeywords.toLocaleString()}</div>
                         </div>
                       )}
                       {c.organicCost != null && (
-                        <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "var(--r-sm)", padding: 12 }}>
-                          <div style={{ fontSize: 11, color: "#166534" }}>Traffic Value</div>
-                          <div style={{ fontSize: 20, fontWeight: 700, color: "#14532d" }}>£{c.organicCost.toLocaleString()}</div>
+                        <div style={{ background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: "var(--r-sm)", padding: 12 }}>
+                          <div style={{ fontSize: 11, color: "var(--success-text)" }}>Traffic Value</div>
+                          <div style={{ fontSize: 20, fontWeight: 700, color: "var(--success-text)" }}>£{c.organicCost.toLocaleString()}</div>
                         </div>
                       )}
                     </div>

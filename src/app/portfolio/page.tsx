@@ -73,9 +73,9 @@ function NoDataGauge() {
 }
 
 function TrendIcon({ dir }: { dir: "up" | "down" | "stable" }) {
-  if (dir === "up") return <TrendingUp style={{ width: 13, height: 13, color: "#22c55e" }} />;
-  if (dir === "down") return <TrendingDown style={{ width: 13, height: 13, color: "#ef4444" }} />;
-  return <Minus style={{ width: 13, height: 13, color: "#9ca3af" }} />;
+  if (dir === "up") return <TrendingUp style={{ width: 13, height: 13, color: "var(--success)" }} />;
+  if (dir === "down") return <TrendingDown style={{ width: 13, height: 13, color: "var(--danger)" }} />;
+  return <Minus style={{ width: 13, height: 13, color: "var(--text-3)" }} />;
 }
 
 function formatSnapshotDate(dateStr: string): string {
@@ -118,11 +118,11 @@ export default function PortfolioPage() {
   const noData = data.filter(d => d.insufficientData).length;
 
   return (
-    <div style={{ padding: "40px 48px", maxWidth: 1280, margin: "0 auto" }}>
+    <div className="page" style={{ maxWidth: 1280 }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#6366f1,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Activity style={{ width: 20, height: 20, color: "white" }} />
           </div>
           <div>
@@ -157,7 +157,7 @@ export default function PortfolioPage() {
       {/* Summary stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
         {[
-          { label: "Total Clients", value: data.length, color: "#6366f1" },
+          { label: "Total Clients", value: data.length, color: "var(--accent)" },
           { label: "At Risk", value: atRisk, color: atRisk > 0 ? "#ef4444" : "var(--text-3)", note: "score < 40" },
           { label: "Needs Attention", value: withIssues, color: withIssues > 0 ? "#f59e0b" : "var(--text-3)", note: "score 40–69" },
           { label: "No Snapshot Data", value: noData, color: noData > 0 ? "#9ca3af" : "var(--text-3)" },
@@ -254,11 +254,11 @@ function ClientCard({ item }: { item: ClientHealth }) {
         </div>
       ) : issuesTotal === 0 ? (
         <div style={{
-          background: "#f0fdf4", borderRadius: 8, padding: "10px 14px",
+          background: "var(--success-bg)", borderRadius: 8, padding: "10px 14px",
           display: "flex", alignItems: "center", gap: 8, marginBottom: 14,
         }}>
-          <CheckCircle style={{ width: 14, height: 14, color: "#22c55e", flexShrink: 0 }} />
-          <p style={{ fontSize: 12, color: "#166534", fontWeight: 500 }}>No issues detected in period</p>
+          <CheckCircle style={{ width: 14, height: 14, color: "var(--success)", flexShrink: 0 }} />
+          <p style={{ fontSize: 12, color: "var(--success-text)", fontWeight: 500 }}>No issues detected in period</p>
         </div>
       ) : (
         <div style={{ marginBottom: 14 }}>
@@ -325,7 +325,7 @@ function ClientCard({ item }: { item: ClientHealth }) {
                   {platformsClean.map(plat => (
                     <span key={plat.platform} style={{
                       fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 99,
-                      background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0",
+                      background: "var(--success-bg)", color: "var(--success-text)", border: "1px solid var(--success-border)",
                     }}>
                       ✓ {plat.platform}
                     </span>

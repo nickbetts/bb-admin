@@ -109,19 +109,19 @@ export function StrategyDocumentPanel({ clientId, clientName, crossPlatformData 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {content.performanceSummary && (
-          <div style={{ background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r-sm)", padding: 14, fontSize: 13, color: "var(--text)", lineHeight: 1.65 }}>
+          <div style={{ background: "var(--accent-bg)", border: "1px solid rgb(99 102 241 / 0.25)", borderRadius: "var(--r-sm)", padding: 14, fontSize: 13, color: "var(--text)", lineHeight: 1.65 }}>
             {content.performanceSummary}
           </div>
         )}
 
         {content.wins && content.wins.length > 0 && (
           <div>
-            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#22c55e", marginBottom: 8 }}>Wins</p>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--success)", marginBottom: 8 }}>Wins</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {content.wins.map((w, i) => (
-                <div key={i} style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "var(--r-sm)", padding: "10px 14px" }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#166534", marginBottom: 3 }}>{w.title}</p>
-                  <p style={{ fontSize: 12, color: "#15803d" }}>{w.description}</p>
+                <div key={i} style={{ background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: "var(--r-sm)", padding: "10px 14px" }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--success-text)", marginBottom: 3 }}>{w.title}</p>
+                  <p style={{ fontSize: 12, color: "var(--success-text)" }}>{w.description}</p>
                 </div>
               ))}
             </div>
@@ -130,12 +130,12 @@ export function StrategyDocumentPanel({ clientId, clientName, crossPlatformData 
 
         {content.challenges && content.challenges.length > 0 && (
           <div>
-            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#f59e0b", marginBottom: 8 }}>Challenges</p>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--warning)", marginBottom: 8 }}>Challenges</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {content.challenges.map((c, i) => (
-                <div key={i} style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "var(--r-sm)", padding: "10px 14px" }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#92400e", marginBottom: 3 }}>{c.title}</p>
-                  <p style={{ fontSize: 12, color: "#b45309" }}>{c.description}</p>
+                <div key={i} style={{ background: "var(--warning-bg)", border: "1px solid var(--warning-border)", borderRadius: "var(--r-sm)", padding: "10px 14px" }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--warning-text)", marginBottom: 3 }}>{c.title}</p>
+                  <p style={{ fontSize: 12, color: "var(--warning-text)" }}>{c.description}</p>
                 </div>
               ))}
             </div>
@@ -144,7 +144,7 @@ export function StrategyDocumentPanel({ clientId, clientName, crossPlatformData 
 
         {content.opportunities && content.opportunities.length > 0 && (
           <div>
-            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#6366f1", marginBottom: 8 }}>Opportunities</p>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--accent)", marginBottom: 8 }}>Opportunities</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {content.opportunities.map((o, i) => (
                 <div key={i} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", padding: "10px 14px" }}>
@@ -180,9 +180,9 @@ export function StrategyDocumentPanel({ clientId, clientName, crossPlatformData 
         )}
 
         {content.budgetRec && (
-          <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "var(--r-sm)", padding: "10px 14px" }}>
-            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#166534", marginBottom: 4 }}>Budget Recommendation</p>
-            <p style={{ fontSize: 13, color: "#15803d", lineHeight: 1.6 }}>{content.budgetRec}</p>
+          <div style={{ background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: "var(--r-sm)", padding: "10px 14px" }}>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--success-text)", marginBottom: 4 }}>Budget Recommendation</p>
+            <p style={{ fontSize: 13, color: "var(--success-text)", lineHeight: 1.6 }}>{content.budgetRec}</p>
           </div>
         )}
 
@@ -204,7 +204,7 @@ export function StrategyDocumentPanel({ clientId, clientName, crossPlatformData 
                     <tr key={i} style={{ borderBottom: i < content.kpiTargets!.length - 1 ? "1px solid var(--border)" : "none" }}>
                       <td style={{ padding: "8px 12px", fontWeight: 500, color: "var(--text)" }}>{kpi.metric}</td>
                       <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-3)" }}>{kpi.current}</td>
-                      <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "#22c55e" }}>{kpi.target}</td>
+                      <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--success)" }}>{kpi.target}</td>
                       <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-3)" }}>{kpi.timeline}</td>
                     </tr>
                   ))}
@@ -246,7 +246,7 @@ export function StrategyDocumentPanel({ clientId, clientName, crossPlatformData 
         onClick={() => setExpanded((e) => !e)}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <FileText style={{ width: 18, height: 18, color: "#6366f1" }} />
+          <FileText style={{ width: 18, height: 18, color: "var(--accent)" }} />
           <span style={{ fontWeight: 600, fontSize: 15, color: "var(--text)" }}>Quarterly Strategy Document</span>
           <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--border)", padding: "2px 8px", borderRadius: 99 }}>AI-generated</span>
         </div>
@@ -284,7 +284,7 @@ export function StrategyDocumentPanel({ clientId, clientName, crossPlatformData 
           </div>
 
           {error && (
-            <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-sm)", fontSize: 13, color: "#b91c1c", marginBottom: 16 }}>
+            <div style={{ padding: "10px 14px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-sm)", fontSize: 13, color: "var(--danger-text)", marginBottom: 16 }}>
               {error}
             </div>
           )}
@@ -318,7 +318,7 @@ export function StrategyDocumentPanel({ clientId, clientName, crossPlatformData 
           {result && !viewingDoc && (
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "#166534", background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "4px 10px", borderRadius: 99 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--success-text)", background: "var(--success-bg)", border: "1px solid var(--success-border)", padding: "4px 10px", borderRadius: 99 }}>
                   ✓ Strategy generated for {period}
                 </p>
                 <button className="btn btn-secondary btn-sm" onClick={() => setResult(null)}>Dismiss</button>

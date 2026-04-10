@@ -58,10 +58,10 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const ACTION_COLOURS: Record<string, { color: string; bg: string }> = {
-  report_created: { color: "#1d4ed8", bg: "#dbeafe" },
-  report_published: { color: "#15803d", bg: "#dcfce7" },
+  report_created: { color: "var(--info-text)", bg: "#dbeafe" },
+  report_published: { color: "var(--success-text)", bg: "#dcfce7" },
   report_shared: { color: "#0369a1", bg: "#e0f2fe" },
-  report_deleted: { color: "#b91c1c", bg: "#fee2e2" },
+  report_deleted: { color: "var(--danger-text)", bg: "#fee2e2" },
   ai_strategy_generated: { color: "#7c3aed", bg: "#ede9fe" },
   ai_summary_generated: { color: "#7c3aed", bg: "#ede9fe" },
   ai_commentary_generated: { color: "#7c3aed", bg: "#ede9fe" },
@@ -72,7 +72,7 @@ const ACTION_COLOURS: Record<string, { color: string; bg: string }> = {
   proposal_created: { color: "#0891b2", bg: "#cffafe" },
   snapshot_triggered: { color: "#4b5563", bg: "#f3f4f6" },
   user_login: { color: "#4b5563", bg: "#f3f4f6" },
-  user_created: { color: "#15803d", bg: "#dcfce7" },
+  user_created: { color: "var(--success-text)", bg: "#dcfce7" },
 };
 
 function ActionBadge({ action }: { action: string }) {
@@ -261,8 +261,8 @@ export function ActivityLogDashboard() {
 
       {/* Error */}
       {error && (
-        <div style={{ padding: "12px 16px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca", marginBottom: 16 }}>
-          <p style={{ fontSize: 13, color: "#b91c1c" }}>{error}</p>
+        <div style={{ padding: "12px 16px", borderRadius: 8, background: "var(--danger-bg)", border: "1px solid var(--danger-border)", marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: "var(--danger-text)" }}>{error}</p>
         </div>
       )}
 

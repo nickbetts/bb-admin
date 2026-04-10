@@ -152,9 +152,9 @@ export default function NewReportPage({ params }: { params: Promise<{ slug: stri
 
       {/* Error */}
       {error && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", marginBottom: 20, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r)", color: "#b91c1c", fontSize: 13 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", marginBottom: 20, background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r)", color: "var(--danger-text)", fontSize: 13 }}>
           <span>{error}</span>
-          <button onClick={() => setError("")} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#b91c1c" }}><X style={{ width: 14, height: 14 }} /></button>
+          <button onClick={() => setError("")} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--danger-text)" }}><X style={{ width: 14, height: 14 }} /></button>
         </div>
       )}
 

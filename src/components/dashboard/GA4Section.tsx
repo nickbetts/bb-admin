@@ -742,21 +742,21 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
             <div style={{ display: "flex", gap: 12, alignItems: "center", padding: "8px 0" }}>
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
-                  <span style={{ color: "#6366f1", fontWeight: 600 }}>New — {newPct}%</span>
-                  <span style={{ color: "#10b981", fontWeight: 600 }}>Returning — {retPct}%</span>
+                  <span style={{ color: "var(--accent)", fontWeight: 600 }}>New — {newPct}%</span>
+                  <span style={{ color: "var(--success)", fontWeight: 600 }}>Returning — {retPct}%</span>
                 </div>
-                <div style={{ height: 12, borderRadius: 6, overflow: "hidden", background: "#e2e8f0", display: "flex" }}>
-                  <div style={{ width: `${newPct}%`, background: "#6366f1" }} />
+                <div style={{ height: 12, borderRadius: 6, overflow: "hidden", background: "var(--border)", display: "flex" }}>
+                  <div style={{ width: `${newPct}%`, background: "var(--accent)" }} />
                   <div style={{ width: `${retPct}%`, background: "#10b981" }} />
                 </div>
                 <div style={{ display: "flex", gap: 20, marginTop: 8 }}>
                   <div>
                     <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0 }}>New Users</p>
-                    <p style={{ fontSize: 20, fontWeight: 700, color: "#6366f1", margin: 0 }}>{formatNumber(newVsReturning.newUsers)}</p>
+                    <p style={{ fontSize: 20, fontWeight: 700, color: "var(--accent)", margin: 0 }}>{formatNumber(newVsReturning.newUsers)}</p>
                   </div>
                   <div>
                     <p style={{ fontSize: 11, color: "var(--text-4)", margin: 0 }}>Returning</p>
-                    <p style={{ fontSize: 20, fontWeight: 700, color: "#10b981", margin: 0 }}>{formatNumber(newVsReturning.returningUsers)}</p>
+                    <p style={{ fontSize: 20, fontWeight: 700, color: "var(--success)", margin: 0 }}>{formatNumber(newVsReturning.returningUsers)}</p>
                   </div>
                 </div>
               </div>
@@ -777,7 +777,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
                     <div key={i} className="flex items-center gap-3 py-2.5">
                       <span style={{ fontSize: 12, color: "var(--text-3)", minWidth: 56 }}>{a.range}</span>
                       <div style={{ flex: 1, height: 8, background: "var(--surface-2)", borderRadius: 4, overflow: "hidden" }}>
-                        <div style={{ width: `${Math.round((a.users / max) * 100)}%`, height: "100%", background: "#6366f1", borderRadius: 4 }} />
+                        <div style={{ width: `${Math.round((a.users / max) * 100)}%`, height: "100%", background: "var(--accent)", borderRadius: 4 }} />
                       </div>
                       <span style={{ fontSize: 13, fontWeight: 600, minWidth: 40, textAlign: "right" }}>{formatNumber(a.users)}</span>
                     </div>
@@ -816,7 +816,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
             {conversionEvents.map((ev, i) => (
               <div key={i} className="flex items-center justify-between py-2.5">
                 <span style={{ fontSize: 13, color: "var(--text)", fontFamily: "monospace" }}>{ev.eventName}</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#6366f1" }}>{formatNumber(ev.conversions)}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "var(--accent)" }}>{formatNumber(ev.conversions)}</span>
               </div>
             ))}
           </div>
@@ -833,10 +833,10 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
                 <div key={i} className="py-2.5">
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
                     <span>{ch.channel}</span>
-                    <span style={{ fontWeight: 700, color: "#6366f1" }}>{ch.conversions} conv · {ch.sessions > 0 ? ((ch.conversions / ch.sessions) * 100).toFixed(2) : "0.00"}% CVR</span>
+                    <span style={{ fontWeight: 700, color: "var(--accent)" }}>{ch.conversions} conv · {ch.sessions > 0 ? ((ch.conversions / ch.sessions) * 100).toFixed(2) : "0.00"}% CVR</span>
                   </div>
                   <div style={{ height: 6, background: "var(--surface-2)", borderRadius: 3, overflow: "hidden" }}>
-                    <div style={{ width: `${Math.round((ch.conversions / maxConv) * 100)}%`, height: "100%", background: "#6366f1" }} />
+                    <div style={{ width: `${Math.round((ch.conversions / maxConv) * 100)}%`, height: "100%", background: "var(--accent)" }} />
                   </div>
                 </div>
               ))}
@@ -881,7 +881,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
               {[...landingPages].sort((a, b) => b.sessions - a.sessions).slice(0, 10).map((lp, i) => (
                 <div key={i} style={{ display: "contents" }}>
                   <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text)" }} title={lp.page}>{lp.page}</div>
-                  <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "right", fontWeight: 600, color: "#6366f1" }}>{formatNumber(lp.sessions)}</div>
+                  <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "right", fontWeight: 600, color: "var(--accent)" }}>{formatNumber(lp.sessions)}</div>
                   <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "right", color: lp.bounceRate > 0.7 ? "#ef4444" : lp.bounceRate > 0.5 ? "#f59e0b" : "#10b981" }}>{formatPercent(lp.bounceRate)}</div>
                   <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "right", fontWeight: 600 }}>{formatNumber(lp.conversions)}</div>
                   <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "right" }}>{formatDuration(lp.avgDuration)}</div>
@@ -903,7 +903,7 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
               {userJourneys.map((uj, i) => (
                 <div key={i} style={{ display: "contents" }}>
                   <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text)", fontFamily: "monospace", fontSize: 12 }} title={uj.path}>{uj.path}</div>
-                  <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "right", fontWeight: 600, color: "#6366f1" }}>{formatNumber(uj.users)}</div>
+                  <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "right", fontWeight: 600, color: "var(--accent)" }}>{formatNumber(uj.users)}</div>
                   <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", textAlign: "right", fontWeight: 600 }}>{formatNumber(uj.conversions)}</div>
                 </div>
               ))}

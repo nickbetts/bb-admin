@@ -244,9 +244,9 @@ export function LogsDashboard() {
               padding: "6px 14px",
               fontSize: 13,
               borderRadius: 6,
-              border: "1px solid #fecaca",
+              border: "1px solid var(--danger-border)",
               background: "var(--card-bg, #fff)",
-              color: "#b91c1c",
+              color: "var(--danger-text)",
               cursor: clearing ? "not-allowed" : "pointer",
               opacity: clearing ? 0.6 : 1,
             }}
@@ -275,8 +275,8 @@ export function LogsDashboard() {
           style={{
             padding: "12px 16px",
             borderRadius: 8,
-            background: "#fee2e2",
-            color: "#b91c1c",
+            background: "var(--danger-bg)",
+            color: "var(--danger-text)",
             fontSize: 13,
             marginBottom: 16,
           }}
@@ -364,7 +364,7 @@ export function LogsDashboard() {
                             margin: 0,
                             padding: "12px 14px",
                             borderRadius: 6,
-                            background: "#1e1e2e",
+                            background: "var(--text)",
                             color: "#cdd6f4",
                             fontSize: 11,
                             lineHeight: 1.6,

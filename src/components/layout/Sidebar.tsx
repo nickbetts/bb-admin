@@ -144,7 +144,7 @@ function RolePreviewSection({
         onClick={isActive ? clearPreview : undefined}
       >
         {isActive ? (
-          <EyeOff style={{ width: 14, height: 14, color: "#d97706" }} />
+          <EyeOff style={{ width: 14, height: 14, color: "var(--warning)" }} />
         ) : (
           <Eye style={{ width: 14, height: 14, color: "var(--text-3)" }} />
         )}
@@ -157,7 +157,7 @@ function RolePreviewSection({
               width: 6,
               height: 6,
               borderRadius: "50%",
-              background: "#f59e0b",
+              background: "var(--warning)",
             }}
           />
         )}
@@ -173,7 +173,7 @@ function RolePreviewSection({
         border: isActive
           ? "1px solid rgba(245,158,11,0.4)"
           : "1px solid var(--border)",
-        background: isActive ? "rgba(245,158,11,0.08)" : "var(--bg-2, #f8f9fa)",
+        background: isActive ? "rgba(245,158,11,0.08)" : "var(--bg)",
         padding: "8px 10px",
       }}
     >
@@ -200,7 +200,7 @@ function RolePreviewSection({
               alignItems: "center",
               gap: 3,
               fontSize: 10,
-              color: "#d97706",
+              color: "var(--warning)",
               background: "none",
               border: "none",
               cursor: "pointer",
@@ -223,7 +223,7 @@ function RolePreviewSection({
           padding: "4px 6px",
           borderRadius: 5,
           border: "1px solid var(--border)",
-          background: "var(--bg, #fff)",
+          background: "var(--surface)",
           color: "var(--text)",
           outline: "none",
           cursor: "pointer",
@@ -237,7 +237,7 @@ function RolePreviewSection({
         ))}
       </select>
       {isActive && (
-        <p style={{ fontSize: 10, color: "#d97706", marginTop: 5, lineHeight: 1.4 }}>
+        <p style={{ fontSize: 10, color: "var(--warning)", marginTop: 5, lineHeight: 1.4 }}>
           Previewing <strong>{previewRoleName}</strong> — nav and pages reflect this role.
         </p>
       )}
@@ -284,7 +284,7 @@ function DaChecker() {
             padding: "5px 8px",
             borderRadius: 6,
             border: "1px solid var(--border)",
-            background: "var(--bg-2, #f8f9fa)",
+            background: "var(--bg)",
             color: "var(--text)",
             outline: "none",
             minWidth: 0,
@@ -302,8 +302,8 @@ function DaChecker() {
             height: 28,
             borderRadius: 6,
             border: "none",
-            background: "var(--primary, #6366f1)",
-            color: "#fff",
+            background: "var(--accent)",
+            color: "white",
             cursor: loading || !url.trim() ? "not-allowed" : "pointer",
             opacity: loading || !url.trim() ? 0.5 : 1,
             flexShrink: 0,
@@ -315,17 +315,17 @@ function DaChecker() {
       </form>
       {result && (
         <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <div style={{ flex: 1, background: "var(--bg-2, #f0f1ff)", borderRadius: 6, padding: "6px 8px", textAlign: "center" }}>
-            <p style={{ fontSize: 18, fontWeight: 700, color: "var(--primary, #6366f1)", lineHeight: 1 }}>{result.da}</p>
+          <div style={{ flex: 1, background: "var(--accent-bg)", borderRadius: 6, padding: "6px 8px", textAlign: "center" }}>
+            <p style={{ fontSize: 18, fontWeight: 700, color: "var(--accent)", lineHeight: 1 }}>{result.da}</p>
             <p style={{ fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)", marginTop: 2 }}>DA</p>
           </div>
-          <div style={{ flex: 1, background: "var(--bg-2, #f0f1ff)", borderRadius: 6, padding: "6px 8px", textAlign: "center" }}>
+          <div style={{ flex: 1, background: "var(--accent-bg)", borderRadius: 6, padding: "6px 8px", textAlign: "center" }}>
             <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-2)", lineHeight: 1 }}>{result.pa}</p>
             <p style={{ fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)", marginTop: 2 }}>PA</p>
           </div>
         </div>
       )}
-      {error && <p style={{ fontSize: 11, color: "#ef4444", marginTop: 6 }}>{error}</p>}
+      {error && <p style={{ fontSize: 11, color: "var(--danger)", marginTop: 6 }}>{error}</p>}
     </div>
   );
 }

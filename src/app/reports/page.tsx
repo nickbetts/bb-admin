@@ -137,7 +137,7 @@ export default function ReportsPage() {
   });
 
   return (
-    <div style={{ padding: "40px 48px", maxWidth: 1200, margin: "0 auto" }}>
+    <div className="page">
 
       {/* Page header */}
       <div className="page-header">
@@ -152,7 +152,7 @@ export default function ReportsPage() {
               onClick={handleBulkDelete}
               disabled={bulkDeleting}
               className="btn btn-sm"
-              style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }}
+              style={{ background: "var(--danger-bg)", color: "var(--danger-text)", border: "1px solid var(--danger-border)" }}
             >
               <Trash2 style={{ width: 14, height: 14 }} />
               {bulkDeleting ? "Deleting…" : `Delete ${selected.size}`}
@@ -339,7 +339,7 @@ export default function ReportsPage() {
                           <button
                             onClick={() => setDeletingId(report.id)}
                             style={{ color: "var(--text-3)", background: "none", border: "none", cursor: "pointer", padding: "6px 8px", borderRadius: "var(--r-sm)", transition: "all 0.15s", lineHeight: 1 }}
-                            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--danger)"; (e.currentTarget as HTMLButtonElement).style.background = "#fef2f2"; }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--danger)"; (e.currentTarget as HTMLButtonElement).style.background = "var(--danger-bg)"; }}
                             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)"; (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
                             title="Delete"
                           >

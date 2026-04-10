@@ -134,7 +134,7 @@ export function BlendedRevenuePanel({ clientId, dateRange, ecommerceStats }: Ble
         onClick={() => setExpanded((e) => !e)}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <GitMerge style={{ width: 18, height: 18, color: "#8b5cf6" }} />
+          <GitMerge style={{ width: 18, height: 18, color: "var(--accent-2)" }} />
           <span style={{ fontWeight: 600, fontSize: 15, color: "var(--text)" }}>Blended Revenue Reconciliation</span>
           <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--border)", padding: "2px 8px", borderRadius: 99 }}>de-duplicate cross-platform revenue</span>
         </div>
@@ -160,7 +160,7 @@ export function BlendedRevenuePanel({ clientId, dateRange, ecommerceStats }: Ble
       {expanded && (
         <div style={{ padding: 20 }}>
           {error && (
-            <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-sm)", fontSize: 13, color: "#b91c1c", marginBottom: 16 }}>
+            <div style={{ padding: "10px 14px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-sm)", fontSize: 13, color: "var(--danger-text)", marginBottom: 16 }}>
               {error}
             </div>
           )}
@@ -190,31 +190,31 @@ export function BlendedRevenuePanel({ clientId, dateRange, ecommerceStats }: Ble
               {/* Reconciliation summary */}
               {result.reconciliation && (
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                  <div style={{ flex: 1, minWidth: 140, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-sm)", padding: 12 }}>
-                    <p style={{ fontSize: 11, color: "#b91c1c", marginBottom: 4 }}>Total Reported</p>
-                    <p style={{ fontSize: 20, fontWeight: 700, color: "#991b1b" }}>{formatCurrency(result.reconciliation.reportedTotal)}</p>
-                    <p style={{ fontSize: 11, color: "#b91c1c" }}>sum of all platform claims</p>
+                  <div style={{ flex: 1, minWidth: 140, background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r-sm)", padding: 12 }}>
+                    <p style={{ fontSize: 11, color: "var(--danger-text)", marginBottom: 4 }}>Total Reported</p>
+                    <p style={{ fontSize: 20, fontWeight: 700, color: "var(--danger-text)" }}>{formatCurrency(result.reconciliation.reportedTotal)}</p>
+                    <p style={{ fontSize: 11, color: "var(--danger-text)" }}>sum of all platform claims</p>
                   </div>
                   <div style={{ display: "flex", alignItems: "center" }}>
                     <ArrowRight style={{ width: 18, height: 18, color: "var(--text-3)" }} />
                   </div>
-                  <div style={{ flex: 1, minWidth: 140, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "var(--r-sm)", padding: 12 }}>
-                    <p style={{ fontSize: 11, color: "#166534", marginBottom: 4 }}>Estimated True Revenue</p>
-                    <p style={{ fontSize: 20, fontWeight: 700, color: "#15803d" }}>{formatCurrency(result.reconciliation.estimatedTrueRevenue)}</p>
-                    <p style={{ fontSize: 11, color: "#16a34a" }}>de-duplicated estimate</p>
+                  <div style={{ flex: 1, minWidth: 140, background: "var(--success-bg)", border: "1px solid var(--success-border)", borderRadius: "var(--r-sm)", padding: 12 }}>
+                    <p style={{ fontSize: 11, color: "var(--success-text)", marginBottom: 4 }}>Estimated True Revenue</p>
+                    <p style={{ fontSize: 20, fontWeight: 700, color: "var(--success-text)" }}>{formatCurrency(result.reconciliation.estimatedTrueRevenue)}</p>
+                    <p style={{ fontSize: 11, color: "var(--success)" }}>de-duplicated estimate</p>
                   </div>
                   {result.reconciliation.overlapEstimate > 0 && (
-                    <div style={{ flex: 1, minWidth: 140, background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "var(--r-sm)", padding: 12 }}>
-                      <p style={{ fontSize: 11, color: "#92400e", marginBottom: 4 }}>Overlap / Double-count</p>
+                    <div style={{ flex: 1, minWidth: 140, background: "var(--warning-bg)", border: "1px solid var(--warning-border)", borderRadius: "var(--r-sm)", padding: 12 }}>
+                      <p style={{ fontSize: 11, color: "var(--warning-text)", marginBottom: 4 }}>Overlap / Double-count</p>
                       <p style={{ fontSize: 20, fontWeight: 700, color: "#d97706" }}>{formatCurrency(result.reconciliation.overlapEstimate)}</p>
-                      <p style={{ fontSize: 11, color: "#b45309" }}>estimated duplication</p>
+                      <p style={{ fontSize: 11, color: "var(--warning-text)" }}>estimated duplication</p>
                     </div>
                   )}
                 </div>
               )}
 
               {result.reconciliation?.overlapExplanation && (
-                <div style={{ padding: "10px 14px", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "var(--r-sm)", fontSize: 13, color: "#92400e", lineHeight: 1.55 }}>
+                <div style={{ padding: "10px 14px", background: "var(--warning-bg)", border: "1px solid var(--warning-border)", borderRadius: "var(--r-sm)", fontSize: 13, color: "var(--warning-text)", lineHeight: 1.55 }}>
                   <strong>Why there&apos;s overlap:</strong> {result.reconciliation.overlapExplanation}
                 </div>
               )}
@@ -268,7 +268,7 @@ export function BlendedRevenuePanel({ clientId, dateRange, ecommerceStats }: Ble
                       <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Issues</p>
                       <ul style={{ margin: 0, paddingLeft: 18 }}>
                         {result.revenueQuality.issues.map((issue, i) => (
-                          <li key={i} style={{ fontSize: 12, color: "#b91c1c", lineHeight: 1.5 }}>{issue}</li>
+                          <li key={i} style={{ fontSize: 12, color: "var(--danger-text)", lineHeight: 1.5 }}>{issue}</li>
                         ))}
                       </ul>
                     </div>
@@ -278,7 +278,7 @@ export function BlendedRevenuePanel({ clientId, dateRange, ecommerceStats }: Ble
                       <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>Recommendations</p>
                       <ul style={{ margin: 0, paddingLeft: 18 }}>
                         {result.revenueQuality.recommendations.map((rec, i) => (
-                          <li key={i} style={{ fontSize: 12, color: "#15803d", lineHeight: 1.5 }}>{rec}</li>
+                          <li key={i} style={{ fontSize: 12, color: "var(--success-text)", lineHeight: 1.5 }}>{rec}</li>
                         ))}
                       </ul>
                     </div>

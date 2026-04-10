@@ -102,10 +102,10 @@ export default function CompetitorIntelligencePage() {
   }
 
   return (
-    <div style={{ padding: "40px 48px", maxWidth: 1200, margin: "0 auto" }}>
+    <div className="page" style={{ maxWidth: 1200 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg,#6366f1,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <TrendingUp style={{ width: 20, height: 20, color: "white" }} />
           </div>
           <div>
@@ -179,7 +179,7 @@ export default function CompetitorIntelligencePage() {
                   <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)" }}>No competitor data yet</p>
                   <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 6 }}>
                     Enter a competitor domain above and click Analyse, or configure competitor domains in{" "}
-                    <a href={`/clients/${selectedClient.slug}/settings`} style={{ color: "#6366f1" }}>client settings</a>.
+                    <a href={`/clients/${selectedClient.slug}/settings`} style={{ color: "var(--accent)" }}>client settings</a>.
                   </p>
                 </div>
               ) : (
@@ -191,8 +191,8 @@ export default function CompetitorIntelligencePage() {
                       <div key={snap.domain} className="card" style={{ padding: 20 }}>
                         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <div style={{ width: 32, height: 32, borderRadius: 8, background: "#6366f115", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              <Globe style={{ width: 16, height: 16, color: "#6366f1" }} />
+                            <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <Globe style={{ width: 16, height: 16, color: "var(--accent)" }} />
                             </div>
                             <div>
                               <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{snap.domain}</p>
@@ -227,10 +227,10 @@ export default function CompetitorIntelligencePage() {
                         )}
 
                         {snap.insights && (
-                          <div style={{ padding: "12px 14px", background: "#6366f108", border: "1px solid #6366f120", borderRadius: "var(--r-sm)" }}>
+                          <div style={{ padding: "12px 14px", background: "rgb(99 102 241 / 0.03)", border: "1px solid rgb(99 102 241 / 0.13)", borderRadius: "var(--r-sm)" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                              <BarChart2 style={{ width: 13, height: 13, color: "#6366f1" }} />
-                              <span style={{ fontSize: 12, fontWeight: 600, color: "#6366f1" }}>AI Insights</span>
+                              <BarChart2 style={{ width: 13, height: 13, color: "var(--accent)" }} />
+                              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)" }}>AI Insights</span>
                             </div>
                             <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.6 }}>{snap.insights}</p>
                           </div>

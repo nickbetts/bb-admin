@@ -290,7 +290,7 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
               </div>
             </div>
             {addError && (
-              <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{addError}</p>
+              <p style={{ color: "var(--danger)", fontSize: 13, marginBottom: 12 }}>{addError}</p>
             )}
             <div style={{ display: "flex", gap: 10 }}>
               <button type="submit" className="btn btn-primary" disabled={addLoading}>
@@ -322,7 +322,7 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
             Loading…
           </div>
         ) : error ? (
-          <div style={{ padding: 48, textAlign: "center", color: "#ef4444", fontSize: 14 }}>
+          <div style={{ padding: 48, textAlign: "center", color: "var(--danger)", fontSize: 14 }}>
             {error}
           </div>
         ) : (
@@ -389,7 +389,7 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
                         {user.id !== currentUserId && (
                           <button
                             className="btn btn-ghost"
-                            style={{ padding: "5px 10px", color: "#ef4444" }}
+                            style={{ padding: "5px 10px", color: "var(--danger)" }}
                             onClick={() => setDeletingId(user.id)}
                             title="Delete"
                             aria-label="Delete user"
@@ -462,7 +462,7 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
                             </div>
                           </div>
                           {editError && (
-                            <p style={{ color: "#ef4444", fontSize: 13 }}>{editError}</p>
+                            <p style={{ color: "var(--danger)", fontSize: 13 }}>{editError}</p>
                           )}
                         </form>
                       </td>
@@ -482,7 +482,7 @@ export function UsersManager({ currentUserId }: UsersManagerProps) {
                           </span>
                           <button
                             className="btn"
-                            style={{ background: "#ef4444", color: "#fff", padding: "6px 14px", fontSize: 13 }}
+                            style={{ background: "var(--danger)", color: "#fff", padding: "6px 14px", fontSize: 13 }}
                             onClick={() => handleDelete(user.id)}
                             disabled={deleteLoading}
                           >

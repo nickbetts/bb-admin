@@ -203,7 +203,7 @@ export default function LlmGeneratorPage() {
       {/* ── Page header ── */}
       <div style={{ marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: "linear-gradient(135deg, #0ea5e9, #6366f1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Bot style={{ width: 20, height: 20, color: "white" }} />
           </div>
           <div>
@@ -303,7 +303,7 @@ export default function LlmGeneratorPage() {
                             <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", lineHeight: 1.3 }}>{t.name}</p>
                             <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
                               {t.isBuiltIn && (
-                                <Crown style={{ width: 11, height: 11, color: "#f59e0b" }} />
+                                <Crown style={{ width: 11, height: 11, color: "var(--warning)" }} />
                               )}
                               {sel && <Check style={{ width: 13, height: 13, color: "var(--accent)" }} />}
                             </div>
@@ -324,7 +324,7 @@ export default function LlmGeneratorPage() {
 
             {/* Error */}
             {genError && (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "var(--r)", fontSize: 13, color: "#991b1b" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r)", fontSize: 13, color: "var(--danger-text)" }}>
                 <AlertTriangle style={{ width: 15, height: 15, flexShrink: 0, marginTop: 1 }} />{genError}
               </div>
             )}
@@ -341,7 +341,7 @@ export default function LlmGeneratorPage() {
             </button>
 
             {generating && (
-              <div style={{ padding: "12px 16px", background: "var(--accent-bg)", border: "1px solid #c7d2fe", borderRadius: "var(--r)", fontSize: 12, color: "var(--accent-text)" }}>
+              <div style={{ padding: "12px 16px", background: "var(--accent-bg)", border: "1px solid rgb(99 102 241 / 0.25)", borderRadius: "var(--r)", fontSize: 12, color: "var(--accent-text)" }}>
                 <p style={{ fontWeight: 600, marginBottom: 4 }}>What&apos;s happening…</p>
                 <p>1. Crawling your homepage and key sub-pages (about, services, donate, etc.)</p>
                 <p>2. Extracting titles, descriptions, headings, content, and social profiles</p>
@@ -368,7 +368,7 @@ export default function LlmGeneratorPage() {
                       {showRaw ? "Collapse" : "View full"}
                     </button>
                     <button className="btn btn-ghost btn-sm" style={{ gap: 6 }} onClick={handleCopy}>
-                      {copied ? <Check style={{ width: 13, height: 13, color: "#16a34a" }} /> : <Copy style={{ width: 13, height: 13 }} />}
+                      {copied ? <Check style={{ width: 13, height: 13, color: "var(--success)" }} /> : <Copy style={{ width: 13, height: 13 }} />}
                       {copied ? "Copied!" : "Copy"}
                     </button>
                     <button className="btn btn-primary btn-sm" style={{ gap: 6 }} onClick={handleDownload}>
@@ -494,7 +494,7 @@ export default function LlmGeneratorPage() {
                   />
                 </div>
                 {formError && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: "var(--r)", fontSize: 13, color: "#991b1b" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r)", fontSize: 13, color: "var(--danger-text)" }}>
                     <AlertTriangle style={{ width: 14, height: 14, flexShrink: 0 }} />{formError}
                   </div>
                 )}
@@ -529,7 +529,7 @@ export default function LlmGeneratorPage() {
                             {t.sector}
                           </span>
                           {t.isBuiltIn && (
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "#fef3c7", color: "#92400e" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "var(--warning-bg)", color: "var(--warning-text)" }}>
                               <Crown style={{ width: 9, height: 9 }} />Built-in
                             </span>
                           )}
@@ -559,7 +559,7 @@ export default function LlmGeneratorPage() {
                               onClick={() => openEditForm(t)}>
                               <Pencil style={{ width: 13, height: 13 }} />
                             </button>
-                            <button className="btn btn-ghost btn-sm" style={{ padding: "4px 8px", color: "#ef4444" }}
+                            <button className="btn btn-ghost btn-sm" style={{ padding: "4px 8px", color: "var(--danger)" }}
                               onClick={() => handleDeleteTemplate(t.id)}>
                               <Trash2 style={{ width: 13, height: 13 }} />
                             </button>
@@ -581,8 +581,8 @@ export default function LlmGeneratorPage() {
                           <>
                             <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", marginTop: 12, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>AI prompt guidance</p>
                             <pre style={{
-                              padding: "12px 16px", background: "#fef9ec", border: "1px solid #fde68a", borderRadius: "var(--r)",
-                              fontSize: 11, lineHeight: 1.65, color: "#78350f", overflow: "auto", maxHeight: 240,
+                              padding: "12px 16px", background: "var(--warning-bg)", border: "1px solid var(--warning-border)", borderRadius: "var(--r)",
+                              fontSize: 11, lineHeight: 1.65, color: "var(--warning-text)", overflow: "auto", maxHeight: 240,
                               fontFamily: "monospace", whiteSpace: "pre-wrap", wordBreak: "break-word",
                             }}>
                               {t.promptGuidance}
@@ -598,12 +598,12 @@ export default function LlmGeneratorPage() {
           )}
 
           {/* Tips card */}
-          <div className="card" style={{ background: "var(--accent-bg)", border: "1px solid #c7d2fe" }}>
+          <div className="card" style={{ background: "var(--accent-bg)", border: "1px solid rgb(99 102 241 / 0.25)" }}>
             <div className="card-body">
               <p style={{ fontSize: 13, fontWeight: 700, color: "var(--accent-text)", marginBottom: 8 }}>
                 How to write a great template
               </p>
-              <ul style={{ fontSize: 12, color: "#4338ca", lineHeight: 1.8, paddingLeft: 16 }}>
+              <ul style={{ fontSize: 12, color: "var(--accent-text)", lineHeight: 1.8, paddingLeft: 16 }}>
                 <li><strong>Template structure</strong> — the llm.txt skeleton. Use <code>[Charity Name]</code>, <code>[domain]</code>, and <code>[YYYY-MM-DD]</code> as auto-replaced markers</li>
                 <li>Use <code>[descriptive placeholders]</code> to guide the AI on what to fill in — e.g. <code>[Citation-ready description of what the programme does]</code></li>
                 <li>Keep <code>## Section headers</code> and YAML indentation exactly — the AI reproduces them verbatim</li>
