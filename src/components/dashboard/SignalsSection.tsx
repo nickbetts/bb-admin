@@ -546,6 +546,83 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
         }
       }
 
+      // ── Google Ads: Zero-conv search terms ─────────────────────────────────
+      if (gadsData?.searchTerms?.length) {
+        const seenTerms = new Set<string>();
+        for (const t of gadsData.searchTerms as Array<{ searchTerm: string; clicks: number; conversions: number; costMicros: number }>) {
+          if (t.conversions === 0 && t.costMicros > 5_000_000) {
+            if (seenTerms.has(t.searchTerm)) continue;
+            seenTerms.add(t.searchTerm);
+            const spend = t.costMicros / 1_000_000;
+            allSignals.push({
+              platform: "Google Ads",
+              source: "computed",
+              severity: spend >= 50 ? "high" : "medium",
+              level: "Search Term",
+              metric: "Wasted Spend",
+              label: t.searchTerm,
+              detail: `£${spend.toFixed(0)} spent, 0 conversions — ${t.clicks} click${t.clicks !== 1 ? "s" : ""}`,
+              direction: "down",
+              recommendation: `**Add** "${t.searchTerm}" as a negative keyword in Google Ads → Shared Library → Negative Keyword Lists (or directly in the campaign) to stop wasting £${spend.toFixed(0)} on zero-converting traffic.`,
+            });
+          }
+        }
+      }
+
+      // ── Google Ads: Google Recommendations ─────────────────────────────────
+      if (gadsData?.recommendations?.length) {
+        const seenRec = new Set<string>();
+        for (const rec of gadsData.recommendations as Array<{ type: string; impact: string; campaignName: string }>) {
+          const key = `${rec.type}::${rec.campaignName ?? ""}`;
+          if (seenRec.has(key)) continue;
+          seenRec.add(key);
+          const typeLabel = rec.type
+            .replace(/_/g, " ")
+            .toLowerCase()
+            .replace(/\b\w/g, (c) => c.toUpperCase());
+          allSignals.push({
+            platform: "Google Ads",
+            source: "computed",
+            severity: "low",
+            level: "Google Recommendation",
+            metric: typeLabel,
+            label: rec.campaignName || undefined,
+            detail: `Google recommends: ${typeLabel}${rec.campaignName ? ` for "${rec.campaignName}"` : ""}`,
+            direction: "up",
+          });
+        }
+      }
+
+      // ── Google Ads: RSA zero-conversion ads ────────────────────────────────
+      if (gadsData?.rsaAssets?.length) {
+        for (const rsa of gadsData.rsaAssets as Array<{
+          campaignName: string;
+          adGroupName: string;
+          status: string;
+          clicks: number;
+          conversions: number;
+          costMicros: number;
+          ctr: number;
+          headlines: string[];
+        }>) {
+          if (rsa.status !== "ENABLED") continue;
+          if (rsa.conversions === 0 && rsa.costMicros > 20_000_000) {
+            const spend = rsa.costMicros / 1_000_000;
+            allSignals.push({
+              platform: "Google Ads",
+              source: "computed",
+              severity: spend >= 100 ? "high" : "medium",
+              level: "Ad",
+              metric: "Zero-Conv RSA",
+              label: `${rsa.campaignName} / ${rsa.adGroupName}`,
+              detail: `£${spend.toFixed(0)} spent, 0 conversions — ${rsa.clicks} click${rsa.clicks !== 1 ? "s" : ""}, ${(rsa.ctr * 100).toFixed(2)}% CTR`,
+              direction: "down",
+              recommendation: `**Pause** this RSA in "${rsa.campaignName}" / "${rsa.adGroupName}" and replace with a new variant. Review the current headlines (${rsa.headlines.slice(0, 2).join(", ")}) for relevance to the ad group's search intent and landing page.`,
+            });
+          }
+        }
+      }
+
       // ── Search Console ──
       if (scData?.overview && scData?.prevOverview) {
         const curr = scData.overview as { clicks: number; impressions: number; ctr: number; position: number };
@@ -569,6 +646,27 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
           const ctrChange = ((curr.ctr - prev.ctr) / prev.ctr) * 100;
           if (ctrChange < -25)
             allSignals.push({ platform: "Search Console", source: "computed", severity: "medium", metric: "Search CTR", detail: `CTR dropped ${Math.abs(ctrChange).toFixed(1)}% vs previous period (${(prev.ctr * 100).toFixed(2)}% → ${(curr.ctr * 100).toFixed(2)}%)`, direction: "down", recommendation: "Update title tags and meta descriptions for top-ranking pages. Test different SERP copy to improve click-through rates and better match search intent." });
+        }
+      }
+
+      // ── Search Console: Near-miss opportunities ────────────────────────────
+      if (scData?.queries?.length) {
+        const seenQuery = new Set<string>();
+        for (const q of scData.queries as Array<{ query: string; clicks: number; ctr: number; position: number }>) {
+          if (q.position > 3.5 && q.position <= 10 && q.clicks >= 20) {
+            if (seenQuery.has(q.query)) continue;
+            seenQuery.add(q.query);
+            allSignals.push({
+              platform: "Search Console",
+              source: "computed",
+              severity: q.position <= 6 ? "medium" : "low",
+              metric: "Near-Miss Opportunity",
+              label: q.query,
+              detail: `Position ${q.position.toFixed(1)}, ${q.clicks} click${q.clicks !== 1 ? "s" : ""} — close to page 1`,
+              direction: "up",
+              recommendation: `**Update** title tag and meta description for the page ranking for "${q.query}" (currently pos ${q.position.toFixed(1)}) — a targeted content refresh or internal link push could move this to page 1 and significantly increase clicks from its current ${q.clicks}.`,
+            });
+          }
         }
       }
 
@@ -953,6 +1051,7 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
                   body: JSON.stringify({
                     sectionType: "holistic_game_plan",
                     clientName: client.name,
+                    clientId: client.id,
                     dateRange: `${startDate} to ${endDate}`,
                     crossPlatformContext,
                     clientHealth: clientHealthData ? { score: clientHealthData.score, grade: clientHealthData.grade, riskFactors: clientHealthData.riskFactors?.slice(0, 5) } : undefined,

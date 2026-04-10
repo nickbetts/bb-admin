@@ -915,7 +915,7 @@ INSTRUCTIONS:
 Output the result as clean HTML only — no markdown, no code fences, no preamble. Use <h3> for the main heading, <ol> for the numbered action list, <strong> for the WHAT/WHERE/WHY/EXPECTED IMPACT labels, and <ul> with <li></li> items for sub-points within each action. Use a <h3> for the Contradictory Signals section if applicable. British English.`;
 
       const gpResponse = await openaiGP.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [
           { role: "system", content: "You are a senior cross-channel digital marketing strategist. Produce a unified, prioritised action plan that synthesises all detected signals into a coherent strategy. Be specific with numbers, campaign names, exact platform settings, and concrete steps. Output clean HTML only — no markdown, no code fences. British English." },
           { role: "user", content: gamePlanPrompt },

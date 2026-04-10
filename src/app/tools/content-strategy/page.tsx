@@ -17,6 +17,10 @@ import {
   Calendar,
   Users,
   Plus,
+  Zap,
+  Globe,
+  Search,
+  AlertCircle,
 } from "lucide-react";
 
 interface ContentStrategyItem {
@@ -34,6 +38,14 @@ interface ContentStrategyItem {
 interface Client {
   id: string;
   name: string;
+  semrushDomain?: string | null;
+}
+
+type GenerationMode = "semrush" | "upload";
+
+interface DetectedCompetitor {
+  domain: string;
+  commonKeywords: number;
 }
 
 export default function ContentStrategyPage() {
@@ -64,6 +76,17 @@ export default function ContentStrategyPage() {
   const [shareToken, setShareToken] = useState("");
   const [sharePassword, setSharePassword] = useState("");
   const [copied, setCopied] = useState(false);
+
+  // Mode toggle
+  const [mode, setMode] = useState<GenerationMode>("semrush");
+
+  // SEMrush generation state
+  const [semrushBrief, setSemrushBrief] = useState("");
+  const [semrushDatabase, setSemrushDatabase] = useState("uk");
+  const [detectedCompetitors, setDetectedCompetitors] = useState<DetectedCompetitor[]>([]);
+  const [detectingCompetitors, setDetectingCompetitors] = useState(false);
+  const [semrushProgress, setSemrushProgress] = useState("");
+  const [semrushDomain, setSemrushDomain] = useState("");
 
   const loadStrategies = useCallback(async () => {
     try {
@@ -235,13 +258,119 @@ export default function ContentStrategyPage() {
     }
   }
 
+  // ── SEMrush helpers ─────────────────────────────────────────────────────
+
+  async function handleDetectCompetitors(selectedClientId: string) {
+    const client = clients.find((c) => c.id === selectedClientId);
+    if (!client?.semrushDomain) {
+      setDetectedCompetitors([]);
+      return;
+    }
+    setSemrushDomain(client.semrushDomain);
+    setDetectingCompetitors(true);
+    try {
+      const res = await fetch("/api/tools/content-strategy/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: selectedClientId,
+          action: "detect-competitors",
+          database: semrushDatabase,
+        }),
+      });
+      const data = await res.json();
+      if (data.competitors) {
+        setDetectedCompetitors(data.competitors);
+      }
+    } catch {
+      console.error("Failed to detect competitors");
+    } finally {
+      setDetectingCompetitors(false);
+    }
+  }
+
+  function removeCompetitor(domain: string) {
+    setDetectedCompetitors((prev) => prev.filter((c) => c.domain !== domain));
+  }
+
+  async function handleSemrushGenerate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!clientId) {
+      setError("Please select a client");
+      return;
+    }
+
+    const client = clients.find((c) => c.id === clientId);
+    if (!client?.semrushDomain) {
+      setError("This client has no SEMrush domain configured. Set it in client settings first.");
+      return;
+    }
+
+    setGenerating(true);
+    setError("");
+    setSuccess("");
+    setSemrushProgress("Collecting SEMrush data and analysing keywords…");
+
+    try {
+      // Step 1: Generate strategy data from SEMrush
+      const genRes = await fetch("/api/tools/content-strategy/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId,
+          brief: semrushBrief,
+          period,
+          database: semrushDatabase,
+          competitors: detectedCompetitors.map((c) => c.domain),
+        }),
+      });
+
+      const genData = await genRes.json();
+      if (genData.error) {
+        setError(genData.error);
+        return;
+      }
+
+      setSemrushProgress("Building content strategy document…");
+
+      // Step 2: Save the strategy (generates HTML via the main route)
+      const saveRes = await fetch("/api/tools/content-strategy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          spreadsheetData: genData.strategyData,
+          clientName: genData.clientName,
+          period,
+          clientId,
+        }),
+      });
+
+      const saveData = await saveRes.json();
+      if (saveData.error) {
+        setError(saveData.error);
+        return;
+      }
+
+      setSuccess(
+        `Content strategy generated from SEMrush! ${saveData.stats.totalPageOptimisations} page optimisations, ${saveData.stats.totalLandingPages} landing pages, ${saveData.stats.totalBlogPosts} blog posts, ${saveData.stats.totalLinkTargets} link targets.`
+      );
+      setSemrushBrief("");
+      loadStrategies();
+    } catch {
+      setError("Failed to generate content strategy");
+    } finally {
+      setGenerating(false);
+      setSemrushProgress("");
+    }
+  }
+
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 48px" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", margin: 0 }}>Content Strategy Creator</h1>
-          <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>Upload a keyword research spreadsheet and generate a polished, shareable content strategy document.</p>
+          <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>Generate a polished, shareable content strategy document from SEMrush data or a keyword spreadsheet.</p>
         </div>
       </div>
 
@@ -259,18 +388,231 @@ export default function ContentStrategyPage() {
         </div>
       )}
 
-      {/* Upload Form */}
+      {/* Generate Card */}
       <div className="card" style={{ marginBottom: 28 }}>
-        <div className="card-header">
+        <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h2 className="card-title">Generate New Strategy</h2>
-            <p className="card-subtitle">Upload an Excel keyword research spreadsheet to create a client-ready document</p>
+            <p className="card-subtitle">
+              {mode === "semrush"
+                ? "Automatically generate a content strategy from SEMrush data"
+                : "Upload an Excel keyword research spreadsheet to create a client-ready document"}
+            </p>
+          </div>
+          {/* Mode toggle */}
+          <div style={{ display: "flex", background: "var(--bg)", borderRadius: "var(--r)", padding: 3, gap: 2, flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={() => setMode("semrush")}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "7px 14px", borderRadius: "var(--r-sm)", border: "none", cursor: "pointer",
+                fontSize: 13, fontWeight: mode === "semrush" ? 600 : 400,
+                background: mode === "semrush" ? "var(--surface)" : "transparent",
+                color: mode === "semrush" ? "var(--accent)" : "var(--text-3)",
+                boxShadow: mode === "semrush" ? "var(--shadow-xs)" : "none",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <Zap style={{ width: 14, height: 14 }} /> SEMrush
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("upload")}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "7px 14px", borderRadius: "var(--r-sm)", border: "none", cursor: "pointer",
+                fontSize: 13, fontWeight: mode === "upload" ? 600 : 400,
+                background: mode === "upload" ? "var(--surface)" : "transparent",
+                color: mode === "upload" ? "var(--accent)" : "var(--text-3)",
+                boxShadow: mode === "upload" ? "var(--shadow-xs)" : "none",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <Upload style={{ width: 14, height: 14 }} /> Upload
+            </button>
           </div>
         </div>
         <div className="card-body">
-          <form onSubmit={handleGenerate}>
-            {/* Drag & drop zone */}
-            <div
+
+          {/* ─── SEMrush Mode ─── */}
+          {mode === "semrush" && (
+            <form onSubmit={handleSemrushGenerate}>
+              {/* Client selector + Domain display */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+                <div>
+                  <label className="form-label">Client <span style={{ color: "var(--danger)" }}>*</span></label>
+                  <select
+                    className="form-input"
+                    value={clientId}
+                    onChange={(e) => {
+                      const selectedClient = clients.find((c) => c.id === e.target.value);
+                      setClientId(e.target.value);
+                      if (selectedClient) {
+                        setClientName(selectedClient.name);
+                        if (selectedClient.semrushDomain) {
+                          handleDetectCompetitors(e.target.value);
+                        } else {
+                          setDetectedCompetitors([]);
+                          setSemrushDomain("");
+                        }
+                      } else {
+                        setClientName("");
+                        setDetectedCompetitors([]);
+                        setSemrushDomain("");
+                      }
+                    }}
+                  >
+                    <option value="">Select client…</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}{c.semrushDomain ? "" : " (no SEMrush domain)"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Domain</label>
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "9px 12px", borderRadius: "var(--r-sm)",
+                    border: "1px solid var(--border)", background: "var(--bg)",
+                    fontSize: 13, color: semrushDomain ? "var(--text)" : "var(--text-4)",
+                    minHeight: 42,
+                  }}>
+                    <Globe style={{ width: 14, height: 14, color: "var(--text-4)", flexShrink: 0 }} />
+                    {semrushDomain || "Auto-filled from client settings"}
+                  </div>
+                </div>
+              </div>
+
+              {/* No domain warning */}
+              {clientId && !semrushDomain && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", marginBottom: 16,
+                  background: "var(--warning-bg, #fffbeb)", border: "1px solid var(--warning-border, #fde68a)",
+                  borderRadius: "var(--r-sm)", fontSize: 13, color: "var(--warning-text, #92400e)",
+                }}>
+                  <AlertCircle style={{ width: 15, height: 15, flexShrink: 0 }} />
+                  This client has no SEMrush domain configured. Set it in client settings or use the Upload method.
+                </div>
+              )}
+
+              {/* Competitors */}
+              <div style={{ marginBottom: 20 }}>
+                <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <Search style={{ width: 12, height: 12 }} />
+                  Competitors
+                  {detectingCompetitors && <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite", color: "var(--accent)" }} />}
+                </label>
+                {detectedCompetitors.length > 0 ? (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {detectedCompetitors.map((c) => (
+                      <div
+                        key={c.domain}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 6,
+                          padding: "6px 10px 6px 12px", borderRadius: 999,
+                          background: "var(--accent-bg)", border: "1px solid var(--accent-border, #c4b5fd)",
+                          fontSize: 13, color: "var(--accent)",
+                        }}
+                      >
+                        <span style={{ fontWeight: 500 }}>{c.domain}</span>
+                        <span style={{ fontSize: 11, color: "var(--text-3)" }}>({c.commonKeywords.toLocaleString()} common)</span>
+                        <button
+                          type="button"
+                          onClick={() => removeCompetitor(c.domain)}
+                          style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: "var(--text-4)", display: "flex" }}
+                        >
+                          <X style={{ width: 12, height: 12 }} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 12, color: "var(--text-4)", margin: 0 }}>
+                    {clientId && semrushDomain
+                      ? detectingCompetitors
+                        ? "Detecting competitors…"
+                        : "No competitors detected. The content gap analysis will be skipped."
+                      : "Select a client to auto-detect competitors"}
+                  </p>
+                )}
+              </div>
+
+              {/* Brief + Period + Database */}
+              <div style={{ marginBottom: 20 }}>
+                <label className="form-label">Brief (optional)</label>
+                <textarea
+                  className="form-input"
+                  value={semrushBrief}
+                  onChange={(e) => setSemrushBrief(e.target.value)}
+                  placeholder="Any specific areas to target? Locations, products, campaigns, seasonal themes…"
+                  rows={3}
+                  style={{ resize: "vertical" }}
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 16, alignItems: "end" }}>
+                <div>
+                  <label className="form-label">Period</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={period}
+                    onChange={(e) => setPeriod(e.target.value)}
+                    placeholder="e.g. April 2026"
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Database</label>
+                  <select
+                    className="form-input"
+                    value={semrushDatabase}
+                    onChange={(e) => setSemrushDatabase(e.target.value)}
+                  >
+                    <option value="uk">UK</option>
+                    <option value="us">US</option>
+                    <option value="au">Australia</option>
+                    <option value="ca">Canada</option>
+                    <option value="de">Germany</option>
+                    <option value="fr">France</option>
+                    <option value="es">Spain</option>
+                    <option value="it">Italy</option>
+                  </select>
+                </div>
+                <div>
+                  <button
+                    type="submit"
+                    disabled={generating || !clientId || !semrushDomain}
+                    className="btn btn-primary"
+                    style={{ whiteSpace: "nowrap", height: 42 }}
+                  >
+                    {generating ? (
+                      <><Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} /> {semrushProgress || "Generating…"}</>
+                    ) : (
+                      <><Zap style={{ width: 16, height: 16 }} /> Generate Strategy</>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Progress indicator */}
+              {generating && semrushProgress && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 10, marginTop: 16,
+                  padding: "12px 16px", borderRadius: "var(--r-sm)",
+                  background: "var(--accent-bg)", fontSize: 13, color: "var(--accent)",
+                }}>
+                  <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite", flexShrink: 0 }} />
+                  {semrushProgress}
+                </div>
+              )}
+            </form>
+          )}
+
+          {/* ─── Upload Mode ─── */}
+          {mode === "upload" && (
               style={{
                 border: `2px dashed ${dragOver ? "var(--accent)" : file ? "var(--success)" : "var(--border)"}`,
                 borderRadius: "var(--r)",
@@ -435,6 +777,7 @@ export default function ContentStrategyPage() {
               </div>
             </div>
           </form>
+          )}
         </div>
       </div>
 
@@ -456,7 +799,7 @@ export default function ContentStrategyPage() {
           <div className="empty-state">
             <div className="empty-state-icon"><FileSpreadsheet style={{ width: 24, height: 24 }} /></div>
             <p className="empty-state-title">No content strategies yet</p>
-            <p className="empty-state-desc">Upload a keyword research spreadsheet above to generate your first content strategy.</p>
+            <p className="empty-state-desc">Generate a content strategy from SEMrush data or upload a keyword research spreadsheet to get started.</p>
           </div>
         ) : (
           <div>

@@ -930,56 +930,69 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
-    const clientName = (formData.get("clientName") as string) || "Client";
-    const period = (formData.get("period") as string) || new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-    const clientId = formData.get("clientId") as string | null;
-
-    if (!file) {
-      return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
-    }
-
-    // Validate file type
-    const supportedExtensions = [".xlsx", ".xls", ".csv", ".docx", ".txt"];
-    const fileExt = "." + (file.name.toLowerCase().split(".").pop() || "");
-    if (!supportedExtensions.includes(fileExt)) {
-      return NextResponse.json(
-        { error: `Unsupported file format. Please upload one of: ${supportedExtensions.join(", ")}` },
-        { status: 400 }
-      );
-    }
-
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: "File size must be under 10MB" }, { status: 400 });
-    }
-
-    const buffer = await file.arrayBuffer();
-
-    // Step 1: Extract structured data
-    // Try the legacy spreadsheet parser first for xlsx (it's fast and free)
-    // Fall back to Claude extraction for non-xlsx or if legacy parser yields poor results
+    const contentType = request.headers.get("content-type") || "";
     let spreadsheetData: SpreadsheetData;
-    const isSpreadsheet = fileExt === ".xlsx" || fileExt === ".xls";
+    let clientName: string;
+    let period: string;
+    let clientId: string | null;
 
-    if (isSpreadsheet) {
-      const legacyData = parseSpreadsheet(buffer);
-      const legacyTotal = legacyData.pageOptimisations.length + legacyData.landingPages.length +
-        legacyData.categoryPages.length + legacyData.blogPosts.length + legacyData.linkTargets.length;
+    if (contentType.includes("application/json")) {
+      // ── JSON body: SEMrush-generated data ──────────────────────────────
+      const body = await request.json();
+      if (!body.spreadsheetData || typeof body.spreadsheetData !== "object") {
+        return NextResponse.json({ error: "Missing strategy data" }, { status: 400 });
+      }
+      spreadsheetData = validateExtractedData(body.spreadsheetData);
+      clientName = body.clientName || "Client";
+      period = body.period || new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+      clientId = body.clientId || null;
+    } else {
+      // ── FormData body: file upload (existing flow) ─────────────────────
+      const formData = await request.formData();
+      const file = formData.get("file") as File | null;
+      clientName = (formData.get("clientName") as string) || "Client";
+      period = (formData.get("period") as string) || new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+      clientId = formData.get("clientId") as string | null;
 
-      if (legacyTotal >= 3) {
-        // Legacy parser got usable data
-        spreadsheetData = legacyData;
+      if (!file) {
+        return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+      }
+
+      // Validate file type
+      const supportedExtensions = [".xlsx", ".xls", ".csv", ".docx", ".txt"];
+      const fileExt = "." + (file.name.toLowerCase().split(".").pop() || "");
+      if (!supportedExtensions.includes(fileExt)) {
+        return NextResponse.json(
+          { error: `Unsupported file format. Please upload one of: ${supportedExtensions.join(", ")}` },
+          { status: 400 }
+        );
+      }
+
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        return NextResponse.json({ error: "File size must be under 10MB" }, { status: 400 });
+      }
+
+      const buffer = await file.arrayBuffer();
+
+      // Extract structured data
+      const isSpreadsheet = fileExt === ".xlsx" || fileExt === ".xls";
+
+      if (isSpreadsheet) {
+        const legacyData = parseSpreadsheet(buffer);
+        const legacyTotal = legacyData.pageOptimisations.length + legacyData.landingPages.length +
+          legacyData.categoryPages.length + legacyData.blogPosts.length + legacyData.linkTargets.length;
+
+        if (legacyTotal >= 3) {
+          spreadsheetData = legacyData;
+        } else {
+          const fileText = extractTextFromSpreadsheet(buffer);
+          spreadsheetData = await extractWithClaude(fileText, clientName);
+        }
       } else {
-        // Layout doesn't match expected format — use Claude
-        const fileText = extractTextFromSpreadsheet(buffer);
+        const fileText = await extractTextFromFile(buffer, file.name);
         spreadsheetData = await extractWithClaude(fileText, clientName);
       }
-    } else {
-      // Non-spreadsheet file — always use Claude
-      const fileText = await extractTextFromFile(buffer, file.name);
-      spreadsheetData = await extractWithClaude(fileText, clientName);
     }
 
     spreadsheetData.clientName = clientName;

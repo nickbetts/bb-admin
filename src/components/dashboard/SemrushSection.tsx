@@ -38,6 +38,7 @@ const CssMinus = () => (
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 import { ShareOfVoicePanel } from "./ShareOfVoicePanel";
+import { DataTable } from "@/components/ui/DataTable";
 
 interface SemrushSectionProps {
   domain: string;
@@ -643,84 +644,63 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           title="Top Organic Keywords"
           subtitle="By traffic percentage"
         >
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>
-                    Keyword
-                  </th>
-                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>
-                    Position
-                  </th>
-                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>
-                    Change
-                  </th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>
-                    Volume
-                  </th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>
-                    Traffic %
-                  </th>
-                </tr>
-              </thead>
-              <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                {keywords.map((kw, i) => {
-                  const change = kw.previousPosition - kw.position; // positive = moved up
-                  return (
-                    <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                      <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>
-                        <p className="text-[var(--text)] font-medium truncate max-w-[200px]">
-                          {kw.keyword}
-                        </p>
-                        <p className="text-xs text-[var(--text-3)] truncate max-w-[200px]">
-                          {kw.url}
-                        </p>
-                      </td>
-                      <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
-                        <span
-                          className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold ${
-                            kw.position <= 3
-                              ? "bg-emerald-50 text-emerald-700"
-                              : kw.position <= 10
-                              ? "bg-blue-50 text-blue-700"
-                              : kw.position <= 20
-                              ? "bg-amber-50 text-amber-700"
-                              : "bg-[var(--border-subtle)] text-[var(--text-2)]"
-                          }`}
-                        >
-                          {kw.position}
-                        </span>
-                      </td>
-                      <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
-                        {change > 0 ? (
-                          <span className="flex items-center justify-center gap-0.5 text-xs text-emerald-600">
-                            <CssArrowUp />
-                            {change}
-                          </span>
-                        ) : change < 0 ? (
-                          <span className="flex items-center justify-center gap-0.5 text-xs text-red-600">
-                            <CssArrowDown />
-                            {Math.abs(change)}
-                          </span>
-                        ) : (
-                          <span className="flex items-center justify-center text-[var(--text-3)]">
-                            <CssMinus />
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
-                        {formatNumber(kw.searchVolume)}
-                      </td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
-                        {kw.trafficPercent.toFixed(1)}%
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<Keyword>
+            data={keywords}
+            searchable
+            exportable
+            exportFilename="top-organic-keywords"
+            pageSize={20}
+            columns={[
+              {
+                key: "keyword",
+                label: "Keyword",
+                render: (_v, row) => (
+                  <div>
+                    <p className="text-[var(--text)] font-medium truncate max-w-[200px]">{row.keyword}</p>
+                    <p className="text-xs text-[var(--text-3)] truncate max-w-[200px]">{row.url}</p>
+                  </div>
+                ),
+              },
+              {
+                key: "position",
+                label: "Position",
+                align: "center",
+                sortable: true,
+                render: (_v, row) => (
+                  <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold ${
+                    row.position <= 3 ? "bg-emerald-50 text-emerald-700" :
+                    row.position <= 10 ? "bg-blue-50 text-blue-700" :
+                    row.position <= 20 ? "bg-amber-50 text-amber-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"
+                  }`}>{row.position}</span>
+                ),
+              },
+              {
+                key: "previousPosition",
+                label: "Change",
+                align: "center",
+                render: (_v, row) => {
+                  const change = row.previousPosition - row.position;
+                  if (change > 0) return <span className="flex items-center justify-center gap-0.5 text-xs text-emerald-600"><CssArrowUp />{change}</span>;
+                  if (change < 0) return <span className="flex items-center justify-center gap-0.5 text-xs text-red-600"><CssArrowDown />{Math.abs(change)}</span>;
+                  return <span className="flex items-center justify-center text-[var(--text-3)]"><CssMinus /></span>;
+                },
+              },
+              {
+                key: "searchVolume",
+                label: "Volume",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.searchVolume),
+              },
+              {
+                key: "trafficPercent",
+                label: "Traffic %",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => `${row.trafficPercent.toFixed(1)}%`,
+              },
+            ]}
+          />
         </SectionCard>
       )}
 
@@ -732,48 +712,69 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
               No position improvements detected this period — SEMrush may not yet have comparison data for this domain.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
-                    <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Keyword</th>
-                    <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Current</th>
-                    <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Previous</th>
-                    <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Gain</th>
-                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Volume</th>
-                    <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Traffic %</th>
-                  </tr>
-                </thead>
-                <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                  {rankMovers.map((kw, i) => {
-                    const gain = kw.previousPosition - kw.position;
+            <DataTable<Keyword>
+              data={rankMovers}
+              searchable
+              pageSize={20}
+              columns={[
+                {
+                  key: "keyword",
+                  label: "Keyword",
+                  render: (_v, row) => (
+                    <div>
+                      <p className="text-[var(--text)] font-medium truncate max-w-[200px]">{row.keyword}</p>
+                      <p className="text-xs text-[var(--text-3)] truncate max-w-[200px]">{row.url}</p>
+                    </div>
+                  ),
+                },
+                {
+                  key: "position",
+                  label: "Current",
+                  align: "center",
+                  sortable: true,
+                  render: (_v, row) => (
+                    <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold ${
+                      row.position <= 3 ? "bg-emerald-50 text-emerald-700" :
+                      row.position <= 10 ? "bg-blue-50 text-blue-700" :
+                      row.position <= 20 ? "bg-amber-50 text-amber-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"
+                    }`}>{row.position}</span>
+                  ),
+                },
+                {
+                  key: "previousPosition",
+                  label: "Previous",
+                  align: "center",
+                  sortable: true,
+                },
+                {
+                  key: "gain",
+                  label: "Gain",
+                  align: "center",
+                  render: (_v, row) => {
+                    const gain = row.previousPosition - row.position;
                     return (
-                      <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                        <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>
-                          <p className="text-[var(--text)] font-medium truncate max-w-[200px]">{kw.keyword}</p>
-                          <p className="text-xs text-[var(--text-3)] truncate max-w-[200px]">{kw.url}</p>
-                        </td>
-                        <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
-                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold ${
-                            kw.position <= 3 ? "bg-emerald-50 text-emerald-700" :
-                            kw.position <= 10 ? "bg-blue-50 text-blue-700" :
-                            kw.position <= 20 ? "bg-amber-50 text-amber-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"
-                          }`}>{kw.position}</span>
-                        </td>
-                        <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>{kw.previousPosition}</td>
-                        <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
-                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
-                            <CssArrowUp />+{gain}
-                          </span>
-                        </td>
-                        <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(kw.searchVolume)}</td>
-                        <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{kw.trafficPercent.toFixed(1)}%</td>
-                      </tr>
+                      <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
+                        <CssArrowUp />+{gain}
+                      </span>
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                  },
+                },
+                {
+                  key: "searchVolume",
+                  label: "Volume",
+                  align: "right",
+                  sortable: true,
+                  render: (_v, row) => formatNumber(row.searchVolume),
+                },
+                {
+                  key: "trafficPercent",
+                  label: "Traffic %",
+                  align: "right",
+                  sortable: true,
+                  render: (_v, row) => `${row.trafficPercent.toFixed(1)}%`,
+                },
+              ]}
+            />
           )}
         </SectionCard>
       )}
@@ -788,64 +789,71 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
                 : "No SEMrush project linked — add a project ID in client settings to enable position tracking."}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Keyword</th>
-                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Position</th>
-                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Prev</th>
-                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Change</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Volume</th>
-                </tr>
-              </thead>
-              <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                {trackedKeywords
-                  .sort((a, b) => {
-                    if (a.position === 0) return 1;
-                    if (b.position === 0) return -1;
-                    return a.position - b.position;
-                  })
-                  .slice(0, 50)
-                  .map((kw, i) => {
-                    const change = kw.previousPosition != null && kw.previousPosition > 0 && kw.position > 0
-                      ? kw.previousPosition - kw.position : null;
+            <DataTable<TrackedKeyword>
+              data={trackedKeywords}
+              searchable
+              exportable
+              exportFilename="tracked-keywords"
+              pageSize={20}
+              columns={[
+                {
+                  key: "keyword",
+                  label: "Keyword",
+                  render: (_v, row) => (
+                    <div>
+                      <p className="text-[var(--text)] font-medium truncate max-w-[220px]">{row.keyword}</p>
+                      {row.landingPage && <p className="text-xs text-[var(--text-3)] truncate max-w-[220px]">{row.landingPage}</p>}
+                    </div>
+                  ),
+                },
+                {
+                  key: "position",
+                  label: "Position",
+                  align: "center",
+                  sortable: true,
+                  render: (_v, row) => row.position > 0 ? (
+                    <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold ${
+                      row.position <= 3 ? "bg-emerald-50 text-emerald-700" :
+                      row.position <= 10 ? "bg-blue-50 text-blue-700" :
+                      row.position <= 20 ? "bg-amber-50 text-amber-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"
+                    }`}>{row.position}</span>
+                  ) : <span className="text-[var(--text-3)] text-xs">—</span>,
+                },
+                {
+                  key: "previousPosition",
+                  label: "Prev",
+                  align: "center",
+                  sortable: true,
+                  render: (_v, row) => String(row.previousPosition ?? "—"),
+                },
+                {
+                  key: "change",
+                  label: "Change",
+                  align: "center",
+                  render: (_v, row) => {
+                    const change = row.previousPosition != null && row.previousPosition > 0 && row.position > 0
+                      ? row.previousPosition - row.position : null;
+                    if (change == null) return null;
                     return (
-                      <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                        <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>
-                          <p className="text-[var(--text)] font-medium truncate max-w-[220px]">{kw.keyword}</p>
-                          {kw.landingPage && <p className="text-xs text-[var(--text-3)] truncate max-w-[220px]">{kw.landingPage}</p>}
-                        </td>
-                        <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
-                          {kw.position > 0 ? (
-                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold ${
-                              kw.position <= 3 ? "bg-emerald-50 text-emerald-700" :
-                              kw.position <= 10 ? "bg-blue-50 text-blue-700" :
-                              kw.position <= 20 ? "bg-amber-50 text-amber-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"
-                            }`}>{kw.position}</span>
-                          ) : <span className="text-[var(--text-3)] text-xs">—</span>}
-                        </td>
-                        <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
-                          {kw.previousPosition ?? "—"}
-                        </td>
-                        <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
-                          {change != null && (
-                            <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                              change > 0 ? "bg-emerald-50 text-emerald-700" :
-                              change < 0 ? "bg-red-50 text-red-700" : "bg-[var(--border-subtle)] text-[var(--text-3)]"
-                            }`}>
-                              {change > 0 ? <CssArrowUp /> : change < 0 ? <CssArrowDown /> : <CssMinus />}
-                              {change > 0 ? `+${change}` : change < 0 ? `${change}` : "="}
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(kw.searchVolume)}</td>
-                      </tr>
+                      <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        change > 0 ? "bg-emerald-50 text-emerald-700" :
+                        change < 0 ? "bg-red-50 text-red-700" : "bg-[var(--border-subtle)] text-[var(--text-3)]"
+                      }`}>
+                        {change > 0 ? <CssArrowUp /> : change < 0 ? <CssArrowDown /> : <CssMinus />}
+                        {change > 0 ? `+${change}` : change < 0 ? `${change}` : "="}
+                      </span>
                     );
-                  })}
-              </tbody>
-            </table>
-            </div>
+                  },
+                },
+                {
+                  key: "searchVolume",
+                  label: "Volume",
+                  align: "right",
+                  sortable: true,
+                  render: (_v, row) => formatNumber(row.searchVolume),
+                },
+              ]}
+            />
           )}
         </SectionCard>
       )}
@@ -856,44 +864,54 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
           {backlinkError ? (
             <p className="text-sm text-red-600 py-2">{backlinkError}</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Source Domain</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Target URL</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Anchor Text</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Authority</th>
-                </tr>
-              </thead>
-              <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                {backlinks.map((bl, i) => {
-                  let sourceDomain = bl.sourceUrl;
-                  try { sourceDomain = new URL(bl.sourceUrl).hostname; } catch {}
-                  let targetPath = bl.targetUrl;
-                  try { const u = new URL(bl.targetUrl); targetPath = u.pathname + u.search; } catch {}
-                  return (
-                    <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                      <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>
-                        <a href={bl.sourceUrl} target="_blank" rel="noopener noreferrer"
-                          className="font-medium text-[var(--text)] hover:text-indigo-600 transition truncate max-w-[180px] block">
-                          {sourceDomain}
-                        </a>
-                      </td>
-                      <td style={{ padding: "12px 16px", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 160 }}>{targetPath}</td>
-                      <td style={{ padding: "12px 16px", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 140 }}>
-                        {bl.anchorText || <span className="italic text-[var(--text-3)]">No anchor</span>}
-                      </td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
-                        <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          bl.authority >= 60 ? "bg-emerald-50 text-emerald-700" :
-                          bl.authority >= 30 ? "bg-blue-50 text-blue-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"
-                        }`}>{bl.authority}</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <DataTable<Backlink>
+              data={backlinks}
+              exportable
+              exportFilename="backlinks"
+              pageSize={20}
+              columns={[
+                {
+                  key: "sourceUrl",
+                  label: "Source Domain",
+                  render: (_v, row) => {
+                    let sourceDomain = row.sourceUrl;
+                    try { sourceDomain = new URL(row.sourceUrl).hostname; } catch {}
+                    return (
+                      <a href={row.sourceUrl} target="_blank" rel="noopener noreferrer"
+                        className="font-medium text-[var(--text)] hover:text-indigo-600 transition truncate max-w-[180px] block">
+                        {sourceDomain}
+                      </a>
+                    );
+                  },
+                },
+                {
+                  key: "targetUrl",
+                  label: "Target URL",
+                  render: (_v, row) => {
+                    let targetPath = row.targetUrl;
+                    try { const u = new URL(row.targetUrl); targetPath = u.pathname + u.search; } catch {}
+                    return <span className="block overflow-hidden text-ellipsis whitespace-nowrap max-w-[160px]">{targetPath}</span>;
+                  },
+                },
+                {
+                  key: "anchorText",
+                  label: "Anchor Text",
+                  render: (_v, row) => row.anchorText || <span className="italic text-[var(--text-3)]">No anchor</span>,
+                },
+                {
+                  key: "authority",
+                  label: "Authority",
+                  align: "right",
+                  sortable: true,
+                  render: (_v, row) => (
+                    <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      row.authority >= 60 ? "bg-emerald-50 text-emerald-700" :
+                      row.authority >= 30 ? "bg-blue-50 text-blue-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"
+                    }`}>{row.authority}</span>
+                  ),
+                },
+              ]}
+            />
           )}
         </SectionCard>
       )}
@@ -936,46 +954,50 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
               {aiVisibility.keywords.some((k) => k.hasAIOverview) && (
                 <div>
                   <p className="text-xs font-semibold text-[var(--text-3)] uppercase tracking-wide mb-2">Keywords with AI Overview presence</p>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
-                          <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Keyword</th>
-                          <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Rank</th>
-                          <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Volume</th>
-                          <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>AI Overview</th>
-                          <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Brand Cited</th>
-                        </tr>
-                      </thead>
-                      <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                        {aiVisibility.keywords
-                          .filter((k) => k.hasAIOverview)
-                          .sort((a, b) => (b.brandInAIOverview ? 1 : 0) - (a.brandInAIOverview ? 1 : 0) || a.position - b.position)
-                          .map((kw, i) => (
-                            <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                              <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{kw.keyword}</td>
-                              <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
-                                <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold ${
-                                  kw.position <= 3 ? "bg-emerald-50 text-emerald-700" :
-                                  kw.position <= 10 ? "bg-blue-50 text-blue-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"
-                                }`}>{kw.position || "—"}</span>
-                              </td>
-                              <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(kw.searchVolume)}</td>
-                              <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
-                                <span className="inline-block w-2 h-2 rounded-full bg-blue-400" title="AI Overview present" />
-                              </td>
-                              <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}>
-                                {kw.brandInAIOverview ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">✓ Cited</span>
-                                ) : (
-                                  <span className="text-[var(--text-3)] text-xs">—</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <DataTable<AIKeyword>
+                    data={aiVisibility.keywords
+                      .filter((k) => k.hasAIOverview)
+                      .sort((a, b) => (b.brandInAIOverview ? 1 : 0) - (a.brandInAIOverview ? 1 : 0) || a.position - b.position)}
+                    pageSize={0}
+                    columns={[
+                      { key: "keyword", label: "Keyword" },
+                      {
+                        key: "position",
+                        label: "Rank",
+                        align: "center",
+                        sortable: true,
+                        render: (_v, row) => (
+                          <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold ${
+                            row.position <= 3 ? "bg-emerald-50 text-emerald-700" :
+                            row.position <= 10 ? "bg-blue-50 text-blue-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"
+                          }`}>{row.position || "—"}</span>
+                        ),
+                      },
+                      {
+                        key: "searchVolume",
+                        label: "Volume",
+                        align: "right",
+                        sortable: true,
+                        render: (_v, row) => formatNumber(row.searchVolume),
+                      },
+                      {
+                        key: "hasAIOverview",
+                        label: "AI Overview",
+                        align: "center",
+                        render: () => <span className="inline-block w-2 h-2 rounded-full bg-blue-400" title="AI Overview present" />,
+                      },
+                      {
+                        key: "brandInAIOverview",
+                        label: "Brand Cited",
+                        align: "center",
+                        render: (_v, row) => row.brandInAIOverview ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">✓ Cited</span>
+                        ) : (
+                          <span className="text-[var(--text-3)] text-xs">—</span>
+                        ),
+                      },
+                    ]}
+                  />
                 </div>
               )}
             </>
@@ -986,49 +1008,54 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       {/* Competitor landscape */}
       {show("competitors") && competitors.length > 0 && (
         <SectionCard title="Competitor Landscape" subtitle={`Top organic competitors for ${domain}`}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--border-subtle)] bg-[var(--border-subtle)]">
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Domain</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Common KW</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Organic KW</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Traffic</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Traffic Value</th>
-                </tr>
-              </thead>
-              <tbody style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                {competitors.map((comp, i) => (
-                  <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>
-                      <a
-                        href={`https://${comp.domain}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium text-[var(--text)] hover:text-indigo-600 transition"
-                      >
-                        {comp.domain}
-                      </a>
-                    </td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
-                        {formatNumber(comp.commonKeywords)}
-                      </span>
-                    </td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
-                      {formatNumber(comp.organicKeywords)}
-                    </td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
-                      {formatNumber(comp.organicTraffic)}
-                    </td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
-                      {formatCurrency(comp.organicCost)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<Competitor>
+            data={competitors}
+            pageSize={20}
+            columns={[
+              {
+                key: "domain",
+                label: "Domain",
+                render: (_v, row) => (
+                  <a href={`https://${row.domain}`} target="_blank" rel="noopener noreferrer"
+                    className="font-medium text-[var(--text)] hover:text-indigo-600 transition">
+                    {row.domain}
+                  </a>
+                ),
+              },
+              {
+                key: "commonKeywords",
+                label: "Common KW",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                    {formatNumber(row.commonKeywords)}
+                  </span>
+                ),
+              },
+              {
+                key: "organicKeywords",
+                label: "Organic KW",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.organicKeywords),
+              },
+              {
+                key: "organicTraffic",
+                label: "Traffic",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.organicTraffic),
+              },
+              {
+                key: "organicCost",
+                label: "Traffic Value",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatCurrency(row.organicCost),
+              },
+            ]}
+          />
         </SectionCard>
       )}
         </>
@@ -1085,36 +1112,42 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       {/* Content Gap Analysis */}
       {show("content_gap") && contentGap.length > 0 && (
         <SectionCard title="Content Gap Analysis" subtitle="Keyword opportunities where competitors rank but you don't">
-          <div className="overflow-x-auto">
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-              <thead>
-                <tr style={{ borderBottom: "2px solid var(--border)" }}>
-                  <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>Keyword</th>
-                  <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Volume</th>
-                  <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Difficulty</th>
-                  <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>Competitors</th>
-                </tr>
-              </thead>
-              <tbody>
-                {contentGap.slice(0, 20).map((item, i) => (
-                  <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "8px 12px", color: "var(--text)", fontWeight: 500 }}>{item.keyword}</td>
-                    <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(item.volume)}</td>
-                    <td style={{ padding: "8px 12px", textAlign: "right" }}>
-                      <span style={{
-                        fontSize: 11, fontWeight: 600, color: "#fff",
-                        background: item.difficulty >= 80 ? "#dc2626" : item.difficulty >= 60 ? "#d97706" : item.difficulty >= 40 ? "#2563eb" : "#16a34a",
-                        borderRadius: 4, padding: "2px 8px",
-                      }}>
-                        {item.difficulty}%
-                      </span>
-                    </td>
-                    <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>{item.competitors.length}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<{ keyword: string; volume: number; difficulty: number; competitors: string[] }>
+            data={contentGap}
+            searchable
+            pageSize={20}
+            columns={[
+              { key: "keyword", label: "Keyword" },
+              {
+                key: "volume",
+                label: "Volume",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.volume),
+              },
+              {
+                key: "difficulty",
+                label: "Difficulty",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => (
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, color: "#fff",
+                    background: row.difficulty >= 80 ? "#dc2626" : row.difficulty >= 60 ? "#d97706" : row.difficulty >= 40 ? "#2563eb" : "#16a34a",
+                    borderRadius: 4, padding: "2px 8px",
+                  }}>
+                    {row.difficulty}%
+                  </span>
+                ),
+              },
+              {
+                key: "competitors",
+                label: "Competitors",
+                align: "right",
+                render: (_v, row) => (row.competitors as string[]).length,
+              },
+            ]}
+          />
         </SectionCard>
       )}
 
@@ -1152,42 +1185,44 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       {/* Recent Backlink Changes */}
       {show("backlink_changes") && backlinkChanges.length > 0 && (
         <SectionCard title="Recent Backlink Changes" subtitle="New and lost backlinks detected recently">
-          <div className="overflow-x-auto">
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-              <thead>
-                <tr style={{ borderBottom: "2px solid var(--border)" }}>
-                  <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>URL</th>
-                  <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-2)" }}>Referring Domain</th>
-                  <th style={{ padding: "8px 12px", textAlign: "center", fontWeight: 600, color: "var(--text-2)" }}>Type</th>
-                  <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "var(--text-2)" }}>First Seen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {backlinkChanges.slice(0, 20).map((item, i) => (
-                  <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "8px 12px", color: "var(--text)", fontWeight: 500, maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", textDecoration: "none" }}>
-                        {item.url}
-                      </a>
-                    </td>
-                    <td style={{ padding: "8px 12px", color: "var(--text-2)" }}>{item.domain}</td>
-                    <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                      <span style={{
-                        fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff",
-                        background: item.lost ? "#dc2626" : "#16a34a",
-                        borderRadius: 4, padding: "2px 8px",
-                      }}>
-                        {item.lost ? "Lost" : "New"}
-                      </span>
-                    </td>
-                    <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-2)" }}>
-                      {item.firstSeen ? formatDateDisplay(item.firstSeen) : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<{ url: string; type: string; domain: string; firstSeen: string; lost: boolean }>
+            data={backlinkChanges}
+            pageSize={20}
+            columns={[
+              {
+                key: "url",
+                label: "URL",
+                render: (_v, row) => (
+                  <a href={row.url} target="_blank" rel="noopener noreferrer"
+                    style={{ color: "var(--accent)", textDecoration: "none" }}
+                    className="font-medium block overflow-hidden text-ellipsis whitespace-nowrap max-w-[300px]">
+                    {row.url}
+                  </a>
+                ),
+              },
+              { key: "domain", label: "Referring Domain" },
+              {
+                key: "lost",
+                label: "Type",
+                align: "center",
+                render: (_v, row) => (
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#fff",
+                    background: row.lost ? "#dc2626" : "#16a34a",
+                    borderRadius: 4, padding: "2px 8px",
+                  }}>
+                    {row.lost ? "Lost" : "New"}
+                  </span>
+                ),
+              },
+              {
+                key: "firstSeen",
+                label: "First Seen",
+                align: "right",
+                render: (_v, row) => row.firstSeen ? formatDateDisplay(row.firstSeen) : "—",
+              },
+            ]}
+          />
         </SectionCard>
       )}
 
@@ -1249,24 +1284,31 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
             </div>
           </div>
           {siteAudit.issues && siteAudit.issues.length > 0 && (
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Issue</th>
-                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Severity</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Count</th>
-                </tr>
-              </thead>
-              <tbody>
-                {siteAudit.issues.map((issue, i) => (
-                  <tr key={i} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)" }}>{issue.title}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}><span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${issue.severity === "error" ? "bg-red-100 text-red-700" : issue.severity === "warning" ? "bg-amber-100 text-amber-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"}`}>{issue.severity}</span></td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(issue.count)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable<{ title: string; severity: string; count: number }>
+              data={siteAudit.issues}
+              pageSize={0}
+              columns={[
+                { key: "title", label: "Issue" },
+                {
+                  key: "severity",
+                  label: "Severity",
+                  align: "center",
+                  render: (_v, row) => (
+                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                      row.severity === "error" ? "bg-red-100 text-red-700" :
+                      row.severity === "warning" ? "bg-amber-100 text-amber-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"
+                    }`}>{row.severity}</span>
+                  ),
+                },
+                {
+                  key: "count",
+                  label: "Count",
+                  align: "right",
+                  sortable: true,
+                  render: (_v, row) => formatNumber(row.count),
+                },
+              ]}
+            />
           )}
         </SectionCard>
       )}
@@ -1294,214 +1336,313 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       {/* Display Advertising */}
       {show("display_advertising") && displayAdvertising.length > 0 && (
         <SectionCard title="Display Advertising Competitors" subtitle={`${displayAdvertising.length} competitor${displayAdvertising.length !== 1 ? "s" : ""}`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 480 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Domain</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Display Ads</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Traffic</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Est. Cost</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayAdvertising.map((da) => (
-                  <tr key={da.domain} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{da.domain}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(da.displayAds)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(da.displayTraffic)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(da.displayCost)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<{ domain: string; displayAds: number; displayTraffic: number; displayCost: number }>
+            data={displayAdvertising}
+            pageSize={20}
+            columns={[
+              { key: "domain", label: "Domain" },
+              {
+                key: "displayAds",
+                label: "Display Ads",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.displayAds),
+              },
+              {
+                key: "displayTraffic",
+                label: "Traffic",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.displayTraffic),
+              },
+              {
+                key: "displayCost",
+                label: "Est. Cost",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatCurrency(row.displayCost),
+              },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* PLA / Shopping Competitors */}
       {show("shopping_competitors") && shoppingCompetitors.length > 0 && (
         <SectionCard title="PLA / Shopping Competitors" subtitle={`${shoppingCompetitors.length} competitor${shoppingCompetitors.length !== 1 ? "s" : ""}`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 480 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Domain</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Shopping KWs</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Traffic</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Est. Cost</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shoppingCompetitors.map((sc) => (
-                  <tr key={sc.domain} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{sc.domain}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(sc.shoppingKeywords)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(sc.shoppingTraffic)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(sc.shoppingCost)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<{ domain: string; shoppingKeywords: number; shoppingTraffic: number; shoppingCost: number }>
+            data={shoppingCompetitors}
+            pageSize={20}
+            columns={[
+              { key: "domain", label: "Domain" },
+              {
+                key: "shoppingKeywords",
+                label: "Shopping KWs",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.shoppingKeywords),
+              },
+              {
+                key: "shoppingTraffic",
+                label: "Traffic",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.shoppingTraffic),
+              },
+              {
+                key: "shoppingCost",
+                label: "Est. Cost",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatCurrency(row.shoppingCost),
+              },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Keyword Trends */}
       {show("keyword_trends") && keywordTrends.length > 0 && (
         <SectionCard title="Keyword Trends" subtitle={`${keywordTrends.length} keyword${keywordTrends.length !== 1 ? "s" : ""} tracked`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Keyword</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Volume</th>
-                  <th style={{ textAlign: "center", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Trend</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>CPC</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Competition</th>
-                </tr>
-              </thead>
-              <tbody>
-                {keywordTrends.map((kt) => (
-                  <tr key={kt.keyword} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{kt.keyword}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(kt.searchVolume)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "center", color: "var(--text-2)" }}><span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${kt.trend === "up" ? "bg-emerald-100 text-emerald-700" : kt.trend === "down" ? "bg-red-100 text-red-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"}`}>{kt.trend}</span></td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(kt.cpc)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{(kt.competition * 100).toFixed(0)}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<{ keyword: string; searchVolume: number; trend: string; cpc: number; competition: number }>
+            data={keywordTrends}
+            searchable
+            pageSize={20}
+            columns={[
+              { key: "keyword", label: "Keyword" },
+              {
+                key: "searchVolume",
+                label: "Volume",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.searchVolume),
+              },
+              {
+                key: "trend",
+                label: "Trend",
+                align: "center",
+                render: (_v, row) => (
+                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                    row.trend === "up" ? "bg-emerald-100 text-emerald-700" :
+                    row.trend === "down" ? "bg-red-100 text-red-700" : "bg-[var(--border-subtle)] text-[var(--text-2)]"
+                  }`}>{row.trend}</span>
+                ),
+              },
+              {
+                key: "cpc",
+                label: "CPC",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatCurrency(row.cpc),
+              },
+              {
+                key: "competition",
+                label: "Competition",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => `${(row.competition * 100).toFixed(0)}%`,
+              },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Referring Domains */}
       {show("referring_domains") && referringDomains.length > 0 && (
         <SectionCard title="Referring Domains" subtitle={`${referringDomains.length} domain${referringDomains.length !== 1 ? "s" : ""} linking`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Domain</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Backlinks</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Country</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>First Seen</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Last Seen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {referringDomains.slice(0, 50).map((rd) => (
-                  <tr key={rd.domain} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{rd.domain}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(rd.backlinks)}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{rd.country || "—"}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{rd.firstSeen ? formatDateDisplay(rd.firstSeen) : "—"}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{rd.lastSeen ? formatDateDisplay(rd.lastSeen) : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<{ domain: string; backlinks: number; ipAddress: string; country: string; firstSeen: string; lastSeen: string }>
+            data={referringDomains}
+            exportable
+            exportFilename="referring-domains"
+            pageSize={20}
+            columns={[
+              { key: "domain", label: "Domain" },
+              {
+                key: "backlinks",
+                label: "Backlinks",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.backlinks),
+              },
+              {
+                key: "country",
+                label: "Country",
+                render: (_v, row) => row.country || "—",
+              },
+              {
+                key: "firstSeen",
+                label: "First Seen",
+                align: "right",
+                render: (_v, row) => row.firstSeen ? formatDateDisplay(row.firstSeen) : "—",
+              },
+              {
+                key: "lastSeen",
+                label: "Last Seen",
+                align: "right",
+                render: (_v, row) => row.lastSeen ? formatDateDisplay(row.lastSeen) : "—",
+              },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Anchor Text Distribution */}
       {show("anchor_text") && anchorText.length > 0 && (
         <SectionCard title="Anchor Text Distribution" subtitle={`${anchorText.length} unique anchor${anchorText.length !== 1 ? "s" : ""}`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 520 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Anchor Text</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Domains</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Backlinks</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>First Seen</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Last Seen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {anchorText.slice(0, 30).map((at, i) => (
-                  <tr key={`${at.anchor}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{at.anchor || "(empty)"}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(at.domains)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(at.backlinks)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{at.firstSeen ? formatDateDisplay(at.firstSeen) : "—"}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{at.lastSeen ? formatDateDisplay(at.lastSeen) : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<{ anchor: string; domains: number; backlinks: number; firstSeen: string; lastSeen: string }>
+            data={anchorText}
+            exportable
+            exportFilename="anchor-text"
+            pageSize={20}
+            columns={[
+              {
+                key: "anchor",
+                label: "Anchor Text",
+                render: (_v, row) => (
+                  <span className="block overflow-hidden text-ellipsis whitespace-nowrap max-w-[200px]">
+                    {row.anchor || "(empty)"}
+                  </span>
+                ),
+              },
+              {
+                key: "domains",
+                label: "Domains",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.domains),
+              },
+              {
+                key: "backlinks",
+                label: "Backlinks",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.backlinks),
+              },
+              {
+                key: "firstSeen",
+                label: "First Seen",
+                align: "right",
+                render: (_v, row) => row.firstSeen ? formatDateDisplay(row.firstSeen) : "—",
+              },
+              {
+                key: "lastSeen",
+                label: "Last Seen",
+                align: "right",
+                render: (_v, row) => row.lastSeen ? formatDateDisplay(row.lastSeen) : "—",
+              },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Competitor Backlink Comparison */}
       {show("backlink_comparison") && backlinkComparison.length > 0 && (
         <SectionCard title="Competitor Backlink Comparison" subtitle={`${backlinkComparison.length} domain${backlinkComparison.length !== 1 ? "s" : ""} compared`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Domain</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Authority</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Backlinks</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Ref. Domains</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Follow</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Nofollow</th>
-                </tr>
-              </thead>
-              <tbody>
-                {backlinkComparison.map((bc) => (
-                  <tr key={bc.domain} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{bc.domain}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}><span className={`font-semibold ${bc.ascore >= 50 ? "text-emerald-600" : bc.ascore >= 30 ? "text-amber-600" : "text-red-600"}`}>{bc.ascore}</span></td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(bc.totalBacklinks)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(bc.referringDomains)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(bc.followLinks)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(bc.nofollowLinks)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<{ domain: string; ascore: number; totalBacklinks: number; referringDomains: number; followLinks: number; nofollowLinks: number }>
+            data={backlinkComparison}
+            exportable
+            exportFilename="backlink-comparison"
+            pageSize={20}
+            columns={[
+              { key: "domain", label: "Domain" },
+              {
+                key: "ascore",
+                label: "Authority",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => (
+                  <span className={`font-semibold ${
+                    row.ascore >= 50 ? "text-emerald-600" : row.ascore >= 30 ? "text-amber-600" : "text-red-600"
+                  }`}>{row.ascore}</span>
+                ),
+              },
+              {
+                key: "totalBacklinks",
+                label: "Backlinks",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.totalBacklinks),
+              },
+              {
+                key: "referringDomains",
+                label: "Ref. Domains",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.referringDomains),
+              },
+              {
+                key: "followLinks",
+                label: "Follow",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.followLinks),
+              },
+              {
+                key: "nofollowLinks",
+                label: "Nofollow",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.nofollowLinks),
+              },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Organic Position Changes */}
       {show("position_changes") && positionChanges.length > 0 && (
         <SectionCard title="Organic Position Changes" subtitle={`${positionChanges.length} keyword${positionChanges.length !== 1 ? "s" : ""} with position changes`}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 600 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Keyword</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Previous</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Current</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Change</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Volume</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>URL</th>
-                </tr>
-              </thead>
-              <tbody>
-                {positionChanges.map((pc, i) => (
-                  <tr key={`${pc.keyword}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{pc.keyword}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{pc.previousPosition}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{pc.currentPosition}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>
-                      <span className={`inline-flex items-center gap-0.5 font-semibold ${pc.change > 0 ? "text-emerald-600" : pc.change < 0 ? "text-red-600" : "text-[var(--text-3)]"}`}>
-                        {pc.change > 0 ? <><CssArrowUp /> +{pc.change}</> : pc.change < 0 ? <><CssArrowDown /> {pc.change}</> : <><CssMinus /> 0</>}
-                      </span>
-                    </td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(pc.searchVolume)}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }} title={pc.url}>{pc.url.replace(/^https?:\/\/[^/]+/, "")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<{ keyword: string; previousPosition: number; currentPosition: number; change: number; searchVolume: number; url: string }>
+            data={positionChanges}
+            searchable
+            exportable
+            exportFilename="position-changes"
+            pageSize={20}
+            columns={[
+              { key: "keyword", label: "Keyword" },
+              {
+                key: "previousPosition",
+                label: "Previous",
+                align: "right",
+                sortable: true,
+              },
+              {
+                key: "currentPosition",
+                label: "Current",
+                align: "right",
+                sortable: true,
+              },
+              {
+                key: "change",
+                label: "Change",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => (
+                  <span className={`inline-flex items-center gap-0.5 font-semibold ${
+                    row.change > 0 ? "text-emerald-600" : row.change < 0 ? "text-red-600" : "text-[var(--text-3)]"
+                  }`}>
+                    {row.change > 0 ? <><CssArrowUp /> +{row.change}</> : row.change < 0 ? <><CssArrowDown /> {row.change}</> : <><CssMinus /> 0</>}
+                  </span>
+                ),
+              },
+              {
+                key: "searchVolume",
+                label: "Volume",
+                align: "right",
+                sortable: true,
+                render: (_v, row) => formatNumber(row.searchVolume),
+              },
+              {
+                key: "url",
+                label: "URL",
+                render: (_v, row) => (
+                  <span className="block overflow-hidden text-ellipsis whitespace-nowrap max-w-[200px]" title={row.url}>
+                    {row.url.replace(/^https?:\/\/[^/]+/, "")}
+                  </span>
+                ),
+              },
+            ]}
+          />
         </SectionCard>
       )}
 
