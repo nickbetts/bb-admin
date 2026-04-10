@@ -567,7 +567,7 @@ export default function LoginPage() {
             <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }}>
               We&apos;ve been there.<br />Got the t-shirt.
             </h2>
-          <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
               These are the conversations we were having at i3MEDIA before we built StratOS. If any of them land, you&apos;re in the right place.
             </p>
           </div>
