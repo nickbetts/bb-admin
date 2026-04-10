@@ -162,6 +162,7 @@ interface SignalsCampaign {
   impressions: number;
   objective?: string;
   channelType?: string;
+  conversions?: number;
   dailyBudget?: number | null;
   lifetimeBudget?: number | null;
   dailyBudgetMicros?: number;
@@ -618,14 +619,95 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
             const roas  = typeof ov.avgRoas === "number" ? `${ov.avgRoas.toFixed(2)}\u00d7` : "n/a";
             const prevR = typeof prevM?.avgRoas === "number" ? ` (prev ${prevM.avgRoas.toFixed(2)}\u00d7)` : "";
             const conv  = typeof ov.totalConversions === "number" ? ov.totalConversions : "n/a";
-            lines.push(`\u2022 Meta: ${spend} spend, ${conv} conv, ROAS ${roas}${prevR}`);
+            lines.push(`\u2022 Meta Overview: ${spend} spend, ${conv} conv, ROAS ${roas}${prevR}`);
+
+            // Meta campaign breakdown
+            const metaCamps = (metaData as Array<unknown>)[0] as Array<SignalsCampaign> | null;
+            if (metaCamps?.length) {
+              const activeCamps = metaCamps.filter(c => c.status === "ACTIVE");
+              if (activeCamps.length) {
+                const campStr = activeCamps.slice(0, 8).map(c => {
+                  const budget = c.dailyBudget ? `\u00a3${c.dailyBudget.toFixed(0)}/d` : c.lifetimeBudget ? `\u00a3${c.lifetimeBudget.toFixed(0)}ltm` : "no budget";
+                  const roasStr = c.roas > 0 ? ` ROAS ${c.roas.toFixed(2)}x` : "";
+                  const freqStr = c.frequency > 0 ? ` freq ${c.frequency.toFixed(1)}x` : "";
+                  const spendStr = c.spend > 0 ? ` \u00a3${c.spend.toFixed(0)} spent` : "";
+                  const convStr = typeof c.conversions === "number" ? ` ${c.conversions}conv` : "";
+                  const ctrStr = c.ctr != null && c.ctr > 0 ? ` CTR ${c.ctr.toFixed(2)}%` : "";
+                  return `"${c.name}" [${budget}${spendStr}${roasStr}${freqStr}${convStr}${ctrStr}]`;
+                }).join(" | ");
+                lines.push(`\u2022 Meta Campaigns: ${campStr}`);
+              }
+            }
+
+            // Meta ad sets — only surface concerning ones to keep context focused
+            const metaAdSets = (metaData as Array<unknown>)[1] as Array<SignalsAdSet> | null;
+            if (metaAdSets?.length) {
+              const concerning = metaAdSets.filter(s => s.status === "ACTIVE" && (s.frequency > 3.5 || (s.roas > 0 && s.roas < 1.0 && s.spend > 20) || (s.conversions === 0 && s.spend > 30)));
+              if (concerning.length) {
+                const asStr = concerning.slice(0, 6).map(s => {
+                  const flags: string[] = [];
+                  if (s.frequency > 3.5) flags.push(`freq ${s.frequency.toFixed(1)}x`);
+                  if (s.roas > 0 && s.roas < 1.0) flags.push(`ROAS ${s.roas.toFixed(2)}x`);
+                  if (s.conversions === 0 && s.spend > 30) flags.push(`0 conv on \u00a3${s.spend.toFixed(0)}`);
+                  return `"${s.name}" [${flags.join(", ")}]`;
+                }).join(" | ");
+                lines.push(`\u2022 Meta Ad Sets (flagged): ${asStr}`);
+              }
+            }
+
+            // Meta creatives — top 4 by ROAS + bottom 3 by conversion rate (high spend, 0 conv)
+            const metaCreativesCtx = (metaData as Array<unknown>)[2] as Array<SignalsAdCreative> | null;
+            if (metaCreativesCtx?.length) {
+              const active = metaCreativesCtx.filter(c => c.status === "ACTIVE");
+              const top = [...active].sort((a, b) => b.roas - a.roas).slice(0, 4);
+              const wasted = active.filter(c => c.conversions === 0 && c.spend > 20).sort((a, b) => b.spend - a.spend).slice(0, 3);
+              if (top.length) {
+                const topStr = top.map(c => `"${c.adName}" [${c.mediaType ?? "?"}, ROAS ${c.roas.toFixed(2)}x, CTR ${c.ctr.toFixed(2)}%, \u00a3${c.spend.toFixed(0)} spent, ${c.conversions}conv]`).join(" | ");
+                lines.push(`\u2022 Meta Top Creatives: ${topStr}`);
+              }
+              if (wasted.length) {
+                const wastedStr = wasted.map(c => `"${c.adName}" [\u00a3${c.spend.toFixed(0)} spent, 0 conv, CTR ${c.ctr.toFixed(2)}%]`).join(" | ");
+                lines.push(`\u2022 Meta Zero-Conv Creatives: ${wastedStr}`);
+              }
+            }
           }
         }
         if (gadsData?.overview) {
           const o = gadsData.overview as Record<string, number>;
           const spend = typeof o.totalCost === "number" ? `\u00a3${o.totalCost.toFixed(0)}` : "n/a";
           const impr  = typeof o.totalImpressions === "number" ? o.totalImpressions.toLocaleString() : "n/a";
-          lines.push(`\u2022 Google Ads: ${spend} spend, ${impr} impressions`);
+          lines.push(`\u2022 Google Ads Overview: ${spend} spend, ${impr} impressions`);
+
+          // Google Ads campaign breakdown
+          if (gadsData?.campaignsEnriched?.length) {
+            const enabledCamps = (gadsData.campaignsEnriched as Array<{
+              name: string;
+              status?: string;
+              channelType?: string;
+              impressions: number;
+              costMicros?: number;
+              dailyBudgetMicros?: number;
+              biddingStrategyType?: string;
+              conversions?: number;
+              conversionsValue?: number;
+              searchBudgetLostImpressionShare?: number | null;
+              searchRankLostImpressionShare?: number | null;
+              searchImpressionShare?: number | null;
+            }>).filter(c => c.status === "ENABLED");
+            if (enabledCamps.length) {
+              const campStr = enabledCamps.slice(0, 8).map(c => {
+                const budget = c.dailyBudgetMicros ? `\u00a3${(c.dailyBudgetMicros / 1_000_000).toFixed(0)}/d` : "n/a";
+                const spent  = c.costMicros ? ` \u00a3${(c.costMicros / 1_000_000).toFixed(0)}spent` : "";
+                const bid    = c.biddingStrategyType ? ` [${c.biddingStrategyType.replace(/_/g, " ").toLowerCase()}]` : "";
+                const is     = c.searchImpressionShare != null ? ` IS${Math.round(c.searchImpressionShare * 100)}%` : "";
+                const isb    = c.searchBudgetLostImpressionShare != null && c.searchBudgetLostImpressionShare > 0.05 ? ` -${Math.round(c.searchBudgetLostImpressionShare * 100)}%budget` : "";
+                const isr    = c.searchRankLostImpressionShare != null && c.searchRankLostImpressionShare > 0.05 ? ` -${Math.round(c.searchRankLostImpressionShare * 100)}%rank` : "";
+                const conv   = typeof c.conversions === "number" && c.conversions > 0 ? ` ${c.conversions.toFixed(0)}conv` : "";
+                return `"${c.name}" [${budget}${spent}${bid}${is}${isb}${isr}${conv}]`;
+              }).join(" | ");
+              lines.push(`\u2022 Google Ads Campaigns: ${campStr}`);
+            }
+          }
         }
         if (ga4Data) {
           const o     = ga4Data as Record<string, number>;

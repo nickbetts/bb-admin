@@ -1310,64 +1310,38 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       {/* Sitelink Performance */}
       {!loading && !error && show("sitelinks") && (data?.sitelinkPerformance?.length ?? 0) > 0 && (
         <SectionCard title="Sitelink Performance" subtitle="Ad extension click-through data">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Sitelink Text</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Conv.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data!.sitelinkPerformance!.map((sl, i) => (
-                  <tr key={`${sl.sitelinkText}-${i}`} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{sl.sitelinkText}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(sl.clicks)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(sl.impressions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(micros(sl.costMicros))}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(sl.conversions)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<NonNullable<GoogleAdsData["sitelinkPerformance"]>[number]>
+            data={data!.sitelinkPerformance!}
+            pageSize={0}
+            columns={[
+              { key: "sitelinkText", label: "Sitelink Text" },
+              { key: "clicks", label: "Clicks", sortable: true, align: "right", render: (_v, row) => formatNumber(row.clicks) },
+              { key: "impressions", label: "Impressions", sortable: true, align: "right", render: (_v, row) => formatNumber(row.impressions) },
+              { key: "costMicros", label: "Cost", sortable: true, align: "right", render: (_v, row) => formatCurrency(micros(row.costMicros)) },
+              { key: "conversions", label: "Conv.", sortable: true, align: "right", render: (_v, row) => formatNumber(row.conversions) },
+            ]}
+          />
         </SectionCard>
       )}
 
       {/* Display & Video */}
       {!loading && !error && show("display_video") && (data?.displayVideoData?.length ?? 0) > 0 && (
         <SectionCard title="Display & Video" subtitle="Performance across display and video campaigns">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 700 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Campaign</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Type</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Clicks</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Impressions</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Cost</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Video Views</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>View Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data!.displayVideoData!.map((dv) => (
-                  <tr key={dv.campaignId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{dv.campaignName}</td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{dv.channelType.toLowerCase()}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(dv.clicks)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(dv.impressions)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(micros(dv.costMicros))}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatNumber(dv.videoViews)}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{(dv.videoViewRate * 100).toFixed(1)}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<NonNullable<GoogleAdsData["displayVideoData"]>[number]>
+            data={data!.displayVideoData!}
+            pageSize={20}
+            exportable
+            exportFilename="display-video-performance"
+            columns={[
+              { key: "campaignName", label: "Campaign" },
+              { key: "channelType", label: "Type", render: (_v, row) => row.channelType.toLowerCase() },
+              { key: "clicks", label: "Clicks", sortable: true, align: "right", render: (_v, row) => formatNumber(row.clicks) },
+              { key: "impressions", label: "Impressions", sortable: true, align: "right", render: (_v, row) => formatNumber(row.impressions) },
+              { key: "costMicros", label: "Cost", sortable: true, align: "right", render: (_v, row) => formatCurrency(micros(row.costMicros)) },
+              { key: "videoViews", label: "Video Views", sortable: true, align: "right", render: (_v, row) => formatNumber(row.videoViews) },
+              { key: "videoViewRate", label: "View Rate", sortable: true, align: "right", render: (_v, row) => `${(row.videoViewRate * 100).toFixed(1)}%` },
+            ]}
+          />
         </SectionCard>
       )}
 
@@ -1391,30 +1365,17 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       {/* Budget Utilisation */}
       {!loading && !error && show("budget_utilisation") && (data?.budgetUtilisation?.length ?? 0) > 0 && (
         <SectionCard title="Budget Utilisation" subtitle="How much of each campaign budget is being spent">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Campaign</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Daily Budget</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Spend</th>
-                  <th style={{ textAlign: "right", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Utilisation</th>
-                  <th style={{ textAlign: "left", padding: "10px 16px", color: "var(--text-3)", fontWeight: 500 }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data!.budgetUtilisation!.map((bu) => (
-                  <tr key={bu.campaignId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>{bu.campaignName}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(micros(bu.dailyBudgetMicros))}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}>{formatCurrency(micros(bu.spendMicros))}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-2)" }}><span className={`font-semibold ${bu.utilisationPercent >= 90 ? "text-red-600" : bu.utilisationPercent >= 70 ? "text-amber-600" : "text-emerald-600"}`}>{bu.utilisationPercent.toFixed(0)}%</span></td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-2)" }}>{bu.budgetStatus.toLowerCase()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable<NonNullable<GoogleAdsData["budgetUtilisation"]>[number]>
+            data={data!.budgetUtilisation!}
+            pageSize={0}
+            columns={[
+              { key: "campaignName", label: "Campaign" },
+              { key: "dailyBudgetMicros", label: "Daily Budget", sortable: true, align: "right", render: (_v, row) => formatCurrency(micros(row.dailyBudgetMicros)) },
+              { key: "spendMicros", label: "Spend", sortable: true, align: "right", render: (_v, row) => formatCurrency(micros(row.spendMicros)) },
+              { key: "utilisationPercent", label: "Utilisation", sortable: true, align: "right", render: (_v, row) => <span className={`font-semibold ${row.utilisationPercent >= 90 ? "text-red-600" : row.utilisationPercent >= 70 ? "text-amber-600" : "text-emerald-600"}`}>{row.utilisationPercent.toFixed(0)}%</span> },
+              { key: "budgetStatus", label: "Status", render: (_v, row) => row.budgetStatus.toLowerCase() },
+            ]}
+          />
         </SectionCard>
       )}
     </div>
