@@ -1,7 +1,7 @@
 ---
 description: "Use when: working on agency tools, keyword planner, proposals, content strategy, media plan builder, page analyser, LLM generator, competitor intelligence, pricing, adding a new tool, updating tool UI or logic, or any page under src/app/tools/."
 name: "Agency Tools"
-tools: [read, edit, search, run_in_terminal, todo, web]
+tools: [read, edit, search, execute, todo, web]
 user-invocable: true
 ---
 

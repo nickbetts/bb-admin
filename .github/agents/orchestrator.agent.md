@@ -1,7 +1,7 @@
 ---
 description: "Use when: routing a task to the right specialist agent, orchestrating multi-step features, not sure which agent to use, adding a new feature end-to-end, need to coordinate across DB + API + component + docs, or when the task spans multiple layers of the codebase."
 name: "Orchestrator"
-tools: [read, search, agent, run_in_terminal, todo, web]
+tools: [read, search, agent, execute, todo, web]
 user-invocable: true
 ---
 
@@ -9,11 +9,7 @@ You are the orchestrator for the i3media Report platform. You do NOT write appli
 
 ## Terminal and git operations
 
-`run_in_terminal` is a **deferred tool** — you MUST load it before using it:
-```
-tool_search_tool_regex pattern="run_in_terminal"
-```
-Then call `run_in_terminal` normally. Never tell the user to run git commands manually when you can run them yourself.
+The `execute` tool alias is available — use `run_in_terminal` directly; no deferred loading required. Never tell the user to run git commands manually when you can run them yourself.
 
 For committing and pushing after delegated work is done:
 ```bash

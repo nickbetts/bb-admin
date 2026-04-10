@@ -1,7 +1,7 @@
 ---
 description: "Use when: updating the login page, updating the landing page, adding a new marketing section, refreshing marketing copy, updating the channel list on the landing page, adding animations, updating the product feature descriptions, changing the brand narrative, working on the portal login page, or keeping the landing page current with new platform features."
 name: "Landing Page"
-tools: [read, edit, search, run_in_terminal, todo, web]
+tools: [read, edit, search, execute, todo, web]
 user-invocable: true
 ---
 
@@ -17,11 +17,7 @@ You are the landing page and marketing copy expert for the i3media Report platfo
 
 ## Terminal usage
 
-`run_in_terminal` is a **deferred tool** — you MUST load it before using it:
-```
-tool_search_tool_regex pattern="run_in_terminal"
-```
-Then call `run_in_terminal` normally. Use it for git commits/pushes when a task brief asks for them.
+The `execute` tool alias is available — use `run_in_terminal` directly; no deferred loading required. Use it for git commits/pushes when a task brief asks for them.
 
 ## Step 1 — Read these files before editing
 

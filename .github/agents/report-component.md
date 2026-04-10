@@ -1,7 +1,7 @@
 ---
 description: "Use when: adding a new dashboard section component, modifying report builder UI, adjusting block visibility, creating report section components, updating how channel data is displayed in reports, or any new component under src/components/dashboard/ or src/components/reports/."
 name: "report-component"
-tools: [read, edit, search, run_in_terminal, todo]
+tools: [read, edit, search, execute, todo]
 ---
 
 # Agent: Report & Dashboard Component Expert

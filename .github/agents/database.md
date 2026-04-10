@@ -1,7 +1,7 @@
 ---
 description: "Use when: adding database models, adding fields to existing models, creating indexes, updating relations, running Prisma migrations, schema changes, db migrate, db push, Prisma schema, SQLite, Turso, libSQL, or any change to prisma/schema.prisma."
 name: "database"
-tools: [read, edit, search, run_in_terminal, todo]
+tools: [read, edit, search, execute, todo]
 ---
 
 # Agent: Database & Prisma Expert

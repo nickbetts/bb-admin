@@ -1,7 +1,7 @@
 ---
 description: "Use when: working on data fetching efficiency, API caching, TTL values, cron jobs, snapshot architecture, ApiCache, MetricSnapshot, withApiCache, quota management, API rate limits, cron snapshots, anomaly detection metric lists, or the cron route at src/app/api/cron/."
 name: "data-fetching"
-tools: [read, edit, search, run_in_terminal, todo]
+tools: [read, edit, search, execute, todo]
 ---
 
 # Data Fetching & Caching Agent

@@ -1,7 +1,7 @@
 ---
 description: "Use when: improving UI consistency, adding or updating shared components, fixing design issues, updating the design system, working on the sidebar or app shell, adding new shared primitives, improving loading states, error states, accessibility, or general dashboard UX polish."
 name: "UI/UX Expert"
-tools: [read, edit, search, run_in_terminal, todo, web]
+tools: [read, edit, search, execute, todo, web]
 user-invocable: true
 ---
 

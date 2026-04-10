@@ -1,7 +1,7 @@
 ---
 description: "Use when: working on the client portal, portal login page, portal dashboard, portal auth (magic link), adding portal features, managing ClientPortalUser permissions, updating what clients can see, or any page under src/app/portal/."
 name: "Client Portal"
-tools: [read, edit, search, run_in_terminal, todo, web]
+tools: [read, edit, search, execute, todo, web]
 user-invocable: true
 ---
 
