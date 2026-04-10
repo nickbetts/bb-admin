@@ -2,8 +2,9 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { ArrowLeft, Plus, ExternalLink, Settings, Shield } from "lucide-react";
+import { Plus, ExternalLink, Settings, Shield } from "lucide-react";
 import { ClientDashboard } from "@/components/dashboard/ClientDashboard";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -53,10 +54,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
     <div className="page">
       {/* Back link + header */}
       <div style={{ marginBottom: 40 }}>
-        <Link href="/clients" className="inline-flex items-center gap-1.5 text-[13px] font-medium no-underline mb-7 transition-colors text-[var(--text-3)] hover:text-[var(--text)]">
-          <ArrowLeft style={{ width: 14, height: 14 }} />
-          All clients
-        </Link>
+      <Breadcrumb className="mb-7" />
 
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>

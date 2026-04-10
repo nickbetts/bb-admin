@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Phone, PhoneCall, PhoneMissed, AlertCircle } from "lucide-react";
+import { Phone, PhoneCall, PhoneMissed } from "lucide-react";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 
@@ -87,11 +88,11 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext, vi
 
   if (!data?.configured) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
-        <AlertCircle style={{ width: 24, height: 24, margin: "0 auto 8px", display: "block" }} />
-        <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)" }}>CallRail not connected</p>
-        <p style={{ fontSize: 13, marginTop: 4 }}>Add your CallRail account ID and API key in client settings.</p>
-      </div>
+      <EmptyState
+        icon={<Phone style={{ width: 24, height: 24 }} />}
+        title="CallRail not connected"
+        description="Add your CallRail account ID and API key in client settings."
+      />
     );
   }
 

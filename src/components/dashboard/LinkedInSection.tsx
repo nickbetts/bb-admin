@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ExternalLink } from "lucide-react";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
+import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
@@ -105,10 +106,11 @@ export function LinkedInSection({ clientId, clientName, accountId, accessToken, 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Linkedin style={{ width: 22, height: 22, color: "#0a66c2" }} />
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", margin: 0 }}>LinkedIn Ads</h2>
-      </div>
+      <SectionHeader
+        title="LinkedIn Ads"
+        iconNode={<Linkedin style={{ width: 16, height: 16, color: "#0a66c2" }} />}
+        iconColor="#0a66c2"
+      />
 
       {error && <SectionError message={error} onRetry={fetchData} />}
 

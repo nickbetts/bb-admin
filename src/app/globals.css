@@ -391,6 +391,14 @@ body {
   justify-content: space-between;
   gap: 20px;
   margin-bottom: 48px;
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--bg);
+  backdrop-filter: blur(8px);
+  padding-top: 4px;
+  padding-bottom: 4px;
+  margin-top: -4px;
 }
 
 h1, h2, h3, h4, .page-title, .section-title, .card-title {
@@ -1034,6 +1042,12 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
   display: none !important;
 }
 
+.pdf-print-view .recharts-wrapper,
+.pdf-print-view .recharts-responsive-container {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 /* =============================================
    PRINT / PDF EXPORT
 ============================================= */
@@ -1148,6 +1162,22 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
   .report-footer {
     margin-top: 24px !important;
     padding-top: 16px !important;
+  }
+
+  /* Keep chart containers on one page */
+  .recharts-wrapper,
+  .recharts-responsive-container {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Compress tables for print */
+  table {
+    font-size: 10px !important;
+  }
+
+  td, th {
+    padding: 4px 8px !important;
   }
 }
 

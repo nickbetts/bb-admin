@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Play, Eye, Clock, Users, ThumbsUp, AlertCircle } from "lucide-react";
+import { Play, Eye, Clock, Users, ThumbsUp } from "lucide-react";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 
@@ -86,11 +87,11 @@ export function YouTubeSection({ clientId, clientName, crossPlatformContext, vis
 
   if (!data?.configured) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
-        <AlertCircle style={{ width: 24, height: 24, margin: "0 auto 8px", display: "block" }} />
-        <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-2)" }}>YouTube not connected</p>
-        <p style={{ fontSize: 13, marginTop: 4 }}>Add your YouTube Channel ID in client settings.</p>
-      </div>
+      <EmptyState
+        icon={<Play style={{ width: 24, height: 24 }} />}
+        title="YouTube not connected"
+        description="Add your YouTube Channel ID in client settings."
+      />
     );
   }
 

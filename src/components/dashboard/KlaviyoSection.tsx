@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Mail, Loader2 } from "lucide-react";
+import { Mail } from "lucide-react";
+import { MetricCard } from "@/components/ui/MetricCard";
+import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
+import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
+import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 import { formatDateDisplay } from "@/lib/utils";
@@ -56,16 +61,6 @@ interface KlaviyoSectionProps {
   visibleBlocks?: string[];
 }
 
-function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", padding: 14 }}>
-      <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{sub}</div>}
-    </div>
-  );
-}
-
 export function KlaviyoSection({ clientId, clientName, startDate: _startDate, endDate: _endDate, crossPlatformContext, visibleBlocks }: KlaviyoSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [loading, setLoading] = useState(true);
@@ -102,31 +97,26 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Mail style={{ width: 22, height: 22, color: "#6366f1" }} />
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", margin: 0 }}>Email Marketing (Klaviyo)</h2>
-      </div>
+      <SectionHeader
+        title="Email Marketing (Klaviyo)"
+        icon={Mail}
+        iconColor="#6366f1"
+      />
 
-      {error && (
-        <div style={{ padding: "10px 14px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "var(--r-sm)", fontSize: 13, color: "#b91c1c" }}>
-          {error}
-        </div>
-      )}
+      {error && <SectionError message={error} onRetry={fetchData} />}
 
-      {loading && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-3)", fontSize: 13 }}>
-          <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} /> Loading Klaviyo data…
-        </div>
-      )}
+      {loading && <SectionLoading color="#6366f1" message="Loading Klaviyo data…" />}
 
       {overview && (
         <>
-          {show("kpis") && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-            <MetricCard label="Total Sends" value={overview.sends.toLocaleString()} sub={`${overview.campaignCount} campaigns`} />
-            <MetricCard label="Opens" value={overview.opens.toLocaleString()} sub={`${overview.openRate.toFixed(1)}% open rate`} />
-            <MetricCard label="Clicks" value={overview.clicks.toLocaleString()} sub={`${overview.clickRate.toFixed(1)}% click rate`} />
-            <MetricCard label="Revenue" value={`£${overview.revenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} />
-          </div>}
+          {show("kpis") && (
+            <MetricGrid cols={4}>
+              <MetricCard title="Total Sends" value={overview.sends.toLocaleString()} subtitle={`${overview.campaignCount} campaigns`} channel="klaviyo" />
+              <MetricCard title="Opens" value={overview.opens.toLocaleString()} subtitle={`${overview.openRate.toFixed(1)}% open rate`} channel="klaviyo" />
+              <MetricCard title="Clicks" value={overview.clicks.toLocaleString()} subtitle={`${overview.clickRate.toFixed(1)}% click rate`} channel="klaviyo" />
+              <MetricCard title="Revenue" value={`£${overview.revenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} channel="klaviyo" />
+            </MetricGrid>
+          )}
 
           {show("campaigns") && campaigns.length > 0 && (
             <div className="card">
@@ -173,10 +163,10 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
 
           {/* Subscriber Health */}
           {subscriberHealth && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-              <MetricCard label="Total Profiles" value={subscriberHealth.totalProfiles.toLocaleString()} />
-              <MetricCard label="Active Lists" value={subscriberHealth.activeLists.toLocaleString()} />
-            </div>
+            <MetricGrid cols={4}>
+              <MetricCard title="Total Profiles" value={subscriberHealth.totalProfiles.toLocaleString()} channel="klaviyo" />
+              <MetricCard title="Active Lists" value={subscriberHealth.activeLists.toLocaleString()} channel="klaviyo" />
+            </MetricGrid>
           )}
 
           {/* Segments */}
@@ -240,8 +230,10 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
       )}
 
       {!loading && !overview && !error && (
-        <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-3)", fontSize: 13 }}>
-          No Klaviyo data available. Ensure your API key is configured in client settings.
+        <div className="empty-state">
+          <div className="empty-state-icon"><Mail style={{ width: 24, height: 24 }} /></div>
+          <p className="empty-state-title">No Klaviyo data available</p>
+          <p className="empty-state-desc">Ensure your Klaviyo API key is configured in client settings.</p>
         </div>
       )}
 

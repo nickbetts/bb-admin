@@ -6,6 +6,8 @@ interface SectionHeaderProps {
   subtitle?: string;
   /** Lucide icon component */
   icon?: LucideIcon;
+  /** Arbitrary ReactNode icon — use when a Lucide icon is not available (e.g. custom SVG) */
+  iconNode?: ReactNode;
   /** Icon colour (any CSS color/token) */
   iconColor?: string;
   /** Slot for action buttons / toggles on the right */
@@ -17,10 +19,12 @@ export function SectionHeader({
   title,
   subtitle,
   icon: Icon,
+  iconNode,
   iconColor = "var(--accent)",
   actions,
   className,
 }: SectionHeaderProps) {
+  const hasIcon = Icon || iconNode;
   return (
     <div
       className={className}
@@ -34,7 +38,7 @@ export function SectionHeader({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-        {Icon && (
+        {hasIcon && (
           <div
             aria-hidden="true"
             style={{
@@ -49,7 +53,11 @@ export function SectionHeader({
               flexShrink: 0,
             }}
           >
-            <Icon style={{ width: 16, height: 16, color: iconColor }} />
+            {Icon ? (
+              <Icon style={{ width: 16, height: 16, color: iconColor }} />
+            ) : (
+              iconNode
+            )}
           </div>
         )}
         <div style={{ minWidth: 0 }}>

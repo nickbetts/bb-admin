@@ -5,6 +5,7 @@ import { RefreshCw, Search } from "lucide-react";
 import { formatCurrency, formatNumber, formatDateDisplay } from "@/lib/utils";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
+import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
@@ -109,17 +110,17 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      {/* Section header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Search style={{ width: 22, height: 22, color: "#00a4ef" }} />
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "var(--text-1)" }}>Microsoft Ads</h2>
-          <span style={{ fontSize: 12, color: "var(--text-3)" }}>{clientName}</span>
-        </div>
-        <button onClick={fetchData} className="btn btn-sm btn-ghost">
-          <RefreshCw style={{ width: 14, height: 14 }} /> Refresh
-        </button>
-      </div>
+      <SectionHeader
+        title="Microsoft Ads"
+        subtitle={clientName}
+        icon={Search}
+        iconColor="#00a4ef"
+        actions={
+          <button onClick={fetchData} className="btn btn-sm btn-ghost">
+            <RefreshCw style={{ width: 14, height: 14 }} /> Refresh
+          </button>
+        }
+      />
 
       {/* Overview KPI Cards */}
       {show("kpis") && (
