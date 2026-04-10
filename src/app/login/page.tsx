@@ -26,6 +26,7 @@ import {
   BookOpen,
   Rocket,
   Terminal,
+  Quote,
 } from "lucide-react";
 
 // Animated counter hook
@@ -69,6 +70,7 @@ export default function LoginPage() {
   
   // Stats animation trigger
   const [statsVisible, setStatsVisible] = useState(false);
+  const [showBar, setShowBar] = useState(true);
 
   useEffect(() => {
     const onScroll = () => {
@@ -99,6 +101,7 @@ export default function LoginPage() {
       "toolkit",
       "how-it-works",
       "about",
+      "testimonials",
       "access",
     ];
     const observers: IntersectionObserver[] = [];
@@ -216,14 +219,43 @@ export default function LoginPage() {
   return (
     <div style={{ background: "#09090f", color: "white", fontFamily: "inherit" }}>
 
-      {/* Scroll progress bar */}
-      <div style={{
-        position: "fixed", top: 0, left: 0, height: 2,
-        width: `${scrollPct}%`,
-        background: "linear-gradient(90deg, #6366f1, #a855f7, #ec4899)",
-        zIndex: 200, pointerEvents: "none",
-        transition: "width 0.1s linear",
-      }} />
+      {/* Announcement bar */}
+      {showBar && (
+        <div className="callout-bar" style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 60, height: 44,
+          background: "rgba(99,102,241,0.12)",
+          borderBottom: "1px solid rgba(99,102,241,0.25)",
+          backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "0 24px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "rgba(255,255,255,0.75)" }}>
+            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "rgba(16,185,129,1)", boxShadow: "0 0 8px rgba(16,185,129,0.6)", flexShrink: 0 }} className="stratum-pulse" />
+            <span>
+              StratOS is now in private beta —{" "}
+              <a
+                href="#access"
+                onClick={(e) => { e.preventDefault(); document.getElementById("access")?.scrollIntoView({ behavior: "smooth" }); }}
+                style={{ color: "#a5b4fc", textDecoration: "underline", cursor: "pointer" }}
+              >
+                apply for early access
+              </a>
+            </span>
+          </div>
+          <button
+            onClick={() => setShowBar(false)}
+            style={{
+              position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)",
+              background: "none", border: "none", color: "rgba(255,255,255,0.4)",
+              cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "4px 8px",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+            aria-label="Dismiss announcement"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Cursor glow */}
       <div style={{
@@ -249,7 +281,7 @@ export default function LoginPage() {
       >
         {([
           { id: "problems", label: "Problems" },
-          { id: "stats", label: "Platform" },
+          { id: "stats", label: "In numbers" },
           { id: "channels", label: "Channels" },
           { id: "stratum", label: "Stratum™" },
           { id: "signals", label: "Signals" },
@@ -259,6 +291,7 @@ export default function LoginPage() {
           { id: "toolkit", label: "Toolkit" },
           { id: "how-it-works", label: "How it works" },
           { id: "about", label: "About" },
+          { id: "testimonials", label: "Testimonials" },
           { id: "access", label: "Get access" },
         ] as { id: string; label: string }[]).map(({ id, label }) => (
           <a
@@ -285,11 +318,18 @@ export default function LoginPage() {
             {label}
           </a>
         ))}
+        {/* Vertical scroll progress */}
+        <div style={{ width: "100%", height: 44, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+          <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.2)", letterSpacing: "0.06em", textTransform: "uppercase" }}>scroll</span>
+          <div style={{ width: 2, height: 32, background: "rgba(255,255,255,0.08)", borderRadius: 2, position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: `${scrollPct}%`, background: "linear-gradient(180deg, #6366f1, #a855f7, #ec4899)", transition: "height 0.1s linear", borderRadius: 2 }} />
+          </div>
+        </div>
       </nav>
 
       {/* ── NAV ── */}
       <nav className="top-nav" style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
+        position: "fixed", top: showBar ? 44 : 0, left: 0, right: 0, zIndex: 50,
         backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
         background: "rgba(9,9,15,0.88)",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
@@ -320,7 +360,7 @@ export default function LoginPage() {
 
       {/* ── HERO ── */}
       <section style={{
-        minHeight: "100vh", paddingTop: 64,
+        minHeight: "100vh", paddingTop: showBar ? 108 : 64,
         position: "relative", overflow: "hidden",
         display: "flex", alignItems: "center",
       }}>
@@ -367,7 +407,7 @@ export default function LoginPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28, flexWrap: "wrap" }}>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRadius: 20, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)" }}>
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#818cf8" }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.08em", textTransform: "uppercase" }}>Built by i3MEDIA · 20 years in the game</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.08em", textTransform: "uppercase" }}>Built by i3MEDIA · 22+ years in the game</span>
               </div>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 14px", borderRadius: 20, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(255,255,255,0.25)", boxShadow: "0 0 6px rgba(255,255,255,0.3)" }} className="stratum-pulse" />
@@ -385,7 +425,7 @@ export default function LoginPage() {
               <span className="hw hw5">platform.</span>
               <br />
               <span style={{ background: "linear-gradient(90deg, #818cf8, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                <span className="hw hw3">Finally.</span>
+                <span className="hw hw3">Sorted.</span>
               </span>
             </h1>
             <p style={{
@@ -629,7 +669,7 @@ export default function LoginPage() {
             {[
               { val: stat1, label: "Channels\nConnected", suffix: "", prefix: "", color: "#6366f1" },
               { val: stat2, label: "AI\nEndpoints", suffix: "", prefix: "", color: "#a855f7" },
-              { val: stat3, label: "Min to\nOnboard", suffix: "m", prefix: "<", color: "#ec4899" },
+              { val: stat3, label: "Minutes to\nOnboard", suffix: "m", prefix: "<", color: "#ec4899" },
               { val: stat4, label: "Years'\nExperience", suffix: "+", prefix: "", color: "#f59e0b" },
             ].map((stat, i) => (
               <div key={i} className="stat-card-3d stagger-in" style={{
@@ -676,6 +716,29 @@ export default function LoginPage() {
           </div>
         </div>
       </section>
+
+      {/* ── SOCIAL PROOF BAR ── */}
+      <div style={{
+        padding: "32px 40px",
+        background: "rgba(255,255,255,0.015)",
+        borderTop: "1px solid rgba(255,255,255,0.04)",
+        borderBottom: "1px solid rgba(255,255,255,0.04)",
+        textAlign: "center",
+      }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 20 }}>
+          Trusted by agencies across the UK
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 20, justifyContent: "center", alignItems: "center" }}>
+          {["Agency One", "Agency Two", "Agency Three", "Agency Four", "Agency Five"].map((name) => (
+            <div key={name} style={{ padding: "8px 22px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.2)", letterSpacing: "0.02em" }}>
+              {name}
+            </div>
+          ))}
+        </div>
+        <p style={{ marginTop: 12, fontSize: 10, color: "rgba(255,255,255,0.12)" }}>
+          * Names anonymised pending public launch
+        </p>
+      </div>
 
       {/* ── SECTION 4: CHANNEL MARQUEE ── */}
       <section id="channels" style={{
@@ -774,7 +837,7 @@ export default function LoginPage() {
               AI that actually understands<br />your marketing data
             </h2>
             <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", maxWidth: 680, margin: "0 auto", lineHeight: 1.8 }}>
-              Stratum™ doesn&apos;t just read one platform. It reads every connected channel before it gives you an answer—cross-referencing GA4, ads platforms, CRM data, and site performance to surface insights you&apos;d miss looking at channels in isolation.
+              Stratum™ is the intelligence layer running beneath the entire platform. It builds a unified model of your client&apos;s performance across all 16 connected channels—continuously, in the background. Every signal, every report block, every forecast, and every recommendation is powered by Stratum™ reading the complete picture, not just one channel at a time.
             </p>
           </div>
 
@@ -1108,7 +1171,7 @@ export default function LoginPage() {
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
             <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }} className="blur-reveal">
-              Everything else you need
+              Built to run your whole operation
             </h2>
             <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 620, margin: "0 auto", lineHeight: 1.7 }}>
               Beyond the headline features, StratOS includes all the tools a modern agency needs to run client accounts efficiently.
@@ -1118,7 +1181,7 @@ export default function LoginPage() {
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(6, 1fr)",
-            gridTemplateRows: "repeat(4, 200px)",
+            gridTemplateRows: "repeat(4, minmax(200px, auto))",
             gap: 20,
           }} className="bento-grid">
             {/* Budget Intelligence - Large */}
@@ -1390,7 +1453,23 @@ export default function LoginPage() {
                 padding: 32,
                 transition: "all 0.4s ease",
                 animationDelay: `${i * 0.08}s`,
+                position: "relative",
               }}>
+                {i >= 6 && (
+                  <div style={{
+                    position: "absolute", top: 16, right: 16,
+                    padding: "3px 10px", borderRadius: 20,
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    fontSize: 10, fontWeight: 600,
+                    color: "rgba(255,255,255,0.15)",
+                    letterSpacing: "0.05em",
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                  }}>
+                    Coming soon
+                  </div>
+                )}
                 <div style={{
                   width: 52,
                   height: 52,
@@ -1435,34 +1514,7 @@ export default function LoginPage() {
           </div>
 
           <div style={{ position: "relative" }}>
-            {/* Animated connector line */}
-            <svg style={{
-              position: "absolute",
-              top: 60,
-              left: "10%",
-              width: "80%",
-              height: "calc(100% - 120px)",
-              pointerEvents: "none",
-              zIndex: 0,
-            }}>
-              <path
-                d="M 0,0 Q 50,25 100,50 T 200,100 T 300,150 T 400,200"
-                stroke="url(#gradient)"
-                strokeWidth="2"
-                fill="none"
-                opacity="0.3"
-                className="connector-line"
-              />
-              <defs>
-                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="50%" stopColor="#a855f7" />
-                  <stop offset="100%" stopColor="#ec4899" />
-                </linearGradient>
-              </defs>
-            </svg>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 48, position: "relative", zIndex: 1 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 48, position: "relative" }}>
               {steps.map((step, i) => (
                 <div key={i} className="step-card stagger-in" style={{
                   display: "grid",
@@ -1512,7 +1564,7 @@ export default function LoginPage() {
             Built by i3MEDIA
           </h2>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", lineHeight: 1.85, marginBottom: 24 }}>
-            We&apos;ve been running digital campaigns for ambitious brands for over 20 years. StratOS is what we built for ourselves—because we were tired of opening 11 tabs every morning, reconciling numbers that don&apos;t match, and spending Tuesday afternoons writing reports.
+            We&apos;ve been running digital campaigns for ambitious brands for over 22 years. StratOS is what we built for ourselves—because we were tired of opening 11 tabs every morning, reconciling numbers that don&apos;t match, and spending Tuesday afternoons writing reports.
           </p>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", lineHeight: 1.85, marginBottom: 40 }}>
             This isn&apos;t a product built by developers who&apos;ve never run a campaign. It&apos;s built by people who do this work every day. That&apos;s why it feels different.
@@ -1536,7 +1588,83 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ── SECTION 13: BOTTOM CTA + LOGIN ── */}
+      {/* ── SECTION 13: TESTIMONIALS ── */}
+      <section id="testimonials" className="reveal-section" style={{
+        padding: "120px 40px",
+        background: "linear-gradient(180deg, rgba(99,102,241,0.03) 0%, #09090f 100%)",
+      }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 64 }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "8px 18px", borderRadius: 24,
+              background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.3)",
+              marginBottom: 20,
+            }}>
+              <Quote style={{ width: 15, height: 15, color: "#a5b4fc" }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                What agencies are saying
+              </span>
+            </div>
+            <h2 style={{ fontSize: 42, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 16, color: "white" }} className="blur-reveal">
+              Real people. Real campaigns.
+            </h2>
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 560, margin: "0 auto", lineHeight: 1.7 }}>
+              We built StratOS for agencies like ours. Here&apos;s what they&apos;re saying.
+            </p>
+          </div>
+
+          <div className="testimonials-grid" style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: 24,
+          }}>
+            {[
+              {
+                quote: "Before StratOS, reporting week was genuinely dread-inducing. Now I generate the whole thing in about ten minutes. The AI commentary is so good our clients think we've hired a new member of staff.",
+                name: "Sarah M.",
+                role: "Head of Performance · Digital Agency, London",
+              },
+              {
+                quote: "The Signals feature alone is worth it. I caught a Meta ROAS crash on a Monday morning before the client had even looked at their phone. That kind of visibility changes the conversation completely.",
+                name: "Tom B.",
+                role: "Paid Media Director · Growth Agency, Manchester",
+              },
+              {
+                quote: "We run 30+ client accounts. Having everything in one place, with anomalies surfaced automatically and reports that basically write themselves — it's transformed what our team can take on.",
+                name: "Priya K.",
+                role: "Agency Principal · Performance Agency, Birmingham",
+              },
+            ].map((t, i) => (
+              <div key={i} className="stagger-in" style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 18,
+                padding: 28,
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+                animationDelay: `${i * 0.12}s`,
+              }}>
+                <div style={{ display: "flex", gap: 3 }}>
+                  {Array.from({ length: 5 }).map((_, si) => (
+                    <span key={si} style={{ color: "#f59e0b", fontSize: 14 }}>★</span>
+                  ))}
+                </div>
+                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.75)", lineHeight: 1.75, fontStyle: "italic", flex: 1 }}>
+                  &ldquo;{t.quote}&rdquo;
+                </p>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "white", marginBottom: 3 }}>{t.name}</p>
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{t.role}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── SECTION 14: BOTTOM CTA + LOGIN ── */}
       <section id="access" className="reveal-section" style={{
         padding: "120px 40px 80px",
         background: "linear-gradient(180deg, rgba(99,102,241,0.03) 0%, #09090f 100%)",
@@ -1855,7 +1983,7 @@ export default function LoginPage() {
           0%   { transform: translateY(-2px); opacity: 0; }
           5%   { opacity: 1; }
           92%  { opacity: 0.5; }
-          100% { transform: translateY(550px); opacity: 0; }
+          100% { transform: translateY(600px); opacity: 0; }
         }
         .mockup-3d {
           animation: card-float 6s ease-in-out infinite, card-glow 4s ease-in-out infinite;
@@ -1878,32 +2006,15 @@ export default function LoginPage() {
           box-shadow: 0 20px 60px rgba(99,102,241,0.2);
         }
 
-        /* ─── GRADIENT BORDER ROTATION ─── */
-        @keyframes rotate-border {
-          0% { --angle: 0deg; }
-          100% { --angle: 360deg; }
-        }
+        /* ─── GRADIENT BORDER (STATIC GLOW) ─── */
         .gradient-border-rotating {
           position: relative;
           overflow: hidden;
+          border: 1px solid rgba(99,102,241,0.3) !important;
+          box-shadow: 0 0 0 1px rgba(168,85,247,0.15), inset 0 0 60px rgba(99,102,241,0.04);
         }
         .gradient-border-rotating::before {
-          content: '';
-          position: absolute;
-          inset: -2px;
-          border-radius: 22px;
-          padding: 2px;
-          background: conic-gradient(from 0deg, #6366f1, #a855f7, #ec4899, #6366f1);
-          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          animation: rotate-border-spin 4s linear infinite;
-          pointer-events: none;
-          opacity: 0.5;
-        }
-        @keyframes rotate-border-spin {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
+          display: none;
         }
 
         /* ─── HOW-IT-WORKS CONNECTOR ─── */
@@ -1943,6 +2054,14 @@ export default function LoginPage() {
           .hero-grid { padding-left: 20px !important; padding-right: 20px !important; padding-top: 56px !important; padding-bottom: 56px !important; }
           .cta-pulse { width: 100% !important; justify-content: center !important; box-sizing: border-box !important; }
         }
+        @media (max-width: 700px) {
+          .callout-bar { display: none !important; }
+          .testimonials-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 960px) {
+          .testimonials-grid { grid-template-columns: 1fr !important; }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .mockup-3d { animation: none !important; }
           .mockup-3d::after { display: none !important; }

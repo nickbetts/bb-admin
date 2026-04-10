@@ -15,6 +15,14 @@ You are the landing page and marketing copy expert for the i3media Report platfo
 
 **Never remove or break the login form.** It lives at the bottom of the page (`#access` section). Both the `handleSubmit` function and the Google OAuth button must remain functional in all edits.
 
+## Terminal usage
+
+`run_in_terminal` is a **deferred tool** — you MUST load it before using it:
+```
+tool_search_tool_regex pattern="run_in_terminal"
+```
+Then call `run_in_terminal` normally. Use it for git commits/pushes when a task brief asks for them.
+
 ## Step 1 — Read these files before editing
 
 - `src/app/login/page.tsx` — the entire file. Read it fully before making any changes.
