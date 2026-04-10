@@ -627,10 +627,10 @@ export default function LoginPage() {
             gap: 20,
           }} className="stats-grid">
             {[
-              { val: stat1, label: "Channels\nConnected", suffix: "", color: "#6366f1" },
-              { val: stat2, label: "AI\nEndpoints", suffix: "", color: "#a855f7" },
-              { val: `<${stat3}`, label: "Min to\nOnboard", suffix: "m", color: "#ec4899" },
-              { val: stat4, label: "Years'\nExperience", suffix: "+", color: "#f59e0b" },
+              { val: stat1, label: "Channels\nConnected", suffix: "", prefix: "", color: "#6366f1" },
+              { val: stat2, label: "AI\nEndpoints", suffix: "", prefix: "", color: "#a855f7" },
+              { val: stat3, label: "Min to\nOnboard", suffix: "m", prefix: "<", color: "#ec4899" },
+              { val: stat4, label: "Years'\nExperience", suffix: "+", prefix: "", color: "#f59e0b" },
             ].map((stat, i) => (
               <div key={i} className="stat-card-3d stagger-in" style={{
                 background: "rgba(255,255,255,0.04)",
@@ -662,7 +662,7 @@ export default function LoginPage() {
                   background: `linear-gradient(135deg, ${stat.color}, rgba(255,255,255,0.9))`,
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
-                }}>{typeof stat.val === "string" ? stat.val : stat.val}{stat.suffix}</div>
+                }}>{stat.prefix}{stat.val}{stat.suffix}</div>
                 <div style={{
                   fontSize: 12,
                   color: "rgba(255,255,255,0.4)",
