@@ -134,6 +134,7 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
                 <h3 className="card-title">Recent Campaigns</h3>
               </div>
               <div className="card-body" style={{ padding: 0 }}>
+                <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border)" }}>
@@ -165,11 +166,12 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Subscriber Health */}
+          {/* Subscriber Health */
           {subscriberHealth && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
               <MetricCard label="Total Profiles" value={subscriberHealth.totalProfiles.toLocaleString()} />
@@ -182,6 +184,7 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
             <div className="card">
               <div className="card-header"><h3 className="card-title">Segments</h3></div>
               <div className="card-body" style={{ padding: 0 }}>
+                <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border)" }}>
@@ -198,15 +201,17 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
           )}
 
-          {/* SMS Campaigns */}
+          {/* SMS Campaigns */
           {smsCampaigns.length > 0 && (
             <div className="card">
               <div className="card-header"><h3 className="card-title">SMS Campaigns</h3></div>
               <div className="card-body" style={{ padding: 0 }}>
+                <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border)" }}>
@@ -227,6 +232,7 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
           )}

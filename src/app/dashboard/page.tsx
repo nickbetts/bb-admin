@@ -167,6 +167,13 @@ export default async function DashboardPage() {
               ))
             )}
           </div>
+          {recentReports.length > 0 && (
+            <div style={{ padding: "14px 28px", borderTop: "1px solid var(--border-subtle)", background: "var(--border-subtle)" }}>
+              <Link href="/reports" style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)", textDecoration: "none" }}>
+                View all reports →
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
