@@ -91,16 +91,16 @@ export async function GET(request: NextRequest) {
   }
 
   // Upsert: update token if this email is already connected, otherwise create
-  const existing = await (prisma as any).ms365Connection.findFirst({
+  const existing = await prisma.ms365Connection.findFirst({
     where: { email },
   });
   if (existing) {
-    await (prisma as any).ms365Connection.update({
+    await prisma.ms365Connection.update({
       where: { id: existing.id },
       data: { refreshToken: refresh_token, label: displayName },
     });
   } else {
-    await (prisma as any).ms365Connection.create({
+    await prisma.ms365Connection.create({
       data: { label: displayName, email, refreshToken: refresh_token },
     });
   }

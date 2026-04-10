@@ -83,7 +83,8 @@ export async function PATCH(
         linkedinAccessToken: data.linkedinAccessToken || null,
         klaviyoApiKey: data.klaviyoApiKey || null,
         klaviyoAccountName: data.klaviyoAccountName || null,
-      } as any,
+        contactEmails: data.contactEmails !== undefined ? data.contactEmails : undefined,
+      },
     });
 
     return NextResponse.json(client);

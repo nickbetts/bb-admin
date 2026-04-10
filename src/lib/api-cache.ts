@@ -19,7 +19,7 @@ export async function withApiCache<T>(
   const now = new Date();
 
   try {
-    const cached = await (prisma as any).apiCache.findUnique({ where: { key } });
+    const cached = await prisma.apiCache.findUnique({ where: { key } });
     if (cached && new Date(cached.expiresAt) > now) {
       return JSON.parse(cached.data) as T;
     }
@@ -31,7 +31,7 @@ export async function withApiCache<T>(
 
   const expiresAt = new Date(now.getTime() + ttlHours * 60 * 60 * 1000);
   try {
-    await (prisma as any).apiCache.upsert({
+    await prisma.apiCache.upsert({
       where: { key },
       create: { key, data: JSON.stringify(result), fetchedAt: now, expiresAt },
       update: { data: JSON.stringify(result), fetchedAt: now, expiresAt },
@@ -46,7 +46,7 @@ export async function withApiCache<T>(
 /** Invalidate a specific cache entry (e.g. after a manual refresh). */
 export async function invalidateApiCache(key: string) {
   try {
-    await (prisma as any).apiCache.delete({ where: { key } });
+    await prisma.apiCache.delete({ where: { key } });
   } catch {
     // Already gone – fine
   }
@@ -55,7 +55,7 @@ export async function invalidateApiCache(key: string) {
 /** Invalidate all cache entries whose key starts with a given prefix. */
 export async function invalidateApiCachePrefix(prefix: string) {
   try {
-    await (prisma as any).apiCache.deleteMany({
+    await prisma.apiCache.deleteMany({
       where: { key: { startsWith: prefix } },
     });
   } catch {
