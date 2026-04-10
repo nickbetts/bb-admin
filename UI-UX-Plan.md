@@ -1,7 +1,22 @@
 # UI/UX Audit & Improvement Plan
 
-> Full platform audit — 10 April 2026
+> Full platform audit — 10 April 2026  
+> Last updated: Phase 1 ✅ implemented — commit `8564e2c`
 > Covers: dashboards, channel sections, metric cards, tables, charts, reports, tools, settings, admin, portal, forms, modals, navigation, loading/error states, accessibility, responsive, and design-system foundations.
+
+---
+
+## Implementation Status
+
+| Phase | Status | Commit |
+|-------|--------|--------|
+| Phase 1 — Foundation (shared components + CSS tokens) | ✅ Complete | `8564e2c` |
+| Phase 2 — Channel section unification + chart config | ✅ Complete | `8564e2c` |
+| Phase 3 — Interactivity & Polish | 🔲 Pending | — |
+| Phase 4 — Accessibility & Responsive | 🔲 Pending | — |
+| Phase 5 — Dark Mode & Advanced | 🔲 Pending | — |
+
+---
 
 ---
 
@@ -694,32 +709,33 @@ interface ModalProps {
 
 ---
 
-## Appendix A: Component Inventory (to create)
+## Appendix A: Component Inventory
 
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `DataTable` | `src/components/ui/DataTable.tsx` | Shared sortable, paginated, searchable table |
-| `Modal` | `src/components/ui/Modal.tsx` | Shared accessible dialog |
-| `MetricGrid` | `src/components/dashboard/shared/MetricGrid.tsx` | Responsive grid wrapper for MetricCards |
-| `SectionHeader` | `src/components/dashboard/shared/SectionHeader.tsx` | Channel section header with icon + title |
-| `SectionLoading` | `src/components/dashboard/shared/SectionLoading.tsx` | Channel-branded loading state |
-| `SectionError` | `src/components/dashboard/shared/SectionError.tsx` | Standardised error with retry |
-| `SectionSkeleton` | `src/components/dashboard/shared/SectionSkeleton.tsx` | Skeleton loading for full section |
-| `AlertCard` | `src/components/dashboard/shared/AlertCard.tsx` | Severity-tiered alert display |
-| `ChartWrapper` | `src/components/ui/ChartWrapper.tsx` | Recharts container with loading/error |
-| `ProgressBar` | `src/components/ui/ProgressBar.tsx` | Inline progress bar |
-| `ScoreRing` | `src/components/ui/ScoreRing.tsx` | Circular SVG gauge |
-| `MiniBarChart` | `src/components/ui/MiniBarChart.tsx` | Inline div-based bars |
-| `Toggle` | `src/components/ui/Toggle.tsx` | Boolean toggle switch |
-| `Breadcrumb` | `src/components/ui/Breadcrumb.tsx` | Path breadcrumb navigation |
-| `Sparkline` | `src/components/ui/Sparkline.tsx` | Tiny SVG line for MetricCard |
+| Component | Location | Purpose | Status |
+|-----------|----------|---------|--------|
+| `DataTable` | `src/components/ui/DataTable.tsx` | Shared sortable, paginated, searchable table | ✅ Created |
+| `Modal` | `src/components/ui/Modal.tsx` | Shared accessible dialog | ✅ Created |
+| `Sparkline` | `src/components/ui/Sparkline.tsx` | Tiny SVG line for MetricCard | ✅ Created |
+| `ProgressBar` | `src/components/ui/ProgressBar.tsx` | Inline progress bar | ✅ Created |
+| `ScoreRing` | `src/components/ui/ScoreRing.tsx` | Circular SVG gauge | ✅ Created |
+| `Toggle` | `src/components/ui/Toggle.tsx` | Boolean toggle switch | ✅ Created |
+| `Breadcrumb` | `src/components/ui/Breadcrumb.tsx` | Path breadcrumb navigation | ✅ Created |
+| `MetricGrid` | `src/components/dashboard/shared/MetricGrid.tsx` | Responsive grid wrapper for MetricCards | ✅ Created |
+| `SectionHeader` | `src/components/dashboard/shared/SectionHeader.tsx` | Channel section header with icon + title | ✅ Created |
+| `SectionLoading` | `src/components/dashboard/shared/SectionLoading.tsx` | Channel-branded loading state | ✅ Created |
+| `SectionError` | `src/components/dashboard/shared/SectionError.tsx` | Standardised error with retry | ✅ Created |
+| `SectionSkeleton` | `src/components/dashboard/shared/SectionSkeleton.tsx` | Skeleton loading for full section | ✅ Created |
+| `AlertCard` | `src/components/dashboard/shared/AlertCard.tsx` | Severity-tiered alert display | ✅ Created |
+| `MetricCard` (sparkline + loading) | `src/components/ui/MetricCard.tsx` | Updated with `sparkline` + `loading` props | ✅ Updated |
+| `ChartWrapper` | `src/components/ui/ChartWrapper.tsx` | Recharts container with loading/error | 🔲 Pending Phase 3 |
+| `MiniBarChart` | `src/components/ui/MiniBarChart.tsx` | Inline div-based bars | 🔲 Pending Phase 3 |
 
-## Appendix B: Shared Config Files (to create)
+## Appendix B: Shared Config Files
 
-| File | Purpose |
-|------|---------|
-| `src/lib/design-tokens.ts` | Channel colours, status colours, chart palette |
-| `src/lib/chart-config.ts` | Shared Recharts tooltip, axis, grid, height constants |
+| File | Purpose | Status |
+|------|---------|--------|
+| `src/lib/design-tokens.ts` | Channel colours, status colours, chart palette | ✅ Created |
+| `src/lib/chart-config.ts` | Shared Recharts tooltip, axis, grid, height constants | ✅ Created |
 
 ## Appendix C: Files That Need the Most Work
 
