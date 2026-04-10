@@ -33,6 +33,9 @@ interface PageOptimisation {
   keywords: ParsedKeyword[];
   notes: string;
   priority: boolean;
+  impact?: number; // 1–5
+  effort?: number; // 1–5
+  quickWin?: boolean; // derived: any keyword pos 4–10, vol >= 100
 }
 
 interface ProposedPage {
@@ -40,6 +43,8 @@ interface ProposedPage {
   keywords: ParsedKeyword[];
   notes: string;
   priority: boolean;
+  impact?: number;
+  effort?: number;
 }
 
 interface BlogPost {
@@ -47,12 +52,17 @@ interface BlogPost {
   keywords: ParsedKeyword[];
   notes: string;
   priority: boolean;
+  impact?: number;
+  effort?: number;
+  cluster?: string; // topical cluster grouping
 }
 
 interface LinkTarget {
   url: string;
   anchorKeyword: string;
   anchorType: string;
+  impact?: number;
+  effort?: number;
 }
 
 export interface ContentStrategyData {
@@ -63,6 +73,12 @@ export interface ContentStrategyData {
   categoryPages: ProposedPage[];
   blogPosts: BlogPost[];
   linkTargets: LinkTarget[];
+  quickWins: PageOptimisation[]; // derived: page opts where any keyword is pos 4–10, vol >= 100
+  roadmap: {
+    month1: string[];
+    months2to3: string[];
+    months4plus: string[];
+  };
   stats: {
     totalPageOptimisations: number;
     totalLandingPages: number;
@@ -497,16 +513,38 @@ ${backlinkText || "  (no backlinks found)"}
 ${anchorText || "  (no anchor data)"}`;
 }
 
-const STRATEGY_SYSTEM_PROMPT = `You are an expert SEO Content Strategist at a UK digital marketing agency producing a COMPREHENSIVE content strategy for a client. This strategy will be presented as a professional deliverable. It must be thorough and substantial — not a skeleton.
+const STRATEGY_SYSTEM_PROMPT = `You are a senior SEO strategist at a UK digital marketing agency producing a content strategy your team will execute on behalf of a client. This document will be presented as a professional deliverable.
+
+CONTEXT: You are the agency. Write all notes as "we will…" or "this page will…" — never "you should…". The client reads this to understand what we're going to do for them, not a list of tasks for them to action themselves.
 
 RULES:
-1. Use keywords and volumes from the data provided. Do NOT invent volumes.
-2. URLs must be copied exactly from the data.
-3. Write all notes/titles in British English.
-4. Be THOROUGH. A good content strategy is comprehensive. Include EVERY worthwhile opportunity.
-5. If SITEMAP data is provided, use it to identify gaps — topics/services/products NOT yet covered by existing content.
-6. For landing pages and blog posts, you may suggest topics based on the content gap keywords, the client's industry (inferred from their site), and common sense about what their audience would search for.
-7. Group related keywords together under single pages/posts for topical authority.
+1. Use keyword volumes from the data provided. Do NOT invent or round volumes — copy them exactly.
+2. URLs must be copied exactly as they appear in the data.
+3. Write all titles and notes in British English.
+4. Be THOROUGH — exhaust every worthwhile opportunity in the data. Do not cut short artificially. If the data supports 15 page optimisations, suggest 15. If 20 blog posts are supported by the content gap, suggest 20.
+5. Do NOT duplicate suggestions across sections. Each gap keyword belongs in either a landing page (commercial intent) or a blog post (informational intent), not both.
+6. Commercial/transactional intent (buying, hiring, near me, best, agency, cost, price, service, provider) → landing page.
+7. Informational intent (how to, what is, guide, tips, examples, checklist, vs, difference between) → blog post.
+8. If SITEMAP data is provided, study it carefully. Do NOT suggest pages that already exist. Identify genuine gaps — services, locations, or topics the site doesn't currently cover.
+9. Group blog posts into topical clusters using the "cluster" field (e.g. "Local SEO", "PPC Basics", "Content Marketing"). Posts in the same cluster build topical authority and should internally link to each other.
+10. Score each item honestly using impact (1–5) and effort (1–5). The roadmap is derived from these scores, so accuracy matters.
+
+SCORING GUIDE:
+- impact 5: Likely to rank page 1, high volume, strong commercial value
+- impact 4: Good potential — solid volume or strong commercial relevance
+- impact 3: Useful but niche, lower competition, or moderate volume
+- impact 2: Minor gain, low volume, or highly competitive
+- impact 1: Brand awareness or very long-tail only
+- effort 1: Minor update to an existing page (title tag, meta, add a section) — under 2 hours
+- effort 2: New short page, light research needed — 2–4 hours
+- effort 3: New page requiring depth and original content — half a day
+- effort 4: Pillar content, location hub, or technical page — 1–2 days
+- effort 5: Large content hub, technical overhaul, or series of pages — 2+ days
+
+FOR THE ROADMAP, distribute tasks across three phases:
+- month1: High impact + low effort items ("quick wins") — what we'll tackle first to show early results
+- months2to3: Core strategic work — the main new pages and content build-out
+- months4plus: Longer-term authority building — pillar content, link outreach, competitive gaps
 
 OUTPUT FORMAT (strict JSON, no markdown):
 {
@@ -514,69 +552,56 @@ OUTPUT FORMAT (strict JSON, no markdown):
     {
       "url": "domain.com/page/",
       "keywords": [{"keyword": "keyword from data", "volume": 1000}],
-      "notes": "Specific, actionable note on what to improve and why"
+      "notes": "We will expand this page to target [keyword] by adding a FAQ section and updating the title tag to include [keyword].",
+      "impact": 4,
+      "effort": 2
     }
   ],
   "landingPages": [
     {
       "title": "Descriptive Page Title",
       "keywords": [{"keyword": "keyword from data", "volume": 500}],
-      "notes": "What this page should cover, target audience, and conversion goal"
+      "notes": "We will create this page to capture [audience] searching for [intent]. The page will cover [topics] and include a clear conversion path.",
+      "impact": 4,
+      "effort": 3
     }
   ],
   "blogPosts": [
     {
       "title": "Blog Post Title",
       "keywords": [{"keyword": "keyword from data", "volume": 200}],
-      "notes": "Article angle, target audience, and how it supports the overall strategy"
+      "notes": "We will write this article targeting [audience] at the [awareness/consideration] stage. It will cover [angle] and link internally to [relevant commercial page].",
+      "cluster": "Topical Cluster Name",
+      "impact": 3,
+      "effort": 2
     }
   ],
   "linkTargets": [
     {
       "url": "domain.com/important-page/",
       "anchorKeyword": "best anchor keyword",
-      "anchorType": "Exact"
+      "anchorType": "Exact",
+      "impact": 4,
+      "effort": 2
     }
-  ]
+  ],
+  "roadmap": {
+    "month1": [
+      "Update title tags and meta descriptions on homepage and top 3 service pages",
+      "Publish quick-win blog post targeting '[high-volume keyword]'"
+    ],
+    "months2to3": [
+      "Build and publish [Landing Page Title] targeting [keyword cluster]",
+      "Create [Blog Post Title] and [Blog Post Title 2] for [Cluster Name] cluster"
+    ],
+    "months4plus": [
+      "Develop pillar content hub for [topic]",
+      "Launch link outreach campaign targeting [page] for [anchor type] links"
+    ]
+  }
 }
 
-MANDATORY MINIMUMS — you MUST meet these or the strategy will be rejected:
-
-**Page Optimisations** (MINIMUM 10, aim for 15–30):
-- ANY page ranking position 4–30 for keywords with volume 30+ is a candidate
-- Group multiple keywords under the same URL
-- Even pages ranking well (pos 4–10) can be optimised to dominate
-- Include pages that are "almost there" (pos 11–20) — these are quick wins
-- Notes must be specific: "Add FAQ section targeting [keyword]", "Expand content to cover [related terms]", "Improve title tag to include [keyword]"
-
-**Proposed Landing Pages** (MINIMUM 8, aim for 10–25):
-- Create pages from content gap keywords (competitors rank, client doesn't)
-- Cluster related gap keywords into logical page topics
-- Consider location-based pages if the business is local/regional
-- Consider product/service category pages
-- If sitemap data shows missing topics, create pages for those gaps
-- Choose titles that would make good H1 tags
-- Focus on commercial and transactional intent keywords
-- Include a notes field explaining the page's purpose and target audience
-
-**Blog Posts** (MINIMUM 8, aim for 10–20):
-- Use informational-intent keywords from the content gap
-- Group related questions into single articles
-- Consider "how to", "guide to", "what is", "best", "vs" style content
-- If the sitemap shows the client has a blog, identify topics they haven't covered yet
-- If they DON'T have a blog, suggest starting one with foundational articles
-- Write titles that work as real headlines
-- Include a mix of top-of-funnel (awareness) and mid-funnel (consideration) content
-
-**Link Targets** (MINIMUM 5, aim for 8–15):
-- Every important commercial page should have link building support
-- Select 2–3 anchor keyword variations per URL
-- Use a mix of Exact, Broad, and Brand anchor types
-- Include the homepage as a link target with brand anchors
-- Include top service/product pages
-- Include key blog posts that can attract editorial links
-
-If the content gap data is limited, use the struggling pages data and sitemap to identify additional opportunities. A THIN strategy is worse than no strategy — be comprehensive.`;
+GUIDANCE — include every worthwhile opportunity. When in doubt, include it. A comprehensive strategy inspires confidence; a thin one raises questions. Always include a roadmap with at least 3 items per phase.`;
 
 // ─── Generate the strategy ──────────────────────────────────────────────────
 
@@ -626,6 +651,11 @@ export async function generateContentStrategy(
   const raw = JSON.parse(content);
 
   // Step 4: Validate and structure the output
+  function parseScore(val: unknown): number | undefined {
+    const n = Number(val);
+    return n >= 1 && n <= 5 ? Math.round(n) : undefined;
+  }
+
   const pageOptimisations: PageOptimisation[] = (
     Array.isArray(raw.pageOptimisations) ? raw.pageOptimisations : []
   )
@@ -646,6 +676,8 @@ export async function generateContentStrategy(
         })),
       notes: String(p.notes || ""),
       priority: false,
+      impact: parseScore(p.impact),
+      effort: parseScore(p.effort),
     }));
 
   const landingPages: ProposedPage[] = (
@@ -668,6 +700,8 @@ export async function generateContentStrategy(
         })),
       notes: String(p.notes || ""),
       priority: false,
+      impact: parseScore(p.impact),
+      effort: parseScore(p.effort),
     }));
 
   const blogPosts: BlogPost[] = (
@@ -690,6 +724,9 @@ export async function generateContentStrategy(
         })),
       notes: String(p.notes || ""),
       priority: false,
+      impact: parseScore(p.impact),
+      effort: parseScore(p.effort),
+      cluster: typeof p.cluster === "string" && p.cluster.trim() ? p.cluster.trim() : undefined,
     }));
 
   const linkTargets: LinkTarget[] = (
@@ -705,7 +742,17 @@ export async function generateContentStrategy(
       anchorType: ["Exact", "Broad", "Brand"].includes(String(t.anchorType))
         ? String(t.anchorType)
         : "Broad",
+      impact: parseScore(t.impact),
+      effort: parseScore(t.effort),
     }));
+
+  // Parse roadmap from GPT output
+  const rawRoadmap = raw.roadmap as Record<string, unknown> | undefined;
+  const roadmap = {
+    month1: Array.isArray(rawRoadmap?.month1) ? rawRoadmap!.month1.map(String) : [],
+    months2to3: Array.isArray(rawRoadmap?.months2to3) ? rawRoadmap!.months2to3.map(String) : [],
+    months4plus: Array.isArray(rawRoadmap?.months4plus) ? rawRoadmap!.months4plus.map(String) : [],
+  };
 
   // Set priority flags
   for (const opt of pageOptimisations) {
@@ -718,6 +765,23 @@ export async function generateContentStrategy(
     post.priority = post.keywords.some((k) => k.volume >= 1000);
   }
 
+  // Derive quick wins from SEMrush data: pages ranking 4–10 with any keyword vol >= 100
+  // We cross-reference the page optimisations against the raw SEMrush organic data
+  const semrushPositionMap = new Map<string, number[]>();
+  for (const kw of collectedData.organicKeywords) {
+    if (!kw.url) continue;
+    const cleanUrl = kw.url.replace(/^https?:\/\//, "").replace(/^www\./, "");
+    const positions = semrushPositionMap.get(cleanUrl) ?? [];
+    positions.push(kw.position);
+    semrushPositionMap.set(cleanUrl, positions);
+  }
+  const quickWins: PageOptimisation[] = pageOptimisations.filter((opt) => {
+    const positions = semrushPositionMap.get(opt.url) ?? [];
+    const hasQuickWinPosition = positions.some((pos) => pos >= 4 && pos <= 10);
+    const hasVolume = opt.keywords.some((k) => k.volume >= 100);
+    return hasQuickWinPosition && hasVolume;
+  });
+
   const strategyData: ContentStrategyData = {
     clientName,
     period: "",
@@ -726,6 +790,8 @@ export async function generateContentStrategy(
     categoryPages: [],
     blogPosts,
     linkTargets,
+    quickWins,
+    roadmap,
     stats: {
       totalPageOptimisations: pageOptimisations.length,
       totalLandingPages: landingPages.length,
