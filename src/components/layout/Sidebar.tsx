@@ -29,6 +29,8 @@ import {
   FileSpreadsheet,
   Eye,
   EyeOff,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 interface NavItem {
@@ -332,8 +334,25 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const stored = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return stored === "dark" || (!stored && prefersDark);
+  });
   const pathname = usePathname();
   const router = useRouter();
+
+  // Keep document data-theme attribute in sync with darkMode state
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", darkMode ? "dark" : "light");
+  }, [darkMode]);
+
+  function toggleDarkMode() {
+    const next = !darkMode;
+    setDarkMode(next);
+    localStorage.setItem("theme", next ? "dark" : "light");
+  }
 
   useEffect(() => {
     const check = () => {
@@ -386,6 +405,7 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
             <Link
               key={item.href}
               href={href}
+              aria-current={isActive ? "page" : undefined}
               title={collapsed ? item.label : undefined}
               className={cn("nav-item", isActive && "active", collapsed && "justify-center")}
               style={collapsed ? { justifyContent: "center" } : undefined}
@@ -406,6 +426,7 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-current={isActive ? "page" : undefined}
                   title={collapsed ? item.label : undefined}
                   className={cn("nav-item", isActive && "active", collapsed && "justify-center")}
                   style={collapsed ? { justifyContent: "center" } : undefined}
@@ -424,6 +445,7 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-current={isActive ? "page" : undefined}
                   title={collapsed ? item.label : undefined}
                   className={cn("nav-item", isActive && "active", collapsed && "justify-center")}
                   style={collapsed ? { justifyContent: "center" } : undefined}
@@ -445,6 +467,7 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
               return (
                 <Link
                   href="/admin"
+                  aria-current={isActive ? "page" : undefined}
                   title={collapsed ? "Admin" : undefined}
                   className={cn("nav-item", isActive && "active", collapsed && "justify-center")}
                   style={collapsed ? { justifyContent: "center" } : undefined}
@@ -512,6 +535,17 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
                 </p>
               </div>
             </div>
+            <button
+              onClick={toggleDarkMode}
+              className="nav-item"
+              style={{ marginTop: 4 }}
+              aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              <span className="nav-item-icon" style={{ display: "flex", width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                {darkMode ? <Sun style={{ width: 16, height: 16 }} /> : <Moon style={{ width: 16, height: 16 }} />}
+              </span>
+              <span>{darkMode ? "Light mode" : "Dark mode"}</span>
+            </button>
             <button onClick={handleLogout} className="nav-item sidebar-logout-btn" style={{ marginTop: 4 }} aria-label="Sign out">
               <span className="nav-item-icon" style={{ display: "flex", width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
                 <LogOut style={{ width: 16, height: 16 }} />
@@ -578,6 +612,18 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
             </div>
           </div>
         )}
+        <button
+          onClick={toggleDarkMode}
+          title={collapsed ? (darkMode ? "Light mode" : "Dark mode") : undefined}
+          className="nav-item"
+          style={{ ...(collapsed ? { justifyContent: "center" } : {}), marginTop: 4 }}
+          aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          <span className="nav-item-icon" style={{ display: "flex", width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+            {darkMode ? <Sun style={{ width: 16, height: 16 }} /> : <Moon style={{ width: 16, height: 16 }} />}
+          </span>
+          {!collapsed && <span>{darkMode ? "Light mode" : "Dark mode"}</span>}
+        </button>
         <button
           onClick={handleLogout}
           title={collapsed ? "Sign out" : undefined}

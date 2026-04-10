@@ -237,9 +237,12 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
           {tabs.map((tab) => (
             <button
               key={tab.id}
+              id={`tab-${tab.id}`}
               onClick={() => handleTabChange(tab.id)}
               role="tab"
               aria-selected={activeTab === tab.id}
+              aria-controls={`tab-panel-${tab.id}`}
+              tabIndex={activeTab === tab.id ? 0 : -1}
               className={cn("tab-btn", activeTab === tab.id && "active")}
             >
               {tab.label}
@@ -285,7 +288,13 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
       )}
 
       {/* Section content */}
-      <div style={{ opacity: tabTransitioning ? 0.5 : 1, pointerEvents: tabTransitioning ? "none" : "auto", transition: "opacity 0.2s" }}>
+      <div
+        id={`tab-panel-${activeTab}`}
+        role="tabpanel"
+        aria-labelledby={`tab-${activeTab}`}
+        tabIndex={-1}
+        style={{ opacity: tabTransitioning ? 0.5 : 1, pointerEvents: tabTransitioning ? "none" : "auto", transition: "opacity 0.2s" }}
+      >
       {activeTab === "signals" && (
         <SignalsSection client={client} startDate={startDate} endDate={endDate} />
       )}

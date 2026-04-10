@@ -61,7 +61,7 @@ export async function AuthenticatedLayout({
         previewRoleId={previewRoleId}
         previewRoleName={previewRoleName}
       />
-      <main className="app-main">{children}</main>
+      <main id="main-content" className="app-main">{children}</main>
     </div>
   );
 }
