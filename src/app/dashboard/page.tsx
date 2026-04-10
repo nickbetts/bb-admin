@@ -134,7 +134,8 @@ export default async function DashboardPage() {
                 <Link
                   key={client.id}
                   href={`/clients/${client.slug}`}
-                  className="flex items-center justify-between px-8 py-4 border-b border-[var(--border-subtle)] no-underline transition-colors hover:bg-[var(--border-subtle)]"
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 32px", borderBottom: "1px solid var(--border-subtle)", textDecoration: "none", transition: "background 0.15s" }}
+                  className="hover:bg-[var(--border-subtle)]"
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 10, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 16, fontWeight: 700, flexShrink: 0, boxShadow: "0 2px 8px rgb(99 102 241 / 0.25)" }}>
@@ -180,7 +181,8 @@ export default async function DashboardPage() {
                 <Link
                   key={report.id}
                   href={`/reports/${report.id}`}
-                  className="flex items-center justify-between px-8 py-4 border-b border-[var(--border-subtle)] no-underline transition-colors hover:bg-[var(--border-subtle)]"
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 32px", borderBottom: "1px solid var(--border-subtle)", textDecoration: "none", transition: "background 0.15s" }}
+                  className="hover:bg-[var(--border-subtle)]"
                 >
                   <div>
                     <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{report.title}</p>
@@ -220,7 +222,8 @@ export default async function DashboardPage() {
               <Link
                 key={signal.id}
                 href={`/clients/${signal.client.slug}`}
-                className="flex items-start gap-4 px-8 py-4 border-b border-[var(--border-subtle)] no-underline transition-colors hover:bg-[var(--border-subtle)]"
+                style={{ display: "flex", alignItems: "flex-start", gap: 16, padding: "16px 32px", borderBottom: "1px solid var(--border-subtle)", textDecoration: "none", transition: "background 0.15s" }}
+                className="hover:bg-[var(--border-subtle)]"
               >
                 <AlertTriangle
                   style={{ width: 15, height: 15, color: SEVERITY_COLOUR[signal.severity] ?? "var(--warning)", flexShrink: 0, marginTop: 1 }}

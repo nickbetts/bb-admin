@@ -5,10 +5,10 @@
 ============================================= */
 :root {
   /* Colors */
-  --bg:            #f4f6f9;
+  --bg:            #eef0f8;
   --surface:       #ffffff;
-  --border:        #e5e7eb;
-  --border-subtle: #f1f5f9;
+  --border:        #e2e5f0;
+  --border-subtle: #edf0f7;
 
   --text:          #0f172a;
   --text-2:        #475569;
@@ -44,10 +44,10 @@
   --gradient-surface: linear-gradient(135deg, rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.7));
 
   /* Glassmorphism */
-  --glass-bg:     rgb(255 255 255 / 0.72);
-  --glass-border: rgb(255 255 255 / 0.6);
-  --glass-blur:   16px;
-  --glass-shine:  inset 0 1px 0 0 rgb(255 255 255 / 0.6);
+  --glass-bg:     rgb(255 255 255 / 0.82);
+  --glass-border: rgb(255 255 255 / 0.65);
+  --glass-blur:   20px;
+  --glass-shine:  inset 0 1px 0 0 rgb(255 255 255 / 0.75);
 
   /* ── Semantic status tokens ── */
   --success-bg:      #f0fdf4;
@@ -166,9 +166,10 @@ body {
   flex: 1;
   overflow-y: auto;
   background:
-    radial-gradient(ellipse at 15% 0%, rgb(99 102 241 / 0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 85% 20%, rgb(168 85 247 / 0.03) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 100%, rgb(236 72 153 / 0.02) 0%, transparent 40%),
+    radial-gradient(ellipse at 10% 0%,   rgb(99 102 241 / 0.10) 0%, transparent 48%),
+    radial-gradient(ellipse at 90% 15%,  rgb(168 85 247 / 0.08) 0%, transparent 48%),
+    radial-gradient(ellipse at 55% 100%, rgb(236 72 153 / 0.06) 0%, transparent 42%),
+    radial-gradient(ellipse at 28% 65%,  rgb(99 102 241 / 0.04) 0%, transparent 35%),
     var(--bg);
 }
 
@@ -417,9 +418,9 @@ body {
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-  background: rgb(244 246 249 / 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgb(238 240 248 / 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   padding-top: 4px;
   padding-bottom: 4px;
   margin-top: -4px;
@@ -453,13 +454,14 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
   -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border);
   border-radius: var(--r-xl);
-  box-shadow: var(--shadow-sm), var(--glass-shine);
+  box-shadow: var(--shadow-sm), var(--glass-shine), 0 0 0 1px rgb(99 102 241 / 0.04);
   overflow: hidden;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card:hover {
-  box-shadow: var(--shadow), var(--glass-shine);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow), var(--glass-shine), 0 0 0 1px rgb(99 102 241 / 0.07);
 }
 
 .card-header {
@@ -510,15 +512,15 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
+  height: 2px;
   background: var(--gradient-accent-wide);
-  opacity: 0;
+  opacity: 0.2;
   transition: opacity 0.3s ease;
 }
 
 .metric-card:hover {
   transform: translateY(-3px);
-  box-shadow: var(--shadow-glow), var(--glass-shine);
+  box-shadow: var(--shadow-glow), var(--glass-shine), 0 0 0 1px rgb(99 102 241 / 0.08);
 }
 
 .metric-card:hover::before {
@@ -609,12 +611,12 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
 .btn-primary {
   background: var(--gradient-accent);
   color: white;
-  box-shadow: 0 2px 12px -2px rgb(99 102 241 / 0.35);
+  box-shadow: 0 2px 16px -2px rgb(99 102 241 / 0.45), 0 0 0 1px rgb(99 102 241 / 0.15);
 }
 .btn-primary:hover {
-  box-shadow: 0 4px 20px -4px rgb(99 102 241 / 0.50);
+  box-shadow: 0 4px 28px -4px rgb(99 102 241 / 0.65), 0 0 0 1px rgb(99 102 241 / 0.20);
   transform: translateY(-1px);
-  filter: brightness(1.05);
+  filter: brightness(1.08);
 }
 
 .btn-secondary {
@@ -1286,10 +1288,10 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
    DARK MODE
 ============================================= */
 [data-theme="dark"] {
-  --bg:            #0b0d14;
-  --surface:       #14161f;
-  --border:        #1f2233;
-  --border-subtle: #191c28;
+  --bg:            #09090f;
+  --surface:       #0f111b;
+  --border:        #1a1d2e;
+  --border-subtle: #141727;
 
   --text:          #f1f5f9;
   --text-2:        #94a3b8;
@@ -1325,10 +1327,10 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
   --gradient-accent-wide: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
   --gradient-surface: linear-gradient(135deg, rgb(20 22 31 / 0.9), rgb(20 22 31 / 0.7));
 
-  --glass-bg:     rgb(20 22 31 / 0.75);
-  --glass-border: rgb(255 255 255 / 0.06);
-  --glass-blur:   16px;
-  --glass-shine:  inset 0 1px 0 0 rgb(255 255 255 / 0.05);
+  --glass-bg:     rgb(15 17 26 / 0.85);
+  --glass-border: rgb(129 140 248 / 0.10);
+  --glass-blur:   20px;
+  --glass-shine:  inset 0 1px 0 0 rgb(255 255 255 / 0.06);
 
   --shadow-xs: 0 1px 3px 0 rgb(0 0 0 / 0.40);
   --shadow-sm: 0 2px 8px -2px rgb(0 0 0 / 0.50), 0 1px 2px -1px rgb(0 0 0 / 0.35);
@@ -1678,24 +1680,51 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
 ============================================= */
 [data-theme="dark"] .app-main {
   background:
-    radial-gradient(ellipse at 15% 0%, rgb(129 140 248 / 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 85% 20%, rgb(192 132 252 / 0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 100%, rgb(244 114 182 / 0.03) 0%, transparent 40%),
+    /* Dot grid */
+    radial-gradient(circle, rgb(255 255 255 / 0.028) 1px, transparent 1px),
+    /* Orbs */
+    radial-gradient(ellipse at 12% 0%,   rgb(99 102 241 / 0.28) 0%, transparent 48%),
+    radial-gradient(ellipse at 88% 18%,  rgb(168 85 247 / 0.20) 0%, transparent 48%),
+    radial-gradient(ellipse at 50% 100%, rgb(236 72 153 / 0.12) 0%, transparent 42%),
+    radial-gradient(ellipse at 28% 62%,  rgb(99 102 241 / 0.07) 0%, transparent 36%),
     var(--bg);
+  background-size: 28px 28px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
 }
 
 [data-theme="dark"] .sidebar {
-  background: rgb(20 22 31 / 0.85);
-  border-right: 1px solid rgb(255 255 255 / 0.04);
-  box-shadow: 1px 0 24px -8px rgb(0 0 0 / 0.30);
+  background: rgb(9 9 15 / 0.94);
+  border-right: 1px solid rgb(99 102 241 / 0.10);
+  box-shadow: 1px 0 40px -8px rgb(0 0 0 / 0.60);
 }
 
 [data-theme="dark"] .page-header {
-  background: rgb(11 13 20 / 0.8);
+  background: rgb(9 9 15 / 0.88);
+  border-bottom: 1px solid rgb(129 140 248 / 0.06);
+}
+
+[data-theme="dark"] .card {
+  border: 1px solid rgb(129 140 248 / 0.10);
+  box-shadow: var(--shadow-sm), var(--glass-shine), 0 0 0 1px rgb(129 140 248 / 0.04);
+}
+
+[data-theme="dark"] .card:hover {
+  transform: translateY(-1px);
+  border-color: rgb(129 140 248 / 0.18);
+  box-shadow: var(--shadow), var(--glass-shine), 0 0 40px -12px rgb(99 102 241 / 0.22), 0 0 0 1px rgb(129 140 248 / 0.10);
+}
+
+[data-theme="dark"] .metric-card {
+  border: 1px solid rgb(129 140 248 / 0.10);
+  box-shadow: var(--shadow-sm), var(--glass-shine), 0 0 0 1px rgb(129 140 248 / 0.04);
+}
+
+[data-theme="dark"] .metric-card:hover {
+  border-color: rgb(129 140 248 / 0.22);
+  box-shadow: 0 0 0 1px rgb(129 140 248 / 0.12), 0 8px 32px -8px rgb(99 102 241 / 0.30), var(--glass-shine);
 }
 
 [data-theme="dark"] .card-header {
-  border-bottom: 1px solid rgb(255 255 255 / 0.04);
+  border-bottom: 1px solid rgb(129 140 248 / 0.06);
 }
 
 [data-theme="dark"] .nav-item:hover {
@@ -1703,7 +1732,8 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
 }
 
 [data-theme="dark"] .nav-item.active {
-  background: linear-gradient(90deg, rgb(129 140 248 / 0.12), rgb(192 132 252 / 0.06));
+  background: linear-gradient(90deg, rgb(99 102 241 / 0.20), rgb(168 85 247 / 0.08));
+  box-shadow: 0 0 20px -6px rgb(99 102 241 / 0.20);
 }
 
 [data-theme="dark"] .btn-ghost:hover {
@@ -1725,5 +1755,29 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
 
 [data-theme="dark"] .btn-secondary {
   background: var(--glass-bg);
+  border-color: rgb(129 140 248 / 0.12);
+}
+
+[data-theme="dark"] .btn-primary {
+  box-shadow: 0 2px 20px -2px rgb(99 102 241 / 0.60), 0 0 0 1px rgb(129 140 248 / 0.25);
+}
+[data-theme="dark"] .btn-primary:hover {
+  box-shadow: 0 4px 32px -4px rgb(99 102 241 / 0.80), 0 0 0 1px rgb(129 140 248 / 0.35);
+}
+
+[data-theme="dark"] .tab-btn.active {
+  text-shadow: 0 0 24px rgb(129 140 248 / 0.60);
+  color: var(--accent);
+}
+
+[data-theme="dark"] .period-pill.active {
+  box-shadow: 0 2px 16px -2px rgb(99 102 241 / 0.50);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgb(50 55 80 / 0.8);
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgb(70 78 112 / 0.8);
 }
 
