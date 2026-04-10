@@ -16,7 +16,10 @@ import {
 } from "recharts";
 import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE } from "@/lib/chart-config";
 import { MetricCard } from "@/components/ui/MetricCard";
-import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
+import { SectionCard, Delta, LoadingSpinner } from "@/components/ui/index";
+import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
+import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { formatNumber, formatDateDisplay, pctChange } from "@/lib/utils";
 import { MousePointer, Eye, TrendingUp, Search, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
@@ -373,18 +376,13 @@ export function SearchConsoleSection({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <LoadingSpinner size="lg" />
+        <SectionLoading color="#4285f4" message="Loading Search Console data…" />
       </div>
     );
   }
 
   if (error) {
-    return (
-      <div className="rounded-2xl bg-red-50 border border-red-200 p-8 text-center">
-        <p className="text-sm font-medium text-red-700 mb-1">Failed to load Search Console data</p>
-        <p className="text-xs text-red-500">{error}</p>
-      </div>
-    );
+    return <SectionError message={error} />;
   }
 
   const chartData = daily.map((d) => ({
@@ -406,15 +404,13 @@ export function SearchConsoleSection({
   return (
     <div className="flex flex-col gap-8">
       {/* Section header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">Search Console</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Organic search performance via Google Search Console</p>
-        </div>
-        <span className="text-sm text-slate-400">
-          {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
-        </span>
-      </div>
+      <SectionHeader
+        title="Search Console"
+        subtitle="Organic search performance"
+        icon={Search}
+        iconColor="#4285f4"
+        actions={<span style={{ fontSize: 13, color: "var(--text-3)" }}>{formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</span>}
+      />
 
       {afterHeader}
 

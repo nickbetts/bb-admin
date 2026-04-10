@@ -17,7 +17,10 @@ import {
   Legend,
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
-import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
+import { SectionCard, Delta } from "@/components/ui/index";
+import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
+import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE, CHART_BAR_STYLE } from "@/lib/chart-config";
 import { formatNumber, formatCurrency, formatPercent, formatDuration, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import { Users, UserPlus, Eye, MousePointer, Clock, TrendingUp, AlertTriangle, Leaf, BarChart2 } from "lucide-react";
@@ -413,30 +416,20 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
   return (
     <div className="flex flex-col gap-8">
       {/* Section header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">Web Analytics</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Site traffic data via Google Analytics 4</p>
-        </div>
-        <span className="text-sm text-slate-400">
-          {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
-        </span>
-      </div>
+      <SectionHeader
+        title="Web Analytics"
+        subtitle="Via Google Analytics 4"
+        icon={BarChart2}
+        iconColor="#f97316"
+        actions={<span style={{ fontSize: 13, color: "var(--text-3)" }}>{formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</span>}
+      />
 
       {afterHeader}
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <LoadingSpinner size="lg" className="mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">Loading GA4 data...</p>
-          </div>
-        </div>
+        <SectionLoading color="#f97316" message="Loading GA4 data…" />
       ) : error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
-          <p className="text-red-600 font-medium">Failed to load GA4 data</p>
-          <p className="text-slate-500 text-sm mt-1">{error}</p>
-        </div>
+        <SectionError message={error} />
       ) : !overview ? null : (
         <>
       {/* Performance alerts */}

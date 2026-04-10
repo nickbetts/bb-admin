@@ -14,7 +14,10 @@ import {
   Legend,
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
-import { SectionCard, LoadingSpinner, Delta } from "@/components/ui/index";
+import { SectionCard, Delta } from "@/components/ui/index";
+import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
+import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE, CHART_BAR_STYLE } from "@/lib/chart-config";
 import { formatNumber, formatCurrency, formatPercent, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import { DollarSign, MousePointer, Eye, TrendingUp, AlertTriangle, ChevronRight, ChevronDown, Play, Image, Layers, X } from "lucide-react";
@@ -562,30 +565,20 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
   return (
     <div className="flex flex-col gap-8">
       {/* Section header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">Paid Social</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Ad performance data via Meta Ads</p>
-        </div>
-        <span className="text-sm text-slate-400">
-          {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
-        </span>
-      </div>
+      <SectionHeader
+        title="Paid Social"
+        subtitle="Via Meta Ads"
+        icon={DollarSign}
+        iconColor="#1877f2"
+        actions={<span style={{ fontSize: 13, color: "var(--text-3)" }}>{formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</span>}
+      />
 
       {afterHeader}
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <LoadingSpinner size="lg" className="mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">Loading Meta Ads data...</p>
-          </div>
-        </div>
+        <SectionLoading color="#1877f2" message="Loading Meta Ads data…" />
       ) : error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
-          <p className="text-red-600 font-medium">Failed to load Meta Ads data</p>
-          <p className="text-slate-500 text-sm mt-1">{error}</p>
-        </div>
+        <SectionError message={error} />
       ) : !overview ? null : (
         <>
       {/* Performance alerts — campaigns, ad sets, creatives */}

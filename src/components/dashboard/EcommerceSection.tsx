@@ -16,7 +16,9 @@ import {
 import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE, CHART_BAR_STYLE } from "@/lib/chart-config";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard } from "@/components/ui/index";
-import { LoadingSpinner } from "@/components/ui/index";
+import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
+import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { formatCurrency, formatNumber, formatDateDisplay } from "@/lib/utils";
 import { ShoppingCart, TrendingUp, Package } from "lucide-react";
 import { BlendedRevenuePanel } from "./BlendedRevenuePanel";
@@ -91,26 +93,18 @@ export function EcommerceSection({ clientId, clientName, platform, startDate, en
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">E-Commerce Performance</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Order and revenue data via {platformLabel}</p>
-        </div>
-        <span className="text-sm text-slate-400">{formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</span>
-      </div>
+      <SectionHeader
+        title="E-Commerce Performance"
+        subtitle={`Via ${platformLabel}`}
+        icon={ShoppingCart}
+        iconColor={platform === "shopify" ? "#96bf48" : "#7f54b3"}
+        actions={<span style={{ fontSize: 13, color: "var(--text-3)" }}>{formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</span>}
+      />
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <LoadingSpinner size="lg" className="mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">Loading {platformLabel} data…</p>
-          </div>
-        </div>
+        <SectionLoading color={platform === "shopify" ? "#96bf48" : "#7f54b3"} message={`Loading ${platformLabel} data…`} />
       ) : error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
-          <p className="text-red-600 font-medium">Failed to load {platformLabel} data</p>
-          <p className="text-slate-500 text-sm mt-1">{error}</p>
-        </div>
+        <SectionError message={error} />
       ) : !stats ? null : (
         <>
           {/* KPIs */}

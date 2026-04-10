@@ -1,63 +1,79 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { Users, FileText, TrendingUp, ArrowRight, Plus } from "lucide-react";
+import { Users, FileText, TrendingUp, ArrowRight, Plus, Search, BarChart2, AlertTriangle, Clock } from "lucide-react";
+import { EmptyState } from "@/components/ui/EmptyState";
+
+const SEVERITY_COLOUR: Record<string, string> = {
+  high:   "#ef4444",
+  medium: "#f59e0b",
+  low:    "#10b981",
+};
 
 export default async function DashboardPage() {
   const session = await getSession();
-  const clients = await prisma.client.findMany({
-    orderBy: { updatedAt: "desc" },
-    take: 5,
-    include: { _count: { select: { reports: true } } },
-  });
-  const totalClients = await prisma.client.count();
-  const totalReports = await prisma.report.count();
-  const recentReports = await prisma.report.findMany({
-    orderBy: { updatedAt: "desc" },
-    take: 5,
-    include: { client: { select: { name: true, slug: true } } },
-  });
 
-  const [metaCount, gadsCount, ga4Count, semrushCount, scCount] = await Promise.all([
+  const [
+    clients,
+    totalClients,
+    totalReports,
+    recentReports,
+    inProgressCount,
+    latestSignals,
+    metaCount, gadsCount, ga4Count, semrushCount, scCount,
+  ] = await Promise.all([
+    prisma.client.findMany({
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      include: { _count: { select: { reports: true } } },
+    }),
+    prisma.client.count(),
+    prisma.report.count(),
+    prisma.report.findMany({
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      include: { client: { select: { name: true, slug: true } } },
+    }),
+    prisma.report.count({ where: { status: { in: ["draft", "review"] } } }),
+    prisma.detectedAnomaly.findMany({
+      where: { resolvedAt: null },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      include: { client: { select: { name: true, slug: true } } },
+    }),
     prisma.client.count({ where: { metaAccountId: { not: null } } }),
     prisma.client.count({ where: { googleAdsCustomerId: { not: null } } }),
     prisma.client.count({ where: { ga4PropertyId: { not: null } } }),
     prisma.client.count({ where: { semrushDomain: { not: null } } }),
     prisma.client.count({ where: { searchConsoleSiteUrl: { not: null } } }),
   ]);
+
   const activeIntegrationLabels = [
-    metaCount > 0 ? "Meta" : null,
-    gadsCount > 0 ? "Google Ads" : null,
-    ga4Count > 0 ? "GA4" : null,
-    semrushCount > 0 ? "SemRush" : null,
-    scCount > 0 ? "Search Console" : null,
+    metaCount > 0 ? `Meta (${metaCount})` : null,
+    gadsCount > 0 ? `Google Ads (${gadsCount})` : null,
+    ga4Count > 0 ? `GA4 (${ga4Count})` : null,
+    semrushCount > 0 ? `SemRush (${semrushCount})` : null,
+    scCount > 0 ? `Search Console (${scCount})` : null,
   ].filter(Boolean) as string[];
   const activeIntegrationCount = activeIntegrationLabels.length;
-
-  const greeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
 
   return (
     <div className="page">
       {/* Header */}
       <div style={{ marginBottom: 52 }}>
         <h1 className="page-title">
-          {greeting()}, {session?.user.name ?? "there"} 👋
+          Welcome back, {session?.user.name ?? "there"} 👋
         </h1>
         <p className="page-desc">Here&apos;s an overview of your clients and recent activity</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid-3" style={{ marginBottom: 40 }}>
+      {/* Stats row */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 32 }}>
         <div className="stat-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <p className="stat-card-label">Total Clients</p>
-            <div className="stat-card-icon" style={{ background: "#eef2ff" }}>
-              <Users style={{ width: 20, height: 20, color: "#6366f1" }} />
+            <div className="stat-card-icon" style={{ background: "var(--accent-bg)" }}>
+              <Users style={{ width: 20, height: 20, color: "var(--accent)" }} />
             </div>
           </div>
           <p className="stat-card-value">{totalClients}</p>
@@ -65,8 +81,8 @@ export default async function DashboardPage() {
         <div className="stat-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <p className="stat-card-label">Total Reports</p>
-            <div className="stat-card-icon" style={{ background: "#eff6ff" }}>
-              <FileText style={{ width: 20, height: 20, color: "#3b82f6" }} />
+            <div className="stat-card-icon" style={{ background: "var(--info-bg, #eff6ff)" }}>
+              <FileText style={{ width: 20, height: 20, color: "var(--info, #3b82f6)" }} />
             </div>
           </div>
           <p className="stat-card-value">{totalReports}</p>
@@ -74,12 +90,24 @@ export default async function DashboardPage() {
         <div className="stat-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <p className="stat-card-label">Active Integrations</p>
-            <div className="stat-card-icon" style={{ background: "#ecfdf5" }}>
-              <TrendingUp style={{ width: 20, height: 20, color: "#10b981" }} />
+            <div className="stat-card-icon" style={{ background: "var(--success-bg)" }}>
+              <TrendingUp style={{ width: 20, height: 20, color: "var(--success)" }} />
             </div>
           </div>
           <p className="stat-card-value">{activeIntegrationCount}</p>
-          <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 6 }}>{activeIntegrationLabels.join(" · ") || "None configured"}</p>
+          <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6, lineHeight: 1.5 }}>
+            {activeIntegrationLabels.join(" · ") || "None configured"}
+          </p>
+        </div>
+        <div className="stat-card">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <p className="stat-card-label">In Progress</p>
+            <div className="stat-card-icon" style={{ background: "var(--warning-bg, #fffbeb)" }}>
+              <Clock style={{ width: 20, height: 20, color: "var(--warning)" }} />
+            </div>
+          </div>
+          <p className="stat-card-value">{inProgressCount}</p>
+          <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6 }}>Draft or in review</p>
         </div>
       </div>
 
@@ -95,12 +123,12 @@ export default async function DashboardPage() {
           </div>
           <div>
             {clients.length === 0 ? (
-              <div style={{ padding: "40px 28px", textAlign: "center" }}>
-                <p style={{ color: "var(--text-3)", fontSize: 14 }}>No clients yet. Add your first client to get started.</p>
-                <Link href="/clients/new" className="btn btn-primary btn-sm" style={{ marginTop: 16, display: "inline-flex" }}>
-                  Add your first client
-                </Link>
-              </div>
+              <EmptyState
+                icon={<Users style={{ width: 24, height: 24 }} />}
+                title="No clients yet"
+                description="Add your first client to start tracking their marketing performance."
+                actions={[{ label: "Add your first client", href: "/clients/new" }]}
+              />
             ) : (
               clients.map((client) => (
                 <Link
@@ -109,7 +137,7 @@ export default async function DashboardPage() {
                   className="flex items-center justify-between px-7 py-4 border-b border-[var(--border-subtle)] no-underline transition-colors hover:bg-[var(--border-subtle)]"
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: "linear-gradient(135deg, #6366f1, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 16, fontWeight: 700 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: "linear-gradient(135deg, #6366f1, #7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
                       {client.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -119,7 +147,7 @@ export default async function DashboardPage() {
                       </p>
                     </div>
                   </div>
-                  <ArrowRight style={{ width: 16, height: 16, color: "var(--text-4)" }} />
+                  <ArrowRight style={{ width: 16, height: 16, color: "var(--text-4)", flexShrink: 0 }} />
                 </Link>
               ))
             )}
@@ -137,12 +165,16 @@ export default async function DashboardPage() {
         <div className="card">
           <div className="card-header">
             <h2 className="card-title">Recent Reports</h2>
+            <Link href="/reports" className="btn btn-ghost btn-sm">All reports</Link>
           </div>
           <div>
             {recentReports.length === 0 ? (
-              <div style={{ padding: "40px 28px", textAlign: "center" }}>
-                <p style={{ color: "var(--text-3)", fontSize: 14 }}>No reports yet. Select a client and create your first report.</p>
-              </div>
+              <EmptyState
+                icon={<FileText style={{ width: 24, height: 24 }} />}
+                title="No reports yet"
+                description="Select a client and create your first report."
+                actions={[{ label: "View clients", href: "/clients", variant: "secondary" }]}
+              />
             ) : (
               recentReports.map((report) => (
                 <Link
@@ -157,7 +189,7 @@ export default async function DashboardPage() {
                     </p>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span className={report.status === "published" ? "badge badge-green" : "badge badge-slate"}>
+                    <span className={report.status === "published" ? "badge badge-green" : report.status === "review" ? "badge badge-blue" : "badge badge-slate"}>
                       {report.status}
                     </span>
                     <ArrowRight style={{ width: 16, height: 16, color: "var(--text-4)" }} />
@@ -176,20 +208,67 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {/* Latest Signals */}
+      {latestSignals.length > 0 && (
+        <div className="card" style={{ marginTop: 24 }}>
+          <div className="card-header">
+            <h2 className="card-title">Latest Signals</h2>
+            <span style={{ fontSize: 12, color: "var(--text-3)" }}>Unresolved anomalies across all clients</span>
+          </div>
+          <div>
+            {latestSignals.map((signal) => (
+              <Link
+                key={signal.id}
+                href={`/clients/${signal.client.slug}`}
+                className="flex items-start gap-4 px-7 py-4 border-b border-[var(--border-subtle)] no-underline transition-colors hover:bg-[var(--border-subtle)]"
+              >
+                <AlertTriangle
+                  style={{ width: 15, height: 15, color: SEVERITY_COLOUR[signal.severity] ?? "var(--warning)", flexShrink: 0, marginTop: 1 }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 2 }}>
+                    {signal.client.name}
+                    <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-3)", marginLeft: 8 }}>{signal.platform} · {signal.metric}</span>
+                  </p>
+                  <p style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                    {signal.detail}
+                  </p>
+                </div>
+                <span className={`badge badge-${signal.severity === "high" ? "red" : signal.severity === "medium" ? "orange" : "green"}`} style={{ flexShrink: 0, marginTop: 1 }}>
+                  {signal.severity}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Quick Actions */}
       <div className="card" style={{ marginTop: 24 }}>
         <div className="card-header">
           <h2 className="card-title">Quick Actions</h2>
         </div>
         <div className="card-body">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
-            <Link href="/clients/new" className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-xl border border-[var(--border)] no-underline transition-all hover:border-[#a5b4fc] hover:bg-[#eef2ff]">
-              <Users style={{ width: 20, height: 20, color: "#6366f1" }} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
+            <Link href="/clients/new" className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-xl border border-[var(--border)] no-underline transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-bg)]">
+              <Users style={{ width: 20, height: 20, color: "var(--accent)" }} />
               <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Add Client</span>
             </Link>
-            <Link href="/clients" className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-xl border border-[var(--border)] no-underline transition-all hover:border-[#93c5fd] hover:bg-[#eff6ff]">
-              <FileText style={{ width: 20, height: 20, color: "#3b82f6" }} />
-              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>New Report</span>
+            <Link href="/tools/keyword-planner" className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-xl border border-[var(--border)] no-underline transition-all hover:border-[var(--info,#3b82f6)] hover:bg-[var(--info-bg,#eff6ff)]">
+              <Search style={{ width: 20, height: 20, color: "var(--info, #3b82f6)" }} />
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Keyword Planner</span>
+            </Link>
+            <Link href="/tools/proposals" className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-xl border border-[var(--border)] no-underline transition-all hover:border-[var(--success)] hover:bg-[var(--success-bg)]">
+              <FileText style={{ width: 20, height: 20, color: "var(--success)" }} />
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Proposals</span>
+            </Link>
+            <Link href="/reports" className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-xl border border-[var(--border)] no-underline transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-bg)]">
+              <BarChart2 style={{ width: 20, height: 20, color: "var(--accent)" }} />
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>All Reports</span>
+            </Link>
+            <Link href="/portfolio" className="flex flex-col items-center gap-2.5 px-4 py-5 rounded-xl border border-[var(--border)] no-underline transition-all hover:border-[var(--warning)] hover:bg-[var(--warning-bg,#fffbeb)]">
+              <TrendingUp style={{ width: 20, height: 20, color: "var(--warning)" }} />
+              <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)" }}>Portfolio</span>
             </Link>
           </div>
         </div>

@@ -24,6 +24,7 @@ import { CommunicationsSection } from "./CommunicationsSection";
 import { CompetitorIntelligenceSection } from "./CompetitorIntelligenceSection";
 import { StrategyDocumentPanel } from "./StrategyDocumentPanel";
 import { MeetingBriefingPanel } from "./MeetingBriefingPanel";
+import { SectionErrorBoundary } from "./shared/SectionErrorBoundary";
 import { getDateRange, buildCrossContextString } from "@/lib/utils";
 import type { PlatformSummary } from "@/lib/utils";
 import { Calendar } from "lucide-react";
@@ -295,6 +296,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
         tabIndex={-1}
         style={{ opacity: tabTransitioning ? 0.5 : 1, pointerEvents: tabTransitioning ? "none" : "auto", transition: "opacity 0.2s" }}
       >
+      <SectionErrorBoundary>
       {activeTab === "signals" && (
         <SignalsSection client={client} startDate={startDate} endDate={endDate} />
       )}
@@ -468,6 +470,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
         </div>
       )}
 
+      </SectionErrorBoundary>
       </div>{/* end tab content wrapper */}
 
       {/* AI Chat panel — always visible when any platform is connected */}

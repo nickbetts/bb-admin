@@ -715,6 +715,7 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
 .badge-blue    { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
 .badge-green   { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
 .badge-orange  { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+.badge-red     { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 .badge-slate   { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
 .badge-purple  { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
 .badge-amber   { background: #fffbeb; color: #b45309; border: 1px solid #fcd34d; }

@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard, Delta } from "@/components/ui/index";
+import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
+import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE } from "@/lib/chart-config";
 import { formatCurrency, formatNumber, formatPercent, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import {
@@ -504,23 +507,18 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
   return (
     <div className="flex flex-col gap-8">
       {/* Section header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">Paid Search</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Campaign performance data via Google Ads</p>
-        </div>
-        <span className="text-sm text-slate-400">
-          {formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}
-        </span>
-      </div>
+      <SectionHeader
+        title="Paid Search"
+        subtitle="Via Google Ads"
+        icon={AlertTriangle}
+        iconColor="#4285f4"
+        actions={<span style={{ fontSize: 13, color: "var(--text-3)" }}>{formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</span>}
+      />
 
       {afterHeader}
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-slate-500 text-sm gap-2">
-          <span className="inline-block w-4 h-4 border-2 border-yellow-200 border-t-yellow-500 rounded-full animate-spin" />
-          Loading Google Ads data…
-        </div>
+        <SectionLoading color="#4285f4" message="Loading Google Ads data…" />
       ) : error ? (
         error.includes("DEVELOPER_TOKEN_NOT_APPROVED") ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-5 space-y-2">
@@ -549,9 +547,7 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
             </ol>
           </div>
         ) : (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-600">
-          {error}
-        </div>
+          <SectionError message={error} />
         )
       ) : !data ? null : (
         <>

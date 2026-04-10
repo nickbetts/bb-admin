@@ -17,7 +17,9 @@ import {
 } from "recharts";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard } from "@/components/ui/index";
-import { LoadingSpinner } from "@/components/ui/index";
+import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
+import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE, CHART_BAR_STYLE } from "@/lib/chart-config";
 import { formatNumber, formatCurrency, formatDateDisplay, pctChange } from "@/lib/utils";
 import { TrendingUp, Search, AlertTriangle } from "lucide-react";
@@ -402,28 +404,20 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
   return (
     <div className="flex flex-col gap-8">
       {/* Section header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900">SEO Performance</h2>
-          <p className="text-sm text-slate-500 mt-0.5">Organic traffic data via SEMrush</p>
-        </div>
-        <span className="text-sm text-slate-400">{formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</span>
-      </div>
+      <SectionHeader
+        title="SEO Performance"
+        subtitle="Via SEMrush"
+        icon={TrendingUp}
+        iconColor="#ff642d"
+        actions={<span style={{ fontSize: 13, color: "var(--text-3)" }}>{formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</span>}
+      />
 
       {afterHeader}
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <LoadingSpinner size="lg" className="mx-auto mb-3" />
-            <p className="text-slate-500 text-sm">Loading SEMrush data...</p>
-          </div>
-        </div>
+        <SectionLoading color="#ff642d" message="Loading SEMrush data…" />
       ) : error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
-          <p className="text-red-600 font-medium">Failed to load SEMrush data</p>
-          <p className="text-slate-500 text-sm mt-1">{error}</p>
-        </div>
+        <SectionError message={error} />
       ) : !overview ? null : (
         <>
       {/* Performance alerts */}
