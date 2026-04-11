@@ -88,6 +88,11 @@ export default function ContentStrategyPage() {
   const [newClientDomain, setNewClientDomain] = useState("");
   const [newClientCreating, setNewClientCreating] = useState(false);
 
+  // Inline add-SEMrush-to-existing-client
+  const [addingSemrushToClient, setAddingSemrushToClient] = useState(false);
+  const [addSemrushDomain, setAddSemrushDomain] = useState("");
+  const [addSemrushSaving, setAddSemrushSaving] = useState(false);
+
   // SEMrush generation state
   const [semrushBrief, setSemrushBrief] = useState("");
   const [semrushDatabase, setSemrushDatabase] = useState("uk");
@@ -363,6 +368,62 @@ export default function ContentStrategyPage() {
   }
 
   // ── SEMrush helpers ─────────────────────────────────────────────────────
+
+  async function handleAddSemrushToClient() {
+    const rawDomain = addSemrushDomain.trim();
+    if (!rawDomain || !clientId) return;
+    const domain = rawDomain.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/.*$/, "");
+    const currentClient = clients.find((c) => c.id === clientId);
+    if (!currentClient) return;
+
+    setAddSemrushSaving(true);
+    setError("");
+    try {
+      // 1. Create SEMrush project
+      const projRes = await fetch("/api/semrush/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectName: currentClient.name, domain }),
+      });
+      const projData = await projRes.json();
+      if (projData.error) {
+        setError(`SEMrush project error: ${projData.error}`);
+        return;
+      }
+
+      // 2. Update existing client
+      const patchRes = await fetch(`/api/clients/${clientId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          semrushDomain: projData.domain ?? domain,
+          semrushProjectId: projData.projectId ?? null,
+        }),
+      });
+      const patchData = await patchRes.json();
+      if (patchData.error) {
+        setError(`Failed to update client: ${patchData.error}`);
+        return;
+      }
+
+      // 3. Update local clients list
+      const updatedDomain = projData.domain ?? domain;
+      setClients((prev) =>
+        prev.map((c) => c.id === clientId ? { ...c, semrushDomain: updatedDomain } : c)
+      );
+      setSemrushDomain(updatedDomain);
+      setAddingSemrushToClient(false);
+      setAddSemrushDomain("");
+      setSuccess(`SEMrush project created and linked to "${currentClient.name}"`);
+
+      // 4. Kick off competitor detection
+      await handleDetectCompetitors(clientId);
+    } catch {
+      setError("Failed to create SEMrush project");
+    } finally {
+      setAddSemrushSaving(false);
+    }
+  }
 
   async function handleCreateClientForSemrush() {
     const name = newClientName.trim();
@@ -670,6 +731,8 @@ export default function ContentStrategyPage() {
                           setClientId(e.target.value);
                           if (selectedClient) {
                             setClientName(selectedClient.name);
+                            setAddingSemrushToClient(false);
+                            setAddSemrushDomain("");
                             if (selectedClient.semrushDomain) {
                               handleDetectCompetitors(e.target.value);
                             } else {
@@ -726,15 +789,71 @@ export default function ContentStrategyPage() {
                 </div>
               </div>
 
-              {/* No domain warning */}
+              {/* No domain warning — with inline setup option */}
               {clientId && !semrushDomain && !creatingClientSemrush && (
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", marginBottom: 16,
-                  background: "var(--warning-bg, #fffbeb)", border: "1px solid var(--warning-border, #fde68a)",
-                  borderRadius: "var(--r-sm)", fontSize: 13, color: "var(--warning-text, #92400e)",
-                }}>
-                  <AlertCircle style={{ width: 15, height: 15, flexShrink: 0 }} />
-                  This client has no SEMrush domain configured. Set it in client settings or use the Upload method.
+                <div style={{ marginBottom: 16 }}>
+                  {addingSemrushToClient ? (
+                    <div style={{
+                      padding: "14px 16px", borderRadius: "var(--r-sm)",
+                      border: "1px solid var(--accent-border, #c4b5fd)",
+                      background: "var(--accent-bg)", display: "flex",
+                      flexDirection: "column", gap: 10,
+                    }}>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", margin: 0 }}>
+                        Create SEMrush project for {clients.find((c) => c.id === clientId)?.name}
+                      </p>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={addSemrushDomain}
+                          onChange={(e) => setAddSemrushDomain(e.target.value)}
+                          placeholder="Domain (e.g. example.com)"
+                          autoFocus
+                          style={{ flex: 1, marginBottom: 0 }}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddSemrushToClient(); } }}
+                        />
+                        <button
+                          type="button"
+                          disabled={!addSemrushDomain.trim() || addSemrushSaving}
+                          className="btn btn-primary btn-sm"
+                          style={{ flexShrink: 0 }}
+                          onClick={handleAddSemrushToClient}
+                        >
+                          {addSemrushSaving ? (
+                            <><Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} /> Saving…</>
+                          ) : (
+                            <>Create &amp; link</>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          style={{ flexShrink: 0 }}
+                          onClick={() => { setAddingSemrushToClient(false); setAddSemrushDomain(""); }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+                      background: "var(--warning-bg, #fffbeb)", border: "1px solid var(--warning-border, #fde68a)",
+                      borderRadius: "var(--r-sm)", fontSize: 13, color: "var(--warning-text, #92400e)",
+                    }}>
+                      <AlertCircle style={{ width: 15, height: 15, flexShrink: 0 }} />
+                      <span style={{ flex: 1 }}>This client has no SEMrush domain configured.</span>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        style={{ flexShrink: 0 }}
+                        onClick={() => setAddingSemrushToClient(true)}
+                      >
+                        <Plus style={{ width: 13, height: 13 }} /> Set up SEMrush
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -824,7 +943,7 @@ export default function ContentStrategyPage() {
                 <div>
                   <button
                     type="submit"
-                    disabled={generating || !clientId || !semrushDomain || creatingClientSemrush}
+                    disabled={generating || !clientId || !semrushDomain || creatingClientSemrush || addingSemrushToClient}
                     className="btn btn-primary"
                     style={{ whiteSpace: "nowrap", height: 42 }}
                   >
