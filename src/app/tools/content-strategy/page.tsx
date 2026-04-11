@@ -82,6 +82,12 @@ export default function ContentStrategyPage() {
   // Mode toggle
   const [mode, setMode] = useState<GenerationMode>("semrush");
 
+  // Inline new-client (SEMrush mode)
+  const [creatingClientSemrush, setCreatingClientSemrush] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientDomain, setNewClientDomain] = useState("");
+  const [newClientCreating, setNewClientCreating] = useState(false);
+
   // SEMrush generation state
   const [semrushBrief, setSemrushBrief] = useState("");
   const [semrushDatabase, setSemrushDatabase] = useState("uk");
@@ -358,6 +364,69 @@ export default function ContentStrategyPage() {
 
   // ── SEMrush helpers ─────────────────────────────────────────────────────
 
+  async function handleCreateClientForSemrush() {
+    const name = newClientName.trim();
+    const rawDomain = newClientDomain.trim();
+    if (!name || !rawDomain) return;
+    const domain = rawDomain.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/.*$/, "");
+
+    setNewClientCreating(true);
+    setError("");
+    try {
+      // 1. Create SEMrush project
+      const projRes = await fetch("/api/semrush/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectName: name, domain }),
+      });
+      const projData = await projRes.json();
+      if (projData.error) {
+        setError(`SEMrush project error: ${projData.error}`);
+        return;
+      }
+
+      // 2. Create client with the domain + project ID
+      const clientRes = await fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          website: `https://${domain}`,
+          semrushDomain: projData.domain ?? domain,
+          semrushProjectId: projData.projectId ?? null,
+        }),
+      });
+      const newClient = await clientRes.json();
+      if (newClient.error) {
+        setError(`Client creation error: ${newClient.error}`);
+        return;
+      }
+
+      // 3. Update state and auto-select
+      const clientForState: Client = {
+        id: newClient.id,
+        name: newClient.name,
+        semrushDomain: newClient.semrushDomain,
+        searchConsoleSiteUrl: newClient.searchConsoleSiteUrl,
+      };
+      setClients((prev) => [...prev, clientForState].sort((a, b) => a.name.localeCompare(b.name)));
+      setClientId(newClient.id);
+      setClientName(newClient.name);
+      setSemrushDomain(projData.domain ?? domain);
+      setCreatingClientSemrush(false);
+      setNewClientName("");
+      setNewClientDomain("");
+      setSuccess(`Client "${newClient.name}" created with SEMrush project`);
+
+      // 4. Kick off competitor detection
+      await handleDetectCompetitors(newClient.id);
+    } catch {
+      setError("Failed to create client and SEMrush project");
+    } finally {
+      setNewClientCreating(false);
+    }
+  }
+
   async function handleDetectCompetitors(selectedClientId: string) {
     const client = clients.find((c) => c.id === selectedClientId);
     if (!client?.semrushDomain) {
@@ -540,34 +609,98 @@ export default function ContentStrategyPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
                 <div>
                   <label className="form-label">Client <span style={{ color: "var(--danger)" }}>*</span></label>
-                  <select
-                    className="form-input"
-                    value={clientId}
-                    onChange={(e) => {
-                      const selectedClient = clients.find((c) => c.id === e.target.value);
-                      setClientId(e.target.value);
-                      if (selectedClient) {
-                        setClientName(selectedClient.name);
-                        if (selectedClient.semrushDomain) {
-                          handleDetectCompetitors(e.target.value);
-                        } else {
-                          setDetectedCompetitors([]);
-                          setSemrushDomain("");
-                        }
-                      } else {
-                        setClientName("");
-                        setDetectedCompetitors([]);
-                        setSemrushDomain("");
-                      }
-                    }}
-                  >
-                    <option value="">Select client…</option>
-                    {clients.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}{c.semrushDomain ? "" : " (no SEMrush domain)"}
-                      </option>
-                    ))}
-                  </select>
+                  {creatingClientSemrush ? (
+                    <div style={{
+                      padding: "14px 16px", borderRadius: "var(--r-sm)",
+                      border: "1px solid var(--accent-border, #c4b5fd)",
+                      background: "var(--accent-bg)", display: "flex",
+                      flexDirection: "column", gap: 10,
+                    }}>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", margin: 0 }}>
+                        New client + SEMrush project
+                      </p>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={newClientName}
+                        onChange={(e) => setNewClientName(e.target.value)}
+                        placeholder="Client name"
+                        autoFocus
+                        style={{ marginBottom: 0 }}
+                      />
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={newClientDomain}
+                        onChange={(e) => setNewClientDomain(e.target.value)}
+                        placeholder="Domain (e.g. example.com)"
+                        style={{ marginBottom: 0 }}
+                      />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          type="button"
+                          disabled={!newClientName.trim() || !newClientDomain.trim() || newClientCreating}
+                          className="btn btn-primary btn-sm"
+                          style={{ flex: 1 }}
+                          onClick={handleCreateClientForSemrush}
+                        >
+                          {newClientCreating ? (
+                            <><Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} /> Creating…</>
+                          ) : (
+                            <><Plus style={{ width: 13, height: 13 }} /> Create &amp; use</>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => { setCreatingClientSemrush(false); setNewClientName(""); setNewClientDomain(""); }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <select
+                        className="form-input"
+                        value={clientId}
+                        style={{ flex: 1 }}
+                        onChange={(e) => {
+                          const selectedClient = clients.find((c) => c.id === e.target.value);
+                          setClientId(e.target.value);
+                          if (selectedClient) {
+                            setClientName(selectedClient.name);
+                            if (selectedClient.semrushDomain) {
+                              handleDetectCompetitors(e.target.value);
+                            } else {
+                              setDetectedCompetitors([]);
+                              setSemrushDomain("");
+                            }
+                          } else {
+                            setClientName("");
+                            setDetectedCompetitors([]);
+                            setSemrushDomain("");
+                          }
+                        }}
+                      >
+                        <option value="">Select client…</option>
+                        {clients.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}{c.semrushDomain ? "" : " (no SEMrush domain)"}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        style={{ flexShrink: 0, height: 42 }}
+                        title="Create a new client and SEMrush project"
+                        onClick={() => setCreatingClientSemrush(true)}
+                      >
+                        <Plus style={{ width: 14, height: 14 }} /> New
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="form-label">Domain</label>
@@ -594,7 +727,7 @@ export default function ContentStrategyPage() {
               </div>
 
               {/* No domain warning */}
-              {clientId && !semrushDomain && (
+              {clientId && !semrushDomain && !creatingClientSemrush && (
                 <div style={{
                   display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", marginBottom: 16,
                   background: "var(--warning-bg, #fffbeb)", border: "1px solid var(--warning-border, #fde68a)",
@@ -691,7 +824,7 @@ export default function ContentStrategyPage() {
                 <div>
                   <button
                     type="submit"
-                    disabled={generating || !clientId || !semrushDomain}
+                    disabled={generating || !clientId || !semrushDomain || creatingClientSemrush}
                     className="btn btn-primary"
                     style={{ whiteSpace: "nowrap", height: 42 }}
                   >
