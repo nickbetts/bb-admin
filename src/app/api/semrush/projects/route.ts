@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           project_name: projectName.trim(),
-          domain_unicode: normalisedDomain,
+          url: `https://${normalisedDomain}`,
         }),
       }
     );
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       projectId: data.project_id ?? data.projectId,
       projectName: data.project_name ?? projectName.trim(),
-      domain: normalisedDomain,
+      domain: data.domain_unicode ?? normalisedDomain,
     } as SemrushProject, { status: 201 });
   } catch (error) {
     console.error("SEMrush create project error:", error);
