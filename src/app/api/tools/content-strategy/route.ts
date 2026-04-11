@@ -875,6 +875,10 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 .cs-action-btn:disabled { opacity: .4; cursor: default; pointer-events: none; }
 .cs-save-style { background: var(--accent); }
 .cs-save-style:hover { background: var(--accent-dark); }
+.cs-add-wrap { margin-top: 1rem; }
+.cs-add-btn { font-size: .75rem; font-weight: 600; padding: .5rem 1.25rem; border-radius: 8px; border: 1.5px dashed var(--border); background: transparent; color: var(--muted); cursor: pointer; font-family: inherit; transition: .12s; }
+.cs-add-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.cs-add-btn:disabled { opacity: .45; cursor: default; }
 .roadmap-col.col-green .roadmap-item { border-left-color: #4ade80; }
 .roadmap-col.col-blue .roadmap-item { border-left-color: #60a5fa; }
 .roadmap-col.col-purple .roadmap-item { border-left-color: #a78bfa; }
@@ -974,9 +978,10 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
         <p>These pages already rank on page 1 or 2 for keywords with real search volume. Small content improvements (a tightened title tag, an added FAQ section, a clearer call to action) can push them to the top 3 and deliver traffic gains quickly.</p>
       </div>
       <div class="section-body">
-        <div class="opt-table-wrap">
+        <div class="opt-table-wrap" data-cs-section="quick-win">
           ${quickWinsHtml}
         </div>
+        <div class="cs-add-wrap"><button class="cs-add-btn" data-cs-section="quick-win" onclick="addToSection(this)">+ Add another</button></div>
       </div>
     </div>` : ""}
 
@@ -989,9 +994,10 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
         <p>${sectionDescOpts}</p>
       </div>
       <div class="section-body">
-        <div class="opt-table-wrap">
+        <div class="opt-table-wrap" data-cs-section="page-opt">
           ${pageOptsHtml}
         </div>
+        <div class="cs-add-wrap"><button class="cs-add-btn" data-cs-section="page-opt" onclick="addToSection(this)">+ Add another</button></div>
       </div>
     </div>` : ""}
 
@@ -1004,9 +1010,10 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
         <p>${sectionDescLanding}</p>
       </div>
       <div class="section-body">
-        <div class="new-pages-grid">
+        <div class="new-pages-grid" data-cs-section="landing">
           ${landingPagesHtml}
         </div>
+        <div class="cs-add-wrap"><button class="cs-add-btn" data-cs-section="landing" onclick="addToSection(this)">+ Add another</button></div>
       </div>
     </div>` : ""}
 
@@ -1019,9 +1026,10 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
         <p>${sectionDescBlog}</p>
       </div>
       <div class="section-body">
-        <div class="blog-list">
+        <div class="blog-list" data-cs-section="blog">
           ${blogPostsHtml}
         </div>
+        <div class="cs-add-wrap"><button class="cs-add-btn" data-cs-section="blog" onclick="addToSection(this)">+ Add another</button></div>
       </div>
     </div>` : ""}
 
@@ -1186,6 +1194,34 @@ function regenItem(btn) {
   }, '*');
 }
 
+let _addBtnSeq = 0;
+function addToSection(btn) {
+  const sectionType = btn.dataset.csSection;
+  const container = document.querySelector('[data-cs-section="' + sectionType + '"]');
+  const existing = container ? [...container.querySelectorAll('.blog-title,.new-page-title')].map(function(el) { return el.textContent.trim(); }).filter(Boolean) : [];
+  btn.textContent = 'Adding...';
+  btn.disabled = true;
+  const btnId = 'cs-add-' + (++_addBtnSeq);
+  btn.id = btnId;
+  window.parent.postMessage({ type: 'cs:add', sectionType: sectionType, strategyId: CS_STRATEGY_ID, existing: existing, btnId: btnId }, '*');
+}
+
+function _esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function buildNewCard(type, title, notes, keywords) {
+  const idx = Date.now();
+  const json = _esc(JSON.stringify({ type: type, title: title || '', url: title || '', keywords: keywords || [], notes: notes || '' }));
+  const editBar = '<div class="cs-edit-bar"><button class="cs-edit-btn cs-del" onclick="deleteItem(this)">Remove</button><button class="cs-edit-btn cs-regen" onclick="regenItem(this)">Suggest another</button></div>';
+  if (type === 'blog') {
+    const count = document.querySelectorAll('.blog-item').length + 1;
+    return '<div class="blog-item cs-editable" data-cs-idx="' + idx + '" data-cs-json="' + json + '">' + editBar + '<div class="blog-item-left"><div class="blog-num">' + String(count).padStart(2,'0') + '</div></div><div class="blog-item-body"><div class="blog-item-top"><div class="blog-title">' + _esc(title) + '</div></div><p class="blog-desc">' + _esc(notes) + '</p></div></div>';
+  }
+  if (type === 'landing') {
+    const kws = (keywords || []).slice(0,4).map(function(k) { return '<div class="kw-pill">' + _esc(k) + '</div>'; }).join('');
+    return '<div class="new-page-card cs-editable" data-cs-idx="' + idx + '" data-cs-json="' + json + '">' + editBar + '<div class="new-page-card-hdr"><div class="new-page-title">' + _esc(title) + '</div></div><p class="new-page-desc">' + _esc(notes) + '</p><div class="new-page-kws">' + kws + '</div></div>';
+  }
+  return '<div class="opt-block cs-editable" data-cs-idx="' + idx + '" data-cs-json="' + json + '">' + editBar + '<p class="opt-notes" style="padding:.75rem 1rem">' + _esc(notes) + '</p></div>';
+}
+
 function saveStrategy() {
   if (CS_STRATEGY_ID === '__CS_ID__') return;
   const saveBtn = document.getElementById('cs-save-btn');
@@ -1234,6 +1270,18 @@ window.addEventListener('message', function(e) {
     } else {
       if (saveBtn) { saveBtn.textContent = 'Error — try again'; saveBtn.disabled = false; }
     }
+  }
+  if (e.data.type === 'cs:add:result') {
+    const btn = document.getElementById(e.data.btnId);
+    if (btn) { btn.textContent = '+ Add another'; btn.disabled = false; btn.removeAttribute('id'); }
+    if (!e.data.title && !e.data.notes) return;
+    const container = document.querySelector('[data-cs-section="' + e.data.sectionType + '"]');
+    if (!container) return;
+    const newCard = buildNewCard(e.data.sectionType, e.data.title || e.data.notes, e.data.notes, e.data.keywords);
+    container.insertAdjacentHTML('beforeend', newCard);
+    _isDirty = true;
+    _wasEdited = true;
+    _updateActionBar();
   }
 });
 </script>

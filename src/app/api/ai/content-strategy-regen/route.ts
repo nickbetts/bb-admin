@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const { strategyId, itemType, title, url, keywords, currentNotes, cluster } = await request.json();
+    const { strategyId, action, itemType, title, url, keywords, currentNotes, cluster, existing } = await request.json();
 
     if (!strategyId || !itemType) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -27,10 +27,52 @@ export async function POST(request: NextRequest) {
       "the client";
 
     const openai = await getOpenAiClient();
+    const extraInstructions = strategy.client?.aiReportInstructions ?? "";
 
+    const systemPrompt = `You are an expert SEO content strategist at a UK digital marketing agency. Write in British English. You are creating suggestions for a content strategy document for ${clientName}. Write from the agency's perspective: "we will do this for you", not "you should do this". Be specific, confident, and action-oriented.${extraInstructions ? `\n\nAdditional context: ${extraInstructions}` : ""}`;
+
+    // ── Add a brand-new item to a section ───────────────────────────────────
+    if (action === "add") {
+      const existingList = Array.isArray(existing) ? existing.slice(0, 15) : [];
+      const avoidStr = existingList.length > 0 ? `\n\nAlready covered (do NOT suggest these again):\n${existingList.map(e => `- ${e}`).join("\n")}` : "";
+
+      let addPrompt: string;
+      if (itemType === "blog") {
+        addPrompt = `Suggest one additional blog post for ${clientName}. Return JSON with keys "title" (concise, SEO-friendly post title) and "notes" (1–2 sentence agency-voice description of what we will write and why it matters).${avoidStr}`;
+      } else if (itemType === "landing") {
+        addPrompt = `Suggest one additional landing page for ${clientName}'s website. Return JSON with keys "title" (page name), "notes" (1–2 sentence agency-voice description), and "keywords" (array of 2–3 likely target keywords).${avoidStr}`;
+      } else if (itemType === "page-opt") {
+        addPrompt = `Suggest one additional page optimisation opportunity for ${clientName}. Return JSON with keys "title" (brief label for the recommendation), "notes" (1–2 sentence agency-voice description of what we will improve and why).${avoidStr}`;
+      } else {
+        addPrompt = `Suggest one additional quick-win content improvement for ${clientName}. Return JSON with keys "title" (brief label) and "notes" (1–2 sentence agency-voice description).${avoidStr}`;
+      }
+
+      const addResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: addPrompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.9,
+        max_tokens: 200,
+      });
+
+      let result: { title?: string; notes?: string; keywords?: string[] } = {};
+      try {
+        result = JSON.parse(addResponse.choices[0]?.message?.content ?? "{}");
+      } catch {}
+
+      return NextResponse.json({
+        title: result.title ?? "",
+        notes: result.notes ?? "",
+        keywords: Array.isArray(result.keywords) ? result.keywords : [],
+      });
+    }
+
+    // ── Replace an existing item's description ──────────────────────────────
     const keywordList = (Array.isArray(keywords) ? keywords : []).slice(0, 5).join(", ");
     const clusterNote = cluster ? ` (part of the "${cluster}" content cluster)` : "";
-    const extraInstructions = strategy.client?.aiReportInstructions ?? "";
 
     let itemDesc: string;
     let userPrompt: string;
@@ -50,8 +92,6 @@ export async function POST(request: NextRequest) {
     } else {
       return NextResponse.json({ error: "Invalid itemType" }, { status: 400 });
     }
-
-    const systemPrompt = `You are an expert SEO content strategist at a UK digital marketing agency. Write in British English. You are creating a replacement suggestion for a content strategy document for ${clientName}. Write from the agency's perspective, as if speaking to the client: "we will do this for you", not "you should do this". Be specific, confident, and action-oriented.${extraInstructions ? `\n\nAdditional context: ${extraInstructions}` : ""}`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",

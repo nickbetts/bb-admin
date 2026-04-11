@@ -173,6 +173,42 @@ export default function ContentStrategyPage() {
           }, "*");
         }
       }
+
+      if (event.data.type === "cs:add") {
+        const { sectionType, strategyId, existing, btnId } = event.data as { sectionType: string; strategyId: string; existing: string[]; btnId: string };
+        try {
+          const res = await fetch("/api/ai/content-strategy-regen", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              strategyId,
+              action: "add",
+              itemType: sectionType,
+              existing,
+            }),
+          });
+          const result = await res.json();
+          iframeRef.current?.contentWindow?.postMessage({
+            type: "cs:add:result",
+            sectionType,
+            btnId,
+            title: result.title ?? "",
+            notes: result.notes ?? "",
+            keywords: result.keywords ?? [],
+            error: result.error,
+          }, "*");
+        } catch {
+          iframeRef.current?.contentWindow?.postMessage({
+            type: "cs:add:result",
+            sectionType,
+            btnId,
+            title: "",
+            notes: "",
+            keywords: [],
+            error: "Network error",
+          }, "*");
+        }
+      }
     }
 
     window.addEventListener("message", handleMessage);
