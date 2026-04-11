@@ -417,7 +417,7 @@ export default function ContentStrategyPage() {
       setSuccess(`SEMrush project created and linked to "${currentClient.name}"`);
 
       // 4. Kick off competitor detection
-      await handleDetectCompetitors(clientId);
+      await handleDetectCompetitors(clientId, updatedDomain);
     } catch {
       setError("Failed to create SEMrush project");
     } finally {
@@ -480,7 +480,7 @@ export default function ContentStrategyPage() {
       setSuccess(`Client "${newClient.name}" created with SEMrush project`);
 
       // 4. Kick off competitor detection
-      await handleDetectCompetitors(newClient.id);
+      await handleDetectCompetitors(newClient.id, projData.domain ?? domain);
     } catch {
       setError("Failed to create client and SEMrush project");
     } finally {
@@ -488,13 +488,13 @@ export default function ContentStrategyPage() {
     }
   }
 
-  async function handleDetectCompetitors(selectedClientId: string) {
-    const client = clients.find((c) => c.id === selectedClientId);
-    if (!client?.semrushDomain) {
+  async function handleDetectCompetitors(selectedClientId: string, domainOverride?: string) {
+    const domain = domainOverride ?? clients.find((c) => c.id === selectedClientId)?.semrushDomain;
+    if (!domain) {
       setDetectedCompetitors([]);
       return;
     }
-    setSemrushDomain(client.semrushDomain);
+    setSemrushDomain(domain);
     setDetectingCompetitors(true);
     try {
       const res = await fetch("/api/tools/content-strategy/generate", {
