@@ -1143,39 +1143,46 @@ sectionIds.forEach(id => {
 });
 
 // ── Inline editing ──────────────────────────────────────────────────────────
+// Each entry is one of:
+//   { kind:'del',   parent, nextSib, el, removeTimer }  — card removed
+//   { kind:'regen', card, descEl, oldText, oldJson }    — description replaced
+//   { kind:'add',   el }                                — card added
 const _undoStack = [];
-let _isDirty = false;
-let _wasEdited = false;
 
 function _updateActionBar() {
   const bar = document.getElementById('cs-action-bar');
   const undoBtn = document.getElementById('cs-undo-btn');
   if (undoBtn) undoBtn.disabled = _undoStack.length === 0;
-  if (bar) bar.classList.toggle('cs-bar-visible', _isDirty || _undoStack.length > 0);
+  if (bar) bar.classList.toggle('cs-bar-visible', _undoStack.length > 0);
 }
 
 function deleteItem(btn) {
   const card = btn.closest('[data-cs-idx]');
   if (!card) return;
-  _undoStack.push({ parent: card.parentNode, nextSib: card.nextSibling, el: card });
+  const entry = { kind: 'del', parent: card.parentNode, nextSib: card.nextSibling, el: card, removeTimer: null };
+  _undoStack.push(entry);
+  _updateActionBar(); // show bar + enable undo immediately
   card.style.transition = 'opacity .2s, transform .2s';
   card.style.opacity = '0';
   card.style.transform = 'scale(0.97)';
-  setTimeout(function() {
-    card.remove();
-    _isDirty = true;
-    _updateActionBar();
-  }, 200);
+  entry.removeTimer = setTimeout(function() { entry.removeTimer = null; card.remove(); }, 200);
 }
 
 function undoDelete() {
   const last = _undoStack.pop();
   if (!last) return;
-  last.el.style.transition = '';
-  last.el.style.opacity = '1';
-  last.el.style.transform = '';
-  last.parent.insertBefore(last.el, last.nextSib);
-  if (_undoStack.length === 0 && !_wasEdited) _isDirty = false;
+  if (last.kind === 'del') {
+    if (last.removeTimer) { clearTimeout(last.removeTimer); last.removeTimer = null; }
+    last.el.style.transition = '';
+    last.el.style.opacity = '1';
+    last.el.style.transform = '';
+    if (!last.el.parentNode) last.parent.insertBefore(last.el, last.nextSib);
+  } else if (last.kind === 'regen') {
+    last.descEl.textContent = last.oldText;
+    last.card.dataset.csJson = last.oldJson;
+  } else if (last.kind === 'add') {
+    last.el.remove();
+  }
   _updateActionBar();
 }
 
@@ -1186,6 +1193,9 @@ function regenItem(btn) {
   try { csData = JSON.parse(card.dataset.csJson || '{}'); } catch { return; }
   btn.textContent = 'Loading...';
   btn.disabled = true;
+  // Auto-reset button if no reply within 30s
+  const _t = setTimeout(function() { btn.textContent = 'Suggest another'; btn.disabled = false; }, 30000);
+  card.dataset.regenTimer = String(_t);
   window.parent.postMessage({
     type: 'cs:regen',
     idx: card.dataset.csIdx,
@@ -1203,6 +1213,11 @@ function addToSection(btn) {
   btn.disabled = true;
   const btnId = 'cs-add-' + (++_addBtnSeq);
   btn.id = btnId;
+  // Auto-reset if no reply within 30s
+  setTimeout(function() {
+    const b = document.getElementById(btnId);
+    if (b && b.disabled) { b.textContent = '+ Add another'; b.disabled = false; b.removeAttribute('id'); }
+  }, 30000);
   window.parent.postMessage({ type: 'cs:add', sectionType: sectionType, strategyId: CS_STRATEGY_ID, existing: existing, btnId: btnId }, '*');
 }
 
@@ -1226,6 +1241,13 @@ function saveStrategy() {
   if (CS_STRATEGY_ID === '__CS_ID__') return;
   const saveBtn = document.getElementById('cs-save-btn');
   if (saveBtn) { saveBtn.textContent = 'Saving...'; saveBtn.disabled = true; }
+  // Auto-reset if no reply within 20s (e.g. lost postMessage)
+  setTimeout(function() {
+    if (saveBtn && saveBtn.textContent === 'Saving...') {
+      saveBtn.textContent = 'Error — try again';
+      saveBtn.disabled = false;
+    }
+  }, 20000);
   window.parent.postMessage({
     type: 'cs:save',
     html: document.documentElement.outerHTML,
@@ -1238,17 +1260,21 @@ window.addEventListener('message', function(e) {
   if (e.data.type === 'cs:regen:result') {
     const card = document.querySelector('[data-cs-idx="' + e.data.idx + '"]');
     if (card) {
+      // Cancel the auto-reset timeout
+      if (card.dataset.regenTimer) { clearTimeout(Number(card.dataset.regenTimer)); delete card.dataset.regenTimer; }
       if (e.data.notes) {
         const descEl = card.querySelector('.blog-desc, .new-page-desc, .opt-notes');
-        if (descEl) descEl.textContent = e.data.notes;
-        try {
-          const d = JSON.parse(card.dataset.csJson || '{}');
-          d.notes = e.data.notes;
-          card.dataset.csJson = JSON.stringify(d);
-        } catch {}
-        _isDirty = true;
-        _wasEdited = true;
-        _updateActionBar();
+        if (descEl) {
+          // Push old text so regen can be undone
+          _undoStack.push({ kind: 'regen', card: card, descEl: descEl, oldText: descEl.textContent, oldJson: card.dataset.csJson || '' });
+          descEl.textContent = e.data.notes;
+          try {
+            const d = JSON.parse(card.dataset.csJson || '{}');
+            d.notes = e.data.notes;
+            card.dataset.csJson = JSON.stringify(d);
+          } catch {}
+          _updateActionBar();
+        }
       }
       card.querySelectorAll('.cs-regen').forEach(function(b) {
         b.textContent = 'Suggest another';
@@ -1260,13 +1286,9 @@ window.addEventListener('message', function(e) {
     const saveBtn = document.getElementById('cs-save-btn');
     if (e.data.success) {
       if (saveBtn) { saveBtn.textContent = 'Saved'; saveBtn.disabled = false; }
-      _isDirty = false;
-      _wasEdited = false;
       _undoStack.length = 0;
-      setTimeout(function() {
-        if (saveBtn) saveBtn.textContent = 'Save changes';
-        _updateActionBar();
-      }, 2500);
+      _updateActionBar();
+      setTimeout(function() { if (saveBtn) saveBtn.textContent = 'Save changes'; }, 2500);
     } else {
       if (saveBtn) { saveBtn.textContent = 'Error — try again'; saveBtn.disabled = false; }
     }
@@ -1277,11 +1299,16 @@ window.addEventListener('message', function(e) {
     if (!e.data.title && !e.data.notes) return;
     const container = document.querySelector('[data-cs-section="' + e.data.sectionType + '"]');
     if (!container) return;
-    const newCard = buildNewCard(e.data.sectionType, e.data.title || e.data.notes, e.data.notes, e.data.keywords);
-    container.insertAdjacentHTML('beforeend', newCard);
-    _isDirty = true;
-    _wasEdited = true;
-    _updateActionBar();
+    const newCardHtml = buildNewCard(e.data.sectionType, e.data.title || e.data.notes, e.data.notes, e.data.keywords);
+    // Insert via DOM (not innerHTML) so we can keep a reference for undo
+    const tmp = document.createElement('div');
+    tmp.innerHTML = newCardHtml;
+    const cardEl = tmp.firstElementChild;
+    if (cardEl) {
+      container.appendChild(cardEl);
+      _undoStack.push({ kind: 'add', el: cardEl });
+      _updateActionBar();
+    }
   }
 });
 </script>
