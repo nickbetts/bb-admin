@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           project_name: projectName.trim(),
-          url: `https://${normalisedDomain}`,
+          url: normalisedDomain,
         }),
       }
     );
