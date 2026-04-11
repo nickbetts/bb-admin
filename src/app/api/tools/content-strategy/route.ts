@@ -486,9 +486,13 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
 function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>): string {
   const { clientName, period, pageOptimisations, landingPages, categoryPages, blogPosts, linkTargets, quickWins, roadmap, stats } = data;
 
+  let cardIdx = 0;
+
   function esc(s: string): string {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
+
+  function escJson(obj: unknown): string { return esc(JSON.stringify(obj)); }
 
   function formatNum(n: number): string {
     return n.toLocaleString("en-GB");
@@ -508,8 +512,13 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
   let quickWinsHtml = "";
   if (hasQuickWins) {
     for (const opt of quickWins!) {
+      const _qwJson = escJson({ type: 'quick-win', url: opt.url, keywords: opt.keywords.slice(0,5).map(k => k.keyword), notes: opt.notes });
       quickWinsHtml += `
-          <div class="opt-block qw-block">
+          <div class="opt-block qw-block cs-editable" data-cs-idx="${cardIdx++}" data-cs-json="${_qwJson}">
+            <div class="cs-edit-bar">
+              <button class="cs-edit-btn cs-del" onclick="deleteItem(this)">Remove</button>
+              <button class="cs-edit-btn cs-regen" onclick="regenItem(this)">Suggest another</button>
+            </div>
             <div class="opt-block-hdr">
               <div class="opt-block-url"><a href="https://${esc(opt.url)}" target="_blank" rel="noopener">${esc(opt.url)}</a></div>
             </div>
@@ -528,8 +537,13 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
   const sortedPageOpts = sortByImpact(pageOptimisations, 1000);
   let pageOptsHtml = "";
   for (const opt of sortedPageOpts) {
+    const _optJson = escJson({ type: 'page-opt', url: opt.url, keywords: opt.keywords.slice(0,5).map(k => k.keyword), notes: opt.notes });
     pageOptsHtml += `
-          <div class="opt-block">
+          <div class="opt-block cs-editable" data-cs-idx="${cardIdx++}" data-cs-json="${_optJson}">
+            <div class="cs-edit-bar">
+              <button class="cs-edit-btn cs-del" onclick="deleteItem(this)">Remove</button>
+              <button class="cs-edit-btn cs-regen" onclick="regenItem(this)">Suggest another</button>
+            </div>
             <div class="opt-block-hdr">
               <div class="opt-block-url"><a href="https://${esc(opt.url)}" target="_blank" rel="noopener">${esc(opt.url)}</a></div>
             </div>
@@ -548,8 +562,13 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
   let landingPagesHtml = "";
   for (const page of allLandingPages) {
     const desc = aiContent[`landing_${page.title}`] || page.notes || "";
+    const _lpJson = escJson({ type: 'landing', title: page.title, keywords: page.keywords.slice(0,5).map(k => k.keyword), notes: desc });
     landingPagesHtml += `
-          <div class="new-page-card">
+          <div class="new-page-card cs-editable" data-cs-idx="${cardIdx++}" data-cs-json="${_lpJson}">
+            <div class="cs-edit-bar">
+              <button class="cs-edit-btn cs-del" onclick="deleteItem(this)">Remove</button>
+              <button class="cs-edit-btn cs-regen" onclick="regenItem(this)">Suggest another</button>
+            </div>
             <div class="new-page-card-hdr">
               <div class="new-page-title">${esc(page.title)}</div>
             </div>
@@ -588,8 +607,13 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
     for (const post of clusterPosts) {
       globalPostIdx++;
       const desc = aiContent[`blog_${post.title}`] || post.notes || "";
+      const _blogJson = escJson({ type: 'blog', title: post.title, cluster: post.cluster || '', keywords: post.keywords.slice(0,5).map(k => k.keyword), notes: desc });
       blogPostsHtml += `
-          <div class="blog-item">
+          <div class="blog-item cs-editable" data-cs-idx="${cardIdx++}" data-cs-json="${_blogJson}">
+            <div class="cs-edit-bar">
+              <button class="cs-edit-btn cs-del" onclick="deleteItem(this)">Remove</button>
+              <button class="cs-edit-btn cs-regen" onclick="regenItem(this)">Suggest another</button>
+            </div>
             <div class="blog-item-left">
               <div class="blog-num">${String(globalPostIdx).padStart(2, "0")}</div>
             </div>
@@ -833,6 +857,24 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 .roadmap-col-hdr.hdr-purple { background: var(--accent-light); color: var(--accent-dark); border-bottom: 2px solid #c4b5fd; }
 .roadmap-items { padding: .75rem 1rem; display: flex; flex-direction: column; gap: .5rem; }
 .roadmap-item { font-size: .82rem; color: var(--text); padding: .5rem .75rem; background: var(--bg); border-radius: 6px; border-left: 3px solid var(--border); line-height: 1.4; }
+
+/* ── Card editing ── */
+.cs-editable { position: relative; }
+.cs-edit-bar { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; opacity: 0; transition: opacity .12s; z-index: 10; pointer-events: none; }
+.cs-editable:hover .cs-edit-bar { opacity: 1; pointer-events: auto; }
+.cs-edit-btn { font-size: .65rem; font-weight: 700; padding: .3rem .65rem; border-radius: 5px; border: 1px solid; cursor: pointer; line-height: 1; white-space: nowrap; font-family: inherit; }
+.cs-del { background: #fff; color: #ef4444; border-color: #fca5a5; }
+.cs-del:hover { background: #fee2e2; }
+.cs-regen { background: #fff; color: var(--accent); border-color: #c4b5fd; }
+.cs-regen:hover { background: var(--accent-light); }
+.cs-regen:disabled { opacity: .5; cursor: default; }
+#cs-action-bar { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; border-radius: 999px; padding: 8px 10px 8px 16px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 24px rgba(0,0,0,.4); z-index: 1000; opacity: 0; pointer-events: none; transition: opacity .2s; white-space: nowrap; }
+#cs-action-bar.cs-bar-visible { opacity: 1; pointer-events: auto; }
+.cs-action-btn { font-size: .75rem; font-weight: 700; padding: .35rem .9rem; border-radius: 999px; border: none; cursor: pointer; background: rgba(255,255,255,.15); color: #fff; transition: background .1s; font-family: inherit; }
+.cs-action-btn:hover { background: rgba(255,255,255,.25); }
+.cs-action-btn:disabled { opacity: .4; cursor: default; pointer-events: none; }
+.cs-save-style { background: var(--accent); }
+.cs-save-style:hover { background: var(--accent-dark); }
 .roadmap-col.col-green .roadmap-item { border-left-color: #4ade80; }
 .roadmap-col.col-blue .roadmap-item { border-left-color: #60a5fa; }
 .roadmap-col.col-purple .roadmap-item { border-left-color: #a78bfa; }
@@ -1046,6 +1088,13 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
     </div>` : ""}
 
     <!-- FOOTER CTA -->
+    <div id="cs-action-bar">
+      <span style="font-size:.72rem;opacity:.6">Unsaved edits</span>
+      <button id="cs-undo-btn" class="cs-action-btn" onclick="undoDelete()" disabled>&#8629; Undo</button>
+      <button id="cs-save-btn" class="cs-action-btn cs-save-style" onclick="saveStrategy()">Save changes</button>
+    </div>
+
+    <!-- FOOTER CTA -->
     <div class="footer-cta">
       <div class="footer-cta-inner">
         <div class="footer-cta-logo">
@@ -1067,6 +1116,7 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 </div>
 
 <script>
+const CS_STRATEGY_ID = '__CS_ID__';
 const navLinks = document.querySelectorAll('.nav-link');
 const sectionIds = ['overview','quick-wins','page-optimisations','landing-pages','blog-pages','link-targets','roadmap'];
 function setActive(id) {
@@ -1082,6 +1132,109 @@ const observer = new IntersectionObserver(entries => {
 sectionIds.forEach(id => {
   const el = document.getElementById(id);
   if (el) observer.observe(el);
+});
+
+// ── Inline editing ──────────────────────────────────────────────────────────
+const _undoStack = [];
+let _isDirty = false;
+let _wasEdited = false;
+
+function _updateActionBar() {
+  const bar = document.getElementById('cs-action-bar');
+  const undoBtn = document.getElementById('cs-undo-btn');
+  if (undoBtn) undoBtn.disabled = _undoStack.length === 0;
+  if (bar) bar.classList.toggle('cs-bar-visible', _isDirty || _undoStack.length > 0);
+}
+
+function deleteItem(btn) {
+  const card = btn.closest('[data-cs-idx]');
+  if (!card) return;
+  _undoStack.push({ parent: card.parentNode, nextSib: card.nextSibling, el: card });
+  card.style.transition = 'opacity .2s, transform .2s';
+  card.style.opacity = '0';
+  card.style.transform = 'scale(0.97)';
+  setTimeout(function() {
+    card.remove();
+    _isDirty = true;
+    _updateActionBar();
+  }, 200);
+}
+
+function undoDelete() {
+  const last = _undoStack.pop();
+  if (!last) return;
+  last.el.style.transition = '';
+  last.el.style.opacity = '1';
+  last.el.style.transform = '';
+  last.parent.insertBefore(last.el, last.nextSib);
+  if (_undoStack.length === 0 && !_wasEdited) _isDirty = false;
+  _updateActionBar();
+}
+
+function regenItem(btn) {
+  const card = btn.closest('[data-cs-idx]');
+  if (!card) return;
+  let csData;
+  try { csData = JSON.parse(card.dataset.csJson || '{}'); } catch { return; }
+  btn.textContent = 'Loading...';
+  btn.disabled = true;
+  window.parent.postMessage({
+    type: 'cs:regen',
+    idx: card.dataset.csIdx,
+    data: csData,
+    strategyId: CS_STRATEGY_ID,
+  }, '*');
+}
+
+function saveStrategy() {
+  if (CS_STRATEGY_ID === '__CS_ID__') return;
+  const saveBtn = document.getElementById('cs-save-btn');
+  if (saveBtn) { saveBtn.textContent = 'Saving...'; saveBtn.disabled = true; }
+  window.parent.postMessage({
+    type: 'cs:save',
+    html: document.documentElement.outerHTML,
+    strategyId: CS_STRATEGY_ID,
+  }, '*');
+}
+
+window.addEventListener('message', function(e) {
+  if (!e.data || !e.data.type) return;
+  if (e.data.type === 'cs:regen:result') {
+    const card = document.querySelector('[data-cs-idx="' + e.data.idx + '"]');
+    if (card) {
+      if (e.data.notes) {
+        const descEl = card.querySelector('.blog-desc, .new-page-desc, .opt-notes');
+        if (descEl) descEl.textContent = e.data.notes;
+        try {
+          const d = JSON.parse(card.dataset.csJson || '{}');
+          d.notes = e.data.notes;
+          card.dataset.csJson = JSON.stringify(d);
+        } catch {}
+        _isDirty = true;
+        _wasEdited = true;
+        _updateActionBar();
+      }
+      card.querySelectorAll('.cs-regen').forEach(function(b) {
+        b.textContent = 'Suggest another';
+        b.disabled = false;
+      });
+    }
+  }
+  if (e.data.type === 'cs:save:result') {
+    const saveBtn = document.getElementById('cs-save-btn');
+    if (e.data.success) {
+      if (saveBtn) { saveBtn.textContent = 'Saved'; saveBtn.disabled = false; }
+      _isDirty = false;
+      _wasEdited = false;
+      _undoStack.length = 0;
+      setTimeout(function() {
+        if (saveBtn) saveBtn.textContent = 'Save changes';
+        _updateActionBar();
+      }, 2500);
+    } else {
+      if (saveBtn) { saveBtn.textContent = 'Error — try again'; saveBtn.disabled = false; }
+    }
+  }
 });
 </script>
 </body>
@@ -1226,6 +1379,10 @@ Return your response as valid JSON with the following keys:
       },
     });
 
+    // Inject the real record ID so client-side edit/save works
+    const finalHtml = html.replace("'__CS_ID__'", `'${record.id}'`);
+    await prisma.contentStrategy.update({ where: { id: record.id }, data: { generatedHtml: finalHtml } });
+
     return NextResponse.json({
       id: record.id,
       title: record.title,
@@ -1341,7 +1498,7 @@ export async function PATCH(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const { id, sharePassword } = await request.json();
+    const { id, sharePassword, generatedHtml } = await request.json();
     if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
     const updateData: Record<string, unknown> = {};
@@ -1354,6 +1511,13 @@ export async function PATCH(request: NextRequest) {
         const hash = crypto.createHash("sha256").update(sharePassword).digest("hex");
         updateData.sharePassword = hash;
       }
+    }
+
+    if (generatedHtml !== undefined) {
+      if (typeof generatedHtml !== "string" || generatedHtml.length < 500) {
+        return NextResponse.json({ error: "Invalid HTML content" }, { status: 400 });
+      }
+      updateData.generatedHtml = generatedHtml;
     }
 
     const strategy = await prisma.contentStrategy.update({

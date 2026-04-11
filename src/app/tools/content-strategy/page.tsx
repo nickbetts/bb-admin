@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Upload,
   FileSpreadsheet,
@@ -71,6 +71,7 @@ export default function ContentStrategyPage() {
   const [previewHtml, setPreviewHtml] = useState("");
   const [previewTitle, setPreviewTitle] = useState("");
   const [previewStrategyId, setPreviewStrategyId] = useState<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Share state
   const [sharingId, setSharingId] = useState<string | null>(null);
@@ -117,6 +118,66 @@ export default function ContentStrategyPage() {
     loadStrategies();
     loadClients();
   }, [loadStrategies, loadClients]);
+
+  // postMessage bridge: handles save and regen requests from the strategy HTML iframe
+  useEffect(() => {
+    async function handleMessage(event: MessageEvent) {
+      if (!event.data?.type?.startsWith("cs:")) return;
+
+      if (event.data.type === "cs:save") {
+        const { html, strategyId } = event.data as { html: string; strategyId: string };
+        try {
+          const res = await fetch("/api/tools/content-strategy", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: strategyId, generatedHtml: html }),
+          });
+          const result = await res.json();
+          const success = !result.error;
+          iframeRef.current?.contentWindow?.postMessage({ type: "cs:save:result", success }, "*");
+          if (success) setPreviewHtml(html);
+        } catch {
+          iframeRef.current?.contentWindow?.postMessage({ type: "cs:save:result", success: false }, "*");
+        }
+      }
+
+      if (event.data.type === "cs:regen") {
+        const { idx, data, strategyId } = event.data as { idx: string; data: Record<string, unknown>; strategyId: string };
+        try {
+          const res = await fetch("/api/ai/content-strategy-regen", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              strategyId,
+              itemType: data.type,
+              title: data.title,
+              url: data.url,
+              keywords: data.keywords,
+              currentNotes: data.notes,
+              cluster: data.cluster,
+            }),
+          });
+          const result = await res.json();
+          iframeRef.current?.contentWindow?.postMessage({
+            type: "cs:regen:result",
+            idx,
+            notes: result.notes ?? "",
+            error: result.error,
+          }, "*");
+        } catch {
+          iframeRef.current?.contentWindow?.postMessage({
+            type: "cs:regen:result",
+            idx,
+            notes: "",
+            error: "Network error",
+          }, "*");
+        }
+      }
+    }
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
@@ -995,6 +1056,7 @@ export default function ContentStrategyPage() {
               </div>
             </div>
             <iframe
+              ref={iframeRef}
               srcDoc={previewHtml}
               style={{ flex: 1, width: "100%", border: "none" }}
               title="Preview"
