@@ -14,12 +14,47 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Get client name from the strategy record
+    // Get client name and stored keyword data from the strategy record
     const strategy = await prisma.contentStrategy.findUnique({
       where: { id: strategyId },
-      select: { title: true, client: { select: { name: true, aiReportInstructions: true } } },
+      select: { title: true, spreadsheetData: true, client: { select: { name: true, aiReportInstructions: true } } },
     });
     if (!strategy) return NextResponse.json({ error: "Strategy not found" }, { status: 404 });
+
+    // Parse stored keyword data for richer AI context
+    type SdItem = { url?: string; title?: string; keywords?: Array<{ keyword: string; volume: number }>; notes?: string };
+    let sd: { pageOptimisations?: SdItem[]; landingPages?: SdItem[]; blogPosts?: SdItem[] } = {};
+    try { sd = JSON.parse(strategy.spreadsheetData ?? "{}"); } catch { /* leave sd empty */ }
+
+    // Top keywords across the full strategy (volume-sorted, deduped)
+    const _kwMap = new Map<string, number>();
+    for (const item of [...(sd.pageOptimisations ?? []), ...(sd.landingPages ?? []), ...(sd.blogPosts ?? [])]) {
+      for (const k of (item.keywords ?? [])) {
+        const _key = k.keyword.toLowerCase();
+        if (!_kwMap.has(_key) || (_kwMap.get(_key) ?? 0) < k.volume) _kwMap.set(_key, k.volume);
+      }
+    }
+    const topKwList = [..._kwMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([kw, vol]) => `${kw} (${vol.toLocaleString()} searches/mo)`)
+      .join(", ");
+    const kwNote = topKwList
+      ? `\n\nKeywords from the SEMrush data underpinning this strategy: ${topKwList}.`
+      : "";
+
+    // Sibling item titles for a section (for add-another context)
+    const siblingContext = (items: SdItem[] | undefined): string => {
+      if (!items || items.length === 0) return "";
+      return items
+        .slice(0, 10)
+        .map(item => {
+          const name = item.title ?? item.url ?? "";
+          const topKw = item.keywords?.[0]?.keyword ?? "";
+          return topKw ? `"${name}" (targeting: ${topKw})` : `"${name}"`;
+        })
+        .join("; ");
+    };
 
     const clientName =
       strategy.client?.name ||
@@ -36,15 +71,22 @@ export async function POST(request: NextRequest) {
       const existingList = Array.isArray(existing) ? existing.slice(0, 15) : [];
       const avoidStr = existingList.length > 0 ? `\n\nAlready covered (do NOT suggest these again):\n${existingList.map(e => `- ${e}`).join("\n")}` : "";
 
+      const blogSiblings = siblingContext(sd.blogPosts);
+      const landingSiblings = siblingContext(sd.landingPages);
+      const pageOptSiblings = siblingContext(sd.pageOptimisations);
+
       let addPrompt: string;
       if (itemType === "blog") {
-        addPrompt = `Suggest one additional blog post for ${clientName}. Return JSON with keys "title" (concise, SEO-friendly post title) and "notes" (1–2 sentence agency-voice description of what we will write and why it matters).${avoidStr}`;
+        const sibNote = blogSiblings ? `\n\nBlog posts already in this strategy: ${blogSiblings}.` : "";
+        addPrompt = `Suggest one additional blog post for ${clientName}. Return JSON with keys "title" (concise, SEO-friendly post title) and "notes" (1–2 sentence agency-voice description of what we will write and why it matters).${kwNote}${sibNote}${avoidStr}`;
       } else if (itemType === "landing") {
-        addPrompt = `Suggest one additional landing page for ${clientName}'s website. Return JSON with keys "title" (page name), "notes" (1–2 sentence agency-voice description), and "keywords" (array of 2–3 likely target keywords).${avoidStr}`;
+        const sibNote = landingSiblings ? `\n\nLanding pages already in this strategy: ${landingSiblings}.` : "";
+        addPrompt = `Suggest one additional landing page for ${clientName}'s website. Return JSON with keys "title" (page name), "notes" (1–2 sentence agency-voice description), and "keywords" (array of 2–3 target keywords drawn from the keyword data above).${kwNote}${sibNote}${avoidStr}`;
       } else if (itemType === "page-opt") {
-        addPrompt = `Suggest one additional page optimisation opportunity for ${clientName}. Return JSON with keys "title" (brief label for the recommendation), "notes" (1–2 sentence agency-voice description of what we will improve and why).${avoidStr}`;
+        const sibNote = pageOptSiblings ? `\n\nPage optimisations already in this strategy: ${pageOptSiblings}.` : "";
+        addPrompt = `Suggest one additional page optimisation opportunity for ${clientName}. Return JSON with keys "title" (brief label for the recommendation), "notes" (1–2 sentence agency-voice description of what we will improve and why).${kwNote}${sibNote}${avoidStr}`;
       } else {
-        addPrompt = `Suggest one additional quick-win content improvement for ${clientName}. Return JSON with keys "title" (brief label) and "notes" (1–2 sentence agency-voice description).${avoidStr}`;
+        addPrompt = `Suggest one additional quick-win content improvement for ${clientName}. Return JSON with keys "title" (brief label) and "notes" (1–2 sentence agency-voice description).${kwNote}${avoidStr}`;
       }
 
       const addResponse = await openai.chat.completions.create({
@@ -79,16 +121,16 @@ export async function POST(request: NextRequest) {
 
     if (itemType === "page-opt") {
       itemDesc = `page optimisation for ${url || "an existing page"}`;
-      userPrompt = `Write a replacement recommendation for a ${itemDesc}. Target keywords: ${keywordList || "not specified"}.\n\nPrevious recommendation: "${currentNotes || "none"}"\n\nProvide a clearly different angle or specific action. One paragraph, 2–3 sentences.`;
+      userPrompt = `Write a replacement recommendation for a ${itemDesc}. Target keywords: ${keywordList || "not specified"}.\n\nPrevious recommendation: "${currentNotes || "none"}"\n\nProvide a clearly different angle or specific action. One paragraph, 2–3 sentences.${kwNote}`;
     } else if (itemType === "landing") {
       itemDesc = `proposed landing page: "${title}"`;
-      userPrompt = `Write a replacement description for a ${itemDesc}. Target keywords: ${keywordList || "not specified"}.\n\nPrevious description: "${currentNotes || "none"}"\n\nProvide a clearly different angle or value proposition. One paragraph, 2–3 sentences.`;
+      userPrompt = `Write a replacement description for a ${itemDesc}. Target keywords: ${keywordList || "not specified"}.\n\nPrevious description: "${currentNotes || "none"}"\n\nProvide a clearly different angle or value proposition. One paragraph, 2–3 sentences.${kwNote}`;
     } else if (itemType === "blog") {
       itemDesc = `blog post titled "${title}"${clusterNote}`;
-      userPrompt = `Write a replacement description for a ${itemDesc}. Target keywords: ${keywordList || "not specified"}.\n\nPrevious description: "${currentNotes || "none"}"\n\nProvide a clearly different angle or approach. One paragraph, 2–3 sentences.`;
+      userPrompt = `Write a replacement description for a ${itemDesc}. Target keywords: ${keywordList || "not specified"}.\n\nPrevious description: "${currentNotes || "none"}"\n\nProvide a clearly different angle or approach. One paragraph, 2–3 sentences.${kwNote}`;
     } else if (itemType === "quick-win") {
       itemDesc = `quick win page optimisation for ${url || "an existing page"}`;
-      userPrompt = `Write a replacement recommendation for a ${itemDesc}. Target keywords: ${keywordList || "not specified"}.\n\nPrevious recommendation: "${currentNotes || "none"}"\n\nProvide a clearly different quick-win action. One paragraph, 2–3 sentences.`;
+      userPrompt = `Write a replacement recommendation for a ${itemDesc}. Target keywords: ${keywordList || "not specified"}.\n\nPrevious recommendation: "${currentNotes || "none"}"\n\nProvide a clearly different quick-win action. One paragraph, 2–3 sentences.${kwNote}`;
     } else {
       return NextResponse.json({ error: "Invalid itemType" }, { status: 400 });
     }

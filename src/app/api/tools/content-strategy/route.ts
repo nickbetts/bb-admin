@@ -962,7 +962,7 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
         </div>
         ${totalDeduplicatedVol > 0 ? `<div class="kw-summary" style="grid-template-columns:1fr">
           <div class="kw-summary-item">
-            <div class="kw-summary-num"><span>${formatNum(totalDeduplicatedVol)}</span></div>
+            <div class="kw-summary-num"><span id="cs-total-vol">${formatNum(totalDeduplicatedVol)}</span></div>
             <div class="kw-summary-lbl">Total monthly searches across all keywords</div>
           </div>
         </div>` : ''}
@@ -1125,6 +1125,7 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 
 <script>
 const CS_STRATEGY_ID = '__CS_ID__';
+const CS_KW_VOL = ${JSON.stringify(Object.fromEntries([...bestByKeyword.entries()].map(([k, v]) => [k, v.volume])))};
 const navLinks = document.querySelectorAll('.nav-link');
 const sectionIds = ['overview','quick-wins','page-optimisations','landing-pages','blog-pages','link-targets','roadmap'];
 function setActive(id) {
@@ -1156,6 +1157,26 @@ function _updateActionBar() {
   if (bar) bar.classList.toggle('cs-bar-visible', _undoStack.length > 0);
 }
 
+function _recalcHeroVol() {
+  const volEl = document.getElementById('cs-total-vol');
+  if (!volEl) return;
+  const seen = new Set();
+  let total = 0;
+  document.querySelectorAll('[data-cs-json]').forEach(function(el) {
+    try {
+      const d = JSON.parse(el.dataset.csJson || '{}');
+      (d.keywords || []).forEach(function(kw) {
+        const key = String(kw).toLowerCase();
+        if (!seen.has(key) && CS_KW_VOL[key] !== undefined) {
+          seen.add(key);
+          total += CS_KW_VOL[key];
+        }
+      });
+    } catch {}
+  });
+  volEl.textContent = total.toLocaleString('en-GB');
+}
+
 function deleteItem(btn) {
   const card = btn.closest('[data-cs-idx]');
   if (!card) return;
@@ -1165,7 +1186,7 @@ function deleteItem(btn) {
   card.style.transition = 'opacity .2s, transform .2s';
   card.style.opacity = '0';
   card.style.transform = 'scale(0.97)';
-  entry.removeTimer = setTimeout(function() { entry.removeTimer = null; card.remove(); }, 200);
+  entry.removeTimer = setTimeout(function() { entry.removeTimer = null; card.remove(); _recalcHeroVol(); }, 200);
 }
 
 function undoDelete() {
@@ -1184,6 +1205,7 @@ function undoDelete() {
     last.el.remove();
   }
   _updateActionBar();
+  _recalcHeroVol();
 }
 
 function regenItem(btn) {
@@ -1308,6 +1330,7 @@ window.addEventListener('message', function(e) {
       container.appendChild(cardEl);
       _undoStack.push({ kind: 'add', el: cardEl });
       _updateActionBar();
+      _recalcHeroVol();
     }
   }
 });
