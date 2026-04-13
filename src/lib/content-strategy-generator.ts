@@ -374,6 +374,32 @@ function buildAnalysisPrompt(
     data.keywordDifficulty.map((kd) => [kd.keyword, kd]),
   );
 
+  // ── Keyword pool: every keyword in the data with its exact volume ──────
+  // Used by the AI to assign secondary/long-tail keywords without inventing volumes.
+  const kwPool = new Map<string, number>();
+  for (const kw of data.organicKeywords) {
+    if (kw.keyword && kw.searchVolume > 0) kwPool.set(kw.keyword.toLowerCase(), kw.searchVolume);
+  }
+  for (const gap of data.contentGap) {
+    if (gap.keyword && gap.searchVolume > 0) kwPool.set(gap.keyword.toLowerCase(), gap.searchVolume);
+  }
+  // Include GSC impressions as a volume proxy for queries not in SEMrush
+  if (useGsc) {
+    const gscSeen = new Map<string, number>();
+    for (const q of data.gscQueryPages) {
+      const existing = gscSeen.get(q.query.toLowerCase()) ?? 0;
+      gscSeen.set(q.query.toLowerCase(), existing + q.impressions);
+    }
+    for (const [kw, imp] of gscSeen) {
+      if (!kwPool.has(kw) && imp > 10) kwPool.set(kw, imp);
+    }
+  }
+  const kwPoolText = [...kwPool.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 600)
+    .map(([kw, vol]) => `  "${kw}": ${vol}`)
+    .join("\n");
+
   // ── Struggling pages (always from SEMrush for search volume accuracy) ──
   const strugglingPages = pages.filter((p) =>
     p.keywords.some(
@@ -510,7 +536,11 @@ ${topPagesText}
 ${backlinkText || "  (no backlinks found)"}
 
 ═══ ANCHOR TEXT DISTRIBUTION ═══
-${anchorText || "  (no anchor data)"}`;
+${anchorText || "  (no anchor data)"}
+
+═══ KEYWORD POOL — USE THESE VOLUMES ONLY ═══
+CRITICAL: Every keyword you include in your output MUST appear in this list. Copy the keyword spelling and volume exactly. Do NOT invent keywords. Do NOT estimate or round volumes. If a keyword is not in this list, do not use it.
+${kwPoolText || "  (no keyword data available)"}`;
 }
 
 const STRATEGY_SYSTEM_PROMPT = `You are a senior SEO strategist at a UK digital marketing agency producing a content strategy your team will execute on behalf of a client. This document will be presented as a professional deliverable.
@@ -518,16 +548,17 @@ const STRATEGY_SYSTEM_PROMPT = `You are a senior SEO strategist at a UK digital 
 CONTEXT: You are the agency. Write all notes as "we will…" or "this page will…" — never "you should…". The client reads this to understand what we're going to do for them, not a list of tasks for them to action themselves.
 
 RULES:
-1. Use keyword volumes from the data provided. Do NOT invent or round volumes — copy them exactly.
-2. URLs must be copied exactly as they appear in the data.
-3. Write all titles and notes in British English.
-4. Be THOROUGH — exhaust every worthwhile opportunity in the data. Do not cut short artificially. If the data supports 15 page optimisations, suggest 15. If 20 blog posts are supported by the content gap, suggest 20.
-5. Do NOT duplicate suggestions across sections. Each gap keyword belongs in either a landing page (commercial intent) or a blog post (informational intent), not both.
-6. Commercial/transactional intent (buying, hiring, near me, best, agency, cost, price, service, provider) → landing page.
-7. Informational intent (how to, what is, guide, tips, examples, checklist, vs, difference between) → blog post.
-8. If SITEMAP data is provided, study it carefully. Do NOT suggest pages that already exist. Identify genuine gaps — services, locations, or topics the site doesn't currently cover.
-9. Group blog posts into topical clusters using the "cluster" field (e.g. "Local SEO", "PPC Basics", "Content Marketing"). Posts in the same cluster build topical authority and should internally link to each other.
-10. Score each item honestly using impact (1–5) and effort (1–5). The roadmap is derived from these scores, so accuracy matters.
+1. KEYWORD VOLUMES — NEVER INVENT THEM. Every keyword you include in your output MUST appear verbatim in the KEYWORD POOL at the end of the prompt. Copy the keyword spelling and volume exactly as shown. If a keyword is not in the pool, do not use it. This rule is absolute — fabricating volumes destroys trust in the strategy.
+2. MULTIPLE KEYWORDS PER ITEM — Each landing page and blog post should have 1–4 keywords: a primary keyword (highest volume, most relevant) plus secondary and/or long-tail variants where they exist in the KEYWORD POOL. Choose keywords that cluster together naturally around the same topic. Page optimisations should list all the ranking keywords for that page that are worth targeting.
+3. URLs must be copied exactly as they appear in the data.
+4. Write all titles and notes in British English.
+5. Be THOROUGH — exhaust every worthwhile opportunity in the data. Do not cut short artificially. If the data supports 15 page optimisations, suggest 15. If 20 blog posts are supported by the content gap, suggest 20.
+6. Do NOT duplicate suggestions across sections. Each gap keyword belongs in either a landing page (commercial intent) or a blog post (informational intent), not both.
+7. Commercial/transactional intent (buying, hiring, near me, best, agency, cost, price, service, provider) → landing page.
+8. Informational intent (how to, what is, guide, tips, examples, checklist, vs, difference between) → blog post.
+9. If SITEMAP data is provided, study it carefully. Do NOT suggest pages that already exist. Identify genuine gaps — services, locations, or topics the site doesn't currently cover.
+10. Group blog posts into topical clusters using the "cluster" field (e.g. "Local SEO", "PPC Basics", "Content Marketing"). Posts in the same cluster build topical authority and should internally link to each other.
+11. Score each item honestly using impact (1–5) and effort (1–5). The roadmap is derived from these scores, so accuracy matters.
 
 SCORING GUIDE:
 - impact 5: Likely to rank page 1, high volume, strong commercial value
@@ -551,7 +582,11 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "pageOptimisations": [
     {
       "url": "domain.com/page/",
-      "keywords": [{"keyword": "keyword from data", "volume": 1000}],
+      "keywords": [
+        {"keyword": "primary keyword from pool", "volume": 1000},
+        {"keyword": "secondary keyword from pool", "volume": 480},
+        {"keyword": "long-tail keyword from pool", "volume": 90}
+      ],
       "notes": "We will expand this page to target [keyword] by adding a FAQ section and updating the title tag to include [keyword].",
       "impact": 4,
       "effort": 2
@@ -560,7 +595,11 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "landingPages": [
     {
       "title": "Descriptive Page Title",
-      "keywords": [{"keyword": "keyword from data", "volume": 500}],
+      "keywords": [
+        {"keyword": "primary keyword from pool", "volume": 500},
+        {"keyword": "secondary keyword from pool", "volume": 210},
+        {"keyword": "long-tail keyword from pool", "volume": 70}
+      ],
       "notes": "We will create this page to capture [audience] searching for [intent]. The page will cover [topics] and include a clear conversion path.",
       "impact": 4,
       "effort": 3
@@ -569,7 +608,10 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "blogPosts": [
     {
       "title": "Blog Post Title",
-      "keywords": [{"keyword": "keyword from data", "volume": 200}],
+      "keywords": [
+        {"keyword": "primary keyword from pool", "volume": 200},
+        {"keyword": "secondary keyword from pool", "volume": 90}
+      ],
       "notes": "We will write this article targeting [audience] at the [awareness/consideration] stage. It will cover [angle] and link internally to [relevant commercial page].",
       "cluster": "Topical Cluster Name",
       "impact": 3,
@@ -601,7 +643,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
   }
 }
 
-GUIDANCE — include every worthwhile opportunity. When in doubt, include it. A comprehensive strategy inspires confidence; a thin one raises questions. Always include a roadmap with at least 3 items per phase.`;
+GUIDANCE — include every worthwhile opportunity. When in doubt, include it. A comprehensive strategy inspires confidence; a thin one raises questions. Always include a roadmap with at least 3 items per phase. Remember: every keyword volume in your output must match the KEYWORD POOL exactly — no exceptions.`;
 
 // ─── Generate the strategy ──────────────────────────────────────────────────
 
