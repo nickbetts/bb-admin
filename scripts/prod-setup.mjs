@@ -674,6 +674,94 @@ async function main() {
     }
   }
 
+  // ── Client.semrushProjectId (added 2026-03-25) ────────────────────────────
+  if (!(await columnExists("Client", "semrushProjectId"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "semrushProjectId" INTEGER');
+    console.log("✓ Added Client.semrushProjectId");
+  } else {
+    console.log("✓ Client.semrushProjectId already present");
+  }
+
+  // ── Client.semrushCampaignIds (added 2026-04-08) ──────────────────────────
+  if (!(await columnExists("Client", "semrushCampaignIds"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "semrushCampaignIds" TEXT');
+    console.log("✓ Added Client.semrushCampaignIds");
+  } else {
+    console.log("✓ Client.semrushCampaignIds already present");
+  }
+
+  // ── Report.narrativeData (added 2026-04-07) ───────────────────────────────
+  if (!(await columnExists("Report", "narrativeData"))) {
+    await db.execute('ALTER TABLE "Report" ADD COLUMN "narrativeData" TEXT');
+    console.log("✓ Added Report.narrativeData");
+  } else {
+    console.log("✓ Report.narrativeData already present");
+  }
+
+  // ── Client.contentStrategyLimits (added 2026-04-13) ──────────────────────
+  if (!(await columnExists("Client", "contentStrategyLimits"))) {
+    await db.execute('ALTER TABLE "Client" ADD COLUMN "contentStrategyLimits" TEXT');
+    console.log("✓ Added Client.contentStrategyLimits");
+  } else {
+    console.log("✓ Client.contentStrategyLimits already present");
+  }
+
+  // ── ContentStrategy table (added 2026-04-08) ─────────────────────────────
+  if (!(await tableExists("ContentStrategy"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "ContentStrategy" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "clientId" TEXT,
+      "title" TEXT NOT NULL,
+      "period" TEXT NOT NULL,
+      "createdBy" TEXT,
+      "generationMs" INTEGER,
+      "spreadsheetData" TEXT NOT NULL,
+      "generatedHtml" TEXT NOT NULL,
+      "shareToken" TEXT UNIQUE,
+      "sharePassword" TEXT,
+      "viewCount" INTEGER NOT NULL DEFAULT 0,
+      "lastViewedAt" DATETIME,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "ContentStrategy_clientId_createdAt_idx" ON "ContentStrategy"("clientId", "createdAt")`);
+    console.log("✓ Created ContentStrategy table");
+  } else {
+    // Ensure generationMs column exists (added 2026-04-13)
+    if (!(await columnExists("ContentStrategy", "generationMs"))) {
+      await db.execute('ALTER TABLE "ContentStrategy" ADD COLUMN "generationMs" INTEGER');
+      console.log("✓ Added ContentStrategy.generationMs");
+    } else {
+      console.log("✓ ContentStrategy table up to date");
+    }
+  }
+
+  // ── UserActivityLog table (added 2026-04-08) ──────────────────────────────
+  if (!(await tableExists("UserActivityLog"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "UserActivityLog" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "userId" TEXT,
+      "userEmail" TEXT,
+      "userName" TEXT,
+      "action" TEXT NOT NULL,
+      "resourceType" TEXT,
+      "resourceId" TEXT,
+      "clientId" TEXT,
+      "clientName" TEXT,
+      "description" TEXT NOT NULL,
+      "metadata" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "UserActivityLog_createdAt_idx" ON "UserActivityLog"("createdAt")`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "UserActivityLog_userId_createdAt_idx" ON "UserActivityLog"("userId", "createdAt")`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "UserActivityLog_clientId_createdAt_idx" ON "UserActivityLog"("clientId", "createdAt")`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "UserActivityLog_action_createdAt_idx" ON "UserActivityLog"("action", "createdAt")`);
+    console.log("✓ Created UserActivityLog table");
+  } else {
+    console.log("✓ UserActivityLog table already present");
+  }
+
   await db.close();
   console.log("✅ Schema migration complete");
 }
