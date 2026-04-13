@@ -123,6 +123,8 @@ interface CollectedData {
   sitemapUrls: string[];
   // Brief-driven keyword research — topics from the brief not in existing data
   briefTopics: BriefKeywordResult[];
+  // Claude-expanded semantic keyword research — synonyms/alternates not in SEMrush organic
+  expandedTopics: BriefKeywordResult[];
 }
 
 // ─── Sitemap fetcher ────────────────────────────────────────────────────────
@@ -243,6 +245,64 @@ function extractBriefTopics(brief: string, max = 10): string[] {
   return final;
 }
 
+// ─── Claude semantic keyword expansion ─────────────────────────────────────
+
+/**
+ * Uses Claude Haiku to identify synonyms, alternate spellings, and related topic
+ * seeds that may not appear in the SEMrush organic data, then fetches real volumes
+ * for those seeds via SEMrush phrase_fullsearch.
+ */
+async function expandKeywordsWithClaude(
+  brief: string,
+  domain: string,
+  existingKeywordSample: string[],
+  database: string,
+): Promise<BriefKeywordResult[]> {
+  if (!brief && existingKeywordSample.length === 0) return [];
+
+  try {
+    const anthropic = await getAnthropicClient();
+    const prompt = `You are a semantic keyword research specialist. Given a website domain, a client brief, and a sample of existing ranking keywords, identify additional topic seeds to research via SEMrush.
+
+Focus on:
+- Synonyms and alternate spellings (e.g. "qurbani" / "udhiyah" / "udhiya", "zakat" / "zakaat" / "zakah", "sadaqah" / "sadaqa")
+- Different phrasings real UK searchers use for the same concept (e.g. "animal sacrifice donation" for qurbani)
+- Related sub-topics and adjacent subjects not well represented in the existing keywords
+- Different audience angles or intent variations for the same topic
+- Seasonal, occasion-based, or event-driven keyword angles
+
+Domain: ${domain}
+Brief: ${brief || "(none provided)"}
+Existing keyword sample (top 50): ${existingKeywordSample.slice(0, 50).join(", ")}
+
+Return a JSON array of up to 20 additional seed terms (2–4 words each preferred) that should be researched. These must be GENUINELY DIFFERENT from the existing sample — new angles, alternate terminology, or related topics not yet covered.
+Return ONLY a JSON array of strings, e.g. ["term one", "term two"]. No explanation, no markdown.`;
+
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 400,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const block = response.content[0];
+    const text = block.type === "text" ? block.text.trim() : "[]";
+
+    let seeds: string[] = [];
+    const match = text.match(/\[[\s\S]*\]/);
+    seeds = match ? JSON.parse(match[0]) : [];
+    seeds = seeds
+      .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+      .slice(0, 20);
+
+    if (seeds.length === 0) return [];
+
+    return await getBriefKeywordResearch(seeds, database, 15);
+  } catch {
+    // Non-fatal — semantic expansion is best-effort
+    return [];
+  }
+}
+
 export async function collectSemrushData(
   domain: string,
   competitors: string[],
@@ -305,8 +365,9 @@ export async function collectSemrushData(
   const topKeywordPhrases = [...allKeywords].slice(0, 100);
 
   // Phase 2: Content gap (needs competitors), difficulty (needs keyword list),
-  // backlinks + anchors (independent)
-  const [contentGap, keywordDifficulty, backlinks, anchorTexts] =
+  // backlinks + anchors (independent), Claude semantic expansion (needs organic sample)
+  const organicSample = organicKeywords.slice(0, 50).map((k) => k.keyword);
+  const [contentGap, keywordDifficulty, backlinks, anchorTexts, expandedTopics] =
     await Promise.all([
       finalCompetitors.length > 0
         ? withApiCache(
@@ -328,6 +389,11 @@ export async function collectSemrushData(
       withApiCache(`cs:anchors:${domain}`, 168, () =>
         getAnchorTextDistribution(domain)
       ),
+      withApiCache(
+        `cs:expand:${domain}:${database}:${(brief ?? "").slice(0, 100).replace(/\s+/g, "_")}`,
+        168,
+        () => expandKeywordsWithClaude(brief ?? "", domain, organicSample, database),
+      ),
     ]);
 
   return {
@@ -342,6 +408,7 @@ export async function collectSemrushData(
     dataSource: hasGsc ? "gsc+semrush" : "semrush-only",
     sitemapUrls,
     briefTopics,
+    expandedTopics,
   };
 }
 
@@ -490,6 +557,14 @@ function buildAnalysisPrompt(
   }
   // Add brief-researched keywords to the pool so the AI can use their real volumes
   for (const result of data.briefTopics) {
+    for (const kw of result.keywords) {
+      if (kw.keyword && kw.volume > 0 && !kwPool.has(kw.keyword.toLowerCase())) {
+        kwPool.set(kw.keyword.toLowerCase(), kw.volume);
+      }
+    }
+  }
+  // Add Claude-expanded semantic keywords to the pool
+  for (const result of data.expandedTopics) {
     for (const kw of result.keywords) {
       if (kw.keyword && kw.volume > 0 && !kwPool.has(kw.keyword.toLowerCase())) {
         kwPool.set(kw.keyword.toLowerCase(), kw.volume);
@@ -666,6 +741,14 @@ The team brief specifically requests focus on the following topics. These are MA
 ${data.briefTopics.map((r) => {
   const topKws = r.keywords.slice(0, 10).map((k) => `    "${k.keyword}" — vol:${k.volume} KD:${k.difficulty}`).join("\n");
   return `Topic seed: "${r.topic}"\nTop phrase-match keywords:\n${topKws || "    (no data found — suggest based on the brief context)"}`;
+}).join("\n\n")}` : ""}
+${data.expandedTopics.length > 0 ? `
+═══ CLAUDE SEMANTIC EXPANSION — ADDITIONAL KEYWORDS DISCOVERED ═══
+These keywords were found by analysing synonyms, alternate spellings, and related topic angles not well represented in the main keyword pool. They are already included in the KEYWORD POOL above — this section highlights them so you know to draw on them when assigning keywords to content items.
+
+${data.expandedTopics.map((r) => {
+  const topKws = r.keywords.slice(0, 8).map((k) => `    "${k.keyword}" — vol:${k.volume} KD:${k.difficulty}`).join("\n");
+  return `Expanded seed: "${r.topic}"\nKeywords found:\n${topKws || "    (no volume data — consider targeting as contextual terms)"}`;
 }).join("\n\n")}` : ""}`;
 }
 
@@ -726,6 +809,9 @@ OTHER RULES
 ══════════════════════════════════════════════════════════
 
 - BRIEF-REQUESTED TOPICS: If a BRIEF-REQUESTED TOPIC RESEARCH section is present, every topic seed MUST appear as at least one landing page or blog post — even if not in current rankings.
+- CLAUDE SEMANTIC EXPANSION: If a CLAUDE SEMANTIC EXPANSION section is present, actively use those discovered keywords when assigning keywords to items. These represent real search volume for synonyms and alternate terms — prioritise them for items covering relevant topics.
+- PILLAR / MEGA GUIDE PAGES: For any page covering a broad, high-volume topic (e.g. "The Complete Guide to Qurbani", "Everything About Zakat", "UK Islamic Charities Explained"), assign 5–8 keywords covering multiple sub-questions and angles. The notes MUST list specific H2 section headings and FAQ questions to include. Effort score must be 4 or 5. These are hub pages that build topical authority.
+- SEMANTIC BREADTH: If you recognise that a topic has common synonyms or alternate spellings that ARE in the keyword pool (e.g. "udhiyah" alongside "qurbani", "zakah" alongside "zakat"), assign both terms across related items. If alternate terms appear in the CLAUDE SEMANTIC EXPANSION section, use them. In the item's notes, flag any semantically related terms the writer should include naturally in the copy.
 - URLs must be copied exactly as they appear in the data.
 - British English throughout.
 - Be THOROUGH — if the data supports 15 page optimisations, suggest 15. If 20 blog posts are warranted, suggest 20. A comprehensive strategy inspires confidence.

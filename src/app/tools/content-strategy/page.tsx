@@ -33,6 +33,7 @@ interface ContentStrategyItem {
   shareToken: string | null;
   viewCount: number;
   createdAt: string;
+  generationMs: number | null;
   client: { name: string } | null;
 }
 
@@ -814,6 +815,7 @@ export default function ContentStrategyPage() {
           clientName: genData.clientName,
           period,
           clientId,
+          generationMs: genData.generationMs ?? null,
         }),
       });
 
@@ -1527,6 +1529,16 @@ export default function ContentStrategyPage() {
                       <>
                         <span style={{ color: "var(--text-4)" }}>·</span>
                         <span style={{ fontSize: 12, color: "var(--text-3)" }}>by {s.createdBy}</span>
+                      </>
+                    )}
+                    {s.generationMs && (
+                      <>
+                        <span style={{ color: "var(--text-4)" }}>·</span>
+                        <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                          {s.generationMs >= 60000
+                            ? `${Math.floor(s.generationMs / 60000)}m ${Math.round((s.generationMs % 60000) / 1000)}s`
+                            : `${Math.round(s.generationMs / 1000)}s`}
+                        </span>
                       </>
                     )}
                     {s.viewCount > 0 && (

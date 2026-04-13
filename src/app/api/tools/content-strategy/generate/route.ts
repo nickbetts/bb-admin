@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const genStart = Date.now();
     const { data, autoCompetitors } = await generateContentStrategy(
       domain,
       client.name,
@@ -111,6 +112,7 @@ export async function POST(request: NextRequest) {
       model === "claude-opus-4-6" ? "claude-opus-4-6" : "gpt-4o",
       activeLimits,
     );
+    const generationMs = Date.now() - genStart;
 
     data.clientName = client.name;
     data.period = finalPeriod;
@@ -120,6 +122,7 @@ export async function POST(request: NextRequest) {
       competitors: autoCompetitors,
       domain,
       clientName: client.name,
+      generationMs,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

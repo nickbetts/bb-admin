@@ -342,20 +342,36 @@ export default function LoginPage() {
           <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.12)" }} />
           <span style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "0.02em" }}>StratOS</span>
         </div>
-        <a
-          href="#access"
-          style={{
-            padding: "9px 20px", borderRadius: 8,
-            background: "linear-gradient(135deg, #6366f1, #a855f7)", 
-            border: "none",
-            color: "white", fontSize: 13, fontWeight: 600, textDecoration: "none",
-            boxShadow: "0 0 20px rgba(99,102,241,0.3)",
-            transition: "all 0.3s ease",
-          }}
-          className="cta-pulse"
-        >
-          Sign in →
-        </a>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <a
+            href="/ad-traffic-protection"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 7,
+              padding: "7px 14px", borderRadius: 8,
+              background: "rgba(16,185,129,0.08)",
+              border: "1px solid rgba(16,185,129,0.2)",
+              color: "#6ee7b7", fontSize: 12, fontWeight: 600, textDecoration: "none",
+              transition: "all 0.2s ease",
+            }}
+          >
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 6px rgba(16,185,129,0.6)", display: "inline-block", flexShrink: 0 }} />
+            Ad Traffic Protection
+          </a>
+          <a
+            href="#access"
+            style={{
+              padding: "9px 20px", borderRadius: 8,
+              background: "linear-gradient(135deg, #6366f1, #a855f7)",
+              border: "none",
+              color: "white", fontSize: 13, fontWeight: 600, textDecoration: "none",
+              boxShadow: "0 0 20px rgba(99,102,241,0.3)",
+              transition: "all 0.3s ease",
+            }}
+            className="cta-pulse"
+          >
+            Sign in →
+          </a>
+        </div>
       </nav>
 
       {/* ── HERO ── */}

@@ -1377,6 +1377,7 @@ export async function POST(request: NextRequest) {
     let clientName: string;
     let period: string;
     let clientId: string | null;
+    let generationMs: number | null = null;
 
     if (contentType.includes("application/json")) {
       // ── JSON body: SEMrush-generated data ──────────────────────────────
@@ -1388,6 +1389,7 @@ export async function POST(request: NextRequest) {
       clientName = body.clientName || "Client";
       period = body.period || new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
       clientId = body.clientId || null;
+      generationMs = typeof body.generationMs === "number" ? body.generationMs : null;
     } else {
       // ── FormData body: file upload (existing flow) ─────────────────────
       const formData = await request.formData();
@@ -1500,6 +1502,7 @@ Return your response as valid JSON with the following keys:
         createdBy: session.user.name,
         spreadsheetData: JSON.stringify(spreadsheetData),
         generatedHtml: html,
+        generationMs: generationMs ?? null,
       },
     });
 
@@ -1578,6 +1581,7 @@ export async function GET(request: NextRequest) {
         shareToken: true,
         viewCount: true,
         createdAt: true,
+        generationMs: true,
         client: { select: { name: true } },
       },
     });
