@@ -893,7 +893,7 @@ export default function ContentStrategyPage() {
                     {clientId && semrushDomain
                       ? detectingCompetitors
                         ? "Detecting competitors…"
-                        : "No competitors detected. The content gap analysis will be skipped."
+                        : "SEMrush doesn't have enough organic data for this domain yet — competitor detection typically populates within a few weeks once the site has established rankings. The content gap analysis will be skipped for now."
                       : "Select a client to auto-detect competitors"}
                   </p>
                 )}
