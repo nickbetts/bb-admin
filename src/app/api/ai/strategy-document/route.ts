@@ -159,7 +159,7 @@ Return only valid JSON.`;
         clientId,
         clientName: client.name,
         description: `Generated strategy document "${title}" for ${client.name} (${period})`,
-        metadata: { model: "gpt-4o", webSearch: true },
+        metadata: { model: "gpt-5.4", webSearch: true },
       });
 
       return NextResponse.json({
@@ -173,7 +173,7 @@ Return only valid JSON.`;
 
     if (stream) {
       const streamResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5.4",
         temperature: 0.4,
         max_tokens: 6000,
         messages: [{ role: "user", content: prompt }],
@@ -209,7 +209,7 @@ Return only valid JSON.`;
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5.4",
       temperature: 0.4,
       max_tokens: 6000,
       messages: [{ role: "user", content: prompt }],
@@ -244,7 +244,7 @@ Return only valid JSON.`;
       clientId,
       clientName: client.name,
       description: `Generated strategy document "${title}" for ${client.name} (${period})`,
-      metadata: { model: "gpt-4o" },
+      metadata: { model: "gpt-5.4" },
     });
 
     return NextResponse.json({ document: { id: doc.id, title: doc.title, period: doc.period, content, shareToken: null } });

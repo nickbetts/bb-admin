@@ -908,7 +908,7 @@ ${hasHoursContext ? `IMPORTANT: Use the task benchmarks above to inform realisti
 Write in British English throughout.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5.4",
       temperature: 0.4,
       response_format: { type: "json_object" },
       messages: [

@@ -152,7 +152,7 @@ Please write the summary now.`;
 
       const openai = await getOpenAiClient();
       const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-5.4",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

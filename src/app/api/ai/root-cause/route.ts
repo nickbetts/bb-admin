@@ -165,7 +165,7 @@ Be analytical and data-driven. Reference specific numbers where available. If da
 
     if (stream) {
       const streamResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5.4",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.2,
         max_tokens: 4000,

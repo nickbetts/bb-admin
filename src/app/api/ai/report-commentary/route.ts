@@ -197,7 +197,7 @@ ${currentMetricsText}${previousMetricsText ? `\n\nPrevious period:\n${previousMe
 Go.`;
 
       const chaosResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-5.4",
         messages: [
           { role: "system", content: chaosSystemPrompt },
           { role: "user", content: chaosUserPrompt },

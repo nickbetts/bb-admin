@@ -162,7 +162,7 @@ ${snapshotContext ? `\nHISTORICAL METRIC SNAPSHOTS (last 3 months for trending c
 Analyse the data above. Identify likely double-counting between platforms, compute a de-duplicated true revenue estimate, attribute revenue by channel with confidence levels, and assess data quality. Return your analysis as JSON matching the structure described in the system prompt.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.4",
       temperature: 0.2,
       max_tokens: 2000,
       response_format: { type: "json_object" },
