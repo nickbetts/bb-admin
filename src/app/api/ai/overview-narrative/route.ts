@@ -620,7 +620,7 @@ Be frank and specific. Reference actual numbers and percentages.`;
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        max_tokens: 3500,
+        max_completion_tokens: 3500,
         temperature: 0.3,
         stream: true,
       });
@@ -660,7 +660,7 @@ Be frank and specific. Reference actual numbers and percentages.`;
         { role: "user", content: userPrompt },
       ],
       response_format: { type: "json_object" },
-      max_tokens: 3500,
+      max_completion_tokens: 3500,
       temperature: 0.3,
     });
 

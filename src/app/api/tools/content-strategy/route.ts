@@ -178,7 +178,7 @@ async function extractWithClaude(fileText: string, clientName: string): Promise<
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 8000,
+    max_completion_tokens: 8000,
     system: EXTRACTION_PROMPT,
     messages: [
       {
@@ -1450,7 +1450,7 @@ export async function POST(request: NextRequest) {
 
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 4000,
+        max_completion_tokens: 4000,
         system: `You are an expert SEO content strategist at a UK digital marketing agency. You write in British English. You are creating descriptions for a content strategy document for a client called "${clientName}". This is a document the agency will present to the client — write everything from the agency's perspective ("we will do this for you", not "you should do this").
 
 Your task is to write short, punchy descriptions for each section and content piece. Each description should:

@@ -175,7 +175,7 @@ Return only valid JSON.`;
       const streamResponse = await openai.chat.completions.create({
         model: "gpt-5.4",
         temperature: 0.4,
-        max_tokens: 6000,
+        max_completion_tokens: 6000,
         messages: [{ role: "user", content: prompt }],
         stream: true,
       });
@@ -211,7 +211,7 @@ Return only valid JSON.`;
     const completion = await openai.chat.completions.create({
       model: "gpt-5.4",
       temperature: 0.4,
-      max_tokens: 6000,
+      max_completion_tokens: 6000,
       messages: [{ role: "user", content: prompt }],
     });
 

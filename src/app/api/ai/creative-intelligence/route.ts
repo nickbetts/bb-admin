@@ -76,7 +76,7 @@ Return only valid JSON.`;
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.3,
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
       messages: [
         {
           role: "system",

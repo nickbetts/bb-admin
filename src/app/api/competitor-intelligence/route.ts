@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
               content: `${clientContext}\nAnalyse these SEO metrics for competitor domain "${data.domain}" and provide specific insights about their organic search performance, what they're likely doing well, what threatens ${client?.name ?? "the client"}, and one concrete action ${client?.name ?? "the client"} should take in response.${competitorContext}\n\nCompetitor data for ${data.domain}:\n${JSON.stringify(metrics, null, 2)}`,
             },
           ],
-          max_tokens: 600,
+          max_completion_tokens: 600,
         });
         insights = completion.choices[0]?.message?.content ?? null;
       } catch (err) {

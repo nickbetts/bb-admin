@@ -164,7 +164,7 @@ Analyse the data above. Identify likely double-counting between platforms, compu
     const completion = await openai.chat.completions.create({
       model: "gpt-5.4",
       temperature: 0.2,
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },

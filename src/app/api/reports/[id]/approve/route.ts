@@ -104,7 +104,7 @@ Return JSON:
     }],
     response_format: { type: "json_object" },
     temperature: 0.2,
-    max_tokens: 1500,
+    max_completion_tokens: 1500,
   });
 
   const raw = completion.choices[0]?.message?.content ?? "{}";

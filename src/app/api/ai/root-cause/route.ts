@@ -168,7 +168,7 @@ Be analytical and data-driven. Reference specific numbers where available. If da
         model: "gpt-5.4",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.2,
-        max_tokens: 4000,
+        max_completion_tokens: 4000,
         stream: true,
       });
 
@@ -204,7 +204,7 @@ Be analytical and data-driven. Reference specific numbers where available. If da
       model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.2,
-      max_tokens: 4000,
+      max_completion_tokens: 4000,
     });
 
     const analysis = completion.choices[0]?.message?.content ?? "Unable to generate root cause analysis.";

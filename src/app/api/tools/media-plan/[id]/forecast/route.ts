@@ -70,7 +70,7 @@ Return only valid JSON, no markdown.`;
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.3,
-      max_tokens: 1200,
+      max_completion_tokens: 1200,
     });
 
     const content = completion.choices[0]?.message?.content ?? "{}";

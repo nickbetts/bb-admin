@@ -95,7 +95,7 @@ Write ${bulletRange} impactful bullet points (each starting with '• ') that su
         },
       ],
       temperature: 0.65,
-      max_tokens: 700,
+      max_completion_tokens: 700,
     });
 
     const commentary = response.choices[0]?.message?.content?.trim() ?? "";

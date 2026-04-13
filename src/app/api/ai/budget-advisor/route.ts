@@ -114,7 +114,7 @@ Respond with JSON only — no markdown, no code fences:
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.2,
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
       messages: [
         { role: "system", content: "You are a PPC specialist. Respond with valid JSON only — no markdown, no code fences, no preamble. British English." },
         { role: "user", content: prompt },

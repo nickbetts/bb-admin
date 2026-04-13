@@ -134,7 +134,7 @@ ${JSON.stringify(audienceData, null, 2)}`;
         { role: "user", content: userPrompt },
       ],
       temperature: 0.5,
-      max_tokens: 1500,
+      max_completion_tokens: 1500,
     });
 
     const raw = response.choices[0]?.message?.content?.trim() ?? "{}";

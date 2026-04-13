@@ -577,7 +577,7 @@ async function detectAndNotifyAnomalies(
         model: "gpt-4o-mini",
         messages: [{ role: "user", content: `In 2 sentences, explain the most likely cause of these metric changes for ${clientName} on ${platform}:\n${highAlerts.map((a) => `- ${a.detail}`).join("\n")}\nBe specific and actionable.` }],
         temperature: 0.2,
-        max_tokens: 150,
+        max_completion_tokens: 150,
       });
       aiHypothesis = completion.choices[0]?.message?.content ?? "";
     } catch { /* non-critical */ }

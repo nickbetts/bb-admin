@@ -126,7 +126,7 @@ Return a JSON object with this exact structure:
         { role: "user", content: userPrompt },
       ],
       temperature: 0.3,
-      max_tokens: 1500,
+      max_completion_tokens: 1500,
     });
 
     const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";

@@ -191,7 +191,7 @@ Instructions:
       model: "gpt-4o-mini",
       messages,
       temperature: 0.3,
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
     });
 
     const reply = completion.choices[0]?.message?.content ?? "I couldn't generate a response. Please try again.";

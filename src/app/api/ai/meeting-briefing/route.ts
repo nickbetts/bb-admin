@@ -160,7 +160,7 @@ Generate the meeting briefing JSON now.`;
       const streamResponse = await openai.chat.completions.create({
         model: "gpt-5.4",
         temperature: 0.3,
-        max_tokens: 2500,
+        max_completion_tokens: 2500,
         messages: [
           { role: "system", content: systemInstruction },
           { role: "user", content: userPrompt },
@@ -204,7 +204,7 @@ Generate the meeting briefing JSON now.`;
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.3,
-      max_tokens: 2500,
+      max_completion_tokens: 2500,
       messages: [
         { role: "system", content: systemInstruction },
         { role: "user", content: userPrompt },

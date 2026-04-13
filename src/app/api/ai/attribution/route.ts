@@ -122,7 +122,7 @@ Keep it concise and actionable. Note any limitations in the analysis.`;
     const completion = await openai.chat.completions.create({
       model: "gpt-5.4",
       temperature: 0.3,
-      max_tokens: 800,
+      max_completion_tokens: 800,
       messages: [{ role: "user", content: prompt }],
     });
 

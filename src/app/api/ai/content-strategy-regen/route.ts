@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
         ],
         response_format: { type: "json_object" },
         temperature: 0.9,
-        max_tokens: 200,
+        max_completion_tokens: 200,
       });
 
       let result: { title?: string; notes?: string; keywords?: string[] } = {};
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
         { role: "user", content: userPrompt },
       ],
       temperature: 0.85,
-      max_tokens: 250,
+      max_completion_tokens: 250,
     });
 
     const notes = response.choices[0]?.message?.content?.trim() ?? "";

@@ -255,7 +255,7 @@ Write a concise 3-4 sentence narrative summarising the key changes since the las
           },
         ],
         temperature: 0.6,
-        max_tokens: 300,
+        max_completion_tokens: 300,
       });
 
       narrative = response.choices[0]?.message?.content?.trim() ?? "";

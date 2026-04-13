@@ -166,7 +166,7 @@ Produce audience recommendations as JSON:
         { role: "user", content: userPrompt },
       ],
       response_format: { type: "json_object" },
-      max_tokens: 2500,
+      max_completion_tokens: 2500,
       temperature: 0.3,
     });
 

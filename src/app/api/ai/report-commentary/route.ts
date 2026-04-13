@@ -203,7 +203,7 @@ Go.`;
           { role: "user", content: chaosUserPrompt },
         ],
         temperature: 0.95,
-        max_tokens: 600,
+        max_completion_tokens: 600,
       });
       const commentary = chaosResponse.choices[0]?.message?.content?.trim() ?? "";
       return NextResponse.json({ commentary });
@@ -278,7 +278,7 @@ Address the client directly using "the" for campaigns/channels and "your" for th
         { role: "user", content: userPrompt },
       ],
       temperature: 0.7,
-      max_tokens: length === "short" ? 200 : length === "medium" ? 400 : 700,
+      max_completion_tokens: length === "short" ? 200 : length === "medium" ? 400 : 700,
     });
 
     const commentary = response.choices[0]?.message?.content?.trim() ?? "";

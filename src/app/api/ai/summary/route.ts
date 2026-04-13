@@ -862,7 +862,7 @@ One string per alert, same order. British English.`;
           { role: "user", content: recPrompt },
         ],
         response_format: { type: "json_object" },
-        max_tokens: Math.max(1500, alerts.length * 180),
+        max_completion_tokens: Math.max(1500, alerts.length * 180),
         temperature: 0.3,
       });
 
@@ -920,7 +920,7 @@ Output the result as clean HTML only — no markdown, no code fences, no preambl
           { role: "system", content: "You are a senior cross-channel digital marketing strategist. Produce a unified, prioritised action plan that synthesises all detected signals into a coherent strategy. Be specific with numbers, campaign names, exact platform settings, and concrete steps. Output clean HTML only — no markdown, no code fences. British English." },
           { role: "user", content: gamePlanPrompt },
         ],
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
         temperature: 0.35,
       });
 
@@ -1149,7 +1149,7 @@ Respond in JSON format:
         { role: "user", content: userPrompt },
       ],
       response_format: { type: "json_object" },
-      max_tokens: 3000,
+      max_completion_tokens: 3000,
       temperature: 0.35,
     });
 

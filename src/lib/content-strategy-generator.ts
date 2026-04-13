@@ -994,7 +994,7 @@ export async function generateContentStrategy(
         { role: "user", content: analysisPrompt },
       ],
       temperature: 0.5,
-      max_tokens: 32000,
+      max_completion_tokens: 32000,
       response_format: { type: "json_object" },
     });
     content = openAiResponse.choices[0]?.message?.content?.trim() ?? "";

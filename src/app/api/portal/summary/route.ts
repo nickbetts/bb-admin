@@ -158,7 +158,7 @@ Please write the summary now.`;
           { role: "user", content: userPrompt },
         ],
         temperature: 0.65,
-        max_tokens: 800,
+        max_completion_tokens: 800,
       });
 
       return response.choices[0]?.message?.content?.trim() ?? "";

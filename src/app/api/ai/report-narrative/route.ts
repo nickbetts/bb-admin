@@ -122,7 +122,7 @@ Analyse all sections together. Identify cross-section stories, write connection 
           { role: "user", content: userPrompt },
         ],
         temperature: 0.3,
-        max_tokens: 3000,
+        max_completion_tokens: 3000,
         stream: true,
       });
 
@@ -166,7 +166,7 @@ Analyse all sections together. Identify cross-section stories, write connection 
         { role: "user", content: userPrompt },
       ],
       temperature: 0.3,
-      max_tokens: 3000,
+      max_completion_tokens: 3000,
       response_format: { type: "json_object" },
     });
 
