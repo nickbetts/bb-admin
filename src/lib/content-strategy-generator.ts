@@ -22,6 +22,9 @@ import {
 } from "@/lib/search-console";
 import { withApiCache } from "@/lib/api-cache";
 import { getOpenAiClient } from "@/lib/openai-client";
+import { getAnthropicClient } from "@/lib/anthropic-client";
+
+export type StrategyModel = "gpt-4o" | "claude-opus-4-5";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -851,6 +854,7 @@ export async function generateContentStrategy(
   competitors: string[],
   database: string = "uk",
   searchConsoleSiteUrl?: string | null,
+  model: StrategyModel = "gpt-4o",
 ): Promise<{ data: ContentStrategyData; collectedData: CollectedData; autoCompetitors: string[] }> {
   // Step 1: Collect data (uses GSC when available, falls back to SEMrush-only)
   const collectedData = await collectSemrushData(domain, competitors, database, searchConsoleSiteUrl, brief);
@@ -869,20 +873,37 @@ export async function generateContentStrategy(
     collectedData,
   );
 
-  // Step 3: Call GPT-4o for intelligent analysis
-  const openai = await getOpenAiClient();
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      { role: "system", content: STRATEGY_SYSTEM_PROMPT },
-      { role: "user", content: analysisPrompt },
-    ],
-    temperature: 0.5,
-    max_tokens: 12000,
-    response_format: { type: "json_object" },
-  });
+  // Step 3: Call the chosen AI model for intelligent analysis
+  let content: string;
 
-  const content = response.choices[0]?.message?.content?.trim();
+  if (model === "claude-opus-4-5") {
+    const anthropic = await getAnthropicClient();
+    const claudeResponse = await anthropic.messages.create({
+      model: "claude-opus-4-5",
+      max_tokens: 16000,
+      system: STRATEGY_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: analysisPrompt }],
+    });
+    const block = claudeResponse.content[0];
+    const rawText = block.type === "text" ? block.text.trim() : "";
+    // Extract JSON — Claude wraps in ```json ... ``` fences sometimes
+    const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]+?)```/) ?? rawText.match(/(\{[\s\S]+\})/);
+    content = jsonMatch ? jsonMatch[1].trim() : rawText;
+  } else {
+    const openai = await getOpenAiClient();
+    const openAiResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: STRATEGY_SYSTEM_PROMPT },
+        { role: "user", content: analysisPrompt },
+      ],
+      temperature: 0.5,
+      max_tokens: 12000,
+      response_format: { type: "json_object" },
+    });
+    content = openAiResponse.choices[0]?.message?.content?.trim() ?? "";
+  }
+
   if (!content) {
     throw new Error("No response from AI analysis");
   }

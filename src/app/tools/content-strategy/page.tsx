@@ -251,6 +251,7 @@ export default function ContentStrategyPage() {
   // SEMrush generation state
   const [semrushBrief, setSemrushBrief] = useState("");
   const [semrushDatabase, setSemrushDatabase] = useState("uk");
+  const [aiModel, setAiModel] = useState<"gpt-4o" | "claude-opus-4-5">("claude-opus-4-5");
   const [detectedCompetitors, setDetectedCompetitors] = useState<DetectedCompetitor[]>([]);
   const [detectingCompetitors, setDetectingCompetitors] = useState(false);
   const [semrushProgress, setSemrushProgress] = useState("");
@@ -705,6 +706,7 @@ export default function ContentStrategyPage() {
           period,
           database: semrushDatabase,
           competitors: detectedCompetitors.map((c) => c.domain),
+          model: aiModel,
         }),
       });
 
@@ -1094,6 +1096,43 @@ export default function ContentStrategyPage() {
                     <option value="es">Spain</option>
                     <option value="it">Italy</option>
                   </select>
+                </div>
+                <div>
+                  <label className="form-label">AI Model</label>
+                  <div style={{ display: "flex", background: "var(--bg)", borderRadius: "var(--r)", padding: 3, gap: 2, height: 42 }}>
+                    <button
+                      type="button"
+                      onClick={() => setAiModel("claude-opus-4-5")}
+                      title="Claude claude-opus-4-5 — more creative, better at following complex instructions"
+                      style={{
+                        flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                        padding: "6px 10px", borderRadius: "var(--r-sm)", border: "none", cursor: "pointer",
+                        fontSize: 12, fontWeight: aiModel === "claude-opus-4-5" ? 600 : 400,
+                        background: aiModel === "claude-opus-4-5" ? "var(--surface)" : "transparent",
+                        color: aiModel === "claude-opus-4-5" ? "var(--accent)" : "var(--text-3)",
+                        boxShadow: aiModel === "claude-opus-4-5" ? "var(--shadow-xs)" : "none",
+                        transition: "all 0.15s ease", whiteSpace: "nowrap",
+                      }}
+                    >
+                      ✦ Claude
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAiModel("gpt-4o")}
+                      title="GPT-4o — fast and reliable"
+                      style={{
+                        flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                        padding: "6px 10px", borderRadius: "var(--r-sm)", border: "none", cursor: "pointer",
+                        fontSize: 12, fontWeight: aiModel === "gpt-4o" ? 600 : 400,
+                        background: aiModel === "gpt-4o" ? "var(--surface)" : "transparent",
+                        color: aiModel === "gpt-4o" ? "var(--accent)" : "var(--text-3)",
+                        boxShadow: aiModel === "gpt-4o" ? "var(--shadow-xs)" : "none",
+                        transition: "all 0.15s ease", whiteSpace: "nowrap",
+                      }}
+                    >
+                      ⚡ GPT-4o
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <button

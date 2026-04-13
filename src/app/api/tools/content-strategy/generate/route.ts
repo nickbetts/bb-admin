@@ -5,6 +5,7 @@ import {
   generateContentStrategy,
   detectCompetitors,
   estimateApiUnits,
+  type StrategyModel,
 } from "@/lib/content-strategy-generator";
 
 export async function POST(request: NextRequest) {
@@ -14,12 +15,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { clientId, brief, period, database, action } = body as {
+    const { clientId, brief, period, database, action, model } = body as {
       clientId: string;
       brief?: string;
       period?: string;
       database?: string;
       action?: string;
+      model?: StrategyModel;
     };
 
     if (!clientId) {
@@ -89,6 +91,7 @@ export async function POST(request: NextRequest) {
       competitors,
       db,
       client.searchConsoleSiteUrl,
+      model === "claude-opus-4-5" ? "claude-opus-4-5" : "gpt-4o",
     );
 
     data.clientName = client.name;
