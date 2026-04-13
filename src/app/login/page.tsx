@@ -440,9 +440,7 @@ export default function LoginPage() {
               <span className="hw hw4">One</span>{" "}
               <span className="hw hw5">platform.</span>
               <br />
-              <span style={{ background: "linear-gradient(90deg, #818cf8, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                <span className="hw hw3">Sorted.</span>
-              </span>
+              <span className="hw hw3" style={{ background: "linear-gradient(90deg, #818cf8, #a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Sorted.</span>
             </h1>
             <p style={{
               fontSize: 19, color: "rgba(255,255,255,0.65)", lineHeight: 1.75,

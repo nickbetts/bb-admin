@@ -333,9 +333,7 @@ export default function AdTrafficProtectionPage() {
               <span className="hw hw1">One in five</span>
               <br />
               <span className="hw hw2">ad clicks</span>{" "}
-              <span style={{ background: "linear-gradient(90deg, #34d399, #10b981)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                <span className="hw hw3">is wasted.</span>
-              </span>
+              <span className="hw hw3" style={{ background: "linear-gradient(90deg, #34d399, #10b981)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>is wasted.</span>
               <br />
               <span className="hw hw4">We prove</span>{" "}
               <span className="hw hw5">which ones.</span>
