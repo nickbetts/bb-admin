@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       competitors,
       db,
       client.searchConsoleSiteUrl,
-      model === "claude-opus-4-5" ? "claude-opus-4-5" : "gpt-4o",
+      model === "claude-opus-4-6" ? "claude-opus-4-6" : "gpt-4o",
     );
 
     data.clientName = client.name;

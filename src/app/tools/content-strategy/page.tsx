@@ -50,6 +50,65 @@ interface DetectedCompetitor {
   commonKeywords: number;
 }
 
+// ─── Fun progress messages ─────────────────────────────────────────────────
+
+const FUN_MESSAGES = [
+  "Starting the engine…",
+  "Calling the AI overlords…",
+  "Bribing the algorithm…",
+  "Asking nicely for keyword data…",
+  "Checking SEMrush hasn't run out of coffee…",
+  "Making sure nothing gets hallucinated…",
+  "Consulting the oracle…",
+  "Cross-referencing with vibes…",
+  "Teaching the AI what a long-tail keyword actually is…",
+  "Counting words (2+ words only, obviously)…",
+  "Sifting through 500 keywords like a pro…",
+  "Arguing with the AI about content clusters…",
+  "Reminding Claude that 'family' is not a search query…",
+  "Waiting for the AI to finish its existential crisis…",
+  "Generating insights at the speed of thought…",
+  "Double-checking no volumes were invented…",
+  "Reading the brief very, very carefully…",
+  "Asking Google Search Console for receipts…",
+  "Reverse-engineering your competitors' strategy…",
+  "Deploying the content elves…",
+  "Doing SEO maths (the fun kind)…",
+  "Convincing the AI not to say 'digital landscape'…",
+  "Grouping keywords into clusters (not cluuusters)…",
+  "Consulting the content calendar gods…",
+  "Extracting signal from the noise…",
+  "Reviewing sitemap so we don't suggest pages that already exist…",
+  "Running keyword intent analysis (fancy words for 'vibes')…",
+  "Teaching the AI about reader journeys…",
+  "Building your roadmap brick by brick…",
+  "Assembling the strategy document…",
+];
+
+function useFunProgress(active: boolean): string {
+  const [msg, setMsg] = useState(FUN_MESSAGES[0]);
+  const indexRef = useRef(0);
+
+  useEffect(() => {
+    if (!active) return;
+    // Pick a new random message every 3.5s, never repeat until all shown
+    const shuffled = [...FUN_MESSAGES].sort(() => Math.random() - 0.5);
+    indexRef.current = 0;
+
+    // Defer first message to avoid synchronous setState inside effect body
+    const first = setTimeout(() => setMsg(shuffled[0]), 0);
+
+    const id = setInterval(() => {
+      indexRef.current = (indexRef.current + 1) % shuffled.length;
+      setMsg(shuffled[indexRef.current]);
+    }, 3500);
+
+    return () => { clearTimeout(first); clearInterval(id); };
+  }, [active]);
+
+  return msg;
+}
+
 // ─── Methodology Accordion ─────────────────────────────────────────────────
 
 const METHODOLOGY_STEPS = [
@@ -251,11 +310,12 @@ export default function ContentStrategyPage() {
   // SEMrush generation state
   const [semrushBrief, setSemrushBrief] = useState("");
   const [semrushDatabase, setSemrushDatabase] = useState("uk");
-  const [aiModel, setAiModel] = useState<"gpt-4o" | "claude-opus-4-5">("claude-opus-4-5");
+  const [aiModel, setAiModel] = useState<"gpt-4o" | "claude-opus-4-6">("claude-opus-4-6");
   const [detectedCompetitors, setDetectedCompetitors] = useState<DetectedCompetitor[]>([]);
   const [detectingCompetitors, setDetectingCompetitors] = useState(false);
   const [semrushProgress, setSemrushProgress] = useState("");
   const [semrushDomain, setSemrushDomain] = useState("");
+  const funMessage = useFunProgress(generating);
 
   const loadStrategies = useCallback(async () => {
     try {
@@ -1102,15 +1162,15 @@ export default function ContentStrategyPage() {
                   <div style={{ display: "flex", background: "var(--bg)", borderRadius: "var(--r)", padding: 3, gap: 2, height: 42 }}>
                     <button
                       type="button"
-                      onClick={() => setAiModel("claude-opus-4-5")}
-                      title="Claude claude-opus-4-5 — more creative, better at following complex instructions"
+                      onClick={() => setAiModel("claude-opus-4-6")}
+                      title="Claude Opus 4.6 — more creative, better at following complex instructions"
                       style={{
                         flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
                         padding: "6px 10px", borderRadius: "var(--r-sm)", border: "none", cursor: "pointer",
-                        fontSize: 12, fontWeight: aiModel === "claude-opus-4-5" ? 600 : 400,
-                        background: aiModel === "claude-opus-4-5" ? "var(--surface)" : "transparent",
-                        color: aiModel === "claude-opus-4-5" ? "var(--accent)" : "var(--text-3)",
-                        boxShadow: aiModel === "claude-opus-4-5" ? "var(--shadow-xs)" : "none",
+                        fontSize: 12, fontWeight: aiModel === "claude-opus-4-6" ? 600 : 400,
+                        background: aiModel === "claude-opus-4-6" ? "var(--surface)" : "transparent",
+                        color: aiModel === "claude-opus-4-6" ? "var(--accent)" : "var(--text-3)",
+                        boxShadow: aiModel === "claude-opus-4-6" ? "var(--shadow-xs)" : "none",
                         transition: "all 0.15s ease", whiteSpace: "nowrap",
                       }}
                     >
@@ -1142,7 +1202,7 @@ export default function ContentStrategyPage() {
                     style={{ whiteSpace: "nowrap", height: 42 }}
                   >
                     {generating ? (
-                      <><Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} /> {semrushProgress || "Generating…"}</>
+                      <><Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} /> Generating…</>
                     ) : (
                       <><Zap style={{ width: 16, height: 16 }} /> Generate Strategy</>
                     )}
@@ -1151,14 +1211,14 @@ export default function ContentStrategyPage() {
               </div>
 
               {/* Progress indicator */}
-              {generating && semrushProgress && (
+              {generating && (
                 <div style={{
                   display: "flex", alignItems: "center", gap: 10, marginTop: 16,
                   padding: "12px 16px", borderRadius: "var(--r-sm)",
                   background: "var(--accent-bg)", fontSize: 13, color: "var(--accent)",
                 }}>
                   <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite", flexShrink: 0 }} />
-                  {semrushProgress}
+                  {funMessage}
                 </div>
               )}
             </form>

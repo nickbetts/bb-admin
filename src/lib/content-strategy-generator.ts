@@ -24,7 +24,7 @@ import { withApiCache } from "@/lib/api-cache";
 import { getOpenAiClient } from "@/lib/openai-client";
 import { getAnthropicClient } from "@/lib/anthropic-client";
 
-export type StrategyModel = "gpt-4o" | "claude-opus-4-5";
+export type StrategyModel = "gpt-4o" | "claude-opus-4-6";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -854,7 +854,7 @@ export async function generateContentStrategy(
   competitors: string[],
   database: string = "uk",
   searchConsoleSiteUrl?: string | null,
-  model: StrategyModel = "gpt-4o",
+  model: StrategyModel = "claude-opus-4-6",
 ): Promise<{ data: ContentStrategyData; collectedData: CollectedData; autoCompetitors: string[] }> {
   // Step 1: Collect data (uses GSC when available, falls back to SEMrush-only)
   const collectedData = await collectSemrushData(domain, competitors, database, searchConsoleSiteUrl, brief);
@@ -876,10 +876,10 @@ export async function generateContentStrategy(
   // Step 3: Call the chosen AI model for intelligent analysis
   let content: string;
 
-  if (model === "claude-opus-4-5") {
+  if (model === "claude-opus-4-6") {
     const anthropic = await getAnthropicClient();
     const claudeResponse = await anthropic.messages.create({
-      model: "claude-opus-4-5",
+      model: "claude-opus-4-6",
       max_tokens: 16000,
       system: STRATEGY_SYSTEM_PROMPT,
       messages: [{ role: "user", content: analysisPrompt }],
