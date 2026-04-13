@@ -59,50 +59,76 @@ const CHAOS_EMOJIS = [
   "💕","💖","💗","💞","💓","💘","🥰","😍","😘","💋",
   "💅","🦩","🎈","🎉","🎆","🎇","🐶","🐟","🍓","🥩",
   "🐔","🐣","🦆","🐢","🫶","👋","💀","👀","💫","🌈",
+  "🔥","💥","⚡","🌸","🍑","🍆","🦄","🐸","🤌","👁️",
+  "🫀","🧠","🫦","💩","👾","🤖","🎪","🎠","🪄","🎭",
 ];
 
 interface Particle {
   id: number;
   emoji: string;
-  x: number;
-  y: number;
+  x: number;      // vw units
+  y: number;      // vh units
   size: number;
   rotation: number;
-  vx: number;
-  vy: number;
+  vx: number;     // vw/s
+  vy: number;     // vh/s
+  wobble: number; // sine wave amplitude in vw
+  wobbleSpeed: number;
+  scale: number;
+  scaleDelta: number;
   opacity: number;
   born: number;
+  lifespan: number; // seconds
 }
 
 function ChaosOverlay({ active }: { active: boolean }) {
   const [particles, setParticles] = useState<Particle[]>([]);
+  const [flash, setFlash] = useState(false);
   const nextId = useRef(0);
 
   useEffect(() => {
     if (!active) { setParticles([]); return; }
 
-    // Spawn a burst of particles every 1.2s
-    const spawn = () => {
-      const count = 6 + Math.floor(Math.random() * 5);
-      const newParticles: Particle[] = Array.from({ length: count }, () => ({
-        id: nextId.current++,
-        emoji: CHAOS_EMOJIS[Math.floor(Math.random() * CHAOS_EMOJIS.length)],
-        x: Math.random() * 100,
-        y: 100 + Math.random() * 10,
-        size: 16 + Math.floor(Math.random() * 20),
-        rotation: Math.random() * 360,
-        vx: (Math.random() - 0.5) * 30,
-        vy: -(40 + Math.random() * 60),
-        opacity: 1,
-        born: Date.now(),
-      }));
-      setParticles((prev) => [...prev.slice(-60), ...newParticles]);
+    const spawnBurst = () => {
+      // Flash the screen on each burst
+      setFlash(true);
+      setTimeout(() => setFlash(false), 120);
+
+      const count = 12 + Math.floor(Math.random() * 10);
+
+      const newParticles: Particle[] = Array.from({ length: count }, () => {
+        // Spawn from random edges or center of screen
+        const edge = Math.floor(Math.random() * 5);
+        let x: number, y: number, vx: number, vy: number;
+        if (edge === 0) { x = Math.random() * 100; y = 105; vx = (Math.random() - 0.5) * 40; vy = -(50 + Math.random() * 80); } // bottom
+        else if (edge === 1) { x = -5; y = Math.random() * 100; vx = 30 + Math.random() * 40; vy = (Math.random() - 0.5) * 40; } // left
+        else if (edge === 2) { x = 105; y = Math.random() * 100; vx = -(30 + Math.random() * 40); vy = (Math.random() - 0.5) * 40; } // right
+        else if (edge === 3) { x = Math.random() * 100; y = -5; vx = (Math.random() - 0.5) * 40; vy = 30 + Math.random() * 50; } // top
+        else { x = 30 + Math.random() * 40; y = 30 + Math.random() * 40; vx = (Math.random() - 0.5) * 80; vy = (Math.random() - 0.5) * 80; } // center explosion
+
+        return {
+          id: nextId.current++,
+          emoji: CHAOS_EMOJIS[Math.floor(Math.random() * CHAOS_EMOJIS.length)],
+          x, y,
+          size: 20 + Math.floor(Math.random() * 36),
+          rotation: Math.random() * 360,
+          vx, vy,
+          wobble: 3 + Math.random() * 8,
+          wobbleSpeed: 2 + Math.random() * 5,
+          scale: 0.5 + Math.random() * 1.5,
+          scaleDelta: (Math.random() - 0.5) * 0.8,
+          opacity: 1,
+          born: Date.now(),
+          lifespan: 2.5 + Math.random() * 2,
+        };
+      });
+
+      setParticles((prev) => [...prev.slice(-150), ...newParticles]);
     };
 
-    spawn();
-    const spawnInterval = setInterval(spawn, 1200);
+    spawnBurst();
+    const spawnInterval = setInterval(spawnBurst, 900);
 
-    // Animate particles
     let raf: number;
     const animate = () => {
       const now = Date.now();
@@ -110,15 +136,19 @@ function ChaosOverlay({ active }: { active: boolean }) {
         prev
           .map((p) => {
             const age = (now - p.born) / 1000;
+            const t = age;
+            // Gravity effect on vy
+            const vyWithGravity = p.vy + 15 * t;
             return {
               ...p,
-              y: p.y + p.vy * (age / 20),
-              x: p.x + p.vx * (age / 60),
-              rotation: p.rotation + age * 60,
-              opacity: Math.max(0, 1 - age / 1.8),
+              x: p.x + p.vx * t + Math.sin(t * p.wobbleSpeed * Math.PI * 2) * p.wobble,
+              y: p.y + vyWithGravity * t * 0.5,
+              rotation: p.rotation + t * (120 + p.wobbleSpeed * 30),
+              scale: Math.max(0.1, p.scale + p.scaleDelta * Math.sin(t * 3)),
+              opacity: Math.max(0, 1 - (age / p.lifespan) ** 1.5),
             };
           })
-          .filter((p) => p.opacity > 0)
+          .filter((p) => p.opacity > 0.01)
       );
       raf = requestAnimationFrame(animate);
     };
@@ -127,27 +157,37 @@ function ChaosOverlay({ active }: { active: boolean }) {
     return () => { clearInterval(spawnInterval); cancelAnimationFrame(raf); };
   }, [active]);
 
-  if (!active || particles.length === 0) return null;
+  if (!active) return null;
 
   return (
-    <div style={{
-      position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden",
-      borderRadius: "var(--r-sm)",
-    }}>
-      {particles.map((p) => (
-        <span key={p.id} style={{
-          position: "absolute",
-          left: `${p.x}%`,
-          top: `${p.y}%`,
-          fontSize: p.size,
-          opacity: p.opacity,
-          transform: `rotate(${p.rotation}deg)`,
-          userSelect: "none",
-          lineHeight: 1,
-          transition: "none",
-        }}>{p.emoji}</span>
-      ))}
-    </div>
+    <>
+      {/* Full-screen flash on burst */}
+      {flash && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9998, pointerEvents: "none",
+          background: "linear-gradient(135deg, rgba(249,168,212,0.25), rgba(167,139,250,0.2), rgba(253,224,71,0.2))",
+        }} />
+      )}
+      {/* Full-viewport particle layer — breaks OUT of the container */}
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 9999, pointerEvents: "none", overflow: "visible",
+      }}>
+        {particles.map((p) => (
+          <span key={p.id} style={{
+            position: "absolute",
+            left: `${p.x}vw`,
+            top: `${p.y}vh`,
+            fontSize: p.size,
+            opacity: p.opacity,
+            transform: `rotate(${p.rotation}deg) scale(${p.scale})`,
+            userSelect: "none",
+            lineHeight: 1,
+            willChange: "transform, opacity",
+            filter: p.size > 36 ? "drop-shadow(0 0 8px rgba(249,168,212,0.8))" : "none",
+          }}>{p.emoji}</span>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -1429,14 +1469,12 @@ export default function ContentStrategyPage() {
               {/* Progress indicator */}
               {generating && (
                 <div style={{
-                  position: "relative",
                   display: "flex", alignItems: "center", gap: 10, marginTop: 16,
                   padding: "12px 16px", borderRadius: "var(--r-sm)",
                   background: funMode ? "linear-gradient(135deg, #fdf2f8 0%, #eff6ff 50%, #fef9c3 100%)" : "var(--accent-bg)",
                   fontSize: 13,
                   color: funMode ? "#9333ea" : "var(--accent)",
                   border: funMode ? "1px solid #f9a8d4" : "none",
-                  overflow: "hidden",
                   animation: funMode ? "uwuPulse 2s ease-in-out infinite" : "none",
                 }}>
                   <style>{`
