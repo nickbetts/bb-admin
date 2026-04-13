@@ -718,13 +718,24 @@ h2 {
 }
 
 /* ── PARTNERS STRIP ──────────────────────────────────── */
-.partners-strip { padding: 16px 24px; background: var(--white); border-bottom: 1px solid var(--border); }
+.partners-strip { padding: 18px 24px 20px; background: var(--white); border-bottom: 1px solid var(--border); }
 .partners-inner {
   max-width: 1000px; margin: 0 auto;
-  display: flex; align-items: center; justify-content: center; gap: 36px; flex-wrap: wrap;
+  display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
 }
-.partners-inner img { height: 26px; width: auto; opacity: .45; filter: grayscale(1); transition: opacity .2s, filter .2s; display: block; }
-.partners-inner img:hover { opacity: .85; filter: grayscale(0); }
+.partner-pill {
+  display: inline-block;
+  padding: 7px 16px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-light);
+  text-decoration: none;
+  transition: border-color .2s, color .2s, background .2s;
+  white-space: nowrap;
+}
+.partner-pill:hover { border-color: var(--green); color: var(--green); background: var(--green-light); }
 
 /* ── TESTIMONIALS ────────────────────────────────────── */
 .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
@@ -880,7 +891,7 @@ h2 {
 
 <!-- URGENCY BAR -->
 <div class="urgency-bar">
-  &#9889; 2026 Summer Camps Open for Booking &mdash; 4 Dates Available <span>|</span> Ages 14&ndash;19 <span>|</span> Secure Your Place With Just &pound;200 Deposit
+  &#9889; 2026 Summer Camps Open for Booking  -  4 Dates Available <span>|</span> Ages 14&ndash;19 <span>|</span> Secure Your Place With Just &pound;200 Deposit
 </div>
 
 <!-- HERO -->
@@ -888,11 +899,11 @@ h2 {
   <div class="hero-inner">
     <div class="hero-badge">&#9917; Leicestershire, England &middot; FCV International Football Academy</div>
     <h1>Train Like a <em>Professional.</em><br>Play Like a Champion.</h1>
-    <p class="hero-sub">Join FCV International Football Academy&rsquo;s elite summer camps &mdash; UEFA-qualified coaching, Premier League stadium tours, full board accommodation, and players from across the globe.</p>
+    <p class="hero-sub">Join FCV International Football Academy&rsquo;s elite summer camps  -  UEFA-qualified coaching, Premier League stadium tours, full board accommodation, and players from across the globe.</p>
     <div class="hero-ctas">
       <a href="#enquire" class="btn-primary">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        Secure My Place &mdash; &pound;200 Deposit
+        Secure My Place  -  &pound;200 Deposit
       </a>
       <a href="#camp-details" class="btn-secondary">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
@@ -958,14 +969,15 @@ h2 {
 
 <!-- PARTNER LOGOS -->
 <div class="partners-strip">
-  <p style="text-align:center;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-light);margin-bottom:12px;">Official partners &amp; affiliations</p>
+  <p style="text-align:center;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-light);margin-bottom:14px;">Official partners &amp; affiliations</p>
   <div class="partners-inner">
-    <img src="https://internationalfootball.academy/wp-content/uploads/capelli-sport-logo.png" alt="Capelli Sport — Official Kit Partner">
-    <img src="https://internationalfootball.academy/wp-content/uploads/loughborough-college-logo.png" alt="Loughborough College">
-    <img src="https://internationalfootball.academy/wp-content/uploads/lu-logo.png" alt="Loughborough University">
-    <img src="https://internationalfootball.academy/wp-content/uploads/aoc-logo.png" alt="Association of Colleges">
-    <img src="https://internationalfootball.academy/wp-content/uploads/leicester-academy-logo.png" alt="Leicester City Academy">
-    <img src="https://internationalfootball.academy/wp-content/uploads/psf-logo.png" alt="PSF">
+    <a href="https://capellisport.com/" target="_blank" rel="noopener noreferrer" class="partner-pill">Capelli Sport</a>
+    <a href="https://www.loucoll.ac.uk/" target="_blank" rel="noopener noreferrer" class="partner-pill">Loughborough College</a>
+    <a href="https://www.lboro.ac.uk/" target="_blank" rel="noopener noreferrer" class="partner-pill">Loughborough University</a>
+    <a href="https://www.aoc.co.uk/" target="_blank" rel="noopener noreferrer" class="partner-pill">Association of Colleges</a>
+    <a href="https://leicesterlanguageacademy.co.uk/" target="_blank" rel="noopener noreferrer" class="partner-pill">Leicester Academy</a>
+    <a href="https://www.nfyl.co.uk/" target="_blank" rel="noopener noreferrer" class="partner-pill">Nat. Football Youth League</a>
+    <a href="https://www.prosoccerglobal.com/" target="_blank" rel="noopener noreferrer" class="partner-pill">Pro Soccer Global</a>
   </div>
 </div>
 
@@ -984,7 +996,7 @@ h2 {
       <div class="training-card">
         <div class="training-icon">&#129504;</div>
         <h3>Tactical Awareness</h3>
-        <p>Advanced game strategy, positional play, and formations &mdash; learn how professionals read the game and make faster decisions under pressure.</p>
+        <p>Advanced game strategy, positional play, and formations  -  learn how professionals read the game and make faster decisions under pressure.</p>
       </div>
       <div class="training-card">
         <div class="training-icon">&#127945;</div>
@@ -994,7 +1006,7 @@ h2 {
       <div class="training-card">
         <div class="training-icon">&#127942;</div>
         <h3>Competitive Match Play</h3>
-        <p>Apply everything you&rsquo;ve learned in real matches against other academies and clubs &mdash; proper competitive football, not just training drills.</p>
+        <p>Apply everything you&rsquo;ve learned in real matches against other academies and clubs  -  proper competitive football, not just training drills.</p>
       </div>
       <div class="training-card">
         <div class="training-icon">&#128170;</div>
@@ -1004,7 +1016,7 @@ h2 {
       <div class="training-card">
         <div class="training-icon">&#129690;</div>
         <h3>Sports Therapy &amp; Recovery</h3>
-        <p>Access professional sports therapy support throughout the camp &mdash; because staying healthy and recovering well is part of training like a pro.</p>
+        <p>Access professional sports therapy support throughout the camp  -  because staying healthy and recovering well is part of training like a pro.</p>
       </div>
     </div>
   </div>
@@ -1017,12 +1029,12 @@ h2 {
       <div>
         <p class="section-eyebrow">Accommodation &amp; Meals</p>
         <h2>Your Home Away From Home</h2>
-        <p class="section-lead">Everything you need is on-site at our beautiful Grace Dieu Manor Park campus in Leicestershire. Focus entirely on football &mdash; we handle the rest.</p>
+        <p class="section-lead">Everything you need is on-site at our beautiful Grace Dieu Manor Park campus in Leicestershire. Focus entirely on football  -  we handle the rest.</p>
         <ul class="feature-list">
           <li>Spacious shared or private rooms with private bathrooms</li>
           <li>Three nutritious meals daily + snacks and hydration</li>
           <li>Recreational facilities and social areas</li>
-          <li>Players Hub &mdash; pool tables, ping pong &amp; Xbox</li>
+          <li>Players Hub  -  pool tables, ping pong &amp; Xbox</li>
           <li>24/7 on-site staff for a fully secure environment</li>
           <li>Study spaces available for downtime</li>
         </ul>
@@ -1062,7 +1074,7 @@ h2 {
       <div>
         <p class="section-eyebrow">Premier League Stadium Tours</p>
         <h2>Walk Through the Players&rsquo; Tunnel</h2>
-        <p class="section-lead">Past excursions have taken players to iconic Premier League stadiums &mdash; walking the same tunnels as the world&rsquo;s best players.</p>
+        <p class="section-lead">Past excursions have taken players to iconic Premier League stadiums  -  walking the same tunnels as the world&rsquo;s best players.</p>
         <div class="stadiums-list">
           <span class="stadium-badge">&#127967; Wembley</span>
           <span class="stadium-badge">&#127967; Anfield</span>
@@ -1152,7 +1164,7 @@ h2 {
       <div class="testimonial-card">
         <span class="t-tag t-tag-player">Player</span>
         <div class="t-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-        <p class="t-quote">I came not knowing anyone and left with friends from twelve different countries. The tactical awareness sessions completely changed the way I read the game. I came home a different player &mdash; my coach noticed immediately.</p>
+        <p class="t-quote">I came not knowing anyone and left with friends from twelve different countries. The tactical awareness sessions completely changed the way I read the game. I came home a different player  -  my coach noticed immediately.</p>
         <div class="t-author">
           <div class="t-avatar">AK</div>
           <div>
@@ -1165,7 +1177,7 @@ h2 {
       <div class="testimonial-card">
         <span class="t-tag t-tag-parent">Parent</span>
         <div class="t-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-        <p class="t-quote">We were nervous about sending him to the UK alone at 15, but the 24/7 staff and constant communication completely put us at ease. He cried when he had to leave. Said it was the best two weeks of his life &mdash; he&rsquo;s already asking about next year.</p>
+        <p class="t-quote">We were nervous about sending him to the UK alone at 15, but the 24/7 staff and constant communication completely put us at ease. He cried when he had to leave. Said it was the best two weeks of his life  -  he&rsquo;s already asking about next year.</p>
         <div class="t-author">
           <div class="t-avatar">SM</div>
           <div>
@@ -1178,7 +1190,7 @@ h2 {
       <div class="testimonial-card">
         <span class="t-tag t-tag-player">Player</span>
         <div class="t-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-        <p class="t-quote">My English wasn&rsquo;t great when I arrived but the coaches and staff were so welcoming. The individual feedback was incredible &mdash; they identified weaknesses I didn&rsquo;t even know I had and worked on them every session. Worth every cent.</p>
+        <p class="t-quote">My English wasn&rsquo;t great when I arrived but the coaches and staff were so welcoming. The individual feedback was incredible  -  they identified weaknesses I didn&rsquo;t even know I had and worked on them every session. Worth every cent.</p>
         <div class="t-author">
           <div class="t-avatar">LF</div>
           <div>
@@ -1204,7 +1216,7 @@ h2 {
       <div class="testimonial-card">
         <span class="t-tag t-tag-player">Player</span>
         <div class="t-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-        <p class="t-quote">The Premier League stadium tour was unreal &mdash; walking through the tunnel at Old Trafford is something I&rsquo;ll never forget. But the football itself was the best part. Proper elite coaching, not just drills. Highly recommend to any serious player.</p>
+        <p class="t-quote">The Premier League stadium tour was unreal  -  walking through the tunnel at Old Trafford is something I&rsquo;ll never forget. But the football itself was the best part. Proper elite coaching, not just drills. Highly recommend to any serious player.</p>
         <div class="t-author">
           <div class="t-avatar">MO</div>
           <div>
@@ -1236,7 +1248,7 @@ h2 {
   <div class="container">
     <p class="section-eyebrow">2026 Summer Camp Dates</p>
     <h2>Choose Your Camp</h2>
-    <p class="section-lead">Four two-week camps running throughout summer 2026. All camps are for players aged 14&ndash;19. Places are limited &mdash; secure yours with a &pound;200 deposit.</p>
+    <p class="section-lead">Four two-week camps running throughout summer 2026. All camps are for players aged 14&ndash;19. Places are limited  -  secure yours with a &pound;200 deposit.</p>
 
     <!-- Countdown to Camp 1 -->
     <div class="countdown-strip" style="border-radius:var(--r);margin-bottom:32px;">
@@ -1290,7 +1302,7 @@ h2 {
   <div class="container" style="text-align:center;">
     <p class="section-eyebrow" style="text-align:center;">Transparent Pricing</p>
     <h2 style="text-align:center;">Everything Included. No Surprises.</h2>
-    <p class="section-lead" style="margin:0 auto 44px;">One price covers everything &mdash; coaching, accommodation, all meals, kit, match analysis, and excursions. Travel to the UK is not included.</p>
+    <p class="section-lead" style="margin:0 auto 44px;">One price covers everything  -  coaching, accommodation, all meals, kit, match analysis, and excursions. Travel to the UK is not included.</p>
     <div class="pricing-card">
       <div style="font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-light);">Full Camp Fee (per person)</div>
       <div class="price-tag"><small>&pound;</small>2,500</div>
@@ -1327,7 +1339,7 @@ h2 {
       <div class="step-item">
         <div class="step-num">1</div>
         <div class="step-title">Submit Your Enquiry</div>
-        <div class="step-desc">Fill in the form below &mdash; takes under 2 minutes. We&rsquo;ll confirm availability within one working day.</div>
+        <div class="step-desc">Fill in the form below  -  takes under 2 minutes. We&rsquo;ll confirm availability within one working day.</div>
       </div>
       <div class="step-item">
         <div class="step-num">2</div>
@@ -1347,7 +1359,7 @@ h2 {
     </div>
     <a href="#enquire" class="btn-primary" style="display:inline-flex;margin-top:48px;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      Start My Enquiry &mdash; Takes 2 Minutes
+      Start My Enquiry  -  Takes 2 Minutes
     </a>
   </div>
 </section>
@@ -1357,12 +1369,12 @@ h2 {
   <div class="container">
     <p class="section-eyebrow">Optional Extras</p>
     <h2>Enhance Your Experience</h2>
-    <p class="section-lead">Add-on services to make your stay as smooth as possible &mdash; available at the time of booking.</p>
+    <p class="section-lead">Add-on services to make your stay as smooth as possible  -  available at the time of booking.</p>
     <div class="extras-grid">
       <div class="extra-card">
         <h3>&#127891; English Language Classes</h3>
         <div class="extra-price">&pound;200 <span style="font-size:14px;font-weight:400;color:var(--text-light);">/ week</span></div>
-        <p>Improve your English with tailored lessons &mdash; 8 hours of study per week, timetabled around your football sessions.</p>
+        <p>Improve your English with tailored lessons  -  8 hours of study per week, timetabled around your football sessions.</p>
       </div>
       <div class="extra-card">
         <h3>&#9992;&#65039; Airport Transfers</h3>
@@ -1402,7 +1414,7 @@ h2 {
 
       <details class="faq-item">
         <summary>Can my child travel to the UK alone? <span class="faq-plus">+</span></summary>
-        <div class="faq-body">Yes &mdash; many of our players travel unaccompanied from countries around the world. We offer airport meet-and-greet transfers and have 24/7 welfare staff on site throughout the entire camp. Parents receive regular updates.</div>
+        <div class="faq-body">Yes  -  many of our players travel unaccompanied from countries around the world. We offer airport meet-and-greet transfers and have 24/7 welfare staff on site throughout the entire camp. Parents receive regular updates.</div>
       </details>
 
       <details class="faq-item">
@@ -1427,7 +1439,7 @@ h2 {
 
       <details class="faq-item">
         <summary>Is there specialist coaching for goalkeepers? <span class="faq-plus">+</span></summary>
-        <div class="faq-body">Yes &mdash; we run dedicated GK sessions throughout the camp covering shot stopping, command of the penalty area, distribution, and footwork. Goalkeeper coaching is included in the standard camp fee at no extra cost.</div>
+        <div class="faq-body">Yes  -  we run dedicated GK sessions throughout the camp covering shot stopping, command of the penalty area, distribution, and footwork. Goalkeeper coaching is included in the standard camp fee at no extra cost.</div>
       </details>
 
     </div>
@@ -1526,17 +1538,17 @@ h2 {
             <label>Preferred Camp Date *</label>
             <select name="camp_date" required>
               <option value="">Select a date&hellip;</option>
-              <option value="camp1">Camp 1 &mdash; 28 June to 11 July 2026</option>
-              <option value="camp2">Camp 2 &mdash; 12 July to 25 July 2026</option>
-              <option value="camp3">Camp 3 &mdash; 26 July to 8 August 2026</option>
-              <option value="camp4">Camp 4 &mdash; 9 August to 22 August 2026</option>
+              <option value="camp1">Camp 1  -  28 June to 11 July 2026</option>
+              <option value="camp2">Camp 2  -  12 July to 25 July 2026</option>
+              <option value="camp3">Camp 3  -  26 July to 8 August 2026</option>
+              <option value="camp4">Camp 4  -  9 August to 22 August 2026</option>
             </select>
           </div>
           <div class="form-group">
             <label>Message / Questions</label>
             <textarea name="message" placeholder="Any questions or additional information for the team&hellip;"></textarea>
           </div>
-          <button type="submit" class="btn-submit">Send Enquiry &mdash; We&rsquo;ll Respond Within 1 Working Day &#10003;</button>
+          <button type="submit" class="btn-submit">Send Enquiry  -  We&rsquo;ll Respond Within 1 Working Day &#10003;</button>
           <p class="form-disclaimer">By submitting this form you agree to be contacted by FCV International Football Academy regarding your enquiry. View our <a href="https://internationalfootball.academy/privacy/" target="_blank" rel="noopener noreferrer">privacy policy</a>.</p>
         </form>
       </div>
