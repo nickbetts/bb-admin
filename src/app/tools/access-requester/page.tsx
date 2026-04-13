@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   KeyRound,
   Copy,
@@ -9,24 +9,11 @@ import {
   ChevronDown,
   ChevronUp,
   Settings2,
-  UserCheck,
   ExternalLink,
   Info,
-  Users,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Client {
-  id: string;
-  name: string;
-  googleAdsCustomerId?: string | null;
-  metaAccountId?: string | null;
-  linkedinAccountId?: string | null;
-  ga4PropertyId?: string | null;
-  searchConsoleSiteUrl?: string | null;
-  notifyEmail?: string | null;
-}
 
 interface AgencySettings {
   agencyName: string;
@@ -36,8 +23,6 @@ interface AgencySettings {
 }
 
 type Platform = "googleAds" | "meta" | "linkedin" | "googleAnalytics" | "searchConsole";
-
-const STORAGE_KEY = "i3_access_requester_settings";
 
 const PLATFORM_META = {
   googleAds: {
@@ -82,9 +67,9 @@ const PLATFORM_META = {
   },
 };
 
-// ─── Instruction generators ───────────────────────────────────────────────────
+// ─── Instruction generators (plain text — used for copy-to-clipboard) ─────────
 
-function buildGoogleAdsInstructions(agency: AgencySettings, client?: Client): string {
+function buildGoogleAdsInstructions(agency: AgencySettings): string {
   const managerLine = agency.googleAdsManagerId
     ? `\nManager Account ID to enter: ${formatGadsId(agency.googleAdsManagerId)}`
     : "";
@@ -93,7 +78,7 @@ function buildGoogleAdsInstructions(agency: AgencySettings, client?: Client): st
 To grant us access to your Google Ads account, please follow these steps:
 
 1. Log in to Google Ads at ads.google.com/
-${client?.googleAdsCustomerId ? `   (Your account ID: ${formatGadsId(client.googleAdsCustomerId)})\n` : ""}
+
 2. Click the Admin icon (⚙️) in the top-right corner
 
 3. Select "Access and security" from the left-hand menu
@@ -116,12 +101,10 @@ To link your account to our Manager account instead:
 2. Under "Account access", click "Link to a manager account"
 3. Enter our Manager Account ID:${managerLine}
 4. Click "Send link request"
-5. We'll approve it within the hour.` : ""}
-
-If you need any help, just reply to this email and we'll walk you through it.`;
+5. We'll approve it within the hour.` : ""}`;
 }
 
-function buildMetaInstructions(agency: AgencySettings, client?: Client): string {
+function buildMetaInstructions(agency: AgencySettings): string {
   const bizIdLine = agency.metaBusinessId
     ? `\nOur Business Manager ID: ${agency.metaBusinessId}`
     : "";
@@ -134,7 +117,7 @@ To give us access to your Meta ad account, please follow these steps:
 2. Click the ⚙️ Settings (gear icon) in the top-left sidebar
 
 3. In the left-hand menu, select "Ad Accounts"
-${client?.metaAccountId ? `   (Your Ad Account ID: ${client.metaAccountId})\n` : ""}
+
 4. Select the ad account you'd like to share access to
 
 5. Click "Assign Partners"
@@ -146,18 +129,16 @@ ${bizIdLine ? `6. Enter our Business Manager ID:${bizIdLine}` : `6. Enter our Bu
 
 Once confirmed, our team will have immediate access.
 
-If you manage multiple ad accounts, please repeat steps 4–8 for each one.
-
-Need help? Reply to this email and we'll send a screen recording.`;
+If you manage multiple ad accounts, please repeat steps 4–8 for each one.`;
 }
 
-function buildLinkedInInstructions(agency: AgencySettings, client?: Client): string {
+function buildLinkedInInstructions(agency: AgencySettings): string {
   return `LinkedIn Campaign Manager Access – ${agency.agencyName || "i3media"}
 
 To add us as a user in LinkedIn Campaign Manager:
 
 1. Log in to LinkedIn Campaign Manager: linkedin.com/campaignmanager/
-${client?.linkedinAccountId ? `   (Your account ID: ${client.linkedinAccountId})\n` : ""}
+
 2. Click on the account name in the top navigation
 
 3. Select "Account Settings" from the dropdown
@@ -174,14 +155,12 @@ ${client?.linkedinAccountId ? `   (Your account ID: ${client.linkedinAccountId})
 
 We'll accept the invitation straight away.
 
-Note: LinkedIn only allows access via email. Please use a company email address if possible, rather than a personal one.
-
-Any questions? Just reply to this email.`;
+Note: LinkedIn only allows access via email. Please use a company email address if possible, rather than a personal one.`;
 }
 
 const SERVICE_ACCOUNT_EMAIL = "i3media@i3-reports.iam.gserviceaccount.com";
 
-function buildGoogleAnalyticsInstructions(agency: AgencySettings, client?: Client): string {
+function buildGoogleAnalyticsInstructions(agency: AgencySettings): string {
   return `Google Analytics (GA4) Access – ${agency.agencyName || "i3media"}
 
 We need two email addresses added as users — one for your account manager and one for our reporting system.
@@ -189,7 +168,7 @@ We need two email addresses added as users — one for your account manager and 
 ━━ Step 1 – Add your account manager ━━
 
 1. Go to Google Analytics: analytics.google.com/
-${client?.ga4PropertyId ? `   (Your property ID: ${client.ga4PropertyId})\n` : ""}
+
 2. Click the Admin gear icon (⚙️) at the bottom of the left sidebar
 
 3. In the Property column, click "Property Access Management"
@@ -214,12 +193,10 @@ Repeat steps 4–7 above, but this time:
 
 This second address is used by our automated reporting tool to pull your analytics data securely. It cannot make any changes to your account.
 
-Access is granted immediately — no invitation confirmation needed on our end.
-
-If you're unsure which property to share, just reply to this email with your website address and we'll help you identify the right one.`;
+Access is granted immediately — no invitation confirmation needed on our end.`;
 }
 
-function buildSearchConsoleInstructions(agency: AgencySettings, client?: Client): string {
+function buildSearchConsoleInstructions(agency: AgencySettings): string {
   return `Google Search Console Access – ${agency.agencyName || "i3media"}
 
 We need two email addresses added as users — one for your account manager and one for our reporting system.
@@ -227,7 +204,7 @@ We need two email addresses added as users — one for your account manager and 
 ━━ Step 1 – Add your account manager ━━
 
 1. Go to Google Search Console: search.google.com/search-console/
-${client?.searchConsoleSiteUrl ? `   (Your property: ${client.searchConsoleSiteUrl})\n` : ""}
+
 2. Select your property from the left-hand sidebar
    (This is usually your website domain, e.g. example.com)
 
@@ -262,36 +239,169 @@ Note: You need to be an Owner of the property to add users. If you're not sure, 
 
 function formatGadsId(id: string): string {
   const clean = id.replace(/-/g, "");
-  if (clean.length === 10) {
-    return `${clean.slice(0, 3)}-${clean.slice(3, 6)}-${clean.slice(6)}`;
-  }
+  if (clean.length === 10) return `${clean.slice(0, 3)}-${clean.slice(3, 6)}-${clean.slice(6)}`;
   return id;
 }
 
-function buildShareUrl(
-  agency: AgencySettings,
-  platforms: Set<Platform>,
-  clientName?: string
-): string {
+function buildShareUrl(agency: AgencySettings, platforms: Set<Platform>): string {
   const data = {
     agencyName: agency.agencyName,
     agencyEmail: agency.agencyEmail,
     googleAdsManagerId: agency.googleAdsManagerId,
     metaBusinessId: agency.metaBusinessId,
     platforms: Array.from(platforms),
-    clientName: clientName ?? "",
   };
   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
   const base = typeof window !== "undefined" ? window.location.origin : "";
   return `${base}/share/access-request?d=${encoded}`;
 }
 
+// ─── Visual step components ────────────────────────────────────────────────────
+
+function Step({ n, color, text }: { n: number; color: string; text: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
+      <div style={{
+        width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+        background: color, color: "white",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 11, fontWeight: 700, marginTop: 2,
+      }}>{n}</div>
+      <p style={{ margin: 0, fontSize: 13, color: "var(--text-2)", lineHeight: 1.65 }}
+        dangerouslySetInnerHTML={{ __html: text }} />
+    </div>
+  );
+}
+
+function StepDivider({ label }: { label: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0 14px" }}>
+      <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+      <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.07em", whiteSpace: "nowrap" }}>{label}</span>
+      <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+    </div>
+  );
+}
+
+function InfoBox({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      marginTop: 12, padding: "10px 14px", borderRadius: 8,
+      background: "var(--surface-2, #f8fafc)", border: "1px solid var(--border)",
+      fontSize: 12, color: "var(--text-3)", lineHeight: 1.55,
+    }}>{children}</div>
+  );
+}
+
+function renderPlatformSteps(p: Platform, agency: AgencySettings): React.ReactNode {
+  const c = PLATFORM_META[p].color;
+  const email = `<strong>${agency.agencyEmail || "[AGENCY EMAIL]"}</strong>`;
+
+  if (p === "googleAds") {
+    const managerId = agency.googleAdsManagerId ? formatGadsId(agency.googleAdsManagerId) : "";
+    return (
+      <>
+        <Step n={1} color={c} text='Log in to <a href="https://ads.google.com" target="_blank" rel="noopener noreferrer" style="color:inherit;font-weight:600">Google Ads</a>' />
+        <Step n={2} color={c} text='Click the <strong>Admin icon (⚙️)</strong> in the top-right corner' />
+        <Step n={3} color={c} text='Select <strong>"Access and security"</strong> from the left-hand menu' />
+        <Step n={4} color={c} text='Click the blue <strong>"+"</strong> button to invite a new user' />
+        <Step n={5} color={c} text={`Enter our email address: ${email}`} />
+        <Step n={6} color={c} text='Set the access level to <strong>"Standard"</strong> — full campaign management without billing access' />
+        <Step n={7} color={c} text='Click <strong>"Send invitation"</strong>' />
+        {managerId && (
+          <>
+            <StepDivider label="Or link via manager account (preferred)" />
+            <Step n={1} color={c} text='In Google Ads, go to <strong>Admin → Account settings</strong>' />
+            <Step n={2} color={c} text='Under <strong>"Account access"</strong>, click <strong>"Link to a manager account"</strong>' />
+            <Step n={3} color={c} text={`Enter our Manager Account ID: <strong style="font-family:monospace">${managerId}</strong>`} />
+            <Step n={4} color={c} text='Click <strong>"Send link request"</strong> — we will approve it within the hour' />
+          </>
+        )}
+      </>
+    );
+  }
+
+  if (p === "meta") {
+    const bizId = agency.metaBusinessId;
+    return (
+      <>
+        <Step n={1} color={c} text='Go to <a href="https://business.facebook.com" target="_blank" rel="noopener noreferrer" style="color:inherit;font-weight:600">Meta Business Manager</a>' />
+        <Step n={2} color={c} text='Click the <strong>⚙️ Settings</strong> gear icon in the top-left sidebar' />
+        <Step n={3} color={c} text='In the left menu, select <strong>"Ad Accounts"</strong>' />
+        <Step n={4} color={c} text='Select the ad account you want to share' />
+        <Step n={5} color={c} text='Click <strong>"Assign Partners"</strong>' />
+        {bizId
+          ? <Step n={6} color={c} text={`Enter our Business Manager ID: <strong style="font-family:monospace">${bizId}</strong>`} />
+          : <Step n={6} color={c} text='Enter our <strong>Business Manager ID</strong> (your account manager will provide this)' />}
+        <Step n={7} color={c} text='Select access level: <strong>"Advertiser"</strong>' />
+        <Step n={8} color={c} text='Click <strong>"Confirm"</strong>' />
+        <InfoBox>Repeat steps 4–8 for each ad account if you have more than one.</InfoBox>
+      </>
+    );
+  }
+
+  if (p === "linkedin") {
+    return (
+      <>
+        <Step n={1} color={c} text='Log in to <a href="https://www.linkedin.com/campaignmanager" target="_blank" rel="noopener noreferrer" style="color:inherit;font-weight:600">LinkedIn Campaign Manager</a>' />
+        <Step n={2} color={c} text='Click on the <strong>account name</strong> in the top navigation bar' />
+        <Step n={3} color={c} text='Select <strong>"Account Settings"</strong> from the dropdown' />
+        <Step n={4} color={c} text='In the left sidebar, navigate to <strong>"Manage Access"</strong>' />
+        <Step n={5} color={c} text='Click <strong>"Add User"</strong>' />
+        <Step n={6} color={c} text={`Enter our email address: ${email}`} />
+        <Step n={7} color={c} text='Set the role to <strong>"Account Manager"</strong>' />
+        <Step n={8} color={c} text='Click <strong>"Send invite"</strong>' />
+        <InfoBox>Note: LinkedIn only allows access via email address.</InfoBox>
+      </>
+    );
+  }
+
+  if (p === "googleAnalytics") {
+    return (
+      <>
+        <StepDivider label="Step 1 — Add your account manager" />
+        <Step n={1} color={c} text='Log in to <a href="https://analytics.google.com" target="_blank" rel="noopener noreferrer" style="color:inherit;font-weight:600">Google Analytics</a>' />
+        <Step n={2} color={c} text='Click the <strong>Admin gear icon (⚙️)</strong> at the bottom of the left sidebar' />
+        <Step n={3} color={c} text='In the Property column, click <strong>"Property Access Management"</strong>' />
+        <Step n={4} color={c} text='Click the <strong>"+"</strong> button (top right) → <strong>"Add users"</strong>' />
+        <Step n={5} color={c} text={`Enter our email: ${email}`} />
+        <Step n={6} color={c} text='Select the role: <strong>"Editor"</strong>' />
+        <Step n={7} color={c} text='Click <strong>"Add"</strong>' />
+        <StepDivider label="Step 2 — Add our reporting system" />
+        <Step n={4} color={c} text='Click <strong>"+"</strong> → <strong>"Add users"</strong> again' />
+        <Step n={5} color={c} text={`Enter the service account: <strong style="font-family:monospace;font-size:12px">${SERVICE_ACCOUNT_EMAIL}</strong>`} />
+        <Step n={6} color={c} text='Select the role: <strong>"Viewer"</strong>' />
+        <Step n={7} color={c} text='Click <strong>"Add"</strong>' />
+        <InfoBox>The service account is used by our reporting tool to read your data automatically. It cannot make any changes to your account.</InfoBox>
+      </>
+    );
+  }
+
+  // searchConsole
+  return (
+    <>
+      <StepDivider label="Step 1 — Add your account manager" />
+      <Step n={1} color={c} text='Log in to <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style="color:inherit;font-weight:600">Google Search Console</a>' />
+      <Step n={2} color={c} text='Select your <strong>property</strong> (your website domain) from the left-hand sidebar' />
+      <Step n={3} color={c} text='Click the <strong>⚙️ Settings</strong> icon at the bottom of the sidebar' />
+      <Step n={4} color={c} text='Click <strong>"Users and permissions"</strong>' />
+      <Step n={5} color={c} text='Click <strong>"Add User"</strong> (top right)' />
+      <Step n={6} color={c} text={`Enter our email: ${email}`} />
+      <Step n={7} color={c} text='Set permission to <strong>"Full"</strong>' />
+      <Step n={8} color={c} text='Click <strong>"Add"</strong>' />
+      <StepDivider label="Step 2 — Add our reporting system" />
+      <Step n={5} color={c} text='Click <strong>"Add User"</strong> again' />
+      <Step n={6} color={c} text={`Enter the service account: <strong style="font-family:monospace;font-size:12px">${SERVICE_ACCOUNT_EMAIL}</strong>`} />
+      <Step n={7} color={c} text='Set permission to <strong>"Full"</strong>' />
+      <Step n={8} color={c} text='Click <strong>"Add"</strong>' />
+      <InfoBox>You need to be an <strong>Owner</strong> of the property to add users. The service account reads your search data automatically and cannot make changes.</InfoBox>
+    </>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function AccessRequesterPage() {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<string>("");
-  const [loadingClients, setLoadingClients] = useState(true);
   const [platforms, setPlatforms] = useState<Set<Platform>>(
     new Set(["googleAds", "meta", "linkedin", "googleAnalytics", "searchConsole"])
   );
@@ -302,51 +412,47 @@ export default function AccessRequesterPage() {
     metaBusinessId: "226933892717054",
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string>("");
   const [shareUrlCopied, setShareUrlCopied] = useState(false);
   const [showSharePanel, setShowSharePanel] = useState(false);
 
-  // Load settings from localStorage
+  // Load settings from DB on mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as Partial<AgencySettings>;
-        setAgency((prev) => ({ ...prev, ...parsed }));
-        // If settings are populated, don't auto-open the panel
-        if (parsed.agencyEmail && parsed.agencyEmail.length > 0) {
-          setSettingsOpen(false);
-        } else {
-          setSettingsOpen(true);
-        }
-      } else {
-        setSettingsOpen(true); // First time – open settings
-      }
-    } catch { /* ignore */ }
+    fetch("/api/settings")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data: Record<string, string> | null) => {
+        if (!data) { setSettingsOpen(true); return; }
+        const merged: Partial<AgencySettings> = {};
+        if (data.accessRequesterAgencyName) merged.agencyName = data.accessRequesterAgencyName;
+        if (data.accessRequesterAgencyEmail) merged.agencyEmail = data.accessRequesterAgencyEmail;
+        if (data.accessRequesterGadsManagerId) merged.googleAdsManagerId = data.accessRequesterGadsManagerId;
+        if (data.accessRequesterMetaBusinessId) merged.metaBusinessId = data.accessRequesterMetaBusinessId;
+        if (Object.keys(merged).length) setAgency((p) => ({ ...p, ...merged }));
+        if (!merged.agencyEmail) setSettingsOpen(true);
+      })
+      .catch(() => setSettingsOpen(true));
   }, []);
 
-  // Fetch clients
-  const loadClients = useCallback(async () => {
-    try {
-      const res = await fetch("/api/clients");
-      if (res.ok) {
-        const data = await res.json() as { clients?: Client[]; error?: string };
-        setClients(data.clients ?? []);
-      }
-    } catch { /* ignore */ } finally {
-      setLoadingClients(false);
-    }
-  }, []);
-
-  useEffect(() => { loadClients(); }, [loadClients]);
-
-  function saveSettings(updated: AgencySettings) {
+  async function saveSettings(updated: AgencySettings) {
     setAgency(updated);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch { /* ignore */ }
+    setSavingSettings(true);
+    try {
+      await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accessRequesterAgencyName: updated.agencyName,
+          accessRequesterAgencyEmail: updated.agencyEmail,
+          accessRequesterGadsManagerId: updated.googleAdsManagerId,
+          accessRequesterMetaBusinessId: updated.metaBusinessId,
+        }),
+      });
+    } catch { /* ignore */ } finally {
+      setSavingSettings(false);
+    }
   }
-
-  const selectedClient = clients.find((c) => c.id === selectedClientId);
 
   function togglePlatform(p: Platform) {
     setPlatforms((prev) => {
@@ -358,11 +464,11 @@ export default function AccessRequesterPage() {
   }
 
   function getInstructions(p: Platform): string {
-    if (p === "googleAds") return buildGoogleAdsInstructions(agency, selectedClient);
-    if (p === "meta") return buildMetaInstructions(agency, selectedClient);
-    if (p === "googleAnalytics") return buildGoogleAnalyticsInstructions(agency, selectedClient);
-    if (p === "searchConsole") return buildSearchConsoleInstructions(agency, selectedClient);
-    return buildLinkedInInstructions(agency, selectedClient);
+    if (p === "googleAds") return buildGoogleAdsInstructions(agency);
+    if (p === "meta") return buildMetaInstructions(agency);
+    if (p === "googleAnalytics") return buildGoogleAnalyticsInstructions(agency);
+    if (p === "searchConsole") return buildSearchConsoleInstructions(agency);
+    return buildLinkedInInstructions(agency);
   }
 
   async function copyText(text: string, key: string) {
@@ -374,8 +480,7 @@ export default function AccessRequesterPage() {
   }
 
   function handleGenerateShareLink() {
-    const url = buildShareUrl(agency, platforms, selectedClient?.name);
-    setShareUrl(url);
+    setShareUrl(buildShareUrl(agency, platforms));
     setShowSharePanel(true);
   }
 
@@ -390,7 +495,7 @@ export default function AccessRequesterPage() {
   const settingsComplete = agency.agencyEmail.trim().length > 0;
 
   return (
-    <div className="page" style={{ maxWidth: 860 }}>
+    <div className="page" style={{ maxWidth: 820 }}>
 
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 28 }}>
@@ -411,7 +516,7 @@ export default function AccessRequesterPage() {
         </div>
       </div>
 
-      {/* ── Warning banner if settings not set ── */}
+      {/* ── Warning banner ── */}
       {!settingsComplete && (
         <div style={{
           display: "flex", alignItems: "flex-start", gap: 10,
@@ -445,7 +550,7 @@ export default function AccessRequesterPage() {
                 fontSize: 11, fontWeight: 500, padding: "2px 8px",
                 borderRadius: 50, background: "var(--success-bg, #f0fdf4)",
                 color: "var(--success, #16a34a)", border: "1px solid #bbf7d0",
-              }}>Saved</span>
+              }}>{savingSettings ? "Saving…" : "Saved"}</span>
             )}
           </div>
           {settingsOpen
@@ -456,7 +561,7 @@ export default function AccessRequesterPage() {
         {settingsOpen && (
           <div style={{ padding: "0 18px 18px", borderTop: "1px solid var(--border)" }}>
             <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 14, marginBottom: 16 }}>
-              These details are saved in your browser and used to pre-fill access instructions. They are never sent to our servers.
+              These details are saved to the platform and shared across all users.
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -511,67 +616,8 @@ export default function AccessRequesterPage() {
         )}
       </div>
 
-      {/* ── Client selector ── */}
-      <div style={{
-        background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: 12, padding: "14px 18px", marginBottom: 20,
-        display: "flex", alignItems: "center", gap: 14,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
-          <Users style={{ width: 15, height: 15, color: "var(--text-3)" }} />
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Client</span>
-          <span style={{ fontSize: 12, color: "var(--text-3)" }}>(optional)</span>
-        </div>
-        <select
-          className="input"
-          value={selectedClientId}
-          onChange={(e) => setSelectedClientId(e.target.value)}
-          style={{ flex: 1 }}
-          disabled={loadingClients}
-        >
-          <option value="">— Select client to pre-fill account IDs —</option>
-          {clients.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-        {selectedClient && (
-          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-            {selectedClient.googleAdsCustomerId && (
-              <span style={{
-                fontSize: 11, padding: "3px 8px", borderRadius: 6,
-                background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe",
-              }}>GAds ✓</span>
-            )}
-            {selectedClient.metaAccountId && (
-              <span style={{
-                fontSize: 11, padding: "3px 8px", borderRadius: 6,
-                background: "#eef2ff", color: "#4338ca", border: "1px solid #c7d2fe",
-              }}>Meta ✓</span>
-            )}
-            {selectedClient.linkedinAccountId && (
-              <span style={{
-                fontSize: 11, padding: "3px 8px", borderRadius: 6,
-                background: "#f0f9ff", color: "#0369a1", border: "1px solid #bae6fd",
-              }}>LI ✓</span>
-            )}
-            {selectedClient.ga4PropertyId && (
-              <span style={{
-                fontSize: 11, padding: "3px 8px", borderRadius: 6,
-                background: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa",
-              }}>GA4 ✓</span>
-            )}
-            {selectedClient.searchConsoleSiteUrl && (
-              <span style={{
-                fontSize: 11, padding: "3px 8px", borderRadius: 6,
-                background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0",
-              }}>SC ✓</span>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* ── Platform toggles ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
         <span style={{ fontSize: 12, color: "var(--text-3)", marginRight: 4 }}>Platforms:</span>
         {(Object.keys(PLATFORM_META) as Platform[]).map((p) => (
           <button
@@ -595,7 +641,6 @@ export default function AccessRequesterPage() {
       <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 24 }}>
         {(Object.keys(PLATFORM_META) as Platform[]).filter((p) => platforms.has(p)).map((p) => {
           const meta = PLATFORM_META[p];
-          const instructions = getInstructions(p);
           const isCopied = copied === p;
 
           return (
@@ -606,39 +651,28 @@ export default function AccessRequesterPage() {
                 borderRadius: 14, overflow: "hidden",
               }}
             >
-              {/* Card header */}
               <div style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
-                padding: "14px 18px",
-                borderBottom: "1px solid var(--border)",
-                background: "linear-gradient(to right, var(--surface), var(--surface-2, #f8fafc))",
+                padding: "14px 18px", borderBottom: "1px solid var(--border)",
+                borderLeft: `4px solid ${meta.color}`,
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: 8,
-                    background: meta.color, display: "flex", alignItems: "center",
-                    justifyContent: "center",
-                  }}>
-                    <UserCheck style={{ width: 16, height: 16, color: "white" }} />
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text)" }}>
+                    {meta.label}
                   </div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text)" }}>
-                      {meta.label}
-                    </div>
-                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
-                      Requesting: {meta.accessLevel}
-                    </div>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>
+                    Requesting: {meta.accessLevel}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
-                    onClick={() => copyText(instructions, p)}
+                    onClick={() => copyText(getInstructions(p), p)}
                     className="btn btn-secondary btn-sm"
                     style={{ gap: 5, display: "inline-flex", alignItems: "center" }}
                   >
                     {isCopied
                       ? <><Check style={{ width: 13, height: 13 }} /> Copied!</>
-                      : <><Copy style={{ width: 13, height: 13 }} /> Copy Instructions</>}
+                      : <><Copy style={{ width: 13, height: 13 }} /> Copy as text</>}
                   </button>
                   <a
                     href={meta.link}
@@ -653,15 +687,8 @@ export default function AccessRequesterPage() {
                 </div>
               </div>
 
-              {/* Instructions */}
-              <div style={{ padding: "16px 18px" }}>
-                <pre style={{
-                  fontFamily: "inherit", fontSize: 13, color: "var(--text-2)",
-                  lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word",
-                  margin: 0,
-                }}>
-                  {instructions}
-                </pre>
+              <div style={{ padding: "18px 20px" }}>
+                {renderPlatformSteps(p, agency)}
               </div>
             </div>
           );
@@ -735,3 +762,4 @@ export default function AccessRequesterPage() {
     </div>
   );
 }
+
