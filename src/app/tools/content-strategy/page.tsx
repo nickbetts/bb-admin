@@ -114,7 +114,7 @@ function ChaosOverlay({ active }: { active: boolean }) {
           id: nextId.current++,
           emoji: CHAOS_EMOJIS[Math.floor(Math.random() * CHAOS_EMOJIS.length)],
           x, y,
-          size: 20 + Math.floor(Math.random() * 36),
+          size: 14 + Math.floor(Math.random() * 16),
           rotation: Math.random() * 360,
           vx, vy,
           wobble: 3 + Math.random() * 8,
@@ -147,7 +147,7 @@ function ChaosOverlay({ active }: { active: boolean }) {
               ...p,
               x: p.x + p.vx * t + Math.sin(t * p.wobbleSpeed * Math.PI * 2) * p.wobble,
               y: p.y + vyWithGravity * t * 0.5,
-              rotation: p.rotation + t * (120 + p.wobbleSpeed * 30),
+              rotation: p.rotation + t * (30 + p.wobbleSpeed * 8),
               scale: Math.max(0.1, p.scale + p.scaleDelta * Math.sin(t * 3)),
               opacity: Math.max(0, 1 - (age / p.lifespan) ** 1.5),
             };
