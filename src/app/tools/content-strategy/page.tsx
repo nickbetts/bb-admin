@@ -21,6 +21,7 @@ import {
   Globe,
   Search,
   AlertCircle,
+  ChevronDown,
 } from "lucide-react";
 
 interface ContentStrategyItem {
@@ -47,6 +48,160 @@ type GenerationMode = "semrush" | "upload";
 interface DetectedCompetitor {
   domain: string;
   commonKeywords: number;
+}
+
+// ─── Methodology Accordion ─────────────────────────────────────────────────
+
+const METHODOLOGY_STEPS = [
+  {
+    icon: "🔍",
+    label: "Domain & Competitor Discovery",
+    detail:
+      "We fetch your domain's top 500 organic keywords and monthly traffic from SEMrush, then auto-detect your top 5 competitors by keyword overlap. You can override competitors manually. Sitemap crawl identifies every page already on the site.",
+  },
+  {
+    icon: "📊",
+    label: "Real Performance Data (GSC)",
+    detail:
+      "When Google Search Console is connected, we pull 90 days of actual click, impression, CTR, and average position data for up to 1,000 query–page combinations. This is layered on top of SEMrush to give a complete picture of what's working.",
+  },
+  {
+    icon: "📝",
+    label: "Brief Topic Research",
+    detail:
+      "If you include a brief, we extract topic seeds (e.g. \u201cqurbani\u201d, \u201cramadan campaign\u201d) and run SEMrush phrase-match queries for each one — returning real keyword volumes and difficulty scores for terms that may not appear in your current rankings.",
+  },
+  {
+    icon: "🏆",
+    label: "Content Gap Analysis",
+    detail:
+      "We compare your keyword footprint against each competitor's to find terms they rank for that you don't. These become the candidates for new landing pages and blog posts.",
+  },
+  {
+    icon: "🔑",
+    label: "Keyword Pool Construction",
+    detail:
+      "All organic keywords, GSC queries, content gap terms, and brief-researched keywords are merged into a single pool with verified volumes. GPT-4o is only permitted to use keywords from this pool — no invented volumes.",
+  },
+  {
+    icon: "🤖",
+    label: "AI Strategy Generation",
+    detail:
+      "GPT-4o analyses the full dataset and produces page optimisations (positions 4–30 quick wins), new landing pages (commercial intent gaps), blog posts grouped into topical clusters (informational gaps), and link-building targets — each scored for impact and effort.",
+  },
+  {
+    icon: "🏷️",
+    label: "Keyword Labelling & Meta Audit",
+    detail:
+      "Each suggested page receives primary, secondary, and long-tail keyword assignments. Existing pages are crawled live to audit the current <title> tag — checking presence, length, and whether it contains the target keyword.",
+  },
+  {
+    icon: "🗺️",
+    label: "Prioritised Roadmap",
+    detail:
+      "Tasks are distributed across a three-phase roadmap: Month 1 (high-impact, low-effort quick wins), Months 2–3 (core new pages and content build-out), and Months 4+ (pillar content, link outreach, competitive gaps). The strategy is packaged as a shareable HTML document.",
+  },
+];
+
+function MethodologyAccordion() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      style={{
+        marginTop: 20,
+        border: "1px solid var(--border)",
+        borderRadius: "var(--r)",
+        background: "var(--surface)",
+        overflow: "hidden",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "14px 20px",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          textAlign: "left",
+          gap: 12,
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+          How does this work? — Methodology
+        </span>
+        <ChevronDown
+          style={{
+            width: 16,
+            height: 16,
+            color: "var(--text-3)",
+            flexShrink: 0,
+            transition: "transform 0.2s ease",
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+          }}
+        />
+      </button>
+      {open && (
+        <div
+          style={{
+            borderTop: "1px solid var(--border)",
+            padding: "20px 20px 24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 0,
+          }}
+        >
+          {METHODOLOGY_STEPS.map((step, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                gap: 16,
+                paddingBottom: i < METHODOLOGY_STEPS.length - 1 ? 20 : 0,
+                marginBottom: i < METHODOLOGY_STEPS.length - 1 ? 20 : 0,
+                borderBottom: i < METHODOLOGY_STEPS.length - 1 ? "1px solid var(--border-subtle, var(--border))" : "none",
+              }}
+            >
+              {/* Step number + connector */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: "var(--accent-bg, color-mix(in srgb, var(--accent) 12%, transparent))",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 16,
+                    flexShrink: 0,
+                  }}
+                >
+                  {step.icon}
+                </div>
+                {i < METHODOLOGY_STEPS.length - 1 && (
+                  <div style={{ width: 1, flex: 1, minHeight: 16, background: "var(--border)", marginTop: 6 }} />
+                )}
+              </div>
+              {/* Content */}
+              <div style={{ paddingTop: 4 }}>
+                <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+                  {i + 1}. {step.label}
+                </p>
+                <p style={{ margin: 0, fontSize: 12.5, color: "var(--text-3)", lineHeight: 1.6 }}>
+                  {step.detail}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function ContentStrategyPage() {
@@ -1240,6 +1395,9 @@ export default function ContentStrategyPage() {
           </div>
         )}
       </div>
+
+      {/* Methodology */}
+      <MethodologyAccordion />
 
       {/* Share Modal */}
       {sharingId && (
