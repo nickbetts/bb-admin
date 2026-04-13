@@ -6,6 +6,7 @@ import {
   detectCompetitors,
   estimateApiUnits,
   type StrategyModel,
+  type ContentStrategyLimits,
 } from "@/lib/content-strategy-generator";
 
 export async function POST(request: NextRequest) {
@@ -15,13 +16,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { clientId, brief, period, database, action, model } = body as {
+    const { clientId, brief, period, database, action, model, limits } = body as {
       clientId: string;
       brief?: string;
       period?: string;
       database?: string;
       action?: string;
       model?: StrategyModel;
+      limits?: ContentStrategyLimits;
     };
 
     if (!clientId) {
@@ -39,6 +41,7 @@ export async function POST(request: NextRequest) {
         name: true,
         semrushDomain: true,
         searchConsoleSiteUrl: true,
+        contentStrategyLimits: true,
       },
     });
 
@@ -84,6 +87,20 @@ export async function POST(request: NextRequest) {
         year: "numeric",
       });
 
+    // Merge: use request-supplied limits if provided, else fall back to saved client limits
+    const savedLimits: ContentStrategyLimits = client.contentStrategyLimits
+      ? JSON.parse(client.contentStrategyLimits)
+      : {};
+    const activeLimits: ContentStrategyLimits = limits ?? savedLimits;
+
+    // Persist limits back to the client so they're reused next time
+    if (limits) {
+      await prisma.client.update({
+        where: { id: clientId },
+        data: { contentStrategyLimits: JSON.stringify(limits) },
+      });
+    }
+
     const { data, autoCompetitors } = await generateContentStrategy(
       domain,
       client.name,
@@ -92,6 +109,7 @@ export async function POST(request: NextRequest) {
       db,
       client.searchConsoleSiteUrl,
       model === "claude-opus-4-6" ? "claude-opus-4-6" : "gpt-4o",
+      activeLimits,
     );
 
     data.clientName = client.name;

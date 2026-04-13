@@ -26,6 +26,13 @@ import { getAnthropicClient } from "@/lib/anthropic-client";
 
 export type StrategyModel = "gpt-4o" | "claude-opus-4-6";
 
+export interface ContentStrategyLimits {
+  pageOptimisations?: number;
+  landingPages?: number;
+  blogPosts?: number;
+  linkTargets?: number;
+}
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 interface ParsedKeyword {
@@ -855,6 +862,7 @@ export async function generateContentStrategy(
   database: string = "uk",
   searchConsoleSiteUrl?: string | null,
   model: StrategyModel = "claude-opus-4-6",
+  limits?: ContentStrategyLimits,
 ): Promise<{ data: ContentStrategyData; collectedData: CollectedData; autoCompetitors: string[] }> {
   // Step 1: Collect data (uses GSC when available, falls back to SEMrush-only)
   const collectedData = await collectSemrushData(domain, competitors, database, searchConsoleSiteUrl, brief);
@@ -1056,6 +1064,12 @@ export async function generateContentStrategy(
   for (let i = 0; i < auditResults.length; i++) {
     pageOptimisations[i].audit = auditResults[i];
   }
+
+  // Apply per-client output limits if configured
+  if (limits?.pageOptimisations) pageOptimisations.splice(limits.pageOptimisations);
+  if (limits?.landingPages) landingPages.splice(limits.landingPages);
+  if (limits?.blogPosts) blogPosts.splice(limits.blogPosts);
+  if (limits?.linkTargets) linkTargets.splice(limits.linkTargets);
 
   const strategyData: ContentStrategyData = {
     clientName,

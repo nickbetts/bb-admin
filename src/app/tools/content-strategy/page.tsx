@@ -41,6 +41,7 @@ interface Client {
   name: string;
   semrushDomain?: string | null;
   searchConsoleSiteUrl?: string | null;
+  contentStrategyLimits?: string | null;
 }
 
 type GenerationMode = "semrush" | "upload";
@@ -325,6 +326,11 @@ export default function ContentStrategyPage() {
   const [semrushBrief, setSemrushBrief] = useState("");
   const [semrushDatabase, setSemrushDatabase] = useState("uk");
   const [aiModel, setAiModel] = useState<"gpt-4o" | "claude-opus-4-6">("claude-opus-4-6");
+  // Per-client output limits (empty string = no limit)
+  const [limitPageOpts, setLimitPageOpts] = useState("");
+  const [limitLandingPages, setLimitLandingPages] = useState("");
+  const [limitBlogPosts, setLimitBlogPosts] = useState("");
+  const [limitLinkTargets, setLimitLinkTargets] = useState("");
   const [detectedCompetitors, setDetectedCompetitors] = useState<DetectedCompetitor[]>([]);
   const [detectingCompetitors, setDetectingCompetitors] = useState(false);
   const [semrushProgress, setSemrushProgress] = useState("");
@@ -782,6 +788,12 @@ export default function ContentStrategyPage() {
           database: semrushDatabase,
           competitors: detectedCompetitors.map((c) => c.domain),
           model: aiModel,
+          limits: {
+            ...(limitPageOpts ? { pageOptimisations: parseInt(limitPageOpts, 10) } : {}),
+            ...(limitLandingPages ? { landingPages: parseInt(limitLandingPages, 10) } : {}),
+            ...(limitBlogPosts ? { blogPosts: parseInt(limitBlogPosts, 10) } : {}),
+            ...(limitLinkTargets ? { linkTargets: parseInt(limitLinkTargets, 10) } : {}),
+          },
         }),
       });
 
@@ -965,6 +977,16 @@ export default function ContentStrategyPage() {
                             setClientName(selectedClient.name);
                             setAddingSemrushToClient(false);
                             setAddSemrushDomain("");
+                            // Load saved content strategy limits
+                            try {
+                              const l = selectedClient.contentStrategyLimits
+                                ? JSON.parse(selectedClient.contentStrategyLimits)
+                                : {};
+                              setLimitPageOpts(l.pageOptimisations ? String(l.pageOptimisations) : "");
+                              setLimitLandingPages(l.landingPages ? String(l.landingPages) : "");
+                              setLimitBlogPosts(l.blogPosts ? String(l.blogPosts) : "");
+                              setLimitLinkTargets(l.linkTargets ? String(l.linkTargets) : "");
+                            } catch { /* ignore parse errors */ }
                             if (selectedClient.semrushDomain) {
                               handleDetectCompetitors(e.target.value);
                             } else {
@@ -1142,6 +1164,36 @@ export default function ContentStrategyPage() {
                   rows={3}
                   style={{ resize: "vertical" }}
                 />
+              </div>
+
+              {/* Monthly output limits */}
+              <div style={{ marginBottom: 20 }}>
+                <label className="form-label" style={{ marginBottom: 8 }}>
+                  Monthly output limits
+                  <span style={{ fontWeight: 400, color: "var(--text-3)", marginLeft: 6 }}>— leave blank for no limit</span>
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
+                  {([
+                    { label: "Page optimisations", value: limitPageOpts, set: setLimitPageOpts },
+                    { label: "Landing pages", value: limitLandingPages, set: setLimitLandingPages },
+                    { label: "Blog posts", value: limitBlogPosts, set: setLimitBlogPosts },
+                    { label: "Link targets", value: limitLinkTargets, set: setLimitLinkTargets },
+                  ] as { label: string; value: string; set: (v: string) => void }[]).map(({ label, value, set }) => (
+                    <div key={label} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 500 }}>{label}</span>
+                      <input
+                        type="number"
+                        className="form-input"
+                        min={1}
+                        max={999}
+                        value={value}
+                        onChange={(e) => set(e.target.value)}
+                        placeholder="∞"
+                        style={{ textAlign: "center", fontSize: 13 }}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 16, alignItems: "end" }}>

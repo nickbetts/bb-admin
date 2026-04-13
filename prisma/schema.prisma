@@ -102,6 +102,7 @@ model Client {
   clickFraudToken       String?   @unique  // Unique token for website protection snippet
   // Microsoft 365 email sync
   contactEmails         String?   // JSON: string[] — client contact email addresses for email sync
+  contentStrategyLimits String?   // JSON: { pageOptimisations?: number, landingPages?: number, blogPosts?: number, linkTargets?: number }
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   reports               Report[]
