@@ -972,12 +972,14 @@ export async function generateContentStrategy(
 
   if (model === "claude-opus-4-6") {
     const anthropic = await getAnthropicClient();
-    const claudeResponse = await anthropic.messages.create({
+    // Streaming is required for requests that may exceed 10 minutes (large max_tokens)
+    const stream = anthropic.messages.stream({
       model: "claude-opus-4-6",
       max_tokens: 32000,
       system: STRATEGY_SYSTEM_PROMPT,
       messages: [{ role: "user", content: analysisPrompt }],
     });
+    const claudeResponse = await stream.finalMessage();
     const block = claudeResponse.content[0];
     const rawText = block.type === "text" ? block.text.trim() : "";
     // Extract JSON — Claude wraps in ```json ... ``` fences sometimes
