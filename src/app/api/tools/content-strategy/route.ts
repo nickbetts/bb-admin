@@ -11,6 +11,14 @@ import crypto from "crypto";
 interface ParsedKeyword {
   keyword: string;
   volume: number;
+  type?: "primary" | "secondary" | "long-tail";
+}
+
+interface MetaTitleAudit {
+  titleText: string;
+  titlePresent: boolean;
+  titleLength: number;
+  titleContainsKeyword: boolean;
 }
 
 interface PageOptimisation {
@@ -21,6 +29,7 @@ interface PageOptimisation {
   impact?: number;
   effort?: number;
   quickWin?: boolean;
+  audit?: MetaTitleAudit;
 }
 
 interface ProposedPage {
@@ -205,7 +214,9 @@ function validateExtractedData(raw: Record<string, unknown>): SpreadsheetData {
     const keyword = String(obj.keyword || "").trim();
     if (!keyword || keyword.length < 2) return null;
     const volume = Math.max(0, Math.round(Number(obj.volume) || 0));
-    return { keyword, volume };
+    const validTypes = ["primary", "secondary", "long-tail"];
+    const type = validTypes.includes(String(obj.type ?? "")) ? (obj.type as ParsedKeyword["type"]) : undefined;
+    return { keyword, volume, type };
   }
 
   function validatePageOpt(p: unknown): PageOptimisation | null {
@@ -224,6 +235,7 @@ function validateExtractedData(raw: Record<string, unknown>): SpreadsheetData {
       impact: parseScore(obj.impact),
       effort: parseScore(obj.effort),
       quickWin: obj.quickWin === true,
+      audit: obj.audit && typeof obj.audit === "object" ? (obj.audit as MetaTitleAudit) : undefined,
     };
   }
 
@@ -524,9 +536,9 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
             </div>
             <p class="opt-notes">${esc(opt.notes)}</p>
             <table class="kw-table">
-              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <thead><tr><th>Keyword</th><th>Type</th><th>Monthly searches</th></tr></thead>
               <tbody>
-                ${opt.keywords.map((k, i) => `<tr${i === 0 ? ' class="kw-top"' : ""}><td>${esc(k.keyword)}</td><td>${formatNum(k.volume)}</td></tr>`).join("\n                ")}
+                ${opt.keywords.map((k, i) => { const typeLabel = k.type === 'primary' ? '<span class="kw-type kw-type-primary">Primary</span>' : k.type === 'secondary' ? '<span class="kw-type kw-type-secondary">Secondary</span>' : k.type === 'long-tail' ? '<span class="kw-type kw-type-longtail">Long-tail</span>' : ''; return `<tr${i === 0 ? ' class="kw-top"' : ""}><td>${esc(k.keyword)}</td><td>${typeLabel}</td><td>${formatNum(k.volume)}</td></tr>`; }).join("\n                ")}
               </tbody>
             </table>
           </div>`;
@@ -549,11 +561,12 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
             </div>
             ${opt.notes ? `<p class="opt-notes">${esc(opt.notes)}</p>` : ""}
             <table class="kw-table">
-              <thead><tr><th>Keyword</th><th>Monthly searches</th></tr></thead>
+              <thead><tr><th>Keyword</th><th>Type</th><th>Monthly searches</th></tr></thead>
               <tbody>
-                ${opt.keywords.map((k, i) => `<tr${i === 0 ? ' class="kw-top"' : ""}><td>${esc(k.keyword)}</td><td>${formatNum(k.volume)}</td></tr>`).join("\n                ")}
+                ${opt.keywords.map((k, i) => { const typeLabel = k.type === 'primary' ? '<span class="kw-type kw-type-primary">Primary</span>' : k.type === 'secondary' ? '<span class="kw-type kw-type-secondary">Secondary</span>' : k.type === 'long-tail' ? '<span class="kw-type kw-type-longtail">Long-tail</span>' : ''; return `<tr${i === 0 ? ' class="kw-top"' : ""}><td>${esc(k.keyword)}</td><td>${typeLabel}</td><td>${formatNum(k.volume)}</td></tr>`; }).join("\n                ")}
               </tbody>
             </table>
+            ${opt.audit ? (() => { const a = opt.audit!; const statusColour = (!a.titlePresent) ? '#ef4444' : (a.titleLength < 30 || a.titleLength > 60) ? '#f59e0b' : !a.titleContainsKeyword ? '#f59e0b' : '#22c55e'; const statusText = !a.titlePresent ? 'Missing' : (a.titleLength < 30 || a.titleLength > 60) ? 'Suboptimal length' : !a.titleContainsKeyword ? 'Keyword absent' : 'Good'; return `<div class="audit-panel"><span class="audit-label">Meta title</span><span class="audit-badge" style="background:${statusColour}20;color:${statusColour};border:1px solid ${statusColour}40">${statusText}</span>${a.titlePresent ? `<span class="audit-title-text">${esc(a.titleText)}</span><span class="audit-length">${a.titleLength} chars</span>` : ''}</div>`; })() : ''}
           </div>`;
   }
 
@@ -574,7 +587,7 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
             </div>
             <p class="new-page-desc">${esc(desc)}</p>
             <div class="new-page-kws">
-              ${page.keywords.map(k => `<div class="kw-pill${k.volume >= 200 ? " kw-pill-high" : ""}">${esc(k.keyword)} <span>${formatNum(k.volume)}</span></div>`).join("\n              ")}
+              ${page.keywords.map(k => { const typeLabel = k.type === 'primary' ? '<span class="kw-pill-type primary">P</span>' : k.type === 'secondary' ? '<span class="kw-pill-type secondary">S</span>' : k.type === 'long-tail' ? '<span class="kw-pill-type longtail">LT</span>' : ''; return `<div class="kw-pill${k.volume >= 200 ? " kw-pill-high" : ""}">${typeLabel}${esc(k.keyword)} <span>${formatNum(k.volume)}</span></div>`; }).join("\n              ")}
             </div>
           </div>`;
   }
@@ -623,10 +636,10 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
               </div>
               <p class="blog-desc">${esc(desc)}</p>
               <div class="blog-kw-row">
-                ${post.keywords.map((k, j) => `<div class="blog-kw-item${j < 2 ? " top" : ""}">
-                  <span class="bk-word">${esc(k.keyword)}</span>
+                ${post.keywords.map((k, j) => { const typeLabel = k.type === 'primary' ? '<span class="kw-pill-type primary">P</span>' : k.type === 'secondary' ? '<span class="kw-pill-type secondary">S</span>' : k.type === 'long-tail' ? '<span class="kw-pill-type longtail">LT</span>' : ''; return `<div class="blog-kw-item${j < 2 ? " top" : ""}">
+                  ${typeLabel}<span class="bk-word">${esc(k.keyword)}</span>
                   <span class="bk-vol">${formatNum(k.volume)}</span>
-                </div>`).join("\n                ")}
+                </div>`; }).join("\n                ")}
               </div>
             </div>
           </div>`;
@@ -812,9 +825,22 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 .new-page-title { font-weight: 700; font-size: .95rem; }
 .new-page-desc { font-size: .82rem; color: var(--muted); margin-bottom: .75rem; }
 .new-page-kws { display: flex; flex-wrap: wrap; gap: .35rem; }
-.kw-pill { font-size: .7rem; background: var(--bg); border: 1px solid var(--border); padding: .2rem .55rem; border-radius: 999px; white-space: nowrap; }
-.kw-pill span { font-weight: 700; margin-left: .25rem; color: var(--accent); }
+.kw-pill { font-size: .7rem; background: var(--bg); border: 1px solid var(--border); padding: .2rem .55rem; border-radius: 999px; white-space: nowrap; display: inline-flex; align-items: center; gap: .25rem; }
+.kw-pill span { font-weight: 700; margin-left: .1rem; color: var(--accent); }
 .kw-pill-high { background: var(--accent-light); border-color: #c4b5fd; }
+.kw-pill-type { font-size: .6rem; font-weight: 700; border-radius: 3px; padding: .05rem .25rem; line-height: 1.3; }
+.kw-pill-type.primary { background: #7c3aed22; color: #7c3aed; }
+.kw-pill-type.secondary { background: #2563eb22; color: #2563eb; }
+.kw-pill-type.longtail { background: #0891b222; color: #0891b2; }
+.kw-type { font-size: .65rem; font-weight: 600; border-radius: 3px; padding: .1rem .3rem; }
+.kw-type-primary { background: #7c3aed22; color: #7c3aed; }
+.kw-type-secondary { background: #2563eb22; color: #2563eb; }
+.kw-type-longtail { background: #0891b222; color: #0891b2; }
+.audit-panel { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; padding: .5rem .75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: .75rem; }
+.audit-label { font-weight: 600; color: var(--muted); }
+.audit-badge { padding: .15rem .45rem; border-radius: 4px; font-weight: 600; font-size: .7rem; }
+.audit-title-text { color: var(--muted); font-style: italic; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.audit-length { color: var(--muted); white-space: nowrap; }
 
 /* -- Blog list -- */
 .blog-list { display: flex; flex-direction: column; gap: 1rem; }

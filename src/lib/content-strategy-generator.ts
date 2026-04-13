@@ -26,6 +26,14 @@ import { getOpenAiClient } from "@/lib/openai-client";
 interface ParsedKeyword {
   keyword: string;
   volume: number;
+  type?: "primary" | "secondary" | "long-tail";
+}
+
+interface MetaTitleAudit {
+  titleText: string;       // raw <title> content
+  titlePresent: boolean;
+  titleLength: number;
+  titleContainsKeyword: boolean; // does title contain the primary keyword?
 }
 
 interface PageOptimisation {
@@ -36,6 +44,7 @@ interface PageOptimisation {
   impact?: number; // 1–5
   effort?: number; // 1–5
   quickWin?: boolean; // derived: any keyword pos 4–10, vol >= 100
+  audit?: MetaTitleAudit; // on-page audit added at generation time
 }
 
 interface ProposedPage {
@@ -583,9 +592,9 @@ OUTPUT FORMAT (strict JSON, no markdown):
     {
       "url": "domain.com/page/",
       "keywords": [
-        {"keyword": "primary keyword from pool", "volume": 1000},
-        {"keyword": "secondary keyword from pool", "volume": 480},
-        {"keyword": "long-tail keyword from pool", "volume": 90}
+        {"keyword": "primary keyword from pool", "volume": 1000, "type": "primary"},
+        {"keyword": "secondary keyword from pool", "volume": 480, "type": "secondary"},
+        {"keyword": "long-tail keyword from pool", "volume": 90, "type": "long-tail"}
       ],
       "notes": "We will expand this page to target [keyword] by adding a FAQ section and updating the title tag to include [keyword].",
       "impact": 4,
@@ -596,9 +605,9 @@ OUTPUT FORMAT (strict JSON, no markdown):
     {
       "title": "Descriptive Page Title",
       "keywords": [
-        {"keyword": "primary keyword from pool", "volume": 500},
-        {"keyword": "secondary keyword from pool", "volume": 210},
-        {"keyword": "long-tail keyword from pool", "volume": 70}
+        {"keyword": "primary keyword from pool", "volume": 500, "type": "primary"},
+        {"keyword": "secondary keyword from pool", "volume": 210, "type": "secondary"},
+        {"keyword": "long-tail keyword from pool", "volume": 70, "type": "long-tail"}
       ],
       "notes": "We will create this page to capture [audience] searching for [intent]. The page will cover [topics] and include a clear conversion path.",
       "impact": 4,
@@ -609,8 +618,9 @@ OUTPUT FORMAT (strict JSON, no markdown):
     {
       "title": "Blog Post Title",
       "keywords": [
-        {"keyword": "primary keyword from pool", "volume": 200},
-        {"keyword": "secondary keyword from pool", "volume": 90}
+        {"keyword": "primary keyword from pool", "volume": 200, "type": "primary"},
+        {"keyword": "secondary keyword from pool", "volume": 90, "type": "secondary"},
+        {"keyword": "long-tail keyword from pool", "volume": 40, "type": "long-tail"}
       ],
       "notes": "We will write this article targeting [audience] at the [awareness/consideration] stage. It will cover [angle] and link internally to [relevant commercial page].",
       "cluster": "Topical Cluster Name",
@@ -643,7 +653,49 @@ OUTPUT FORMAT (strict JSON, no markdown):
   }
 }
 
+KEYWORD TYPE RULES:
+- "primary": the single highest-volume, most commercially relevant keyword for this item (exactly one per item)
+- "secondary": closely related variants, location modifiers, or synonyms (1–3 per item)
+- "long-tail": specific 3–5 word phrases with lower volume but high intent (1–3 per item)
+- All must exist in the KEYWORD POOL
+
 GUIDANCE — include every worthwhile opportunity. When in doubt, include it. A comprehensive strategy inspires confidence; a thin one raises questions. Always include a roadmap with at least 3 items per phase. Remember: every keyword volume in your output must match the KEYWORD POOL exactly — no exceptions.`;
+
+// ─── Meta title auditor ─────────────────────────────────────────────────────
+
+async function auditMetaTitle(
+  domain: string,
+  pagePath: string,
+  primaryKeyword: string,
+): Promise<MetaTitleAudit> {
+  // Reconstruct a full URL from the stored path (e.g. "domain.com/page/")
+  const url = pagePath.startsWith("http")
+    ? pagePath
+    : `https://${pagePath.startsWith(domain) ? pagePath : `${domain}/${pagePath.replace(/^\//, "")}`}`;
+
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(8000),
+      headers: { "User-Agent": "i3media-report/1.0 (SEO audit)" },
+    });
+    if (!res.ok) {
+      return { titleText: "", titlePresent: false, titleLength: 0, titleContainsKeyword: false };
+    }
+    const html = await res.text();
+    const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    const titleText = match ? match[1].replace(/\s+/g, " ").trim() : "";
+    const titleLower = titleText.toLowerCase();
+    const kwLower = primaryKeyword.toLowerCase();
+    return {
+      titleText,
+      titlePresent: titleText.length > 0,
+      titleLength: titleText.length,
+      titleContainsKeyword: titleLower.includes(kwLower),
+    };
+  } catch {
+    return { titleText: "", titlePresent: false, titleLength: 0, titleContainsKeyword: false };
+  }
+}
 
 // ─── Generate the strategy ──────────────────────────────────────────────────
 
@@ -710,11 +762,12 @@ export async function generateContentStrategy(
     )
     .map((p: Record<string, unknown>) => ({
       url: (p.url as string).replace(/^https?:\/\//, "").replace(/^www\./, ""),
-      keywords: (p.keywords as { keyword: string; volume: number }[])
+      keywords: (p.keywords as { keyword: string; volume: number; type?: string }[])
         .filter((k) => k.keyword && typeof k.keyword === "string")
         .map((k) => ({
           keyword: k.keyword,
           volume: Math.max(0, Math.round(Number(k.volume) || 0)),
+          type: (["primary", "secondary", "long-tail"].includes(k.type ?? "") ? k.type : undefined) as ParsedKeyword["type"],
         })),
       notes: String(p.notes || ""),
       priority: false,
@@ -734,11 +787,12 @@ export async function generateContentStrategy(
     )
     .map((p: Record<string, unknown>) => ({
       title: String(p.title),
-      keywords: (p.keywords as { keyword: string; volume: number }[])
+      keywords: (p.keywords as { keyword: string; volume: number; type?: string }[])
         .filter((k) => k.keyword && typeof k.keyword === "string")
         .map((k) => ({
           keyword: k.keyword,
           volume: Math.max(0, Math.round(Number(k.volume) || 0)),
+          type: (["primary", "secondary", "long-tail"].includes(k.type ?? "") ? k.type : undefined) as ParsedKeyword["type"],
         })),
       notes: String(p.notes || ""),
       priority: false,
@@ -758,11 +812,12 @@ export async function generateContentStrategy(
     )
     .map((p: Record<string, unknown>) => ({
       title: String(p.title),
-      keywords: (p.keywords as { keyword: string; volume: number }[])
+      keywords: (p.keywords as { keyword: string; volume: number; type?: string }[])
         .filter((k) => k.keyword && typeof k.keyword === "string")
         .map((k) => ({
           keyword: k.keyword,
           volume: Math.max(0, Math.round(Number(k.volume) || 0)),
+          type: (["primary", "secondary", "long-tail"].includes(k.type ?? "") ? k.type : undefined) as ParsedKeyword["type"],
         })),
       notes: String(p.notes || ""),
       priority: false,
@@ -823,6 +878,18 @@ export async function generateContentStrategy(
     const hasVolume = opt.keywords.some((k) => k.volume >= 100);
     return hasQuickWinPosition && hasVolume;
   });
+
+  // ── Meta title audit: crawl each page optimisation in parallel ──
+  // Cap at 20 pages to avoid excessive crawl time
+  const auditResults = await Promise.all(
+    pageOptimisations.slice(0, 20).map((opt) => {
+      const primary = opt.keywords.find((k) => k.type === "primary") ?? opt.keywords[0];
+      return auditMetaTitle(domain, opt.url, primary?.keyword ?? "");
+    })
+  );
+  for (let i = 0; i < auditResults.length; i++) {
+    pageOptimisations[i].audit = auditResults[i];
+  }
 
   const strategyData: ContentStrategyData = {
     clientName,
