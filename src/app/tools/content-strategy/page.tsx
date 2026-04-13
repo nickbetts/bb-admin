@@ -52,6 +52,105 @@ interface DetectedCompetitor {
   commonKeywords: number;
 }
 
+// ─── Fun mode chaos ──────────────────────────────────────────────────────────
+
+const CHAOS_EMOJIS = [
+  "😺","😹","🐈","😻","🙀","😾","🐈‍⬛","🐾","✨","🌟",
+  "💕","💖","💗","💞","💓","💘","🥰","😍","😘","💋",
+  "💅","🦩","🎈","🎉","🎆","🎇","🐶","🐟","🍓","🥩",
+  "🐔","🐣","🦆","🐢","🫶","👋","💀","👀","💫","🌈",
+];
+
+interface Particle {
+  id: number;
+  emoji: string;
+  x: number;
+  y: number;
+  size: number;
+  rotation: number;
+  vx: number;
+  vy: number;
+  opacity: number;
+  born: number;
+}
+
+function ChaosOverlay({ active }: { active: boolean }) {
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const nextId = useRef(0);
+
+  useEffect(() => {
+    if (!active) { setParticles([]); return; }
+
+    // Spawn a burst of particles every 1.2s
+    const spawn = () => {
+      const count = 6 + Math.floor(Math.random() * 5);
+      const newParticles: Particle[] = Array.from({ length: count }, () => ({
+        id: nextId.current++,
+        emoji: CHAOS_EMOJIS[Math.floor(Math.random() * CHAOS_EMOJIS.length)],
+        x: Math.random() * 100,
+        y: 100 + Math.random() * 10,
+        size: 16 + Math.floor(Math.random() * 20),
+        rotation: Math.random() * 360,
+        vx: (Math.random() - 0.5) * 30,
+        vy: -(40 + Math.random() * 60),
+        opacity: 1,
+        born: Date.now(),
+      }));
+      setParticles((prev) => [...prev.slice(-60), ...newParticles]);
+    };
+
+    spawn();
+    const spawnInterval = setInterval(spawn, 1200);
+
+    // Animate particles
+    let raf: number;
+    const animate = () => {
+      const now = Date.now();
+      setParticles((prev) =>
+        prev
+          .map((p) => {
+            const age = (now - p.born) / 1000;
+            return {
+              ...p,
+              y: p.y + p.vy * (age / 20),
+              x: p.x + p.vx * (age / 60),
+              rotation: p.rotation + age * 60,
+              opacity: Math.max(0, 1 - age / 1.8),
+            };
+          })
+          .filter((p) => p.opacity > 0)
+      );
+      raf = requestAnimationFrame(animate);
+    };
+    raf = requestAnimationFrame(animate);
+
+    return () => { clearInterval(spawnInterval); cancelAnimationFrame(raf); };
+  }, [active]);
+
+  if (!active || particles.length === 0) return null;
+
+  return (
+    <div style={{
+      position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden",
+      borderRadius: "var(--r-sm)",
+    }}>
+      {particles.map((p) => (
+        <span key={p.id} style={{
+          position: "absolute",
+          left: `${p.x}%`,
+          top: `${p.y}%`,
+          fontSize: p.size,
+          opacity: p.opacity,
+          transform: `rotate(${p.rotation}deg)`,
+          userSelect: "none",
+          lineHeight: 1,
+          transition: "none",
+        }}>{p.emoji}</span>
+      ))}
+    </div>
+  );
+}
+
 // ─── Fun progress messages ─────────────────────────────────────────────────
 
 const FUN_MESSAGES = [
@@ -336,6 +435,16 @@ export default function ContentStrategyPage() {
   const [detectingCompetitors, setDetectingCompetitors] = useState(false);
   const [semrushProgress, setSemrushProgress] = useState("");
   const [semrushDomain, setSemrushDomain] = useState("");
+  const [funMode, setFunMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const stored = localStorage.getItem("cs-fun-mode");
+    return stored === null ? true : stored === "1";
+  });
+  const toggleFunMode = () => setFunMode((v) => {
+    const next = !v;
+    localStorage.setItem("cs-fun-mode", next ? "1" : "0");
+    return next;
+  });
   const funMessage = useFunProgress(generating);
   const elapsedTime = useGenerationTimer(generating);
 
@@ -1279,15 +1388,62 @@ export default function ContentStrategyPage() {
                 </div>
               </div>
 
+              {/* Fun mode toggle */}
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+                <button
+                  type="button"
+                  onClick={toggleFunMode}
+                  title={funMode ? "Disable uwu chaos mode" : "Enable uwu chaos mode"}
+                  style={{
+                    fontSize: 11, padding: "3px 10px", borderRadius: 99,
+                    border: `1px solid ${funMode ? "#f9a8d4" : "var(--border)"}`,
+                    background: funMode ? "#fdf2f8" : "var(--surface)",
+                    color: funMode ? "#db2777" : "var(--text-3)",
+                    cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {funMode ? "😺 uwu mode ON" : "😐 uwu mode OFF"}
+                </button>
+              </div>
+
               {/* Progress indicator */}
               {generating && (
                 <div style={{
+                  position: "relative",
                   display: "flex", alignItems: "center", gap: 10, marginTop: 16,
                   padding: "12px 16px", borderRadius: "var(--r-sm)",
-                  background: "var(--accent-bg)", fontSize: 13, color: "var(--accent)",
+                  background: funMode ? "linear-gradient(135deg, #fdf2f8 0%, #eff6ff 50%, #fef9c3 100%)" : "var(--accent-bg)",
+                  fontSize: 13,
+                  color: funMode ? "#9333ea" : "var(--accent)",
+                  border: funMode ? "1px solid #f9a8d4" : "none",
+                  overflow: "hidden",
+                  animation: funMode ? "uwuPulse 2s ease-in-out infinite" : "none",
                 }}>
-                  <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite", flexShrink: 0 }} />
-                  <span style={{ flex: 1 }}>{funMessage}</span>
+                  <style>{`
+                    @keyframes uwuPulse {
+                      0%, 100% { box-shadow: 0 0 0 0 rgba(249,168,212,0.4); }
+                      50% { box-shadow: 0 0 0 6px rgba(249,168,212,0); }
+                    }
+                    @keyframes uwuWiggle {
+                      0%, 100% { transform: rotate(-2deg); }
+                      50% { transform: rotate(2deg); }
+                    }
+                  `}</style>
+                  <ChaosOverlay active={funMode && generating} />
+                  <Loader2 style={{
+                    width: 14, height: 14,
+                    animation: funMode ? "spin 0.6s linear infinite" : "spin 1s linear infinite",
+                    flexShrink: 0,
+                  }} />
+                  <span style={{
+                    flex: 1,
+                    animation: funMode ? "uwuWiggle 0.8s ease-in-out infinite" : "none",
+                    display: "inline-block",
+                    fontWeight: funMode ? 600 : 400,
+                  }}>
+                    {funMode ? funMessage : "Generating content strategy…"}
+                  </span>
                   <span style={{ fontVariantNumeric: "tabular-nums", opacity: 0.7, fontSize: 12, whiteSpace: "nowrap" }}>{elapsedTime}</span>
                 </div>
               )}
