@@ -106,11 +106,11 @@ function ChaosOverlay({ active }: { active: boolean }) {
         // Spawn from random edges or center of screen
         const edge = Math.floor(Math.random() * 5);
         let x: number, y: number, vx: number, vy: number;
-        if (edge === 0) { x = Math.random() * 100; y = 105; vx = (Math.random() - 0.5) * 40; vy = -(50 + Math.random() * 80); } // bottom
-        else if (edge === 1) { x = -5; y = Math.random() * 100; vx = 30 + Math.random() * 40; vy = (Math.random() - 0.5) * 40; } // left
-        else if (edge === 2) { x = 105; y = Math.random() * 100; vx = -(30 + Math.random() * 40); vy = (Math.random() - 0.5) * 40; } // right
-        else if (edge === 3) { x = Math.random() * 100; y = -5; vx = (Math.random() - 0.5) * 40; vy = 30 + Math.random() * 50; } // top
-        else { x = 30 + Math.random() * 40; y = 30 + Math.random() * 40; vx = (Math.random() - 0.5) * 80; vy = (Math.random() - 0.5) * 80; } // center explosion
+        if (edge === 0) { x = Math.random() * 100; y = 105; vx = (Math.random() - 0.5) * 8; vy = -(10 + Math.random() * 15); } // bottom
+        else if (edge === 1) { x = -5; y = Math.random() * 100; vx = 6 + Math.random() * 8; vy = (Math.random() - 0.5) * 8; } // left
+        else if (edge === 2) { x = 105; y = Math.random() * 100; vx = -(6 + Math.random() * 8); vy = (Math.random() - 0.5) * 8; } // right
+        else if (edge === 3) { x = Math.random() * 100; y = -5; vx = (Math.random() - 0.5) * 8; vy = 6 + Math.random() * 10; } // top
+        else { x = 30 + Math.random() * 40; y = 30 + Math.random() * 40; vx = (Math.random() - 0.5) * 16; vy = (Math.random() - 0.5) * 16; } // center explosion
 
         return {
           id: nextId.current++,
@@ -146,7 +146,7 @@ function ChaosOverlay({ active }: { active: boolean }) {
             const age = (now - p.born) / 1000;
             const t = age;
             // Gravity effect on vy
-            const vyWithGravity = p.vy + 15 * t;
+            const vyWithGravity = p.vy + 3 * t;
             return {
               ...p,
               x: p.x + p.vx * t + Math.sin(t * p.wobbleSpeed * Math.PI * 2) * p.wobble,
