@@ -33,6 +33,7 @@ const PERMISSION_GROUPS = [
       { key: "pricing", label: "Pricing" },
       { key: "llm_generator", label: "LLM.txt Generator" },
       { key: "content_strategy", label: "Content Strategy" },
+      { key: "access_requester", label: "Access Requester" },
     ],
   },
   {

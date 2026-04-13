@@ -16,6 +16,7 @@ export const ALL_PERMISSIONS = [
   "pricing",
   "llm_generator",
   "content_strategy",
+  "access_requester",
   "users",
   // Phase 3
   "portfolio",

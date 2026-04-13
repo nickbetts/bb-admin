@@ -26,6 +26,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   "keyword-planner": "Keyword Planner",
   proposals: "Proposals",
   "content-strategy": "Content Strategy",
+  "access-requester": "Access Requester",
   "media-plan": "Media Plan",
   "page-analyser": "Page Analyser",
   "ai-chat": "AI Chat",

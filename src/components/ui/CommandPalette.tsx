@@ -6,7 +6,7 @@ import {
   Search, LayoutDashboard, Users, FileText, Settings,
   Activity, CheckSquare, MessageSquare, LayoutGrid, TrendingUp,
   PieChart, Tag, Bot, FileSpreadsheet, ScanSearch, Sparkles,
-  ArrowRight, LayoutTemplate,
+  ArrowRight, LayoutTemplate, KeyRound,
 } from "lucide-react";
 
 // ── Static nav items ────────────────────────────────────────────────────────
@@ -28,6 +28,7 @@ const STATIC_ITEMS = [
   { label: "Pricing",            href: "/tools/pricing",                 icon: <Tag size={14} />,              group: "Agency Tools" },
   { label: "LLM.txt Generator",  href: "/tools/llm-generator",          icon: <Bot size={14} />,              group: "Agency Tools" },
   { label: "Content Strategy",   href: "/tools/content-strategy",       icon: <FileSpreadsheet size={14} />,  group: "Agency Tools" },
+  { label: "Access Requester",   href: "/tools/access-requester",       icon: <KeyRound size={14} />,         group: "Agency Tools" },
 ];
 
 interface ClientItem {

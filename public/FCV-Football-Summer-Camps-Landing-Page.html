@@ -877,6 +877,16 @@ h2 {
 </head>
 <body>
 
+<!-- PAGE SWITCHER -->
+<div style="background:#0d1f3a;border-bottom:1px solid rgba(255,255,255,.12);">
+  <div style="max-width:1100px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:4px;height:42px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+    <span style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-right:10px;">View&nbsp;as:</span>
+    <a href="FCV-Football-Summer-Camps-Landing-Page.html" style="display:inline-flex;align-items:center;padding:5px 13px;border-radius:100px;font-size:12px;font-weight:700;text-decoration:none;background:rgba(22,163,74,.25);border:1px solid rgba(22,163,74,.5);color:#86efac;">General</a>
+    <a href="FCV-Football-Summer-Camps-Parents.html" style="display:inline-flex;align-items:center;padding:5px 13px;border-radius:100px;font-size:12px;font-weight:600;text-decoration:none;color:rgba(255,255,255,.55);transition:all .15s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.color='rgba(255,255,255,.55)';this.style.background='transparent'">For Parents</a>
+    <a href="FCV-Football-Summer-Camps-Players.html" style="display:inline-flex;align-items:center;padding:5px 13px;border-radius:100px;font-size:12px;font-weight:600;text-decoration:none;color:rgba(255,255,255,.55);transition:all .15s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.color='rgba(255,255,255,.55)';this.style.background='transparent'">For Players (14&ndash;19)</a>
+  </div>
+</div>
+
 <!-- STICKY NAV -->
 <nav class="nav">
   <div class="nav-logo"><img src="https://internationalfootball.academy/wp-content/uploads/fcv-logo-new.png" alt="FCV International Football Academy" style="height:38px;width:auto;display:block;"></div>
@@ -1491,64 +1501,39 @@ h2 {
         <p class="form-sub">Fill in your details and we&rsquo;ll confirm your place with next steps. &pound;200 deposit required to book.</p>
 
         <form action="https://internationalfootball.academy/football-summer-camps/#contact" method="GET" target="_blank">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-light);margin-bottom:10px;">Parent / Guardian Details</div>
           <div class="form-row">
             <div class="form-group">
               <label>First Name *</label>
-              <input type="text" name="parent_first" placeholder="Jane" required autocomplete="given-name">
+              <input type="text" name="first_name" placeholder="Jane" required autocomplete="given-name">
             </div>
             <div class="form-group">
               <label>Last Name *</label>
-              <input type="text" name="parent_last" placeholder="Smith" required autocomplete="family-name">
+              <input type="text" name="last_name" placeholder="Smith" required autocomplete="family-name">
             </div>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Email *</label>
-              <input type="email" name="parent_email" placeholder="jane@example.com" required autocomplete="email">
-            </div>
-            <div class="form-group">
-              <label>Mobile / WhatsApp *</label>
-              <input type="tel" name="parent_phone" placeholder="+44 7700 000000" required autocomplete="tel">
-            </div>
+          <div class="form-group">
+            <label>Email Address *</label>
+            <input type="email" name="email" placeholder="jane@example.com" required autocomplete="email">
           </div>
-
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-light);margin:14px 0 10px;">Player Details</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Player First Name *</label>
-              <input type="text" name="player_first" placeholder="Tom" required>
-            </div>
-            <div class="form-group">
-              <label>Player Last Name *</label>
-              <input type="text" name="player_last" placeholder="Smith" required>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Date of Birth *</label>
-              <input type="date" name="dob" required>
-            </div>
-            <div class="form-group">
-              <label>Country *</label>
-              <input type="text" name="country" placeholder="e.g. United Kingdom" required autocomplete="country-name">
-            </div>
+          <div class="form-group">
+            <label>Mobile / WhatsApp *</label>
+            <input type="tel" name="phone" placeholder="+44 7700 000000" required autocomplete="tel">
           </div>
           <div class="form-group">
             <label>Preferred Camp Date *</label>
             <select name="camp_date" required>
               <option value="">Select a date&hellip;</option>
-              <option value="camp1">Camp 1  -  28 June to 11 July 2026</option>
-              <option value="camp2">Camp 2  -  12 July to 25 July 2026</option>
-              <option value="camp3">Camp 3  -  26 July to 8 August 2026</option>
-              <option value="camp4">Camp 4  -  9 August to 22 August 2026</option>
+              <option value="camp1">Camp 1 &mdash; 28 June to 11 July 2026</option>
+              <option value="camp2">Camp 2 &mdash; 12 July to 25 July 2026</option>
+              <option value="camp3">Camp 3 &mdash; 26 July to 8 August 2026</option>
+              <option value="camp4">Camp 4 &mdash; 9 August to 22 August 2026</option>
             </select>
           </div>
           <div class="form-group">
-            <label>Message / Questions</label>
+            <label>Message (optional)</label>
             <textarea name="message" placeholder="Any questions or additional information for the team&hellip;"></textarea>
           </div>
-          <button type="submit" class="btn-submit">Send Enquiry  -  We&rsquo;ll Respond Within 1 Working Day &#10003;</button>
+          <button type="submit" class="btn-submit">Send Enquiry &mdash; We&rsquo;ll Respond Within 1 Working Day &#10003;</button>
           <p class="form-disclaimer">By submitting this form you agree to be contacted by FCV International Football Academy regarding your enquiry. View our <a href="https://internationalfootball.academy/privacy/" target="_blank" rel="noopener noreferrer">privacy policy</a>.</p>
         </form>
       </div>

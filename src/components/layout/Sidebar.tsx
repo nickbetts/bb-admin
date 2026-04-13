@@ -28,6 +28,7 @@ import {
   Search,
   FileSpreadsheet,
   Eye,
+  KeyRound,
   EyeOff,
   Sun,
   Moon,
@@ -69,6 +70,7 @@ const toolsNavItems: NavItem[] = [
   { href: "/tools/pricing", label: "Pricing", icon: <Tag className="h-4 w-4" />, permission: "pricing" },
   { href: "/tools/llm-generator", label: "LLM.txt Generator", icon: <Bot className="h-4 w-4" />, permission: "llm_generator" },
   { href: "/tools/content-strategy", label: "Content Strategy", icon: <FileSpreadsheet className="h-4 w-4" />, permission: "content_strategy" },
+  { href: "/tools/access-requester", label: "Access Requester", icon: <KeyRound className="h-4 w-4" />, permission: "access_requester" },
 ];
 
 interface SidebarProps {
