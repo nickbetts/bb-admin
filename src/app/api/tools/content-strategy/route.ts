@@ -918,6 +918,21 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 .footer-cta-inner { display: inline-flex; align-items: center; gap: 1rem; }
 .footer-cta-logo svg { display: block; opacity: .35; }
 .footer-small { margin-top: 1rem; font-size: .7rem; color: var(--muted); }
+
+/* -- Keyword master list -- */
+.kw-master-hdr { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.kw-master-meta { font-size: .82rem; color: var(--muted); }
+.kw-copy-btn { font-size: .78rem; font-weight: 700; padding: .45rem 1.1rem; border-radius: 8px; border: 1.5px solid var(--accent); background: var(--accent-light); color: var(--accent); cursor: pointer; font-family: inherit; transition: .12s; white-space: nowrap; }
+.kw-copy-btn:hover { background: var(--accent); color: #fff; }
+.kw-copy-btn.copied { background: #f0fdf4; border-color: #4ade80; color: #166534; }
+.kw-master-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.kw-master-table th { text-align: left; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: .55rem .75rem; border-bottom: 2px solid var(--border); }
+.kw-master-table th:last-child, .kw-master-table td:last-child { text-align: right; }
+.kw-master-table td { padding: .5rem .75rem; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+.kw-master-table tr:last-child td { border-bottom: none; }
+.kw-master-table tbody tr:hover td { background: var(--bg); }
+.kw-master-num { color: var(--muted); font-size: .75rem; }
+.kw-master-vol { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--accent); }
 </style>
 </head>
 <body>
@@ -968,6 +983,7 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
       ${stats.totalBlogPosts > 0 ? '<a class="nav-link" href="#blog-pages">Blog Posts</a>' : ""}
       ${linkTargets.length > 0 ? '<a class="nav-link" href="#link-targets">Link Building</a>' : ""}
       ${roadmap && (roadmap.month1.length > 0 || roadmap.months2to3.length > 0 || roadmap.months4plus.length > 0) ? '<a class="nav-link" href="#roadmap">Delivery Roadmap</a>' : ""}
+      ${bestByKeyword.size > 0 ? '<a class="nav-link" href="#keyword-master">All Keywords</a>' : ""}
     </nav>
   </aside>
 
@@ -1121,6 +1137,30 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
       </div>
     </div>` : ""}
 
+    <!-- KEYWORD MASTER LIST -->
+    ${bestByKeyword.size > 0 ? `
+    <div class="section" id="keyword-master">
+      <div class="section-hdr">
+        <span class="section-tag tag-blue">Keyword index</span>
+        <h2>All Keywords</h2>
+        <p>Every keyword used across this strategy, deduplicated and sorted by search volume. Use this list for rank tracking setup, Google Ads campaigns, or any other channel targeting.</p>
+      </div>
+      <div class="section-body">
+        <div class="kw-master-hdr">
+          <span class="kw-master-meta">${bestByKeyword.size} unique keywords &nbsp;&middot;&nbsp; ${formatNum(totalDeduplicatedVol)} combined monthly searches</span>
+          <button id="kw-copy-btn" class="kw-copy-btn" onclick="copyAllKeywords()">Copy all keywords</button>
+        </div>
+        <table class="kw-master-table">
+          <thead><tr><th>#</th><th>Keyword</th><th>Monthly searches</th></tr></thead>
+          <tbody>
+            ${[...bestByKeyword.values()].sort((a, b) => b.volume - a.volume).map((k, i) =>
+              `<tr><td class="kw-master-num">${i + 1}</td><td>${esc(k.keyword)}</td><td class="kw-master-vol">${formatNum(k.volume)}</td></tr>`
+            ).join("\n            ")}
+          </tbody>
+        </table>
+      </div>
+    </div>` : ""}
+
     <!-- FOOTER CTA -->
     <div id="cs-action-bar">
       <span style="font-size:.72rem;opacity:.6">Unsaved edits</span>
@@ -1153,7 +1193,7 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 const CS_STRATEGY_ID = '__CS_ID__';
 const CS_KW_VOL = ${JSON.stringify(Object.fromEntries([...bestByKeyword.entries()].map(([k, v]) => [k, v.volume])))};
 const navLinks = document.querySelectorAll('.nav-link');
-const sectionIds = ['overview','quick-wins','page-optimisations','landing-pages','blog-pages','link-targets','roadmap'];
+const sectionIds = ['overview','quick-wins','page-optimisations','landing-pages','blog-pages','link-targets','roadmap','keyword-master'];
 function setActive(id) {
   navLinks.forEach(link => {
     link.classList.toggle('active', link.getAttribute('href') === '#' + id);
@@ -1301,6 +1341,27 @@ function saveStrategy() {
     html: document.documentElement.outerHTML,
     strategyId: CS_STRATEGY_ID,
   }, '*');
+}
+
+function copyAllKeywords() {
+  var rows = document.querySelectorAll('.kw-master-table tbody tr');
+  var keywords = Array.from(rows).map(function(row) { return row.cells[1].textContent.trim(); }).filter(Boolean);
+  var btn = document.getElementById('kw-copy-btn');
+  function onCopied() {
+    if (btn) { btn.textContent = '\u2713 Copied!'; btn.classList.add('copied'); setTimeout(function() { btn.textContent = 'Copy all keywords'; btn.classList.remove('copied'); }, 2500); }
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(keywords.join('\n')).then(onCopied).catch(function() {});
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = keywords.join('\n');
+    ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    onCopied();
+  }
 }
 
 window.addEventListener('message', function(e) {
