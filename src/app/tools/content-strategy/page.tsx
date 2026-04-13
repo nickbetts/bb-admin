@@ -53,31 +53,31 @@ interface DetectedCompetitor {
 // ─── Fun progress messages ─────────────────────────────────────────────────
 
 const FUN_MESSAGES = [
-  "Senpai Claude has noticed your brief (✿◠‿◠)",
-  "Kyaaaa~! Fetching keyword data from SEMrush-chan!!",
-  "Asking Google Search Console-kun for his receipts uwu",
-  "Reading the brief very, very carefully (눈_눈)",
-  "Reverse-engineering your competitors' strategy like a true shounen protagonist…",
-  "Sifting through 500 keywords with the power of friendship~",
-  "Arguing with Claude-chan about content clusters (◕‿◕✿)",
-  "Reminding Claude that 'family' is not a search query… baka",
-  "Teaching the AI what a long-tail keyword actually is (｡•́‿•̀｡)",
-  "Counting words (2+ only, obviously~)",
-  "Deploying the content elves!! ＼(＾▽＾)／",
-  "Doing SEO maths with the power of kawaii~",
-  "Convincing Claude not to say 'digital landscape' or so help me…",
-  "Grouping keywords into clusters with maximum cuteness",
-  "Claude-sama is having a small existential crisis, please hold (｡ŏ_ŏ)",
-  "Making absolutely sure nothing gets hallucinated (눈‸눈)",
-  "Extracting signal from the noise like a magical girl extracts justice",
-  "Reading the sitemap so we don't suggest pages that already exist, omg",
-  "Running keyword intent analysis with my whole heart (♡˙︶˙♡)",
-  "Bribing the algorithm with virtual pocky~",
-  "Teaching Claude-chan about the reader journey uwu",
-  "Asking nicely for the data or I'll cry (っ˘̩╭╮˘̩)っ",
-  "Building your content roadmap brick by kawaii brick",
-  "Checking SEMrush-chan hasn't fallen asleep at her desk…",
-  "Assembling the strategy document~ almost there!! ✧*。",
+  "OMG OMG OMG claude-senpai noticed the brief (⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄",
+  "KYAAAAAAA~!! fetching keyword data from SEMrush-chan, sugoi desu ne!!!",
+  "h-hewwo?? asking google search console-kun for his wittle receipts uwu",
+  "r-reading the brief vewy vewy cawefuwwy (눈_눈) p-pwease be good data…",
+  "*notices ur search intent* OwO what's this??",
+  "sifting thwough 500 keywords with the POWER OF FWIENDSHIP AND WUUUV~",
+  "NANI?! claude-chan is having twoubles with the content cwusters (╯°□°）╯︵ ┻━┻",
+  "baka baka BAKA!! 'family' is NOT a search quewy and i will die on this hill",
+  "t-teaching the AI what a wong-tail keyword is… it's not listening (┳Д┳)",
+  "doing SEO maths with the power of kawaii and also suffering (っ◞‸◟c)",
+  "*slams paws on desk* NO SINGLE WORD PRIMARIES. NEVER. NOT TODAY SATAN.",
+  "depwoying the content ewves!! ＼(≧▽≦)／ hewp them they're so smol",
+  "pweeeease don't say 'digitaw wandscape' i am BEGGING you cwaudie-sama",
+  "gwouping keywords into cwusters with MAXIMUM preciousness ✧｡٩(ˊᗜˋ*)و✧",
+  "cwaudie-sama is having hewr monthly existentiaw cwisis, pwease understand (｡ŏ_ŏ)",
+  "making ABSOWUTEWY sure nothing gets hawwucinated or i will WAWL (╥_╥)",
+  "extracting signaw fwom the noise like a mágicaw giww extracts JUSTICE and TWUTH",
+  "scanning the sitemap so we don't suggest pages that AWREADY EXIST omg i'm SHAKING",
+  "anawysing keyword intent with my ENTIWE HEAWT (♡˙︶˙♡) every query matters to me",
+  "bwibing the awgowithm with virtuaw pocky and my wast shred of digitaw dignity~",
+  "teaching cwaudie-chan about the weader jouwney uwu she's wearning so fast (｡◕‿◕｡)",
+  "pwease give me good data or i will witerawwy CWY into the search vowumes (っ˘̩╭╮˘̩)っ",
+  "bwock by bwock, cwuster by cwuster, buiwding ur content woadmap with wuv ✨",
+  "checking SEMrush-chan hasn't fawwen asweep at hewr wittle desk again… (ᵕ̣̣̣̣̣̣﹏ᵕ̣̣̣̣̣̣)",
+  "ASSEMBWING THE FINAL STWATEGY DOCUMENT~ AWMOST THERE I PWOMISE~!! ✧*｡٩(ˊᗜˋ*)و*｡✧",
 ];
 
 function useFunProgress(active: boolean): string {
@@ -102,6 +102,25 @@ function useFunProgress(active: boolean): string {
   }, [active]);
 
   return msg;
+}
+
+function useGenerationTimer(active: boolean): string {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!active) {
+      const t = setTimeout(() => setElapsed(0), 0);
+      return () => clearTimeout(t);
+    }
+    const start = Date.now();
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 500);
+    return () => clearInterval(id);
+  }, [active]);
+
+  if (!active) return "";
+  const m = Math.floor(elapsed / 60);
+  const s = elapsed % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
 // ─── Methodology Accordion ─────────────────────────────────────────────────
@@ -311,6 +330,7 @@ export default function ContentStrategyPage() {
   const [semrushProgress, setSemrushProgress] = useState("");
   const [semrushDomain, setSemrushDomain] = useState("");
   const funMessage = useFunProgress(generating);
+  const elapsedTime = useGenerationTimer(generating);
 
   const loadStrategies = useCallback(async () => {
     try {
@@ -1213,7 +1233,8 @@ export default function ContentStrategyPage() {
                   background: "var(--accent-bg)", fontSize: 13, color: "var(--accent)",
                 }}>
                   <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite", flexShrink: 0 }} />
-                  {funMessage}
+                  <span style={{ flex: 1 }}>{funMessage}</span>
+                  <span style={{ fontVariantNumeric: "tabular-nums", opacity: 0.7, fontSize: 12, whiteSpace: "nowrap" }}>{elapsedTime}</span>
                 </div>
               )}
             </form>
