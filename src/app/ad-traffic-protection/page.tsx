@@ -342,7 +342,7 @@ export default function AdTrafficProtectionPage() {
               fontSize: 18, color: "rgba(255,255,255,0.6)", lineHeight: 1.8,
               maxWidth: 500, marginBottom: 40, fontWeight: 400,
             }}>
-              Ad Traffic Protection is a dual-layer system built into every i3 Media client dashboard. We pull fraud data directly from Google and Meta&apos;s APIs, then run our own independent detection on your landing pages. Every month, you see exactly how much was wasted — and what we&apos;re doing about it.
+              Ad we connect directly to Google and Meta&apos;s own fraud APIs, then run independent detection on your landing pages on top of that. Every month, your report shows exactly how much of your budget went on bad traffic — and what we caught.
             </p>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <a href="#how-it-works" onClick={(e) => { e.preventDefault(); document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" }); }} style={{
@@ -527,10 +527,10 @@ export default function AdTrafficProtectionPage() {
               The problem
             </p>
             <h2 style={{ fontSize: 46, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 18, color: "white" }} className="blur-reveal">
-              Your ad platforms charge for clicks.<br />They don&apos;t all guarantee they&apos;re real.
+              You&apos;re paying for every click.<br />Not all of them are real.
             </h2>
             <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 560, margin: "0 auto", lineHeight: 1.7 }}>
-              Google catches a lot of fraud automatically. Meta catches almost none. Neither proactively tells you the full story. We do.
+              Google catches some of it. Meta catches almost none. Neither tells you the full picture. We built something that does.
             </p>
           </div>
 
@@ -542,13 +542,13 @@ export default function AdTrafficProtectionPage() {
                 color: "#4285f4",
                 bg: "rgba(66,133,244,0.08)",
                 border: "rgba(66,133,244,0.2)",
-                title: "Google does catch fraud — but they don't tell you much about it.",
+                title: "Google catches fraud. They just don't make it easy to see.",
                 points: [
-                  "Their Traffic Quality system filters invalid clicks automatically",
-                  "But the data lives buried in a report most agencies never open",
-                  "You have no idea how many bots got through their filters",
-                  "There's no independent verification of their numbers",
-                  "Refunds happen — but only if Google decides they were invalid",
+                  "Their filters catch a lot of invalid clicks automatically",
+                  "The data's buried in a report most agencies never look at",
+                  "You have no way to know how many got through their filters",
+                  "And you're taking their word for it — there's no independent check",
+                  "Refunds can happen, but entirely on Google's terms",
                 ],
               },
               {
@@ -557,13 +557,13 @@ export default function AdTrafficProtectionPage() {
                 color: "#1877f2",
                 bg: "rgba(24,119,242,0.08)",
                 border: "rgba(24,119,242,0.2)",
-                title: "Meta charges on impressions — but that doesn't mean all clicks are reaching you.",
+                title: "Meta counts clicks their end. What reaches your site is usually fewer.",
                 points: [
-                  "Meta's outbound click count is almost always higher than your actual landing page views",
-                  "That gap is budget spent on traffic that never arrived at your site",
-                  "There is no native invalid click report in Meta Ads Manager",
-                  "Audience Network placements are notorious for low-quality traffic",
-                  "Without independent monitoring, you'd never know any of this",
+                  "Meta nearly always records more clicks than your site ever sees",
+                  "That gap is money spent on traffic that never showed up",
+                  "Meta Ads Manager has no invalid click report",
+                  "Audience Network is particularly bad for this — low-quality traffic by default",
+                  "Without external monitoring, you'd never know the size of the problem",
                 ],
               },
             ].map((p, i) => (
@@ -607,7 +607,7 @@ export default function AdTrafficProtectionPage() {
               Two layers. One dashboard.
             </h2>
             <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 520, margin: "0 auto" }}>
-              Most tools do one thing. We run platform data and independent detection simultaneously, then surface everything in your existing monthly report.
+              Most tools do one thing. We run platform data and independent detection at the same time, then surface it all in your monthly report.
             </p>
           </div>
 
@@ -617,22 +617,22 @@ export default function AdTrafficProtectionPage() {
               {
                 n: "01",
                 icon: <BarChart3 size={22} color="#818cf8" />,
-                title: "Platform API data pulled automatically",
-                desc: "We connect directly to Google Ads' Traffic Quality API and Meta's Insights API. Invalid click data, outbound click counts, and landing page view totals are fetched every reporting cycle — no manual exports, no spreadsheets.",
+                title: "Platform data, pulled automatically",
+                desc: "We connect directly to Google and Meta's own APIs. Invalid click data, outbound click counts, and landing page view totals come through at each reporting cycle. No exports, no manual digging.",
                 color: "#6366f1",
               },
               {
                 n: "02",
                 icon: <Activity size={22} color="#34d399" />,
-                title: "Your landing pages get an independent watchdog",
-                desc: "We generate a lightweight JavaScript snippet — one line of code added to your client's landing pages. It silently identifies bot user-agents, headless browsers, rapid-repeat visits, and sessions with zero human interaction. Completely independent of whatever the ad platform is reporting.",
+                title: "A second set of eyes on your landing pages",
+                desc: "A single line of code goes on your landing pages. It spots bot signatures, headless browsers, and visits with no real human interaction — independently of whatever the ad platform reports. If Google or Meta miss something, this catches it.",
                 color: "#10b981",
               },
               {
                 n: "03",
                 icon: <Eye size={22} color="#f59e0b" />,
-                title: "Full picture delivered in every monthly report",
-                desc: "Everything surfaces in the client's existing dashboard. Invalid clicks flagged, wasted spend estimated, bot visit breakdown, traffic integrity score — all auto-generated alongside the rest of the channel data. No separate logins, no extra tools.",
+                title: "It's all in your monthly report",
+                desc: "Everything lands in the existing dashboard. Invalid clicks flagged, wasted spend estimated, bot breakdown, traffic integrity score — sitting alongside all the other channel data. Nothing separate to log into.",
                 color: "#f59e0b",
               },
             ].map((step, i) => (
@@ -698,14 +698,14 @@ export default function AdTrafficProtectionPage() {
                 Google catches fraud.<br />We make sure you know about it.
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.55)", lineHeight: 1.8, marginBottom: 28 }}>
-                Google&apos;s Traffic Quality system automatically identifies and filters invalid clicks — bots, scrapers, accidental clicks, and known fraud networks. The data is there. Most agencies just don&apos;t surface it.
+                Google&apos;s filters automatically catch bots, scrapers, and known fraud networks. The data exists — most agencies just never show it to their clients.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 28 }}>
                 {[
-                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Direct API connection to Google's Traffic Quality data — same data Google uses internally" },
-                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Invalid click count, invalid click rate, and estimated wasted spend calculated per reporting period" },
-                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Estimated refunds surfaced automatically — Google typically credits confirmed invalid clicks" },
-                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Independent landing page snippet runs alongside Google's detection — catching what they miss" },
+                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "We pull directly from the same Traffic Quality data Google uses internally — direct API, nothing manual" },
+                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Invalid click count, invalid rate, and estimated wasted spend in every report" },
+                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Google typically credits confirmed invalid clicks — we surface the estimated amount automatically" },
+                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Our landing page snippet runs independently on top — catching anything their filters miss" },
                 ].map((f, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                     <div style={{ flexShrink: 0, marginTop: 2 }}>{f.icon}</div>
@@ -718,7 +718,7 @@ export default function AdTrafficProtectionPage() {
                 background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)",
                 fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.6,
               }}>
-                <strong style={{ color: "#34d399" }}>What you&apos;ll see in your report:</strong>&nbsp; &ldquo;Google intercepted 142 invalid clicks this month, protecting an estimated <strong style={{ color: "white" }}>£487</strong> in wasted spend. Our independent script flagged 23 additional suspicious visits. Your fraud rate of 2.8% is well below the 14% industry average.&rdquo;
+                <strong style={{ color: "#34d399" }}>What you&apos;ll see in your report:</strong>&nbsp; &ldquo;Google intercepted 142 invalid clicks this month, protecting an estimated <strong style={{ color: "white" }}>£487</strong> in spend. Our snippet flagged 23 more suspicious visits on top. Fraud rate of 2.8% — well below the 14% average.&rdquo;
               </div>
             </div>
 
@@ -897,14 +897,14 @@ export default function AdTrafficProtectionPage() {
                 Meta doesn&apos;t report fraud.<br />So we built our own monitor.
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.55)", lineHeight: 1.8, marginBottom: 28 }}>
-                Meta&apos;s outbound click count and your actual landing page view count are almost never the same. The gap is traffic you paid for that never arrived. We measure that gap, calculate the estimated waste, and break it down by placement — so you can act on it.
+                Meta records more clicks than your site ever receives. That gap is budget spent on traffic that never arrived. We measure it, calculate the estimated waste, and break it down by placement — so we can do something about it.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 28 }}>
                 {[
-                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Compares Meta's outbound click count against verified landing page views tracked on your site" },
-                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Click-Through Integrity Score: a simple percentage showing how much traffic is actually reaching you" },
-                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Placement-level breakdown — surfaces Audience Network and low-quality placements dragging the score down" },
-                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Actionable recommendation generated automatically when a placement drops below threshold" },
+                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "We compare Meta's click count against landing page views actually confirmed on your site" },
+                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Click-Through Integrity Score — one number showing what percentage of paid traffic actually landed" },
+                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Broken down by placement, so we can see exactly which ones are dragging the numbers" },
+                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "When a placement falls below our threshold, we flag it and recommend action" },
                 ].map((f, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                     <div style={{ flexShrink: 0, marginTop: 2 }}>{f.icon}</div>
@@ -917,7 +917,7 @@ export default function AdTrafficProtectionPage() {
                 background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.2)",
                 fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.6,
               }}>
-                <strong style={{ color: "#fde68a" }}>Note on terminology:</strong> We deliberately call this &ldquo;Traffic Quality&rdquo; rather than &ldquo;click fraud&rdquo; for Meta. The gap isn&apos;t necessarily fraud — it&apos;s inefficiency. The result is the same: budget wasted. We show you where.
+                <strong style={{ color: "#fde68a" }}>A note on language:</strong> we call this Traffic Quality, not click fraud. The gap between Meta&apos;s numbers and yours isn&apos;t always intentional — but the effect is the same. Budget wasted. We show you where.
               </div>
             </div>
 
@@ -936,7 +936,7 @@ export default function AdTrafficProtectionPage() {
               Other tools cost extra.<br />This one comes with us.
             </h2>
             <p style={{ fontSize: 15, color: "rgba(255,255,255,0.45)", maxWidth: 500, margin: "0 auto" }}>
-              ClickCease, Lunio, and TrafficGuard are solid standalone tools — but they&apos;re separate subscriptions with separate logins that don&apos;t talk to the rest of your reporting.
+              ClickCease, Lunio, and TrafficGuard all do a decent job. They&apos;re also separate subscriptions, separate logins, and completely disconnected from your reporting.
             </p>
           </div>
 
@@ -1006,7 +1006,7 @@ export default function AdTrafficProtectionPage() {
           <div style={{ marginTop: 24, padding: "16px 24px", borderRadius: 12, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", display: "flex", alignItems: "center", gap: 14 }}>
             <ShieldCheck size={20} color="#34d399" style={{ flexShrink: 0 }} />
             <p style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>
-              <strong style={{ color: "white" }}>The key difference:</strong> every other tool is a separate subscription your client pays for separately. Ad Traffic Protection is built into your i3 Media dashboard, reporting alongside all 16 channels, with no extra login and nothing extra to install beyond our snippet.
+              Every other tool charges separately and lives in a silo. This is built into your i3 dashboard, reports alongside all 16 channels, and needs nothing more than our snippet to get going.
             </p>
           </div>
         </div>
@@ -1111,7 +1111,7 @@ export default function AdTrafficProtectionPage() {
                 background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
                 fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.6,
               }}>
-                On a £5,000/month Google Ads account, blocking 40–60% of residual fraud typically saves <strong style={{ color: "white" }}>£100–250/month</strong> — well above the bolt-on cost.
+                On a £5k/month Google Ads account, blocking even half the residual fraud typically saves <strong style={{ color: "white" }}>more than the bolt-on costs</strong>.
               </div>
             </div>
           </div>
@@ -1156,7 +1156,7 @@ export default function AdTrafficProtectionPage() {
             </span>
           </h2>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", lineHeight: 1.8, marginBottom: 40 }}>
-            Ad Traffic Protection is live for every i3 Media client. If you&apos;re not yet using it, ask your account manager to enable the snippet on your landing pages. Want to go further with Active Threat Blocking? We&apos;ll run the numbers for your account first.
+            It&apos;s running for every i3 client. If the snippet isn&apos;t on your landing pages yet, speak to your account manager — it takes ten minutes. Thinking about Active Threat Blocking? We&apos;ll look at your numbers first and tell you whether it&apos;s worth it.
           </p>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
             <a href="/login" style={{
