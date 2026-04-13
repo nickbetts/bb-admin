@@ -488,7 +488,7 @@ export default function ContentStrategyPage() {
   // SEMrush generation state
   const [semrushBrief, setSemrushBrief] = useState("");
   const [semrushDatabase, setSemrushDatabase] = useState("uk");
-  const [aiModel, setAiModel] = useState<"gpt-4o" | "claude-opus-4-6">("claude-opus-4-6");
+  const [aiModel, setAiModel] = useState<"gpt-5.4" | "claude-opus-4-6">("claude-opus-4-6");
   // Per-client output limits (empty string = no limit)
   const [limitPageOpts, setLimitPageOpts] = useState("");
   const [limitLandingPages, setLimitLandingPages] = useState("");
@@ -1419,19 +1419,19 @@ export default function ContentStrategyPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setAiModel("gpt-4o")}
-                      title="GPT-4o — fast and reliable"
+                      onClick={() => setAiModel("gpt-5.4")}
+                      title="GPT-5.4 — fast and reliable"
                       style={{
                         flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
                         padding: "6px 10px", borderRadius: "var(--r-sm)", border: "none", cursor: "pointer",
-                        fontSize: 12, fontWeight: aiModel === "gpt-4o" ? 600 : 400,
-                        background: aiModel === "gpt-4o" ? "var(--surface)" : "transparent",
-                        color: aiModel === "gpt-4o" ? "var(--accent)" : "var(--text-3)",
-                        boxShadow: aiModel === "gpt-4o" ? "var(--shadow-xs)" : "none",
+                        fontSize: 12, fontWeight: aiModel === "gpt-5.4" ? 600 : 400,
+                        background: aiModel === "gpt-5.4" ? "var(--surface)" : "transparent",
+                        color: aiModel === "gpt-5.4" ? "var(--accent)" : "var(--text-3)",
+                        boxShadow: aiModel === "gpt-5.4" ? "var(--shadow-xs)" : "none",
                         transition: "all 0.15s ease", whiteSpace: "nowrap",
                       }}
                     >
-                      ⚡ GPT-4o
+                      ⚡ GPT-5.4
                     </button>
                   </div>
                 </div>

@@ -24,7 +24,7 @@ import { withApiCache } from "@/lib/api-cache";
 import { getOpenAiClient } from "@/lib/openai-client";
 import { getAnthropicClient } from "@/lib/anthropic-client";
 
-export type StrategyModel = "gpt-4o" | "claude-opus-4-6";
+export type StrategyModel = "gpt-5.4" | "claude-opus-4-6";
 
 export interface ContentStrategyLimits {
   pageOptimisations?: number;
@@ -988,13 +988,13 @@ export async function generateContentStrategy(
   } else {
     const openai = await getOpenAiClient();
     const openAiResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5.4",
       messages: [
         { role: "system", content: STRATEGY_SYSTEM_PROMPT },
         { role: "user", content: analysisPrompt },
       ],
       temperature: 0.5,
-      max_tokens: 16000,
+      max_tokens: 32000,
       response_format: { type: "json_object" },
     });
     content = openAiResponse.choices[0]?.message?.content?.trim() ?? "";
