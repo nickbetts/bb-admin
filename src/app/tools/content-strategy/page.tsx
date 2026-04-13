@@ -70,6 +70,8 @@ interface Particle {
   y: number;      // vh units
   size: number;
   rotation: number;
+  initialRotation: number;
+  rotationSpeed: number; // degrees/s
   vx: number;     // vw/s
   vy: number;     // vh/s
   wobble: number; // sine wave amplitude in vw
@@ -116,6 +118,8 @@ function ChaosOverlay({ active }: { active: boolean }) {
           x, y,
           size: 14 + Math.floor(Math.random() * 16),
           rotation: Math.random() * 360,
+          initialRotation: Math.random() * 360,
+          rotationSpeed: (Math.random() > 0.5 ? 1 : -1) * (20 + Math.random() * 40),
           vx, vy,
           wobble: 3 + Math.random() * 8,
           wobbleSpeed: 2 + Math.random() * 5,
@@ -147,7 +151,7 @@ function ChaosOverlay({ active }: { active: boolean }) {
               ...p,
               x: p.x + p.vx * t + Math.sin(t * p.wobbleSpeed * Math.PI * 2) * p.wobble,
               y: p.y + vyWithGravity * t * 0.5,
-              rotation: p.rotation + t * (30 + p.wobbleSpeed * 8),
+              rotation: p.initialRotation + t * p.rotationSpeed,
               scale: Math.max(0.1, p.scale + p.scaleDelta * Math.sin(t * 3)),
               opacity: Math.max(0, 1 - (age / p.lifespan) ** 1.5),
             };
