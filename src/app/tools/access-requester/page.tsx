@@ -23,6 +23,8 @@ interface Client {
   googleAdsCustomerId?: string | null;
   metaAccountId?: string | null;
   linkedinAccountId?: string | null;
+  ga4PropertyId?: string | null;
+  searchConsoleSiteUrl?: string | null;
   notifyEmail?: string | null;
 }
 
@@ -33,7 +35,7 @@ interface AgencySettings {
   metaBusinessId: string;
 }
 
-type Platform = "googleAds" | "meta" | "linkedin";
+type Platform = "googleAds" | "meta" | "linkedin" | "googleAnalytics" | "searchConsole";
 
 const STORAGE_KEY = "i3_access_requester_settings";
 
@@ -61,6 +63,22 @@ const PLATFORM_META = {
     badge: "bg-sky-50 text-sky-700 border-sky-200",
     link: "https://www.linkedin.com/campaignmanager",
     accessLevel: "Account Manager access",
+  },
+  googleAnalytics: {
+    key: "googleAnalytics" as Platform,
+    label: "Google Analytics (GA4)",
+    color: "#E37400",
+    badge: "bg-orange-50 text-orange-700 border-orange-200",
+    link: "https://analytics.google.com",
+    accessLevel: "Editor access",
+  },
+  searchConsole: {
+    key: "searchConsole" as Platform,
+    label: "Search Console",
+    color: "#34A853",
+    badge: "bg-green-50 text-green-700 border-green-200",
+    link: "https://search.google.com/search-console",
+    accessLevel: "Full access",
   },
 };
 
@@ -161,6 +179,85 @@ Note: LinkedIn only allows access via email. Please use a company email address 
 Any questions? Just reply to this email.`;
 }
 
+const SERVICE_ACCOUNT_EMAIL = "i3media@i3-reports.iam.gserviceaccount.com";
+
+function buildGoogleAnalyticsInstructions(agency: AgencySettings, client?: Client): string {
+  return `Google Analytics (GA4) Access – ${agency.agencyName || "i3media"}
+
+We need two email addresses added as users — one for your account manager and one for our reporting system.
+
+━━ Step 1 – Add your account manager ━━
+
+1. Go to Google Analytics: analytics.google.com/
+${client?.ga4PropertyId ? `   (Your property ID: ${client.ga4PropertyId})\n` : ""}
+2. Click the Admin gear icon (⚙️) at the bottom of the left sidebar
+
+3. In the Property column, click "Property Access Management"
+
+4. Click the blue "+" button (top right) → "Add users"
+
+5. Enter our email address: ${agency.agencyEmail || "[AGENCY EMAIL]"}
+
+6. Select the role: "Editor" — this lets us configure the property and view all data
+
+7. Click "Add"
+
+━━ Step 2 – Add our reporting system (service account) ━━
+
+Repeat steps 4–7 above, but this time:
+
+5. Enter the service account email: ${SERVICE_ACCOUNT_EMAIL}
+
+6. Select the role: "Viewer"
+
+7. Click "Add"
+
+This second address is used by our automated reporting tool to pull your analytics data securely. It cannot make any changes to your account.
+
+Access is granted immediately — no invitation confirmation needed on our end.
+
+If you're unsure which property to share, just reply to this email with your website address and we'll help you identify the right one.`;
+}
+
+function buildSearchConsoleInstructions(agency: AgencySettings, client?: Client): string {
+  return `Google Search Console Access – ${agency.agencyName || "i3media"}
+
+We need two email addresses added as users — one for your account manager and one for our reporting system.
+
+━━ Step 1 – Add your account manager ━━
+
+1. Go to Google Search Console: search.google.com/search-console/
+${client?.searchConsoleSiteUrl ? `   (Your property: ${client.searchConsoleSiteUrl})\n` : ""}
+2. Select your property from the left-hand sidebar
+   (This is usually your website domain, e.g. example.com)
+
+3. Click the ⚙️ Settings icon at the bottom of the left sidebar
+
+4. Click "Users and permissions"
+
+5. Click "Add User" (top right)
+
+6. Enter our email: ${agency.agencyEmail || "[AGENCY EMAIL]"}
+
+7. Set permission to "Full" — lets us view all data and submit sitemaps
+
+8. Click "Add"
+
+━━ Step 2 – Add our reporting system (service account) ━━
+
+Repeat steps 5–8 above, but this time:
+
+6. Enter the service account email: ${SERVICE_ACCOUNT_EMAIL}
+
+7. Set permission to "Full"
+
+8. Click "Add"
+
+This address is used by our automated reporting tool to pull your search data securely. It cannot make any changes to your property.
+
+Note: You need to be an Owner of the property to add users. If you're not sure, please ask whoever manages your website or hosting.`;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatGadsId(id: string): string {
@@ -196,13 +293,13 @@ export default function AccessRequesterPage() {
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [loadingClients, setLoadingClients] = useState(true);
   const [platforms, setPlatforms] = useState<Set<Platform>>(
-    new Set(["googleAds", "meta", "linkedin"])
+    new Set(["googleAds", "meta", "linkedin", "googleAnalytics", "searchConsole"])
   );
   const [agency, setAgency] = useState<AgencySettings>({
     agencyName: "i3media",
-    agencyEmail: "",
-    googleAdsManagerId: "",
-    metaBusinessId: "",
+    agencyEmail: "ithreemedia3@gmail.com",
+    googleAdsManagerId: "786-083-3014",
+    metaBusinessId: "226933892717054",
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
@@ -263,6 +360,8 @@ export default function AccessRequesterPage() {
   function getInstructions(p: Platform): string {
     if (p === "googleAds") return buildGoogleAdsInstructions(agency, selectedClient);
     if (p === "meta") return buildMetaInstructions(agency, selectedClient);
+    if (p === "googleAnalytics") return buildGoogleAnalyticsInstructions(agency, selectedClient);
+    if (p === "searchConsole") return buildSearchConsoleInstructions(agency, selectedClient);
     return buildLinkedInInstructions(agency, selectedClient);
   }
 
@@ -454,6 +553,18 @@ export default function AccessRequesterPage() {
                 fontSize: 11, padding: "3px 8px", borderRadius: 6,
                 background: "#f0f9ff", color: "#0369a1", border: "1px solid #bae6fd",
               }}>LI ✓</span>
+            )}
+            {selectedClient.ga4PropertyId && (
+              <span style={{
+                fontSize: 11, padding: "3px 8px", borderRadius: 6,
+                background: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa",
+              }}>GA4 ✓</span>
+            )}
+            {selectedClient.searchConsoleSiteUrl && (
+              <span style={{
+                fontSize: 11, padding: "3px 8px", borderRadius: 6,
+                background: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0",
+              }}>SC ✓</span>
             )}
           </div>
         )}

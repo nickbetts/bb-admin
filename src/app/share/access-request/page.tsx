@@ -67,6 +67,8 @@ export default async function AccessRequestSharePage({ searchParams }: Props) {
   const includeGoogleAds = platforms.includes("googleAds");
   const includeMeta = platforms.includes("meta");
   const includeLinkedIn = platforms.includes("linkedin");
+  const includeGoogleAnalytics = platforms.includes("googleAnalytics");
+  const includeSearchConsole = platforms.includes("searchConsole");
 
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", fontFamily: "system-ui, -apple-system, sans-serif" }}>
@@ -270,6 +272,133 @@ export default async function AccessRequestSharePage({ searchParams }: Props) {
                 : <InstructionStep number={6} text='Enter the email address your account manager provided' />}
               <InstructionStep number={7} text='Set the role to <strong>"Account Manager"</strong> for full access' />
               <InstructionStep number={8} text='Click <strong>"Send invite"</strong>' />
+            </div>
+          </section>
+        )}
+
+        {/* ── Google Analytics ── */}
+        {includeGoogleAnalytics && (
+          <section style={{
+            background: "white", border: "1px solid #e2e8f0",
+            borderRadius: 14, marginBottom: 20, overflow: "hidden",
+          }}>
+            <div style={{
+              padding: "14px 20px", borderBottom: "1px solid #e2e8f0",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8,
+                  background: "#E37400", display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <span style={{ color: "white", fontSize: 14, fontWeight: 700 }}>GA</span>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 15, color: "#111827" }}>Google Analytics (GA4)</div>
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>Editor access requested</div>
+                </div>
+              </div>
+              <a
+                href="https://analytics.google.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  fontSize: 12, color: "#E37400", textDecoration: "none", fontWeight: 500,
+                }}
+              >
+                Open Google Analytics <ExternalLink style={{ width: 12, height: 12 }} />
+              </a>
+            </div>
+            <div style={{ padding: "20px", "--color": "#E37400" } as React.CSSProperties}>
+              <p style={{ margin: "0 0 16px", fontSize: 13, color: "#6b7280" }}>
+                We need <strong>two email addresses</strong> added — one for your account manager and one for our automated reporting system.
+              </p>
+
+              <div style={{ fontWeight: 600, fontSize: 13, color: "#374151", marginBottom: 10 }}>Step 1 — Add your account manager</div>
+              <InstructionStep number={1} text='Log in to <a href="https://analytics.google.com" target="_blank" rel="noopener noreferrer" style="color:#E37400;text-decoration:none;font-weight:600">Google Analytics</a> with the account that has admin access to your property' />
+              <InstructionStep number={2} text='Click the <strong>Admin gear icon (⚙️)</strong> at the bottom of the left sidebar' />
+              <InstructionStep number={3} text='In the Property column, click <strong>"Property Access Management"</strong>' />
+              <InstructionStep number={4} text='Click the <strong>"+"</strong> button (top right) → <strong>"Add users"</strong>' />
+              {agencyEmail
+                ? <InstructionStep number={5} text={`Enter our email: <strong>${agencyEmail}</strong>`} />
+                : <InstructionStep number={5} text='Enter the email address provided by your account manager' />}
+              <InstructionStep number={6} text='Select the role: <strong>"Editor"</strong>' />
+              <InstructionStep number={7} text='Click <strong>"Add"</strong>' />
+
+              <div style={{ fontWeight: 600, fontSize: 13, color: "#374151", margin: "20px 0 10px", paddingTop: 16, borderTop: "1px dashed #e2e8f0" }}>Step 2 — Add our reporting system</div>
+              <p style={{ margin: "0 0 12px", fontSize: 13, color: "#6b7280" }}>Repeat steps 4–7, but use these details instead:</p>
+              <InstructionStep number={4} text='Click the <strong>"+"</strong> button → <strong>"Add users"</strong>' />
+              <InstructionStep number={5} text='Enter the service account email: <strong style="font-family:monospace;font-size:13px">i3media@i3-reports.iam.gserviceaccount.com</strong>' />
+              <InstructionStep number={6} text='Select the role: <strong>"Viewer"</strong>' />
+              <InstructionStep number={7} text='Click <strong>"Add"</strong>' />
+              <div style={{ marginTop: 14, padding: "10px 14px", background: "#fff7ed", borderRadius: 8, fontSize: 13, color: "#92400e" }}>
+                This address is used by our reporting tool to pull your analytics data automatically. It cannot make any changes to your account.
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ── Search Console ── */}
+        {includeSearchConsole && (
+          <section style={{
+            background: "white", border: "1px solid #e2e8f0",
+            borderRadius: 14, marginBottom: 20, overflow: "hidden",
+          }}>
+            <div style={{
+              padding: "14px 20px", borderBottom: "1px solid #e2e8f0",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8,
+                  background: "#34A853", display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <span style={{ color: "white", fontSize: 14, fontWeight: 700 }}>SC</span>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 15, color: "#111827" }}>Google Search Console</div>
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>Full access requested</div>
+                </div>
+              </div>
+              <a
+                href="https://search.google.com/search-console"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  fontSize: 12, color: "#34A853", textDecoration: "none", fontWeight: 500,
+                }}
+              >
+                Open Search Console <ExternalLink style={{ width: 12, height: 12 }} />
+              </a>
+            </div>
+            <div style={{ padding: "20px", "--color": "#34A853" } as React.CSSProperties}>
+              <p style={{ margin: "0 0 16px", fontSize: 13, color: "#6b7280" }}>
+                We need <strong>two email addresses</strong> added — one for your account manager and one for our automated reporting system.
+              </p>
+
+              <div style={{ fontWeight: 600, fontSize: 13, color: "#374151", marginBottom: 10 }}>Step 1 — Add your account manager</div>
+              <InstructionStep number={1} text='Log in to <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style="color:#34A853;text-decoration:none;font-weight:600">Google Search Console</a>' />
+              <InstructionStep number={2} text='Select your <strong>property</strong> (your website domain) from the left-hand sidebar' />
+              <InstructionStep number={3} text='Click the <strong>⚙️ Settings</strong> icon at the bottom of the left sidebar' />
+              <InstructionStep number={4} text='Click <strong>"Users and permissions"</strong>' />
+              <InstructionStep number={5} text='Click <strong>"Add User"</strong> (top right)' />
+              {agencyEmail
+                ? <InstructionStep number={6} text={`Enter our email: <strong>${agencyEmail}</strong>`} />
+                : <InstructionStep number={6} text='Enter the email address provided by your account manager' />}
+              <InstructionStep number={7} text='Set permission to <strong>"Full"</strong>' />
+              <InstructionStep number={8} text='Click <strong>"Add"</strong>' />
+
+              <div style={{ fontWeight: 600, fontSize: 13, color: "#374151", margin: "20px 0 10px", paddingTop: 16, borderTop: "1px dashed #e2e8f0" }}>Step 2 — Add our reporting system</div>
+              <p style={{ margin: "0 0 12px", fontSize: 13, color: "#6b7280" }}>Repeat steps 5–8, but use these details instead:</p>
+              <InstructionStep number={5} text='Click <strong>"Add User"</strong>' />
+              <InstructionStep number={6} text='Enter the service account email: <strong style="font-family:monospace;font-size:13px">i3media@i3-reports.iam.gserviceaccount.com</strong>' />
+              <InstructionStep number={7} text='Set permission to <strong>"Full"</strong>' />
+              <InstructionStep number={8} text='Click <strong>"Add"</strong>' />
+              <div style={{ marginTop: 14, padding: "10px 14px", background: "#f0fdf4", borderRadius: 8, fontSize: 13, color: "#14532d" }}>
+                <strong>Note:</strong> You need to be an <strong>Owner</strong> of the property to add users. The service account address is used by our reporting tool to read your search data automatically — it cannot make any changes.
+              </div>
             </div>
           </section>
         )}
