@@ -342,7 +342,7 @@ export default function AdTrafficProtectionPage() {
               fontSize: 18, color: "rgba(255,255,255,0.6)", lineHeight: 1.8,
               maxWidth: 500, marginBottom: 40, fontWeight: 400,
             }}>
-              Ad we connect directly to Google and Meta&apos;s own fraud APIs, then run independent detection on your landing pages on top of that. Every month, your report shows exactly how much of your budget went on bad traffic — and what we caught.
+              Ad we connect directly to Google and Meta&apos;s own fraud APIs, then run independent detection on your landing pages on top of that. Every month, your report shows exactly how much of your budget went on bad traffic, and what we caught.
             </p>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <a href="#how-it-works" onClick={(e) => { e.preventDefault(); document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" }); }} style={{
@@ -437,7 +437,7 @@ export default function AdTrafficProtectionPage() {
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                     <Bot size={13} color="#818cf8" />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.7)" }}>Independent Detection — Last 30 days</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.7)" }}>Independent Detection: Last 30 days</span>
                   </div>
                   <span style={{ fontSize: 11, color: "#a5b4fc", fontWeight: 600 }}>via landing page snippet</span>
                 </div>
@@ -497,7 +497,7 @@ export default function AdTrafficProtectionPage() {
             {[
               { val: s1, suffix: "%", label: "Average click fraud rate across paid search", note: "Industry average 2025/26", color: "#ef4444" },
               { val: s2, suffix: "bn", prefix: "£", label: "Wasted annually on fraudulent ad clicks globally", note: "Per year, paid search & social", color: "#f59e0b" },
-              { val: s3, suffix: "", prefix: "", label: "Layers of protection — platform API plus independent snippet", note: "Dual detection system", color: "#10b981" },
+              { val: s3, suffix: "", prefix: "", label: "Layers of protection: platform API plus independent snippet", note: "Dual detection system", color: "#10b981" },
               { val: s4, suffix: "%", label: "Of paid clicks we monitor for every client, every month", note: "Full account coverage", color: "#6366f1" },
             ].map((s, i) => (
               <div key={i} className="stat-card-3d stagger-in" style={{
@@ -547,7 +547,7 @@ export default function AdTrafficProtectionPage() {
                   "Their filters catch a lot of invalid clicks automatically",
                   "The data's buried in a report most agencies never look at",
                   "You have no way to know how many got through their filters",
-                  "And you're taking their word for it — there's no independent check",
+                  "And you're taking their word for it. There's no independent check",
                   "Refunds can happen, but entirely on Google's terms",
                 ],
               },
@@ -562,7 +562,7 @@ export default function AdTrafficProtectionPage() {
                   "Meta nearly always records more clicks than your site ever sees",
                   "That gap is money spent on traffic that never showed up",
                   "Meta Ads Manager has no invalid click report",
-                  "Audience Network is particularly bad for this — low-quality traffic by default",
+                  "Audience Network is particularly bad for this. Low-quality traffic by default",
                   "Without external monitoring, you'd never know the size of the problem",
                 ],
               },
@@ -625,14 +625,14 @@ export default function AdTrafficProtectionPage() {
                 n: "02",
                 icon: <Activity size={22} color="#34d399" />,
                 title: "A second set of eyes on your landing pages",
-                desc: "A single line of code goes on your landing pages. It spots bot signatures, headless browsers, and visits with no real human interaction — independently of whatever the ad platform reports. If Google or Meta miss something, this catches it.",
+                desc: "A single line of code goes on your landing pages. It spots bot signatures, headless browsers, and visits with no real human interaction, independently of whatever the ad platform reports. If Google or Meta miss something, this catches it.",
                 color: "#10b981",
               },
               {
                 n: "03",
                 icon: <Eye size={22} color="#f59e0b" />,
                 title: "It's all in your monthly report",
-                desc: "Everything lands in the existing dashboard. Invalid clicks flagged, wasted spend estimated, bot breakdown, traffic integrity score — sitting alongside all the other channel data. Nothing separate to log into.",
+                desc: "Everything lands in the existing dashboard. Invalid clicks flagged, wasted spend estimated, bot breakdown, traffic integrity score, sitting alongside all the other channel data. Nothing separate to log into.",
                 color: "#f59e0b",
               },
             ].map((step, i) => (
@@ -698,14 +698,14 @@ export default function AdTrafficProtectionPage() {
                 Google catches fraud.<br />We make sure you know about it.
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.55)", lineHeight: 1.8, marginBottom: 28 }}>
-                Google&apos;s filters automatically catch bots, scrapers, and known fraud networks. The data exists — most agencies just never show it to their clients.
+                Google&apos;s filters automatically catch bots, scrapers, and known fraud networks. The data exists. Most agencies just never show it to their clients.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 28 }}>
                 {[
-                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "We pull directly from the same Traffic Quality data Google uses internally — direct API, nothing manual" },
+                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "We pull directly from the same Traffic Quality data Google uses internally. Direct API, nothing manual" },
                   { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Invalid click count, invalid rate, and estimated wasted spend in every report" },
-                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Google typically credits confirmed invalid clicks — we surface the estimated amount automatically" },
-                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Our landing page snippet runs independently on top — catching anything their filters miss" },
+                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Google typically credits confirmed invalid clicks. We surface the estimated amount in your report" },
+                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Our landing page snippet runs independently on top, catching anything their filters miss" },
                 ].map((f, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                     <div style={{ flexShrink: 0, marginTop: 2 }}>{f.icon}</div>
@@ -718,7 +718,7 @@ export default function AdTrafficProtectionPage() {
                 background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)",
                 fontSize: 13, color: "rgba(255,255,255,0.6)", lineHeight: 1.6,
               }}>
-                <strong style={{ color: "#34d399" }}>What you&apos;ll see in your report:</strong>&nbsp; &ldquo;Google intercepted 142 invalid clicks this month, protecting an estimated <strong style={{ color: "white" }}>£487</strong> in spend. Our snippet flagged 23 more suspicious visits on top. Fraud rate of 2.8% — well below the 14% average.&rdquo;
+                <strong style={{ color: "#34d399" }}>What you&apos;ll see in your report:</strong>&nbsp; &ldquo;Google intercepted 142 invalid clicks this month, protecting an estimated <strong style={{ color: "white" }}>£487</strong> in spend. Our snippet flagged 23 more suspicious visits on top. Fraud rate of 2.8%, well below the 14% average.&rdquo;
               </div>
             </div>
 
@@ -732,7 +732,7 @@ export default function AdTrafficProtectionPage() {
                 {/* Header */}
                 <div style={{ padding: "18px 22px", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(66,133,244,0.06)", display: "flex", alignItems: "center", gap: 10 }}>
                   <Shield size={16} color="#93c5fd" />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>Invalid Click Audit — Google Ads</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>Invalid Click Audit: Google Ads</span>
                   <div style={{ marginLeft: "auto", padding: "3px 8px", borderRadius: 20, background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.3)" }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: "#6ee7b7" }}>PROTECTED</span>
                   </div>
@@ -807,7 +807,7 @@ export default function AdTrafficProtectionPage() {
                 {/* Header */}
                 <div style={{ padding: "18px 22px", borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(24,119,242,0.06)", display: "flex", alignItems: "center", gap: 10 }}>
                   <Target size={16} color="#93c5fd" />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>Traffic Quality Monitor — Meta Ads</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>Traffic Quality Monitor: Meta Ads</span>
                   <div style={{ marginLeft: "auto", padding: "3px 8px", borderRadius: 20, background: "rgba(234,179,8,0.15)", border: "1px solid rgba(234,179,8,0.3)" }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: "#fde68a" }}>MONITORING</span>
                   </div>
@@ -897,12 +897,12 @@ export default function AdTrafficProtectionPage() {
                 Meta doesn&apos;t report fraud.<br />So we built our own monitor.
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.55)", lineHeight: 1.8, marginBottom: 28 }}>
-                Meta records more clicks than your site ever receives. That gap is budget spent on traffic that never arrived. We measure it, calculate the estimated waste, and break it down by placement — so we can do something about it.
+                Meta records more clicks than your site ever receives. That gap is budget spent on traffic that never arrived. We measure it, calculate the estimated waste, and break it down by placement, so we can do something about it.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 28 }}>
                 {[
                   { icon: <CheckCircle2 size={14} color="#34d399" />, text: "We compare Meta's click count against landing page views actually confirmed on your site" },
-                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Click-Through Integrity Score — one number showing what percentage of paid traffic actually landed" },
+                  { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Click-Through Integrity Score: one number showing what percentage of paid traffic actually landed" },
                   { icon: <CheckCircle2 size={14} color="#34d399" />, text: "Broken down by placement, so we can see exactly which ones are dragging the numbers" },
                   { icon: <CheckCircle2 size={14} color="#34d399" />, text: "When a placement falls below our threshold, we flag it and recommend action" },
                 ].map((f, i) => (
@@ -917,7 +917,7 @@ export default function AdTrafficProtectionPage() {
                 background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.2)",
                 fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.6,
               }}>
-                <strong style={{ color: "#fde68a" }}>A note on language:</strong> we call this Traffic Quality, not click fraud. The gap between Meta&apos;s numbers and yours isn&apos;t always intentional — but the effect is the same. Budget wasted. We show you where.
+                <strong style={{ color: "#fde68a" }}>A note on language:</strong> we call this Traffic Quality, not click fraud. The gap between Meta&apos;s numbers and yours isn&apos;t always intentional, but the effect is the same. Budget wasted. We show you where.
               </div>
             </div>
 
@@ -1098,7 +1098,7 @@ export default function AdTrafficProtectionPage() {
                   { f: "Confirmed bad actors blocked from seeing ads within hours", included: true },
                   { f: "Monthly blocklist report (which IPs, why, how much saved)", included: true },
                   { f: "Managed IP rotation (stays within Google's 500-IP limit)", included: true },
-                  { f: "Smart thresholds — only blocks IPs with repeated confirmed signals", included: true },
+                  { f: "Smart thresholds: only blocks IPs with repeated confirmed signals", included: true },
                 ].map((item, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <CheckCircle2 size={14} color={item.included ? "#818cf8" : "#34d399"} style={{ flexShrink: 0 }} />
@@ -1156,7 +1156,7 @@ export default function AdTrafficProtectionPage() {
             </span>
           </h2>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", lineHeight: 1.8, marginBottom: 40 }}>
-            It&apos;s running for every i3 client. If the snippet isn&apos;t on your landing pages yet, speak to your account manager — it takes ten minutes. Thinking about Active Threat Blocking? We&apos;ll look at your numbers first and tell you whether it&apos;s worth it.
+            It&apos;s running for every i3 client. If the snippet isn&apos;t on your landing pages yet, speak to your account manager. It takes ten minutes. Thinking about Active Threat Blocking? We&apos;ll look at your numbers first and tell you whether it&apos;s worth it.
           </p>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
             <a href="/login" style={{
