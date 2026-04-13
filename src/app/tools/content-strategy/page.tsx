@@ -87,7 +87,11 @@ function ChaosOverlay({ active }: { active: boolean }) {
   const nextId = useRef(0);
 
   useEffect(() => {
-    if (!active) { setParticles([]); return; }
+    if (!active) {
+      // Clean up particles when deactivated
+      const t = setTimeout(() => setParticles([]), 0);
+      return () => clearTimeout(t);
+    }
 
     const spawnBurst = () => {
       // Flash the screen on each burst

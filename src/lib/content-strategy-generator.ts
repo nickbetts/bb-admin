@@ -974,7 +974,7 @@ export async function generateContentStrategy(
     const anthropic = await getAnthropicClient();
     const claudeResponse = await anthropic.messages.create({
       model: "claude-opus-4-6",
-      max_tokens: 16000,
+      max_tokens: 32000,
       system: STRATEGY_SYSTEM_PROMPT,
       messages: [{ role: "user", content: analysisPrompt }],
     });
@@ -992,7 +992,7 @@ export async function generateContentStrategy(
         { role: "user", content: analysisPrompt },
       ],
       temperature: 0.5,
-      max_tokens: 12000,
+      max_tokens: 16000,
       response_format: { type: "json_object" },
     });
     content = openAiResponse.choices[0]?.message?.content?.trim() ?? "";
@@ -1002,7 +1002,35 @@ export async function generateContentStrategy(
     throw new Error("No response from AI analysis");
   }
 
-  const raw = JSON.parse(content);
+  // Attempt JSON parse with truncation recovery as a safety net
+  function repairTruncatedJson(s: string): string {
+    let openBraces = 0;
+    let openBrackets = 0;
+    let inString = false;
+    let escape = false;
+    for (const ch of s) {
+      if (escape) { escape = false; continue; }
+      if (ch === "\\" && inString) { escape = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === "{") openBraces++;
+      else if (ch === "}") openBraces--;
+      else if (ch === "[") openBrackets++;
+      else if (ch === "]") openBrackets--;
+    }
+    let repaired = s.trimEnd().replace(/,\s*$/, "");
+    for (let i = 0; i < openBrackets; i++) repaired += "]";
+    for (let i = 0; i < openBraces; i++) repaired += "}";
+    return repaired;
+  }
+
+  let raw: Record<string, unknown>;
+  try {
+    raw = JSON.parse(content) as Record<string, unknown>;
+  } catch {
+    console.warn("Content strategy JSON parse failed — attempting truncation repair");
+    raw = JSON.parse(repairTruncatedJson(content)) as Record<string, unknown>;
+  }
 
   // Step 4: Validate and structure the output
   function parseScore(val: unknown): number | undefined {
