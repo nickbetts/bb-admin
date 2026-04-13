@@ -231,51 +231,70 @@ const METHODOLOGY_STEPS = [
     icon: "🔍",
     label: "Domain & Competitor Discovery",
     detail:
-      "We fetch your domain's top 500 organic keywords and monthly traffic from SEMrush, then auto-detect your top 5 competitors by keyword overlap. You can override competitors manually. Sitemap crawl identifies every page already on the site.",
+      "We fetch your domain's top 500 organic keywords and monthly traffic from SEMrush, then auto-detect your top 5 competitors by keyword overlap — or you can provide a custom list. A live sitemap crawl maps every existing page on the site so we never suggest content that already exists.",
   },
   {
     icon: "📊",
-    label: "Real Performance Data (GSC)",
+    label: "Real Click & Impression Data (GSC)",
     detail:
-      "When Google Search Console is connected, we pull 90 days of actual click, impression, CTR, and average position data for up to 1,000 query–page combinations. This is layered on top of SEMrush to give a complete picture of what's working.",
+      "When Google Search Console is connected, we pull 90 days of actual click, impression, CTR, and average position data for up to 1,000 query–page combinations. GSC data is layered on top of SEMrush to show what's already driving real traffic — not just estimated volume.",
   },
   {
     icon: "📝",
     label: "Brief Topic Research",
     detail:
-      "If you include a brief, we extract topic seeds (e.g. \u201cqurbani\u201d, \u201cramadan campaign\u201d) and run SEMrush phrase-match queries for each one — returning real keyword volumes and difficulty scores for terms that may not appear in your current rankings.",
+      "If you include a client brief, we extract topic seeds (e.g. \u201cqurbani\u201d, \u201cramadan campaign\u201d) and run SEMrush phrase-match queries against each seed — returning real keyword volumes and difficulty scores for terms that may not appear in current rankings. All discovered keywords are added to the verified keyword pool.",
+  },
+  {
+    icon: "🧠",
+    label: "Claude Semantic Expansion",
+    detail:
+      "Claude analyses the brief and your existing organic keyword sample to find synonyms, alternate spellings, and semantically related angles that SEMrush alone would miss — for example identifying \u201cudhiyah\u201d, \u201cudhiya\u201d, and \u201canimal sacrifice donation\u201d from the seed \u201cqurbani\u201d. Each expanded seed is then sent to SEMrush for real volume data, so every term in the final pool is verified. Results are cached to avoid repeated API calls.",
   },
   {
     icon: "🏆",
     label: "Content Gap Analysis",
     detail:
-      "We compare your keyword footprint against each competitor's to find terms they rank for that you don't. These become the candidates for new landing pages and blog posts.",
+      "We compare your keyword footprint against each competitor's using SEMrush's content gap report to find high-value terms they rank for that you don't. These become the primary candidates for new landing pages and blog posts.",
   },
   {
     icon: "🔑",
-    label: "Keyword Pool Construction",
+    label: "Verified Keyword Pool",
     detail:
-      "All organic keywords, GSC queries, content gap terms, and brief-researched keywords are merged into a single pool with verified volumes. GPT-4o is only permitted to use keywords from this pool — no invented volumes.",
+      "All organic keywords, GSC queries, content gap terms, brief-researched keywords, and Claude-expanded keywords are merged into a single deduplicated pool with real volumes. The AI is strictly prohibited from using any keyword not in this pool — no invented volumes, no hallucinated terms. Keywords are split into a phrase pool (valid as primary targets) and a single-word pool (contextual only).",
+  },
+  {
+    icon: "💡",
+    label: "Low-Competition Quick Win Detection",
+    detail:
+      "Keywords with a difficulty score of 30 or below and meaningful search volume are surfaced as a dedicated quick-win set within the prompt. The AI is instructed to prioritise these for early-month content — maximising short-term ranking wins while longer-term pillar pages are built out.",
   },
   {
     icon: "🤖",
-    label: "AI Strategy Generation",
+    label: "Claude AI Strategy Generation",
     detail:
-      "GPT-4o analyses the full dataset and produces page optimisations (positions 4–30 quick wins), new landing pages (commercial intent gaps), blog posts grouped into topical clusters (informational gaps), and link-building targets — each scored for impact and effort.",
+      "Claude Opus generates the full strategy: page optimisations for pages stuck in positions 4–30, new landing pages for commercial intent gaps, blog posts grouped into topical clusters (covering the full reader journey from unaware to converted), and link-building targets — each scored 1–5 for impact and effort. Pillar and mega-guide pages are assigned 5–8 keywords with mandatory H2 section and FAQ outlines.",
   },
   {
     icon: "🏷️",
     label: "Keyword Labelling & Meta Audit",
     detail:
-      "Each suggested page receives primary, secondary, and long-tail keyword assignments. Existing pages are crawled live to audit the current <title> tag — checking presence, length, and whether it contains the target keyword.",
+      "Each suggested page receives primary, secondary, and long-tail keyword assignments pulled verbatim from the verified pool. For existing pages, we crawl the live URL to audit the current <title> tag — checking for presence, length, and whether it includes the target keyword. Semantic synonyms flagged during expansion are noted in item copy guidance for writers.",
   },
   {
     icon: "🗺️",
-    label: "Prioritised Roadmap",
+    label: "Prioritised Three-Phase Roadmap",
     detail:
-      "Tasks are distributed across a three-phase roadmap: Month 1 (high-impact, low-effort quick wins), Months 2–3 (core new pages and content build-out), and Months 4+ (pillar content, link outreach, competitive gaps). The strategy is packaged as a shareable HTML document.",
+      "Items are distributed across a three-phase roadmap: Month 1 (high-impact, low-effort quick wins using low-KD keywords), Months 2–3 (core new pages and content cluster build-out), and Months 4+ (pillar content, competitive gap pages, link outreach). The finished strategy is exported as a fully self-contained, branded HTML document with a shareable link.",
+  },
+  {
+    icon: "⚙️",
+    label: "Per-Client Output Controls",
+    detail:
+      "Each client's strategy can be capped by content type — page optimisations, landing pages, blog posts, and link targets — so output stays scoped to what the team can actually execute within the retainer. Limits are saved per client and pre-filled on every subsequent generation. Generation time is logged alongside the strategy so you can track how long each run takes.",
   },
 ];
+
 
 function MethodologyAccordion() {
   const [open, setOpen] = useState(false);
