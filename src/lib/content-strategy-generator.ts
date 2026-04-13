@@ -486,11 +486,27 @@ function buildAnalysisPrompt(
       }
     }
   }
-  const kwPoolText = [...kwPool.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 600)
-    .map(([kw, vol]) => `  "${kw}": ${vol}`)
-    .join("\n");
+
+  // ── Split pool: phrases (eligible as primary) vs single words (context only) ──
+  // This prevents the AI picking broad single-word terms (e.g. "family", "water") as
+  // primary keywords — they have no search intent signal and are never real targets.
+  const sortedPool = [...kwPool.entries()].sort((a, b) => b[1] - a[1]);
+  const phrasePool: [string, number][] = [];
+  const singleWordPool: [string, number][] = [];
+  for (const [kw, vol] of sortedPool) {
+    if (kw.trim().split(/\s+/).length >= 2) {
+      phrasePool.push([kw, vol]);
+    } else {
+      singleWordPool.push([kw, vol]);
+    }
+  }
+  const kwPoolText = [
+    "── PHRASE KEYWORDS (2+ words — valid as primary, secondary, or long-tail) ──",
+    ...phrasePool.slice(0, 500).map(([kw, vol]) => `  "${kw}": ${vol}`),
+    "",
+    "── SINGLE-WORD ENTRIES (supplementary context only — NEVER use as a primary keyword for any blog post or landing page) ──",
+    ...singleWordPool.slice(0, 100).map(([kw, vol]) => `  "${kw}": ${vol}`),
+  ].join("\n");
 
   // ── Struggling pages (always from SEMrush for search volume accuracy) ──
   const strugglingPages = pages.filter((p) =>
@@ -647,19 +663,66 @@ const STRATEGY_SYSTEM_PROMPT = `You are a senior SEO strategist at a UK digital 
 
 CONTEXT: You are the agency. Write all notes as "we will…" or "this page will…" — never "you should…". The client reads this to understand what we're going to do for them, not a list of tasks for them to action themselves.
 
-RULES:
-1. KEYWORD VOLUMES — NEVER INVENT THEM. Every keyword you include in your output MUST appear verbatim in the KEYWORD POOL at the end of the prompt. Copy the keyword spelling and volume exactly as shown. If a keyword is not in the pool, do not use it. This rule is absolute — fabricating volumes destroys trust in the strategy.
-2. BRIEF-REQUESTED TOPICS — If a BRIEF-REQUESTED TOPIC RESEARCH section is present, you MUST include at least one landing page or blog post for every topic seed listed, even if it doesn't appear in the client's current rankings or content gap. The brief represents what the client explicitly wants to target. Use keyword volumes from the KEYWORD POOL (the brief keywords are included there).
-3. MULTIPLE KEYWORDS PER ITEM — Each landing page and blog post should have 1–4 keywords: a primary keyword (highest volume, most relevant) plus secondary and/or long-tail variants where they exist in the KEYWORD POOL. Choose keywords that cluster together naturally around the same topic. Page optimisations should list all the ranking keywords for that page that are worth targeting.
-4. URLs must be copied exactly as they appear in the data.
-5. Write all titles and notes in British English.
-6. Be THOROUGH — exhaust every worthwhile opportunity in the data. Do not cut short artificially. If the data supports 15 page optimisations, suggest 15. If 20 blog posts are supported by the content gap, suggest 20.
-7. Do NOT duplicate suggestions across sections. Each gap keyword belongs in either a landing page (commercial intent) or a blog post (informational intent), not both.
-8. Commercial/transactional intent (buying, hiring, near me, best, agency, cost, price, service, provider) → landing page.
-9. Informational intent (how to, what is, guide, tips, examples, checklist, vs, difference between) → blog post.
-10. If SITEMAP data is provided, study it carefully. Do NOT suggest pages that already exist. Identify genuine gaps — services, locations, or topics the site doesn't currently cover.
-11. Group blog posts into topical clusters using the "cluster" field (e.g. "Local SEO", "PPC Basics", "Content Marketing"). Posts in the same cluster build topical authority and should internally link to each other.
-12. Score each item honestly using impact (1–5) and effort (1–5). The roadmap is derived from these scores, so accuracy matters.
+══════════════════════════════════════════════════════════
+KEYWORD RULES — READ CAREFULLY BEFORE ASSIGNING ANY KEYWORD
+══════════════════════════════════════════════════════════
+
+RULE A — NEVER INVENT VOLUMES.
+Every keyword you include MUST appear verbatim in the KEYWORD POOL. Copy the exact spelling and volume. No exceptions — fabricated volumes destroy client trust.
+
+RULE B — SINGLE-WORD KEYWORDS ARE NEVER VALID AS PRIMARIES.
+The KEYWORD POOL is split into PHRASE KEYWORDS (2+ words) and SINGLE-WORD ENTRIES. Single-word entries like "family", "water", "compulsory", "charity", "food" are NEVER valid primary keywords for a blog post or landing page. They have zero search intent signal — nobody types one word into Google expecting to find a charity page. Only use single-word pool entries as context; never in your JSON output as primary.
+
+RULE C — PRIMARY KEYWORDS MUST BE ACTUAL SEARCH QUERIES.
+Ask yourself: "Is this the exact phrase a real person would type into Google to find THIS specific page?" If not, it is not the right primary keyword. Examples of good primaries: "is qurbani compulsory in islam", "qurbani charity uk 2026", "how much does qurbani cost". Examples of BAD primaries: "family", "compulsory", "eid" — these are words, not search queries.
+
+RULE D — LONG-TAIL KEYWORDS MUST BE 4+ WORDS.
+Long-tail means a specific, narrow search phrase — minimum 4 words, reflecting clear and targeted intent. "eid ul adha" is NOT long-tail. "eid ul adha qurbani charity 2026" is long-tail. "is qurbani compulsory for every muslim" is long-tail.
+
+RULE E — NO KEYWORD DUPLICATION ACROSS ITEMS.
+Each keyword (especially primary) should appear on at most ONE item in the entire strategy. If "qurbani 2026" is the primary for one blog post, it cannot appear as primary or secondary on anything else. Spread keywords across items; do not repeat.
+
+RULE F — KEYWORDS MUST MATCH THE TOPIC.
+The primary keyword must be semantically matched to the SPECIFIC topic of that page/post. A blog post about "Families Helped by Qurbani" should target something like "qurbani impact stories" or "qurbani family stories" — not "family" because that word appears in the title.
+
+══════════════════════════════════════════════════════════
+CONTENT IDEATION — THINK BEYOND THE OBVIOUS
+══════════════════════════════════════════════════════════
+
+Do NOT produce mechanical, literal content ideas. Do NOT name blog posts after keyword phrases (e.g. "Families Helped by Qurbani" is an internal heading, not an article title). Think like a Senior Content Strategist who understands the audience's psychology, seasonal triggers, and the full reader journey.
+
+READER JOURNEY FRAMEWORK — for every cluster, think across all five stages:
+1. UNAWARE — they have a need but haven't identified a solution (emotional, seasonal, cultural triggers)
+2. PROBLEM AWARE — they know the topic exists but need education (explainers, FAQs, "what is X?")
+3. SOLUTION AWARE — they are comparing options (best X, X vs Y, how to choose X)
+4. BRAND AWARE — they are evaluating this client specifically (trust signals, stories, reviews)
+5. CONVERTED — keep them engaged (impact updates, referrals, thank you content)
+
+STRONG CONTENT ANGLES (use these as inspiration, not a checklist):
+- "Real stories" — beneficiary impact narratives (e.g. "The Village That Rebuilt After Our Donors Helped" — NOT "Impact Stories")
+- Seasonal timelines — content planned 6–8 weeks before peak periods (Ramadan, Eid ul-Adha, Dhul Hijjah, winter appeal)  
+- FAQ articles — answer the actual questions people type: "Is qurbani compulsory?", "How much does zakat cost?", "What happens to my qurbani donation?"
+- "Where does my money go?" explainers — transparency content that removes donor hesitation
+- Comparison/decision-helper content — "Qurbani vs Aqiqah: What's the Difference?", "Which Countries Need Qurbani Most?"
+- Cause tours / behind-the-scenes — "How We Distribute Qurbani in Bangladesh" (builds trust, drives sharing)
+- Countdown/urgency content — "10 Days of Dhul Hijjah: What to Do and Why It Matters"
+
+CLUSTER DESIGN: Each cluster must contain 3–5 posts covering DIFFERENT stages of the reader journey. A cluster of "Qurbani" posts might cover: How Qurbani Works → Is It Compulsory → Where Does My Qurbani Go → Real Stories → Qurbani 2026: Dates & Prices. These are distinct articles that cross-link and build topical authority together.
+
+BLOG TITLES must sound like real articles someone would FIND and CLICK in search results. They should have a specific angle, hook, or question. Bad: "Families Helped by Qurbani" — Good: "What Happens to Your Qurbani After You Donate?" or "Real Families, Real Change: The Impact of UK Qurbani Donations".
+
+══════════════════════════════════════════════════════════
+OTHER RULES
+══════════════════════════════════════════════════════════
+
+- BRIEF-REQUESTED TOPICS: If a BRIEF-REQUESTED TOPIC RESEARCH section is present, every topic seed MUST appear as at least one landing page or blog post — even if not in current rankings.
+- URLs must be copied exactly as they appear in the data.
+- British English throughout.
+- Be THOROUGH — if the data supports 15 page optimisations, suggest 15. If 20 blog posts are warranted, suggest 20. A comprehensive strategy inspires confidence.
+- Do NOT duplicate suggestions across sections. A keyword belongs in either a landing page (commercial intent) or blog post (informational intent), not both.
+- Commercial/transactional intent → landing page. Informational intent → blog post.
+- Study SITEMAP data carefully. Do NOT suggest pages that already exist.
+- Score each item honestly: impact (1–5) and effort (1–5). The roadmap is derived from these scores.
 
 SCORING GUIDE:
 - impact 5: Likely to rank page 1, high volume, strong commercial value
@@ -673,10 +736,10 @@ SCORING GUIDE:
 - effort 4: Pillar content, location hub, or technical page — 1–2 days
 - effort 5: Large content hub, technical overhaul, or series of pages — 2+ days
 
-FOR THE ROADMAP, distribute tasks across three phases:
-- month1: High impact + low effort items ("quick wins") — what we'll tackle first to show early results
-- months2to3: Core strategic work — the main new pages and content build-out
-- months4plus: Longer-term authority building — pillar content, link outreach, competitive gaps
+FOR THE ROADMAP:
+- month1: High impact + low effort ("quick wins") — early visible results
+- months2to3: Core strategic build — main new pages and content
+- months4plus: Longer-term authority — pillar content, link outreach, seasonal hubs
 
 OUTPUT FORMAT (strict JSON, no markdown):
 {
@@ -684,9 +747,9 @@ OUTPUT FORMAT (strict JSON, no markdown):
     {
       "url": "domain.com/page/",
       "keywords": [
-        {"keyword": "primary keyword from pool", "volume": 1000, "type": "primary"},
-        {"keyword": "secondary keyword from pool", "volume": 480, "type": "secondary"},
-        {"keyword": "long-tail keyword from pool", "volume": 90, "type": "long-tail"}
+        {"keyword": "exact phrase from pool", "volume": 1000, "type": "primary"},
+        {"keyword": "related phrase from pool", "volume": 480, "type": "secondary"},
+        {"keyword": "four plus word phrase from pool", "volume": 90, "type": "long-tail"}
       ],
       "notes": "We will expand this page to target [keyword] by adding a FAQ section and updating the title tag to include [keyword].",
       "impact": 4,
@@ -695,27 +758,27 @@ OUTPUT FORMAT (strict JSON, no markdown):
   ],
   "landingPages": [
     {
-      "title": "Descriptive Page Title",
+      "title": "Specific, Audience-Focused Page Title",
       "keywords": [
-        {"keyword": "primary keyword from pool", "volume": 500, "type": "primary"},
-        {"keyword": "secondary keyword from pool", "volume": 210, "type": "secondary"},
-        {"keyword": "long-tail keyword from pool", "volume": 70, "type": "long-tail"}
+        {"keyword": "transactional phrase from pool", "volume": 500, "type": "primary"},
+        {"keyword": "related phrase from pool", "volume": 210, "type": "secondary"},
+        {"keyword": "four plus word long-tail phrase from pool", "volume": 70, "type": "long-tail"}
       ],
-      "notes": "We will create this page to capture [audience] searching for [intent]. The page will cover [topics] and include a clear conversion path.",
+      "notes": "We will create this page to capture [specific audience] searching for [specific intent]. The page will cover [topics] with a clear donation/conversion path.",
       "impact": 4,
       "effort": 3
     }
   ],
   "blogPosts": [
     {
-      "title": "Blog Post Title",
+      "title": "A Real Article Title Someone Would Click In Search Results",
       "keywords": [
-        {"keyword": "primary keyword from pool", "volume": 200, "type": "primary"},
-        {"keyword": "secondary keyword from pool", "volume": 90, "type": "secondary"},
-        {"keyword": "long-tail keyword from pool", "volume": 40, "type": "long-tail"}
+        {"keyword": "informational phrase from pool", "volume": 200, "type": "primary"},
+        {"keyword": "related phrase from pool", "volume": 90, "type": "secondary"},
+        {"keyword": "four plus word specific phrase from pool", "volume": 40, "type": "long-tail"}
       ],
-      "notes": "We will write this article targeting [audience] at the [awareness/consideration] stage. It will cover [angle] and link internally to [relevant commercial page].",
-      "cluster": "Topical Cluster Name",
+      "notes": "We will write this article for [audience] at the [reader journey stage]. It will cover [specific angle], answer [real question], and link internally to [relevant commercial page].",
+      "cluster": "Cluster Name (e.g. Qurbani Guide, Zakat Explainers, Ramadan Hub)",
       "impact": 3,
       "effort": 2
     }
@@ -723,35 +786,25 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "linkTargets": [
     {
       "url": "domain.com/important-page/",
-      "anchorKeyword": "best anchor keyword",
+      "anchorKeyword": "exact match anchor phrase",
       "anchorType": "Exact",
       "impact": 4,
       "effort": 2
     }
   ],
   "roadmap": {
-    "month1": [
-      "Update title tags and meta descriptions on homepage and top 3 service pages",
-      "Publish quick-win blog post targeting '[high-volume keyword]'"
-    ],
-    "months2to3": [
-      "Build and publish [Landing Page Title] targeting [keyword cluster]",
-      "Create [Blog Post Title] and [Blog Post Title 2] for [Cluster Name] cluster"
-    ],
-    "months4plus": [
-      "Develop pillar content hub for [topic]",
-      "Launch link outreach campaign targeting [page] for [anchor type] links"
-    ]
+    "month1": ["Specific action 1", "Specific action 2"],
+    "months2to3": ["Specific action 3", "Specific action 4"],
+    "months4plus": ["Specific action 5", "Specific action 6"]
   }
 }
 
-KEYWORD TYPE RULES:
-- "primary": the single highest-volume, most commercially relevant keyword for this item (exactly one per item)
-- "secondary": closely related variants, location modifiers, or synonyms (1–3 per item)
-- "long-tail": specific 3–5 word phrases with lower volume but high intent (1–3 per item)
-- All must exist in the KEYWORD POOL
+KEYWORD TYPE DEFINITIONS:
+- "primary": The EXACT search query a real person would type to find THIS specific page. Must be 2+ words from the PHRASE KEYWORDS section of the pool. Single-word entries are NEVER valid primaries. Exactly one per item.
+- "secondary": A closely related 2–4 word search phrase — a synonym, modifier, or variant of the primary. From PHRASE KEYWORDS section only. 1–3 per item.
+- "long-tail": A 4+ word phrase with SPECIFIC narrow intent. Must reflect a real question or highly targeted search. From PHRASE KEYWORDS section only. 1–3 per item.
 
-GUIDANCE — include every worthwhile opportunity. When in doubt, include it. A comprehensive strategy inspires confidence; a thin one raises questions. Always include a roadmap with at least 3 items per phase. Remember: every keyword volume in your output must match the KEYWORD POOL exactly — no exceptions.`;
+REMINDER: Keyword volumes in your output must match the KEYWORD POOL exactly. No invented volumes. No single-word primaries. No duplicated primary keywords across multiple items.`;
 
 // ─── Meta title auditor ─────────────────────────────────────────────────────
 
