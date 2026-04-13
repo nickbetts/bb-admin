@@ -6,6 +6,7 @@ import {
   getBacklinks,
   getAnchorTextDistribution,
   getDomainOverview,
+  getBriefKeywordResearch,
   type SemrushKeywordData,
   type SemrushCompetitor,
   type SemrushContentGap,
@@ -13,6 +14,7 @@ import {
   type SemrushBacklink,
   type SemrushDomainOverview,
   type SemrushAnchorText,
+  type BriefKeywordResult,
 } from "@/lib/semrush";
 import {
   getGSCQueryPageCombos,
@@ -109,6 +111,8 @@ interface CollectedData {
   dataSource: "gsc+semrush" | "semrush-only";
   // Sitemap URLs — existing pages on the site
   sitemapUrls: string[];
+  // Brief-driven keyword research — topics from the brief not in existing data
+  briefTopics: BriefKeywordResult[];
 }
 
 // ─── Sitemap fetcher ────────────────────────────────────────────────────────
@@ -169,11 +173,72 @@ interface PageGroup {
 
 // ─── Data collection ────────────────────────────────────────────────────────
 
+/**
+ * Extracts meaningful topic seeds from a free-text brief.
+ * Returns single words (4+ chars) and 2-word phrases that can be used as
+ * SEMrush phrase-match seeds to find real keyword volumes.
+ */
+function extractBriefTopics(brief: string, max = 10): string[] {
+  const STOPWORDS = new Set([
+    "about","across","add","after","again","against","all","also","although","always",
+    "among","and","any","are","around","also","been","before","being","blog","both",
+    "build","but","can","client","content","could","cover","create","currently","develop",
+    "during","each","either","every","existing","even","focus","for","from","further",
+    "have","help","here","how","ideally","if","include","into","just","like","looking",
+    "make","may","more","most","much","need","neither","new","nor","not","once","only",
+    "our","out","over","page","pages","please","post","posts","really","since","site",
+    "some","such","than","that","the","their","them","then","these","they","this",
+    "those","through","under","unless","until","want","wants","were","what","when",
+    "where","which","while","who","will","with","within","would","write","you","your",
+  ]);
+
+  // Tokenise: normalise, remove punctuation except hyphens inside words
+  const tokens = brief
+    .toLowerCase()
+    .replace(/[—–]/g, " ")
+    .replace(/[^\w\s-]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 4 && !STOPWORDS.has(w) && !/^\d+$/.test(w));
+
+  const seen = new Set<string>();
+  const candidates: string[] = [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    const word = tokens[i];
+    if (!seen.has(word)) {
+      seen.add(word);
+      candidates.push(word);
+    }
+    // Bigrams — both words must pass the filter
+    if (i < tokens.length - 1) {
+      const next = tokens[i + 1];
+      const bigram = `${word} ${next}`;
+      if (!seen.has(bigram)) {
+        seen.add(bigram);
+        candidates.push(bigram);
+      }
+    }
+  }
+
+  // Prefer shorter (more searchable) seeds first; deduplicate substrings
+  candidates.sort((a, b) => a.split(" ").length - b.split(" ").length || a.localeCompare(b));
+
+  // Remove bigrams whose component words already appear as standalone seeds
+  // e.g. drop "qurbani donations" if "qurbani" covers it as a seed
+  const final: string[] = [];
+  for (const c of candidates) {
+    if (final.length >= max) break;
+    final.push(c);
+  }
+  return final;
+}
+
 export async function collectSemrushData(
   domain: string,
   competitors: string[],
   database: string = "uk",
   searchConsoleSiteUrl?: string | null,
+  brief?: string,
 ): Promise<CollectedData> {
   const hasGsc = !!searchConsoleSiteUrl;
 
@@ -182,9 +247,13 @@ export async function collectSemrushData(
   const startDate = new Date(Date.now() - 90 * 86400000).toISOString().split("T")[0];
 
   // Phase 1: Fetch organic data + competitors + overview + sitemap in parallel
+  // Plus brief keyword research if the brief contains recognisable topic seeds.
   // Always fetch SEMrush organic keywords (needed for volume data even with GSC)
   // GSC adds real click/impression/CTR data on top
-  const [organicKeywords, gscQueryPages, detectedCompetitors, overview, sitemapUrls] = await Promise.all([
+  const briefTopicSeeds = brief ? extractBriefTopics(brief, 10) : [];
+  const briefCacheKey = `cs:brief:${domain}:${database}:${briefTopicSeeds.join(",")}`;
+
+  const [organicKeywords, gscQueryPages, detectedCompetitors, overview, sitemapUrls, briefTopics] = await Promise.all([
     withApiCache(`cs:organic:${domain}:${database}`, 168, () =>
       getTopOrganicKeywords(domain, database, 500)
     ),
@@ -204,6 +273,11 @@ export async function collectSemrushData(
     withApiCache(`cs:sitemap:${domain}`, 168, () =>
       fetchSitemapUrls(domain)
     ),
+    briefTopicSeeds.length > 0
+      ? withApiCache(briefCacheKey, 168, () =>
+          getBriefKeywordResearch(briefTopicSeeds, database, 30)
+        )
+      : Promise.resolve([] as BriefKeywordResult[]),
   ]);
 
   // Use provided competitors or auto-detected ones
@@ -257,6 +331,7 @@ export async function collectSemrushData(
     gscQueryPages,
     dataSource: hasGsc ? "gsc+semrush" : "semrush-only",
     sitemapUrls,
+    briefTopics,
   };
 }
 
@@ -401,6 +476,14 @@ function buildAnalysisPrompt(
     }
     for (const [kw, imp] of gscSeen) {
       if (!kwPool.has(kw) && imp > 10) kwPool.set(kw, imp);
+    }
+  }
+  // Add brief-researched keywords to the pool so the AI can use their real volumes
+  for (const result of data.briefTopics) {
+    for (const kw of result.keywords) {
+      if (kw.keyword && kw.volume > 0 && !kwPool.has(kw.keyword.toLowerCase())) {
+        kwPool.set(kw.keyword.toLowerCase(), kw.volume);
+      }
     }
   }
   const kwPoolText = [...kwPool.entries()]
@@ -549,7 +632,15 @@ ${anchorText || "  (no anchor data)"}
 
 ═══ KEYWORD POOL — USE THESE VOLUMES ONLY ═══
 CRITICAL: Every keyword you include in your output MUST appear in this list. Copy the keyword spelling and volume exactly. Do NOT invent keywords. Do NOT estimate or round volumes. If a keyword is not in this list, do not use it.
-${kwPoolText || "  (no keyword data available)"}`;
+${kwPoolText || "  (no keyword data available)"}
+${data.briefTopics.length > 0 ? `
+═══ BRIEF-REQUESTED TOPIC RESEARCH ═══
+The team brief specifically requests focus on the following topics. These are MANDATORY — regardless of current rankings, you MUST include at least one landing page or blog post for every topic seed listed below. Use the keywords from the KEYWORD POOL above (they include these brief-researched keywords) to populate these suggestions. If multiple keywords exist for the same topic, group them into a single page.
+
+${data.briefTopics.map((r) => {
+  const topKws = r.keywords.slice(0, 10).map((k) => `    "${k.keyword}" — vol:${k.volume} KD:${k.difficulty}`).join("\n");
+  return `Topic seed: "${r.topic}"\nTop phrase-match keywords:\n${topKws || "    (no data found — suggest based on the brief context)"}`;
+}).join("\n\n")}` : ""}`;
 }
 
 const STRATEGY_SYSTEM_PROMPT = `You are a senior SEO strategist at a UK digital marketing agency producing a content strategy your team will execute on behalf of a client. This document will be presented as a professional deliverable.
@@ -558,16 +649,17 @@ CONTEXT: You are the agency. Write all notes as "we will…" or "this page will�
 
 RULES:
 1. KEYWORD VOLUMES — NEVER INVENT THEM. Every keyword you include in your output MUST appear verbatim in the KEYWORD POOL at the end of the prompt. Copy the keyword spelling and volume exactly as shown. If a keyword is not in the pool, do not use it. This rule is absolute — fabricating volumes destroys trust in the strategy.
-2. MULTIPLE KEYWORDS PER ITEM — Each landing page and blog post should have 1–4 keywords: a primary keyword (highest volume, most relevant) plus secondary and/or long-tail variants where they exist in the KEYWORD POOL. Choose keywords that cluster together naturally around the same topic. Page optimisations should list all the ranking keywords for that page that are worth targeting.
-3. URLs must be copied exactly as they appear in the data.
-4. Write all titles and notes in British English.
-5. Be THOROUGH — exhaust every worthwhile opportunity in the data. Do not cut short artificially. If the data supports 15 page optimisations, suggest 15. If 20 blog posts are supported by the content gap, suggest 20.
-6. Do NOT duplicate suggestions across sections. Each gap keyword belongs in either a landing page (commercial intent) or a blog post (informational intent), not both.
-7. Commercial/transactional intent (buying, hiring, near me, best, agency, cost, price, service, provider) → landing page.
-8. Informational intent (how to, what is, guide, tips, examples, checklist, vs, difference between) → blog post.
-9. If SITEMAP data is provided, study it carefully. Do NOT suggest pages that already exist. Identify genuine gaps — services, locations, or topics the site doesn't currently cover.
-10. Group blog posts into topical clusters using the "cluster" field (e.g. "Local SEO", "PPC Basics", "Content Marketing"). Posts in the same cluster build topical authority and should internally link to each other.
-11. Score each item honestly using impact (1–5) and effort (1–5). The roadmap is derived from these scores, so accuracy matters.
+2. BRIEF-REQUESTED TOPICS — If a BRIEF-REQUESTED TOPIC RESEARCH section is present, you MUST include at least one landing page or blog post for every topic seed listed, even if it doesn't appear in the client's current rankings or content gap. The brief represents what the client explicitly wants to target. Use keyword volumes from the KEYWORD POOL (the brief keywords are included there).
+3. MULTIPLE KEYWORDS PER ITEM — Each landing page and blog post should have 1–4 keywords: a primary keyword (highest volume, most relevant) plus secondary and/or long-tail variants where they exist in the KEYWORD POOL. Choose keywords that cluster together naturally around the same topic. Page optimisations should list all the ranking keywords for that page that are worth targeting.
+4. URLs must be copied exactly as they appear in the data.
+5. Write all titles and notes in British English.
+6. Be THOROUGH — exhaust every worthwhile opportunity in the data. Do not cut short artificially. If the data supports 15 page optimisations, suggest 15. If 20 blog posts are supported by the content gap, suggest 20.
+7. Do NOT duplicate suggestions across sections. Each gap keyword belongs in either a landing page (commercial intent) or a blog post (informational intent), not both.
+8. Commercial/transactional intent (buying, hiring, near me, best, agency, cost, price, service, provider) → landing page.
+9. Informational intent (how to, what is, guide, tips, examples, checklist, vs, difference between) → blog post.
+10. If SITEMAP data is provided, study it carefully. Do NOT suggest pages that already exist. Identify genuine gaps — services, locations, or topics the site doesn't currently cover.
+11. Group blog posts into topical clusters using the "cluster" field (e.g. "Local SEO", "PPC Basics", "Content Marketing"). Posts in the same cluster build topical authority and should internally link to each other.
+12. Score each item honestly using impact (1–5) and effort (1–5). The roadmap is derived from these scores, so accuracy matters.
 
 SCORING GUIDE:
 - impact 5: Likely to rank page 1, high volume, strong commercial value
@@ -708,7 +800,7 @@ export async function generateContentStrategy(
   searchConsoleSiteUrl?: string | null,
 ): Promise<{ data: ContentStrategyData; collectedData: CollectedData; autoCompetitors: string[] }> {
   // Step 1: Collect data (uses GSC when available, falls back to SEMrush-only)
-  const collectedData = await collectSemrushData(domain, competitors, database, searchConsoleSiteUrl);
+  const collectedData = await collectSemrushData(domain, competitors, database, searchConsoleSiteUrl, brief);
 
   // Determine auto-detected competitors for response
   const autoCompetitors =

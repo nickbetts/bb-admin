@@ -1328,3 +1328,59 @@ export async function getOrganicPositionChanges(
     return [];
   }
 }
+
+// ---------------------------------------------------------------------------
+// Brief keyword research — phrase match expansion for topics in the brief
+// ---------------------------------------------------------------------------
+
+export interface BriefKeywordResult {
+  topic: string;
+  keywords: { keyword: string; volume: number; difficulty: number }[];
+}
+
+/**
+ * For each topic keyword extracted from the brief, fetches phrase-match
+ * variants using SEMrush's phrase_fullsearch report. Returns real volumes
+ * and difficulty scores so the AI can suggest content without fabricating data.
+ */
+export async function getBriefKeywordResearch(
+  topics: string[],
+  database = "uk",
+  limitPerTopic = 30,
+): Promise<BriefKeywordResult[]> {
+  const apiKey = getApiKey();
+  const results = await Promise.all(
+    topics.map(async (topic): Promise<BriefKeywordResult> => {
+      const params = new URLSearchParams({
+        type: "phrase_fullsearch",
+        key: apiKey,
+        export_columns: "Ph,Nq,Kd",
+        phrase: topic.toLowerCase().trim(),
+        database,
+        display_limit: limitPerTopic.toString(),
+        display_sort: "nq_desc",
+      });
+
+      try {
+        const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+        const lines = (response.data as string).trim().split("\n");
+        if (lines.length < 2 || lines[0]?.startsWith("ERROR")) {
+          return { topic, keywords: [] };
+        }
+        const keywords = lines.slice(1)
+          .map((line: string) => {
+            const [ph, nq, kd] = line.split(";");
+            const volume = parseInt(nq) || 0;
+            if (!ph || volume === 0) return null;
+            return { keyword: ph.trim(), volume, difficulty: parseFloat(kd) || 0 };
+          })
+          .filter((k): k is { keyword: string; volume: number; difficulty: number } => k !== null);
+        return { topic, keywords };
+      } catch (err) {
+        console.error(`SEMrush brief keyword research error for "${topic}":`, err);
+        return { topic, keywords: [] };
+      }
+    }),
+  );
+  return results;
+}
