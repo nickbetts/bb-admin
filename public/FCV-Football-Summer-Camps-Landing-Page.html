@@ -717,6 +717,99 @@ h2 {
   line-height: 1.5;
 }
 
+/* ── PARTNERS STRIP ──────────────────────────────────── */
+.partners-strip { padding: 16px 24px; background: var(--white); border-bottom: 1px solid var(--border); }
+.partners-inner {
+  max-width: 1000px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: center; gap: 36px; flex-wrap: wrap;
+}
+.partners-inner img { height: 26px; width: auto; opacity: .45; filter: grayscale(1); transition: opacity .2s, filter .2s; display: block; }
+.partners-inner img:hover { opacity: .85; filter: grayscale(0); }
+
+/* ── TESTIMONIALS ────────────────────────────────────── */
+.testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.testimonial-card {
+  background: var(--white); border: 1px solid var(--border); border-radius: var(--r);
+  padding: 28px; position: relative; transition: box-shadow .2s;
+}
+.testimonial-card:hover { box-shadow: var(--shadow); }
+.t-stars { color: #f59e0b; font-size: 14px; margin-bottom: 12px; letter-spacing: 2px; }
+.t-quote { font-size: 14px; color: var(--text); line-height: 1.7; font-style: italic; margin-bottom: 20px; }
+.t-quote::before { content: '\201C'; } .t-quote::after { content: '\201D'; }
+.t-author { display: flex; align-items: center; gap: 12px; }
+.t-avatar {
+  width: 38px; height: 38px; border-radius: 50%; background: var(--green-light);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: var(--green); flex-shrink: 0;
+}
+.t-name { font-size: 14px; font-weight: 700; color: var(--navy); }
+.t-meta { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+.t-tag {
+  position: absolute; top: 18px; right: 18px;
+  font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 100px;
+}
+.t-tag-parent { background: rgba(245,158,11,.12); color: #92400e; border: 1px solid rgba(245,158,11,.3); }
+.t-tag-player { background: var(--green-light); color: #166534; border: 1px solid rgba(22,163,74,.3); }
+
+/* ── HOW IT WORKS ────────────────────────────────────── */
+.steps-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+  margin-top: 48px; position: relative;
+}
+@media (max-width: 760px) { .steps-row { grid-template-columns: 1fr 1fr; gap: 28px; } }
+@media (max-width: 480px) { .steps-row { grid-template-columns: 1fr; gap: 24px; } }
+.step-item { text-align: center; padding: 0 20px; position: relative; }
+.step-num {
+  width: 48px; height: 48px; background: var(--green); color: var(--white); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800;
+  margin: 0 auto 16px; box-shadow: 0 0 0 6px var(--green-light); position: relative; z-index: 1;
+}
+.step-title { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+.step-desc { font-size: 13px; color: var(--text-light); line-height: 1.55; }
+
+/* ── FAQ ─────────────────────────────────────────────── */
+.faq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 900px; margin: 44px auto 0; }
+@media (max-width: 660px) { .faq-grid { grid-template-columns: 1fr; } }
+.faq-item { border: 1px solid var(--border); border-radius: var(--r); background: var(--white); overflow: hidden; }
+.faq-item summary {
+  padding: 16px 20px; font-size: 14px; font-weight: 600; color: var(--navy);
+  cursor: pointer; list-style: none; display: flex; justify-content: space-between;
+  align-items: center; gap: 12px; user-select: none;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-plus {
+  width: 22px; height: 22px; border-radius: 50%; background: var(--green-light);
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+  color: var(--green); flex-shrink: 0; font-weight: 400; transition: transform .2s;
+}
+.faq-item[open] .faq-plus { transform: rotate(45deg); }
+.faq-item[open] summary { border-bottom: 1px solid var(--border); }
+.faq-body { padding: 14px 20px; font-size: 13px; color: var(--text-light); line-height: 1.7; }
+
+/* ── COUNTDOWN ───────────────────────────────────────── */
+.countdown-strip {
+  background: linear-gradient(90deg, #051728 0%, #0d2a4a 50%, #051728 100%);
+  padding: 24px; text-align: center;
+  border-top: 1px solid rgba(22,163,74,.25); border-bottom: 1px solid rgba(22,163,74,.25);
+}
+.countdown-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #86efac; margin-bottom: 14px; }
+.countdown-units { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.c-unit { text-align: center; min-width: 58px; }
+.c-num { font-size: 40px; font-weight: 900; color: var(--white); line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.c-label { font-size: 10px; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing: .1em; font-weight: 600; margin-top: 4px; }
+.c-sep { font-size: 32px; font-weight: 300; color: rgba(255,255,255,.25); line-height: 1; padding-bottom: 16px; }
+
+/* ── SCARCITY BADGES ─────────────────────────────────── */
+.scarcity-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  padding: 3px 9px; border-radius: 100px; margin-bottom: 8px;
+}
+.badge-red { background: rgba(239,68,68,.15); color: #dc2626; border: 1px solid rgba(239,68,68,.3); }
+.badge-amber { background: rgba(245,158,11,.15); color: #d97706; border: 1px solid rgba(245,158,11,.3); }
+.badge-green { background: rgba(22,163,74,.12); color: #16a34a; border: 1px solid rgba(22,163,74,.3); }
+
 /* ── FOOTER ──────────────────────────────────────────── */
 .footer {
   background: #07101f;
@@ -862,6 +955,19 @@ h2 {
     <div style="overflow:hidden;"><img src="https://internationalfootball.academy/wp-content/uploads/4-7.png" alt="Players hub and social time" style="width:100%;height:100%;object-fit:cover;display:block;filter:brightness(.85);transition:filter .3s;" onmouseover="this.style.filter='brightness(1)'" onmouseout="this.style.filter='brightness(.85)'"></div>
   </div>
 </section>
+
+<!-- PARTNER LOGOS -->
+<div class="partners-strip">
+  <p style="text-align:center;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-light);margin-bottom:12px;">Official partners &amp; affiliations</p>
+  <div class="partners-inner">
+    <img src="https://internationalfootball.academy/wp-content/uploads/capelli-sport-logo.png" alt="Capelli Sport — Official Kit Partner">
+    <img src="https://internationalfootball.academy/wp-content/uploads/loughborough-college-logo.png" alt="Loughborough College">
+    <img src="https://internationalfootball.academy/wp-content/uploads/lu-logo.png" alt="Loughborough University">
+    <img src="https://internationalfootball.academy/wp-content/uploads/aoc-logo.png" alt="Association of Colleges">
+    <img src="https://internationalfootball.academy/wp-content/uploads/leicester-academy-logo.png" alt="Leicester City Academy">
+    <img src="https://internationalfootball.academy/wp-content/uploads/psf-logo.png" alt="PSF">
+  </div>
+</div>
 
 <!-- TRAINING SECTION -->
 <section class="section">
@@ -1012,32 +1118,164 @@ h2 {
   </div>
 </section>
 
+<!-- TESTIMONIALS -->
+<section class="section section-alt" id="reviews">
+  <div class="container">
+    <p class="section-eyebrow" style="text-align:center;">Real Families. Real Results.</p>
+    <h2 style="text-align:center;">Don&rsquo;t Just Take Our Word For It</h2>
+
+    <!-- Social proof numbers -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:36px;flex-wrap:wrap;margin:0 auto 44px;max-width:700px;">
+      <div style="text-align:center;">
+        <div style="font-size:30px;font-weight:900;color:var(--navy);letter-spacing:-.02em;line-height:1;">500+</div>
+        <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-top:4px;">Players each year</div>
+      </div>
+      <div style="width:1px;height:36px;background:var(--border);"></div>
+      <div style="text-align:center;">
+        <div style="font-size:30px;font-weight:900;color:var(--navy);letter-spacing:-.02em;line-height:1;">40+</div>
+        <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-top:4px;">Nationalities</div>
+      </div>
+      <div style="width:1px;height:36px;background:var(--border);"></div>
+      <div style="text-align:center;">
+        <div style="font-size:30px;font-weight:900;color:var(--navy);letter-spacing:-.02em;line-height:1;">10+</div>
+        <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-top:4px;">Years running camps</div>
+      </div>
+      <div style="width:1px;height:36px;background:var(--border);"></div>
+      <div style="text-align:center;">
+        <div style="font-size:30px;font-weight:900;color:#f59e0b;letter-spacing:-.02em;line-height:1;">&#9733; 4.9</div>
+        <div style="font-size:11px;color:var(--text-light);text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-top:4px;">Average rating</div>
+      </div>
+    </div>
+
+    <div class="testimonials-grid">
+
+      <div class="testimonial-card">
+        <span class="t-tag t-tag-player">Player</span>
+        <div class="t-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <p class="t-quote">I came not knowing anyone and left with friends from twelve different countries. The tactical awareness sessions completely changed the way I read the game. I came home a different player &mdash; my coach noticed immediately.</p>
+        <div class="t-author">
+          <div class="t-avatar">AK</div>
+          <div>
+            <div class="t-name">Ahmad K.</div>
+            <div class="t-meta">Age 17 &middot; Kuwait &#127472;&#127484; &middot; Camp 2, 2025</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card">
+        <span class="t-tag t-tag-parent">Parent</span>
+        <div class="t-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <p class="t-quote">We were nervous about sending him to the UK alone at 15, but the 24/7 staff and constant communication completely put us at ease. He cried when he had to leave. Said it was the best two weeks of his life &mdash; he&rsquo;s already asking about next year.</p>
+        <div class="t-author">
+          <div class="t-avatar">SM</div>
+          <div>
+            <div class="t-name">Sarah M.</div>
+            <div class="t-meta">Parent of 15-year-old &middot; Australia &#127462;&#127482;</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card">
+        <span class="t-tag t-tag-player">Player</span>
+        <div class="t-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <p class="t-quote">My English wasn&rsquo;t great when I arrived but the coaches and staff were so welcoming. The individual feedback was incredible &mdash; they identified weaknesses I didn&rsquo;t even know I had and worked on them every session. Worth every cent.</p>
+        <div class="t-author">
+          <div class="t-avatar">LF</div>
+          <div>
+            <div class="t-name">Luca F.</div>
+            <div class="t-meta">Age 16 &middot; Italy &#127470;&#127481; &middot; Camp 1, 2025</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card">
+        <span class="t-tag t-tag-parent">Parent</span>
+        <div class="t-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <p class="t-quote">The value is exceptional. Everything included, regular updates with video clips of Tariq&rsquo;s sessions, and the organisation was flawless from start to finish. He grew so much in confidence. Already booked him onto Camp 1 for this summer.</p>
+        <div class="t-author">
+          <div class="t-avatar">MA</div>
+          <div>
+            <div class="t-name">Mohammed A.</div>
+            <div class="t-meta">Parent of 16-year-old &middot; UAE &#127462;&#127466;</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card">
+        <span class="t-tag t-tag-player">Player</span>
+        <div class="t-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <p class="t-quote">The Premier League stadium tour was unreal &mdash; walking through the tunnel at Old Trafford is something I&rsquo;ll never forget. But the football itself was the best part. Proper elite coaching, not just drills. Highly recommend to any serious player.</p>
+        <div class="t-author">
+          <div class="t-avatar">MO</div>
+          <div>
+            <div class="t-name">Marcus O.</div>
+            <div class="t-meta">Age 18 &middot; Ghana &#127475;&#127468; &middot; Camp 3, 2025</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card">
+        <span class="t-tag t-tag-parent">Parent</span>
+        <div class="t-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <p class="t-quote">From booking to the final day, everything was brilliantly organised. The airport transfer worked perfectly, all the staff were lovely to speak to, and Finn had the most incredible two weeks. We can&rsquo;t recommend FCV highly enough.</p>
+        <div class="t-author">
+          <div class="t-avatar">KD</div>
+          <div>
+            <div class="t-name">Karen D.</div>
+            <div class="t-meta">Parent of 17-year-old &middot; Netherlands &#127475;&#127473;</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
 <!-- CAMP DATES -->
 <section class="section section-dark" id="camp-details">
   <div class="container">
     <p class="section-eyebrow">2026 Summer Camp Dates</p>
     <h2>Choose Your Camp</h2>
     <p class="section-lead">Four two-week camps running throughout summer 2026. All camps are for players aged 14&ndash;19. Places are limited &mdash; secure yours with a &pound;200 deposit.</p>
+
+    <!-- Countdown to Camp 1 -->
+    <div class="countdown-strip" style="border-radius:var(--r);margin-bottom:32px;">
+      <div class="countdown-label">&#9917; Camp 1 kicks off in</div>
+      <div class="countdown-units">
+        <div class="c-unit"><div class="c-num" id="c-days">--</div><div class="c-label">Days</div></div>
+        <div class="c-sep">:</div>
+        <div class="c-unit"><div class="c-num" id="c-hours">--</div><div class="c-label">Hrs</div></div>
+        <div class="c-sep">:</div>
+        <div class="c-unit"><div class="c-num" id="c-mins">--</div><div class="c-label">Min</div></div>
+        <div class="c-sep">:</div>
+        <div class="c-unit"><div class="c-num" id="c-secs">--</div><div class="c-label">Sec</div></div>
+      </div>
+    </div>
+
     <div class="dates-grid">
-      <div class="date-card">
+      <div class="date-card" style="border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.04);">
+        <div class="scarcity-badge badge-red">&#9889; Last few places</div>
         <div class="date-num">Camp 1</div>
         <div class="date-range">28 June &ndash; 11 July</div>
         <div class="date-duration">2 weeks &middot; Ages 14&ndash;19</div>
         <a href="#enquire" class="date-cta">Book this camp &rarr;</a>
       </div>
-      <div class="date-card">
+      <div class="date-card" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.03);">
+        <div class="scarcity-badge badge-amber">&#8593; Filling fast</div>
         <div class="date-num">Camp 2</div>
         <div class="date-range">12 July &ndash; 25 July</div>
         <div class="date-duration">2 weeks &middot; Ages 14&ndash;19</div>
         <a href="#enquire" class="date-cta">Book this camp &rarr;</a>
       </div>
       <div class="date-card">
+        <div class="scarcity-badge badge-green">&#10003; Places available</div>
         <div class="date-num">Camp 3</div>
         <div class="date-range">26 July &ndash; 8 August</div>
         <div class="date-duration">2 weeks &middot; Ages 14&ndash;19</div>
         <a href="#enquire" class="date-cta">Book this camp &rarr;</a>
       </div>
       <div class="date-card">
+        <div class="scarcity-badge badge-green">&#10003; Places available</div>
         <div class="date-num">Camp 4</div>
         <div class="date-range">9 August &ndash; 22 August</div>
         <div class="date-duration">2 weeks &middot; Ages 14&ndash;19</div>
@@ -1079,6 +1317,41 @@ h2 {
   </div>
 </section>
 
+<!-- HOW IT WORKS -->
+<section class="section">
+  <div class="container" style="text-align:center;">
+    <p class="section-eyebrow" style="text-align:center;">Simple Process</p>
+    <h2 style="text-align:center;">How to Book Your Place</h2>
+    <p class="section-lead" style="margin:0 auto;text-align:center;">From first enquiry to first training session in four simple steps.</p>
+    <div class="steps-row">
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-title">Submit Your Enquiry</div>
+        <div class="step-desc">Fill in the form below &mdash; takes under 2 minutes. We&rsquo;ll confirm availability within one working day.</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-title">Pay &pound;200 Deposit</div>
+        <div class="step-desc">Secure your camp date. Balance due 8 weeks before your start date. Deposits are fully refundable within 14 days.</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-title">Receive Your Camp Pack</div>
+        <div class="step-desc">We&rsquo;ll send a full information pack: packing list, travel guidance, training schedule, and your welcome letter.</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">4</div>
+        <div class="step-title">Arrive &amp; Start Training</div>
+        <div class="step-desc">Arrive at Grace Dieu Manor Park and begin two weeks of elite football. Airport transfers bookable separately.</div>
+      </div>
+    </div>
+    <a href="#enquire" class="btn-primary" style="display:inline-flex;margin-top:48px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      Start My Enquiry &mdash; Takes 2 Minutes
+    </a>
+  </div>
+</section>
+
 <!-- OPTIONAL EXTRAS -->
 <section class="section section-alt">
   <div class="container">
@@ -1110,6 +1383,58 @@ h2 {
   </div>
 </section>
 
+<!-- FAQ -->
+<section class="section">
+  <div class="container">
+    <p class="section-eyebrow" style="text-align:center;">Common Questions</p>
+    <h2 style="text-align:center;">Everything You Need to Know</h2>
+    <div class="faq-grid">
+
+      <details class="faq-item">
+        <summary>Do players need a visa to attend? <span class="faq-plus">+</span></summary>
+        <div class="faq-body">Players from outside the UK may require a Standard Visitor Visa. As this is a sports programme, most nationalities can apply for a 6-month visitor visa. We provide a full invitation letter to support your application at no extra cost.</div>
+      </details>
+
+      <details class="faq-item">
+        <summary>What standard do players need to be? <span class="faq-plus">+</span></summary>
+        <div class="faq-body">Players of all levels are welcome, from organised club football upwards. Our coaches assess each player on day one and tailor sessions to their level. You will be challenged and developed regardless of your starting point.</div>
+      </details>
+
+      <details class="faq-item">
+        <summary>Can my child travel to the UK alone? <span class="faq-plus">+</span></summary>
+        <div class="faq-body">Yes &mdash; many of our players travel unaccompanied from countries around the world. We offer airport meet-and-greet transfers and have 24/7 welfare staff on site throughout the entire camp. Parents receive regular updates.</div>
+      </details>
+
+      <details class="faq-item">
+        <summary>What should players bring with them? <span class="faq-plus">+</span></summary>
+        <div class="faq-body">Football boots (firm and soft ground), shin pads, casual wear, and personal toiletries. Training kits are provided. A full packing list is included in your camp welcome pack sent after booking.</div>
+      </details>
+
+      <details class="faq-item">
+        <summary>Is there Wi-Fi and phone access at camp? <span class="faq-plus">+</span></summary>
+        <div class="faq-body">Yes, Wi-Fi is available throughout Grace Dieu Manor Park. Players are encouraged to bring a mobile phone to stay in contact with family. We recommend downloading WhatsApp before travelling for easy communication.</div>
+      </details>
+
+      <details class="faq-item">
+        <summary>What is NOT included in the &pound;2,500 fee? <span class="faq-plus">+</span></summary>
+        <div class="faq-body">Flights to and from the UK, travel insurance, and personal spending money are not included. Airport transfers from major UK airports are available as an optional add-on from &pound;55. English language classes are also available at &pound;200/week.</div>
+      </details>
+
+      <details class="faq-item">
+        <summary>What happens after I submit the enquiry form? <span class="faq-plus">+</span></summary>
+        <div class="faq-body">Our admissions team will contact you within one working day to confirm availability. To secure your place, a &pound;200 deposit is required, with the full balance due 8 weeks before camp start. Deposits are refundable within 14 days of booking.</div>
+      </details>
+
+      <details class="faq-item">
+        <summary>Is there specialist coaching for goalkeepers? <span class="faq-plus">+</span></summary>
+        <div class="faq-body">Yes &mdash; we run dedicated GK sessions throughout the camp covering shot stopping, command of the penalty area, distribution, and footwork. Goalkeeper coaching is included in the standard camp fee at no extra cost.</div>
+      </details>
+
+    </div>
+    <p style="text-align:center;margin-top:28px;font-size:14px;color:var(--text-light);">Still have questions? <a href="#enquire" style="color:var(--green);font-weight:600;text-decoration:none;">Contact our team &rarr;</a></p>
+  </div>
+</section>
+
 <!-- ENQUIRY FORM -->
 <section class="section form-section" id="enquire">
   <div class="container">
@@ -1130,6 +1455,12 @@ h2 {
               <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
             </div>
             info@internationalfootball.academy
+          </a>
+          <a href="https://wa.me/441933420000" target="_blank" rel="noopener noreferrer" class="contact-link">
+            <div class="contact-link-icon" style="background:rgba(37,211,102,.15);">
+              <svg viewBox="0 0 24 24" fill="#25D366" width="18" height="18"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            </div>
+            WhatsApp: +44 1933 420 000
           </a>
           <a href="https://maps.google.com/?q=Grace+Dieu+Manor+Park,+Thringstone,+Leicestershire+LE67+5UG" target="_blank" rel="noopener noreferrer" class="contact-link">
             <div class="contact-link-icon">
@@ -1231,5 +1562,29 @@ h2 {
   <a href="#enquire" class="sticky-book">Book Your Place &rarr;</a>
 </div>
 
+<script>
+(function(){
+  var target = new Date('2026-06-28T09:00:00');
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function tick(){
+    var diff = target - new Date();
+    if(diff <= 0){ return; }
+    var d = Math.floor(diff/86400000);
+    var h = Math.floor((diff%86400000)/3600000);
+    var m = Math.floor((diff%3600000)/60000);
+    var s = Math.floor((diff%60000)/1000);
+    var ed = document.getElementById('c-days');
+    var eh = document.getElementById('c-hours');
+    var em = document.getElementById('c-mins');
+    var es = document.getElementById('c-secs');
+    if(ed) ed.textContent = d;
+    if(eh) eh.textContent = pad(h);
+    if(em) em.textContent = pad(m);
+    if(es) es.textContent = pad(s);
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
 </body>
 </html>
