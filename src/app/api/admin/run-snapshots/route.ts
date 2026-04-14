@@ -11,6 +11,7 @@ import { getMicrosoftAdsOverview } from "@/lib/microsoft-ads";
 import { getWooCommerceStats } from "@/lib/woocommerce";
 import { getShopifyStats } from "@/lib/shopify";
 import { getCoreWebVitals } from "@/lib/core-web-vitals";
+import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -199,6 +200,15 @@ export async function POST(request: NextRequest) {
       if (row.sections.length > 0 || row.errors.length > 0) results.push(row);
     }
   }
+
+  logActivity({
+    userId: session.user.id,
+    userEmail: session.user.email,
+    userName: session.user.name ?? undefined,
+    action: "snapshot_triggered",
+    description: `Manually triggered snapshots for ${clients.length} client${clients.length === 1 ? "" : "s"} (${months} month${months === 1 ? "" : "s"}, ${totalSnapshots} snapshots saved)`,
+    metadata: { clientsProcessed: clients.length, periodsProcessed: months, totalSnapshots, totalErrors },
+  });
 
   return NextResponse.json({
     success: true,

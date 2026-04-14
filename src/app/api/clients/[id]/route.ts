@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activity-logger";
 
 export async function GET(
   request: NextRequest,
@@ -85,6 +86,18 @@ export async function PATCH(
         klaviyoAccountName: data.klaviyoAccountName || null,
         contactEmails: data.contactEmails !== undefined ? data.contactEmails : undefined,
       },
+    });
+
+    logActivity({
+      userId: session.user.id,
+      userEmail: session.user.email,
+      userName: session.user.name ?? undefined,
+      action: "client_updated",
+      resourceType: "client",
+      resourceId: id,
+      clientId: id,
+      clientName: client.name,
+      description: `Updated client "${client.name}"`,
     });
 
     return NextResponse.json(client);

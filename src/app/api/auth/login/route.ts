@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activity-logger";
 
 const APP_PASSWORD = process.env.APP_PASSWORD ?? "i3ganggang";
 const SESSION_SECRET = process.env.SESSION_SECRET ?? "i3media-session-secret";
@@ -56,6 +57,13 @@ export async function POST(request: NextRequest) {
         }
         const token = createSessionToken(user.id);
         const response = setCookieAndReturn(token);
+        logActivity({
+          userId: user.id,
+          userEmail: user.email,
+          userName: user.name ?? undefined,
+          action: "user_login",
+          description: `${user.name ?? user.email} logged in`,
+        });
         if (user.mustChangePassword) {
           return NextResponse.json(
             { success: true, mustChangePassword: true },

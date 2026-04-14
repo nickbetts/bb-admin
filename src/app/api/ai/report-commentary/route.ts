@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -282,6 +283,15 @@ Address the client directly using "the" for campaigns/channels and "your" for th
     });
 
     const commentary = response.choices[0]?.message?.content?.trim() ?? "";
+    logActivity({
+      action: "ai_commentary_generated",
+      resourceType: "report",
+      resourceId: reportId ?? undefined,
+      clientId: clientId ?? undefined,
+      clientName: clientName ?? undefined,
+      description: `Generated AI commentary for ${SECTION_LABELS[sectionType] ?? sectionType} section${clientName ? ` (${clientName})` : ""}`,
+      metadata: { sectionType, dateRange },
+    });
     return NextResponse.json({ commentary });
   } catch (err) {
     console.error("Report commentary generation error:", err);

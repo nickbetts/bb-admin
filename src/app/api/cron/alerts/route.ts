@@ -30,29 +30,29 @@ interface PendingAlert {
 // ── Metric direction metadata (mirrors cron/snapshots) ───────────────────────
 
 const HIGHER_IS_BETTER: Record<string, string[]> = {
-  ga4: ["sessions", "users", "pageviews", "conversionRate"],
-  googleads: ["clicks", "impressions", "conversions", "conversionsValue"],
-  meta: ["totalClicks", "totalImpressions", "totalConversions", "avgRoas", "avgCtr"],
-  tiktok: ["clicks", "impressions", "conversions", "ctr"],
-  microsoftads: ["clicks", "impressions", "conversions", "revenue", "roas", "ctr"],
+  ga4: ["sessions", "users", "newUsers", "pageviews", "conversionRate", "engagedSessions", "engagementRate", "avgSessionDuration"],
+  googleads: ["clicks", "impressions", "conversions", "conversionsValue", "ctr", "roas", "avgQualityScore"],
+  meta: ["totalClicks", "totalImpressions", "totalConversions", "avgRoas", "avgCtr", "reach"],
+  tiktok: ["clicks", "impressions", "conversions", "ctr", "videoViews", "reach"],
+  microsoftads: ["clicks", "impressions", "conversions", "revenue", "roas", "ctr", "impressionSharePercent"],
   linkedin: ["clicks", "impressions", "conversions", "reach"],
   klaviyo: ["sends", "opens", "clicks", "revenue", "openRate", "clickRate", "totalProfiles"],
   youtube: ["subscriberCount", "viewCount", "videoCount"],
   hubspot: ["totalContacts", "closedWonValue", "pipelineValue"],
   callrail: ["totalCalls", "answeredCalls", "answeredPct"],
   moz: ["domainAuthority", "rootDomainsLinking"],
-  woocommerce: ["totalRevenue", "totalOrders"],
-  shopify: ["totalRevenue", "totalOrders"],
+  woocommerce: ["totalRevenue", "totalOrders", "averageOrderValue"],
+  shopify: ["totalRevenue", "totalOrders", "averageOrderValue"],
   searchconsole: ["clicks", "impressions", "ctr"],
-  seo: ["organicTraffic", "organicKeywords"],
+  seo: ["organicTraffic", "organicKeywords", "aiVisibilityScore"],
 };
 
 const LOWER_IS_BETTER: Record<string, string[]> = {
   ga4: ["bounceRate"],
-  googleads: ["costMicros"],
-  meta: ["avgCpm"],
-  tiktok: ["cpc", "cpm"],
-  microsoftads: ["cpc"],
+  googleads: ["costMicros", "cpa"],
+  meta: ["avgCpm", "avgCpc"],
+  tiktok: ["cpc", "cpm", "costPerConversion"],
+  microsoftads: ["cpc", "costPerConversion"],
   linkedin: ["cpc"],
   callrail: ["missedCalls"],
   moz: ["spamScore"],
@@ -139,6 +139,9 @@ function detectPerformanceDrops(
     const changePct = ((currentVal - prevVal) / Math.abs(prevVal)) * 100;
     const absChange = Math.abs(changePct);
     if (absChange < 25) continue;
+
+    // Skip metrics with no defined direction — avoids flagging spend increases etc. as issues
+    if (!higherBetter.includes(key) && !lowerBetter.includes(key)) continue;
 
     const isUp = changePct > 0;
     const isGood =

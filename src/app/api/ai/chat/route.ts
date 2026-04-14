@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import OpenAI from "openai";
 import { getOpenAiClient } from "@/lib/openai-client";
+import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -201,6 +202,15 @@ Instructions:
       data: { clientId, userId: session.user.id, role: "assistant", content: reply },
     });
 
+    logActivity({
+      userId: session.user.id,
+      userEmail: session.user.email,
+      userName: session.user.name ?? undefined,
+      action: "ai_chat_message",
+      clientId,
+      clientName: client.name,
+      description: `Sent AI chat message for ${client.name}`,
+    });
     return NextResponse.json({ reply });
   } catch (error) {
     console.error("AI chat error:", error);

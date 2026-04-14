@@ -121,7 +121,26 @@ export async function DELETE(
     }
 
     const { id } = await params;
+
+    // Fetch report details before deleting for the activity log
+    const report = await prisma.report.findUnique({ where: { id }, select: { title: true, clientId: true } });
+    const client = report ? await prisma.client.findUnique({ where: { id: report.clientId }, select: { name: true } }).catch(() => null) : null;
+
     await prisma.report.delete({ where: { id } });
+
+    if (report) {
+      logActivity({
+        userId: session.user.id,
+        userEmail: session.user.email,
+        userName: session.user.name ?? undefined,
+        action: "report_deleted",
+        resourceType: "report",
+        resourceId: id,
+        clientId: report.clientId,
+        clientName: client?.name ?? undefined,
+        description: `Deleted report "${report.title}" for ${client?.name ?? report.clientId}`,
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

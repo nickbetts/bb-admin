@@ -21,6 +21,10 @@ export type ActivityAction =
   | "client_created"
   | "client_updated"
   | "proposal_created"
+  | "landing_page_created"
+  | "landing_page_refined"
+  | "landing_page_shared"
+  | "landing_page_deleted"
   | "snapshot_triggered"
   | "user_login"
   | "user_created";

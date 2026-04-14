@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activity-logger";
 
 async function requireUsersPermission() {
   const session = await getSession();
@@ -78,6 +79,16 @@ export async function POST(request: NextRequest) {
       mustChangePassword: true,
     },
     select: userSelect,
+  });
+
+  logActivity({
+    userId: session.user.id,
+    userEmail: session.user.email,
+    userName: session.user.name ?? undefined,
+    action: "user_created",
+    resourceType: "user",
+    resourceId: user.id,
+    description: `Created user ${user.name} (${user.email})`,
   });
 
   return NextResponse.json(user, { status: 201 });

@@ -32,6 +32,7 @@ import {
   EyeOff,
   Sun,
   Moon,
+  Globe,
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { KeyboardShortcutsHelp } from "@/components/ui/KeyboardShortcutsHelp";
@@ -71,6 +72,7 @@ const toolsNavItems: NavItem[] = [
   { href: "/tools/llm-generator", label: "LLM.txt Generator", icon: <Bot className="h-4 w-4" />, permission: "llm_generator" },
   { href: "/tools/content-strategy", label: "Content Strategy", icon: <FileSpreadsheet className="h-4 w-4" />, permission: "content_strategy" },
   { href: "/tools/access-requester", label: "Access Requester", icon: <KeyRound className="h-4 w-4" />, permission: "access_requester" },
+  { href: "/tools/landing-pages", label: "LP Generator", icon: <Globe className="h-4 w-4" />, permission: "landing_page_generator" },
 ];
 
 interface SidebarProps {

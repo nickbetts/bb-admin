@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOpenAiClient, createWithWebSearch, streamWithWebSearch } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -608,6 +609,13 @@ Be frank and specific. Reference actual numbers and percentages.`;
         overallScore: parsed.overallScore ?? 0,
       };
 
+      logActivity({
+        action: "ai_overview_narrative",
+        clientId: clientId ?? undefined,
+        clientName: clientName ?? undefined,
+        description: `Generated AI overview narrative${clientName ? ` for ${clientName}` : ""}${dateRange ? ` (${dateRange})` : ""}`,
+        metadata: { dateRange, webSearch: true },
+      });
       return NextResponse.json({ ...result, webSearchCitations: wsResult.citations });
     }
 
@@ -683,6 +691,13 @@ Be frank and specific. Reference actual numbers and percentages.`;
       overallScore: parsed.overallScore ?? 0,
     };
 
+    logActivity({
+      action: "ai_overview_narrative",
+      clientId: clientId ?? undefined,
+      clientName: clientName ?? undefined,
+      description: `Generated AI overview narrative${clientName ? ` for ${clientName}` : ""}${dateRange ? ` (${dateRange})` : ""}`,
+      metadata: { dateRange },
+    });
     return NextResponse.json(result);
   } catch (error) {
     console.error("Overview narrative error:", error);

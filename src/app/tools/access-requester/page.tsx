@@ -101,7 +101,11 @@ To link your account to our Manager account instead:
 2. Under "Account access", click "Link to a manager account"
 3. Enter our Manager Account ID:${managerLine}
 4. Click "Send link request"
-5. We'll approve it within the hour.` : ""}`;
+5. We'll approve it within the hour.` : ""}
+
+— ALTERNATIVELY —
+
+If you'd prefer, simply send us your Google Ads Customer ID (the 10-digit number shown at the top of your Google Ads account, e.g. 123-456-7890) and we will send the access request from our Manager account — you'll just need to approve it.`;
 }
 
 function buildMetaInstructions(agency: AgencySettings): string {
@@ -317,6 +321,9 @@ function renderPlatformSteps(p: Platform, agency: AgencySettings): React.ReactNo
             <Step n={4} color={c} text='Click <strong>"Send link request"</strong> — we will approve it within the hour' />
           </>
         )}
+        <InfoBox>
+          <strong>Prefer a simpler option?</strong> Just send us your <strong>Google Ads Customer ID</strong> — the 10-digit number (e.g. <span style={{ fontFamily: "monospace" }}>123-456-7890</span>) shown at the top of your Google Ads account. We&apos;ll send the access request from our end and you simply approve it.
+        </InfoBox>
       </>
     );
   }

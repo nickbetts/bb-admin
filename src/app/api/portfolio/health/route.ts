@@ -4,6 +4,28 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+// Metrics that have a well-defined direction. Anomalies for metrics not listed
+// here are excluded from the health score — guards against stale false-positives
+// (e.g. totalSpend increased) that were created before the cron detection was tightened.
+const CLASSIFIED_METRICS: Record<string, string[]> = {
+  ga4:          ["sessions", "users", "newUsers", "pageviews", "conversionRate", "engagedSessions", "engagementRate", "avgSessionDuration", "bounceRate"],
+  googleads:    ["clicks", "impressions", "conversions", "conversionsValue", "ctr", "roas", "avgQualityScore", "costMicros", "cpa"],
+  meta:         ["totalClicks", "totalImpressions", "totalConversions", "avgRoas", "avgCtr", "reach", "avgCpm", "avgCpc"],
+  tiktok:       ["clicks", "impressions", "conversions", "ctr", "videoViews", "reach", "cpc", "cpm", "costPerConversion"],
+  microsoftads: ["clicks", "impressions", "conversions", "revenue", "roas", "ctr", "impressionSharePercent", "cpc", "costPerConversion"],
+  linkedin:     ["clicks", "impressions", "conversions", "reach", "cpc"],
+  klaviyo:      ["sends", "opens", "clicks", "revenue", "openRate", "clickRate", "totalProfiles"],
+  youtube:      ["subscriberCount", "viewCount", "videoCount"],
+  hubspot:      ["totalContacts", "closedWonValue", "pipelineValue"],
+  callrail:     ["totalCalls", "answeredCalls", "answeredPct", "missedCalls"],
+  moz:          ["domainAuthority", "rootDomainsLinking", "spamScore"],
+  woocommerce:  ["totalRevenue", "totalOrders", "averageOrderValue"],
+  shopify:      ["totalRevenue", "totalOrders", "averageOrderValue"],
+  searchconsole: ["clicks", "impressions", "ctr", "position"],
+  seo:          ["organicTraffic", "organicKeywords", "organicCost", "aiVisibilityScore"],
+  cwv:          ["lcp", "cls", "inp", "fid", "ttfb"],
+};
+
 const PLATFORM_LABELS: Record<string, string> = {
   googleads: "Google Ads",
   meta: "Meta Ads",
@@ -58,6 +80,12 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
+    // Exclude anomalies for metrics with no defined direction — these are stale false-positives
+    // (e.g. totalSpend, spend, frequency) generated before detection logic was tightened.
+    const filteredAnomalies = allAnomalies.filter(
+      a => (CLASSIFIED_METRICS[a.platform] ?? []).includes(a.metric)
+    );
+
     // Recent metric snapshots — last N per client+platform (all-time, not period-scoped)
     // Used to: (a) confirm client has data, (b) detect trends, (c) get "data as of" date
     const allSnapshots = await prisma.metricSnapshot.findMany({
@@ -66,8 +94,8 @@ export async function GET(request: NextRequest) {
     });
 
     // Index anomalies by clientId
-    const anomaliesByClient = new Map<string, typeof allAnomalies>();
-    for (const a of allAnomalies) {
+    const anomaliesByClient = new Map<string, typeof filteredAnomalies>();
+    for (const a of filteredAnomalies) {
       const arr = anomaliesByClient.get(a.clientId) ?? [];
       anomaliesByClient.set(a.clientId, [...arr, a]);
     }

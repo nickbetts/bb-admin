@@ -120,6 +120,7 @@ model Client {
   detectedAnomalies     DetectedAnomaly[]
   clickFraudEvents      ClickFraudEvent[]
   contentStrategies     ContentStrategy[]
+  landingPages          LandingPage[]
 }
 
 model ClientGoal {
@@ -577,4 +578,78 @@ model Ms365Connection {
   refreshToken String   // OAuth2 refresh token
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+// ── Landing Page Generator ──────────────────────────────────────────────────
+
+// AI-generated landing pages for ad campaigns, optionally linked to a client
+model LandingPage {
+  id               String               @id @default(cuid())
+  clientId         String?
+  userId           String               // Creator
+  title            String
+  slug             String               // URL slug — unique within client scope
+  currentHtml      String               // Active HTML (latest accepted version)
+  briefJson        String               // JSON: { url, brief, campaignType, targetAudience }
+  brandContextJson String               // JSON: extracted brand data (colours, fonts, logo, imagery)
+  formConfig       String               @default("{}") // JSON: { builtInFields?: string[], externalFormUrl?: string }
+  shareToken       String?              @unique
+  viewCount        Int                  @default(0)
+  lastViewedAt     DateTime?
+  status           String               @default("draft") // draft | published | archived
+  templateId       String?              // LandingPageTemplate.id if created from template
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  client           Client?              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  versions         LandingPageVersion[]
+  leads            LandingPageLead[]
+
+  @@unique([clientId, slug])
+  @@index([clientId, createdAt])
+  @@index([userId, createdAt])
+}
+
+// Version history: every AI refinement creates a new version
+model LandingPageVersion {
+  id            String      @id @default(cuid())
+  landingPageId String
+  versionNumber Int         // Sequential per landing page (1, 2, 3…)
+  html          String      // Full HTML at this version
+  prompt        String      // The user prompt that produced this version
+  createdAt     DateTime    @default(now())
+  landingPage   LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
+
+  @@unique([landingPageId, versionNumber])
+  @@index([landingPageId, createdAt])
+}
+
+// Leads captured through the built-in LP form
+model LandingPageLead {
+  id            String      @id @default(cuid())
+  landingPageId String
+  name          String
+  email         String
+  phone         String?
+  message       String?
+  formData      String?     // JSON: additional custom field data
+  referrer      String?
+  createdAt     DateTime    @default(now())
+  landingPage   LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
+
+  @@index([landingPageId, createdAt])
+}
+
+// Reusable LP templates — built-in seeds + user-saved from successful LPs
+model LandingPageTemplate {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  category       String   // "lead-gen" | "ecommerce" | "event" | "service" | "product-launch"
+  thumbnailUrl   String?
+  html           String   // Template HTML (with placeholder markers)
+  promptGuidance String?  // System prompt hints for AI when using this template
+  isBuiltIn      Boolean  @default(false)
+  createdBy      String?  // User email who saved this template
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
