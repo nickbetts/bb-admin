@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   ArrowLeft,
   Globe,
@@ -10,6 +11,7 @@ import {
   FileText,
   Grid3X3,
   ChevronRight,
+  X,
 } from "lucide-react";
 
 interface Client {
@@ -34,6 +36,17 @@ const CAMPAIGN_TYPES = [
   { value: "ecommerce", label: "E-commerce", description: "Drive product sales and conversions" },
 ];
 
+const inputStyle: React.CSSProperties = {
+  width: "100%", padding: "10px 14px",
+  border: "1px solid var(--border)", borderRadius: "var(--r)",
+  fontSize: 14, color: "var(--text)", background: "var(--surface)",
+  outline: "none", fontFamily: "inherit",
+};
+
+const labelStyle: React.CSSProperties = {
+  display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-2)", marginBottom: 6,
+};
+
 export default function NewLandingPage() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
@@ -51,14 +64,12 @@ export default function NewLandingPage() {
   const [templateId, setTemplateId] = useState("");
 
   useEffect(() => {
-    // Fetch clients
     fetch("/api/clients").then(async (r) => {
       if (r.ok) {
         const data = await r.json();
         setClients(data.clients ?? []);
       }
     }).catch(() => {});
-    // Fetch templates
     fetch("/api/tools/landing-pages/templates").then(async (r) => {
       if (r.ok) {
         const data = await r.json();
@@ -67,7 +78,6 @@ export default function NewLandingPage() {
     }).catch(() => {});
   }, []);
 
-  // Auto-fill URL when client is selected (via handleClientChange)
   const handleClientChange = (newClientId: string) => {
     setClientId(newClientId);
     if (newClientId) {
@@ -115,203 +125,219 @@ export default function NewLandingPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+    <div className="page" style={{ maxWidth: 720 }}>
+      {/* Back link */}
+      <Link
+        href="/tools/landing-pages"
+        style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, color: "var(--text-3)", marginBottom: 16, textDecoration: "none" }}
+      >
+        <ArrowLeft style={{ width: 14, height: 14 }} /> Back to landing pages
+      </Link>
+
       {/* Header */}
-      <div className="mb-8">
-        <button
-          onClick={() => router.push("/tools/landing-pages")}
-          className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 mb-4 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to landing pages
-        </button>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Create Landing Page</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Create Landing Page</h1>
+        <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 6 }}>
           Provide a website to scrape for branding and a brief — Claude will generate an optimised LP
         </p>
       </div>
 
-      <div className="space-y-6">
-        {/* Client selection */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-            Client <span className="text-slate-400 font-normal">(optional)</span>
-          </label>
-          <select
-            value={clientId}
-            onChange={(e) => handleClientChange(e.target.value)}
-            className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
-          >
-            <option value="">No client (standalone)</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
+      <div className="card">
+        <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
-        {/* Title */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-            Landing Page Title <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Summer Camp 2026 — Enrol Now"
-            className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
-          />
-        </div>
+          {/* Client selection */}
+          <div>
+            <label style={labelStyle}>
+              Client <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+            </label>
+            <select
+              value={clientId}
+              onChange={(e) => handleClientChange(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="">No client (standalone)</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
 
-        {/* Website URL */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-            Website URL to Scrape <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          {/* Title */}
+          <div>
+            <label style={labelStyle}>
+              Landing Page Title <span style={{ color: "var(--danger)" }}>*</span>
+            </label>
             <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://www.example.com"
-              className="w-full pl-10 pr-4 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Summer Camp 2026 — Enrol Now"
+              style={inputStyle}
             />
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            We&apos;ll extract brand colours, fonts, logos, and imagery from this site
-          </p>
-        </div>
 
-        {/* Campaign type */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-            Campaign Type
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {CAMPAIGN_TYPES.map((type) => (
-              <button
-                key={type.value}
-                onClick={() => setCampaignType(type.value)}
-                className={`text-left p-3 border rounded-lg transition-all ${
-                  campaignType === type.value
-                    ? "border-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20"
-                    : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
-                }`}
-              >
-                <span className="text-sm font-medium text-slate-900 dark:text-white">{type.label}</span>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{type.description}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Brief */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-            Campaign Brief <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            value={brief}
-            onChange={(e) => setBrief(e.target.value)}
-            rows={4}
-            placeholder="Describe the campaign: what you're promoting, key selling points, the offer, any deadlines or urgency, desired CTA action..."
-            className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 resize-vertical"
-          />
-        </div>
-
-        {/* Target audience */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-            Target Audience <span className="text-slate-400 font-normal">(optional)</span>
-          </label>
-          <input
-            type="text"
-            value={targetAudience}
-            onChange={(e) => setTargetAudience(e.target.value)}
-            placeholder="e.g. Parents of children aged 14-19 in the UK"
-            className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
-          />
-        </div>
-
-        {/* Template selection */}
-        {templates.length > 0 && (
+          {/* Website URL */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-              Start from Template <span className="text-slate-400 font-normal">(optional)</span>
+            <label style={labelStyle}>
+              Website URL to Scrape <span style={{ color: "var(--danger)" }}>*</span>
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button
-                onClick={() => setTemplateId("")}
-                className={`text-left p-3 border rounded-lg transition-all ${
-                  !templateId
-                    ? "border-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20"
-                    : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
-                }`}
-              >
-                <span className="flex items-center gap-1.5 text-sm font-medium text-slate-900 dark:text-white">
-                  <Sparkles className="h-3.5 w-3.5" /> AI Freestyle
-                </span>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Generate from scratch</p>
-              </button>
-              {templates.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setTemplateId(t.id)}
-                  className={`text-left p-3 border rounded-lg transition-all ${
-                    templateId === t.id
-                      ? "border-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20"
-                      : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5 text-sm font-medium text-slate-900 dark:text-white">
-                    {t.isBuiltIn ? <Grid3X3 className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
-                    {t.name}
-                  </span>
-                  {t.description && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">{t.description}</p>
-                  )}
-                  <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
-                    {t.category}
-                  </span>
-                </button>
-              ))}
+            <div style={{ position: "relative" }}>
+              <Globe style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 16, height: 16, color: "var(--text-3)", pointerEvents: "none" }} />
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://www.example.com"
+                style={{ ...inputStyle, paddingLeft: 36 }}
+              />
+            </div>
+            <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 4 }}>
+              We&apos;ll extract brand colours, fonts, logos, and imagery from this site
+            </p>
+          </div>
+
+          {/* Campaign type */}
+          <div>
+            <label style={labelStyle}>Campaign Type</label>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 }}>
+              {CAMPAIGN_TYPES.map((type) => {
+                const active = campaignType === type.value;
+                return (
+                  <button
+                    key={type.value}
+                    onClick={() => setCampaignType(type.value)}
+                    style={{
+                      textAlign: "left" as const, padding: "10px 14px",
+                      border: active ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                      borderRadius: "var(--r)",
+                      background: active ? "var(--accent-bg)" : "var(--surface)",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: 600, color: active ? "var(--accent)" : "var(--text)" }}>{type.label}</span>
+                    <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{type.description}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
-        )}
 
-        {/* Error */}
-        {error && (
-          <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
-            {error}
+          {/* Brief */}
+          <div>
+            <label style={labelStyle}>
+              Campaign Brief <span style={{ color: "var(--danger)" }}>*</span>
+            </label>
+            <textarea
+              value={brief}
+              onChange={(e) => setBrief(e.target.value)}
+              rows={4}
+              placeholder="Describe the campaign: what you're promoting, key selling points, the offer, any deadlines or urgency, desired CTA action..."
+              style={{ ...inputStyle, resize: "vertical" as const }}
+            />
           </div>
-        )}
 
-        {/* Generate button */}
-        <button
-          onClick={handleGenerate}
-          disabled={loading || !title || !url || !brief}
-          className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white disabled:text-slate-500 dark:disabled:text-slate-400 px-6 py-3 rounded-lg text-sm font-semibold transition-colors"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Generating with Claude Sonnet...
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-4 w-4" />
-              Generate Landing Page
-              <ChevronRight className="h-4 w-4" />
-            </>
+          {/* Target audience */}
+          <div>
+            <label style={labelStyle}>
+              Target Audience <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={targetAudience}
+              onChange={(e) => setTargetAudience(e.target.value)}
+              placeholder="e.g. Parents of children aged 14-19 in the UK"
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Template selection */}
+          {templates.length > 0 && (
+            <div>
+              <label style={labelStyle}>
+                Start from Template <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 }}>
+                <button
+                  onClick={() => setTemplateId("")}
+                  style={{
+                    textAlign: "left" as const, padding: "10px 14px",
+                    border: !templateId ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                    borderRadius: "var(--r)",
+                    background: !templateId ? "var(--accent-bg)" : "var(--surface)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: !templateId ? "var(--accent)" : "var(--text)" }}>
+                    <Sparkles style={{ width: 13, height: 13 }} /> AI Freestyle
+                  </span>
+                  <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>Generate from scratch</p>
+                </button>
+                {templates.map((t) => {
+                  const active = templateId === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => setTemplateId(t.id)}
+                      style={{
+                        textAlign: "left" as const, padding: "10px 14px",
+                        border: active ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                        borderRadius: "var(--r)",
+                        background: active ? "var(--accent-bg)" : "var(--surface)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: active ? "var(--accent)" : "var(--text)" }}>
+                        {t.isBuiltIn ? <Grid3X3 style={{ width: 13, height: 13 }} /> : <FileText style={{ width: 13, height: 13 }} />}
+                        {t.name}
+                      </span>
+                      {t.description && <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.description}</p>}
+                      <span style={{ display: "inline-block", marginTop: 4, fontSize: 10, padding: "1px 6px", borderRadius: 99, background: "var(--border-subtle)", color: "var(--text-3)" }}>
+                        {t.category}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
-        </button>
 
-        {loading && (
-          <div className="text-center text-xs text-slate-400 space-y-1">
-            <p>Scraping website for brand identity...</p>
-            <p>This can take 30-60 seconds for complex pages</p>
-          </div>
-        )}
+          {/* Error */}
+          {error && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", background: "var(--danger-bg)", border: "1px solid var(--danger-border)", borderRadius: "var(--r)", color: "var(--danger-text)", fontSize: 13 }}>
+              <span>{error}</span>
+              <button onClick={() => setError(null)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--danger-text)" }}><X style={{ width: 14, height: 14 }} /></button>
+            </div>
+          )}
+
+          {/* Generate button */}
+          <button
+            className="btn btn-primary"
+            onClick={handleGenerate}
+            disabled={loading || !title || !url || !brief}
+            style={{ width: "100%", justifyContent: "center", padding: "14px 24px" }}
+          >
+            {loading ? (
+              <>
+                <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} />
+                Generating with Claude Sonnet...
+              </>
+            ) : (
+              <>
+                <Sparkles style={{ width: 16, height: 16 }} />
+                Generate Landing Page
+                <ChevronRight style={{ width: 16, height: 16 }} />
+              </>
+            )}
+          </button>
+
+          {loading && (
+            <div style={{ textAlign: "center", fontSize: 12, color: "var(--text-4)" }}>
+              <p>Scraping website for brand identity...</p>
+              <p style={{ marginTop: 4 }}>This can take 30–60 seconds for complex pages</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

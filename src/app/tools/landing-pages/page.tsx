@@ -1,21 +1,21 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Plus,
-  Loader2,
   Eye,
   Users,
   Share2,
   Copy,
   Check,
-  ExternalLink,
   Trash2,
   Globe,
-  FileText,
-  Search,
+  Clock,
+  BarChart3,
 } from "lucide-react";
+import { SearchInput } from "@/components/ui/SearchInput";
 
 interface LandingPageItem {
   id: string;
@@ -32,220 +32,198 @@ interface LandingPageItem {
   _count: { leads: number; versions: number };
 }
 
+function statusBadge(status: string): { label: string; style: React.CSSProperties } {
+  switch (status) {
+    case "published":
+      return { label: "Published", style: { background: "var(--success-bg)", color: "var(--success-text)" } };
+    case "archived":
+      return { label: "Archived", style: { background: "var(--warning-bg)", color: "var(--warning-text)" } };
+    default:
+      return { label: "Draft", style: { background: "var(--border-subtle)", color: "var(--text-3)" } };
+  }
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
 export default function LandingPagesPage() {
   const router = useRouter();
   const [pages, setPages] = useState<LandingPageItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [filter, setFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
 
-  const fetchPages = useCallback(async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await fetch("/api/tools/landing-pages");
       if (res.ok) {
         const data = await res.json();
         setPages(data.landingPages ?? []);
       }
-    } catch {
-      // Silently handle for now
-    } finally {
+    } catch { /* ignore */ } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchPages(); }, [fetchPages]);
+  useEffect(() => { load(); }, [load]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this landing page? This cannot be undone.")) return;
+  async function handleDelete(id: string) {
+    if (!confirm("Delete this landing page?")) return;
+    setDeleting(id);
     await fetch(`/api/tools/landing-pages/${id}`, { method: "DELETE" });
-    setPages((prev) => prev.filter((p) => p.id !== id));
-  };
+    await load();
+    setDeleting(null);
+  }
 
-  const handleCopyLink = async (shareToken: string, id: string) => {
+  async function handleCopyLink(shareToken: string, id: string) {
     const url = `${window.location.origin}/api/share/landing-page/${shareToken}`;
     await navigator.clipboard.writeText(url);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
-  };
+  }
 
-  const handleShare = async (id: string) => {
+  async function handleShare(id: string) {
     const res = await fetch(`/api/tools/landing-pages/${id}/share`, { method: "POST" });
     if (res.ok) {
       const data = await res.json();
-      const url = `${window.location.origin}/api/share/landing-page/${data.shareToken}`;
-      await navigator.clipboard.writeText(url);
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 2000);
-      fetchPages(); // Refresh to show share token
+      await handleCopyLink(data.shareToken, id);
+      load();
     }
-  };
+  }
 
-  const filteredPages = pages.filter((p) => {
-    const matchesText = !filter ||
-      p.title.toLowerCase().includes(filter.toLowerCase()) ||
-      (p.client?.name ?? "").toLowerCase().includes(filter.toLowerCase());
-    const matchesStatus = statusFilter === "all" || p.status === statusFilter;
-    return matchesText && matchesStatus;
+  const filtered = pages.filter((p) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return p.title.toLowerCase().includes(q) || (p.client?.name ?? "").toLowerCase().includes(q);
   });
 
-  const statusBadgeColor = (status: string) => {
-    switch (status) {
-      case "published": return "bg-emerald-50 text-emerald-700 border-emerald-200";
-      case "draft": return "bg-slate-50 text-slate-600 border-slate-200";
-      case "archived": return "bg-amber-50 text-amber-700 border-amber-200";
-      default: return "bg-slate-50 text-slate-600 border-slate-200";
-    }
-  };
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    <div className="page" style={{ maxWidth: 1000 }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">LP Generator</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            AI-powered landing pages for ad campaigns
-          </p>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Globe style={{ width: 20, height: 20, color: "white" }} />
+          </div>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>LP Generator</h1>
+            <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>AI-powered landing pages for ad campaigns</p>
+          </div>
         </div>
-        <button
-          onClick={() => router.push("/tools/landing-pages/new")}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          New Landing Page
-        </button>
+        <Link href="/tools/landing-pages/new" className="btn btn-primary btn-sm" style={{ gap: 6, display: "inline-flex", alignItems: "center" }}>
+          <Plus style={{ width: 14, height: 14 }} /> New Landing Page
+        </Link>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-3 mb-6">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by title or client..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
-          />
+      {!loading && pages.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <SearchInput value={search} onChange={setSearch} placeholder="Search landing pages..." />
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-        >
-          <option value="all">All statuses</option>
-          <option value="draft">Draft</option>
-          <option value="published">Published</option>
-          <option value="archived">Archived</option>
-        </select>
-      </div>
+      )}
 
-      {/* Content */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
-        </div>
-      ) : filteredPages.length === 0 ? (
-        <div className="text-center py-20 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
-          <Globe className="h-10 w-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <h3 className="text-base font-medium text-slate-900 dark:text-white mb-1">
-            {pages.length === 0 ? "No landing pages yet" : "No matching results"}
-          </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-            {pages.length === 0 ? "Generate your first AI landing page" : "Try a different search or filter"}
+        <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 14 }}>Loading landing pages…</div>
+      ) : pages.length === 0 ? (
+        <div className="card" style={{ padding: 60, textAlign: "center" }}>
+          <Globe style={{ width: 40, height: 40, color: "var(--text-4)", margin: "0 auto 16px" }} />
+          <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)" }}>No landing pages yet</p>
+          <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 8 }}>
+            Generate your first AI-powered landing page with Claude Sonnet.
           </p>
-          {pages.length === 0 && (
-            <button
-              onClick={() => router.push("/tools/landing-pages/new")}
-              className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              Create Landing Page
-            </button>
-          )}
+          <Link href="/tools/landing-pages/new" className="btn btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 20 }}>
+            <Plus style={{ width: 14, height: 14 }} /> Create Landing Page
+          </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredPages.map((page) => (
-            <div
-              key={page.id}
-              onClick={() => router.push(`/tools/landing-pages/${page.id}`)}
-              className="group border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800/50 hover:border-indigo-300 dark:hover:border-indigo-600/50 hover:shadow-md transition-all cursor-pointer"
-            >
-              {/* Card header */}
-              <div className="p-4 border-b border-slate-100 dark:border-slate-700/50">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                    {page.title}
-                  </h3>
-                  <span className={`shrink-0 px-2 py-0.5 text-xs font-medium rounded-full border ${statusBadgeColor(page.status)}`}>
-                    {page.status}
-                  </span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {filtered.map((p) => (
+            <div key={p.id} className="card" style={{ padding: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px" }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Globe style={{ width: 16, height: 16, color: "var(--accent)" }} />
                 </div>
-                {page.client && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                    <FileText className="h-3 w-3" />
-                    {page.client.name}
-                  </p>
-                )}
-              </div>
-
-              {/* Card stats */}
-              <div className="px-4 py-3 flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
-                <span className="flex items-center gap-1" title="Views">
-                  <Eye className="h-3.5 w-3.5" /> {page.viewCount}
-                </span>
-                <span className="flex items-center gap-1" title="Leads">
-                  <Users className="h-3.5 w-3.5" /> {page._count.leads}
-                </span>
-                <span className="flex items-center gap-1" title="Versions">
-                  v{page._count.versions}
-                </span>
-                <span className="ml-auto text-xs text-slate-400">
-                  {new Date(page.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                </span>
-              </div>
-
-              {/* Card actions */}
-              <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-700/50 flex gap-1">
-                {page.shareToken ? (
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
+                    {p.client && (
+                      <>
+                        <span style={{ fontSize: 12, color: "var(--text-3)" }}>{p.client.name}</span>
+                        <span style={{ color: "var(--text-4)" }}>·</span>
+                      </>
+                    )}
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99, ...statusBadge(p.status).style }}>
+                      {statusBadge(p.status).label}
+                    </span>
+                    <span style={{ color: "var(--text-4)" }}>·</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-4)" }}>
+                      <Clock style={{ width: 10, height: 10 }} />
+                      {new Date(p.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                    </span>
+                    <span style={{ color: "var(--text-4)" }}>·</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-4)" }}>
+                      v{p._count.versions}
+                    </span>
+                    {p.viewCount > 0 && (
+                      <>
+                        <span style={{ color: "var(--text-4)" }}>·</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-3)" }}>
+                          <BarChart3 style={{ width: 10, height: 10 }} />
+                          {p.viewCount} view{p.viewCount !== 1 ? "s" : ""}
+                          {p.lastViewedAt && ` · ${timeAgo(p.lastViewedAt)}`}
+                        </span>
+                      </>
+                    )}
+                    {p._count.leads > 0 && (
+                      <>
+                        <span style={{ color: "var(--text-4)" }}>·</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>
+                          <Users style={{ width: 10, height: 10 }} />
+                          {p._count.leads} lead{p._count.leads !== 1 ? "s" : ""}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  {p.shareToken ? (
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      style={{ gap: 4, color: "var(--success)", fontSize: 11 }}
+                      onClick={() => handleCopyLink(p.shareToken!, p.id)}
+                      title="Copy share link"
+                    >
+                      {copiedId === p.id ? <Check style={{ width: 11, height: 11 }} /> : <Copy style={{ width: 11, height: 11 }} />}
+                      {copiedId === p.id ? "Copied!" : "Shared"}
+                    </button>
+                  ) : (
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      style={{ gap: 4, fontSize: 11 }}
+                      onClick={() => handleShare(p.id)}
+                      title="Generate share link"
+                    >
+                      <Share2 style={{ width: 11, height: 11 }} /> Share
+                    </button>
+                  )}
+                  <Link href={`/tools/landing-pages/${p.id}`} className="btn btn-ghost btn-sm" style={{ gap: 5 }}>
+                    <Eye style={{ width: 13, height: 13 }} /> Open
+                  </Link>
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleCopyLink(page.shareToken!, page.id); }}
-                    className="flex items-center gap-1 px-2 py-1 text-xs text-slate-600 dark:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded transition-colors"
-                    title="Copy share link"
+                    className="btn btn-ghost btn-sm"
+                    style={{ padding: "5px 8px", color: "var(--danger)" }}
+                    disabled={deleting === p.id}
+                    onClick={() => handleDelete(p.id)}
                   >
-                    {copiedId === page.id ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
-                    {copiedId === page.id ? "Copied!" : "Copy link"}
+                    <Trash2 style={{ width: 13, height: 13 }} />
                   </button>
-                ) : (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleShare(page.id); }}
-                    className="flex items-center gap-1 px-2 py-1 text-xs text-slate-600 dark:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded transition-colors"
-                    title="Generate share link"
-                  >
-                    <Share2 className="h-3 w-3" /> Share
-                  </button>
-                )}
-                {page.shareToken && (
-                  <a
-                    href={`/api/share/landing-page/${page.shareToken}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1 px-2 py-1 text-xs text-slate-600 dark:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded transition-colors"
-                    title="Preview in new tab"
-                  >
-                    <ExternalLink className="h-3 w-3" /> Preview
-                  </a>
-                )}
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDelete(page.id); }}
-                  className="flex items-center gap-1 px-2 py-1 text-xs text-slate-600 dark:text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors ml-auto"
-                  title="Delete"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
+                </div>
               </div>
             </div>
           ))}
