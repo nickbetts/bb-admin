@@ -34,6 +34,7 @@ const PERMISSION_GROUPS = [
       { key: "llm_generator", label: "LLM.txt Generator" },
       { key: "content_strategy", label: "Content Strategy" },
       { key: "access_requester", label: "Access Requester" },
+      { key: "qa_checklist", label: "Client QA" },
     ],
   },
   {
