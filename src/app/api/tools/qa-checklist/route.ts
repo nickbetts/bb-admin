@@ -10,11 +10,10 @@ export async function GET(request: NextRequest) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
-    const clientId = searchParams.get("clientId");
-    if (!clientId) return NextResponse.json({ error: "clientId is required" }, { status: 400 });
+    const clientId = searchParams.get("clientId") ?? undefined;
 
     const checklists = await prisma.qaChecklist.findMany({
-      where: { clientId },
+      where: clientId ? { clientId } : undefined,
       select: {
         id: true,
         clientId: true,
@@ -26,6 +25,7 @@ export async function GET(request: NextRequest) {
         devChecks: true,
         createdAt: true,
         updatedAt: true,
+        client: { select: { name: true } },
       },
       orderBy: { updatedAt: "desc" },
     });
@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
         label: data.label ?? null,
         websiteUrl: data.websiteUrl ?? null,
       },
+      include: { client: { select: { name: true } } },
     });
 
     return NextResponse.json(checklist, { status: 201 });

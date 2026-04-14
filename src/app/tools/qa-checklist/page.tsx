@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   ClipboardCheck,
   Plus,
@@ -11,11 +11,9 @@ import {
   Circle,
   Trash2,
   Sparkles,
-  Globe,
   CheckSquare,
   AlertTriangle,
   X,
-  Tag,
 } from "lucide-react";
 import { CHECKLIST_TYPES, getCategories, CheckCategory } from "@/lib/qa-checklist-items";
 
@@ -24,12 +22,12 @@ import { CHECKLIST_TYPES, getCategories, CheckCategory } from "@/lib/qa-checklis
 interface Client {
   id: string;
   name: string;
-  website?: string | null;
 }
 
 interface ChecklistSummary {
   id: string;
   clientId: string;
+  client: { name: string };
   checklistType: string;
   label: string | null;
   websiteUrl: string | null;
@@ -44,6 +42,14 @@ interface Checklist extends ChecklistSummary {
   notes: string | null;
   aiSummary: string | null;
 }
+
+// ─── Type badge styles (theme-aware via CSS vars) ─────────────────────────
+
+const TYPE_BADGE_STYLE: Record<string, React.CSSProperties> = {
+  website:    { background: "var(--info-bg)",    color: "var(--info-text)",    border: "1px solid var(--info-border)" },
+  google_ads: { background: "rgba(66,133,244,0.12)", color: "#2563eb", border: "1px solid rgba(66,133,244,0.25)" },
+  meta_ads:   { background: "var(--accent-bg)",  color: "var(--accent-text)",  border: "1px solid rgba(99,102,241,0.2)" },
+};
 
 // ─── Helper ────────────────────────────────────────────────────────────────
 
@@ -65,16 +71,20 @@ function categoryProgress(checksJson: string, category: CheckCategory) {
 
 export default function QaChecklistPage() {
   const [clients, setClients] = useState<Client[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [filterClientIds, setFilterClientIds] = useState<string[]>([]);   // empty = all
   const [checklists, setChecklists] = useState<ChecklistSummary[]>([]);
   const [activeChecklist, setActiveChecklist] = useState<Checklist | null>(null);
   const [activeTab, setActiveTab] = useState<"marketing" | "dev">("marketing");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [isCreating, setIsCreating] = useState(false);
-  const [newWebsiteUrl, setNewWebsiteUrl] = useState("");
+
+  // Create dialog
+  const [showNewDialog, setShowNewDialog] = useState(false);
+  const [newClientId, setNewClientId] = useState("");
   const [newChecklistType, setNewChecklistType] = useState<string>("website");
   const [newLabel, setNewLabel] = useState("");
-  const [showNewDialog, setShowNewDialog] = useState(false);
+  const [newWebsiteUrl, setNewWebsiteUrl] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [isLoadingChecklists, setIsLoadingChecklists] = useState(false);
@@ -82,38 +92,55 @@ export default function QaChecklistPage() {
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load clients
+  // Load clients + all checklists on mount
   useEffect(() => {
     fetch("/api/clients")
       .then((r) => r.json())
-      .then((data: Client[]) => {
-        setClients(data);
-        if (data.length > 0) setSelectedClientId(data[0].id);
-      })
+      .then((data: Client[]) => setClients(data))
       .catch(console.error);
-  }, []);
 
-  // Load checklists when client changes
-  useEffect(() => {
-    if (!selectedClientId) return;
     setIsLoadingChecklists(true);
-    setActiveChecklist(null);
-    fetch(`/api/tools/qa-checklist?clientId=${selectedClientId}`)
+    fetch("/api/tools/qa-checklist")
       .then((r) => r.json())
       .then((data: ChecklistSummary[]) => setChecklists(data))
       .catch(console.error)
       .finally(() => setIsLoadingChecklists(false));
-  }, [selectedClientId]);
+  }, []);
+
+  // Client filter helpers
+  const toggleClientFilter = (clientId: string) => {
+    setFilterClientIds((prev) =>
+      prev.includes(clientId) ? prev.filter((id) => id !== clientId) : [...prev, clientId]
+    );
+  };
+
+  const visibleChecklists = filterClientIds.length === 0
+    ? checklists
+    : checklists.filter((cl) => filterClientIds.includes(cl.clientId));
+
+  // Open dialog pre-filled with filtered client if exactly one is selected
+  const openNewDialog = () => {
+    setNewClientId(filterClientIds.length === 1 ? filterClientIds[0] : (clients[0]?.id ?? ""));
+    setNewChecklistType("website");
+    setNewLabel("");
+    setNewWebsiteUrl("");
+    setShowNewDialog(true);
+  };
 
   const openChecklist = useCallback(async (id: string) => {
     const res = await fetch(`/api/tools/qa-checklist/${id}`);
     const data = await res.json() as Checklist;
+    // Attach client name from local clients list if missing
+    if (!data.client?.name) {
+      const match = clients.find((c) => c.id === data.clientId);
+      if (match) data.client = { name: match.name };
+    }
     setActiveChecklist(data);
     setActiveTab("marketing");
     const type = data.checklistType ?? "website";
     const allCats = [...getCategories(type, "marketing"), ...getCategories(type, "dev")];
     setExpandedCategories(new Set(allCats.map((c) => c.id)));
-  }, []);
+  }, [clients]);
 
   // Debounced save
   const scheduleSave = useCallback((updated: Partial<Checklist>) => {
@@ -129,7 +156,6 @@ export default function QaChecklistPage() {
         });
         const saved = await res.json() as Checklist;
         setActiveChecklist((prev) => prev ? { ...prev, ...saved } : saved);
-        // Update the list-level status
         setChecklists((prev) =>
           prev.map((c) => c.id === saved.id ? { ...c, status: saved.status, updatedAt: saved.updatedAt } : c)
         );
@@ -144,8 +170,7 @@ export default function QaChecklistPage() {
     const field = tab === "marketing" ? "marketingChecks" : "devChecks";
     const current = JSON.parse(activeChecklist[field]) as Record<string, boolean>;
     const updated = { ...current, [itemId]: !current[itemId] };
-    const updatedChecklist = { ...activeChecklist, [field]: JSON.stringify(updated) };
-    setActiveChecklist(updatedChecklist);
+    setActiveChecklist({ ...activeChecklist, [field]: JSON.stringify(updated) });
     scheduleSave({ [field]: updated });
   }, [activeChecklist, scheduleSave]);
 
@@ -170,6 +195,22 @@ export default function QaChecklistPage() {
     setIsSaving(false);
   }, [activeChecklist]);
 
+  const changeClient = useCallback(async (newClientId: string) => {
+    if (!activeChecklist || newClientId === activeChecklist.clientId) return;
+    const newClientName = clients.find((c) => c.id === newClientId)?.name ?? "";
+    setIsSaving(true);
+    const res = await fetch(`/api/tools/qa-checklist/${activeChecklist.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientId: newClientId }),
+    });
+    const saved = await res.json() as Checklist;
+    const updated = { ...saved, client: { name: newClientName } };
+    setActiveChecklist((prev) => prev ? { ...prev, clientId: saved.clientId, client: { name: newClientName } } : prev);
+    setChecklists((prev) => prev.map((c) => c.id === saved.id ? { ...c, clientId: saved.clientId, client: { name: newClientName }, updatedAt: updated.updatedAt } : c));
+    setIsSaving(false);
+  }, [activeChecklist, clients]);
+
   const generateAI = useCallback(async () => {
     if (!activeChecklist) return;
     setIsGeneratingAI(true);
@@ -189,14 +230,14 @@ export default function QaChecklistPage() {
   }, [activeChecklist]);
 
   const createChecklist = useCallback(async () => {
-    if (!selectedClientId) return;
+    if (!newClientId) return;
     setIsCreating(true);
     try {
       const res = await fetch("/api/tools/qa-checklist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          clientId: selectedClientId,
+          clientId: newClientId,
           checklistType: newChecklistType,
           label: newLabel || undefined,
           websiteUrl: newWebsiteUrl || undefined,
@@ -205,14 +246,11 @@ export default function QaChecklistPage() {
       const created = await res.json() as ChecklistSummary;
       setChecklists((prev) => [created, ...prev]);
       setShowNewDialog(false);
-      setNewWebsiteUrl("");
-      setNewLabel("");
-      setNewChecklistType("website");
       await openChecklist(created.id);
     } finally {
       setIsCreating(false);
     }
-  }, [selectedClientId, newChecklistType, newLabel, newWebsiteUrl, openChecklist]);
+  }, [newClientId, newChecklistType, newLabel, newWebsiteUrl, openChecklist]);
 
   const deleteChecklist = useCallback(async (id: string) => {
     await fetch(`/api/tools/qa-checklist/${id}`, { method: "DELETE" });
@@ -241,104 +279,131 @@ export default function QaChecklistPage() {
     ? computeProgress(activeChecklist.devChecks, getCategories(activeChecklist.checklistType ?? "website", "dev"))
     : null;
 
+  // Clients that actually have checklists (for the filter bar)
+  const clientsWithChecklists = clients.filter((c) => checklists.some((cl) => cl.clientId === c.id));
+
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <ClipboardCheck className="h-6 w-6 text-blue-500" />
+    <div className="page" style={{ maxWidth: 1100 }}>
+
+      {/* ── Header ─────────────────────────────────────────────────── */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <ClipboardCheck style={{ width: 20, height: 20, color: "white" }} />
+          </div>
           <div>
-            <h1 className="text-xl font-semibold text-white">Client QA</h1>
-            <p className="text-sm text-zinc-400">Pre-launch checklists for marketing and development</p>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Client QA</h1>
+            <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>Pre-launch checklists for marketing and development</p>
           </div>
         </div>
-      </div>
-
-      {/* Client selector + New button */}
-      <div className="flex items-center gap-3">
-        <select
-          className="bg-zinc-800 border border-zinc-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none flex-1 max-w-xs"
-          value={selectedClientId}
-          onChange={(e) => setSelectedClientId(e.target.value)}
-        >
-          {clients.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
         <button
-          onClick={() => setShowNewDialog(true)}
-          disabled={!selectedClientId}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          onClick={openNewDialog}
+          className="btn btn-primary btn-sm"
+          style={{ gap: 6, display: "inline-flex", alignItems: "center" }}
         >
-          <Plus className="h-4 w-4" />
+          <Plus style={{ width: 14, height: 14 }} />
           New QA Checklist
         </button>
       </div>
 
-      {/* New checklist dialog */}
-      {showNewDialog && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-white">New QA Checklist</h2>
-              <button onClick={() => setShowNewDialog(false)} className="text-zinc-400 hover:text-white">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <label className="block text-sm text-zinc-400 mb-1">Checklist Type</label>
-            <select
-              value={newChecklistType}
-              onChange={(e) => setNewChecklistType(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 text-white text-sm rounded-lg px-3 py-2 mb-4 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            >
-              {CHECKLIST_TYPES.map((t) => (
-                <option key={t.id} value={t.id}>{t.label}</option>
-              ))}
-            </select>
-
-            <label className="block text-sm text-zinc-400 mb-1">
-              {newChecklistType === "website" ? "Site name / label" : "Campaign name"}{" "}
-              <span className="text-zinc-600">(optional)</span>
-            </label>
-            <div className="flex items-center gap-2 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 mb-4">
-              <Tag className="h-4 w-4 text-zinc-500 shrink-0" />
-              <input
-                type="text"
-                placeholder={newChecklistType === "website" ? "e.g. Client Redesign 2025" : "e.g. Summer Sale Campaign"}
-                value={newLabel}
-                onChange={(e) => setNewLabel(e.target.value)}
-                className="bg-transparent text-white text-sm flex-1 outline-none"
-              />
-            </div>
-
-            <label className="block text-sm text-zinc-400 mb-1">
-              {newChecklistType === "website" ? "Website URL" : "Landing page URL"}{" "}
-              <span className="text-zinc-600">(optional)</span>
-            </label>
-            <div className="flex items-center gap-2 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 mb-5">
-              <Globe className="h-4 w-4 text-zinc-500 shrink-0" />
-              <input
-                type="url"
-                placeholder="https://example.com"
-                value={newWebsiteUrl}
-                onChange={(e) => setNewWebsiteUrl(e.target.value)}
-                className="bg-transparent text-white text-sm flex-1 outline-none"
-              />
-            </div>
-            <div className="flex justify-end gap-3">
+      {/* ── Client filter pills ────────────────────────────────────── */}
+      {!activeChecklist && clientsWithChecklists.length > 1 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 20 }}>
+          <button
+            onClick={() => setFilterClientIds([])}
+            className="btn btn-sm"
+            style={{
+              padding: "5px 12px", fontSize: 12,
+              background: filterClientIds.length === 0 ? "var(--gradient-accent)" : "var(--glass-bg)",
+              color: filterClientIds.length === 0 ? "white" : "var(--text-2)",
+              border: filterClientIds.length === 0 ? "none" : "1px solid var(--border)",
+              boxShadow: filterClientIds.length === 0 ? "0 2px 8px -2px rgba(99,102,241,0.35)" : "var(--glass-shine)",
+            }}
+          >
+            All Clients
+          </button>
+          {clientsWithChecklists.map((c) => {
+            const active = filterClientIds.includes(c.id);
+            return (
               <button
-                onClick={() => { setShowNewDialog(false); setNewLabel(""); setNewWebsiteUrl(""); setNewChecklistType("website"); }}
-                className="text-sm text-zinc-400 hover:text-white px-4 py-2 rounded-lg transition-colors"
+                key={c.id}
+                onClick={() => toggleClientFilter(c.id)}
+                className="btn btn-sm"
+                style={{
+                  padding: "5px 12px", fontSize: 12,
+                  background: active ? "var(--accent-bg)" : "var(--glass-bg)",
+                  color: active ? "var(--accent-text)" : "var(--text-2)",
+                  border: active ? "1px solid rgba(99,102,241,0.3)" : "1px solid var(--border)",
+                  fontWeight: active ? 600 : 500,
+                  boxShadow: active ? "0 0 0 3px rgba(99,102,241,0.08)" : "var(--glass-shine)",
+                }}
               >
-                Cancel
+                {c.name}
+                <span style={{ marginLeft: 6, fontSize: 11, color: "var(--text-3)" }}>
+                  {checklists.filter((cl) => cl.clientId === c.id).length}
+                </span>
               </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Create dialog ──────────────────────────────────────────── */}
+      {showNewDialog && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, backdropFilter: "blur(4px)" }}>
+          <div className="card" style={{ width: "100%", maxWidth: 420, padding: 28, overflow: "visible" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>New QA Checklist</h2>
+              <button onClick={() => setShowNewDialog(false)} className="btn btn-ghost btn-sm" style={{ padding: 6 }}>
+                <X style={{ width: 16, height: 16 }} />
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 5 }}>Client <span style={{ color: "var(--danger)" }}>*</span></label>
+                <select className="form-input" value={newClientId} onChange={(e) => setNewClientId(e.target.value)}>
+                  <option value="">Select client…</option>
+                  {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 5 }}>Checklist Type</label>
+                <select className="form-input" value={newChecklistType} onChange={(e) => setNewChecklistType(e.target.value)}>
+                  {CHECKLIST_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 5 }}>
+                  {newChecklistType === "website" ? "Site name / label" : "Campaign name"}{" "}
+                  <span style={{ color: "var(--text-4)" }}>(optional)</span>
+                </label>
+                <input type="text" className="form-input"
+                  placeholder={newChecklistType === "website" ? "e.g. Client Redesign 2025" : "e.g. Summer Sale Campaign"}
+                  value={newLabel} onChange={(e) => setNewLabel(e.target.value)} />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 5 }}>
+                  {newChecklistType === "website" ? "Website URL" : "Landing page URL"}{" "}
+                  <span style={{ color: "var(--text-4)" }}>(optional)</span>
+                </label>
+                <input type="url" className="form-input" placeholder="https://example.com"
+                  value={newWebsiteUrl} onChange={(e) => setNewWebsiteUrl(e.target.value)} />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 24 }}>
+              <button onClick={() => setShowNewDialog(false)} className="btn btn-secondary btn-sm">Cancel</button>
               <button
                 onClick={createChecklist}
-                disabled={isCreating}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                disabled={isCreating || !newClientId}
+                className="btn btn-primary btn-sm"
+                style={{ gap: 6, display: "inline-flex", alignItems: "center" }}
               >
-                {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isCreating && <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />}
                 Create Checklist
               </button>
             </div>
@@ -346,91 +411,87 @@ export default function QaChecklistPage() {
         </div>
       )}
 
-      {/* Checklists list */}
+      {/* ── Checklist list ─────────────────────────────────────────── */}
       {!activeChecklist && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+        <div className="card" style={{ overflow: "hidden" }}>
           {isLoadingChecklists ? (
-            <div className="flex items-center justify-center py-16 text-zinc-500">
-              <Loader2 className="h-5 w-5 animate-spin mr-2" />
-              Loading checklists…
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "64px 24px", color: "var(--text-3)", gap: 8 }}>
+              <Loader2 style={{ width: 18, height: 18, animation: "spin 1s linear infinite" }} />
+              <span style={{ fontSize: 14 }}>Loading checklists…</span>
             </div>
-          ) : checklists.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-zinc-500 gap-3">
-              <ClipboardCheck className="h-8 w-8 opacity-30" />
-              <p className="text-sm">No checklists yet. Create one to get started.</p>
+          ) : visibleChecklists.length === 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "64px 24px", color: "var(--text-4)", gap: 12 }}>
+              <ClipboardCheck style={{ width: 32, height: 32, opacity: 0.3 }} />
+              <p style={{ fontSize: 14 }}>
+                {checklists.length === 0 ? "No checklists yet. Create one to get started." : "No checklists match the selected filter."}
+              </p>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead>
-                <tr className="border-b border-zinc-800 text-zinc-500 text-left">
-                  <th className="px-4 py-3 font-medium">Type</th>
-                  <th className="px-4 py-3 font-medium">Label / URL</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Updated</th>
-                  <th className="px-4 py-3 font-medium w-10"></th>
+                <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                  {["Client", "Type", "Label / URL", "Status", "Updated", ""].map((h) => (
+                    <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {checklists.map((cl) => {
+                {visibleChecklists.map((cl) => {
                   const typeMeta = CHECKLIST_TYPES.find((t) => t.id === cl.checklistType);
-                  const typeColors: Record<string, string> = {
-                    website: "bg-blue-500/15 text-blue-400",
-                    google_ads: "bg-orange-500/15 text-orange-400",
-                    meta_ads: "bg-violet-500/15 text-violet-400",
-                  };
-                  const typeColor = typeColors[cl.checklistType] ?? "bg-zinc-700 text-zinc-400";
+                  const typeBadge = TYPE_BADGE_STYLE[cl.checklistType] ?? TYPE_BADGE_STYLE.website;
                   return (
                     <tr
                       key={cl.id}
-                      className="border-b border-zinc-800/50 hover:bg-zinc-800/40 cursor-pointer transition-colors"
                       onClick={() => openChecklist(cl.id)}
+                      style={{ borderBottom: "1px solid var(--border-subtle)", cursor: "pointer", transition: "background 0.12s" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = "var(--bg)"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.background = ""; }}
                     >
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${typeColor}`}>
+                      <td style={{ padding: "12px 16px", fontWeight: 500, color: "var(--text-2)", whiteSpace: "nowrap" }}>
+                        {cl.client?.name ?? "—"}
+                      </td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <span style={{ ...typeBadge, display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: 99, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>
                           {typeMeta?.label ?? cl.checklistType}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-white font-medium max-w-xs">
+                      <td style={{ padding: "12px 16px", color: "var(--text)", fontWeight: 500 }}>
                         {cl.label
-                          ? <span>{cl.label}{cl.websiteUrl && <span className="text-zinc-500 font-normal ml-2 text-xs">{cl.websiteUrl}</span>}</span>
-                          : cl.websiteUrl ?? <span className="text-zinc-500 italic font-normal">No label</span>
+                          ? <span>{cl.label}{cl.websiteUrl && <span style={{ color: "var(--text-3)", fontWeight: 400, marginLeft: 8, fontSize: 12 }}>{cl.websiteUrl}</span>}</span>
+                          : cl.websiteUrl
+                            ? <span style={{ color: "var(--text-2)" }}>{cl.websiteUrl}</span>
+                            : <span style={{ color: "var(--text-4)", fontStyle: "italic", fontWeight: 400 }}>No label</span>
                         }
                       </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                          cl.status === "complete"
-                            ? "bg-emerald-500/15 text-emerald-400"
-                            : "bg-amber-500/15 text-amber-400"
-                        }`}>
-                          {cl.status === "complete" ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
-                          {cl.status === "complete" ? "Approved" : "In Progress"}
-                        </span>
+                      <td style={{ padding: "12px 16px" }}>
+                        {cl.status === "complete" ? (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 600, background: "var(--success-bg)", color: "var(--success-text)", border: "1px solid var(--success-border)" }}>
+                            <CheckCircle2 style={{ width: 11, height: 11 }} />Approved
+                          </span>
+                        ) : (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 600, background: "var(--warning-bg)", color: "var(--warning-text)", border: "1px solid var(--warning-border)" }}>
+                            <AlertTriangle style={{ width: 11, height: 11 }} />In Progress
+                          </span>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-zinc-400">
+                      <td style={{ padding: "12px 16px", color: "var(--text-3)", whiteSpace: "nowrap" }}>
                         {new Date(cl.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                       </td>
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <td style={{ padding: "12px 16px" }} onClick={(e) => e.stopPropagation()}>
                         {deleteConfirmId === cl.id ? (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => deleteChecklist(cl.id)}
-                              className="text-red-400 hover:text-red-300 text-xs font-medium"
-                            >
-                              Confirm
-                            </button>
-                            <button
-                              onClick={() => setDeleteConfirmId(null)}
-                              className="text-zinc-500 hover:text-zinc-300 text-xs"
-                            >
-                              Cancel
-                            </button>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <button onClick={() => deleteChecklist(cl.id)} style={{ fontSize: 12, fontWeight: 600, color: "var(--danger)", background: "none", border: "none", cursor: "pointer" }}>Confirm</button>
+                            <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 12, color: "var(--text-3)", background: "none", border: "none", cursor: "pointer" }}>Cancel</button>
                           </div>
                         ) : (
                           <button
                             onClick={() => setDeleteConfirmId(cl.id)}
-                            className="text-zinc-600 hover:text-red-400 transition-colors"
+                            className="btn btn-ghost btn-sm"
+                            style={{ padding: 6, color: "var(--text-4)" }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--danger)"; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-4)"; }}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 style={{ width: 14, height: 14 }} />
                           </button>
                         )}
                       </td>
@@ -443,169 +504,169 @@ export default function QaChecklistPage() {
         </div>
       )}
 
-      {/* Active checklist */}
+      {/* ── Active checklist ───────────────────────────────────────── */}
       {activeChecklist && (
-        <div className="space-y-4">
-          {/* Checklist header — two rows */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-4 space-y-3">
-            {/* Row 1: breadcrumb + meta */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <button
-                onClick={() => setActiveChecklist(null)}
-                className="text-zinc-500 hover:text-white text-sm transition-colors shrink-0"
-              >
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+          {/* Header card */}
+          <div className="card" style={{ padding: "18px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
+            {/* Row 1: breadcrumb + badges */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <button onClick={() => setActiveChecklist(null)} className="btn btn-ghost btn-sm" style={{ fontSize: 13, padding: "4px 8px", gap: 4 }}>
                 ← All checklists
               </button>
-              <span className="text-zinc-700 shrink-0">|</span>
-              {(() => {
-                const typeMeta = CHECKLIST_TYPES.find((t) => t.id === activeChecklist.checklistType);
-                const typeColors: Record<string, string> = {
-                  website: "bg-blue-500/15 text-blue-400",
-                  google_ads: "bg-orange-500/15 text-orange-400",
-                  meta_ads: "bg-violet-500/15 text-violet-400",
-                };
-                const typeColor = typeColors[activeChecklist.checklistType] ?? "bg-zinc-700 text-zinc-400";
-                return (
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${typeColor}`}>
-                    {typeMeta?.label ?? activeChecklist.checklistType}
-                  </span>
-                );
-              })()}
-              <span className="text-white font-medium text-sm truncate max-w-xs">
-                {activeChecklist.label ?? activeChecklist.websiteUrl ?? <span className="text-zinc-500 italic font-normal">No label</span>}
+              <span style={{ color: "var(--border)", fontSize: 16 }}>|</span>
+
+              {/* Client — inline select for reassignment */}
+              <select
+                className="form-input"
+                value={activeChecklist.clientId}
+                onChange={(e) => changeClient(e.target.value)}
+                style={{ width: "auto", fontSize: 13, padding: "4px 28px 4px 10px", height: "auto", borderRadius: "var(--r-sm)", fontWeight: 600, color: "var(--text)", cursor: "pointer" }}
+              >
+                {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+
+              <span style={{ ...(TYPE_BADGE_STYLE[activeChecklist.checklistType] ?? TYPE_BADGE_STYLE.website), display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: 99, fontSize: 11, fontWeight: 600 }}>
+                {CHECKLIST_TYPES.find((t) => t.id === activeChecklist.checklistType)?.label ?? activeChecklist.checklistType}
+              </span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
+                {activeChecklist.label ?? activeChecklist.websiteUrl ?? <span style={{ color: "var(--text-4)", fontStyle: "italic", fontWeight: 400 }}>No label</span>}
               </span>
               {activeChecklist.websiteUrl && activeChecklist.label && (
-                <span className="text-zinc-500 text-xs truncate max-w-xs">{activeChecklist.websiteUrl}</span>
+                <span style={{ fontSize: 12, color: "var(--text-3)" }}>{activeChecklist.websiteUrl}</span>
               )}
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium shrink-0 ${
-                activeChecklist.status === "complete"
-                  ? "bg-emerald-500/15 text-emerald-400"
-                  : "bg-amber-500/15 text-amber-400"
-              }`}>
-                {activeChecklist.status === "complete" ? "Approved for launch" : "In Progress"}
-              </span>
+              {activeChecklist.status === "complete" ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 600, background: "var(--success-bg)", color: "var(--success-text)", border: "1px solid var(--success-border)" }}>
+                  Approved for launch
+                </span>
+              ) : (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 600, background: "var(--warning-bg)", color: "var(--warning-text)", border: "1px solid var(--warning-border)" }}>
+                  In Progress
+                </span>
+              )}
               {isSaving && (
-                <span className="flex items-center gap-1 text-xs text-zinc-500 shrink-0">
-                  <Loader2 className="h-3 w-3 animate-spin" />
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-3)" }}>
+                  <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
                   Saving…
                 </span>
               )}
             </div>
             {/* Row 2: actions */}
-            <div className="flex items-center gap-3">
+            <div style={{ display: "flex", gap: 10 }}>
               <button
                 onClick={markComplete}
                 disabled={isSaving}
-                className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors ${
-                  activeChecklist.status === "complete"
-                    ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
-                    : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-                }`}
+                className="btn btn-sm"
+                style={activeChecklist.status === "complete"
+                  ? { gap: 6, display: "inline-flex", alignItems: "center", background: "var(--success-bg)", color: "var(--success-text)", border: "1px solid var(--success-border)" }
+                  : { gap: 6, display: "inline-flex", alignItems: "center", background: "var(--glass-bg)", color: "var(--text-2)", border: "1px solid var(--border)" }
+                }
               >
-                <CheckSquare className="h-4 w-4" />
+                <CheckSquare style={{ width: 14, height: 14 }} />
                 {activeChecklist.status === "complete" ? "Reopen" : "Mark Complete"}
               </button>
               <button
                 onClick={generateAI}
                 disabled={isGeneratingAI}
-                className="flex items-center gap-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                className="btn btn-sm"
+                style={{ gap: 6, display: "inline-flex", alignItems: "center", background: "var(--accent-bg)", color: "var(--accent-text)", border: "1px solid rgba(99,102,241,0.2)" }}
               >
-                {isGeneratingAI ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                {isGeneratingAI ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <Sparkles style={{ width: 14, height: 14 }} />}
                 Generate AI Sign-off
               </button>
             </div>
           </div>
 
-          {/* Combined tab + progress cards (single selector, no duplicate tab strip) */}
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: "Marketing", progress: marketingProgress, tab: "marketing" as const, color: "bg-blue-500", accent: "border-blue-500" },
-              { label: "Development", progress: devProgress, tab: "dev" as const, color: "bg-violet-500", accent: "border-violet-500" },
-            ].map(({ label, progress, tab, color, accent }) => {
+          {/* Tab / progress selector */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            {([
+              { label: "Marketing", progress: marketingProgress, tab: "marketing" as const, accentColor: "var(--accent)",   trackColor: "rgba(99,102,241,0.12)" },
+              { label: "Development", progress: devProgress,    tab: "dev"       as const, accentColor: "var(--accent-2)", trackColor: "rgba(168,85,247,0.12)" },
+            ] as const).map(({ label, progress, tab, accentColor, trackColor }) => {
               const pct = progress && progress.total > 0 ? Math.round((progress.passed / progress.total) * 100) : 0;
               const isActive = activeTab === tab;
               return (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`text-left bg-zinc-900 border-2 rounded-xl px-5 py-4 transition-all ${
-                    isActive ? `${accent} shadow-lg` : "border-zinc-800 hover:border-zinc-700"
-                  }`}
+                  className="card"
+                  style={{
+                    textAlign: "left", padding: "18px 20px",
+                    border: isActive ? `2px solid ${accentColor}` : "2px solid var(--border)",
+                    boxShadow: isActive ? `0 0 0 4px ${trackColor}, var(--shadow-sm)` : undefined,
+                    background: "var(--glass-bg)",
+                    cursor: "pointer", transition: "all 0.2s ease",
+                  }}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className={`text-sm font-semibold ${isActive ? "text-white" : "text-zinc-400"}`}>{label} QA</span>
-                    <span className={`text-sm font-medium tabular-nums ${isActive ? "text-white" : "text-zinc-500"}`}>
-                      {progress?.passed ?? 0}<span className="text-zinc-600">/{progress?.total ?? 0}</span>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: isActive ? "var(--text)" : "var(--text-3)" }}>{label} QA</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: isActive ? "var(--text)" : "var(--text-3)" }}>
+                      {progress?.passed ?? 0}<span style={{ color: "var(--text-4)" }}>/{progress?.total ?? 0}</span>
                     </span>
                   </div>
-                  <div className="w-full bg-zinc-800 rounded-full h-1.5">
-                    <div
-                      className={`${color} h-1.5 rounded-full transition-all duration-500`}
-                      style={{ width: `${pct}%` }}
-                    />
+                  <div style={{ width: "100%", height: 4, borderRadius: 99, background: "var(--border)", overflow: "hidden" }}>
+                    <div style={{ width: `${pct}%`, height: "100%", borderRadius: 99, background: accentColor, transition: "width 0.5s ease" }} />
                   </div>
-                  <p className={`text-xs mt-2 ${isActive ? "text-zinc-400" : "text-zinc-600"}`}>{pct}% complete</p>
+                  <p style={{ fontSize: 12, color: isActive ? "var(--text-3)" : "var(--text-4)", marginTop: 8 }}>{pct}% complete</p>
                 </button>
               );
             })}
           </div>
 
-          {/* Categories */}
-          <div className="space-y-3">
+          {/* Category accordions */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {activeCategories.map((category) => {
               const { passed, total } = categoryProgress(activeChecklist[activeChecksField], category);
               const isExpanded = expandedCategories.has(category.id);
               const checks = JSON.parse(activeChecklist[activeChecksField]) as Record<string, boolean>;
+              const allDone = passed === total;
 
               return (
-                <div key={category.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                <div key={category.id} className="card" style={{ overflow: "visible" }}>
                   <button
                     onClick={() => toggleCategory(category.id)}
-                    className="w-full flex items-center justify-between px-5 py-4 hover:bg-zinc-800/40 transition-colors"
+                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", background: "none", border: "none", cursor: "pointer", gap: 12 }}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium text-white text-sm">{category.label}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        passed === total ? "bg-emerald-500/15 text-emerald-400" : "bg-zinc-800 text-zinc-400"
-                      }`}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{category.label}</span>
+                      <span style={{
+                        fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99,
+                        background: allDone ? "var(--success-bg)" : "var(--bg)",
+                        color: allDone ? "var(--success-text)" : "var(--text-3)",
+                        border: `1px solid ${allDone ? "var(--success-border)" : "var(--border)"}`,
+                      }}>
                         {passed}/{total}
                       </span>
                     </div>
-                    {isExpanded ? (
-                      <ChevronUp className="h-4 w-4 text-zinc-500" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 text-zinc-500" />
-                    )}
+                    {isExpanded
+                      ? <ChevronUp style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0 }} />
+                      : <ChevronDown style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0 }} />}
                   </button>
 
                   {isExpanded && (
-                    <div className="border-t border-zinc-800 divide-y divide-zinc-800/50">
-                      {category.items.map((item) => {
+                    <div style={{ borderTop: "1px solid var(--border)" }}>
+                      {category.items.map((item, idx) => {
                         const isChecked = !!checks[item.id];
                         return (
-                          <label
+                          <div
                             key={item.id}
-                            className="flex items-start gap-3 px-5 py-3 cursor-pointer hover:bg-zinc-800/30 transition-colors"
+                            onClick={() => toggleCheck(item.id, activeTab)}
+                            style={{
+                              display: "flex", alignItems: "flex-start", gap: 12, padding: "11px 20px",
+                              borderBottom: idx < category.items.length - 1 ? "1px solid var(--border-subtle)" : "none",
+                              cursor: "pointer", transition: "background 0.1s",
+                            }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--bg)"; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = ""; }}
                           >
-                            <button
-                              type="button"
-                              onClick={() => toggleCheck(item.id, activeTab)}
-                              className={`mt-0.5 shrink-0 transition-colors ${
-                                isChecked ? "text-emerald-500" : "text-zinc-600 hover:text-zinc-400"
-                              }`}
-                            >
-                              {isChecked ? (
-                                <CheckCircle2 className="h-5 w-5" />
-                              ) : (
-                                <Circle className="h-5 w-5" />
-                              )}
-                            </button>
-                            <span className={`text-sm leading-relaxed ${
-                              isChecked ? "text-zinc-500 line-through" : "text-zinc-300"
-                            }`}>
+                            <div style={{ marginTop: 1, flexShrink: 0, color: isChecked ? "var(--success)" : "var(--text-4)", transition: "color 0.15s" }}>
+                              {isChecked ? <CheckCircle2 style={{ width: 18, height: 18 }} /> : <Circle style={{ width: 18, height: 18 }} />}
+                            </div>
+                            <span style={{ fontSize: 13, lineHeight: 1.6, color: isChecked ? "var(--text-4)" : "var(--text-2)", textDecoration: isChecked ? "line-through" : "none", transition: "all 0.15s" }}>
                               {item.label}
                             </span>
-                          </label>
+                          </div>
                         );
                       })}
                     </div>
@@ -616,25 +677,26 @@ export default function QaChecklistPage() {
           </div>
 
           {/* Notes */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-            <label className="block text-sm font-medium text-zinc-400 mb-2">Notes</label>
+          <div className="card" style={{ padding: 20 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 8 }}>Notes</label>
             <textarea
               value={activeChecklist.notes ?? ""}
               onChange={(e) => handleNotesChange(e.target.value)}
               placeholder="Add any notes, context, or outstanding actions…"
               rows={3}
-              className="w-full bg-zinc-800 border border-zinc-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none placeholder-zinc-600"
+              className="form-input"
+              style={{ resize: "none" }}
             />
           </div>
 
           {/* AI summary */}
           {activeChecklist.aiSummary && (
-            <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="h-4 w-4 text-purple-400" />
-                <span className="text-sm font-medium text-purple-300">AI Sign-off Summary</span>
+            <div style={{ background: "var(--accent-bg)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: "var(--r-lg)", padding: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <Sparkles style={{ width: 15, height: 15, color: "var(--accent)" }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent-text)" }}>AI Sign-off Summary</span>
               </div>
-              <p className="text-sm text-zinc-300 leading-relaxed">{activeChecklist.aiSummary}</p>
+              <p style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.7 }}>{activeChecklist.aiSummary}</p>
             </div>
           )}
         </div>

@@ -41,6 +41,7 @@ export async function PATCH(
       aiSummary?: string;
       websiteUrl?: string;
       label?: string;
+      clientId?: string;
     };
 
     const existing = await prisma.qaChecklist.findUnique({ where: { id } });
@@ -60,6 +61,7 @@ export async function PATCH(
         ...(data.aiSummary !== undefined && { aiSummary: data.aiSummary }),
         ...(data.websiteUrl !== undefined && { websiteUrl: data.websiteUrl }),
         ...(data.label !== undefined && { label: data.label }),
+        ...(data.clientId !== undefined && { clientId: data.clientId }),
       },
     });
 
