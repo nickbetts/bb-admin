@@ -344,7 +344,7 @@ export default function QaChecklistPage() {
   const toggleCategory = (id: string) => {
     setExpandedCategories((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
       return next;
     });
   };
@@ -516,38 +516,40 @@ export default function QaChecklistPage() {
       {/* Active checklist */}
       {activeChecklist && (
         <div className="space-y-4">
-          {/* Checklist header */}
-          <div className="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-4">
-            <div className="flex items-center gap-3">
+          {/* Checklist header — two rows */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-4 space-y-3">
+            {/* Row 1: breadcrumb + meta */}
+            <div className="flex items-center gap-3 flex-wrap">
               <button
                 onClick={() => setActiveChecklist(null)}
-                className="text-zinc-500 hover:text-white text-sm transition-colors"
+                className="text-zinc-500 hover:text-white text-sm transition-colors shrink-0"
               >
                 ← All checklists
               </button>
-              <span className="text-zinc-700">|</span>
-              <span className="text-white font-medium text-sm">
-                {activeChecklist.websiteUrl ?? "No URL"}
+              <span className="text-zinc-700 shrink-0">|</span>
+              <span className="text-white font-medium text-sm truncate max-w-xs">
+                {activeChecklist.websiteUrl ?? <span className="text-zinc-500 italic font-normal">No URL</span>}
               </span>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium shrink-0 ${
                 activeChecklist.status === "complete"
                   ? "bg-emerald-500/15 text-emerald-400"
                   : "bg-amber-500/15 text-amber-400"
               }`}>
-                {activeChecklist.status === "complete" ? "Approved" : "In Progress"}
+                {activeChecklist.status === "complete" ? "Approved for launch" : "In Progress"}
               </span>
               {isSaving && (
-                <span className="flex items-center gap-1 text-xs text-zinc-500">
+                <span className="flex items-center gap-1 text-xs text-zinc-500 shrink-0">
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Saving…
                 </span>
               )}
             </div>
+            {/* Row 2: actions */}
             <div className="flex items-center gap-3">
               <button
                 onClick={markComplete}
                 disabled={isSaving}
-                className={`flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-colors ${
                   activeChecklist.status === "complete"
                     ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
                     : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
@@ -559,56 +561,46 @@ export default function QaChecklistPage() {
               <button
                 onClick={generateAI}
                 disabled={isGeneratingAI}
-                className="flex items-center gap-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+                className="flex items-center gap-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               >
                 {isGeneratingAI ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Generate Sign-off
+                Generate AI Sign-off
               </button>
             </div>
           </div>
 
-          {/* Progress bars */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Combined tab + progress cards (single selector, no duplicate tab strip) */}
+          <div className="grid grid-cols-2 gap-3">
             {[
-              { label: "Marketing", progress: marketingProgress, tab: "marketing" as const, color: "bg-blue-500" },
-              { label: "Dev", progress: devProgress, tab: "dev" as const, color: "bg-violet-500" },
-            ].map(({ label, progress, tab, color }) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`text-left bg-zinc-900 border rounded-xl px-5 py-4 transition-colors ${
-                  activeTab === tab ? "border-zinc-600" : "border-zinc-800 hover:border-zinc-700"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-white">{label} QA</span>
-                  <span className="text-sm text-zinc-400">
-                    {progress?.passed ?? 0}/{progress?.total ?? 0}
-                  </span>
-                </div>
-                <div className="w-full bg-zinc-800 rounded-full h-2">
-                  <div
-                    className={`${color} h-2 rounded-full transition-all`}
-                    style={{ width: progress && progress.total > 0 ? `${(progress.passed / progress.total) * 100}%` : "0%" }}
-                  />
-                </div>
-              </button>
-            ))}
-          </div>
-
-          {/* Tabs */}
-          <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1">
-            {(["marketing", "dev"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 text-sm font-medium py-2 rounded-lg transition-colors capitalize ${
-                  activeTab === tab ? "bg-zinc-700 text-white" : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                {tab === "marketing" ? "Marketing" : "Development"}
-              </button>
-            ))}
+              { label: "Marketing", progress: marketingProgress, tab: "marketing" as const, color: "bg-blue-500", accent: "border-blue-500" },
+              { label: "Development", progress: devProgress, tab: "dev" as const, color: "bg-violet-500", accent: "border-violet-500" },
+            ].map(({ label, progress, tab, color, accent }) => {
+              const pct = progress && progress.total > 0 ? Math.round((progress.passed / progress.total) * 100) : 0;
+              const isActive = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`text-left bg-zinc-900 border-2 rounded-xl px-5 py-4 transition-all ${
+                    isActive ? `${accent} shadow-lg` : "border-zinc-800 hover:border-zinc-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className={`text-sm font-semibold ${isActive ? "text-white" : "text-zinc-400"}`}>{label} QA</span>
+                    <span className={`text-sm font-medium tabular-nums ${isActive ? "text-white" : "text-zinc-500"}`}>
+                      {progress?.passed ?? 0}<span className="text-zinc-600">/{progress?.total ?? 0}</span>
+                    </span>
+                  </div>
+                  <div className="w-full bg-zinc-800 rounded-full h-1.5">
+                    <div
+                      className={`${color} h-1.5 rounded-full transition-all duration-500`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <p className={`text-xs mt-2 ${isActive ? "text-zinc-400" : "text-zinc-600"}`}>{pct}% complete</p>
+                </button>
+              );
+            })}
           </div>
 
           {/* Categories */}
