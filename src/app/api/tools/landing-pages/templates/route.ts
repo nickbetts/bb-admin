@@ -9,22 +9,28 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const templates = await prisma.landingPageTemplate.findMany({
-    orderBy: [{ isBuiltIn: "desc" }, { updatedAt: "desc" }],
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      category: true,
-      thumbnailUrl: true,
-      promptGuidance: true,
-      isBuiltIn: true,
-      createdBy: true,
-      createdAt: true,
-    },
-  });
+  try {
+    const templates = await prisma.landingPageTemplate.findMany({
+      orderBy: [{ isBuiltIn: "desc" }, { updatedAt: "desc" }],
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        category: true,
+        thumbnailUrl: true,
+        promptGuidance: true,
+        isBuiltIn: true,
+        createdBy: true,
+        createdAt: true,
+      },
+    });
 
-  return NextResponse.json({ templates });
+    return NextResponse.json({ templates });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Landing page templates error:", error);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 // POST /api/tools/landing-pages/templates — save LP as template

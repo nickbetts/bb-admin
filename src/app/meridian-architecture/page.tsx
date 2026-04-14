@@ -21,11 +21,12 @@ const blue = "#3b82f6";
 const red = "#ef4444";
 
 /* ─── roadmap phase statuses ─── */
-type PhaseStatus = "complete" | "in-progress" | "planned" | "future";
+type PhaseStatus = "complete" | "in-progress" | "planned" | "not-started" | "future";
 const statusMeta: Record<PhaseStatus, { label: string; colour: string; bg: string }> = {
   "complete": { label: "Complete", colour: green, bg: "rgba(16,185,129,0.1)" },
   "in-progress": { label: "In Progress", colour: amber, bg: "rgba(245,158,11,0.1)" },
   "planned": { label: "Planned", colour: blue, bg: "rgba(59,130,246,0.1)" },
+  "not-started": { label: "Not Started", colour: "rgba(255,255,255,0.35)", bg: "rgba(255,255,255,0.04)" },
   "future": { label: "Future", colour: "rgba(255,255,255,0.35)", bg: "rgba(255,255,255,0.04)" },
 };
 

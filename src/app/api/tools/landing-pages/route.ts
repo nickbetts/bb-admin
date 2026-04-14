@@ -19,26 +19,32 @@ export async function GET(request: NextRequest) {
   const where: Record<string, unknown> = { userId: session.user.id };
   if (clientId) where.clientId = clientId;
 
-  const landingPages = await prisma.landingPage.findMany({
-    where,
-    orderBy: { updatedAt: "desc" },
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-      status: true,
-      shareToken: true,
-      viewCount: true,
-      lastViewedAt: true,
-      clientId: true,
-      createdAt: true,
-      updatedAt: true,
-      client: { select: { id: true, name: true } },
-      _count: { select: { leads: true, versions: true } },
-    },
-  });
+  try {
+    const landingPages = await prisma.landingPage.findMany({
+      where,
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        status: true,
+        shareToken: true,
+        viewCount: true,
+        lastViewedAt: true,
+        clientId: true,
+        createdAt: true,
+        updatedAt: true,
+        client: { select: { id: true, name: true } },
+        _count: { select: { leads: true, versions: true } },
+      },
+    });
 
-  return NextResponse.json({ landingPages });
+    return NextResponse.json({ landingPages });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Landing pages list error:", error);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 // POST /api/tools/landing-pages — create a new landing page

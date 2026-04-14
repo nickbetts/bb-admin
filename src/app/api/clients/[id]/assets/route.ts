@@ -14,6 +14,7 @@ export async function GET(
 
   const { id: clientId } = await params;
 
+  try {
   // Verify client exists
   const client = await prisma.client.findUnique({
     where: { id: clientId },
@@ -104,4 +105,9 @@ export async function GET(
     keywordResearch: { count: keywordResearchCount, recent: recentKeywordResearch },
     qaChecklists: { count: qaChecklistCount, recent: recentQaChecklists },
   });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Assets route error:", error);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
