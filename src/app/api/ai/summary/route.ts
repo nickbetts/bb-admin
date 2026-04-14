@@ -856,7 +856,7 @@ Return JSON: { "recommendations": ["rec for alert 1", "rec for alert 2", ...] }
 One string per alert, same order. British English.`;
 
       const comp2 = await openai2.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-5.4-nano",
         messages: [
           { role: "system", content: systemPrompt + "\nProvide specific, data-grounded, actionable recommendations. British English. Never fabricate numbers or metrics not present in the data. Always use exact campaign names and numbers from the data." },
           { role: "user", content: recPrompt },
@@ -1143,7 +1143,7 @@ Respond in JSON format:
 }`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.4-nano",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },

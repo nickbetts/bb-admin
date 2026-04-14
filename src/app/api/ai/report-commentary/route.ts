@@ -273,7 +273,7 @@ ${previousMetricsText ? `\nPrevious period metrics:\n${previousMetricsText}\n` :
 Address the client directly using "the" for campaigns/channels and "your" for the client's assets. Do not use first person ("we", "our"). Describe what the data shows, what is being worked on, and what is performing well. Only reference metrics that are present and non-zero. Do not mention anything that is absent.`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.4-nano",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },

@@ -74,7 +74,7 @@ Focus on CTR, conversion rate, and spend efficiency patterns.
 Return only valid JSON.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.4-nano",
       temperature: 0.3,
       max_completion_tokens: 2000,
       messages: [

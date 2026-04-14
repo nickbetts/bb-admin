@@ -81,7 +81,7 @@ async function extractActionsFromReport(reportId: string, clientId: string) {
   const openai = await getOpenAiClient();
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-5.4-nano",
     messages: [{
       role: "user",
       content: `Review this approved report for ${client?.name ?? "the client"} and extract concrete action items.

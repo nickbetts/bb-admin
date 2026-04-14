@@ -583,7 +583,7 @@ async function detectAndNotifyAnomalies(
     try {
       const openai = await getOpenAiClient();
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-5.4-nano",
         messages: [{ role: "user", content: `In 2 sentences, explain the most likely cause of these metric changes for ${clientName} on ${platform}:\n${highAlerts.map((a) => `- ${a.detail}`).join("\n")}\nBe specific and actionable.` }],
         temperature: 0.2,
         max_completion_tokens: 150,

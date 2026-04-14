@@ -120,7 +120,7 @@ Return a JSON object with this exact structure:
     const userPrompt = `Analyse this landing page:\n\n${pageContext}\n${semrushContext}\n\nReturn only valid JSON, no markdown fences.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.4-nano",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },

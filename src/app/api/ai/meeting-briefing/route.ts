@@ -202,7 +202,7 @@ Generate the meeting briefing JSON now.`;
 
     // ── Non-streaming path ─────────────────────────────────────────────────
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.4-nano",
       temperature: 0.3,
       max_completion_tokens: 2500,
       messages: [

@@ -112,7 +112,7 @@ Respond with JSON only — no markdown, no code fences:
 }`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.4-nano",
       temperature: 0.2,
       max_completion_tokens: 2000,
       messages: [

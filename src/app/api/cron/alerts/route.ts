@@ -380,7 +380,7 @@ async function generateRootCause(
     const openai = await getOpenAiClient();
     const alertList = alerts.map((a) => `- [${a.platform}] ${a.detail}`).join("\n");
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.4-nano",
       messages: [
         {
           role: "system",

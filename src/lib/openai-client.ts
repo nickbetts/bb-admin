@@ -82,7 +82,7 @@ export async function createWithWebSearch(
   };
 
   const response = await openai.responses.create({
-    model: opts.model ?? "gpt-4o-mini",
+    model: opts.model ?? "gpt-5.4",
     instructions: opts.instructions,
     input: opts.input,
     tools: [webSearchTool],
@@ -125,7 +125,7 @@ export function streamWithWebSearch(
     async start(controller) {
       try {
         const stream = openai.responses.stream({
-          model: opts.model ?? "gpt-4o-mini",
+          model: opts.model ?? "gpt-5.4",
           instructions: opts.instructions,
           input: opts.input,
           tools: [webSearchTool],

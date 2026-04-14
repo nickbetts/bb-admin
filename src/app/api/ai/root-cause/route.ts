@@ -201,7 +201,7 @@ Be analytical and data-driven. Reference specific numbers where available. If da
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5.4",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.2,
       max_completion_tokens: 4000,

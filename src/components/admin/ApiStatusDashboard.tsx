@@ -125,8 +125,8 @@ const INTEGRATIONS: Integration[] = [
     docsUrl: "https://platform.openai.com/docs",
     billingUrl: "https://platform.openai.com/usage",
     rateLimits: [
-      "GPT-4o: 500 RPM / 30,000 TPM (Tier 1)",
-      "GPT-4o-mini: 500 RPM / 200,000 TPM (Tier 1)",
+      "GPT-5.4: 500 RPM / 30,000 TPM (Tier 1)",
+      "GPT-5.4-nano: 500 RPM / 200,000 TPM (Tier 1)",
       "Live cost shown below when usage.read scope is enabled",
     ],
     configured: (d) => d.openai.configured,

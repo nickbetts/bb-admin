@@ -128,7 +128,7 @@ Base confidence bands on data quality and variance. Use realistic projections ba
 Return only valid JSON.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.4-nano",
       temperature: 0.2,
       max_completion_tokens: 2000,
       messages: [

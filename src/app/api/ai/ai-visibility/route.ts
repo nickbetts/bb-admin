@@ -146,7 +146,7 @@ Guidelines:
 - If data is limited, note this in the analysis and adjust the confidence of the score.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.4-nano",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },

@@ -392,7 +392,7 @@ CRITICAL INSTRUCTIONS — READ CAREFULLY:
 Output the complete filled-in llm.txt followed by the ## DATA GAPS block. No preamble, no code fences.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5.4",
       temperature: 0.2,
       messages: [
         {

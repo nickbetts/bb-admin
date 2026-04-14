@@ -8,7 +8,7 @@
 import { getAnthropicClient } from "@/lib/anthropic-client";
 import type { BrandContext } from "@/lib/brand-extractor";
 
-const MODEL = "claude-sonnet-4-20250514";
+const MODEL = "claude-sonnet-4-6";
 const MAX_TOKENS = 16000;
 
 // ── Types ────────────────────────────────────────────────────────────────────

@@ -128,7 +128,7 @@ Data sources available: ${dataSources.join(", ")}
 ${JSON.stringify(audienceData, null, 2)}`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.4-nano",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },

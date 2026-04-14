@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       ].filter(Boolean).join("\n");
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-5.4-nano",
         temperature: 0.4,
         messages: [
           {
@@ -226,7 +226,7 @@ Return ONLY this JSON (no markdown, no explanation):
       }
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-5.4-nano",
         temperature: 0.2,
         messages: [
           {

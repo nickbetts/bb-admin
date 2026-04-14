@@ -67,7 +67,7 @@ Provide a JSON forecast with this exact structure:
 Return only valid JSON, no markdown.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.4-nano",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.3,
       max_completion_tokens: 1200,
