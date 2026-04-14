@@ -922,13 +922,69 @@ export default function MeridianPage() {
               {/* Code */}
               <div style={{ padding: "20px 22px", fontFamily: "monospace", fontSize: 12, lineHeight: 1.75, color: "rgba(255,255,255,0.7)", overflowX: "auto" }}>
                 {apiTabActive === 0 && (
-                  <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "inherit" }}><span style={{ color: "#f472b6" }}>import</span> OpenAI <span style={{ color: "#f472b6" }}>from</span> <span style={{ color: "#86efac" }}>&apos;openai&apos;</span>{"\n\n"}<span style={{ color: "#94a3b8" }}>// Just swap the baseURL — nothing else changes</span>{"\n"}<span style={{ color: "#f472b6" }}>const</span> client = <span style={{ color: "#f472b6" }}>new</span> <span style={{ color: "#67e8f9" }}>OpenAI</span>{"({"}{"\n"}{"  "}baseURL: <span style={{ color: "#86efac" }}>&apos;https://api.meridian.ai/v1&apos;</span>,{"\n"}{"  "}apiKey: <span style={{ color: "#86efac" }}>process.env.MERIDIAN_API_KEY</span>,{"\n"}{"}"}{");"}{"\n\n"}<span style={{ color: "#f472b6" }}>const</span> response = <span style={{ color: "#f472b6" }}>await</span> client.chat.completions.<span style={{ color: "#67e8f9" }}>create</span>{"({"}{"\n"}{"  "}model: <span style={{ color: "#86efac" }}>&apos;meridian-marketing-v1&apos;</span>,{"\n"}{"  "}messages: [{"{"}{"\n"}{"    "}role: <span style={{ color: "#86efac" }}>&apos;system&apos;</span>,{"\n"}{"    "}content: <span style={{ color: "#86efac" }}>&apos;sector:ecommerce budget:15000&apos;</span>,{"\n"}{"  "}{"}"}, {"{"}{"\n"}{"    "}role: <span style={{ color: "#86efac" }}>&apos;user&apos;</span>,{"\n"}{"    "}content: <span style={{ color: "#86efac" }}>&apos;Analyse my Meta ROAS of 2.8×&apos;</span>,{"\n"}{"  "}{"}"]{"\n"}{"}"}{");"}</pre>
+                  <pre
+                    style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "inherit" }}
+                    dangerouslySetInnerHTML={{
+                      __html: [
+                        `<span style="color:#f472b6">import</span> OpenAI <span style="color:#f472b6">from</span> <span style="color:#86efac">'openai'</span>`,
+                        ``,
+                        `<span style="color:#94a3b8">// Just swap the baseURL — nothing else changes</span>`,
+                        `<span style="color:#f472b6">const</span> client = <span style="color:#f472b6">new</span> <span style="color:#67e8f9">OpenAI</span>({`,
+                        `  baseURL: <span style="color:#86efac">'https://api.meridian.ai/v1'</span>,`,
+                        `  apiKey: <span style="color:#86efac">process.env.MERIDIAN_API_KEY</span>,`,
+                        `});`,
+                        ``,
+                        `<span style="color:#f472b6">const</span> response = <span style="color:#f472b6">await</span> client.chat.completions.<span style="color:#67e8f9">create</span>({`,
+                        `  model: <span style="color:#86efac">'meridian-marketing-v1'</span>,`,
+                        `  messages: [`,
+                        `    { role: <span style="color:#86efac">'system'</span>, content: <span style="color:#86efac">'sector:ecommerce budget:15000'</span> },`,
+                        `    { role: <span style="color:#86efac">'user'</span>, content: <span style="color:#86efac">'Analyse my Meta ROAS of 2.8×'</span> },`,
+                        `  ],`,
+                        `});`,
+                      ].join("\n"),
+                    }}
+                  />
                 )}
                 {apiTabActive === 1 && (
-                  <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "inherit" }}><span style={{ color: "#f472b6" }}>from</span> openai <span style={{ color: "#f472b6" }}>import</span> OpenAI{"\n\n"}<span style={{ color: "#94a3b8" }}># Just swap the base_url</span>{"\n"}client = <span style={{ color: "#67e8f9" }}>OpenAI</span>({"\n"}{"  "}base_url=<span style={{ color: "#86efac" }}>&quot;https://api.meridian.ai/v1&quot;</span>,{"\n"}{"  "}api_key=os.environ[<span style={{ color: "#86efac" }}>&quot;MERIDIAN_API_KEY&quot;</span>]{"\n"}){"\n\n"}response = client.chat.completions.<span style={{ color: "#67e8f9" }}>create</span>({"\n"}{"  "}model=<span style={{ color: "#86efac" }}>&quot;meridian-marketing-v1&quot;</span>,{"\n"}{"  "}messages=[{"\n"}{"    "}{"{"}{"\""}role{"\""}: <span style={{ color: "#86efac" }}>&quot;user&quot;</span>, <span style={{ color: "#86efac" }}>&quot;content&quot;</span>: <span style={{ color: "#86efac" }}>&quot;Analyse ROAS 2.8x&quot;</span>{"}"}{"\n"}{"  "}]{"\n"})</pre>
+                  <pre
+                    style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "inherit" }}
+                    dangerouslySetInnerHTML={{
+                      __html: [
+                        `<span style="color:#f472b6">from</span> openai <span style="color:#f472b6">import</span> OpenAI`,
+                        ``,
+                        `<span style="color:#94a3b8"># Just swap the base_url</span>`,
+                        `client = <span style="color:#67e8f9">OpenAI</span>(`,
+                        `  base_url=<span style="color:#86efac">"https://api.meridian.ai/v1"</span>,`,
+                        `  api_key=os.environ[<span style="color:#86efac">"MERIDIAN_API_KEY"</span>]`,
+                        `)`,
+                        ``,
+                        `response = client.chat.completions.<span style="color:#67e8f9">create</span>(`,
+                        `  model=<span style="color:#86efac">"meridian-marketing-v1"</span>,`,
+                        `  messages=[`,
+                        `    {"role": <span style="color:#86efac">"user"</span>, "content": <span style="color:#86efac">"Analyse ROAS 2.8x"</span>}`,
+                        `  ]`,
+                        `)`,
+                      ].join("\n"),
+                    }}
+                  />
                 )}
                 {apiTabActive === 2 && (
-                  <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "inherit" }}><span style={{ color: "#94a3b8" }}># Drop-in replacement for OpenAI</span>{"\n"}curl https://api.meridian.ai/<span style={{ color: "#67e8f9" }}>v1</span>/chat/completions \{"\n"}{"  "}-H <span style={{ color: "#86efac" }}>&quot;Authorization: Bearer $MERIDIAN_API_KEY&quot;</span> \{"\n"}{"  "}-H <span style={{ color: "#86efac" }}>&quot;Content-Type: application/json&quot;</span> \{"\n"}{"  "}-d {"{"}{"'"}{"\n"}{"  "}  <span style={{ color: "#86efac" }}>&quot;model&quot;</span>: <span style={{ color: "#86efac" }}>&quot;meridian-marketing-v1&quot;</span>,{"\n"}{"  "}  <span style={{ color: "#86efac" }}>&quot;messages&quot;</span>: [{"{"}{"\""}role{"\""}: <span style={{ color: "#86efac" }}>&quot;user&quot;</span>,{"\n"}{"  "}    <span style={{ color: "#86efac" }}>&quot;content&quot;</span>: <span style={{ color: "#86efac" }}>&quot;Analyse ROAS 2.8x&quot;</span>{"}"}{"]"}{"\n"}{"  "}{"}"}{"'"}</pre>
+                  <pre
+                    style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "inherit" }}
+                    dangerouslySetInnerHTML={{
+                      __html: [
+                        `<span style="color:#94a3b8"># Drop-in replacement for OpenAI</span>`,
+                        `curl https://api.meridian.ai/<span style="color:#67e8f9">v1</span>/chat/completions \\`,
+                        `  -H <span style="color:#86efac">"Authorization: Bearer $MERIDIAN_API_KEY"</span> \\`,
+                        `  -H <span style="color:#86efac">"Content-Type: application/json"</span> \\`,
+                        `  -d '{`,
+                        `    "model": <span style="color:#86efac">"meridian-marketing-v1"</span>,`,
+                        `    "messages": [{"role": <span style="color:#86efac">"user"</span>,`,
+                        `      "content": <span style="color:#86efac">"Analyse ROAS 2.8x"</span>}]`,
+                        `  }'`,
+                      ].join("\n"),
+                    }}
+                  />
                 )}
               </div>
               <div style={{ padding: "12px 20px", borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(124,58,237,0.04)", display: "flex", alignItems: "center", gap: 8 }}>
