@@ -762,6 +762,26 @@ async function main() {
     console.log("✓ UserActivityLog table already present");
   }
 
+  // ── QaChecklist table (added 2026-04-14) ─────────────────────────────────
+  if (!(await tableExists("QaChecklist"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "QaChecklist" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "clientId" TEXT NOT NULL,
+      "websiteUrl" TEXT,
+      "status" TEXT NOT NULL DEFAULT 'in_progress',
+      "marketingChecks" TEXT NOT NULL DEFAULT '{}',
+      "devChecks" TEXT NOT NULL DEFAULT '{}',
+      "notes" TEXT,
+      "aiSummary" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE
+    )`);
+    console.log("✓ Created QaChecklist table");
+  } else {
+    console.log("✓ QaChecklist table already present");
+  }
+
   await db.close();
   console.log("✅ Schema migration complete");
 }
