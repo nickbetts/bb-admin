@@ -93,7 +93,7 @@ export default function LoginPage() {
       "problems",
       "stats",
       "channels",
-      "stratum",
+      "meridian",
       "signals",
       "ai-analyst",
       "reports",
@@ -201,7 +201,7 @@ export default function LoginPage() {
     {
       n: "03",
       title: "Dig in with all the context",
-      desc: "Every channel tab has the full picture: campaigns, creatives, landing pages, goals. Stratum™ reads data from all other channels before it gives you an insight.",
+      desc: "Every channel tab has the full picture: campaigns, creatives, landing pages, goals. Meridian reads data from all other channels before it gives you an insight.",
     },
     {
       n: "04",
@@ -232,7 +232,7 @@ export default function LoginPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "rgba(255,255,255,0.75)" }}>
             <div style={{ width: 7, height: 7, borderRadius: "50%", background: "rgba(16,185,129,1)", boxShadow: "0 0 8px rgba(16,185,129,0.6)", flexShrink: 0 }} className="stratum-pulse" />
             <span>
-              StratOS is now in private beta —{" "}
+              StratOS is now in private beta.{" "}
               <a
                 href="#access"
                 onClick={(e) => { e.preventDefault(); document.getElementById("access")?.scrollIntoView({ behavior: "smooth" }); }}
@@ -283,7 +283,7 @@ export default function LoginPage() {
           { id: "problems", label: "Problems" },
           { id: "stats", label: "In numbers" },
           { id: "channels", label: "Channels" },
-          { id: "stratum", label: "Stratum™" },
+          { id: "meridian", label: "Meridian AI" },
           { id: "signals", label: "Signals" },
           { id: "ai-analyst", label: "AI Analyst" },
           { id: "reports", label: "Reports" },
@@ -370,6 +370,7 @@ export default function LoginPage() {
           >
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#8b5cf6", boxShadow: "0 0 6px rgba(139,92,246,0.6)", display: "inline-block", flexShrink: 0 }} />
             Meridian AI
+            <span style={{ fontSize: 8, fontWeight: 800, color: "#a78bfa", background: "rgba(124,58,237,0.2)", padding: "1px 5px", borderRadius: 3, letterSpacing: "0.06em", textTransform: "uppercase" }}>Alpha</span>
           </a>
           <a
             href="#access"
@@ -441,7 +442,7 @@ export default function LoginPage() {
               </div>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 14px", borderRadius: 20, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(255,255,255,0.25)", boxShadow: "0 0 6px rgba(255,255,255,0.3)" }} className="stratum-pulse" />
-                <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Powered by Stratum™</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.35)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Powered by Meridian AI</span>
               </div>
             </div>
             <h1 style={{
@@ -464,10 +465,10 @@ export default function LoginPage() {
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
               {[
-                { icon: <Radar style={{ width: 14, height: 14 }} />, text: "Anomaly detection across all channels—surfaced automatically" },
+                { icon: <Radar style={{ width: 14, height: 14 }} />, text: "Anomaly detection across all channels, surfaced automatically" },
                 { icon: <Brain style={{ width: 14, height: 14 }} />, text: "AI that reads every platform before giving you an answer" },
                 { icon: <FileText style={{ width: 14, height: 14 }} />, text: "Client reports generated in minutes, not Tuesday afternoons" },
-                { icon: <Monitor style={{ width: 14, height: 14 }} />, text: "Branded client portals—they see what you want them to see" },
+                { icon: <Monitor style={{ width: 14, height: 14 }} />, text: "Branded client portals. They see what you want them to see" },
               ].map((f) => (
                 <div key={f.text} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                   <div style={{
@@ -821,8 +822,8 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {/* ── SECTION 5: STRATUM™ (SIMPLIFIED) ── */}
-      <section id="stratum" className="reveal-section" style={{
+      {/* ── SECTION 5: MERIDIAN AI ── */}
+      <section id="meridian" className="reveal-section" style={{
         padding: "120px 40px",
         position: "relative",
         overflow: "hidden",
@@ -830,7 +831,7 @@ export default function LoginPage() {
         <div className="stratum-glow" style={{
           position: "absolute",
           inset: "-50%",
-          background: "radial-gradient(circle at 50% 50%, rgba(99,102,241,0.15) 0%, transparent 50%)",
+          background: "radial-gradient(circle at 50% 50%, rgba(124,58,237,0.15) 0%, transparent 50%)",
           pointerEvents: "none",
         }} />
         
@@ -842,13 +843,13 @@ export default function LoginPage() {
               gap: 8,
               padding: "8px 18px",
               borderRadius: 24,
-              background: "rgba(99,102,241,0.12)",
-              border: "1px solid rgba(99,102,241,0.3)",
+              background: "rgba(124,58,237,0.12)",
+              border: "1px solid rgba(124,58,237,0.3)",
               marginBottom: 20,
             }}>
-              <Brain style={{ width: 16, height: 16, color: "#a5b4fc" }} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#a5b4fc", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                Powered by Stratum™
+              <Brain style={{ width: 16, height: 16, color: "#c4b5fd" }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#c4b5fd", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                Meridian AI · Alpha
               </span>
             </div>
             
@@ -862,10 +863,10 @@ export default function LoginPage() {
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
             }} className="blur-reveal">
-              AI that actually understands<br />your marketing data
+              The world&apos;s first<br />marketing-native LLM
             </h2>
             <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", maxWidth: 680, margin: "0 auto", lineHeight: 1.8 }}>
-              Stratum™ is the intelligence layer running beneath the entire platform. It builds a unified model of your client&apos;s performance across all 16 connected channels—continuously, in the background. Every signal, every report block, every forecast, and every recommendation is powered by Stratum™ reading the complete picture, not just one channel at a time.
+              Meridian is a large language model built from scratch for marketing. Not a wrapper around GPT. Not a prompt template. A purpose-built model trained on 24 million real campaign outcomes across 15 channels, 12 sectors, and 6 budget tiers. Every time a campaign runs through StratOS, Meridian gets smarter. Every second of every day, new data flows in. No other AI on earth has this.
             </p>
           </div>
 
@@ -881,12 +882,12 @@ export default function LoginPage() {
               gap: 24,
             }}>
               {[
-                { icon: <Activity style={{ width: 20, height: 20 }} />, title: "Anomaly Detection", desc: "Automatically flags performance shifts across all channels" },
-                { icon: <MessageSquare style={{ width: 20, height: 20 }} />, title: "Natural Language Queries", desc: "Ask questions in plain English, get answers with full context" },
-                { icon: <TrendingUp style={{ width: 20, height: 20 }} />, title: "Predictive Forecasting", desc: "90-day forecasts with confidence intervals, per channel" },
-                { icon: <Target style={{ width: 20, height: 20 }} />, title: "Budget Intelligence", desc: "Shows exactly where to reallocate spend and why" },
-                { icon: <BarChart3 style={{ width: 20, height: 20 }} />, title: "Cross-Channel Attribution", desc: "5 attribution models to understand the full customer journey" },
-                { icon: <Sparkles style={{ width: 20, height: 20 }} />, title: "Auto Commentary", desc: "Generates report commentary that reads like you wrote it" },
+                { icon: <Activity style={{ width: 20, height: 20 }} />, title: "Anomaly Detection", desc: "Spots performance shifts across all channels before your client does", color: "#a78bfa" },
+                { icon: <MessageSquare style={{ width: 20, height: 20 }} />, title: "Natural Language Queries", desc: "Ask in plain English. Meridian reads every connected platform before responding.", color: "#a78bfa" },
+                { icon: <TrendingUp style={{ width: 20, height: 20 }} />, title: "Predictive Forecasting", desc: "90-day forecasts with confidence intervals, built from your actual data", color: "#a78bfa" },
+                { icon: <Target style={{ width: 20, height: 20 }} />, title: "Budget Intelligence", desc: "Tells you exactly where to move spend and backs it up with benchmark data", color: "#a78bfa" },
+                { icon: <BarChart3 style={{ width: 20, height: 20 }} />, title: "Sector Benchmarking", desc: "Percentile rankings against 800,000+ ad accounts in your sector and budget tier", color: "#a78bfa" },
+                { icon: <Sparkles style={{ width: 20, height: 20 }} />, title: "Auto Commentary", desc: "Generates report commentary that reads like you wrote it, not like a chatbot did", color: "#a78bfa" },
               ].map((item, i) => (
                 <div key={i} className="stagger-in" style={{
                   animationDelay: `${i * 0.08}s`,
@@ -895,12 +896,12 @@ export default function LoginPage() {
                     width: 44,
                     height: 44,
                     borderRadius: "50%",
-                    background: "rgba(99,102,241,0.15)",
-                    border: "1px solid rgba(99,102,241,0.3)",
+                    background: "rgba(124,58,237,0.15)",
+                    border: "1px solid rgba(124,58,237,0.3)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "#a5b4fc",
+                    color: "#c4b5fd",
                     marginBottom: 16,
                   }}>
                     {item.icon}
@@ -913,6 +914,28 @@ export default function LoginPage() {
                   </p>
                 </div>
               ))}
+            </div>
+
+            {/* CTA to Meridian page */}
+            <div style={{ textAlign: "center", marginTop: 40 }}>
+              <a
+                href="/meridian"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 10,
+                  padding: "14px 28px", borderRadius: 10,
+                  background: "linear-gradient(135deg, #7c3aed, #a855f7)",
+                  color: "white", fontSize: 14, fontWeight: 700, textDecoration: "none",
+                  boxShadow: "0 0 24px rgba(124,58,237,0.4)",
+                  transition: "all 0.3s ease",
+                }}
+                className="cta-pulse"
+              >
+                <Brain style={{ width: 16, height: 16 }} />
+                Learn more about Meridian AI →
+              </a>
+              <p style={{ marginTop: 14, fontSize: 12, color: "rgba(255,255,255,0.25)" }}>
+                Currently in alpha. Growing every second with real campaign data.
+              </p>
             </div>
           </div>
         </div>
@@ -958,7 +981,7 @@ export default function LoginPage() {
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 14 }}>
                 {[
                   "Automatic anomaly detection across all 16 channels",
-                  "Severity scoring—know what needs attention first",
+                  "Severity scoring. Know what needs attention first",
                   "Historical context and pattern recognition",
                   "One-click drill-down to channel detail",
                 ].map((item, i) => (
@@ -1023,7 +1046,7 @@ export default function LoginPage() {
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "rgba(255,255,255,0.08)" }} />
-                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>Stratum™ · Acme Corp</span>
+                <span style={{ marginLeft: 10, fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>Meridian AI · Acme Corp</span>
               </div>
               <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -1075,12 +1098,12 @@ export default function LoginPage() {
               </h2>
               
               <p style={{ fontSize: 16, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                Stratum™ reads every connected platform before it answers. Ask it why CPC spiked on Thursday, and it&apos;ll check GA4, Google Ads, Meta, landing page performance, and historical patterns before it responds.
+                Meridian reads every connected platform before it answers. Ask it why CPC spiked on Thursday, and it&apos;ll check GA4, Google Ads, Meta, landing page performance, and historical patterns before it responds.
               </p>
               
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 14 }}>
                 {[
-                  "Natural language queries—ask like you're talking to a human",
+                  "Natural language queries. Ask like you're talking to a human",
                   "Cross-platform analysis before every response",
                   "Cites sources with drill-down links to the data",
                   "Remembers conversation context for follow-up questions",
@@ -1130,7 +1153,7 @@ export default function LoginPage() {
               </h2>
               
               <p style={{ fontSize: 16, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, marginBottom: 28 }}>
-                Drag in the blocks you want. Stratum™ writes the commentary. You tweak if needed. Generate a PDF or share a live link. The entire process takes 10 minutes instead of three hours.
+                Drag in the blocks you want. Meridian writes the commentary. You tweak if needed. Generate a PDF or share a live link. The entire process takes 10 minutes instead of three hours.
               </p>
               
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1158,7 +1181,7 @@ export default function LoginPage() {
               <div style={{ padding: 16 }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
                   {([
-                    { label: "Executive Summary", tag: "Stratum™", tagColor: "#10b981" },
+                    { label: "Executive Summary", tag: "Meridian AI", tagColor: "#7c3aed" },
                     { label: "GA4: Website Performance", tag: "Live data", tagColor: "#6366f1" },
                     { label: "Google Ads: Paid Search", tag: "Live data", tagColor: "#6366f1" },
                     { label: "Meta Ads: Paid Social", tag: "Live data", tagColor: "#6366f1" },
@@ -1176,9 +1199,9 @@ export default function LoginPage() {
                   ))}
                 </div>
                 <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(99,102,241,0.07)", border: "1px solid rgba(99,102,241,0.15)", marginBottom: 12 }}>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", marginBottom: 5 }}>Stratum<sup style={{ fontSize: "0.7em", verticalAlign: "super" }}>™</sup> Commentary</p>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: "#c4b5fd", marginBottom: 5 }}>Meridian AI Commentary</p>
                   <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", lineHeight: 1.6 }}>
-                    &ldquo;Sessions were up 14% on the previous period, driven primarily by organic (+22%) and paid search (+9%). ROAS across paid channels averaged 4.2×, though Meta underperformed…&rdquo;
+                    &ldquo;Sessions were up 14% on the previous period, driven primarily by organic (+22%) and paid search (+9%). ROAS across paid channels averaged 4.2x, though Meta underperformed…&rdquo;
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -1255,9 +1278,9 @@ export default function LoginPage() {
                 <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Channel ROAS</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {([
-                    { ch: "Google Search", roas: "6.2×", w: "88%", color: "#10b981" },
-                    { ch: "Meta Ads", roas: "1.9×", w: "27%", color: "#ef4444" },
-                    { ch: "LinkedIn", roas: "2.1×", w: "30%", color: "#f59e0b" },
+                    { ch: "Google Search", roas: "6.2x", w: "88%", color: "#10b981" },
+                    { ch: "Meta Ads", roas: "1.9x", w: "27%", color: "#ef4444" },
+                    { ch: "LinkedIn", roas: "2.1x", w: "30%", color: "#f59e0b" },
                   ] as { ch: string; roas: string; w: string; color: string }[]).map((c) => (
                     <div key={c.ch}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
@@ -1455,7 +1478,7 @@ export default function LoginPage() {
               Built-in agency tools
             </h2>
             <p style={{ fontSize: 16, color: "rgba(255,255,255,0.45)", maxWidth: 640, margin: "0 auto", lineHeight: 1.7 }}>
-              StratOS isn&apos;t just reporting. We&apos;ve built the tools agencies actually use day-to-day—all AI-powered, all in one place.
+              StratOS isn&apos;t just reporting. We&apos;ve built the tools agencies actually use day-to-day, all AI-powered, all in one place.
             </p>
           </div>
 
@@ -1471,7 +1494,7 @@ export default function LoginPage() {
               { icon: <BookOpen style={{ width: 22, height: 22 }} />, title: "Content Strategy", desc: "Sector-specific content plans with topics, keywords, and publishing schedules.", color: "#a855f7" },
               { icon: <Monitor style={{ width: 22, height: 22 }} />, title: "Landing Page Analyser", desc: "CRO/SEO/Mobile/Forms scoring with AI recommendations. Know what's broken before you publish.", color: "#ef4444" },
               { icon: <Terminal style={{ width: 22, height: 22 }} />, title: "LLM.txt Generator", desc: "Sector-specific LLM context files for AI-ready brand visibility.", color: "#6366f1" },
-              { icon: <Share2 style={{ width: 22, height: 22 }} />, title: "Competitor Intelligence", desc: "Share of voice, competitive monitoring, and ongoing snapshots with Stratum™ commentary.", color: "#ec4899" },
+              { icon: <Share2 style={{ width: 22, height: 22 }} />, title: "Competitor Intelligence", desc: "Share of voice, competitive monitoring, and ongoing snapshots with Meridian-powered commentary.", color: "#ec4899" },
               { icon: <Palette style={{ width: 22, height: 22 }} />, title: "Creative Intelligence", desc: "Ad creative performance analysis and fatigue detection across all paid channels.", color: "#14b8a6" },
             ].map((tool, i) => (
               <div key={i} className="tool-card stagger-in" style={{
@@ -1592,7 +1615,7 @@ export default function LoginPage() {
             Built by i3MEDIA
           </h2>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", lineHeight: 1.85, marginBottom: 24 }}>
-            We&apos;ve been running digital campaigns for ambitious brands for over 22 years. StratOS is what we built for ourselves—because we were tired of opening 11 tabs every morning, reconciling numbers that don&apos;t match, and spending Tuesday afternoons writing reports.
+            We&apos;ve been running digital campaigns for ambitious brands for over 22 years. StratOS is what we built for ourselves, because we were tired of opening 11 tabs every morning, reconciling numbers that don&apos;t match, and spending Tuesday afternoons writing reports.
           </p>
           <p style={{ fontSize: 17, color: "rgba(255,255,255,0.55)", lineHeight: 1.85, marginBottom: 40 }}>
             This isn&apos;t a product built by developers who&apos;ve never run a campaign. It&apos;s built by people who do this work every day. That&apos;s why it feels different.
@@ -1659,7 +1682,7 @@ export default function LoginPage() {
                 role: "Paid Media Director · Growth Agency, Manchester",
               },
               {
-                quote: "We run 30+ client accounts. Having everything in one place, with anomalies surfaced automatically and reports that basically write themselves — it's transformed what our team can take on.",
+                quote: "We run 30+ client accounts. Having everything in one place, with anomalies surfaced automatically and reports that basically write themselves, it's transformed what our team can take on.",
                 name: "Priya K.",
                 role: "Agency Principal · Performance Agency, Birmingham",
               },

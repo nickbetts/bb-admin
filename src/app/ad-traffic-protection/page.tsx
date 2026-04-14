@@ -253,7 +253,22 @@ export default function AdTrafficProtectionPage() {
             <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.65)", letterSpacing: "0.01em" }}>Ad Traffic Protection</span>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <a
+            href="/meridian"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 7,
+              padding: "7px 14px", borderRadius: 8,
+              background: "rgba(124,58,237,0.08)",
+              border: "1px solid rgba(124,58,237,0.2)",
+              color: "#c4b5fd", fontSize: 12, fontWeight: 600, textDecoration: "none",
+              transition: "all 0.2s ease",
+            }}
+          >
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#8b5cf6", boxShadow: "0 0 6px rgba(139,92,246,0.6)", display: "inline-block", flexShrink: 0 }} />
+            Meridian AI
+            <span style={{ fontSize: 8, fontWeight: 800, color: "#a78bfa", background: "rgba(124,58,237,0.2)", padding: "1px 5px", borderRadius: 3, letterSpacing: "0.06em", textTransform: "uppercase" }}>Alpha</span>
+          </a>
           <a href="/login" style={{
             padding: "9px 18px", borderRadius: 8,
             background: "rgba(255,255,255,0.06)",

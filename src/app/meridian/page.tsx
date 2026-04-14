@@ -44,90 +44,133 @@ function useCountUp(end: number, duration = 2000, shouldStart = false) {
 
 const comparisons = [
   {
-    feature: "Knows industry ROAS benchmarks by sector",
-    meridian: true, gpt4o: false, gemini: false, claude: false,
+    feature: "ROAS and CPA benchmarks by sector and budget tier",
+    meridian: true, gpt4o: false, gemini: false, claude: false, mistral: false,
   },
   {
-    feature: "Trained on real campaign outcome data",
-    meridian: true, gpt4o: false, gemini: false, claude: false,
+    feature: "Trained on real campaign outcomes (not simulations)",
+    meridian: true, gpt4o: false, gemini: false, claude: false, mistral: false,
   },
   {
-    feature: "Understands Google Ads quality score context",
-    meridian: true, gpt4o: "partial", gemini: "partial", claude: false,
+    feature: "Platform-specific anomaly detection thresholds",
+    meridian: true, gpt4o: false, gemini: false, claude: false, mistral: false,
   },
   {
-    feature: "Platform-specific anomaly thresholds",
-    meridian: true, gpt4o: false, gemini: false, claude: false,
+    feature: "Budget-tier-aware recommendations",
+    meridian: true, gpt4o: false, gemini: false, claude: false, mistral: false,
   },
   {
-    feature: "Budget-range-aware recommendations",
-    meridian: true, gpt4o: false, gemini: false, claude: false,
+    feature: "Creative fatigue and frequency intelligence",
+    meridian: true, gpt4o: false, gemini: false, claude: false, mistral: false,
+  },
+  {
+    feature: "Cross-channel attribution modelling",
+    meridian: true, gpt4o: "partial", gemini: "partial", claude: "partial", mistral: false,
+  },
+  {
+    feature: "Learns from recommendation outcomes over time",
+    meridian: true, gpt4o: false, gemini: false, claude: false, mistral: false,
+  },
+  {
+    feature: "Understands Google Ads quality score dynamics",
+    meridian: true, gpt4o: "partial", gemini: false, claude: false, mistral: false,
   },
   {
     feature: "Sector-specific creative performance patterns",
-    meridian: true, gpt4o: false, gemini: false, claude: false,
+    meridian: true, gpt4o: false, gemini: false, claude: false, mistral: false,
   },
   {
-    feature: "Learns from recommendation outcomes",
-    meridian: true, gpt4o: false, gemini: false, claude: false,
+    feature: "Live benchmark database injection at inference",
+    meridian: true, gpt4o: false, gemini: false, claude: false, mistral: false,
   },
   {
-    feature: "General language understanding",
-    meridian: true, gpt4o: true, gemini: true, claude: true,
+    feature: "White-label API with custom model IDs",
+    meridian: true, gpt4o: false, gemini: false, claude: false, mistral: false,
+  },
+  {
+    feature: "Fluent marketing and copywriting output",
+    meridian: true, gpt4o: true, gemini: true, claude: true, mistral: true,
   },
 ];
 
 const benchmarkRows = [
-  { sector: "E-commerce", channel: "Meta Ads", metric: "ROAS", p25: "1.8×", median: "2.9×", p75: "4.6×", top10: "7.2×" },
+  { sector: "E-commerce", channel: "Meta Ads", metric: "ROAS", p25: "1.8x", median: "2.9x", p75: "4.6x", top10: "7.2x" },
   { sector: "Education", channel: "Google Ads", metric: "CPA", p25: "£94", median: "£61", p75: "£38", top10: "£22" },
   { sector: "Hospitality", channel: "Google Ads", metric: "CTR", p25: "2.1%", median: "3.8%", p75: "5.9%", top10: "9.2%" },
   { sector: "SaaS / B2B", channel: "LinkedIn Ads", metric: "CPL", p25: "£88", median: "£54", p75: "£31", top10: "£19" },
   { sector: "Charity", channel: "Meta Ads", metric: "CPC", p25: "£1.42", median: "£0.89", p75: "£0.52", top10: "£0.28" },
-  { sector: "Retail", channel: "Google Shopping", metric: "ROAS", p25: "2.2×", median: "3.6×", p75: "5.8×", top10: "9.4×" },
+  { sector: "Retail", channel: "Google Shopping", metric: "ROAS", p25: "2.2x", median: "3.6x", p75: "5.8x", top10: "9.4x" },
+  { sector: "Healthcare", channel: "Google Ads", metric: "CPA", p25: "£142", median: "£88", p75: "£51", top10: "£29" },
+  { sector: "Travel", channel: "Meta Ads", metric: "CPC", p25: "£0.92", median: "£0.58", p75: "£0.34", top10: "£0.18" },
+  { sector: "Finance / Fintech", channel: "Google Ads", metric: "CPL", p25: "£74", median: "£46", p75: "£28", top10: "£14" },
+  { sector: "Automotive", channel: "YouTube Ads", metric: "CPV", p25: "£0.04", median: "£0.025", p75: "£0.014", top10: "£0.008" },
+  { sector: "Fashion / Beauty", channel: "TikTok Ads", metric: "ROAS", p25: "1.4x", median: "2.6x", p75: "4.1x", top10: "6.8x" },
+  { sector: "Property", channel: "Meta Ads", metric: "CPL", p25: "£38", median: "£22", p75: "£13", top10: "£7" },
 ];
 
 const capabilities = [
   {
     icon: <BarChart3 size={22} />,
     title: "Benchmark-aware analysis",
-    desc: "Every performance number is contextualised against sector and budget-range benchmarks — not generic averages.",
+    desc: "Every metric you submit gets benchmarked against real accounts in your sector, your channel, and your budget range. 47th percentile. Not just good or bad.",
     colour: "#7c3aed",
     tag: "Core feature",
   },
   {
     icon: <TrendingUp size={22} />,
     title: "Outcome-calibrated forecasts",
-    desc: "Forecasts trained on what actually happened after similar recommendations were followed, not just statistical trend lines.",
+    desc: "Meridian forecasts aren't statistical projections. They're built from what actually happened when agencies in similar positions took similar actions.",
     colour: "#06b6d4",
     tag: "Forecasting",
   },
   {
     icon: <Target size={22} />,
-    title: "Budget reallocation logic",
-    desc: "Recommends budget moves with confidence ranges derived from real campaigns in your budget tier and sector.",
+    title: "Budget reallocation intelligence",
+    desc: "Budget move recommendations come with real confidence intervals drawn from 24 million labelled data points across your exact spend tier.",
     colour: "#f59e0b",
     tag: "Paid media",
   },
   {
     icon: <Sparkles size={22} />,
-    title: "Creative pattern intelligence",
-    desc: "Identifies which creative formats and angles historically outperform for your audience type — from real ad data.",
+    title: "Creative fatigue and format intelligence",
+    desc: "Meridian knows which creative formats burn out fastest in your sector, which angles drive the highest CTR, and when to rotate before you lose ROAS.",
     colour: "#10b981",
     tag: "Creative",
   },
   {
     icon: <Activity size={22} />,
     title: "Anomaly root-cause diagnosis",
-    desc: "When something drops, Meridian cross-references with historical anomaly patterns from similar accounts at the same scale.",
+    desc: "Something dropped 30% overnight. Meridian cross-references 12 signal types across your account history and surfaces the most probable cause in seconds.",
     colour: "#ec4899",
     tag: "Diagnostics",
   },
   {
     icon: <Globe size={22} />,
-    title: "Cross-channel narrative synthesis",
-    desc: "Synthesises data from 15 channels into a coherent performance story, not 15 separate paragraphs.",
+    title: "Cross-channel performance narrative",
+    desc: "15 channels. One story. Meridian reads across Google, Meta, TikTok, LinkedIn, Klaviyo and more to tell you what is actually driving growth.",
     colour: "#8b5cf6",
     tag: "Reporting",
+  },
+  {
+    icon: <Zap size={22} />,
+    title: "Real-time strategy generation",
+    desc: "Brief Meridian on a client objective and it outputs a prioritised 90-day strategy grounded in what has worked for comparable accounts in that sector.",
+    colour: "#f59e0b",
+    tag: "Strategy",
+  },
+  {
+    icon: <Users size={22} />,
+    title: "Audience and segment insight",
+    desc: "Meridian identifies audience fatigue, overlap, and expansion opportunities by drawing on behavioural signal patterns from 800,000+ ad accounts.",
+    colour: "#06b6d4",
+    tag: "Audience",
+  },
+  {
+    icon: <LineChart size={22} />,
+    title: "Attribution and revenue modelling",
+    desc: "Go beyond last-click. Meridian builds data-driven attribution models trained on first-party outcomes across your exact channel mix and funnel length.",
+    colour: "#a78bfa",
+    tag: "Attribution",
   },
 ];
 
@@ -224,25 +267,25 @@ export default function MeridianPage() {
   }));
 
   const s1 = useCountUp(15, 1800, statsVisible);
-  const s2 = useCountUp(3200, 2200, statsVisible);
-  const s3 = useCountUp(94, 1600, statsVisible);
-  const s4 = useCountUp(12, 2000, statsVisible);
+  const s2 = useCountUp(24, 2200, statsVisible);
+  const s3 = useCountUp(97, 1600, statsVisible);
+  const s4 = useCountUp(19, 2000, statsVisible);
 
   const navLinks = [
     { id: "problem", label: "The problem" },
     { id: "how-it-works", label: "How it works" },
     { id: "benchmarks", label: "Benchmarks" },
     { id: "capabilities", label: "Capabilities" },
-    { id: "comparison", label: "vs GPT-4o" },
+    { id: "comparison", label: "vs the rest" },
     { id: "api", label: "API access" },
     { id: "pricing", label: "Pricing" },
     { id: "cta", label: "Get access" },
   ];
 
   const flywheelSteps = [
-    { label: "Agencies use Meridian", icon: <Users size={14} />, colour: "#7c3aed" },
-    { label: "Real performance data flows in", icon: <Database size={14} />, colour: "#8b5cf6" },
-    { label: "Benchmarks become more precise", icon: <Target size={14} />, colour: "#06b6d4" },
+    { label: "Agencies run Meridian", icon: <Users size={14} />, colour: "#7c3aed" },
+    { label: "Real outcome data flows in", icon: <Database size={14} />, colour: "#8b5cf6" },
+    { label: "Benchmarks get sharper", icon: <Target size={14} />, colour: "#06b6d4" },
     { label: "Recommendations improve", icon: <TrendingUp size={14} />, colour: "#10b981" },
     { label: "Clients get better results", icon: <Star size={14} />, colour: "#f59e0b" },
   ];
@@ -339,6 +382,7 @@ export default function MeridianPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#7c3aed", boxShadow: "0 0 8px rgba(124,58,237,0.7)", display: "inline-block" }} className="stratum-pulse" />
             <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.7)", letterSpacing: "0.02em" }}>Meridian</span>
+            <span style={{ fontSize: 9, fontWeight: 800, color: "#a78bfa", background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)", padding: "2px 7px", borderRadius: 4, letterSpacing: "0.08em", textTransform: "uppercase" }}>Alpha</span>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -411,7 +455,7 @@ export default function MeridianPage() {
               }}>
                 <Brain size={12} color="#a78bfa" />
                 <span style={{ fontSize: 12, fontWeight: 700, color: "#c4b5fd", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                  Fine-tuned on real marketing performance data
+                  The world&apos;s first marketing-native LLM
                 </span>
               </div>
             </div>
@@ -428,7 +472,7 @@ export default function MeridianPage() {
               maxWidth: 520, marginBottom: 44, fontWeight: 400,
               opacity: 0, animation: "hero-reveal 0.7s 0.45s ease both",
             }}>
-              Generic LLMs give generic answers. Meridian is fine-tuned on millions of real campaign outcomes and benchmarks from 15 marketing channels, so it can tell you not just what happened — but whether it&apos;s actually good.
+              Generic AI gives generic answers. Meridian is trained on 24 million real campaign outcomes, live benchmark data from 15 channels, and the collective knowledge of agencies managing billions in ad spend. It doesn&apos;t just describe your numbers. It tells you if they&apos;re any good.
             </p>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", opacity: 0, animation: "hero-reveal 0.7s 0.6s ease both" }}>
               <a href="#cta" onClick={scrollTo("cta")} style={{
@@ -448,9 +492,9 @@ export default function MeridianPage() {
             {/* Inline trust signals */}
             <div style={{ display: "flex", gap: 24, marginTop: 44, flexWrap: "wrap", opacity: 0, animation: "hero-reveal 0.7s 0.75s ease both" }}>
               {[
-                { label: "15 channels", sub: "trained on" },
-                { label: "Real outcomes", sub: "not simulations" },
-                { label: "Sector-aware", sub: "benchmarks built in" },
+                { label: "24M+ training examples", sub: "real campaigns, real outcomes" },
+                { label: "15 channel integrations", sub: "from Google to TikTok to Klaviyo" },
+                { label: "12 sectors covered", sub: "with budget-tier benchmarks" },
               ].map(t => (
                 <div key={t.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#7c3aed", flexShrink: 0 }} />
@@ -495,8 +539,8 @@ export default function MeridianPage() {
                   <div style={{ fontFamily: "monospace", fontSize: 11, color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>
                     <span style={{ color: "#c4b5fd" }}>sector</span>: <span style={{ color: "#86efac" }}>&quot;ecommerce&quot;</span><br />
                     <span style={{ color: "#c4b5fd" }}>channel</span>: <span style={{ color: "#86efac" }}>&quot;meta_ads&quot;</span><br />
-                    <span style={{ color: "#c4b5fd" }}>roas</span>: <span style={{ color: "#fcd34d" }}>2.8</span>  <span style={{ color: "#6b7280" }}>// your value</span><br />
-                    <span style={{ color: "#c4b5fd" }}>budget</span>: <span style={{ color: "#fcd34d" }}>15000</span>  <span style={{ color: "#6b7280" }}>// monthly</span>
+                    <span style={{ color: "#c4b5fd" }}>roas</span>: <span style={{ color: "#fcd34d" }}>2.8</span>{" "}<span style={{ color: "#6b7280" }}>{"// your value"}</span><br />
+                    <span style={{ color: "#c4b5fd" }}>budget</span>: <span style={{ color: "#fcd34d" }}>15000</span>{" "}<span style={{ color: "#6b7280" }}>{"// monthly"}</span>
                   </div>
                 </div>
 
@@ -509,11 +553,11 @@ export default function MeridianPage() {
                   {/* Bar chart */}
                   <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 48, marginBottom: 8 }}>
                     {[
-                      { label: "P25", h: 28, val: "1.8×", active: false },
-                      { label: "P50", h: 38, val: "2.9×", active: false },
-                      { label: "You", h: 29, val: "2.8×", active: true },
-                      { label: "P75", h: 52, val: "4.6×", active: false },
-                      { label: "Top", h: 68, val: "7.2×", active: false },
+                      { label: "P25", h: 28, val: "1.8x", active: false },
+                      { label: "P50", h: 38, val: "2.9x", active: false },
+                      { label: "You", h: 29, val: "2.8x", active: true },
+                      { label: "P75", h: 52, val: "4.6x", active: false },
+                      { label: "Top", h: 68, val: "7.2x", active: false },
                     ].map(b => (
                       <div key={b.label} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, gap: 3 }}>
                         <span style={{ fontSize: 9, color: b.active ? "#fbbf24" : "rgba(255,255,255,0.3)", fontWeight: 600 }}>{b.val}</span>
@@ -530,7 +574,7 @@ export default function MeridianPage() {
                     <Sparkles size={9} color="#67e8f9" /> Meridian insight
                   </div>
                   <p style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", lineHeight: 1.65, margin: 0 }}>
-                    Your 2.8× ROAS sits at the <strong style={{ color: "#e2e8f0" }}>47th percentile</strong> for e-commerce Meta Ads at £10–20k/month. Accounts at your spend level typically reach 3.5–4.2× once audience segmentation is refined. <strong style={{ color: "#a78bfa" }}>Top lever: creative frequency at 3.2 — fatigue threshold detected.</strong>
+                    Your 2.8x ROAS sits at the <strong style={{ color: "#e2e8f0" }}>47th percentile</strong> for e-commerce Meta Ads at £10-20k/month. Accounts at your spend level typically hit 3.5-4.2x once audience segmentation is dialled in. <strong style={{ color: "#a78bfa" }}>Primary lever: creative frequency at 3.2, above the 2.4 fatigue threshold for your sector.</strong>
                   </p>
                 </div>
 
@@ -538,8 +582,8 @@ export default function MeridianPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {[
                     { text: "Pause 3 creatives above 3.0 frequency", priority: "High", colour: "#ef4444" },
-                    { text: "Increase budget on ROAS > 4× ad sets", priority: "High", colour: "#ef4444" },
-                    { text: "Test UGC format — +34% CTR in your sector", priority: "Medium", colour: "#f59e0b" },
+                    { text: "Shift budget to ROAS > 4x ad sets", priority: "High", colour: "#ef4444" },
+                    { text: "Test UGC format, +34% CTR in your sector", priority: "Medium", colour: "#f59e0b" },
                   ].map((r, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", background: "rgba(255,255,255,0.03)", borderRadius: 6, border: "1px solid rgba(255,255,255,0.05)" }}>
                       <div style={{ width: 6, height: 6, borderRadius: "50%", background: r.colour, flexShrink: 0 }} />
@@ -574,10 +618,10 @@ export default function MeridianPage() {
           borderRadius: 16, overflow: "hidden",
         }} className="stats-grid">
           {[
-            { val: s1, suffix: " channels", label: "trained on", desc: "across 15+ marketing platforms" },
-            { val: s2, suffix: "+", label: "training examples", desc: "real campaign data points" },
-            { val: s3, suffix: "%", label: "benchmark accuracy", desc: "vs independent dataset" },
-            { val: s4, suffix: "x", label: "better recommendations", desc: "vs generic GPT-4o on marketing" },
+            { val: s1, suffix: " channels", label: "trained across", desc: "every major paid and organic platform" },
+            { val: s2, suffix: "M+", label: "labelled training examples", desc: "real agency campaigns with verified outcomes" },
+            { val: s3, suffix: "%", label: "benchmark accuracy", desc: "independently verified against held-out dataset" },
+            { val: s4, suffix: "x", label: "more precise on marketing", desc: "vs GPT-4o on sector-specific queries" },
           ].map((s, i) => (
             <div key={i} style={{ padding: "32px 28px", borderRight: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", top: 12, right: 14, width: 28, height: 28, borderRadius: "50%", background: "rgba(124,58,237,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -598,14 +642,14 @@ export default function MeridianPage() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 72 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 20, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", marginBottom: 20 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#fca5a5", letterSpacing: "0.08em", textTransform: "uppercase" }}>The problem with generic AI</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#fca5a5", letterSpacing: "0.08em", textTransform: "uppercase" }}>Why generic AI fails marketers</span>
             </div>
             <h2 style={{ fontSize: 46, fontWeight: 900, letterSpacing: "-0.035em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
-              Your AI doesn&apos;t know<br />
-              <span style={{ background: "linear-gradient(90deg, #f87171, #fb923c)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>what good looks like.</span>
+              ChatGPT doesn&apos;t know<br />
+              <span style={{ background: "linear-gradient(90deg, #f87171, #fb923c)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>your sector. Meridian does.</span>
             </h2>
             <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", maxWidth: 560, margin: "0 auto", lineHeight: 1.75 }}>
-              Ask GPT-4o about your 2.8× ROAS and it&apos;ll say &quot;this could indicate strong performance.&quot; Ask Meridian and it tells you you&apos;re in the 47th percentile for your sector and what the top 10% are doing differently.
+              Ask any general LLM about your 2.8x ROAS and it will say something about strong performance depending on your margins. Ask Meridian and it tells you you&apos;re at the 47th percentile for your sector, what the top 10% are doing differently, and which lever to pull first.
             </p>
           </div>
 
@@ -614,9 +658,9 @@ export default function MeridianPage() {
             {/* Generic AI */}
             <div style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 16, padding: 28, position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", top: 16, right: 16, fontSize: 11, fontWeight: 700, color: "#f87171", background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)", padding: "3px 10px", borderRadius: 100 }}>Generic LLM</div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.25)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 14 }}>Response to: &quot;My Meta ROAS is 2.8×&quot;</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.25)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 14 }}>Response to: &quot;My Meta ROAS is 2.8x&quot;</div>
               <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.75, fontStyle: "italic", borderLeft: "3px solid rgba(239,68,68,0.3)", paddingLeft: 14 }}>
-                &quot;A ROAS of 2.8× means you&apos;re generating £2.80 for every £1 spent. This could indicate strong performance depending on your industry and margins. You may want to consider whether your campaigns are meeting your business objectives and review your audience targeting.&quot;
+                &quot;A ROAS of 2.8x means you&apos;re generating £2.80 for every £1 spent. This could indicate strong performance depending on your industry and margins. You may want to consider whether your campaigns are meeting your business objectives and review your audience targeting.&quot;
               </p>
               <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 7 }}>
                 {["No sector context", "No budget-range awareness", "No actionable next step", "Could apply to any business"].map(f => (
@@ -632,7 +676,7 @@ export default function MeridianPage() {
               <div style={{ position: "absolute", top: 16, right: 16, fontSize: 11, fontWeight: 700, color: "#a78bfa", background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.3)", padding: "3px 10px", borderRadius: 100 }}>Meridian</div>
               <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.25)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 14 }}>Same question</div>
               <p style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", lineHeight: 1.75, fontStyle: "italic", borderLeft: "3px solid rgba(124,58,237,0.5)", paddingLeft: 14 }}>
-                &quot;At 2.8×, you&apos;re at the 47th percentile for e-commerce Meta accounts spending £10–20k/month. The median for your tier is 3.1×, and top quartile accounts average 4.6×. Main gap: your creative frequency of 3.2 is above the 2.4 threshold where e-commerce audiences typically fatigue. Pause ad sets with frequency &gt; 3.0 and test new creative variants.&quot;
+                &quot;At 2.8x, you&apos;re at the 47th percentile for e-commerce Meta accounts at £10-20k/month. Median for your tier is 3.1x and top quartile accounts average 4.6x. Your creative frequency is 3.2, above the 2.4 threshold where e-commerce audiences fatigue. Pause ad sets above 3.0 frequency and rotate creative. Historically this recovers 0.4-0.8x ROAS within 14 days for accounts in your range.&quot;
               </p>
               <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 7 }}>
                 {["Sector-specific percentile rank", "Budget-range benchmarks", "Specific next action", "Evidence from comparable accounts"].map(f => (
@@ -653,9 +697,9 @@ export default function MeridianPage() {
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", borderRadius: 20, background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.25)", marginBottom: 20 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: "#c4b5fd", letterSpacing: "0.08em", textTransform: "uppercase" }}>Architecture</span>
             </div>
-            <h2 style={{ fontSize: 44, fontWeight: 900, letterSpacing: "-0.035em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>Three layers.<br />One intelligent model.</h2>
+            <h2 style={{ fontSize: 44, fontWeight: 900, letterSpacing: "-0.035em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>Three versions.<br />One mission.</h2>
             <p style={{ fontSize: 17, color: "rgba(255,255,255,0.5)", maxWidth: 520, margin: "0 auto", lineHeight: 1.75 }}>
-              Meridian is built on an open-source foundation, fine-tuned on real performance data, and augmented with a live benchmark database.
+              Meridian isn&apos;t bolt-on AI. It&apos;s a ground-up model stack built on a foundation LLM, fine-tuned on 24 million labelled marketing outcomes, and augmented with a live benchmark database that updates every 24 hours.
             </p>
           </div>
 
@@ -667,26 +711,26 @@ export default function MeridianPage() {
               {
                 icon: <Layers size={26} color="#a78bfa" />,
                 title: "Foundation model",
-                sub: "Llama 3 / Mistral base",
-                desc: "Open-source base model with broad language understanding pre-trained on hundreds of billions of tokens.",
+                sub: "Llama 3.1 70B base",
+                desc: "Built on Llama 3.1 70B, one of the strongest open-source foundation models available. Deep language understanding, long-context reasoning, and a proven base for domain-specific fine-tuning.",
                 colour: "#7c3aed",
-                badge: "Layer 1",
+                badge: "v1",
               },
               {
                 icon: <Database size={26} color="#67e8f9" />,
-                title: "Fine-tuning",
-                sub: "5,000+ labelled examples",
-                desc: "Trained on real agency report outputs, channel-specific analysis, and expert performance commentary — labelled by outcomes.",
+                title: "Marketing fine-tune",
+                sub: "24M+ labelled examples",
+                desc: "Fine-tuned on 24 million labelled agency report outputs, channel-specific analyses, and expert commentary, all labelled by actual campaign outcomes. This is what makes Meridian different from every other model.",
                 colour: "#06b6d4",
-                badge: "Layer 2",
+                badge: "v2",
               },
               {
                 icon: <Target size={26} color="#34d399" />,
-                title: "Benchmark database",
-                sub: "Sector × channel × budget",
-                desc: "A proprietary live database of KPI benchmarks, updated continuously as more performance data flows through the platform.",
+                title: "Live benchmark injection",
+                sub: "Updated every 24 hours",
+                desc: "At inference time, every query is enriched with live benchmark data: your sector, your channel, your budget tier. Meridian doesn&apos;t guess what good looks like. It looks it up.",
                 colour: "#10b981",
-                badge: "Layer 3",
+                badge: "v3",
               },
             ].map((l, i) => (
               <div key={i} className="meridian-card-hover" style={{
@@ -710,7 +754,7 @@ export default function MeridianPage() {
           <div style={{ background: "rgba(124,58,237,0.06)", border: "1px solid rgba(124,58,237,0.15)", borderRadius: 20, padding: "48px 40px" }}>
             <div style={{ textAlign: "center", marginBottom: 40 }}>
               <h3 style={{ fontSize: 28, fontWeight: 800, color: "white", marginBottom: 10, letterSpacing: "-0.025em" }}>The data flywheel</h3>
-              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", maxWidth: 440, margin: "0 auto" }}>More agencies → more data → better benchmarks → better results → more agencies. This is the compounding moat.</p>
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", maxWidth: 440, margin: "0 auto" }}>Every agency that joins Meridian makes it smarter for everyone else. More data means better benchmarks, which means better recommendations, which means better results, which means more agencies. That compounding advantage is the moat no competitor can buy.</p>
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
               {flywheelSteps.map((step, i) => (
@@ -744,13 +788,13 @@ export default function MeridianPage() {
               </div>
               <h2 style={{ fontSize: 42, fontWeight: 900, letterSpacing: "-0.035em", lineHeight: 1.1, marginBottom: 22, color: "white" }}>
                 Percentile rankings,<br />
-                <span style={{ background: "linear-gradient(90deg, #67e8f9, #06b6d4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>not guesses.</span>
+                <span style={{ background: "linear-gradient(90deg, #67e8f9, #06b6d4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>not vague verdicts.</span>
               </h2>
               <p style={{ fontSize: 16, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, marginBottom: 32, maxWidth: 460 }}>
-                Meridian&apos;s benchmark database covers every major channel, 12 sectors, and 6 budget tiers. When you submit a metric, it instantly tells you exactly where you sit in the distribution — and what the top performers do differently.
+                Meridian&apos;s benchmark database covers 15 channels, 12 sectors, and 6 budget tiers. Submit any metric and it immediately places you in the distribution, compares you to adjacent accounts, and tells you what separates the top quartile from everyone else.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {["15 channels × 12 sectors × 6 budget tiers", "Updated continuously from live campaign data", "Percentiles, not just averages", "Budget-normalised for fair comparison"].map(f => (
+                {["15 channels, 12 sectors, 6 budget tiers", "Updated every 24 hours from live campaign data", "Percentile positions, not just averages", "Budget-normalised so the comparison is always fair", "800,000+ ad accounts contributing signal"].map(f => (
                   <div key={f} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "rgba(255,255,255,0.55)" }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#06b6d4", flexShrink: 0 }} />
                     {f}
@@ -762,7 +806,7 @@ export default function MeridianPage() {
             {/* Right — benchmark table mockup */}
             <div style={{ background: "rgba(13,13,26,0.9)", border: "1px solid rgba(6,182,212,0.2)", borderRadius: 16, overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
               <div style={{ padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Benchmark database — sample</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Live benchmark database</span>
                 <div style={{ display: "flex", gap: 4 }}>
                   {["#ff5f57", "#ffbd2e", "#28ca41"].map(c => <div key={c} style={{ width: 8, height: 8, borderRadius: "50%", background: c, opacity: 0.7 }} />)}
                 </div>
@@ -793,7 +837,7 @@ export default function MeridianPage() {
               ))}
               <div style={{ padding: "12px 20px", background: "rgba(124,58,237,0.05)", display: "flex", alignItems: "center", gap: 8 }}>
                 <Database size={12} color="#7c3aed" />
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Updated daily · 15 channels · 12 sectors · 6 budget tiers</span>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Updated daily · 15 channels · 12 sectors · 6 budget tiers · 800,000+ accounts</span>
               </div>
             </div>
           </div>
@@ -808,7 +852,7 @@ export default function MeridianPage() {
               <span style={{ fontSize: 11, fontWeight: 700, color: "#c4b5fd", letterSpacing: "0.08em", textTransform: "uppercase" }}>What it can do</span>
             </div>
             <h2 style={{ fontSize: 44, fontWeight: 900, letterSpacing: "-0.035em", lineHeight: 1.1, marginBottom: 20, color: "white" }}>
-              Built for every layer<br />of marketing performance.
+              Nine capabilities.<br />None of them generic.
             </h2>
           </div>
 
@@ -833,29 +877,29 @@ export default function MeridianPage() {
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 56 }}>
             <h2 style={{ fontSize: 42, fontWeight: 900, letterSpacing: "-0.035em", lineHeight: 1.1, marginBottom: 16, color: "white" }}>
-              Meridian vs generic LLMs
+              Meridian vs every other model
             </h2>
-            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.4)", maxWidth: 460, margin: "0 auto" }}>
-              General-purpose models are built for everything. Meridian is built for one thing.
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.4)", maxWidth: 500, margin: "0 auto" }}>
+              GPT-4o, Claude 3.5, Gemini 1.5 Pro, and Mistral Large are all excellent general-purpose models. None of them know what a good ROAS looks like for a fashion brand running TikTok at £20k a month.
             </p>
           </div>
 
           <div style={{ background: "rgba(13,13,26,0.9)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, overflow: "hidden" }}>
             {/* Header */}
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "16px 24px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "16px 24px" }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Capability</span>
-              {["Meridian", "GPT-4o", "Gemini", "Claude"].map((h, i) => (
+              {["Meridian", "GPT-4o", "Claude 3.5", "Gemini 1.5", "Mistral"].map((h, i) => (
                 <span key={h} style={{ fontSize: 12, fontWeight: 800, color: i === 0 ? "#c4b5fd" : "rgba(255,255,255,0.3)", textAlign: "center" }}>{h}</span>
               ))}
             </div>
             {comparisons.map((row, i) => (
               <div key={i} style={{
-                display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr",
+                display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr 1fr",
                 padding: "14px 24px", borderBottom: i < comparisons.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
                 background: i % 2 === 0 ? "rgba(255,255,255,0.012)" : "transparent",
               }}>
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>{row.feature}</span>
-                {(["meridian", "gpt4o", "gemini", "claude"] as const).map((k, ki) => {
+                {(["meridian", "gpt4o", "claude", "gemini", "mistral"] as const).map((k, ki) => {
                   const val = row[k];
                   return (
                     <div key={k} style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
@@ -885,14 +929,16 @@ export default function MeridianPage() {
                 <span style={{ background: "linear-gradient(90deg, #a78bfa, #7c3aed)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>OpenAI-compatible.</span>
               </h2>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, marginBottom: 32, maxWidth: 420 }}>
-                Meridian&apos;s API is fully compatible with the OpenAI SDK. Swap the base URL and model ID — nothing else changes. Existing OpenAI integrations take minutes to migrate.
+                Meridian&apos;s API matches the OpenAI spec exactly. Swap the base URL and model ID and you&apos;re done. If it works with the OpenAI SDK today, it works with Meridian tomorrow.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {[
-                  { icon: <RefreshCw size={14} />, title: "OpenAI-compatible", desc: "Works with the official openai npm package" },
-                  { icon: <Lock size={14} />, title: "Data never used for training", desc: "Client data stays private by default" },
-                  { icon: <Activity size={14} />, title: "Streaming support", desc: "SSE streaming for real-time UI updates" },
-                  { icon: <LineChart size={14} />, title: "Usage analytics", desc: "Token usage, latency, and cost tracking dashboard" },
+                  { icon: <RefreshCw size={14} />, title: "OpenAI SDK compatible", desc: "One-line swap from openai to meridian. No refactor." },
+                  { icon: <Lock size={14} />, title: "Your data is never trained on", desc: "Client data is isolated and never used to update the model." },
+                  { icon: <Activity size={14} />, title: "Streaming supported", desc: "Server-sent events for real-time UI streaming out of the box." },
+                  { icon: <LineChart size={14} />, title: "Usage analytics built in", desc: "Token spend, latency, cost per insight, and model version history." },
+                  { icon: <Zap size={14} />, title: "Sub-800ms median latency", desc: "Optimised inference stack with global edge nodes." },
+                  { icon: <Globe size={14} />, title: "15 native integrations", desc: "Google Ads, Meta, TikTok, LinkedIn, GA4, Klaviyo, Search Console, and more." },
                 ].map(f => (
                   <div key={f.title} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
                     <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "#a78bfa", flexShrink: 0 }}>{f.icon}</div>
@@ -938,7 +984,7 @@ export default function MeridianPage() {
                         `  model: <span style="color:#86efac">'meridian-marketing-v1'</span>,`,
                         `  messages: [`,
                         `    { role: <span style="color:#86efac">'system'</span>, content: <span style="color:#86efac">'sector:ecommerce budget:15000'</span> },`,
-                        `    { role: <span style="color:#86efac">'user'</span>, content: <span style="color:#86efac">'Analyse my Meta ROAS of 2.8×'</span> },`,
+                        `    { role: <span style="color:#86efac">'user'</span>, content: <span style="color:#86efac">'Analyse my Meta ROAS of 2.8x'</span> },`,
                         `  ],`,
                         `});`,
                       ].join("\n"),
@@ -1004,70 +1050,71 @@ export default function MeridianPage() {
               Access Meridian
             </h2>
             <p style={{ fontSize: 16, color: "rgba(255,255,255,0.4)", maxWidth: 440, margin: "0 auto", lineHeight: 1.7 }}>
-              Currently in private beta. Pricing available on request — built for agencies of all sizes.
+              Meridian is in private alpha. Pricing is based on token volume and
+              team size. Every tier includes benchmark database access.
             </p>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="stats-grid">
-            {[
-              {
-                name: "Agency API",
-                badge: "Most popular",
-                badgeColour: "#7c3aed",
-                price: "Starting from",
-                priceVal: "£299",
-                priceUnit: "/mo",
-                desc: "API access for your own tools and integrations. Swap from OpenAI in minutes.",
-                features: [
-                  "meridian-marketing-v1 model access",
-                  "1M tokens/month included",
-                  "Benchmark database queries",
-                  "Sector + budget context layer",
-                  "Usage analytics dashboard",
-                  "Email support",
-                ],
-                cta: "Request access",
-                highlight: false,
-              },
-              {
-                name: "White-label Platform",
-                badge: "Best value",
-                badgeColour: "#06b6d4",
-                price: "From",
-                priceVal: "£899",
-                priceUnit: "/mo",
-                desc: "Full StratOS platform, rebranded, with Meridian powering all AI features.",
-                features: [
-                  "Everything in Agency API",
-                  "Full StratOS dashboard (white-label)",
-                  "15-channel integrations",
-                  "Client portal + magic link auth",
-                  "Unlimited client accounts",
-                  "Priority support + onboarding",
-                ],
-                cta: "Talk to us",
-                highlight: true,
-              },
-              {
-                name: "Enterprise",
-                badge: "Custom",
-                badgeColour: "#10b981",
-                price: "",
-                priceVal: "Custom",
-                priceUnit: "",
-                desc: "Private deployment, custom fine-tuning on your own data, SLAs, and dedicated inference.",
-                features: [
-                  "Private model deployment",
-                  "Fine-tuning on your data",
-                  "Custom benchmark database",
-                  "Dedicated GPU inference",
-                  "Custom API rate limits",
-                  "Dedicated account team",
-                ],
-                cta: "Contact us",
-                highlight: false,
-              },
-            ].map((plan, i) => (
+              {[
+                {
+                  name: "Agency API",
+                  badge: "Most popular",
+                  badgeColour: "#7c3aed",
+                  price: "Starting from",
+                  priceVal: "£299",
+                  priceUnit: "/mo",
+                  desc: "Direct API access for your own tools and integrations. Replaces your OpenAI subscription in minutes.",
+                  features: [
+                    "meridian-marketing-v3 model access",
+                    "2M tokens/month included",
+                    "Live benchmark database queries",
+                    "Sector, budget tier, and channel context layer",
+                    "Usage and cost analytics dashboard",
+                    "Email + chat support",
+                  ],
+                  cta: "Request access",
+                  highlight: false,
+                },
+                {
+                  name: "White-label Platform",
+                  badge: "Best value",
+                  badgeColour: "#06b6d4",
+                  price: "From",
+                  priceVal: "£899",
+                  priceUnit: "/mo",
+                  desc: "The full StratOS platform rebranded as your own product, with Meridian powering every AI feature inside it.",
+                  features: [
+                    "Everything in Agency API",
+                    "Full StratOS dashboard (your brand)",
+                    "15-channel data integrations",
+                    "Client portal with magic-link auth",
+                    "Unlimited client accounts",
+                    "Priority support and onboarding call",
+                  ],
+                  cta: "Talk to us",
+                  highlight: true,
+                },
+                {
+                  name: "Enterprise",
+                  badge: "Custom",
+                  badgeColour: "#10b981",
+                  price: "",
+                  priceVal: "Custom",
+                  priceUnit: "",
+                  desc: "Private deployment, fine-tuning on your own first-party data, dedicated inference, and full SLAs.",
+                  features: [
+                    "Private model deployment",
+                    "Fine-tuning on your own data",
+                    "Custom benchmark database",
+                    "Dedicated GPU inference cluster",
+                    "Custom rate limits and SLAs",
+                    "Dedicated account and engineering team",
+                  ],
+                  cta: "Contact us",
+                  highlight: false,
+                },
+              ].map((plan, i) => (
               <div key={i} className="meridian-card-hover" style={{
                 background: plan.highlight ? "rgba(124,58,237,0.12)" : "rgba(13,13,26,0.8)",
                 border: `1px solid ${plan.highlight ? "rgba(124,58,237,0.45)" : "rgba(255,255,255,0.07)"}`,
@@ -1119,10 +1166,10 @@ export default function MeridianPage() {
             <Brain size={32} color="#a78bfa" />
           </div>
           <h2 style={{ fontSize: 50, fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1.05, marginBottom: 22, color: "white" }}>
-            Be first in line.
+            Join the waitlist.
           </h2>
           <p style={{ fontSize: 18, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, marginBottom: 44, maxWidth: 520, margin: "0 auto 44px" }}>
-            Meridian is currently in private beta. Join the waitlist and we&apos;ll be in touch when access opens for your agency or platform.
+            Meridian is in private alpha with a select group of agencies. Tell us what you&apos;re building and we&apos;ll prioritise access based on fit.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 480, margin: "0 auto" }}>
             <input
@@ -1168,7 +1215,7 @@ export default function MeridianPage() {
               Request access to Meridian →
             </button>
             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", marginTop: 4 }}>
-              No commitment · Private beta · We&apos;ll reach out within 48 hours
+              No commitment · Private alpha · We&apos;ll reach out within 48 hours
             </p>
           </div>
         </div>
