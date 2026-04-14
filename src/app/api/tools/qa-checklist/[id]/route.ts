@@ -40,6 +40,7 @@ export async function PATCH(
       notes?: string;
       aiSummary?: string;
       websiteUrl?: string;
+      label?: string;
     };
 
     const existing = await prisma.qaChecklist.findUnique({ where: { id } });
@@ -58,6 +59,7 @@ export async function PATCH(
         ...(data.notes !== undefined && { notes: data.notes }),
         ...(data.aiSummary !== undefined && { aiSummary: data.aiSummary }),
         ...(data.websiteUrl !== undefined && { websiteUrl: data.websiteUrl }),
+        ...(data.label !== undefined && { label: data.label }),
       },
     });
 

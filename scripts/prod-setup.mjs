@@ -767,6 +767,8 @@ async function main() {
     await db.execute(`CREATE TABLE IF NOT EXISTS "QaChecklist" (
       "id" TEXT NOT NULL PRIMARY KEY,
       "clientId" TEXT NOT NULL,
+      "checklistType" TEXT NOT NULL DEFAULT 'website',
+      "label" TEXT,
       "websiteUrl" TEXT,
       "status" TEXT NOT NULL DEFAULT 'in_progress',
       "marketingChecks" TEXT NOT NULL DEFAULT '{}',
@@ -779,7 +781,17 @@ async function main() {
     )`);
     console.log("✓ Created QaChecklist table");
   } else {
-    console.log("✓ QaChecklist table already present");
+    if (!(await columnExists("QaChecklist", "checklistType"))) {
+      await db.execute(`ALTER TABLE "QaChecklist" ADD COLUMN "checklistType" TEXT NOT NULL DEFAULT 'website'`);
+      console.log("✓ Added QaChecklist.checklistType");
+    }
+    if (!(await columnExists("QaChecklist", "label"))) {
+      await db.execute(`ALTER TABLE "QaChecklist" ADD COLUMN "label" TEXT`);
+      console.log("✓ Added QaChecklist.label");
+    }
+    if ((await columnExists("QaChecklist", "checklistType")) && (await columnExists("QaChecklist", "label"))) {
+      console.log("✓ QaChecklist table up to date");
+    }
   }
 
   await db.close();

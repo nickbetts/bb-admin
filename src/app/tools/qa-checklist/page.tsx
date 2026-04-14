@@ -15,141 +15,9 @@ import {
   CheckSquare,
   AlertTriangle,
   X,
+  Tag,
 } from "lucide-react";
-
-// ─── Checklist definitions ─────────────────────────────────────────────────
-
-interface CheckItem {
-  id: string;
-  label: string;
-}
-
-interface CheckCategory {
-  id: string;
-  label: string;
-  items: CheckItem[];
-}
-
-const MARKETING_CATEGORIES: CheckCategory[] = [
-  {
-    id: "content",
-    label: "Content & Copy",
-    items: [
-      { id: "content_proofread", label: "All copy has been proofread and is free of spelling/grammar errors" },
-      { id: "content_ctas", label: "All CTAs are clear, compelling, and linking correctly" },
-      { id: "content_brand_voice", label: "Copy is consistent with brand voice and guidelines" },
-      { id: "content_contact", label: "Contact details (phone, email, address) are accurate" },
-      { id: "content_legal", label: "Legal/compliance copy is in place (privacy policy, T&Cs, cookie notice)" },
-      { id: "content_no_placeholder", label: "No placeholder or lorem ipsum text remains" },
-      { id: "content_dates", label: "All dates, offers, and time-sensitive content are current" },
-    ],
-  },
-  {
-    id: "seo",
-    label: "SEO",
-    items: [
-      { id: "seo_title_tags", label: "All pages have unique, keyword-rich title tags (50–60 chars)" },
-      { id: "seo_meta_descriptions", label: "All pages have unique meta descriptions (140–160 chars)" },
-      { id: "seo_h1", label: "Each page has exactly one H1 containing the primary keyword" },
-      { id: "seo_alt_text", label: "All images have descriptive alt text" },
-      { id: "seo_url_slugs", label: "URL slugs are lowercase, hyphenated, and keyword-relevant" },
-      { id: "seo_internal_links", label: "Internal linking structure is logical and functional" },
-      { id: "seo_ga4", label: "Google Analytics 4 is installed and tracking verified" },
-      { id: "seo_gsc", label: "Google Search Console is connected and sitemap submitted" },
-      { id: "seo_robots", label: "robots.txt is correct and not blocking important pages" },
-      { id: "seo_schema", label: "Relevant schema markup is implemented and validated" },
-      { id: "seo_canonicals", label: "Canonical tags are set correctly on all key pages" },
-    ],
-  },
-  {
-    id: "tracking",
-    label: "Tracking & Social",
-    items: [
-      { id: "tracking_meta_pixel", label: "Meta Pixel is installed and firing correctly" },
-      { id: "tracking_og_tags", label: "Open Graph tags are set (og:title, og:description, og:image)" },
-      { id: "tracking_social_images", label: "Social sharing images are sized correctly (1200×630px)" },
-      { id: "tracking_linkedin", label: "LinkedIn Insight Tag is installed (if applicable)" },
-      { id: "tracking_tiktok", label: "TikTok Pixel is installed (if applicable)" },
-      { id: "tracking_conversions", label: "Conversion events (form submits, purchases) are firing correctly" },
-    ],
-  },
-  {
-    id: "ux",
-    label: "UX & Design",
-    items: [
-      { id: "ux_mobile", label: "Site is fully responsive and tested on mobile and tablet" },
-      { id: "ux_fonts", label: "Font sizes are legible (body ≥16px) and line heights are comfortable" },
-      { id: "ux_contrast", label: "Colour contrast meets WCAG AA standards (4.5:1 for text)" },
-      { id: "ux_button_states", label: "Buttons have visible hover, focus, and active states" },
-      { id: "ux_forms", label: "Forms have clear validation messages and confirmation states" },
-      { id: "ux_404", label: "A branded 404 page is in place" },
-      { id: "ux_favicon", label: "Favicon is set correctly" },
-    ],
-  },
-];
-
-const DEV_CATEGORIES: CheckCategory[] = [
-  {
-    id: "performance",
-    label: "Performance",
-    items: [
-      { id: "perf_cwv", label: "Core Web Vitals pass (LCP <2.5s, INP <200ms, CLS <0.1)" },
-      { id: "perf_pagespeed", label: "Google PageSpeed score ≥80 on mobile" },
-      { id: "perf_images", label: "Images are served in WebP/AVIF format and correctly sized" },
-      { id: "perf_fonts", label: "Web fonts use display:swap and are self-hosted or preconnected" },
-      { id: "perf_lazy", label: "Offscreen images and iframes use lazy loading" },
-      { id: "perf_unused_code", label: "Unused CSS/JS is removed or code-split" },
-    ],
-  },
-  {
-    id: "tech_seo",
-    label: "Technical SEO",
-    items: [
-      { id: "techseo_sitemap", label: "sitemap.xml is accessible at /sitemap.xml and up to date" },
-      { id: "techseo_robots", label: "robots.txt is accessible at /robots.txt and correctly configured" },
-      { id: "techseo_https", label: "HTTPS is enforced with a valid SSL certificate" },
-      { id: "techseo_redirects", label: "All 301 redirects from the old site are in place and tested" },
-      { id: "techseo_canonical", label: "Canonical tags are consistent with the sitemap" },
-    ],
-  },
-  {
-    id: "security",
-    label: "Security",
-    items: [
-      { id: "sec_https_redirect", label: "HTTP redirects to HTTPS (HSTS enabled)" },
-      { id: "sec_no_secrets", label: "No API keys or secrets are exposed in client-side code or git history" },
-      { id: "sec_headers", label: "HTTP security headers are set (CSP, X-Frame-Options, X-Content-Type)" },
-      { id: "sec_form_spam", label: "Forms have spam protection (honeypot, reCAPTCHA, or equivalent)" },
-      { id: "sec_admin_auth", label: "Admin area requires strong authentication (2FA where possible)" },
-      { id: "sec_deps", label: "No known critical vulnerabilities in dependencies (npm audit / composer)" },
-    ],
-  },
-  {
-    id: "functionality",
-    label: "Functionality",
-    items: [
-      { id: "func_forms", label: "All forms submit successfully and trigger the correct notifications" },
-      { id: "func_links", label: "All CTA and navigation links have been tested and are error-free" },
-      { id: "func_console", label: "Browser console has no errors or warnings on any page" },
-      { id: "func_live_keys", label: "All third-party integrations are using live (not test) API keys" },
-      { id: "func_ecommerce", label: "E-commerce checkout flow has been tested end-to-end (if applicable)" },
-      { id: "func_404_status", label: "Missing pages return a genuine 404 HTTP status code" },
-      { id: "func_search", label: "Site search is functional (if applicable)" },
-    ],
-  },
-  {
-    id: "hosting",
-    label: "Hosting & Deployment",
-    items: [
-      { id: "host_dns", label: "DNS records are correctly configured and propagated" },
-      { id: "host_ssl_renew", label: "SSL certificate is set to auto-renew" },
-      { id: "host_env_vars", label: "All environment variables are set correctly in production" },
-      { id: "host_monitoring", label: "Uptime monitoring and error tracking (Sentry / equivalent) are active" },
-      { id: "host_backups", label: "Automated backups are configured" },
-      { id: "host_cache", label: "CDN/caching rules are configured and edge cache has been cleared" },
-    ],
-  },
-];
+import { CHECKLIST_TYPES, getCategories, CheckCategory } from "@/lib/qa-checklist-items";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -162,6 +30,8 @@ interface Client {
 interface ChecklistSummary {
   id: string;
   clientId: string;
+  checklistType: string;
+  label: string | null;
   websiteUrl: string | null;
   status: string;
   createdAt: string;
@@ -199,11 +69,11 @@ export default function QaChecklistPage() {
   const [checklists, setChecklists] = useState<ChecklistSummary[]>([]);
   const [activeChecklist, setActiveChecklist] = useState<Checklist | null>(null);
   const [activeTab, setActiveTab] = useState<"marketing" | "dev">("marketing");
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(
-    [...MARKETING_CATEGORIES, ...DEV_CATEGORIES].map((c) => c.id)
-  ));
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [isCreating, setIsCreating] = useState(false);
   const [newWebsiteUrl, setNewWebsiteUrl] = useState("");
+  const [newChecklistType, setNewChecklistType] = useState<string>("website");
+  const [newLabel, setNewLabel] = useState("");
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
@@ -240,6 +110,9 @@ export default function QaChecklistPage() {
     const data = await res.json() as Checklist;
     setActiveChecklist(data);
     setActiveTab("marketing");
+    const type = data.checklistType ?? "website";
+    const allCats = [...getCategories(type, "marketing"), ...getCategories(type, "dev")];
+    setExpandedCategories(new Set(allCats.map((c) => c.id)));
   }, []);
 
   // Debounced save
@@ -322,17 +195,24 @@ export default function QaChecklistPage() {
       const res = await fetch("/api/tools/qa-checklist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId: selectedClientId, websiteUrl: newWebsiteUrl || undefined }),
+        body: JSON.stringify({
+          clientId: selectedClientId,
+          checklistType: newChecklistType,
+          label: newLabel || undefined,
+          websiteUrl: newWebsiteUrl || undefined,
+        }),
       });
       const created = await res.json() as ChecklistSummary;
       setChecklists((prev) => [created, ...prev]);
       setShowNewDialog(false);
       setNewWebsiteUrl("");
+      setNewLabel("");
+      setNewChecklistType("website");
       await openChecklist(created.id);
     } finally {
       setIsCreating(false);
     }
-  }, [selectedClientId, newWebsiteUrl, openChecklist]);
+  }, [selectedClientId, newChecklistType, newLabel, newWebsiteUrl, openChecklist]);
 
   const deleteChecklist = useCallback(async (id: string) => {
     await fetch(`/api/tools/qa-checklist/${id}`, { method: "DELETE" });
@@ -349,14 +229,16 @@ export default function QaChecklistPage() {
     });
   };
 
-  const activeCategories = activeTab === "marketing" ? MARKETING_CATEGORIES : DEV_CATEGORIES;
+  const activeCategories = activeChecklist
+    ? getCategories(activeChecklist.checklistType ?? "website", activeTab)
+    : ([] as CheckCategory[]);
   const activeChecksField = activeTab === "marketing" ? "marketingChecks" : "devChecks";
 
   const marketingProgress = activeChecklist
-    ? computeProgress(activeChecklist.marketingChecks, MARKETING_CATEGORIES)
+    ? computeProgress(activeChecklist.marketingChecks, getCategories(activeChecklist.checklistType ?? "website", "marketing"))
     : null;
   const devProgress = activeChecklist
-    ? computeProgress(activeChecklist.devChecks, DEV_CATEGORIES)
+    ? computeProgress(activeChecklist.devChecks, getCategories(activeChecklist.checklistType ?? "website", "dev"))
     : null;
 
   return (
@@ -403,7 +285,37 @@ export default function QaChecklistPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <label className="block text-sm text-zinc-400 mb-1">Website URL <span className="text-zinc-600">(optional)</span></label>
+
+            <label className="block text-sm text-zinc-400 mb-1">Checklist Type</label>
+            <select
+              value={newChecklistType}
+              onChange={(e) => setNewChecklistType(e.target.value)}
+              className="w-full bg-zinc-800 border border-zinc-700 text-white text-sm rounded-lg px-3 py-2 mb-4 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            >
+              {CHECKLIST_TYPES.map((t) => (
+                <option key={t.id} value={t.id}>{t.label}</option>
+              ))}
+            </select>
+
+            <label className="block text-sm text-zinc-400 mb-1">
+              {newChecklistType === "website" ? "Site name / label" : "Campaign name"}{" "}
+              <span className="text-zinc-600">(optional)</span>
+            </label>
+            <div className="flex items-center gap-2 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 mb-4">
+              <Tag className="h-4 w-4 text-zinc-500 shrink-0" />
+              <input
+                type="text"
+                placeholder={newChecklistType === "website" ? "e.g. Client Redesign 2025" : "e.g. Summer Sale Campaign"}
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                className="bg-transparent text-white text-sm flex-1 outline-none"
+              />
+            </div>
+
+            <label className="block text-sm text-zinc-400 mb-1">
+              {newChecklistType === "website" ? "Website URL" : "Landing page URL"}{" "}
+              <span className="text-zinc-600">(optional)</span>
+            </label>
             <div className="flex items-center gap-2 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 mb-5">
               <Globe className="h-4 w-4 text-zinc-500 shrink-0" />
               <input
@@ -416,7 +328,7 @@ export default function QaChecklistPage() {
             </div>
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setShowNewDialog(false)}
+                onClick={() => { setShowNewDialog(false); setNewLabel(""); setNewWebsiteUrl(""); setNewChecklistType("website"); }}
                 className="text-sm text-zinc-400 hover:text-white px-4 py-2 rounded-lg transition-colors"
               >
                 Cancel
@@ -451,62 +363,80 @@ export default function QaChecklistPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-800 text-zinc-500 text-left">
-                  <th className="px-4 py-3 font-medium">Website</th>
+                  <th className="px-4 py-3 font-medium">Type</th>
+                  <th className="px-4 py-3 font-medium">Label / URL</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Updated</th>
                   <th className="px-4 py-3 font-medium w-10"></th>
                 </tr>
               </thead>
               <tbody>
-                {checklists.map((cl) => (
-                  <tr
-                    key={cl.id}
-                    className="border-b border-zinc-800/50 hover:bg-zinc-800/40 cursor-pointer transition-colors"
-                    onClick={() => openChecklist(cl.id)}
-                  >
-                    <td className="px-4 py-3 text-white font-medium">
-                      {cl.websiteUrl ?? <span className="text-zinc-500 italic">No URL</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                        cl.status === "complete"
-                          ? "bg-emerald-500/15 text-emerald-400"
-                          : "bg-amber-500/15 text-amber-400"
-                      }`}>
-                        {cl.status === "complete" ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
-                        {cl.status === "complete" ? "Approved" : "In Progress"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-zinc-400">
-                      {new Date(cl.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                    </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      {deleteConfirmId === cl.id ? (
-                        <div className="flex items-center gap-2">
+                {checklists.map((cl) => {
+                  const typeMeta = CHECKLIST_TYPES.find((t) => t.id === cl.checklistType);
+                  const typeColors: Record<string, string> = {
+                    website: "bg-blue-500/15 text-blue-400",
+                    google_ads: "bg-orange-500/15 text-orange-400",
+                    meta_ads: "bg-violet-500/15 text-violet-400",
+                  };
+                  const typeColor = typeColors[cl.checklistType] ?? "bg-zinc-700 text-zinc-400";
+                  return (
+                    <tr
+                      key={cl.id}
+                      className="border-b border-zinc-800/50 hover:bg-zinc-800/40 cursor-pointer transition-colors"
+                      onClick={() => openChecklist(cl.id)}
+                    >
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${typeColor}`}>
+                          {typeMeta?.label ?? cl.checklistType}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-white font-medium max-w-xs">
+                        {cl.label
+                          ? <span>{cl.label}{cl.websiteUrl && <span className="text-zinc-500 font-normal ml-2 text-xs">{cl.websiteUrl}</span>}</span>
+                          : cl.websiteUrl ?? <span className="text-zinc-500 italic font-normal">No label</span>
+                        }
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
+                          cl.status === "complete"
+                            ? "bg-emerald-500/15 text-emerald-400"
+                            : "bg-amber-500/15 text-amber-400"
+                        }`}>
+                          {cl.status === "complete" ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                          {cl.status === "complete" ? "Approved" : "In Progress"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-zinc-400">
+                        {new Date(cl.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                      </td>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        {deleteConfirmId === cl.id ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => deleteChecklist(cl.id)}
+                              className="text-red-400 hover:text-red-300 text-xs font-medium"
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmId(null)}
+                              className="text-zinc-500 hover:text-zinc-300 text-xs"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
                           <button
-                            onClick={() => deleteChecklist(cl.id)}
-                            className="text-red-400 hover:text-red-300 text-xs font-medium"
+                            onClick={() => setDeleteConfirmId(cl.id)}
+                            className="text-zinc-600 hover:text-red-400 transition-colors"
                           >
-                            Confirm
+                            <Trash2 className="h-4 w-4" />
                           </button>
-                          <button
-                            onClick={() => setDeleteConfirmId(null)}
-                            className="text-zinc-500 hover:text-zinc-300 text-xs"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setDeleteConfirmId(cl.id)}
-                          className="text-zinc-600 hover:text-red-400 transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -527,9 +457,26 @@ export default function QaChecklistPage() {
                 ← All checklists
               </button>
               <span className="text-zinc-700 shrink-0">|</span>
+              {(() => {
+                const typeMeta = CHECKLIST_TYPES.find((t) => t.id === activeChecklist.checklistType);
+                const typeColors: Record<string, string> = {
+                  website: "bg-blue-500/15 text-blue-400",
+                  google_ads: "bg-orange-500/15 text-orange-400",
+                  meta_ads: "bg-violet-500/15 text-violet-400",
+                };
+                const typeColor = typeColors[activeChecklist.checklistType] ?? "bg-zinc-700 text-zinc-400";
+                return (
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${typeColor}`}>
+                    {typeMeta?.label ?? activeChecklist.checklistType}
+                  </span>
+                );
+              })()}
               <span className="text-white font-medium text-sm truncate max-w-xs">
-                {activeChecklist.websiteUrl ?? <span className="text-zinc-500 italic font-normal">No URL</span>}
+                {activeChecklist.label ?? activeChecklist.websiteUrl ?? <span className="text-zinc-500 italic font-normal">No label</span>}
               </span>
+              {activeChecklist.websiteUrl && activeChecklist.label && (
+                <span className="text-zinc-500 text-xs truncate max-w-xs">{activeChecklist.websiteUrl}</span>
+              )}
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium shrink-0 ${
                 activeChecklist.status === "complete"
                   ? "bg-emerald-500/15 text-emerald-400"

@@ -349,6 +349,8 @@ model ProposalEnquiry {
 model QaChecklist {
   id               String   @id @default(cuid())
   clientId         String
+  checklistType    String   @default("website")     // "website" | "google_ads" | "meta_ads"
+  label            String?                           // free-text label (campaign name, site name, etc.)
   websiteUrl       String?
   status           String   @default("in_progress") // "in_progress" | "complete"
   marketingChecks  String   @default("{}")           // JSON: { [checkId: string]: boolean }
