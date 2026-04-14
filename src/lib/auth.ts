@@ -25,6 +25,7 @@ export const ALL_PERMISSIONS = [
   "competitor_intelligence",
   "media_plan",
   "landing_page_generator",
+  "qa_checklist",
 ] as const;
 
 export type Permission = typeof ALL_PERMISSIONS[number];
