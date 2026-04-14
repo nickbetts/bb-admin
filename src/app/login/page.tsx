@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import LandingNav from "@/components/landing/LandingNav";
 import {
   Eye,
   EyeOff,
@@ -328,66 +329,7 @@ export default function LoginPage() {
       </nav>
 
       {/* ── NAV ── */}
-      <nav className="top-nav" style={{
-        position: "fixed", top: showBar ? 44 : 0, left: 0, right: 0, zIndex: 50,
-        backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-        background: "rgba(9,9,15,0.88)",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
-        height: 64,
-        display: "flex", alignItems: "center",
-        padding: "0 40px", justifyContent: "space-between",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <img src="/primary-logo.svg" style={{ height: 26, width: "auto" }} alt="i3MEDIA" />
-          <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.12)" }} />
-          <span style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: "0.02em" }}>StratOS</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <a
-            href="/ad-traffic-protection"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 7,
-              padding: "7px 14px", borderRadius: 8,
-              background: "rgba(16,185,129,0.08)",
-              border: "1px solid rgba(16,185,129,0.2)",
-              color: "#6ee7b7", fontSize: 12, fontWeight: 600, textDecoration: "none",
-              transition: "all 0.2s ease",
-            }}
-          >
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 6px rgba(16,185,129,0.6)", display: "inline-block", flexShrink: 0 }} />
-            Ad Traffic Protection
-          </a>
-          <a
-            href="/meridian"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 7,
-              padding: "7px 14px", borderRadius: 8,
-              background: "rgba(124,58,237,0.08)",
-              border: "1px solid rgba(124,58,237,0.2)",
-              color: "#c4b5fd", fontSize: 12, fontWeight: 600, textDecoration: "none",
-              transition: "all 0.2s ease",
-            }}
-          >
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#8b5cf6", boxShadow: "0 0 6px rgba(139,92,246,0.6)", display: "inline-block", flexShrink: 0 }} />
-            Meridian AI
-            <span style={{ fontSize: 8, fontWeight: 800, color: "#a78bfa", background: "rgba(124,58,237,0.2)", padding: "1px 5px", borderRadius: 3, letterSpacing: "0.06em", textTransform: "uppercase" }}>Alpha</span>
-          </a>
-          <a
-            href="#access"
-            style={{
-              padding: "9px 20px", borderRadius: 8,
-              background: "linear-gradient(135deg, #6366f1, #a855f7)",
-              border: "none",
-              color: "white", fontSize: 13, fontWeight: 600, textDecoration: "none",
-              boxShadow: "0 0 20px rgba(99,102,241,0.3)",
-              transition: "all 0.3s ease",
-            }}
-            className="cta-pulse"
-          >
-            Sign in →
-          </a>
-        </div>
-      </nav>
+      <LandingNav currentPage="" topOffset={showBar ? 44 : 0} ctaLabel="Sign in →" ctaHref="#access" />
 
       {/* ── HERO ── */}
       <section style={{

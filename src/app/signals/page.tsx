@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import LandingNav from "@/components/landing/LandingNav";
 import {
   Radar,
   AlertTriangle,
@@ -163,49 +164,7 @@ export default function SignalsPage() {
         </div>
       </nav>
 
-      <nav style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
-        backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-        background: "rgba(9,9,15,0.88)", borderBottom: "1px solid rgba(255,255,255,0.06)",
-        height: 64, display: "flex", alignItems: "center", padding: "0 40px", justifyContent: "space-between",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <a href="/login" style={{ display: "flex", alignItems: "center", gap: 14, textDecoration: "none" }}>
-            <img src="/primary-logo.svg" style={{ height: 26, width: "auto" }} alt="i3MEDIA" />
-            <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.12)" }} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.45)", letterSpacing: "0.02em" }}>StratOS</span>
-          </a>
-          <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.08)" }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: accent, boxShadow: `0 0 8px ${accentGlow}` }} className="accent-pulse" />
-            <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.65)" }}>Signals</span>
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <a href="/meridian" style={{
-            display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 14px", borderRadius: 8,
-            background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)",
-            color: "#c4b5fd", fontSize: 12, fontWeight: 600, textDecoration: "none",
-          }}>
-            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#8b5cf6", boxShadow: "0 0 6px rgba(139,92,246,0.6)", display: "inline-block" }} />
-            Meridian AI
-            <span style={{ fontSize: 8, fontWeight: 800, color: "#a78bfa", background: "rgba(124,58,237,0.2)", padding: "1px 5px", borderRadius: 3, letterSpacing: "0.06em", textTransform: "uppercase" }}>Alpha</span>
-          </a>
-          <a href="/ad-traffic-protection" style={{
-            padding: "7px 14px", borderRadius: 8, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)",
-            color: "#6ee7b7", fontSize: 12, fontWeight: 600, textDecoration: "none",
-          }}>Ad Traffic Protection</a>
-          <a href="/login" style={{
-            padding: "9px 18px", borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-            color: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 600, textDecoration: "none",
-          }}>Sign in</a>
-          <a href="#cta" onClick={(e) => { e.preventDefault(); document.getElementById("cta")?.scrollIntoView({ behavior: "smooth" }); }} style={{
-            padding: "9px 20px", borderRadius: 8, background: `linear-gradient(135deg, #db2777, ${accent})`,
-            color: "white", fontSize: 13, fontWeight: 600, textDecoration: "none",
-            boxShadow: `0 0 20px rgba(236,72,153,0.3)`,
-          }} className="cta-accent-pulse">Talk to us →</a>
-        </div>
-      </nav>
+      <LandingNav currentPage="Signals" accentColor={accent} onCtaClick={() => document.getElementById("cta")?.scrollIntoView({ behavior: "smooth" })} />
 
       {/* ── HERO ── */}
       <section style={{ minHeight: "100vh", paddingTop: 64, position: "relative", overflow: "hidden", display: "flex", alignItems: "center" }}>
