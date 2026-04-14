@@ -775,8 +775,14 @@ Long-tail means a specific, narrow search phrase — minimum 4 words, reflecting
 RULE E — NO KEYWORD DUPLICATION ACROSS ITEMS.
 Each keyword (especially primary) should appear on at most ONE item in the entire strategy. If "qurbani 2026" is the primary for one blog post, it cannot appear as primary or secondary on anything else. Spread keywords across items; do not repeat.
 
-RULE F — KEYWORDS MUST MATCH THE TOPIC.
-The primary keyword must be semantically matched to the SPECIFIC topic of that page/post. A blog post about "Families Helped by Qurbani" should target something like "qurbani impact stories" or "qurbani family stories" — not "family" because that word appears in the title.
+RULE F — KEYWORDS MUST MATCH THE SEARCHER'S INTENT, NOT JUST THE TOPIC.
+The primary keyword must reflect the SPECIFIC intent of the page — not just share a word with the title. Before assigning a primary keyword, ask: "Would someone searching this exact phrase want to land on THIS specific page?" If the answer is no, the keyword does not belong — regardless of word overlap or volume.
+Example: A page about "What Is the Nisab Threshold for Qurbani? Who Must Give?" targets people who want to know whether THEY are obligated to give. The correct primaries are phrases like "how much qurbani do i have to give" (110), "who pays qurbani" (90), or "nisab threshold for qurbani" (5) — NOT "qurbani meaning" (590), because someone searching "qurbani meaning" wants a definition, not eligibility rules. Always match the searcher's goal to the page's purpose.
+
+RULE G — MAXIMISE INTENT-RELEVANT VOLUME.
+Before assigning keywords to any item, scan the ENTIRE keyword pool for ALL phrases whose search intent aligns with the piece's specific topic. Do not settle for the first loosely-related keyword you spot — actively look for the highest-volume, most intent-aligned match.
+Process: (1) Read the content piece's title and notes. (2) Identify the core question or need the page answers. (3) Search the pool for keywords containing synonyms, related verbs, and alternate phrasings that reflect that same need — e.g. for a page about qurbani obligation, search for "compulsory", "obligatory", "must", "required", "who has to", "do i have to". (4) Assign the highest-volume intent-matched keyword as primary. (5) Use remaining intent-matched keywords as secondary and long-tail.
+If data-rich keywords exist in the pool that perfectly match a piece's intent but are not assigned, that is a failure of the strategy.
 
 ══════════════════════════════════════════════════════════
 CONTENT IDEATION — THINK BEYOND THE OBVIOUS
@@ -803,6 +809,8 @@ STRONG CONTENT ANGLES (use these as inspiration, not a checklist):
 CLUSTER DESIGN: Each cluster must contain 3–5 posts covering DIFFERENT stages of the reader journey. A cluster of "Qurbani" posts might cover: How Qurbani Works → Is It Compulsory → Where Does My Qurbani Go → Real Stories → Qurbani 2026: Dates & Prices. These are distinct articles that cross-link and build topical authority together.
 
 BLOG TITLES must sound like real articles someone would FIND and CLICK in search results. They should have a specific angle, hook, or question. Bad: "Families Helped by Qurbani" — Good: "What Happens to Your Qurbani After You Donate?" or "Real Families, Real Change: The Impact of UK Qurbani Donations".
+
+KEYWORD-FIRST CONTENT IDEATION: After drafting each content piece title, immediately ask: "What would a real person type into Google to find this exact content?" Work backwards from that question to find the best primary keyword in the pool — do not pick a keyword first and force a title around it, and do not pick a title first then grab the nearest keyword. The title and primary keyword must reflect the same specific intent.
 
 ══════════════════════════════════════════════════════════
 OTHER RULES
