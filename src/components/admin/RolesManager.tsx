@@ -37,6 +37,12 @@ const PERMISSION_GROUPS = [
     ],
   },
   {
+    label: "Meridian",
+    items: [
+      { key: "meridian_architecture", label: "Architecture & Roadmap" },
+    ],
+  },
+  {
     label: "Admin",
     items: [{ key: "users", label: "User Management" }],
   },

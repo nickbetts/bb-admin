@@ -34,6 +34,7 @@ import {
   Moon,
   Globe,
   ClipboardCheck,
+  Brain,
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { KeyboardShortcutsHelp } from "@/components/ui/KeyboardShortcutsHelp";
@@ -547,6 +548,28 @@ export function Sidebar({ user, permissions, isAdmin = false, previewRoleId = nu
                 </Link>
               );
             })}
+          </>
+        )}
+        {permissions.includes("meridian_architecture") && (
+          <>
+            {!collapsed && <p className="sidebar-nav-label" style={{ marginTop: 12 }}>Meridian</p>}
+            {(() => {
+              const isActive = pathname === "/meridian-architecture" || pathname.startsWith("/meridian-architecture/");
+              return (
+                <Link
+                  href="/meridian-architecture"
+                  aria-current={isActive ? "page" : undefined}
+                  title={collapsed ? "Architecture & Roadmap" : undefined}
+                  className={cn("nav-item", isActive && "active", collapsed && "justify-center")}
+                  style={collapsed ? { justifyContent: "center" } : undefined}
+                >
+                  <span className="nav-item-icon" style={{ display: "flex", width: 20, height: 20, alignItems: "center", justifyContent: "center" }}>
+                    <Brain className="h-4 w-4" />
+                  </span>
+                  {!collapsed && <span>Architecture & Roadmap</span>}
+                </Link>
+              );
+            })()}
           </>
         )}
         {permissions.includes("users") && (
