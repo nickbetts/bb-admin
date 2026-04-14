@@ -121,6 +121,7 @@ model Client {
   clickFraudEvents      ClickFraudEvent[]
   contentStrategies     ContentStrategy[]
   landingPages          LandingPage[]
+  qaChecklists          QaChecklist[]
 }
 
 model ClientGoal {
@@ -343,6 +344,20 @@ model ProposalEnquiry {
   message    String
   createdAt  DateTime @default(now())
   proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+}
+
+model QaChecklist {
+  id               String   @id @default(cuid())
+  clientId         String
+  websiteUrl       String?
+  status           String   @default("in_progress") // "in_progress" | "complete"
+  marketingChecks  String   @default("{}")           // JSON: { [checkId: string]: boolean }
+  devChecks        String   @default("{}")           // JSON: { [checkId: string]: boolean }
+  notes            String?
+  aiSummary        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
 
 model LlmTemplate {

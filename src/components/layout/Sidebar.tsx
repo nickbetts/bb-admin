@@ -33,6 +33,7 @@ import {
   Sun,
   Moon,
   Globe,
+  ClipboardCheck,
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { KeyboardShortcutsHelp } from "@/components/ui/KeyboardShortcutsHelp";
@@ -73,6 +74,7 @@ const toolsNavItems: NavItem[] = [
   { href: "/tools/content-strategy", label: "Content Strategy", icon: <FileSpreadsheet className="h-4 w-4" />, permission: "content_strategy" },
   { href: "/tools/access-requester", label: "Access Requester", icon: <KeyRound className="h-4 w-4" />, permission: "access_requester" },
   { href: "/tools/landing-pages", label: "LP Generator", icon: <Globe className="h-4 w-4" />, permission: "landing_page_generator" },
+  { href: "/tools/qa-checklist", label: "Client QA", icon: <ClipboardCheck className="h-4 w-4" />, permission: "qa_checklist" },
 ];
 
 interface SidebarProps {
