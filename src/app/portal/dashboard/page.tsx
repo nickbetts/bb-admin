@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Target, MessageSquare, LogOut, Loader2, ExternalLink } from "lucide-react";
+import { FileText, Target, MessageSquare, LogOut, Loader2, ExternalLink, Globe, BookOpen, Layers } from "lucide-react";
 import Link from "next/link";
 
 interface PortalUser {
@@ -41,6 +41,44 @@ interface Communication {
   status: string;
 }
 
+interface AssetReport {
+  id: string;
+  title: string;
+  period: string;
+  shareToken: string;
+  createdAt: string;
+}
+
+interface AssetLandingPage {
+  id: string;
+  title: string;
+  shareToken: string;
+  updatedAt: string;
+}
+
+interface AssetContentStrategy {
+  id: string;
+  title: string;
+  period: string;
+  shareToken: string;
+  createdAt: string;
+}
+
+interface AssetProposal {
+  id: string;
+  title: string;
+  clientName: string;
+  shareToken: string;
+  createdAt: string;
+}
+
+interface PortalAssets {
+  reports: AssetReport[];
+  landingPages: AssetLandingPage[];
+  contentStrategies: AssetContentStrategy[];
+  proposals: AssetProposal[];
+}
+
 interface PortalData {
   reports: Report[];
   goals: Goal[];
@@ -59,6 +97,7 @@ export default function PortalDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<PortalUser | null>(null);
   const [data, setData] = useState<PortalData | null>(null);
+  const [assets, setAssets] = useState<PortalAssets | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -70,6 +109,14 @@ export default function PortalDashboardPage() {
         if (!me) { router.push("/portal/login"); return; }
         setUser(me);
         setData(portalData);
+        // Fetch assets if user has permission
+        const perms: string[] = (() => { try { return JSON.parse(me.permissions) as string[]; } catch { return []; } })();
+        if (perms.includes("assets")) {
+          fetch("/api/portal/assets")
+            .then((r) => r.ok ? r.json() : null)
+            .then((a: PortalAssets | null) => setAssets(a))
+            .catch(() => null);
+        }
       })
       .catch(() => router.push("/portal/login"))
       .finally(() => setLoading(false));
@@ -194,6 +241,107 @@ export default function PortalDashboardPage() {
                       <p style={{ fontSize: 11, color: "var(--text-3)" }}>{c.type} · {timeAgo(c.createdAt)}</p>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Assets */}
+          {permissions.includes("assets") && (
+            <div className="card" style={{ padding: 20, gridColumn: "1 / -1" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                <Layers style={{ width: 16, height: 16, color: "var(--accent)" }} />
+                <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Your Assets</h2>
+              </div>
+              {!assets || (!assets.reports.length && !assets.landingPages.length && !assets.contentStrategies.length && !assets.proposals.length) ? (
+                <p style={{ fontSize: 13, color: "var(--text-3)" }}>No shared assets available yet.</p>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
+                  {/* Published Reports */}
+                  {assets.reports.length > 0 && (
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                        <FileText style={{ width: 13, height: 13, color: "var(--accent)" }} />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Reports</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {assets.reports.map((r) => (
+                          <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div style={{ minWidth: 0 }}>
+                              <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</p>
+                              <p style={{ fontSize: 11, color: "var(--text-3)" }}>{r.period}</p>
+                            </div>
+                            <a href={`/share/report/${r.shareToken}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ padding: 5, flexShrink: 0 }}>
+                              <ExternalLink style={{ width: 12, height: 12 }} />
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Landing Pages */}
+                  {assets.landingPages.length > 0 && (
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                        <Globe style={{ width: 13, height: 13, color: "#22c55e" }} />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Landing Pages</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {assets.landingPages.map((p) => (
+                          <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.title}</p>
+                            <a href={`/api/share/landing-page/${p.shareToken}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ padding: 5, flexShrink: 0 }}>
+                              <ExternalLink style={{ width: 12, height: 12 }} />
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Content Strategies */}
+                  {assets.contentStrategies.length > 0 && (
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                        <BookOpen style={{ width: 13, height: 13, color: "#f59e0b" }} />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Content Strategies</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {assets.contentStrategies.map((s) => (
+                          <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div style={{ minWidth: 0 }}>
+                              <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</p>
+                              <p style={{ fontSize: 11, color: "var(--text-3)" }}>{s.period}</p>
+                            </div>
+                            <a href={`/share/content-strategy/${s.shareToken}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ padding: 5, flexShrink: 0 }}>
+                              <ExternalLink style={{ width: 12, height: 12 }} />
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Proposals */}
+                  {assets.proposals.length > 0 && (
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                        <FileText style={{ width: 13, height: 13, color: "#6366f1" }} />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Proposals</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {assets.proposals.map((p) => (
+                          <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.title}</p>
+                            <a href={`/share/proposal/${p.shareToken}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ padding: 5, flexShrink: 0 }}>
+                              <ExternalLink style={{ width: 12, height: 12 }} />
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

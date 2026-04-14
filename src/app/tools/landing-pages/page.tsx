@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Plus,
   Eye,
@@ -16,6 +16,8 @@ import {
   BarChart3,
 } from "lucide-react";
 import { SearchInput } from "@/components/ui/SearchInput";
+import { ClientBackLink } from "@/components/ui/ClientBackLink";
+import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
 
 interface LandingPageItem {
   id: string;
@@ -53,6 +55,8 @@ function timeAgo(dateStr: string): string {
 
 export default function LandingPagesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const clientId = searchParams.get("clientId");
   const [pages, setPages] = useState<LandingPageItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -62,7 +66,8 @@ export default function LandingPagesPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/tools/landing-pages");
+      const url = clientId ? `/api/tools/landing-pages?clientId=${clientId}` : "/api/tools/landing-pages";
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setPages(data.landingPages ?? []);
@@ -70,7 +75,7 @@ export default function LandingPagesPage() {
     } catch { /* ignore */ } finally {
       setLoading(false);
     }
-  }, []);
+  }, [clientId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -106,6 +111,8 @@ export default function LandingPagesPage() {
 
   return (
     <div className="page" style={{ maxWidth: 1000 }}>
+      <ClientBackLink />
+      <ClientFilterBanner />
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

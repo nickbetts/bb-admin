@@ -18,7 +18,7 @@ interface ClientPortalManagerProps {
   clientName: string;
 }
 
-const PERMISSIONS = ["reports", "goals", "communications"];
+const PERMISSIONS = ["reports", "goals", "communications", "assets"];
 
 function timeAgo(dateStr: string): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);

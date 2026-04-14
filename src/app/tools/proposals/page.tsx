@@ -2,8 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { FileText, Plus, Trash2, ExternalLink, Clock, Eye, Share2, BarChart3, MessageSquare } from "lucide-react";
 import { SearchInput } from "@/components/ui/SearchInput";
+import { ClientBackLink } from "@/components/ui/ClientBackLink";
+import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
 
 interface ProposalSummary {
   id: string;
@@ -20,6 +23,8 @@ interface ProposalSummary {
 }
 
 export default function ProposalsPage() {
+  const searchParams = useSearchParams();
+  const clientId = searchParams.get("clientId");
   const [proposals, setProposals] = useState<ProposalSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -28,7 +33,8 @@ export default function ProposalsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/tools/proposals");
+      const url = clientId ? `/api/tools/proposals?clientId=${clientId}` : "/api/tools/proposals";
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json() as { proposals: ProposalSummary[] };
         setProposals(data.proposals ?? []);
@@ -36,7 +42,7 @@ export default function ProposalsPage() {
     } catch { /* ignore */ } finally {
       setLoading(false);
     }
-  }, []);
+  }, [clientId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -58,6 +64,8 @@ export default function ProposalsPage() {
 
   return (
     <div className="page" style={{ maxWidth: 1000 }}>
+      <ClientBackLink />
+      <ClientFilterBanner />
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

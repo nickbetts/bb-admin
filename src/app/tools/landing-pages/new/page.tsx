@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ClientBackLink } from "@/components/ui/ClientBackLink";
 import {
   ArrowLeft,
   Globe,
@@ -126,6 +127,7 @@ export default function NewLandingPage() {
 
   return (
     <div className="page" style={{ maxWidth: 720 }}>
+      <ClientBackLink />
       {/* Back link */}
       <Link
         href="/tools/landing-pages"

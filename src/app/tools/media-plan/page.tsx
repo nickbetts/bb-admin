@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { PieChart, Plus, Trash2, Pencil, ExternalLink } from "lucide-react";
+import { ClientBackLink } from "@/components/ui/ClientBackLink";
+import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
 
 interface MediaPlan {
   id: string;
@@ -33,6 +36,8 @@ const statusColors: Record<string, string> = {
 };
 
 export default function MediaPlanListPage() {
+  const searchParams = useSearchParams();
+  const clientId = searchParams.get("clientId");
   const [plans, setPlans] = useState<MediaPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -42,12 +47,13 @@ export default function MediaPlanListPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/tools/media-plan");
+      const url = clientId ? `/api/tools/media-plan?clientId=${clientId}` : "/api/tools/media-plan";
+      const res = await fetch(url);
       if (res.ok) setPlans(await res.json() as MediaPlan[]);
     } catch { /* ignore */ } finally {
       setLoading(false);
     }
-  }, []);
+  }, [clientId]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -85,6 +91,8 @@ export default function MediaPlanListPage() {
 
   return (
     <div className="page" style={{ maxWidth: 1000 }}>
+      <ClientBackLink />
+      <ClientFilterBanner />
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>

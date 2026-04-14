@@ -25,6 +25,7 @@ import { CompetitorIntelligenceSection } from "./CompetitorIntelligenceSection";
 import { StrategyDocumentPanel } from "./StrategyDocumentPanel";
 import { MeetingBriefingPanel } from "./MeetingBriefingPanel";
 import { SectionErrorBoundary } from "./shared/SectionErrorBoundary";
+import { HubSection } from "./HubSection";
 import { getDateRange, buildCrossContextString } from "@/lib/utils";
 import type { PlatformSummary } from "@/lib/utils";
 import { Calendar } from "lucide-react";
@@ -73,14 +74,14 @@ const periods = [
   { value: "custom", label: "Custom" },
 ];
 
-type Tab = "signals" | "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole" | "ecommerce" | "tiktok" | "microsoftads" | "cwv" | "linkedin" | "klaviyo" | "goals" | "hubspot" | "youtube" | "callrail" | "actions" | "communications" | "competitors" | "strategy";
+type Tab = "hub" | "signals" | "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole" | "ecommerce" | "tiktok" | "microsoftads" | "cwv" | "linkedin" | "klaviyo" | "goals" | "hubspot" | "youtube" | "callrail" | "actions" | "communications" | "competitors" | "strategy";
 
 function toDateInputValue(d: Date) {
   return d.toISOString().split("T")[0];
 }
 
 function getDefaultTab(_client: Client): Tab {
-  return "overview";
+  return "hub";
 }
 
 export function ClientDashboard({ client, period: initialPeriod, userRole, permissions = [] }: ClientDashboardProps) {
@@ -203,6 +204,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
   }, [client, startDate, endDate]);
 
   const tabs: { id: Tab; label: string; available: boolean }[] = [
+    { id: "hub", label: "Hub", available: true },
     { id: "signals", label: "Signals", available: true },
     { id: "overview", label: "Overview", available: true },
     { id: "seo", label: "SEO / SemRush", available: !!client.semrushDomain },
@@ -297,6 +299,10 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
         style={{ opacity: tabTransitioning ? 0.5 : 1, pointerEvents: tabTransitioning ? "none" : "auto", transition: "opacity 0.2s" }}
       >
       <SectionErrorBoundary>
+      {activeTab === "hub" && (
+        <HubSection clientId={client.id} clientSlug={client.slug} clientName={client.name} />
+      )}
+
       {activeTab === "signals" && (
         <SignalsSection client={client} startDate={startDate} endDate={endDate} />
       )}

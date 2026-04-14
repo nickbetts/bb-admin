@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Upload,
   FileSpreadsheet,
@@ -23,6 +24,8 @@ import {
   AlertCircle,
   ChevronDown,
 } from "lucide-react";
+import { ClientBackLink } from "@/components/ui/ClientBackLink";
+import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
 
 interface ContentStrategyItem {
   id: string;
@@ -446,6 +449,8 @@ function MethodologyAccordion() {
 }
 
 export default function ContentStrategyPage() {
+  const searchParams = useSearchParams();
+  const urlClientId = searchParams.get("clientId");
   const [strategies, setStrategies] = useState<ContentStrategyItem[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -517,7 +522,10 @@ export default function ContentStrategyPage() {
 
   const loadStrategies = useCallback(async () => {
     try {
-      const res = await fetch("/api/tools/content-strategy?action=list");
+      const url = urlClientId
+        ? `/api/tools/content-strategy?action=list&clientId=${urlClientId}`
+        : "/api/tools/content-strategy?action=list";
+      const res = await fetch(url);
       const data = await res.json();
       if (data.strategies) setStrategies(data.strategies);
     } catch {
@@ -525,7 +533,7 @@ export default function ContentStrategyPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [urlClientId]);
 
   const loadClients = useCallback(async () => {
     try {
@@ -1016,6 +1024,8 @@ export default function ContentStrategyPage() {
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 48px" }}>
+      <ClientBackLink />
+      <ClientFilterBanner />
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
         <div>

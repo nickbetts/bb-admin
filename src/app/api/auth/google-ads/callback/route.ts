@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const redirectUri = `${origin}/api/auth/google-ads/callback`;
+  const canonicalOrigin = process.env.NEXT_PUBLIC_APP_URL ?? origin;
+  const redirectUri = `${canonicalOrigin}/api/auth/google-ads/callback`;
 
   // Exchange authorisation code for tokens
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {

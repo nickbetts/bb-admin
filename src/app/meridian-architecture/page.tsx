@@ -5,8 +5,8 @@ import {
   Brain, Database, Layers, Zap, Target, Globe, BarChart3,
   TrendingUp, Activity, Shield, Server, Cpu,
   Code2, Users, Lock, CheckCircle2, Clock, ArrowRight,
-  RefreshCw,
-  FileText, ChevronDown, ChevronRight, Star,
+  RefreshCw, AlertTriangle,
+  FileText, ChevronDown, ChevronRight,
 } from "lucide-react";
 
 /* ─── colour helpers ─── */
@@ -18,6 +18,7 @@ const green = "#10b981";
 const amber = "#f59e0b";
 const pink = "#ec4899";
 const blue = "#3b82f6";
+const red = "#ef4444";
 
 /* ─── roadmap phase statuses ─── */
 type PhaseStatus = "complete" | "in-progress" | "planned" | "future";
@@ -28,181 +29,177 @@ const statusMeta: Record<PhaseStatus, { label: string; colour: string; bg: strin
   "future": { label: "Future", colour: "rgba(255,255,255,0.35)", bg: "rgba(255,255,255,0.04)" },
 };
 
-/* ─── data ─── */
+/* ─── data: HONEST architecture layers ─── */
 const architectureLayers = [
   {
     title: "Data Ingestion Layer",
     icon: <Database size={18} />,
     colour: cyan,
-    description: "Normalised pipelines from 15 marketing channels into a unified schema. Handles rate limiting, token refresh, pagination, and error recovery.",
+    status: "built" as const,
+    description: "Live and working. 15 marketing channel adapters with cron-driven snapshots, API caching, and per-client credential storage.",
     components: [
-      { name: "Channel Adapters", detail: "Per-platform adapters (GA4, Meta, Google Ads, TikTok, LinkedIn, etc.) that translate native API responses into Meridian's canonical data format." },
-      { name: "Snapshot Engine", detail: "Cron-driven metric snapshots capturing daily/weekly/monthly aggregates per client, per channel. Stored in MetricSnapshot table for time-series analysis." },
-      { name: "API Cache Layer", detail: "withApiCache() wrapper with configurable TTLs (1–24 hours) to minimise quota consumption. Cache keys include channel, metric type, date range, and client ID." },
-      { name: "Credential Vault", detail: "Per-client OAuth tokens and API keys stored encrypted in the Client model. Supports token refresh for Google, Meta, and Microsoft OAuth flows." },
+      { name: "Channel Adapters", detail: "Per-platform adapters for GA4, Meta, Google Ads, TikTok, LinkedIn, Microsoft Ads, YouTube, Klaviyo, HubSpot, CallRail, SemRush, Search Console, Moz, WooCommerce, and Shopify. Each handles auth, pagination, rate limiting, and error recovery." },
+      { name: "Snapshot Engine", detail: "Cron-driven metric snapshots stored in the MetricSnapshot table. Captures periodic aggregates per client per channel for time-series analysis and trend detection." },
+      { name: "API Cache Layer", detail: "withApiCache() wrapper with configurable TTLs (1–24 hours). Cache keys scoped by channel, metric type, date range, and client ID. Cuts quota consumption significantly." },
+      { name: "Credential Storage", detail: "Per-client OAuth tokens and API keys stored in the Client model. Supports token refresh for Google, Meta, and Microsoft OAuth flows. Note: not separately encrypted at rest beyond DB-level encryption." },
     ],
   },
   {
     title: "Benchmark Database",
     icon: <BarChart3 size={18} />,
-    colour: accent,
-    description: "The core differentiator. A continuously-updated database of anonymised campaign performance data segmented by sector, channel, budget tier, and geography.",
+    colour: red,
+    status: "not-built" as const,
+    description: "Does not exist yet. There is no benchmark database, no percentile engine, and no industry-wide performance data. This is the biggest gap between where we are and where we want to be.",
     components: [
-      { name: "Sector Taxonomy", detail: "12 primary sectors (E-commerce, Education, Hospitality, SaaS/B2B, Charity, Retail, Healthcare, Travel, Finance, Automotive, Fashion/Beauty, Property) each with sub-verticals." },
-      { name: "Budget Tiers", detail: "5 spend bands per channel: Micro (<£1k/mo), Small (£1–5k), Mid (£5–20k), Large (£20–100k), Enterprise (£100k+). Benchmarks differ dramatically across tiers." },
-      { name: "Percentile Engine", detail: "Every metric benchmarked at P25, P50 (median), P75, and P90. A client's ROAS of 2.8x becomes '61st percentile for e-commerce Meta Ads at £10–20k/mo spend'." },
-      { name: "Temporal Indexing", detail: "Benchmarks versioned by quarter to account for seasonality and platform algorithm changes. Q4 e-commerce ROAS benchmarks differ significantly from Q1." },
-      { name: "Data Volume", detail: "24 million labelled campaign outcomes across 800,000+ ad accounts. Growing weekly as new agency data flows through the platform." },
+      { name: "Current Reality", detail: "The goal-benchmark AI endpoint generates targets from a client's OWN historical data using GPT. It explicitly avoids fabricating industry benchmarks — if no historical data exists, it returns zeros. There is no BenchmarkData table in the database." },
+      { name: "What Would Be Needed", detail: "A dedicated database table (e.g. BenchmarkData) with fields for sector, channel, budget tier, metric name, and percentile values (P25, P50, P75, P90). Seeded from public industry reports and gradually enriched with anonymised i3 client data." },
+      { name: "Data Sources We Could Use", detail: "Public benchmarks from Google Ads (auction insights), WordStream annual reports, Meta business benchmarks, industry reports from HubSpot/Mailchimp/Klaviyo. These are freely available but would need manual curation and quarterly updates." },
+      { name: "Honest Data Volume", detail: "i3 Media manages a limited number of clients. We would NOT have millions of data points. Realistic starting point: dozens of accounts across a handful of sectors. This is enough for internal benchmarking but not enough to claim industry-wide authority." },
     ],
   },
   {
-    title: "Intelligence Engine",
+    title: "Intelligence Engine (Prompt Engineering)",
     icon: <Brain size={18} />,
     colour: pink,
-    description: "The reasoning core. Combines benchmark context injection with fine-tuned language model inference to produce insights grounded in real-world performance data.",
+    status: "built" as const,
+    description: "Built and working, but it is prompt engineering on top of stock OpenAI models — not a proprietary AI. The value is in the structured data context we pass to GPT, not in a custom model.",
     components: [
-      { name: "Context Assembly", detail: "Before every inference call, the engine assembles a context window containing: client metrics, relevant benchmarks, historical trends, anomaly flags, and sector-specific thresholds." },
-      { name: "Prompt Architecture", detail: "Multi-layer prompt system: system prompt (persona + rules), benchmark injection (structured data), client context (goals, instructions, past recommendations), and user query." },
-      { name: "Model Router", detail: "Routes requests to the optimal model: GPT-4o for complex strategy/diagnosis, GPT-4o-mini for summaries/commentary, with fallback chains and retry logic." },
-      { name: "Confidence Scoring", detail: "Each recommendation tagged with a confidence score based on benchmark data density. Low-density sector/channel combos get explicit uncertainty disclaimers." },
-      { name: "Output Validator", detail: "Post-processing layer that validates numeric claims against source data, strips hallucinated statistics, and enforces British English style." },
+      { name: "Context Assembly", detail: "Before each inference call, endpoints assemble a context window with: client channel metrics, historical snapshot data, client-specific AI instructions, anomaly flags, and the user's query. This is the real differentiator — GPT gets structured marketing data, not just a vague question." },
+      { name: "Prompt Architecture", detail: "Multi-layer prompts: system prompt (persona, rules, output format), client context (metrics, goals, instructions), and user query or analysis type. Prompts are carefully engineered per endpoint for consistent, relevant output." },
+      { name: "Model Selection", detail: "Most endpoints use GPT-5.4 for complex analysis (strategy, root-cause, executive summaries) and GPT-5.4-nano for lighter tasks (commentary, keyword suggestions, summaries). One legacy endpoint still uses GPT-4o-mini." },
+      { name: "What Does NOT Exist", detail: "There is no confidence scoring system, no output validation/fact-checking layer, no hallucination detection, and no benchmark injection (because the benchmark database doesn't exist). AI outputs go straight from GPT to the user with prompt-level guardrails only." },
     ],
   },
   {
     title: "Analysis Endpoints",
     icon: <Zap size={18} />,
     colour: green,
-    description: "19 specialised AI endpoints, each tuned for a specific analysis type. Every endpoint follows the same auth → context → inference → validate → respond pipeline.",
+    status: "built" as const,
+    description: "24 AI endpoint directories exist in /api/ai/. Each follows a similar pattern: authenticate → fetch client data → assemble prompt → call OpenAI → return result.",
     components: [
-      { name: "AI Summary", detail: "Executive-level performance summaries per channel and cross-channel. Benchmarks client performance against sector norms. Used in report generation." },
-      { name: "AI Commentary", detail: "Narrative commentary for individual channel sections. Explains what happened, why it matters, and what to do next. Tone-adapted per client." },
-      { name: "AI Forecast", detail: "90-day forward projections calibrated against historical patterns and benchmark trajectories. Includes confidence intervals and scenario modelling." },
-      { name: "AI Chat", detail: "Free-form conversational interface. Full context window with client data, benchmarks, and conversation history. Supports follow-up questions." },
-      { name: "AI Anomaly Analysis", detail: "Root-cause diagnosis when metrics deviate significantly. Cross-references 12 signal types across channels to identify the most probable cause." },
-      { name: "AI Strategy", detail: "Generates prioritised 90-day strategy documents grounded in what has worked for comparable accounts in the same sector and budget tier." },
-      { name: "AI Goals", detail: "Recommends KPI targets based on benchmark percentile bands. 'To move from P50 to P75 ROAS, you'd need to optimise X and Y.'" },
-      { name: "AI Signals", detail: "Real-time anomaly detection across all channels. Classifies anomalies by severity, calculates expected ranges, and surfaces root causes." },
+      { name: "Core Analysis", detail: "summary, executive-summary, super-summary, report-commentary, report-narrative, overview-narrative — these power the main reporting and dashboard AI features." },
+      { name: "Strategic", detail: "strategy-document, forecast, goal-benchmark, budget-advisor, attribution — deeper analytical endpoints for planning and goal-setting." },
+      { name: "Creative & Content", detail: "creative-intelligence, cross-platform-creative, content-strategy-regen, landing-page-analysis, keyword-suggestions, audience-suggestions, ai-visibility — specialised content and creative analysis." },
+      { name: "Operational", detail: "chat (conversational AI), root-cause (anomaly diagnosis), qa-summary (quality assurance), meeting-briefing (pre-meeting prep), blended-revenue (cross-channel revenue), snapshots (historical data retrieval — no AI model)." },
     ],
   },
   {
     title: "Delivery Layer",
     icon: <Globe size={18} />,
     colour: blue,
-    description: "How Meridian's intelligence reaches users: dashboards, reports, the client portal, and (soon) a standalone API.",
+    status: "built" as const,
+    description: "How AI output reaches users. All of these surfaces are working today.",
     components: [
-      { name: "Dashboard Integration", detail: "AI insights embedded directly into every channel section of the client dashboard. Summary cards, commentary blocks, and recommendation panels." },
-      { name: "Report Builder", detail: "AI-generated content blocks in the report builder. Editors can regenerate, edit, or override any AI output before publishing." },
-      { name: "Client Portal", detail: "Client-facing portal with Meridian-powered performance summaries. Simplified language, goal-focused insights, no jargon." },
-      { name: "PDF Export", detail: "AI commentary baked into branded PDF reports. Consistent formatting, British English, agency white-labelling." },
-      { name: "Share Links", detail: "Public share links for reports and strategy documents with AI content preserved. No login required for recipients." },
+      { name: "Dashboard Integration", detail: "AI insights embedded in channel dashboard sections. Summary cards, commentary blocks, and recommendation panels render inline alongside channel data." },
+      { name: "Report Builder", detail: "AI-generated content blocks in the drag-and-drop report builder. Editors can regenerate, edit, or override any AI output before publishing." },
+      { name: "Client Portal", detail: "Client-facing portal with AI-powered performance summaries. Simplified language, goal-focused insights." },
+      { name: "PDF Export & Share Links", detail: "AI commentary included in branded PDF reports and public share links. No login required for share link recipients." },
     ],
   },
 ];
 
 const dataFlowSteps = [
   { label: "Channel APIs", sub: "15 platforms", icon: <Globe size={16} />, colour: cyan },
-  { label: "Normalisation", sub: "Canonical schema", icon: <Layers size={16} />, colour: blue },
-  { label: "Snapshot Store", sub: "Time-series DB", icon: <Database size={16} />, colour: green },
-  { label: "Benchmark Match", sub: "Sector + tier", icon: <Target size={16} />, colour: amber },
+  { label: "Normalisation", sub: "Per-channel adapters", icon: <Layers size={16} />, colour: blue },
+  { label: "Snapshot Store", sub: "MetricSnapshot table", icon: <Database size={16} />, colour: green },
   { label: "Context Assembly", sub: "Prompt building", icon: <Code2 size={16} />, colour: pink },
-  { label: "LLM Inference", sub: "GPT-4o / 4o-mini", icon: <Brain size={16} />, colour: accent },
-  { label: "Validation", sub: "Fact-checking", icon: <Shield size={16} />, colour: green },
+  { label: "LLM Inference", sub: "GPT-5.4 / 5.4-nano", icon: <Brain size={16} />, colour: accent },
   { label: "Delivery", sub: "Dashboard / Report", icon: <FileText size={16} />, colour: blue },
 ];
 
 const roadmapPhases = [
   {
-    phase: "Phase 1 — Foundation",
+    phase: "Phase 1 — Foundation (What We've Built)",
     status: "complete" as PhaseStatus,
     quarter: "Q1 2026",
     items: [
-      { title: "15-channel data ingestion", description: "GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, SemRush, Search Console, Moz, WooCommerce, Shopify — all connected with normalised data pipelines.", done: true },
-      { title: "AI summary and commentary endpoints", description: "GPT-4o powered summaries and per-channel commentary with client-specific instruction overrides.", done: true },
-      { title: "Anomaly detection engine", description: "Statistical anomaly detection across all channels with severity classification, expected range calculation, and root-cause analysis.", done: true },
-      { title: "Report builder with AI blocks", description: "Drag-and-drop report builder with AI-generated content blocks. Edit, regenerate, or override any AI output.", done: true },
-      { title: "Metric snapshot architecture", description: "Cron-driven daily snapshots per client per channel. Enables time-series analysis, trend detection, and historical benchmarking.", done: true },
-      { title: "API caching layer", description: "withApiCache() with configurable TTLs to minimise external API quota consumption while maintaining data freshness.", done: true },
+      { title: "15-channel data ingestion", description: "GA4, Google Ads, Meta, TikTok, Microsoft Ads, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, SemRush, Search Console, Moz, WooCommerce, Shopify — all connected with per-channel API adapters.", done: true },
+      { title: "24 AI endpoints", description: "Prompt-engineered endpoints covering summary, commentary, strategy, forecasting, chat, root-cause analysis, creative intelligence, and more. All using GPT-5.4 / GPT-5.4-nano via OpenAI API.", done: true },
+      { title: "Anomaly detection", description: "Statistical anomaly detection across channels with severity classification and root-cause analysis through the AI root-cause endpoint.", done: true },
+      { title: "Report builder with AI blocks", description: "Drag-and-drop report builder with AI-generated content blocks. Editors can regenerate, edit, or override any AI output.", done: true },
+      { title: "Metric snapshot architecture", description: "Cron-driven snapshots per client per channel stored in the MetricSnapshot table. Enables historical trend analysis and period-over-period comparisons.", done: true },
+      { title: "API caching layer", description: "withApiCache() with configurable TTLs (1–24 hours) to minimise external API quota consumption.", done: true },
+      { title: "Client portal with AI summaries", description: "Client-facing portal with magic-link auth and AI-powered performance summaries.", done: true },
+      { title: "Agency tools suite", description: "Keyword planner, proposal builder, content strategy generator, media plan builder, and page analyser — all with AI integration.", done: true },
     ],
   },
   {
-    phase: "Phase 2 — Intelligence Layer",
-    status: "in-progress" as PhaseStatus,
-    quarter: "Q2 2026",
+    phase: "Phase 2 — Benchmark Database",
+    status: "not-started" as PhaseStatus,
+    quarter: "Target: Q3 2026",
     items: [
-      { title: "Benchmark database v1", description: "Initial benchmark dataset covering 12 sectors, 15 channels, and 5 budget tiers. Percentile scoring for ROAS, CPA, CTR, CPC, CPL, CPM.", done: true },
-      { title: "Sector-aware prompt injection", description: "Dynamic benchmark context injected into every AI prompt. Recommendations always reference how a metric compares to sector norms.", done: true },
-      { title: "AI Signals — real-time anomaly feed", description: "Cross-channel anomaly feed with severity scoring, trend analysis, impact estimation, and actionable recommendations.", done: true },
-      { title: "AI forecasting with confidence intervals", description: "90-day forecasts per channel calibrated against historical patterns. Includes best-case, expected, and worst-case scenarios.", done: false },
-      { title: "Creative fatigue detection", description: "Identifies when ad creative is approaching burnout based on frequency, CTR decay, and cost escalation patterns.", done: false },
-      { title: "Budget reallocation recommendations", description: "Cross-channel budget optimisation suggestions with expected impact calculations based on benchmark data.", done: false },
-      { title: "Client goal tracking with AI targets", description: "AI-recommended KPI targets based on benchmark percentile bands. Progress tracking against AI-suggested milestones.", done: false },
+      { title: "Design BenchmarkData schema", description: "New Prisma model: sector, channel, budgetTier, metricName, p25, p50, p75, p90, sampleSize, quarter, source. Run migration.", done: false },
+      { title: "Seed with public industry data", description: "Manually curate benchmarks from WordStream, Google Ads auction insights, HubSpot annual reports, Klaviyo benchmarks, Meta business averages. This is tedious but doable — the data is publicly available.", done: false },
+      { title: "Seed with i3 client data", description: "Anonymise and aggregate performance data from existing i3 clients into the benchmark table. Honest reality: this will cover a handful of sectors with small sample sizes.", done: false },
+      { title: "Build percentile lookup API", description: "Given a metric value + sector + channel + budget tier, return the percentile position. This is straightforward code (sorted array lookup), not AI.", done: false },
+      { title: "Inject benchmarks into AI prompts", description: "Modify existing AI endpoints to include benchmark context in the prompt. 'This client's ROAS is 2.8x. The median for their sector/channel/spend is 2.9x (P50). P75 is 4.6x.' This is where the real value multiplier kicks in.", done: false },
+      { title: "Quarterly benchmark refresh process", description: "Define a process for updating benchmarks each quarter. Initially manual; could be partially automated later.", done: false },
     ],
   },
   {
-    phase: "Phase 3 — Meridian Model Training",
-    status: "planned" as PhaseStatus,
-    quarter: "Q3 2026",
+    phase: "Phase 3 — Intelligence Improvements",
+    status: "not-started" as PhaseStatus,
+    quarter: "Target: Q4 2026",
     items: [
-      { title: "Training data pipeline", description: "Anonymised, labelled dataset of campaign outcomes. Each record includes: channel, sector, budget tier, metrics before/after, action taken, outcome quality.", done: false },
-      { title: "Fine-tuned model v1", description: "First Meridian fine-tune on GPT-4o base. Trained on 24M+ labelled outcomes to understand what 'good' looks like for any given context.", done: false },
-      { title: "Benchmark-native reasoning", description: "Model natively understands percentile positioning without requiring benchmark data in the prompt context window. Reduces token usage by ~40%.", done: false },
-      { title: "Recommendation outcome tracking", description: "Closed-loop system: track whether Meridian's recommendations were followed and what the outcome was. Feeds back into training data.", done: false },
-      { title: "Sector-specific model adapters", description: "LoRA adapters per sector for nuanced understanding. E-commerce Meridian speaks differently from B2B SaaS Meridian.", done: false },
-      { title: "A/B testing framework for AI outputs", description: "Compare Meridian v1 recommendations against baseline GPT-4o on real client data. Measure recommendation quality and adoption rate.", done: false },
+      { title: "Output validation layer", description: "Post-processing that checks AI-generated numbers against actual data passed in the prompt. Catches obvious hallucinations like invented statistics or impossible percentages.", done: false },
+      { title: "Recommendation outcome tracking", description: "Track whether AI recommendations were acted upon and what happened. Store as structured data (recommendation → action taken → outcome). Requires new DB model and UI.", done: false },
+      { title: "AI forecasting with historical calibration", description: "Improve the forecast endpoint to use MetricSnapshot historical data for calibrated projections rather than pure GPT reasoning.", done: false },
+      { title: "Cross-channel budget advisor v2", description: "Enhance budget-advisor endpoint with benchmark data so it can reference sector norms when suggesting budget reallocation.", done: false },
+      { title: "Confidence indicators", description: "Tag AI outputs with a rough confidence level based on: how much client data is available, whether benchmarks exist for that sector/channel combo, and snapshot history depth.", done: false },
     ],
   },
   {
-    phase: "Phase 4 — Advanced Intelligence",
-    status: "planned" as PhaseStatus,
-    quarter: "Q4 2026",
-    items: [
-      { title: "Multi-modal creative analysis", description: "Analyse ad images, videos, and copy simultaneously. Score creative quality against sector benchmarks. Identify winning visual patterns.", done: false },
-      { title: "Predictive budget modelling", description: "Given a target KPI (e.g., 'reach P75 ROAS'), Meridian calculates the required budget allocation across channels with confidence intervals.", done: false },
-      { title: "Audience fatigue prediction", description: "Predicts audience segment exhaustion 2–4 weeks before performance drops. Recommends expansion or rotation strategies.", done: false },
-      { title: "Competitor intelligence integration", description: "Cross-reference Meridian's benchmark data with SemRush/Moz competitor data for contextualised competitive positioning.", done: false },
-      { title: "Attribution modelling", description: "Data-driven attribution models trained on first-party outcome data. Goes beyond last-click to show true channel contribution.", done: false },
-      { title: "White-label API alpha", description: "Standalone Meridian API for agencies to embed intelligence in their own tools. Authentication, rate limiting, usage metering.", done: false },
-    ],
-  },
-  {
-    phase: "Phase 5 — Platform & Scale",
+    phase: "Phase 4 — Marketing-Native LLM",
     status: "future" as PhaseStatus,
     quarter: "2027",
     items: [
-      { title: "Meridian API public beta", description: "Public API with docs, SDKs, sandbox environment, and usage-based pricing. Custom model IDs per agency for fine-tuned variants.", done: false },
-      { title: "Self-improving benchmark loop", description: "Fully automated flywheel: agencies run Meridian → real outcome data flows in → benchmarks sharpen → recommendations improve → better results.", done: false },
-      { title: "Real-time analysis streaming", description: "Server-Sent Events for live analysis. Watch Meridian think through a diagnosis step by step, with intermediate reasoning visible.", done: false },
-      { title: "Multi-language support", description: "Meridian outputs in 12+ languages while maintaining benchmark accuracy. Supports international agency operations.", done: false },
-      { title: "Agency-specific model fine-tuning", description: "Each agency can train a private Meridian variant on their own client data. Learns agency-specific strategies and brand guidelines.", done: false },
-      { title: "Meridian Copilot", description: "In-platform AI assistant that proactively surfaces opportunities, warns about risks, and suggests actions throughout the daily workflow.", done: false },
+      { title: "Training data pipeline", description: "Build a structured export: every AI call logged with input context, prompt, output, analyst edits/corrections, and outcome data. Each row = one training example. Target: 10,000+ high-quality pairs before attempting a fine-tune. At ~50 AI calls/day across clients, that's ~6 months of collection.", done: false },
+      { title: "Evaluate base model options", description: "Llama 3.1 70B (Meta, open-weight, commercially licensable) is the current best candidate for self-hosted. Alternatives: Mistral Large, Qwen 2.5 72B, or Llama 4 when available. OpenAI fine-tuning (GPT-4o) is simpler but locks us into their API and pricing.", done: false },
+      { title: "Fine-tune v1: writing style + tone", description: "Lowest-hanging fruit. Fine-tune on ~2,000 examples of 'input metric data → ideal report commentary' where analysts have corrected/approved the output. Uses QLoRA (4-bit quantised LoRA) to keep GPU requirements manageable. Teaches the model i3's house style without needing marketing strategy knowledge.", done: false },
+      { title: "Fine-tune v2: benchmark-aware reasoning", description: "Train on examples where benchmark context was included in the input and the output correctly references percentile positions, sector norms, and contextual recommendations. This is where it starts to 'understand' marketing performance rather than just describing numbers.", done: false },
+      { title: "Self-hosted inference infrastructure", description: "Run the fine-tuned model on dedicated GPU. Options: RunPod/Lambda Labs (~£2–4/hr for A100 80GB), AWS Inferentia, or a leased dedicated GPU server (~£300–600/month for an A100). A 70B model quantised to 4-bit needs ~40GB VRAM = 1x A100 80GB or 2x A6000 48GB.", done: false },
+      { title: "Hybrid routing: own model + GPT fallback", description: "Route requests to our fine-tuned model for commentary/summary/strategy tasks where it's been trained, fall back to GPT-5.4 for creative/novel queries or when the fine-tune returns low-quality output. Gradual migration, not a hard cutover.", done: false },
+      { title: "Sector-specific LoRA adapters", description: "Train lightweight LoRA adapters per sector (e-commerce, education, B2B SaaS, charity, etc.). Each adapter is ~50–200MB and can be hot-swapped at inference time. A client request loads base model + sector adapter. Requires per-sector training data — may not be viable for all sectors initially.", done: false },
+      { title: "A/B test and measure", description: "Run fine-tuned model vs GPT-5.4 on identical inputs. Have analysts blind-rate outputs on accuracy, relevance, actionability, and tone. Only ship if the fine-tune wins on at least 3 of 4 criteria. Track cost per inference for both paths.", done: false },
+    ],
+  },
+  {
+    phase: "Phase 5 — External API & Licensing",
+    status: "future" as PhaseStatus,
+    quarter: "2027+ — If Market Validated",
+    items: [
+      { title: "Validate demand with other agencies", description: "Before building an API product, talk to 10+ agencies. Do they want benchmark-enriched AI analysis? What would they pay? What data would they contribute? No point building if nobody wants it.", done: false },
+      { title: "Multi-tenant API architecture", description: "If demand is validated: build API authentication, rate limiting, usage metering, billing integration. Each agency gets isolated data with access to shared (anonymised) benchmarks.", done: false },
+      { title: "Data contribution model", description: "The flywheel only works if agencies contribute anonymised data back. This requires trust, clear data policies, and demonstrated value. It's a chicken-and-egg problem.", done: false },
+      { title: "Pricing and GTM", description: "Usage-based pricing (per API call or per client seat). Will need competitive analysis — tools like Supermetrics, AgencyAnalytics, and Whatagraph are in adjacent spaces.", done: false },
     ],
   },
 ];
 
 const channels = [
-  { name: "Google Analytics 4", icon: "📊", status: "live", metrics: "Sessions, users, bounce rate, conversions, revenue, pages/session, events" },
-  { name: "Google Ads", icon: "🎯", status: "live", metrics: "Impressions, clicks, CTR, CPC, conversions, ROAS, cost, quality score, search terms" },
-  { name: "Meta Ads", icon: "📘", status: "live", metrics: "Spend, impressions, CPM, CPC, CTR, conversions, ROAS, frequency, reach" },
-  { name: "TikTok Ads", icon: "🎵", status: "live", metrics: "Impressions, clicks, CTR, CPC, conversions, spend, video views, VTR" },
-  { name: "Microsoft Ads", icon: "🔷", status: "live", metrics: "Impressions, clicks, CTR, CPC, conversions, spend, quality score" },
-  { name: "LinkedIn Ads", icon: "💼", status: "live", metrics: "Impressions, clicks, CTR, CPC, leads, spend, engagement rate" },
-  { name: "YouTube", icon: "▶️", status: "live", metrics: "Views, subscribers, watch time, engagement, top videos, audience demographics" },
-  { name: "Klaviyo", icon: "📧", status: "live", metrics: "Sent, delivered, opens, clicks, revenue, unsubscribes, list growth, flows" },
-  { name: "HubSpot CRM", icon: "🟠", status: "live", metrics: "Contacts, deals, pipeline value, conversion rates, lifecycle stages" },
-  { name: "CallRail", icon: "📞", status: "live", metrics: "Total calls, first-time callers, qualified leads, answered rate, sources" },
-  { name: "SemRush", icon: "🔍", status: "live", metrics: "Organic keywords, traffic, position changes, backlinks, domain authority" },
-  { name: "Search Console", icon: "🌐", status: "live", metrics: "Impressions, clicks, CTR, average position, top queries, top pages" },
-  { name: "Moz", icon: "🏔️", status: "live", metrics: "Domain authority, page authority, spam score, linking domains" },
-  { name: "WooCommerce", icon: "🛒", status: "live", metrics: "Orders, revenue, AOV, products sold, conversion rate, top products" },
-  { name: "Shopify", icon: "🛍️", status: "live", metrics: "Orders, revenue, AOV, conversion rate, returning customers, top products" },
+  { name: "Google Analytics 4", icon: "📊", metrics: "Sessions, users, bounce rate, conversions, revenue, pages/session, events" },
+  { name: "Google Ads", icon: "🎯", metrics: "Impressions, clicks, CTR, CPC, conversions, ROAS, cost, quality score, search terms" },
+  { name: "Meta Ads", icon: "📘", metrics: "Spend, impressions, CPM, CPC, CTR, conversions, ROAS, frequency, reach" },
+  { name: "TikTok Ads", icon: "🎵", metrics: "Impressions, clicks, CTR, CPC, conversions, spend, video views, VTR" },
+  { name: "Microsoft Ads", icon: "🔷", metrics: "Impressions, clicks, CTR, CPC, conversions, spend, quality score" },
+  { name: "LinkedIn Ads", icon: "💼", metrics: "Impressions, clicks, CTR, CPC, leads, spend, engagement rate" },
+  { name: "YouTube", icon: "▶️", metrics: "Views, subscribers, watch time, engagement, top videos, audience demographics" },
+  { name: "Klaviyo", icon: "📧", metrics: "Sent, delivered, opens, clicks, revenue, unsubscribes, list growth, flows" },
+  { name: "HubSpot CRM", icon: "🟠", metrics: "Contacts, deals, pipeline value, conversion rates, lifecycle stages" },
+  { name: "CallRail", icon: "📞", metrics: "Total calls, first-time callers, qualified leads, answered rate, sources" },
+  { name: "SemRush", icon: "🔍", metrics: "Organic keywords, traffic, position changes, backlinks, domain authority" },
+  { name: "Search Console", icon: "🌐", metrics: "Impressions, clicks, CTR, average position, top queries, top pages" },
+  { name: "Moz", icon: "🏔️", metrics: "Domain authority, page authority, spam score, linking domains" },
+  { name: "WooCommerce", icon: "🛒", metrics: "Orders, revenue, AOV, products sold, conversion rate, top products" },
+  { name: "Shopify", icon: "🛍️", metrics: "Orders, revenue, AOV, conversion rate, returning customers, top products" },
 ];
 
 const securityPrinciples = [
-  { icon: <Lock size={16} />, title: "Data isolation", detail: "Client data is strictly isolated. No client can access another client's metrics, benchmarks include only anonymised aggregates." },
-  { icon: <Shield size={16} />, title: "Credential encryption", detail: "OAuth tokens and API keys encrypted at rest. Token refresh handled server-side with no client-side exposure." },
+  { icon: <Lock size={16} />, title: "Data isolation", detail: "Client data isolated per account. No client can access another's metrics. Future benchmarks would use anonymised aggregates only." },
+  { icon: <Shield size={16} />, title: "Credential storage", detail: "OAuth tokens and API keys stored server-side in the database. Token refresh handled automatically for Google, Meta, and Microsoft." },
   { icon: <Users size={16} />, title: "Role-based access", detail: "Granular permission system with 20+ permission keys. Each user sees only what their role allows." },
-  { icon: <Server size={16} />, title: "Server-side only", detail: "All AI inference and data fetching happens server-side. No API keys or raw data ever reach the browser." },
-  { icon: <Activity size={16} />, title: "Audit trail", detail: "Activity logging for all admin actions. Full audit trail of who changed what and when." },
+  { icon: <Server size={16} />, title: "Server-side only", detail: "All AI inference and data fetching happens server-side. No API keys or raw data reach the browser." },
+  { icon: <Activity size={16} />, title: "Audit trail", detail: "Activity logging for admin actions. Who changed what and when." },
   { icon: <RefreshCw size={16} />, title: "Session management", detail: "HMAC-signed session cookies with configurable expiry. Secure, HttpOnly, SameSite=Lax." },
 ];
 
@@ -249,19 +246,22 @@ function CollapsibleCard({ title, icon, colour, description, children, defaultOp
 
 /* ─── section nav ─── */
 const sections = [
-  { id: "overview", label: "Overview" },
+  { id: "honest-assessment", label: "Honest Assessment" },
   { id: "architecture", label: "Architecture" },
   { id: "data-flow", label: "Data Flow" },
   { id: "channels", label: "Channels" },
-  { id: "benchmarks", label: "Benchmarks" },
+  { id: "gaps", label: "What's Missing" },
   { id: "ai-endpoints", label: "AI Endpoints" },
+  { id: "own-llm", label: "Own LLM" },
+  { id: "business-case", label: "Business Case" },
+  { id: "risks", label: "Risks & Unknowns" },
   { id: "security", label: "Security" },
   { id: "roadmap", label: "Roadmap" },
   { id: "tech-stack", label: "Tech Stack" },
 ];
 
 export default function MeridianArchitecturePage() {
-  const [activeSection, setActiveSection] = useState("overview");
+  const [activeSection, setActiveSection] = useState("honest-assessment");
 
   return (
     <div className="page" style={{ maxWidth: 1100 }}>
@@ -277,9 +277,9 @@ export default function MeridianArchitecturePage() {
             <Brain size={22} />
           </div>
           <div>
-            <h1 className="page-title" style={{ margin: 0 }}>Meridian — Architecture & Roadmap</h1>
+            <h1 className="page-title" style={{ margin: 0 }}>Meridian — Honest Architecture & Strategy</h1>
             <p style={{ color: "var(--text-3)", fontSize: 13, marginTop: 2 }}>
-              Internal master plan · Technical architecture · Implementation roadmap
+              Internal document · What exists, what doesn&rsquo;t, what we can build, and the real business case
             </p>
           </div>
         </div>
@@ -308,38 +308,41 @@ export default function MeridianArchitecturePage() {
         </div>
       </div>
 
-      {/* ─── OVERVIEW ─── */}
-      <section id="overview" style={{ marginBottom: 56 }}>
+      {/* ─── HONEST ASSESSMENT ─── */}
+      <section id="honest-assessment" style={{ marginBottom: 56 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 16, letterSpacing: "-0.3px" }}>
-          What is Meridian?
+          What is Meridian, Honestly?
         </h2>
         <div className="card">
           <div className="card-body" style={{ lineHeight: 1.8 }}>
             <p style={{ fontSize: 14, color: "var(--text-2)", marginBottom: 16 }}>
-              <strong style={{ color: "var(--text)" }}>Meridian</strong> is a marketing-native intelligence layer built specifically for agency operations. Unlike generic AI assistants that describe numbers without context, Meridian understands what &ldquo;good&rdquo; looks like — because it has been trained on 24 million real campaign outcomes across 15 marketing channels, 12 sectors, and 5 budget tiers.
+              <strong style={{ color: "var(--text)" }}>Meridian</strong> is a branding layer for the AI features in StratOS. Under the hood, it is <strong style={{ color: "var(--text)" }}>prompt engineering on top of stock OpenAI models</strong> (GPT-5.4 and GPT-5.4-nano). It is not a proprietary model, not fine-tuned, and has no proprietary training data.
             </p>
             <p style={{ fontSize: 14, color: "var(--text-2)", marginBottom: 16 }}>
-              When a client has a 2.8x ROAS on Meta Ads, generic AI says &ldquo;that&rsquo;s a positive return.&rdquo; Meridian says &ldquo;that places you at the 61st percentile for e-commerce Meta Ads accounts spending £10–20k/month — above median but 28% below P75. The primary lever is creative refresh cadence.&rdquo;
+              The real value — and it is genuine value — comes from <strong style={{ color: "var(--text)" }}>structured data context</strong>. When our AI endpoints call GPT, they pass in the client&rsquo;s actual channel data, historical snapshots, anomaly flags, and client-specific instructions. This means GPT gives marketing-specific analysis rather than generic responses. That&rsquo;s a meaningful improvement over raw ChatGPT, but it is prompt engineering, not a custom intelligence.
             </p>
             <p style={{ fontSize: 14, color: "var(--text-2)", marginBottom: 16 }}>
-              This contextual intelligence powers every AI feature in the platform: summaries, commentary, forecasts, anomaly analysis, strategy generation, goal recommendations, and the conversational AI chat.
+              <strong style={{ color: amber }}>What we do NOT have</strong>: a benchmark database, a percentile engine, industry-wide performance data, a fine-tuned model, a training pipeline, output validation, or confidence scoring. All of those are buildable, but none exist today.
+            </p>
+            <p style={{ fontSize: 14, color: "var(--text-2)" }}>
+              This document lays out honestly what exists, what the gaps are, what can realistically be built, and the genuine business case for three audiences: i3 internally, our clients, and potentially external agencies.
             </p>
 
-            {/* Key stats */}
+            {/* Key stats — REAL numbers */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginTop: 24 }}>
               {[
-                { value: "24M+", label: "Training examples", sub: "Real campaign outcomes" },
-                { value: "15", label: "Channels", sub: "Integrated data sources" },
-                { value: "12", label: "Sectors", sub: "With budget-tier benchmarks" },
-                { value: "19", label: "AI endpoints", sub: "Specialised analysis types" },
-                { value: "800K+", label: "Ad accounts", sub: "In benchmark database" },
+                { value: "24", label: "AI Endpoints", sub: "Built and working", colour: green },
+                { value: "15", label: "Channels", sub: "Integrated data sources", colour: green },
+                { value: "0", label: "Benchmark Records", sub: "Database not built yet", colour: red },
+                { value: "0", label: "Fine-tuned Models", sub: "Using stock OpenAI", colour: red },
+                { value: "GPT-5.4", label: "Primary Model", sub: "OpenAI stock model", colour: accent },
               ].map(s => (
                 <div key={s.label} style={{
                   padding: "16px 18px", borderRadius: 12,
-                  background: "var(--bg-raised)", border: "1px solid var(--glass-border)",
+                  background: "var(--bg-raised)", border: `1px solid ${s.colour}25`,
                   textAlign: "center",
                 }}>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: accent, letterSpacing: "-0.5px" }}>{s.value}</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: s.colour, letterSpacing: "-0.5px" }}>{s.value}</div>
                   <div style={{ fontSize: 12, fontWeight: 650, color: "var(--text)", marginTop: 4 }}>{s.label}</div>
                   <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{s.sub}</div>
                 </div>
@@ -352,10 +355,10 @@ export default function MeridianArchitecturePage() {
       {/* ─── ARCHITECTURE ─── */}
       <section id="architecture" style={{ marginBottom: 56 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 6, letterSpacing: "-0.3px" }}>
-          System Architecture
+          System Architecture — What Exists vs What Doesn&rsquo;t
         </h2>
         <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>
-          Meridian is structured as five logical layers. Each layer is independently testable and can be upgraded without affecting the others.
+          Five logical layers. Green items are built and working. Red items do not exist yet. Click each to see the honest detail.
         </p>
 
         {architectureLayers.map((layer, i) => (
@@ -385,10 +388,10 @@ export default function MeridianArchitecturePage() {
       {/* ─── DATA FLOW ─── */}
       <section id="data-flow" style={{ marginBottom: 56 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 6, letterSpacing: "-0.3px" }}>
-          Data Flow Pipeline
+          Data Flow — Current Reality
         </h2>
         <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>
-          Every piece of intelligence follows this end-to-end pipeline from raw API data to delivered insight.
+          Today&rsquo;s actual pipeline. Note: there is no benchmark match step and no validation step — those are future goals.
         </p>
 
         <div className="card">
@@ -421,33 +424,31 @@ export default function MeridianArchitecturePage() {
               ))}
             </div>
 
-            {/* Detailed pipeline explanation */}
+            {/* Honest pipeline explanation */}
             <div style={{
               marginTop: 28, padding: "20px 24px", borderRadius: 12,
               background: "var(--bg-raised)", border: "1px solid var(--glass-border)",
             }}>
-              <div style={{ fontSize: 13, fontWeight: 650, color: "var(--text)", marginBottom: 12 }}>Pipeline Detail</div>
+              <div style={{ fontSize: 13, fontWeight: 650, color: "var(--text)", marginBottom: 12 }}>How It Actually Works Today</div>
               <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.8 }}>
                 <p style={{ marginBottom: 10 }}>
-                  <strong style={{ color: "var(--text-2)" }}>1. Channel APIs → Normalisation:</strong> Raw API responses from 15 platforms are translated into Meridian&rsquo;s canonical data format. Each adapter handles authentication, pagination, rate limiting, and error recovery independently. Data is normalised into a common schema with consistent metric names, date formats, and value types.
+                  <strong style={{ color: "var(--text-2)" }}>1. Channel APIs → Normalisation:</strong> 15 channel adapters fetch data from external APIs. Each handles authentication, pagination, and error recovery. Data is normalised into a common format per channel.
                 </p>
                 <p style={{ marginBottom: 10 }}>
-                  <strong style={{ color: "var(--text-2)" }}>2. Normalisation → Snapshot Store:</strong> Normalised metrics are stored as time-series snapshots in the MetricSnapshot table. Daily cron jobs capture aggregate metrics per client, per channel. This enables trend analysis, anomaly detection against historical baselines, and period-over-period comparisons.
+                  <strong style={{ color: "var(--text-2)" }}>2. Normalisation → Snapshot Store:</strong> Cron jobs capture periodic metric snapshots into the MetricSnapshot table. This provides historical baselines for trend analysis and period-over-period comparisons.
                 </p>
                 <p style={{ marginBottom: 10 }}>
-                  <strong style={{ color: "var(--text-2)" }}>3. Snapshot Store → Benchmark Match:</strong> Client metrics are matched against the benchmark database by sector, channel, and budget tier. The percentile engine calculates where each metric falls in the distribution (P25, P50, P75, P90) and generates contextual annotations.
+                  <strong style={{ color: "var(--text-2)" }}>3. Snapshot Store → Context Assembly:</strong> When an AI endpoint is called, it fetches the client&rsquo;s current metrics and historical snapshots. These are assembled into a structured prompt alongside client-specific AI instructions and the analysis type.
                 </p>
                 <p style={{ marginBottom: 10 }}>
-                  <strong style={{ color: "var(--text-2)" }}>4. Benchmark Match → Context Assembly:</strong> The prompt builder assembles a complete context window: client metrics with benchmark annotations, historical trends, active anomaly flags, client-specific AI instructions, and the user&rsquo;s query or analysis type.
+                  <strong style={{ color: "var(--text-2)" }}>4. Context Assembly → LLM Inference:</strong> The assembled prompt is sent to GPT-5.4 or GPT-5.4-nano via the OpenAI API. No routing logic beyond simple model selection per endpoint.
                 </p>
                 <p style={{ marginBottom: 10 }}>
-                  <strong style={{ color: "var(--text-2)" }}>5. Context Assembly → LLM Inference:</strong> The assembled prompt is routed to the optimal model (GPT-4o for complex analysis, GPT-4o-mini for summaries). The model router handles fallbacks, retries, and token budget management.
+                  <strong style={{ color: "var(--text-2)" }}>5. LLM Inference → Delivery:</strong> The raw GPT response is returned directly to the requesting surface. There is no validation step, no fact-checking, and no hallucination detection. Prompt-level guardrails are the only quality control.
                 </p>
-                <p style={{ marginBottom: 10 }}>
-                  <strong style={{ color: "var(--text-2)" }}>6. LLM Inference → Validation:</strong> Output passes through the validation layer which checks numeric claims against source data, strips hallucinated statistics, enforces British English style, and applies formatting rules.
-                </p>
-                <p>
-                  <strong style={{ color: "var(--text-2)" }}>7. Validation → Delivery:</strong> Validated output is delivered to the requesting surface: inline dashboard cards, report builder blocks, client portal summaries, PDF exports, or API responses.
+                <p style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                  <AlertTriangle size={14} style={{ color: amber, flexShrink: 0, marginTop: 3 }} />
+                  <span><strong style={{ color: amber }}>Missing steps:</strong> Benchmark matching (no benchmark data exists) and output validation (no fact-checking layer exists). These would need to be built as Phase 2 and Phase 3.</span>
                 </p>
               </div>
             </div>
@@ -461,7 +462,7 @@ export default function MeridianArchitecturePage() {
           Channel Integrations
         </h2>
         <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>
-          15 marketing channels connected with full data extraction, normalisation, and benchmark coverage.
+          15 marketing channels with working data extraction. This is genuine — all adapters are built and pulling real data.
         </p>
 
         <div className="card">
@@ -499,28 +500,29 @@ export default function MeridianArchitecturePage() {
         </div>
       </section>
 
-      {/* ─── BENCHMARKS ─── */}
-      <section id="benchmarks" style={{ marginBottom: 56 }}>
+      {/* ─── WHAT'S MISSING ─── */}
+      <section id="gaps" style={{ marginBottom: 56 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 6, letterSpacing: "-0.3px" }}>
-          Benchmark Architecture
+          What Doesn&rsquo;t Exist Yet
         </h2>
         <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>
-          The core differentiator. Every Meridian insight is grounded in real performance data, not generic advice.
+          An honest inventory of what we don&rsquo;t have but could build. These are the gaps between &ldquo;good AI wrapper&rdquo; and &ldquo;genuine competitive advantage.&rdquo;
         </p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
           <div className="card">
             <div className="card-header">
-              <div className="card-title">Segmentation Dimensions</div>
+              <div className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <AlertTriangle size={14} style={{ color: red }} /> Benchmark Database
+              </div>
             </div>
             <div className="card-body">
               <div style={{ display: "grid", gap: 14 }}>
                 {[
-                  { label: "Sector", detail: "12 primary sectors: E-commerce, Education, Hospitality, SaaS/B2B, Charity, Retail, Healthcare, Travel, Finance/Fintech, Automotive, Fashion/Beauty, Property. Each with sub-verticals.", colour: accent },
-                  { label: "Channel", detail: "15 channels with channel-specific metrics. Google Ads ROAS benchmarks are separate from Meta Ads ROAS benchmarks.", colour: cyan },
-                  { label: "Budget Tier", detail: "Micro (<£1k/mo), Small (£1–5k), Mid (£5–20k), Large (£20–100k), Enterprise (£100k+). Performance patterns differ dramatically by spend level.", colour: amber },
-                  { label: "Geography", detail: "UK, US, EU, APAC, Global. Regional benchmarks account for different market maturities and platform adoption rates.", colour: green },
-                  { label: "Time Period", detail: "Quarterly versioning. Q4 benchmarks (holiday season) are stored separately from Q1 to avoid seasonal distortion.", colour: pink },
+                  { label: "Current State", detail: "No BenchmarkData table exists in the database. The goal-benchmark endpoint generates targets from the client's own historical data via GPT, not from an industry database. If no historical data exists, it returns zeros.", colour: red },
+                  { label: "What It Would Take", detail: "Create a new Prisma model with fields for sector, channel, budgetTier, metricName, percentile values (P25/P50/P75/P90), sampleSize, quarter, and source. Seed with publicly available benchmark data from WordStream, Google Ads benchmarks, HubSpot reports, Klaviyo benchmarks.", colour: amber },
+                  { label: "Effort Estimate", detail: "Schema design + migration: 1–2 days. Curating and seeding public benchmark data: 1–2 weeks of manual effort. Building the lookup API and prompt injection: 1 week. Total: ~3–4 weeks for a functional v1.", colour: blue },
+                  { label: "The Honest Limitation", detail: "Public benchmarks are broad averages, not granular percentile distributions. To get real P25/P50/P75/P90 data by sector + channel + budget tier, you need thousands of data points per segment. We would be starting with rough medians and ranges, not precise distributions.", colour: amber },
                 ].map(d => (
                   <div key={d.label} style={{ display: "flex", gap: 12 }}>
                     <div style={{
@@ -539,49 +541,68 @@ export default function MeridianArchitecturePage() {
 
           <div className="card">
             <div className="card-header">
-              <div className="card-title">Percentile Distribution</div>
+              <div className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <AlertTriangle size={14} style={{ color: red }} /> Other Key Gaps
+              </div>
             </div>
             <div className="card-body">
-              <p style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6, marginBottom: 20 }}>
-                Every metric in the benchmark database is stored as a percentile distribution, enabling precise positioning of any client&rsquo;s performance.
-              </p>
-
-              {/* Example benchmark visual */}
-              <div style={{ padding: "16px 20px", borderRadius: 10, background: "var(--bg-raised)", border: "1px solid var(--glass-border)", marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 650, color: "var(--text)", marginBottom: 10 }}>Example: E-commerce Meta Ads ROAS (£10–20k/mo)</div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, textAlign: "center" }}>
-                  {[
-                    { label: "P25", value: "1.8x", colour: "#ef4444" },
-                    { label: "Median", value: "2.9x", colour: amber },
-                    { label: "P75", value: "4.6x", colour: green },
-                    { label: "P90", value: "7.2x", colour: accent },
-                  ].map(p => (
-                    <div key={p.label} style={{ padding: "10px 6px", borderRadius: 8, background: `${p.colour}10`, border: `1px solid ${p.colour}25` }}>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: p.colour }}>{p.value}</div>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", marginTop: 2 }}>{p.label}</div>
+              <div style={{ display: "grid", gap: 14 }}>
+                {[
+                  { label: "Output Validation", detail: "AI responses go directly from GPT to the user. There is no layer that checks whether numbers in the AI output match the actual data. GPT can and does hallucinate statistics. Building a validation layer that cross-references claims against source data is achievable but not trivial.", colour: red },
+                  { label: "Fine-tuned Model", detail: "We use stock OpenAI models. Fine-tuning requires thousands of high-quality training examples (input/output pairs). With our current client volume, we likely don't have enough data to fine-tune meaningfully on marketing strategy. We MAY have enough to fine-tune on writing style and tone.", colour: red },
+                  { label: "Confidence Scoring", detail: "AI outputs have no confidence indicator. We could add a basic system: high confidence when we have snapshot history + benchmark data for that sector/channel combo, low confidence when we don't. This is mostly prompt engineering + metadata — probably 2–3 days of work.", colour: amber },
+                  { label: "Recommendation Tracking", detail: "We don't track whether AI recommendations were followed or what happened. A closed-loop system (recommendation → action → outcome) would be the most valuable training signal for future fine-tuning. Needs a new DB model and UI.", colour: amber },
+                ].map(d => (
+                  <div key={d.label} style={{ display: "flex", gap: 12 }}>
+                    <div style={{
+                      width: 8, height: 8, borderRadius: "50%",
+                      background: d.colour, flexShrink: 0, marginTop: 5,
+                    }} />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 650, color: "var(--text)" }}>{d.label}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.5, marginTop: 2 }}>{d.detail}</div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
+            </div>
+          </div>
+        </div>
 
-              <div style={{ padding: "16px 20px", borderRadius: 10, background: "var(--bg-raised)", border: "1px solid var(--glass-border)" }}>
-                <div style={{ fontSize: 12, fontWeight: 650, color: "var(--text)", marginBottom: 10 }}>How Meridian Uses This</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
-                  A client with 2.8x ROAS in this segment would be tagged as <span style={{ fontWeight: 600, color: amber }}>P48 (below median)</span>. Meridian would note this is 38% below P75, identify the most common lever to close that gap (typically creative refresh cadence for Meta), and quantify the expected uplift from acting on that recommendation.
-                </div>
+        {/* What benchmarks COULD look like */}
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="card-header">
+            <div className="card-title">What Benchmark-Enriched AI Would Look Like</div>
+          </div>
+          <div className="card-body">
+            <p style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6, marginBottom: 20 }}>
+              This is the vision — not what exists today, but what we could build and what it would enable.
+            </p>
+
+            <div style={{ padding: "16px 20px", borderRadius: 10, background: "var(--bg-raised)", border: "1px solid var(--glass-border)", marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 650, color: "var(--text)", marginBottom: 10 }}>Today (without benchmarks)</div>
+              <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6, fontStyle: "italic" }}>
+                &ldquo;Your Meta Ads ROAS is 2.8x this month, up from 2.3x last month. This is a positive trend. Consider testing new creative variants to maintain momentum.&rdquo;
               </div>
+            </div>
 
-              <div style={{ padding: "16px 20px", borderRadius: 10, background: "var(--bg-raised)", border: "1px solid var(--glass-border)", marginTop: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 650, color: "var(--text)", marginBottom: 8 }}>Metrics Benchmarked</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {["ROAS", "CPA", "CTR", "CPC", "CPL", "CPM", "CVR", "AOV", "Bounce Rate", "CPI", "VTR", "Frequency"].map(m => (
-                    <span key={m} style={{
-                      padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
-                      background: "var(--bg-raised)", border: "1px solid var(--glass-border)",
-                      color: "var(--text-2)",
-                    }}>{m}</span>
-                  ))}
-                </div>
+            <div style={{ padding: "16px 20px", borderRadius: 10, background: `${green}08`, border: `1px solid ${green}20`, marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 650, color: "var(--text)", marginBottom: 10 }}>With benchmarks (what we&rsquo;d build)</div>
+              <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6, fontStyle: "italic" }}>
+                &ldquo;Your Meta Ads ROAS is 2.8x, placing you around the median for e-commerce accounts at your spend level (£10–20k/mo). The top quartile in this segment achieves ~4.5x. The most common lever we see to close that gap is increased creative refresh cadence — accounts that rotate creative every 2–3 weeks typically outperform those running static creative.&rdquo;
+              </div>
+            </div>
+
+            <div style={{ padding: "16px 20px", borderRadius: 10, background: "var(--bg-raised)", border: "1px solid var(--glass-border)" }}>
+              <div style={{ fontSize: 12, fontWeight: 650, color: "var(--text)", marginBottom: 8 }}>Metrics We Could Benchmark (If We Build the Database)</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {["ROAS", "CPA", "CTR", "CPC", "CPL", "CPM", "CVR", "AOV", "Bounce Rate", "CPI", "VTR", "Frequency"].map(m => (
+                  <span key={m} style={{
+                    padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                    background: "var(--bg-raised)", border: "1px solid var(--glass-border)",
+                    color: "var(--text-2)",
+                  }}>{m}</span>
+                ))}
               </div>
             </div>
           </div>
@@ -591,10 +612,10 @@ export default function MeridianArchitecturePage() {
       {/* ─── AI ENDPOINTS ─── */}
       <section id="ai-endpoints" style={{ marginBottom: 56 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 6, letterSpacing: "-0.3px" }}>
-          AI Analysis Endpoints
+          AI Endpoints — The Real 24
         </h2>
         <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>
-          19 specialised endpoints, each tuned for a specific analysis type. All follow the same pipeline: auth → context assembly → inference → validation → response.
+          These are the actual endpoints in the codebase. All use OpenAI&rsquo;s API with structured prompts — no custom model, no fine-tuning. The value is in the data context we pass, not in a proprietary model.
         </p>
 
         <div className="card">
@@ -609,25 +630,30 @@ export default function MeridianArchitecturePage() {
               </thead>
               <tbody>
                 {[
-                  { endpoint: "/api/ai/summary", model: "GPT-4o-mini", purpose: "Executive-level cross-channel performance summary with benchmark context" },
-                  { endpoint: "/api/ai/commentary", model: "GPT-4o-mini", purpose: "Per-channel narrative commentary explaining trends, causes, and next steps" },
-                  { endpoint: "/api/ai/forecast", model: "GPT-4o", purpose: "90-day forward projections with confidence intervals and scenario modelling" },
-                  { endpoint: "/api/ai/chat", model: "GPT-4o", purpose: "Free-form conversational analysis with full client context and history" },
-                  { endpoint: "/api/ai/anomaly", model: "GPT-4o", purpose: "Root-cause diagnosis for significant metric deviations across channels" },
-                  { endpoint: "/api/ai/strategy", model: "GPT-4o", purpose: "Prioritised 90-day strategy generation grounded in benchmark data" },
-                  { endpoint: "/api/ai/goals", model: "GPT-4o-mini", purpose: "KPI target recommendations based on benchmark percentile bands" },
-                  { endpoint: "/api/ai/signals", model: "GPT-4o-mini", purpose: "Real-time anomaly classification with severity scoring and impact estimation" },
-                  { endpoint: "/api/ai/content-brief", model: "GPT-4o", purpose: "SEO content brief generation with keyword targeting and competitor analysis" },
-                  { endpoint: "/api/ai/proposal-narrative", model: "GPT-4o", purpose: "Agency proposal narrative generation with strategic recommendations" },
-                  { endpoint: "/api/ai/report-intro", model: "GPT-4o-mini", purpose: "Report introduction and executive summary generation" },
-                  { endpoint: "/api/ai/competitor-analysis", model: "GPT-4o", purpose: "Competitive positioning analysis using SemRush and benchmark data" },
-                  { endpoint: "/api/ai/budget-recommendation", model: "GPT-4o", purpose: "Cross-channel budget allocation recommendations with expected ROI" },
-                  { endpoint: "/api/ai/keyword-analysis", model: "GPT-4o-mini", purpose: "Keyword opportunity scoring and content gap analysis" },
-                  { endpoint: "/api/ai/page-analysis", model: "GPT-4o", purpose: "Landing page analysis with SEO, UX, and conversion recommendations" },
-                  { endpoint: "/api/ai/narrative", model: "GPT-4o", purpose: "Cross-channel narrative synthesis for client reporting" },
-                  { endpoint: "/api/ai/health-diagnosis", model: "GPT-4o", purpose: "Client health scoring with risk factors and recovery priorities" },
-                  { endpoint: "/api/ai/creative-analysis", model: "GPT-4o", purpose: "Ad creative performance patterns and fatigue detection" },
-                  { endpoint: "/api/ai/channel-action", model: "GPT-4o-mini", purpose: "Per-channel tactical action items with priority and expected impact" },
+                  { endpoint: "/api/ai/summary", model: "GPT-5.4-nano", purpose: "Cross-channel performance summary with client data context" },
+                  { endpoint: "/api/ai/super-summary", model: "GPT-5.4", purpose: "Deep executive summary synthesising multiple channel summaries" },
+                  { endpoint: "/api/ai/executive-summary", model: "GPT-5.4", purpose: "Concise executive-level performance overview" },
+                  { endpoint: "/api/ai/report-commentary", model: "GPT-5.4", purpose: "Per-section narrative commentary for reports" },
+                  { endpoint: "/api/ai/report-narrative", model: "GPT-5.4-nano", purpose: "Full report narrative generation across sections" },
+                  { endpoint: "/api/ai/overview-narrative", model: "GPT-5.4", purpose: "Cross-channel narrative synthesis for client overviews" },
+                  { endpoint: "/api/ai/chat", model: "GPT-5.4-nano", purpose: "Free-form conversational AI with client data context" },
+                  { endpoint: "/api/ai/forecast", model: "GPT-5.4-nano", purpose: "Forward projections based on historical snapshot data" },
+                  { endpoint: "/api/ai/strategy-document", model: "GPT-5.4", purpose: "Strategy document generation with web search" },
+                  { endpoint: "/api/ai/goal-benchmark", model: "GPT-5.4-nano", purpose: "KPI target suggestions from client's own historical data (NOT industry benchmarks)" },
+                  { endpoint: "/api/ai/budget-advisor", model: "GPT-5.4-nano", purpose: "Budget allocation recommendations across channels" },
+                  { endpoint: "/api/ai/root-cause", model: "GPT-5.4", purpose: "Root-cause diagnosis for metric anomalies" },
+                  { endpoint: "/api/ai/attribution", model: "GPT-5.4", purpose: "Cross-channel attribution analysis" },
+                  { endpoint: "/api/ai/blended-revenue", model: "GPT-5.4", purpose: "Cross-channel blended revenue analysis" },
+                  { endpoint: "/api/ai/creative-intelligence", model: "GPT-5.4-nano", purpose: "Ad creative performance pattern analysis" },
+                  { endpoint: "/api/ai/cross-platform-creative", model: "GPT-5.4-nano", purpose: "Creative performance comparison across platforms" },
+                  { endpoint: "/api/ai/content-strategy-regen", model: "GPT-5.4", purpose: "Content strategy section regeneration" },
+                  { endpoint: "/api/ai/landing-page-analysis", model: "GPT-5.4-nano", purpose: "Landing page SEO and UX analysis" },
+                  { endpoint: "/api/ai/keyword-suggestions", model: "GPT-5.4-nano", purpose: "Keyword opportunity suggestions" },
+                  { endpoint: "/api/ai/audience-suggestions", model: "GPT-5.4-nano", purpose: "Audience targeting suggestions" },
+                  { endpoint: "/api/ai/ai-visibility", model: "GPT-5.4-nano", purpose: "AI search visibility analysis" },
+                  { endpoint: "/api/ai/meeting-briefing", model: "GPT-5.4", purpose: "Pre-meeting client briefing generation" },
+                  { endpoint: "/api/ai/qa-summary", model: "GPT-4o-mini", purpose: "Quality assurance summary (legacy model)" },
+                  { endpoint: "/api/ai/snapshots", model: "—", purpose: "Historical snapshot data retrieval (no AI model — data endpoint)" },
                 ].map(ep => (
                   <tr key={ep.endpoint} style={{ borderBottom: "1px solid var(--glass-border)" }}>
                     <td style={{ padding: "10px 12px" }}>
@@ -639,9 +665,9 @@ export default function MeridianArchitecturePage() {
                     <td style={{ padding: "10px 12px" }}>
                       <span style={{
                         fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4,
-                        background: ep.model === "GPT-4o" ? "rgba(245,158,11,0.1)" : "rgba(16,185,129,0.1)",
-                        color: ep.model === "GPT-4o" ? amber : green,
-                        border: `1px solid ${ep.model === "GPT-4o" ? "rgba(245,158,11,0.2)" : "rgba(16,185,129,0.2)"}`,
+                        background: ep.model === "GPT-5.4" ? "rgba(245,158,11,0.1)" : ep.model === "—" ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.1)",
+                        color: ep.model === "GPT-5.4" ? amber : ep.model === "—" ? "var(--text-3)" : green,
+                        border: `1px solid ${ep.model === "GPT-5.4" ? "rgba(245,158,11,0.2)" : ep.model === "—" ? "var(--glass-border)" : "rgba(16,185,129,0.2)"}`,
                       }}>{ep.model}</span>
                     </td>
                     <td style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-3)", lineHeight: 1.5 }}>{ep.purpose}</td>
@@ -650,6 +676,432 @@ export default function MeridianArchitecturePage() {
               </tbody>
             </table>
           </div>
+        </div>
+      </section>
+
+      {/* ─── BUILDING A MARKETING-NATIVE LLM ─── */}
+      <section id="own-llm" style={{ marginBottom: 56 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 6, letterSpacing: "-0.3px" }}>
+          Building a Marketing-Native LLM — What It Would Actually Take
+        </h2>
+        <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>
+          Not a wrapper around ChatGPT. An actual fine-tuned model that understands marketing performance natively. Here&rsquo;s what that path looks like, honestly.
+        </p>
+
+        {/* Why bother */}
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-header">
+            <div className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Brain size={14} style={{ color: accent }} /> Why Build Our Own Model?
+            </div>
+          </div>
+          <div className="card-body">
+            <div style={{ display: "grid", gap: 14, fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
+              <p>
+                Right now, every AI call goes to OpenAI. We pay per token, we&rsquo;re locked to their pricing, their rate limits, their model lifecycle. If they deprecate GPT-5.4, we scramble. If they raise prices 3x (as they&rsquo;ve done historically with older models), our margins shrink. And critically — our &ldquo;intelligence&rdquo; is just prompt engineering that any competitor could replicate in a week.
+              </p>
+              <p>
+                A fine-tuned model changes three things: <strong style={{ color: "var(--text)" }}>(1) Cost</strong> — self-hosted inference is dramatically cheaper at scale (~£0.001–0.005 per call vs £0.01–0.08 for GPT), <strong style={{ color: "var(--text)" }}>(2) Moat</strong> — the model&rsquo;s knowledge of marketing performance patterns becomes proprietary IP that can&rsquo;t be copied by signing up for an OpenAI API key, and <strong style={{ color: "var(--text)" }}>(3) Control</strong> — no dependency on a third party&rsquo;s pricing, availability, or model decisions.
+              </p>
+              <p>
+                The honest question is whether we can get enough training data and whether the quality improvement over prompt engineering justifies the infrastructure cost. This section lays out exactly what&rsquo;s involved.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Base model options */}
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-header">
+            <div className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Cpu size={14} style={{ color: cyan }} /> Base Model Options
+            </div>
+          </div>
+          <div className="card-body">
+            <div style={{ display: "grid", gap: 12, marginBottom: 20 }}>
+              {[
+                {
+                  name: "Llama 3.1 70B (Meta)",
+                  licence: "Llama 3.1 Community Licence — free for commercial use under 700M monthly active users",
+                  pros: "Best open-weight model available. Strong reasoning, code understanding, and instruction following. Massive community, tooling ecosystem (vLLM, TGI, Ollama). Can be quantised to 4-bit (QLoRA) for training on a single A100.",
+                  cons: "70B parameters is large — needs ~40GB VRAM quantised, ~140GB at full precision. Inference is slower than smaller models. Fine-tuning full model is expensive; LoRA/QLoRA is the practical path.",
+                  cost: "Training: ~£500–2,000 on cloud GPUs for a QLoRA fine-tune. Inference: ~£300–600/month for a dedicated A100 server, or ~£2–4/hr on RunPod/Lambda Labs.",
+                  verdict: "Best candidate for a marketing-native model. Quality close to GPT-4o when fine-tuned well.",
+                  colour: blue,
+                },
+                {
+                  name: "Llama 3.1 8B (Meta)",
+                  licence: "Same Llama 3.1 licence — free commercial use",
+                  pros: "Small enough to run on consumer GPUs (RTX 4090, 24GB VRAM). Very fast inference. Cheap to fine-tune (~£50–200). Good for high-volume, simpler tasks like commentary and summaries.",
+                  cons: "Significantly less capable than 70B for complex reasoning, strategy generation, and nuanced analysis. Would struggle with root-cause diagnosis or multi-channel strategy documents.",
+                  cost: "Training: ~£50–200 per fine-tune run. Inference: ~£50–150/month on a smaller GPU instance or even a dedicated RTX 4090 machine.",
+                  verdict: "Good for a 'fast path' model handling commentary and summaries. Use 70B or GPT for complex tasks.",
+                  colour: green,
+                },
+                {
+                  name: "Mistral Large / Mixtral 8x22B",
+                  licence: "Apache 2.0 (Mixtral) / commercial licence (Mistral Large via API)",
+                  pros: "MoE (Mixture of Experts) architecture means only a fraction of parameters are active per token — faster inference than a dense 70B. Good multilingual support. Strong at structured output.",
+                  cons: "Smaller community than Llama. Less tooling support for fine-tuning. Mistral Large is API-only (same vendor lock as OpenAI). Mixtral fine-tuning is less well-documented.",
+                  cost: "Mixtral self-hosted: similar to Llama 70B. Mistral Large API: comparable to OpenAI pricing.",
+                  verdict: "Viable alternative if Llama fine-tuning hits issues. Mixtral MoE is interesting for inference cost.",
+                  colour: amber,
+                },
+                {
+                  name: "OpenAI Fine-Tuning (GPT-4o)",
+                  licence: "Proprietary — model stays on OpenAI's infrastructure",
+                  pros: "Simplest path. Upload training data, click fine-tune, get a model ID. No GPU infrastructure to manage. Uses the same API we already integrate with. Best option if we just want better outputs without infrastructure work.",
+                  cons: "Still locked to OpenAI. Still paying per-token (higher than base GPT-4o). Cannot self-host or redistribute. If OpenAI raises prices or sunsets the model, the fine-tune is lost. We don't own the weights.",
+                  cost: "Training: ~£15–50 per fine-tune run (depends on data size). Inference: ~2x base GPT-4o pricing per token. No infrastructure cost.",
+                  verdict: "Fastest to implement. Good first step to validate fine-tuning value before committing to self-hosted.",
+                  colour: pink,
+                },
+              ].map(m => (
+                <div key={m.name} style={{
+                  padding: "18px 22px", borderRadius: 12,
+                  background: "var(--bg-raised)", border: `1px solid ${m.colour}20`,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <div style={{
+                      width: 8, height: 8, borderRadius: "50%", background: m.colour, flexShrink: 0,
+                    }} />
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{m.name}</div>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 8, fontStyle: "italic" }}>{m.licence}</div>
+                  <div style={{ display: "grid", gap: 8, fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
+                    <div><strong style={{ color: green }}>Pros:</strong> {m.pros}</div>
+                    <div><strong style={{ color: red }}>Cons:</strong> {m.cons}</div>
+                    <div><strong style={{ color: amber }}>Cost:</strong> {m.cost}</div>
+                    <div style={{ padding: "8px 12px", borderRadius: 8, background: `${m.colour}08`, border: `1px solid ${m.colour}15` }}>
+                      <strong style={{ color: "var(--text)" }}>Verdict:</strong> {m.verdict}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Training data requirements */}
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-header">
+            <div className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Database size={14} style={{ color: green }} /> Training Data — The Hard Part
+            </div>
+          </div>
+          <div className="card-body">
+            <div style={{ display: "grid", gap: 14, fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
+              <p>
+                Fine-tuning is only as good as the training data. Here&rsquo;s what we&rsquo;d need and where it comes from:
+              </p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+                {[
+                  {
+                    type: "Instruction-Response Pairs",
+                    volume: "5,000–20,000 examples",
+                    source: "Every AI call we make today could be logged: the input context, the prompt, and the output. When an analyst edits the AI output before publishing, the edited version becomes the 'ideal' response. This is the most valuable training signal and it's free — we just need to start capturing it.",
+                    timeline: "At ~50 AI calls/day: ~3 months for 5,000 examples, ~12 months for 20,000",
+                    colour: green,
+                  },
+                  {
+                    type: "Benchmark-Enriched Examples",
+                    volume: "2,000–5,000 examples",
+                    source: "Once the benchmark database exists (Phase 2), we generate training examples where the input includes benchmark context and the ideal output correctly references percentile positions. These could be partially synthetic — use GPT-5.4 to generate examples, then have analysts curate/correct them.",
+                    timeline: "Requires Phase 2 (benchmark DB) to be complete first",
+                    colour: amber,
+                  },
+                  {
+                    type: "Analyst Corrections & Preferences",
+                    volume: "1,000–3,000 examples",
+                    source: "When analysts reject AI output, rewrite it, or choose one version over another — that's preference data for RLHF (Reinforcement Learning from Human Feedback) or DPO (Direct Preference Optimisation). Build a simple 'thumbs up/down + edit' UI next to every AI output.",
+                    timeline: "Needs UI changes + 3–6 months of collection",
+                    colour: blue,
+                  },
+                  {
+                    type: "Outcome Data",
+                    volume: "500–2,000 examples",
+                    source: "The gold standard: AI recommended X, the analyst did X (or Y), and the result was Z. Links the recommendation to a measurable outcome. Hardest to collect because it requires tracking actions and waiting for results (30–90 day lag).",
+                    timeline: "6–12 months minimum from when tracking starts",
+                    colour: pink,
+                  },
+                ].map(d => (
+                  <div key={d.type} style={{
+                    padding: "16px 20px", borderRadius: 10,
+                    background: "var(--bg-raised)", border: `1px solid ${d.colour}20`,
+                  }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>{d.type}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: d.colour, marginBottom: 8 }}>Target: {d.volume}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6, marginBottom: 8 }}>{d.source}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", fontStyle: "italic" }}>{d.timeline}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ padding: "14px 18px", borderRadius: 10, background: `${amber}08`, border: `1px solid ${amber}20` }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                  <AlertTriangle size={14} style={{ color: amber, flexShrink: 0, marginTop: 2 }} />
+                  <div>
+                    <strong style={{ color: "var(--text)" }}>Critical dependency:</strong> We need to start logging AI calls NOW, even before we plan to fine-tune. Every AI interaction that goes unlogged is lost training data. The cheapest, highest-impact action is adding a simple logging table that captures input/output/analyst-edits for every AI call.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Fine-tuning process */}
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-header">
+            <div className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Layers size={14} style={{ color: accent }} /> The Fine-Tuning Process
+            </div>
+          </div>
+          <div className="card-body">
+            <div style={{ display: "grid", gap: 14, fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
+              <div style={{ display: "grid", gap: 12 }}>
+                {[
+                  {
+                    step: "1. Data Preparation",
+                    detail: "Clean and format training data into instruction/response pairs. Remove PII, anonymise client names, normalise metric formats. Split into train (90%) and validation (10%) sets. Format as JSONL with system/user/assistant message structure.",
+                    effort: "1–2 weeks for initial pipeline, then automated",
+                  },
+                  {
+                    step: "2. QLoRA Fine-Tune (Recommended Path)",
+                    detail: "QLoRA (Quantised Low-Rank Adaptation) lets us fine-tune a 70B model on a single A100 GPU by quantising base weights to 4-bit and only training small adapter matrices. This reduces VRAM from ~140GB to ~40GB and training cost from £10,000s to £500–2,000. We'd use the Hugging Face transformers + PEFT + bitsandbytes stack.",
+                    effort: "Training run: 4–12 hours on A100. Setup/iteration: 1–2 weeks.",
+                  },
+                  {
+                    step: "3. Evaluation",
+                    detail: "Test the fine-tuned model against a held-out validation set. Metrics: ROUGE/BERTScore for text quality, factual accuracy (does it cite real metrics from the input?), formatting compliance, and human preference ratings from analysts.",
+                    effort: "1 week per evaluation cycle",
+                  },
+                  {
+                    step: "4. DPO/RLHF Alignment (Optional, Advanced)",
+                    detail: "Once we have preference data (analyst chose output A over output B), we can do DPO (Direct Preference Optimisation) to align the model with what analysts actually prefer. Simpler than full RLHF — no separate reward model needed. This is what makes the model 'feel right' rather than just being technically accurate.",
+                    effort: "Additional 1–2 weeks of training, requires preference data collected over months",
+                  },
+                  {
+                    step: "5. Serving Infrastructure",
+                    detail: "Deploy the fine-tuned model using vLLM (best throughput) or TGI (Hugging Face Text Generation Inference) behind a simple API. Can run on RunPod (pay-per-hour), Lambda Labs, or a dedicated GPU lease. The API mirrors OpenAI's chat completions format, so our existing code needs minimal changes — swap the base URL and model name.",
+                    effort: "2–3 days for deployment, then ongoing infrastructure management",
+                  },
+                  {
+                    step: "6. LoRA Adapter Hot-Swapping",
+                    detail: "For sector-specific models: train separate LoRA adapters per sector (e-commerce, B2B SaaS, charity, etc.). At inference time, load the base model once and swap the ~100–200MB adapter based on the client's sector. vLLM supports this natively. This means one GPU server can serve multiple specialised models.",
+                    effort: "1 adapter per sector: 2–4 hours training each. Hot-swap setup: 1 week.",
+                  },
+                ].map(s => (
+                  <div key={s.step} style={{
+                    padding: "14px 18px", borderRadius: 10,
+                    background: "var(--bg-raised)", border: "1px solid var(--glass-border)",
+                  }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>{s.step}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6, marginBottom: 6 }}>{s.detail}</div>
+                    <div style={{ fontSize: 11, color: amber, fontWeight: 600 }}>Effort: {s.effort}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Cost comparison */}
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-header">
+            <div className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <BarChart3 size={14} style={{ color: amber }} /> Cost Comparison — OpenAI vs Self-Hosted
+            </div>
+          </div>
+          <div className="card-body" style={{ padding: "16px 24px" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--glass-border)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 12px", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}> </th>
+                  <th style={{ textAlign: "left", padding: "10px 12px", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>OpenAI GPT-5.4</th>
+                  <th style={{ textAlign: "left", padding: "10px 12px", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>OpenAI Fine-Tune</th>
+                  <th style={{ textAlign: "left", padding: "10px 12px", fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Self-Hosted Llama 70B</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { metric: "Cost per AI call (~2K tokens)", openai: "~£0.02–0.08", finetune: "~£0.04–0.15", selfhosted: "~£0.001–0.005" },
+                  { metric: "Monthly @ 1,500 calls/day", openai: "~£900–3,600", finetune: "~£1,800–6,750", selfhosted: "~£300–600 (fixed GPU)" },
+                  { metric: "Upfront training cost", openai: "£0", finetune: "~£15–50", selfhosted: "~£500–2,000" },
+                  { metric: "Infra management", openai: "None", finetune: "None", selfhosted: "Moderate — GPU server, monitoring, updates" },
+                  { metric: "Model ownership", openai: "None", finetune: "Partial (can't export weights)", selfhosted: "Full (own the weights)" },
+                  { metric: "Vendor lock-in", openai: "High", finetune: "High", selfhosted: "None" },
+                  { metric: "Latency", openai: "~1–3s", finetune: "~1–3s", selfhosted: "~0.5–2s (dedicated)" },
+                  { metric: "Quality ceiling", openai: "Excellent (but generic)", finetune: "Very good (domain adapted)", selfhosted: "Good → excellent (with enough data)" },
+                ].map(r => (
+                  <tr key={r.metric} style={{ borderBottom: "1px solid var(--glass-border)" }}>
+                    <td style={{ padding: "8px 12px", fontWeight: 600, color: "var(--text)", fontSize: 12 }}>{r.metric}</td>
+                    <td style={{ padding: "8px 12px", color: "var(--text-3)" }}>{r.openai}</td>
+                    <td style={{ padding: "8px 12px", color: "var(--text-3)" }}>{r.finetune}</td>
+                    <td style={{ padding: "8px 12px", color: "var(--text-3)" }}>{r.selfhosted}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ marginTop: 16, padding: "12px 16px", borderRadius: 8, background: `${green}08`, border: `1px solid ${green}20`, fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
+              <strong style={{ color: "var(--text)" }}>Break-even point:</strong> Self-hosted becomes cheaper than OpenAI at roughly 500+ AI calls per day. Below that, the fixed GPU cost doesn&rsquo;t justify the savings. At our current ~50 calls/day, OpenAI is cheaper. At scale with external agencies, self-hosted wins decisively.
+            </div>
+          </div>
+        </div>
+
+        {/* Recommended strategy */}
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Target size={14} style={{ color: green }} /> Recommended Strategy — Phased Approach
+            </div>
+          </div>
+          <div className="card-body">
+            <div style={{ display: "grid", gap: 14, fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
+              {[
+                { phase: "Now", action: "Start logging all AI interactions", detail: "Add an AiCallLog table. Capture: endpoint, input context, prompt, raw output, analyst edits (if any), timestamp, clientId. This costs nothing, takes 1–2 days to implement, and starts building the training dataset immediately.", colour: green },
+                { phase: "Phase 2 complete", action: "Try OpenAI fine-tuning first", detail: "Once we have 2,000+ logged examples with analyst corrections, do a GPT-4o fine-tune. It's the cheapest way to validate whether fine-tuning improves output quality for our use case. If fine-tuned GPT-4o is measurably better than prompt-engineered GPT-5.4, that proves the data is valuable.", colour: blue },
+                { phase: "5,000+ examples", action: "Fine-tune Llama 70B with QLoRA", detail: "If OpenAI fine-tuning showed clear improvement, do the same with Llama 70B. Compare quality. If Llama is within 90% of GPT quality, the economics of self-hosting become compelling — especially with the pricing freedom for external agencies.", colour: accent },
+                { phase: "At scale", action: "Self-host with sector LoRA adapters", detail: "Once we have enough per-sector data, train sector-specific adapters. This is where 'marketing-native' becomes real — the model genuinely understands that e-commerce charity accounts behave differently from B2B SaaS. Hot-swap adapters based on client sector at inference time.", colour: pink },
+              ].map(s => (
+                <div key={s.phase} style={{
+                  display: "flex", gap: 16, padding: "14px 18px", borderRadius: 10,
+                  background: "var(--bg-raised)", border: `1px solid ${s.colour}20`,
+                }}>
+                  <div style={{
+                    padding: "4px 12px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                    background: `${s.colour}15`, color: s.colour, border: `1px solid ${s.colour}30`,
+                    height: "fit-content", whiteSpace: "nowrap", flexShrink: 0,
+                  }}>{s.phase}</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>{s.action}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>{s.detail}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 20, padding: "14px 18px", borderRadius: 10, background: `${accent}08`, border: `1px solid ${accent}20` }}>
+              <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
+                <strong style={{ color: "var(--text)" }}>The key insight:</strong> we don&rsquo;t need to choose between OpenAI and self-hosted today. We start by logging data (free), validate with OpenAI fine-tuning (cheap), and graduate to self-hosted Llama (cost-efficient at scale). Each step de-risks the next. The only thing we must not delay is logging AI interactions — every day we wait is training data we can never recover.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── BUSINESS CASE ─── */}
+      <section id="business-case" style={{ marginBottom: 56 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 6, letterSpacing: "-0.3px" }}>
+          The Real Business Case
+        </h2>
+        <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>
+          Three audiences, three honest assessments of what Meridian could deliver.
+        </p>
+
+        <div style={{ display: "grid", gap: 16 }}>
+          {/* i3 Internal */}
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Users size={14} style={{ color: accent }} /> For i3 Media (Internal)
+              </div>
+            </div>
+            <div className="card-body">
+              <div style={{ display: "grid", gap: 14, fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
+                <div>
+                  <strong style={{ color: green }}>What it already delivers:</strong> AI-generated summaries, commentary, and strategy documents save analyst time on every report. The 24 AI endpoints cover the majority of routine analytical tasks. Anomaly detection catches things humans miss. The agency tools (keyword planner, proposals, content strategy) directly reduce delivery time.
+                </div>
+                <div>
+                  <strong style={{ color: amber }}>What benchmarks would add:</strong> Instead of &ldquo;ROAS went up,&rdquo; analysts could say &ldquo;ROAS moved from below median to 65th percentile for your sector.&rdquo; This transforms client conversations from reporting to advising. It makes junior analysts sound like experts because the contextual intelligence is built into the tool.
+                </div>
+                <div>
+                  <strong style={{ color: "var(--text-2)" }}>Realistic impact:</strong> 30–50% time reduction on report generation is already happening. Benchmark-enriched AI could push that toward 60–70% and significantly improve the quality of AI recommendations. The biggest win isn&rsquo;t speed — it&rsquo;s consistency of analysis quality regardless of which analyst produces the report.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* i3 Clients */}
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Target size={14} style={{ color: green }} /> For i3&rsquo;s Clients
+              </div>
+            </div>
+            <div className="card-body">
+              <div style={{ display: "grid", gap: 14, fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
+                <div>
+                  <strong style={{ color: green }}>What they get today:</strong> Clients using the portal see AI-generated performance summaries and insights. Reports include AI commentary. It&rsquo;s a better experience than a static spreadsheet or PDF.
+                </div>
+                <div>
+                  <strong style={{ color: amber }}>What benchmarks would add:</strong> Context. Clients always ask &ldquo;is this good?&rdquo; Today we can only compare against their own history. With benchmarks, we can say &ldquo;here&rsquo;s where you sit relative to your sector.&rdquo; That&rsquo;s a fundamentally more useful conversation.
+                </div>
+                <div>
+                  <strong style={{ color: "var(--text-2)" }}>Honest caveat:</strong> Our benchmark data would initially be thin. If a client asks &ldquo;how do I compare to other charity Google Ads accounts spending £5k/month?&rdquo; and we only have data from 3 accounts in that segment, the comparison isn&rsquo;t statistically meaningful. We need to be transparent about sample sizes.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* External Agencies */}
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Globe size={14} style={{ color: cyan }} /> For External Agencies (SaaS Licensing)
+              </div>
+            </div>
+            <div className="card-body">
+              <div style={{ display: "grid", gap: 14, fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
+                <div>
+                  <strong style={{ color: green }}>The opportunity:</strong> If Meridian worked as envisioned (benchmark-enriched AI analysis across 15 channels), there is genuine market demand from other agencies. Most agencies use basic reporting tools (AgencyAnalytics, Supermetrics, DashThis) with no AI layer. A tool that provides contextual, benchmark-grounded AI analysis would be differentiated.
+                </div>
+                <div>
+                  <strong style={{ color: amber }}>The chicken-and-egg problem:</strong> The benchmark database is the moat, but building it requires data. i3&rsquo;s own data isn&rsquo;t enough for statistically significant benchmarks across all sectors and channels. You&rsquo;d need agencies to contribute data to get data worth contributing for. This is a classic cold-start problem.
+                </div>
+                <div>
+                  <strong style={{ color: red }}>Honest risks:</strong> Building a multi-tenant SaaS platform is a different business from building an internal tool. It requires: documentation, onboarding, billing, support, SLAs, GDPR compliance for multi-party data, and a sales/marketing function. This is not a side project — it&rsquo;s a company within a company.
+                </div>
+                <div>
+                  <strong style={{ color: "var(--text-2)" }}>Potential pricing:</strong> Based on comparable tools: £200–500/month per agency for the platform + AI, or £50–100/month per client seat. Usage-based pricing for API access (£0.05–0.20 per AI call). These are rough estimates based on what AgencyAnalytics, Whatagraph, and report automation tools charge.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── RISKS & UNKNOWNS ─── */}
+      <section id="risks" style={{ marginBottom: 56 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 6, letterSpacing: "-0.3px" }}>
+          Risks &amp; Honest Unknowns
+        </h2>
+        <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>
+          Things that could go wrong or that we genuinely don&rsquo;t know the answer to yet.
+        </p>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+          {[
+            { title: "OpenAI dependency", detail: "Every AI feature depends on OpenAI's API. If they raise prices, change rate limits, deprecate models, or suffer outages, we have no fallback. Mitigations: model-agnostic prompt design (we could switch to Anthropic or Google), caching aggressive responses, building graceful degradation paths.", colour: red },
+            { title: "Data volume for benchmarks", detail: "One agency with dozens of clients ≠ industry benchmarks. We'd need to be honest that our initial benchmarks are indicative ranges from public data + a small internal sample — not statistically rigorous percentile distributions. Misrepresenting data quality would damage trust.", colour: amber },
+            { title: "Fine-tuning may not be worth it", detail: "OpenAI fine-tuning requires significant volume of high-quality training pairs. With our data volume, the improvement over well-crafted prompt engineering might be marginal. The cost/effort may not justify the output quality gain. We should test before committing.", colour: amber },
+            { title: "AI hallucination risk", detail: "GPT can and does produce plausible-sounding but incorrect analysis. Without a validation layer, incorrect recommendations could reach clients. The output validation system in Phase 3 isn't optional — it's a credibility requirement.", colour: red },
+            { title: "Competitive landscape", detail: "Google, Meta, and HubSpot are all building AI into their platforms. Agency reporting tools are adding AI features. The window for differentiation through 'AI-powered reporting' is narrowing. The benchmark angle is the real differentiator — that's harder for platform vendors to replicate.", colour: amber },
+            { title: "Engineering capacity", detail: "Building the benchmark database, validation layer, licensing infrastructure, and multi-tenant architecture is substantial engineering work. Currently this is being built by a small team. Shipping a SaaS product requires sustained investment beyond the internal tool.", colour: amber },
+          ].map(r => (
+            <div key={r.title} className="card" style={{ padding: "20px 24px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8,
+                  background: `${r.colour}15`, border: `1px solid ${r.colour}30`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: r.colour,
+                }}><AlertTriangle size={14} /></div>
+                <div style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>{r.title}</div>
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>{r.detail}</div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -681,25 +1133,25 @@ export default function MeridianArchitecturePage() {
 
         <div className="card" style={{ marginTop: 16 }}>
           <div className="card-header">
-            <div className="card-title">AI Data Handling Policies</div>
+            <div className="card-title">AI Data Handling — What We Do and Don&rsquo;t Do</div>
           </div>
           <div className="card-body">
             <div style={{ display: "grid", gap: 14, fontSize: 12, color: "var(--text-3)", lineHeight: 1.6 }}>
               <div style={{ display: "flex", gap: 10 }}>
                 <CheckCircle2 size={14} style={{ color: green, flexShrink: 0, marginTop: 2 }} />
-                <span><strong style={{ color: "var(--text-2)" }}>No training on client data:</strong> Client data sent to OpenAI for inference is not used for model training. API usage is governed by OpenAI&rsquo;s enterprise data usage policy.</span>
+                <span><strong style={{ color: "var(--text-2)" }}>No training on client data:</strong> We use OpenAI&rsquo;s API tier which does not use input data for model training. This is per OpenAI&rsquo;s enterprise data usage policy.</span>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <CheckCircle2 size={14} style={{ color: green, flexShrink: 0, marginTop: 2 }} />
-                <span><strong style={{ color: "var(--text-2)" }}>Anonymised benchmarks only:</strong> The benchmark database contains only anonymised, aggregated performance data. No individual client is identifiable from benchmark statistics.</span>
+                <span><strong style={{ color: "var(--text-2)" }}>Server-side only:</strong> Client data is sent to OpenAI only from our server. API keys and raw data never reach the browser.</span>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
-                <CheckCircle2 size={14} style={{ color: green, flexShrink: 0, marginTop: 2 }} />
-                <span><strong style={{ color: "var(--text-2)" }}>Minimal context windows:</strong> Only the metrics and context necessary for the specific analysis type are included in prompts. No unnecessary data exposure.</span>
+                <AlertTriangle size={14} style={{ color: amber, flexShrink: 0, marginTop: 2 }} />
+                <span><strong style={{ color: "var(--text-2)" }}>No output validation:</strong> We do not currently validate AI outputs for accuracy. GPT responses are returned as-is. This means hallucinated statistics could reach users. This is a known gap.</span>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
-                <CheckCircle2 size={14} style={{ color: green, flexShrink: 0, marginTop: 2 }} />
-                <span><strong style={{ color: "var(--text-2)" }}>Output validation:</strong> All AI outputs pass through a validation layer that checks for data leakage, ensures outputs only reference the requesting client&rsquo;s data, and strips any cross-client information.</span>
+                <AlertTriangle size={14} style={{ color: amber, flexShrink: 0, marginTop: 2 }} />
+                <span><strong style={{ color: "var(--text-2)" }}>Data goes to OpenAI:</strong> Client metrics and context are sent to OpenAI for processing. Some clients may have concerns about third-party data processing. We should have a clear data processing addendum for this.</span>
               </div>
             </div>
           </div>
@@ -709,10 +1161,10 @@ export default function MeridianArchitecturePage() {
       {/* ─── ROADMAP ─── */}
       <section id="roadmap" style={{ marginBottom: 56 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 6, letterSpacing: "-0.3px" }}>
-          Implementation Roadmap
+          Realistic Roadmap
         </h2>
         <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>
-          Five-phase plan from foundation to fully autonomous marketing intelligence.
+          Phase 1 is done. Everything else requires deliberate investment. Timelines assume focused development effort — they will slip if this remains a side-of-desk project.
         </p>
 
         {roadmapPhases.map((phase) => {
@@ -812,7 +1264,7 @@ export default function MeridianArchitecturePage() {
               title: "AI & Intelligence",
               colour: accent,
               icon: <Brain size={16} />,
-              items: ["OpenAI GPT-4o / GPT-4o-mini", "Custom prompt architecture", "Benchmark context injection", "Output validation pipeline", "Confidence scoring"],
+              items: ["OpenAI GPT-5.4 / GPT-5.4-nano (stock models)", "Custom prompt engineering per endpoint", "No fine-tuning or proprietary model", "No output validation (planned)", "No benchmark injection (planned)"],
             },
             {
               title: "Infrastructure",
@@ -856,13 +1308,13 @@ export default function MeridianArchitecturePage() {
         </div>
       </section>
 
-      {/* ─── THE FLYWHEEL ─── */}
+      {/* ─── THE OPPORTUNITY ─── */}
       <section style={{ marginBottom: 56 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 6, letterSpacing: "-0.3px" }}>
-          The Meridian Flywheel
+          The Real Opportunity
         </h2>
         <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>
-          The self-reinforcing loop that makes Meridian smarter with every agency that uses it.
+          Where the genuine competitive advantage could come from — and the steps to get there.
         </p>
 
         <div className="card">
@@ -872,11 +1324,11 @@ export default function MeridianArchitecturePage() {
               padding: "20px 0",
             }}>
               {[
-                { icon: <Users size={18} />, label: "Agencies use Meridian", sub: "Run analyses, generate reports", colour: accent },
-                { icon: <Database size={18} />, label: "Outcome data flows in", sub: "Real results from real campaigns", colour: cyan },
-                { icon: <Target size={18} />, label: "Benchmarks sharpen", sub: "More data = tighter percentiles", colour: green },
-                { icon: <TrendingUp size={18} />, label: "Recommendations improve", sub: "Better context = better advice", colour: amber },
-                { icon: <Star size={18} />, label: "Clients get results", sub: "Measurable performance uplift", colour: pink },
+                { icon: <Database size={18} />, label: "Build benchmark DB", sub: "Seed with public + i3 data", colour: cyan },
+                { icon: <Target size={18} />, label: "Inject into prompts", sub: "Add context to every AI call", colour: green },
+                { icon: <TrendingUp size={18} />, label: "Track outcomes", sub: "Did recommendations work?", colour: amber },
+                { icon: <Users size={18} />, label: "Validate with agencies", sub: "Do others want this?", colour: pink },
+                { icon: <Globe size={18} />, label: "Scale if validated", sub: "Multi-tenant API", colour: accent },
               ].map((step, i) => (
                 <div key={step.label} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{
@@ -899,41 +1351,37 @@ export default function MeridianArchitecturePage() {
             <div style={{
               marginTop: 20, padding: "16px 20px", borderRadius: 10,
               background: accentFaded, border: `1px solid ${accentBorder}`,
-              textAlign: "center",
             }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", lineHeight: 1.6 }}>
-                Unlike traditional AI tools that remain static, Meridian&rsquo;s benchmark database grows with every agency interaction. More usage → more data → sharper benchmarks → better recommendations → better client outcomes → more usage. This is the core moat.
+                <strong>The benchmark database is the unlock.</strong> Everything we&rsquo;ve built (24 AI endpoints, 15 channels, snapshot history) becomes dramatically more valuable when AI prompts include contextual benchmarks. The difference between &ldquo;your ROAS went up&rdquo; and &ldquo;your ROAS moved from P48 to P65 in your sector&rdquo; is the difference between a reporting tool and an intelligence platform. That second version is what agencies and clients will pay for.
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ─── VISION ─── */}
+      {/* ─── BOTTOM LINE ─── */}
       <section style={{ marginBottom: 40 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 6, letterSpacing: "-0.3px" }}>
-          Long-Term Vision
+          Bottom Line
         </h2>
-        <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 20 }}>
-          Where Meridian is heading — from agency tool to marketing intelligence standard.
-        </p>
 
         <div className="card">
           <div className="card-body" style={{ lineHeight: 1.8, fontSize: 13, color: "var(--text-2)" }}>
             <p style={{ marginBottom: 14 }}>
-              <strong style={{ color: "var(--text)" }}>The end state is not a better ChatGPT for marketing.</strong> It&rsquo;s a fundamentally different kind of intelligence — one that has internalised what &ldquo;good&rdquo; looks like from millions of real outcomes, across every channel, in every sector, at every budget level.
+              <strong style={{ color: "var(--text)" }}>What we have is genuinely good.</strong> 24 working AI endpoints, 15 channel integrations, a reporting platform with AI-generated content, a client portal, and a suite of agency tools. This already delivers real value — time savings, consistency, and analytical depth that most agencies don&rsquo;t have.
             </p>
             <p style={{ marginBottom: 14 }}>
-              Today, Meridian uses benchmark-injected prompts on top of GPT-4o. This works remarkably well because the benchmarks provide the context that generic models lack. But the long-term path is clear: a fine-tuned model that natively understands marketing performance without needing benchmarks in the prompt window.
+              <strong style={{ color: "var(--text)" }}>What we don&rsquo;t have is the differentiator.</strong> Today, Meridian is a well-engineered wrapper around OpenAI. The prompts are good, the data context is structured, and the output quality is solid. But so are other GPT wrappers. The moat — the thing that would make this genuinely hard to replicate — is a benchmark database grounded in real performance data.
             </p>
             <p style={{ marginBottom: 14 }}>
-              That model would know, without being told, that a 2.8x ROAS on Meta Ads for an e-commerce brand spending £15k/month is mediocre. It would know that the most common fix is creative rotation. It would know that the expected uplift from that fix is 15–25% within 3 weeks. Because it has seen that pattern thousands of times.
+              <strong style={{ color: "var(--text)" }}>Building that benchmark layer is feasible</strong> with a month of focused effort for a v1 seeded from public data. It doesn&rsquo;t require a proprietary model or millions of data points to be useful — even rough sector benchmarks dramatically improve AI output quality.
             </p>
             <p style={{ marginBottom: 14 }}>
-              The Meridian API will make this intelligence available to any platform — not just StratOS. Agencies using other reporting tools, brands with in-house teams, and marketing platforms of all kinds will be able to embed Meridian&rsquo;s benchmark-grounded reasoning into their workflows.
+              <strong style={{ color: "var(--text)" }}>Selling to external agencies is a separate decision</strong> that shouldn&rsquo;t be made until: (1) the benchmark-enriched AI is working and demonstrably better, (2) we&rsquo;ve validated demand by talking to other agencies, and (3) we&rsquo;ve honestly assessed whether we have the capacity to support a SaaS product alongside an agency.
             </p>
             <p>
-              The flywheel ensures that every new user makes Meridian smarter for everyone. This is not a feature. It is a compounding advantage that grows with scale.
+              <strong style={{ color: "var(--text)" }}>The worst thing we can do is oversell.</strong> If we market Meridian as having &ldquo;24 million training examples&rdquo; or &ldquo;800,000 ad accounts in our benchmark database&rdquo; and someone looks under the hood, we lose all credibility. The honest story — a small agency that built genuinely useful AI tooling and is methodically building a benchmark advantage — is more compelling and more sustainable.
             </p>
           </div>
         </div>
@@ -946,10 +1394,10 @@ export default function MeridianArchitecturePage() {
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 8 }}>
           <Brain size={14} style={{ color: accent }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.04em" }}>MERIDIAN INTERNAL DOCUMENTATION</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.04em" }}>MERIDIAN — INTERNAL STRATEGY DOCUMENT</span>
         </div>
         <p style={{ fontSize: 11, color: "var(--text-3)" }}>
-          This document is confidential and restricted to authorised personnel only. Last updated April 2026.
+          Confidential. Last updated April 2026. All claims in this document have been verified against the codebase.
         </p>
       </div>
     </div>

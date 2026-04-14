@@ -586,9 +586,10 @@ export async function POST(request: NextRequest) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { researchId, clientName, proposedServices } = body as {
+    const { researchId, clientName, clientId, proposedServices } = body as {
       researchId?: string;
       clientName: string;
+      clientId?: string;
       proposedServices?: string[];
       // Inline data (when research hasn't been saved yet)
       inlineData?: {
@@ -961,6 +962,7 @@ Write in British English throughout.`;
     const savedProposal = await prisma.proposal.create({
       data: {
         userId: session.user.id,
+        clientId: clientId ?? null,
         clientName,
         website,
         title: `${clientName} — Proposal (${today})`,

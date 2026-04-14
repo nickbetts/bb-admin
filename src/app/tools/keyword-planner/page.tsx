@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Search, Loader2, TrendingUp, TrendingDown, ChevronRight, ChevronLeft, ChevronDown, ChevronUp,
   Plus, Trash2, Download, BarChart2, Target, DollarSign, Zap, Check, AlertTriangle,
@@ -11,6 +12,8 @@ import {
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import { ClientBackLink } from "@/components/ui/ClientBackLink";
+import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -366,6 +369,8 @@ function kwKey(groupName: string, kw: string) { return `${groupName}::${kw}`; }
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 export default function KeywordPlannerPage() {
+  const searchParams = useSearchParams();
+  const urlClientId = searchParams.get("clientId");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [website, setWebsite] = useState("");
   const [brief, setBrief] = useState("");
@@ -423,13 +428,16 @@ export default function KeywordPlannerPage() {
 
   const loadSavedList = useCallback(async () => {
     try {
-      const res = await fetch("/api/tools/keyword-planner/saved");
+      const url = urlClientId
+        ? `/api/tools/keyword-planner/saved?clientId=${urlClientId}`
+        : "/api/tools/keyword-planner/saved";
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setSavedResearches(data.researches ?? []);
       }
     } catch { /* ignore */ }
-  }, []);
+  }, [urlClientId]);
 
   useEffect(() => { loadSavedList(); }, [loadSavedList]);
 
@@ -786,6 +794,8 @@ export default function KeywordPlannerPage() {
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <div className="page" style={{ maxWidth: 1200 }}>
+      <ClientBackLink />
+      <ClientFilterBanner />
 
       {/* Header */}
       <div style={{ marginBottom: 32 }}>

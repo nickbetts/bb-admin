@@ -46,14 +46,15 @@ export async function PATCH(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const body = await request.json() as { title?: string; html?: string };
-  const { title, html } = body;
+  const body = await request.json() as { title?: string; html?: string; clientId?: string | null };
+  const { title, html, clientId } = body;
 
   const proposal = await prisma.proposal.update({
     where: { id },
     data: {
       ...(title !== undefined && { title }),
       ...(html !== undefined && { html }),
+      ...(clientId !== undefined && { clientId }),
     },
   });
 

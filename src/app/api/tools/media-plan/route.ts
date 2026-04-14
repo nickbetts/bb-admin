@@ -4,12 +4,19 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const { searchParams } = new URL(request.url);
+    const clientId = searchParams.get("clientId");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = {};
+    if (clientId) where.clientId = clientId;
+
     const plans = await prisma.mediaPlan.findMany({
+      where,
       orderBy: { updatedAt: "desc" },
     });
 

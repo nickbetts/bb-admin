@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ClipboardCheck,
   Plus,
@@ -16,6 +17,8 @@ import {
   X,
 } from "lucide-react";
 import { CHECKLIST_TYPES, getCategories, CheckCategory } from "@/lib/qa-checklist-items";
+import { ClientBackLink } from "@/components/ui/ClientBackLink";
+import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -70,6 +73,8 @@ function categoryProgress(checksJson: string, category: CheckCategory) {
 // ─── Component ────────────────────────────────────────────────────────────
 
 export default function QaChecklistPage() {
+  const searchParams = useSearchParams();
+  const urlClientId = searchParams.get("clientId");
   const [clients, setClients] = useState<Client[]>([]);
   const [filterClientIds, setFilterClientIds] = useState<string[]>([]);   // empty = all
   const [checklists, setChecklists] = useState<ChecklistSummary[]>([]);
@@ -106,6 +111,13 @@ export default function QaChecklistPage() {
       .catch(console.error)
       .finally(() => setIsLoadingChecklists(false));
   }, []);
+
+  // Auto-apply client filter from URL params
+  useEffect(() => {
+    if (urlClientId) {
+      setFilterClientIds([urlClientId]);
+    }
+  }, [urlClientId]);
 
   // Client filter helpers
   const toggleClientFilter = (clientId: string) => {
@@ -284,6 +296,8 @@ export default function QaChecklistPage() {
 
   return (
     <div className="page" style={{ maxWidth: 1100 }}>
+      <ClientBackLink />
+      <ClientFilterBanner />
 
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>

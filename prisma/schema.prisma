@@ -122,6 +122,8 @@ model Client {
   contentStrategies     ContentStrategy[]
   landingPages          LandingPage[]
   qaChecklists          QaChecklist[]
+  proposals             Proposal[]
+  keywordResearch       KeywordPlannerResearch[]
 }
 
 model ClientGoal {
@@ -292,6 +294,7 @@ model ApiCache {
 model KeywordPlannerResearch {
   id              String   @id @default(cuid())
   userId          String
+  clientId        String?  // Optional link to Client — allows standalone prospect research
   title           String
   website         String
   brief           String
@@ -306,13 +309,15 @@ model KeywordPlannerResearch {
   proposedServices String   @default("[]") // JSON: string[] — pre-agreed service names
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  client           Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
   proposals        Proposal[]
 }
 
 model Proposal {
   id              String                  @id @default(cuid())
   userId          String
-  clientName      String
+  clientId        String?                 // Optional FK to Client — allows cold-outreach proposals without a client record
+  clientName      String                  // Display name (kept as fallback for prospects)
   website         String                  @default("")
   title           String
   html            String                  // Full generated HTML (legacy/download)
@@ -329,6 +334,7 @@ model Proposal {
   expectedValue   Float?
   closeDate       String?
   lostReason      String?
+  client          Client?                 @relation(fields: [clientId], references: [id], onDelete: SetNull)
   research        KeywordPlannerResearch? @relation(fields: [researchId], references: [id], onDelete: SetNull)
   enquiries       ProposalEnquiry[]
   createdAt       DateTime                @default(now())
