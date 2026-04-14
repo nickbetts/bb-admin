@@ -991,6 +991,7 @@ export default function LoginPage() {
                   </li>
                 ))}
               </ul>
+              <a href="/signals" style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 24, padding: "10px 18px", borderRadius: 8, background: "rgba(236,72,153,0.1)", border: "1px solid rgba(236,72,153,0.25)", color: "#f9a8d4", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Learn more about Signals →</a>
             </div>
 
             <div className="mockup-3d" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
@@ -1114,6 +1115,7 @@ export default function LoginPage() {
                   </li>
                 ))}
               </ul>
+              <a href="/ai-analyst" style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 24, padding: "10px 18px", borderRadius: 8, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", color: "#a5b4fc", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Learn more about AI Analyst →</a>
             </div>
           </div>
         </div>
@@ -1169,6 +1171,7 @@ export default function LoginPage() {
                   </li>
                 ))}
               </ul>
+              <a href="/reports-feature" style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 24, padding: "10px 18px", borderRadius: 8, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "#6ee7b7", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>Learn more about Reports →</a>
             </div>
 
             <div className="mockup-3d" style={{ background: "#0c0c18", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, overflow: "hidden", position: "relative" }}>
@@ -1269,6 +1272,7 @@ export default function LoginPage() {
                 <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
                   Cross-channel budget recommendations. StratOS shows you exactly where to move the spend and backs it up with performance data.
                 </p>
+                <a href="/budget-intelligence" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12, fontSize: 12, fontWeight: 600, color: "#fbbf24", textDecoration: "none" }}>Learn more →</a>
               </div>
               <div style={{
                 background: "rgba(245,158,11,0.05)",
@@ -1330,6 +1334,7 @@ export default function LoginPage() {
                 <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
                   Predictive forecasting with confidence intervals. Built from your actual data, not industry benchmarks.
                 </p>
+                <a href="/forecasting" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12, fontSize: 12, fontWeight: 600, color: "#60a5fa", textDecoration: "none" }}>Learn more →</a>
               </div>
               <div style={{
                 background: "rgba(59,130,246,0.05)",
@@ -1394,6 +1399,7 @@ export default function LoginPage() {
               <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>
                 Branded dashboards. Clients see the KPIs you choose. Magic-link login. No passwords.
               </p>
+              <a href="/client-portal" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12, fontSize: 12, fontWeight: 600, color: "#c084fc", textDecoration: "none" }}>Learn more →</a>
             </div>
 
             {/* Portfolio View */}
@@ -1488,16 +1494,17 @@ export default function LoginPage() {
             gap: 20,
           }} className="toolkit-grid">
             {[
-              { icon: <Search style={{ width: 22, height: 22 }} />, title: "Keyword Planner", desc: "SemRush-backed research with volume, difficulty, CPC, and trend data. Export to CSV or use inline.", color: "#3b82f6" },
-              { icon: <Rocket style={{ width: 22, height: 22 }} />, title: "PPC Proposal Generator", desc: "Interactive forecaster with pipeline CRM, view tracking, and enquiry capture. Share a link and see who's read it.", color: "#10b981" },
-              { icon: <Layers style={{ width: 22, height: 22 }} />, title: "Media Plan Builder", desc: "Multi-channel budget allocation with AI forecast outputs and shareable strategy docs.", color: "#f59e0b" },
-              { icon: <BookOpen style={{ width: 22, height: 22 }} />, title: "Content Strategy", desc: "Sector-specific content plans with topics, keywords, and publishing schedules.", color: "#a855f7" },
-              { icon: <Monitor style={{ width: 22, height: 22 }} />, title: "Landing Page Analyser", desc: "CRO/SEO/Mobile/Forms scoring with AI recommendations. Know what's broken before you publish.", color: "#ef4444" },
-              { icon: <Terminal style={{ width: 22, height: 22 }} />, title: "LLM.txt Generator", desc: "Sector-specific LLM context files for AI-ready brand visibility.", color: "#6366f1" },
-              { icon: <Share2 style={{ width: 22, height: 22 }} />, title: "Competitor Intelligence", desc: "Share of voice, competitive monitoring, and ongoing snapshots with Meridian-powered commentary.", color: "#ec4899" },
-              { icon: <Palette style={{ width: 22, height: 22 }} />, title: "Creative Intelligence", desc: "Ad creative performance analysis and fatigue detection across all paid channels.", color: "#14b8a6" },
+              { icon: <Search style={{ width: 22, height: 22 }} />, title: "Keyword Planner", desc: "SemRush-backed research with volume, difficulty, CPC, and trend data. Export to CSV or use inline.", color: "#3b82f6", href: "/keyword-planner-feature" },
+              { icon: <Rocket style={{ width: 22, height: 22 }} />, title: "PPC Proposal Generator", desc: "Interactive forecaster with pipeline CRM, view tracking, and enquiry capture. Share a link and see who's read it.", color: "#10b981", href: "/proposals" },
+              { icon: <Layers style={{ width: 22, height: 22 }} />, title: "Media Plan Builder", desc: "Multi-channel budget allocation with AI forecast outputs and shareable strategy docs.", color: "#f59e0b", href: "" },
+              { icon: <BookOpen style={{ width: 22, height: 22 }} />, title: "Content Strategy", desc: "Sector-specific content plans with topics, keywords, and publishing schedules.", color: "#a855f7", href: "/content-strategy-feature" },
+              { icon: <Monitor style={{ width: 22, height: 22 }} />, title: "Landing Page Analyser", desc: "CRO/SEO/Mobile/Forms scoring with AI recommendations. Know what's broken before you publish.", color: "#ef4444", href: "/page-analyser" },
+              { icon: <Terminal style={{ width: 22, height: 22 }} />, title: "LLM.txt Generator", desc: "Sector-specific LLM context files for AI-ready brand visibility.", color: "#6366f1", href: "/llm-generator" },
+              { icon: <Share2 style={{ width: 22, height: 22 }} />, title: "Competitor Intelligence", desc: "Share of voice, competitive monitoring, and ongoing snapshots with Meridian-powered commentary.", color: "#ec4899", href: "" },
+              { icon: <Palette style={{ width: 22, height: 22 }} />, title: "Creative Intelligence", desc: "Ad creative performance analysis and fatigue detection across all paid channels.", color: "#14b8a6", href: "" },
             ].map((tool, i) => (
-              <div key={i} className="tool-card stagger-in" style={{
+              <a key={i} href={tool.href || undefined} className="tool-card stagger-in" style={{
+                textDecoration: "none", color: "inherit", cursor: tool.href ? "pointer" : "default",
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(255,255,255,0.08)",
                 borderRadius: 16,
@@ -1541,7 +1548,7 @@ export default function LoginPage() {
                 <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.7 }}>
                   {tool.desc}
                 </p>
-              </div>
+              </a>
             ))}
           </div>
         </div>
