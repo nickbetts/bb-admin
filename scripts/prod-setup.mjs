@@ -794,6 +794,110 @@ async function main() {
     }
   }
 
+  // ── LandingPage table (added 2026-04-14) ─────────────────────────────────
+  if (!(await tableExists("LandingPage"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "LandingPage" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "clientId" TEXT,
+      "userId" TEXT NOT NULL,
+      "title" TEXT NOT NULL,
+      "slug" TEXT NOT NULL,
+      "currentHtml" TEXT NOT NULL,
+      "briefJson" TEXT NOT NULL,
+      "brandContextJson" TEXT NOT NULL,
+      "formConfig" TEXT NOT NULL DEFAULT '{}',
+      "shareToken" TEXT UNIQUE,
+      "viewCount" INTEGER NOT NULL DEFAULT 0,
+      "lastViewedAt" DATETIME,
+      "status" TEXT NOT NULL DEFAULT 'draft',
+      "templateId" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE CASCADE
+    )`);
+    await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS "LandingPage_shareToken_key" ON "LandingPage"("shareToken")`);
+    await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS "LandingPage_clientId_slug_key" ON "LandingPage"("clientId", "slug")`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "LandingPage_clientId_createdAt_idx" ON "LandingPage"("clientId", "createdAt")`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "LandingPage_userId_createdAt_idx" ON "LandingPage"("userId", "createdAt")`);
+    console.log("✓ Created LandingPage table");
+  } else {
+    console.log("✓ LandingPage table already present");
+  }
+
+  // ── LandingPageVersion table (added 2026-04-14) ───────────────────────────
+  if (!(await tableExists("LandingPageVersion"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "LandingPageVersion" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "landingPageId" TEXT NOT NULL,
+      "versionNumber" INTEGER NOT NULL,
+      "html" TEXT NOT NULL,
+      "prompt" TEXT NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("landingPageId") REFERENCES "LandingPage"("id") ON DELETE CASCADE
+    )`);
+    await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS "LandingPageVersion_landingPageId_versionNumber_key" ON "LandingPageVersion"("landingPageId", "versionNumber")`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "LandingPageVersion_landingPageId_createdAt_idx" ON "LandingPageVersion"("landingPageId", "createdAt")`);
+    console.log("✓ Created LandingPageVersion table");
+  } else {
+    console.log("✓ LandingPageVersion table already present");
+  }
+
+  // ── LandingPageTemplate table (added 2026-04-14) ──────────────────────────
+  if (!(await tableExists("LandingPageTemplate"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "LandingPageTemplate" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "name" TEXT NOT NULL,
+      "description" TEXT,
+      "category" TEXT NOT NULL,
+      "thumbnailUrl" TEXT,
+      "html" TEXT NOT NULL,
+      "promptGuidance" TEXT,
+      "isBuiltIn" INTEGER NOT NULL DEFAULT 0,
+      "createdBy" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+    console.log("✓ Created LandingPageTemplate table");
+  } else {
+    console.log("✓ LandingPageTemplate table already present");
+  }
+
+  // ── LandingPageLead table (added 2026-04-14) ──────────────────────────────
+  if (!(await tableExists("LandingPageLead"))) {
+    await db.execute(`CREATE TABLE IF NOT EXISTS "LandingPageLead" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "landingPageId" TEXT NOT NULL,
+      "name" TEXT,
+      "email" TEXT,
+      "phone" TEXT,
+      "fieldsJson" TEXT NOT NULL DEFAULT '{}',
+      "ipAddress" TEXT,
+      "userAgent" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("landingPageId") REFERENCES "LandingPage"("id") ON DELETE CASCADE
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "LandingPageLead_landingPageId_createdAt_idx" ON "LandingPageLead"("landingPageId", "createdAt")`);
+    console.log("✓ Created LandingPageLead table");
+  } else {
+    console.log("✓ LandingPageLead table already present");
+  }
+
+  // ── Proposal.clientId column (added 2026-04-14) ───────────────────────────
+  if (!(await columnExists("Proposal", "clientId"))) {
+    await db.execute(`ALTER TABLE "Proposal" ADD COLUMN "clientId" TEXT REFERENCES "Client"("id") ON DELETE SET NULL`);
+    console.log("✓ Added Proposal.clientId");
+  } else {
+    console.log("✓ Proposal.clientId already present");
+  }
+
+  // ── KeywordPlannerResearch.clientId column (added 2026-04-14) ────────────
+  if (!(await columnExists("KeywordPlannerResearch", "clientId"))) {
+    await db.execute(`ALTER TABLE "KeywordPlannerResearch" ADD COLUMN "clientId" TEXT REFERENCES "Client"("id") ON DELETE SET NULL`);
+    console.log("✓ Added KeywordPlannerResearch.clientId");
+  } else {
+    console.log("✓ KeywordPlannerResearch.clientId already present");
+  }
+
   await db.close();
   console.log("✅ Schema migration complete");
 }
