@@ -7,6 +7,7 @@ import {
   getAnchorTextDistribution,
   getDomainOverview,
   getBriefKeywordResearch,
+  getSingleCompetitorOverlap,
   type SemrushKeywordData,
   type SemrushCompetitor,
   type SemrushContentGap,
@@ -449,6 +450,19 @@ export async function detectCompetitors(
     domain: c.domain,
     commonKeywords: c.commonKeywords,
   }));
+}
+
+export async function validateCompetitor(
+  domain: string,
+  competitor: string,
+  database: string = "uk",
+): Promise<{ commonKeywords: number }> {
+  const commonKeywords = await withApiCache(
+    `cs:competitor-overlap:${domain}:${competitor}:${database}`,
+    168,
+    () => getSingleCompetitorOverlap(domain, competitor, database),
+  );
+  return { commonKeywords };
 }
 
 // ─── Group keywords by page URL ─────────────────────────────────────────────

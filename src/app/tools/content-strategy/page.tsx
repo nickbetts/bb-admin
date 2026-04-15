@@ -54,6 +54,7 @@ interface DetectedCompetitor {
   domain: string;
   commonKeywords: number;
   manual?: boolean;
+  checking?: boolean;
 }
 
 // ─── Fun mode chaos ──────────────────────────────────────────────────────────
@@ -945,15 +946,37 @@ export default function ContentStrategyPage() {
     setDetectedCompetitors((prev) => prev.filter((c) => c.domain !== domain));
   }
 
-  function addCustomCompetitor() {
+  async function addCustomCompetitor() {
     const raw = customCompetitorInput.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
     if (!raw) return;
     if (detectedCompetitors.some((c) => c.domain === raw)) {
       setCustomCompetitorInput("");
       return;
     }
-    setDetectedCompetitors((prev) => [...prev, { domain: raw, commonKeywords: 0, manual: true }]);
+    setDetectedCompetitors((prev) => [...prev, { domain: raw, commonKeywords: 0, manual: true, checking: !!clientId }]);
     setCustomCompetitorInput("");
+
+    if (!clientId) return;
+    try {
+      const res = await fetch("/api/tools/content-strategy/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId,
+          action: "validate-competitor",
+          competitor: raw,
+          database: semrushDatabase,
+        }),
+      });
+      const data = await res.json();
+      setDetectedCompetitors((prev) =>
+        prev.map((c) => c.domain === raw ? { ...c, commonKeywords: data.commonKeywords ?? 0, checking: false } : c)
+      );
+    } catch {
+      setDetectedCompetitors((prev) =>
+        prev.map((c) => c.domain === raw ? { ...c, checking: false } : c)
+      );
+    }
   }
 
   async function handleSemrushGenerate(e: React.FormEvent) {
@@ -1334,9 +1357,11 @@ export default function ContentStrategyPage() {
                         }}
                       >
                         <span style={{ fontWeight: 500 }}>{c.domain}</span>
-                        {c.manual
-                          ? <span style={{ fontSize: 10, color: "var(--text-4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>manual</span>
-                          : <span style={{ fontSize: 11, color: "var(--text-3)" }}>({c.commonKeywords.toLocaleString()} common)</span>
+                        {c.checking
+                          ? <Loader2 style={{ width: 10, height: 10, animation: "spin 1s linear infinite", color: "var(--text-4)" }} />
+                          : c.manual && c.commonKeywords === 0
+                            ? <span style={{ fontSize: 10, color: "var(--text-4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>not found</span>
+                            : <span style={{ fontSize: 11, color: "var(--text-3)" }}>({c.commonKeywords.toLocaleString()} common)</span>
                         }
                         <button
                           type="button"

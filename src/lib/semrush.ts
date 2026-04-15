@@ -256,6 +256,34 @@ export async function getCompetitors(
   });
 }
 
+export async function getSingleCompetitorOverlap(
+  domain: string,
+  competitor: string,
+  database: string = "uk",
+): Promise<number> {
+  const apiKey = getApiKey();
+  const params = new URLSearchParams({
+    type: "domain_organic_organic",
+    key: apiKey,
+    export_columns: "Dn,Nq",
+    domain,
+    database,
+    display_limit: "1",
+    display_sort: "nq_desc",
+    display_filter: `+|Dn|Eq|${competitor}`,
+  });
+
+  try {
+    const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+    const lines = (response.data as string).trim().split("\n");
+    if (lines.length < 2) return 0;
+    const [, commonKeywords] = lines[1].split(";");
+    return parseInt(commonKeywords) || 0;
+  } catch {
+    return 0;
+  }
+}
+
 export async function getBacklinks(
   domain: string,
   limit: number = 10

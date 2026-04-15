@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   generateContentStrategy,
   detectCompetitors,
+  validateCompetitor,
   estimateApiUnits,
   type StrategyModel,
   type ContentStrategyLimits,
@@ -66,6 +67,17 @@ export async function POST(request: NextRequest) {
     if (action === "detect-competitors") {
       const competitors = await detectCompetitors(domain, db);
       return NextResponse.json({ competitors });
+    }
+
+    // ── Action: validate a manually-added competitor ──────────────────────
+    if (action === "validate-competitor") {
+      const competitor = (body.competitor as string | undefined)?.trim().toLowerCase()
+        .replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
+      if (!competitor) {
+        return NextResponse.json({ error: "competitor is required" }, { status: 400 });
+      }
+      const result = await validateCompetitor(domain, competitor, db);
+      return NextResponse.json(result);
     }
 
     // ── Action: estimate cost ─────────────────────────────────────────────
