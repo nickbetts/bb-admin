@@ -6,7 +6,6 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Loader2,
-  Send,
   Monitor,
   Tablet,
   Smartphone,
@@ -20,6 +19,9 @@ import {
   History,
   X,
   Save,
+  MessageSquare,
+  Wand2,
+  FileCode,
 } from "lucide-react";
 
 interface LandingPage {
@@ -84,9 +86,15 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
   // Chat state
   const [prompt, setPrompt] = useState("");
-  const [chatHistory, setChatHistory] = useState<{ role: "user" | "assistant"; content: string; version?: number }[]>([]);
+  const [chatHistory, setChatHistory] = useState<{ role: "user" | "assistant"; content: string; version?: number; type?: "chat" | "refine"; refinementPrompt?: string }[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [chatting, setChatting] = useState(false);
+
+  // Reference HTML upload state
+  const [referenceHtml, setReferenceHtml] = useState<string | null>(null);
+  const [referenceFileName, setReferenceFileName] = useState<string | null>(null);
+  const referenceInputRef = useRef<HTMLInputElement>(null);
 
   // Template save state
   const [templateName, setTemplateName] = useState("");
@@ -126,14 +134,14 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
 
-  const handleRefine = async () => {
-    if (!prompt.trim() || refining) return;
+  const handleRefine = async (overridePrompt?: string) => {
+    const userPrompt = (overridePrompt ?? prompt).trim();
+    if (!userPrompt || refining || chatting) return;
 
-    const userPrompt = prompt.trim();
-    setPrompt("");
+    if (!overridePrompt) setPrompt("");
     setRefining(true);
 
-    setChatHistory((prev) => [...prev, { role: "user", content: userPrompt }]);
+    setChatHistory((prev) => [...prev, { role: "user", content: userPrompt, type: "refine" as const }]);
 
     try {
       const aiHistory = chatHistory
@@ -147,12 +155,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         body: JSON.stringify({
           prompt: userPrompt,
           conversationHistory: aiHistory,
+          referenceHtml: referenceHtml ?? undefined,
         }),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${data.error ?? "Refinement failed"}` }]);
+        setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${data.error ?? "Refinement failed"}`, type: "refine" as const }]);
         setRefining(false);
         return;
       }
@@ -167,6 +176,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           role: "assistant",
           content: `Applied changes → version ${data.version.versionNumber}`,
           version: data.version.versionNumber,
+          type: "refine" as const,
         },
       ]);
 
@@ -176,10 +186,70 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         setLp(refreshData.landingPage);
       }
     } catch (err) {
-      setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Unknown error"}` }]);
+      setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Unknown error"}`, type: "refine" as const }]);
     } finally {
       setRefining(false);
     }
+  };
+
+  const handleChat = async () => {
+    const userMessage = prompt.trim();
+    if (!userMessage || chatting || refining) return;
+
+    setPrompt("");
+    setChatting(true);
+
+    setChatHistory((prev) => [...prev, { role: "user", content: userMessage, type: "chat" as const }]);
+
+    try {
+      const aiHistory = chatHistory
+        .slice(-8)
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      const res = await fetch(`/api/tools/landing-pages/${id}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userMessage,
+          conversationHistory: aiHistory,
+          referenceHtml: referenceHtml ?? undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${data.error ?? "Chat failed"}`, type: "chat" as const }]);
+        return;
+      }
+
+      const data = await res.json();
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: data.message,
+          type: "chat" as const,
+          refinementPrompt: data.refinementPrompt,
+        },
+      ]);
+    } catch (err) {
+      setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Unknown error"}`, type: "chat" as const }]);
+    } finally {
+      setChatting(false);
+    }
+  };
+
+  const handleReferenceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setReferenceHtml(ev.target?.result as string);
+      setReferenceFileName(file.name);
+    };
+    reader.readAsText(file);
+    // Reset input so same file can be re-uploaded
+    e.target.value = "";
   };
 
   const handleRevert = async (versionNumber: number) => {
@@ -265,7 +335,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleRefine();
+      if (e.metaKey || e.ctrlKey) {
+        handleRefine();
+      } else {
+        handleChat();
+      }
     }
   };
 
@@ -453,8 +527,49 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         <div style={{ width: 360, flexShrink: 0, display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border)", background: "var(--surface)" }}>
           {/* Chat header */}
           <div style={{ flexShrink: 0, padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
-            <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>Refine with AI</h2>
-            <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 2 }}>Describe changes — Claude will update the page</p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>Refine with AI</h2>
+                <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 2 }}>Chat to discuss · ⌘+Enter to apply directly</p>
+              </div>
+              {/* Hidden file input */}
+              <input
+                ref={referenceInputRef}
+                type="file"
+                accept=".html"
+                onChange={handleReferenceUpload}
+                style={{ display: "none" }}
+              />
+              <button
+                onClick={() => referenceInputRef.current?.click()}
+                title="Upload a reference HTML page for inspiration"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "5px 8px", fontSize: 11, fontWeight: 500,
+                  color: referenceHtml ? "var(--accent)" : "var(--text-3)",
+                  background: referenceHtml ? "var(--accent-bg)" : "var(--border-subtle)",
+                  border: "none", borderRadius: "var(--r-sm)", cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                <FileCode style={{ width: 13, height: 13 }} />
+                {referenceHtml ? "Ref loaded" : "Upload ref"}
+              </button>
+            </div>
+            {/* Reference file chip */}
+            {referenceHtml && referenceFileName && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, padding: "4px 8px", background: "var(--accent-bg)", borderRadius: "var(--r-sm)" }}>
+                <FileCode style={{ width: 12, height: 12, color: "var(--accent)", flexShrink: 0 }} />
+                <span style={{ fontSize: 11, color: "var(--accent)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{referenceFileName}</span>
+                <button
+                  onClick={() => { setReferenceHtml(null); setReferenceFileName(null); }}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", padding: 0, display: "flex", alignItems: "center" }}
+                  title="Remove reference"
+                >
+                  <X style={{ width: 12, height: 12 }} />
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Chat messages */}
@@ -462,9 +577,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             {chatHistory.length === 0 && (
               <div style={{ textAlign: "center", paddingTop: 32 }}>
                 <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 12 }}>Your landing page is ready!</p>
-                <p style={{ fontSize: 12, color: "var(--text-4)" }}>Try prompts like:</p>
+                <p style={{ fontSize: 12, color: "var(--text-4)" }}>Try asking:</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
-                  {["Make the hero section more impactful", "Add a countdown timer for urgency", "Change the CTA colour to green", "Add more social proof and testimonials"].map((suggestion) => (
+                  {["What would make this page convert better?", "What's the weakest section?", "Change the CTA colour to green", "Add more social proof and testimonials"].map((suggestion) => (
                     <button
                       key={suggestion}
                       onClick={() => setPrompt(suggestion)}
@@ -496,7 +611,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     ),
                   }}
                 >
-                  <p style={{ margin: 0 }}>{msg.content}</p>
+                  <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{msg.content}</p>
+                  {/* Refine version badges */}
                   {msg.role === "assistant" && msg.version && (
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(128,128,128,0.15)" }}>
                       <span style={{ fontSize: 10, padding: "1px 6px", background: "var(--accent-bg)", color: "var(--accent)", borderRadius: 99, fontWeight: 600 }}>
@@ -519,9 +635,38 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                       </button>
                     </div>
                   )}
+                  {/* Apply this change button (chat messages only) */}
+                  {msg.role === "assistant" && msg.type === "chat" && msg.refinementPrompt && (
+                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(128,128,128,0.15)" }}>
+                      <button
+                        onClick={() => handleRefine(msg.refinementPrompt)}
+                        disabled={refining || chatting}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 5,
+                          fontSize: 11, fontWeight: 600, padding: "5px 10px",
+                          background: "var(--success-bg)", color: "var(--success-text)",
+                          border: "none", borderRadius: 99, cursor: "pointer",
+                          opacity: (refining || chatting) ? 0.5 : 1,
+                          transition: "opacity 0.15s",
+                        }}
+                      >
+                        <Wand2 style={{ width: 11, height: 11 }} />
+                        Apply this change
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
+
+            {chatting && (
+              <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                <div style={{ background: "var(--border-subtle)", borderRadius: 12, padding: "8px 12px", fontSize: 12, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}>
+                  <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
+                  Thinking...
+                </div>
+              </div>
+            )}
 
             {refining && (
               <div style={{ display: "flex", justifyContent: "flex-start" }}>
@@ -537,32 +682,53 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
           {/* Chat input */}
           <div style={{ flexShrink: 0, padding: 12, borderTop: "1px solid var(--border)" }}>
-            <div style={{ display: "flex", gap: 8 }}>
-              <textarea
-                ref={textareaRef}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Describe what to change..."
-                rows={2}
-                disabled={refining}
-                style={{
-                  ...inputStyle, flex: 1, fontSize: 12,
-                  resize: "none" as const,
-                  opacity: refining ? 0.5 : 1,
-                }}
-              />
+            <textarea
+              ref={textareaRef}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask a question or describe a change..."
+              rows={2}
+              disabled={refining || chatting}
+              style={{
+                ...inputStyle, width: "100%", fontSize: 12,
+                resize: "none" as const,
+                opacity: (refining || chatting) ? 0.5 : 1,
+                marginBottom: 8,
+              }}
+            />
+            <div style={{ display: "flex", gap: 6 }}>
               <button
-                className="btn btn-primary btn-sm"
-                onClick={handleRefine}
-                disabled={refining || !prompt.trim()}
-                style={{ alignSelf: "flex-end", padding: 10 }}
-                title="Send"
+                onClick={handleChat}
+                disabled={refining || chatting || !prompt.trim()}
+                title="Chat — discuss and get advice (Enter)"
+                style={{
+                  flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
+                  padding: "7px 10px", fontSize: 12, fontWeight: 500,
+                  background: "var(--border-subtle)", color: "var(--text-2)",
+                  border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer",
+                  opacity: (refining || chatting || !prompt.trim()) ? 0.45 : 1,
+                  transition: "opacity 0.15s, background 0.15s",
+                }}
               >
-                <Send style={{ width: 14, height: 14 }} />
+                <MessageSquare style={{ width: 13, height: 13 }} />
+                Chat
+              </button>
+              <button
+                onClick={() => handleRefine()}
+                disabled={refining || chatting || !prompt.trim()}
+                title="Apply — generate updated HTML (⌘+Enter)"
+                className="btn btn-primary btn-sm"
+                style={{
+                  flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
+                  fontSize: 12,
+                }}
+              >
+                <Wand2 style={{ width: 13, height: 13 }} />
+                Apply
               </button>
             </div>
-            <p style={{ fontSize: 10, color: "var(--text-4)", marginTop: 4 }}>Press Enter to send, Shift+Enter for new line</p>
+            <p style={{ fontSize: 10, color: "var(--text-4)", marginTop: 6 }}>Enter to chat · ⌘+Enter to apply · Shift+Enter new line</p>
           </div>
         </div>
       </div>

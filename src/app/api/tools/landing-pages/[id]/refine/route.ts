@@ -32,6 +32,7 @@ export async function POST(
     const body = await request.json() as {
       prompt: string;
       conversationHistory?: { role: "user" | "assistant"; content: string }[];
+      referenceHtml?: string;
     };
 
     if (!body.prompt) {
@@ -51,6 +52,7 @@ export async function POST(
       prompt: body.prompt,
       brandContext,
       conversationHistory: body.conversationHistory,
+      referenceHtml: body.referenceHtml,
     });
 
     // Determine next version number

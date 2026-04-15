@@ -27,6 +27,20 @@ export interface RefineLPOptions {
   prompt: string;
   brandContext: BrandContext;
   conversationHistory?: { role: "user" | "assistant"; content: string }[];
+  referenceHtml?: string; // Uploaded inspiration page from the user
+}
+
+export interface ChatLPOptions {
+  currentHtml: string;
+  message: string;
+  brandContext: BrandContext;
+  conversationHistory?: { role: "user" | "assistant"; content: string }[];
+  referenceHtml?: string;
+}
+
+export interface ChatLPResponse {
+  message: string;
+  refinementPrompt?: string; // Extracted from READY_TO_APPLY: tag in AI response
 }
 
 // ── System prompts ───────────────────────────────────────────────────────────
@@ -258,10 +272,13 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
   }
 
   // Add the current refinement request
-  messages.push({
-    role: "user",
-    content: `Here is the current landing page HTML:\n\n${opts.currentHtml}\n\nBrand colours: ${colourSummary}\n\nPlease make the following changes:\n${opts.prompt}`,
-  });
+  let userContent = `Here is the current landing page HTML:\n\n${opts.currentHtml}\n\nBrand colours: ${colourSummary}\n\nPlease make the following changes:\n${opts.prompt}`;
+
+  if (opts.referenceHtml) {
+    userContent += `\n\n## Reference page for inspiration\nThe user has uploaded an HTML page they like. Use it for structural and feature inspiration only — preserve the current page's brand identity, colours, and all existing copy:\n\n${opts.referenceHtml.slice(0, 12000)}`;
+  }
+
+  messages.push({ role: "user", content: userContent });
 
   const stream = anthropic.messages.stream({
     model: MODEL,
@@ -277,6 +294,58 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
   html = stripMarkdownFences(html);
 
   return html;
+}
+
+// ── Chat about landing page ─────────────────────────────────────────────────
+
+const CHAT_SYSTEM_PROMPT = `You are a senior CRO specialist and landing page expert helping a digital agency improve a client landing page.
+
+Your role is to discuss improvements conversationally — analyse the page, ask clarifying questions, suggest specific changes, and explain your reasoning. Do NOT generate HTML unless explicitly asked.
+
+Guidelines:
+- Be concise and specific. Focus on one key point per message.
+- Ask a single clarifying question if you need more context before recommending.
+- Reference the actual page content (headlines, CTAs, sections) when analysing.
+- If the user has uploaded a reference page, note what specific features or patterns from it would benefit the current page.
+- When you have identified a specific, actionable change that is ready to implement, end your response with exactly:
+  READY_TO_APPLY: <a clear, precise instruction Claude can use to update the HTML>
+  This signals an "Apply this change" button in the UI.
+- Use British English. Never use em dashes (— or &mdash;). Use commas, colons, or rewrite instead.`;
+
+export async function chatAboutLandingPage(opts: ChatLPOptions): Promise<ChatLPResponse> {
+  const anthropic = await getAnthropicClient();
+
+  const messages: { role: "user" | "assistant"; content: string }[] = [];
+
+  // Include recent conversation history (last 8 turns — text only, cheap)
+  if (opts.conversationHistory?.length) {
+    messages.push(...opts.conversationHistory.slice(-8));
+  }
+
+  let userContent = `Here is the current landing page HTML (truncated to 15,000 chars for reference):\n\n${opts.currentHtml.slice(0, 15000)}\n\n${opts.message}`;
+
+  if (opts.referenceHtml) {
+    userContent += `\n\n## Reference page the user uploaded\n${opts.referenceHtml.slice(0, 8000)}`;
+  }
+
+  messages.push({ role: "user", content: userContent });
+
+  const response = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 600,
+    system: CHAT_SYSTEM_PROMPT,
+    messages,
+  });
+
+  const block = response.content[0];
+  const raw = block.type === "text" ? block.text.trim() : "";
+
+  // Extract READY_TO_APPLY tag if present
+  const tagMatch = raw.match(/READY_TO_APPLY:\s*(.+?)(?:\n|$)/);
+  const refinementPrompt = tagMatch ? tagMatch[1].trim() : undefined;
+  const message = raw.replace(/\nREADY_TO_APPLY:.+?(\n|$)/g, "").replace(/READY_TO_APPLY:.+?(\n|$)/g, "").trim();
+
+  return { message, refinementPrompt };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
