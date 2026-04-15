@@ -625,6 +625,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const clients = await prisma.client.findMany({
+      where: { status: { not: "lost" } },
       select: {
         id: true, name: true,
         ga4PropertyId: true, googleAdsCustomerId: true,

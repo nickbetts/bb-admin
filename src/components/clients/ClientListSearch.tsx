@@ -30,10 +30,11 @@ interface ClientItem {
 
 export function ClientListSearch({ clients }: { clients: ClientItem[] }) {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "lead">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "lead" | "lost">("all");
 
   const leadCount = clients.filter((c) => c.status === "lead").length;
   const activeCount = clients.filter((c) => c.status === "active").length;
+  const lostCount = clients.filter((c) => c.status === "lost").length;
 
   const filtered = clients.filter((c) => {
     if (statusFilter !== "all" && c.status !== statusFilter) return false;
@@ -48,13 +49,13 @@ export function ClientListSearch({ clients }: { clients: ClientItem[] }) {
   return (
     <>
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-        {(["all", "active", "lead"] as const).map((f) => (
+        {(["all", "active", "lead", "lost"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setStatusFilter(f)}
             className={statusFilter === f ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
           >
-            {f === "all" ? `All (${clients.length})` : f === "active" ? `Active (${activeCount})` : `Leads (${leadCount})`}
+            {f === "all" ? `All (${clients.length})` : f === "active" ? `Active (${activeCount})` : f === "lead" ? `Leads (${leadCount})` : `Lost (${lostCount})`}
           </button>
         ))}
       </div>
@@ -80,6 +81,9 @@ export function ClientListSearch({ clients }: { clients: ClientItem[] }) {
                   </h3>
                   {client.status === "lead" && (
                     <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: "rgba(245,158,11,0.12)", color: "#d97706", marginTop: 3, display: "inline-block" }}>LEAD</span>
+                  )}
+                  {client.status === "lost" && (
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: "rgba(100,116,139,0.12)", color: "#64748b", marginTop: 3, display: "inline-block" }}>LOST</span>
                   )}
                   {client.website && (
                     <p style={{ fontSize: 12, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 4, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={client.website}>

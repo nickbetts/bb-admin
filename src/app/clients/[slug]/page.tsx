@@ -66,6 +66,9 @@ export default async function ClientPage({ params, searchParams }: Props) {
               {client.status === "lead" && (
                 <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 99, background: "rgba(245,158,11,0.12)", color: "#d97706", display: "inline-block", marginTop: 4 }}>LEAD</span>
               )}
+              {client.status === "lost" && (
+                <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 99, background: "rgba(100,116,139,0.12)", color: "#64748b", display: "inline-block", marginTop: 4 }}>LOST</span>
+              )}
               {client.website && (
                 <a href={client.website} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--text-3)", textDecoration: "none", marginTop: 6 }}>
                   {client.website.replace(/^https?:\/\//, "")}

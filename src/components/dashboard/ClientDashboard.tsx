@@ -85,26 +85,46 @@ function getDefaultTab(_client: Client): Tab {
   return "hub";
 }
 
-function ConvertToActiveButton({ clientId }: { clientId: string }) {
-  const [loading, setLoading] = useState(false);
-  async function handleConvert() {
-    setLoading(true);
+function ClientStatusControl({ clientId, currentStatus }: { clientId: string; currentStatus: string }) {
+  const [loading, setLoading] = useState<string | null>(null);
+
+  const options: { value: string; label: string; color: string; bg: string }[] = [
+    { value: "lead", label: "Lead", color: "#d97706", bg: "rgba(245,158,11,0.12)" },
+    { value: "active", label: "Active", color: "#16a34a", bg: "rgba(22,163,74,0.10)" },
+    { value: "lost", label: "Lost", color: "#64748b", bg: "rgba(100,116,139,0.10)" },
+  ];
+
+  async function handleChange(newStatus: string) {
+    if (newStatus === currentStatus) return;
+    setLoading(newStatus);
     await fetch(`/api/clients/${clientId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "active" }),
+      body: JSON.stringify({ status: newStatus }),
     });
     window.location.reload();
   }
+
   return (
-    <button
-      onClick={handleConvert}
-      disabled={loading}
-      className="btn btn-primary btn-sm"
-      style={{ flexShrink: 0 }}
-    >
-      {loading ? "Converting…" : "Convert to Active"}
-    </button>
+    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => handleChange(opt.value)}
+          disabled={loading !== null}
+          style={{
+            fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 99, cursor: loading !== null ? "wait" : "pointer",
+            background: currentStatus === opt.value ? opt.bg : "transparent",
+            color: currentStatus === opt.value ? opt.color : "var(--text-3)",
+            border: `1.5px solid ${currentStatus === opt.value ? opt.color : "var(--border)"}`,
+            opacity: loading !== null && loading !== opt.value ? 0.5 : 1,
+            transition: "all 0.15s",
+          }}
+        >
+          {loading === opt.value ? "…" : opt.label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -120,6 +140,8 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
   }
 
   const isLead = client.status === "lead";
+  const isLost = client.status === "lost";
+  const isRestricted = isLead || isLost;
 
   // Tab visibility: if the role has any "tab:" permissions, restrict to only those tabs
   const tabPermissions = permissions.filter(p => p.startsWith("tab:")).map(p => p.slice(4));
@@ -254,21 +276,26 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
     { id: "strategy", label: "Strategy", available: true },
   ].map((tab) => ({
     ...tab,
-    // If the role has tab restrictions, hide tabs not in the allowed set (core tabs always stay visible)
-    // Leads only see the Hub tab
-    available: tab.available && (!hasTabRestrictions || tabPermissions.includes(tab.id)) && (!isLead || tab.id === "hub"),
+    // Leads and lost clients only see the Hub tab
+    available: tab.available && (!hasTabRestrictions || tabPermissions.includes(tab.id)) && (!isRestricted || tab.id === "hub"),
   })).filter((tab) => tab.available) as { id: Tab; label: string; available: boolean }[];
 
   return (
     <div>
-      {/* Lead banner */}
-      {isLead && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "12px 18px", marginBottom: 20, borderRadius: 12, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(245,158,11,0.18)", color: "#d97706" }}>LEAD</span>
-            <span style={{ fontSize: 13, color: "var(--text-2)" }}>This is a prospect — only the Hub is available. Once signed, convert to active to unlock all channel integrations.</span>
-          </div>
-          <ConvertToActiveButton clientId={client.id} />
+      {/* Status banner — shown for non-active clients */}
+      {isRestricted && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
+          padding: "12px 18px", marginBottom: 20, borderRadius: 12,
+          background: isLost ? "rgba(100,116,139,0.06)" : "rgba(245,158,11,0.08)",
+          border: `1px solid ${isLost ? "rgba(100,116,139,0.2)" : "rgba(245,158,11,0.25)"}`,
+        }}>
+          <span style={{ fontSize: 13, color: "var(--text-2)" }}>
+            {isLost
+              ? "This client is marked as lost — only the Hub is available."
+              : "This is a prospect — only the Hub is available. Once signed, mark as Active to unlock all channel tabs."}
+          </span>
+          <ClientStatusControl clientId={client.id} currentStatus={client.status ?? "lead"} />
         </div>
       )}
 
