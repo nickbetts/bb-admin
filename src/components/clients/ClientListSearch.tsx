@@ -30,14 +30,20 @@ interface ClientItem {
 
 export function ClientListSearch({ clients }: { clients: ClientItem[] }) {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "lead" | "lost">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "leads" | "churned" | "lost">("all");
 
-  const leadCount = clients.filter((c) => c.status === "lead").length;
+  const LEAD_STATUSES = ["lead", "qualifying", "proposal_sent", "negotiating"];
+
+  const leadsCount = clients.filter((c) => LEAD_STATUSES.includes(c.status)).length;
   const activeCount = clients.filter((c) => c.status === "active").length;
+  const churnedCount = clients.filter((c) => c.status === "churned").length;
   const lostCount = clients.filter((c) => c.status === "lost").length;
 
   const filtered = clients.filter((c) => {
-    if (statusFilter !== "all" && c.status !== statusFilter) return false;
+    if (statusFilter === "active" && c.status !== "active") return false;
+    if (statusFilter === "leads" && !LEAD_STATUSES.includes(c.status)) return false;
+    if (statusFilter === "churned" && c.status !== "churned") return false;
+    if (statusFilter === "lost" && c.status !== "lost") return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -46,16 +52,36 @@ export function ClientListSearch({ clients }: { clients: ClientItem[] }) {
     );
   });
 
+  function statusBadge(status: string) {
+    if (status === "lead")
+      return <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: "rgba(245,158,11,0.12)", color: "#d97706", marginTop: 3, display: "inline-block" }}>LEAD</span>;
+    if (status === "qualifying")
+      return <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: "rgba(245,158,11,0.12)", color: "#d97706", marginTop: 3, display: "inline-block" }}>QUALIFYING</span>;
+    if (status === "proposal_sent")
+      return <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: "rgba(245,158,11,0.12)", color: "#d97706", marginTop: 3, display: "inline-block" }}>PROPOSAL SENT</span>;
+    if (status === "negotiating")
+      return <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: "rgba(245,158,11,0.12)", color: "#d97706", marginTop: 3, display: "inline-block" }}>NEGOTIATING</span>;
+    if (status === "churned")
+      return <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: "rgba(239,68,68,0.10)", color: "#dc2626", marginTop: 3, display: "inline-block" }}>CHURNED</span>;
+    if (status === "lost")
+      return <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: "rgba(100,116,139,0.12)", color: "#64748b", marginTop: 3, display: "inline-block" }}>LOST</span>;
+    return null;
+  }
+
   return (
     <>
-      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-        {(["all", "active", "lead", "lost"] as const).map((f) => (
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+        {(["all", "active", "leads", "churned", "lost"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setStatusFilter(f)}
             className={statusFilter === f ? "btn btn-primary btn-sm" : "btn btn-ghost btn-sm"}
           >
-            {f === "all" ? `All (${clients.length})` : f === "active" ? `Active (${activeCount})` : f === "lead" ? `Leads (${leadCount})` : `Lost (${lostCount})`}
+            {f === "all" && `All (${clients.length})`}
+            {f === "active" && `Active (${activeCount})`}
+            {f === "leads" && `Leads (${leadsCount})`}
+            {f === "churned" && `Churned (${churnedCount})`}
+            {f === "lost" && `Lost (${lostCount})`}
           </button>
         ))}
       </div>
@@ -79,12 +105,7 @@ export function ClientListSearch({ clients }: { clients: ClientItem[] }) {
                   <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={client.name}>
                     {client.name}
                   </h3>
-                  {client.status === "lead" && (
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: "rgba(245,158,11,0.12)", color: "#d97706", marginTop: 3, display: "inline-block" }}>LEAD</span>
-                  )}
-                  {client.status === "lost" && (
-                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: "rgba(100,116,139,0.12)", color: "#64748b", marginTop: 3, display: "inline-block" }}>LOST</span>
-                  )}
+                  {statusBadge(client.status)}
                   {client.website && (
                     <p style={{ fontSize: 12, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 4, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={client.website}>
                       <Globe style={{ width: 11, height: 11, flexShrink: 0 }} />

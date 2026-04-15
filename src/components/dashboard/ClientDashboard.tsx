@@ -97,9 +97,12 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
     setTimeout(() => setTabTransitioning(false), 200);
   }
 
-  const isLead = client.status === "lead";
-  const isLost = client.status === "lost";
-  const isRestricted = isLead || isLost;
+  const LEAD_STATUSES = ["lead", "qualifying", "proposal_sent", "negotiating"];
+  const CLOSED_STATUSES = ["churned", "lost"];
+  const LEAD_ALLOWED_TABS = ["hub", "seo", "competitors"];
+  const isInLeadFunnel = LEAD_STATUSES.includes(client.status ?? "active");
+  const isClosed = CLOSED_STATUSES.includes(client.status ?? "active");
+  const isRestricted = isInLeadFunnel || isClosed;
 
   // Tab visibility: if the role has any "tab:" permissions, restrict to only those tabs
   const tabPermissions = permissions.filter(p => p.startsWith("tab:")).map(p => p.slice(4));
@@ -234,8 +237,10 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
     { id: "strategy", label: "Strategy", available: true },
   ].map((tab) => ({
     ...tab,
-    // Leads and lost clients only see the Hub tab
-    available: tab.available && (!hasTabRestrictions || tabPermissions.includes(tab.id)) && (!isRestricted || tab.id === "hub"),
+    // Lead funnel: Hub + SEMrush + Competitors. Closed: Hub only. Active: all.
+    available: tab.available && (!hasTabRestrictions || tabPermissions.includes(tab.id))
+      && (!isInLeadFunnel || LEAD_ALLOWED_TABS.includes(tab.id))
+      && (!isClosed || tab.id === "hub"),
   })).filter((tab) => tab.available) as { id: Tab; label: string; available: boolean }[];
 
   return (
@@ -244,13 +249,13 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
       {isRestricted && (
         <div style={{
           padding: "12px 18px", marginBottom: 20, borderRadius: 12,
-          background: isLost ? "rgba(100,116,139,0.06)" : "rgba(245,158,11,0.08)",
-          border: `1px solid ${isLost ? "rgba(100,116,139,0.2)" : "rgba(245,158,11,0.25)"}`,
+          background: isClosed ? "rgba(100,116,139,0.06)" : "rgba(245,158,11,0.08)",
+          border: `1px solid ${isClosed ? "rgba(100,116,139,0.2)" : "rgba(245,158,11,0.25)"}`,
         }}>
           <span style={{ fontSize: 13, color: "var(--text-2)" }}>
-            {isLost
-              ? "This client is marked as lost — only the Hub is available."
-              : "This is a prospect — only the Hub is available. Once signed, mark as Active above to unlock all channel tabs."}
+            {isClosed
+              ? `This client is ${client.status === "churned" ? "churned" : "marked as lost"} — only the Hub is available.`
+              : "This prospect is in the lead pipeline — Hub, SEMrush, and Competitors are available. Mark as Active once signed."}
           </span>
         </div>
       )}

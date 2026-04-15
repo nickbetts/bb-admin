@@ -103,7 +103,7 @@ model Client {
   // Microsoft 365 email sync
   contactEmails         String?   // JSON: string[] — client contact email addresses for email sync
   contentStrategyLimits String?   // JSON: { pageOptimisations?: number, landingPages?: number, blogPosts?: number, linkTargets?: number }
-  status                String    @default("active") // "lead" | "active"
+  status                String    @default("active") // lead | qualifying | proposal_sent | negotiating | active | churned | lost
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   reports               Report[]

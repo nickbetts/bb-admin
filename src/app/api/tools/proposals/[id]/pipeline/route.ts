@@ -4,6 +4,26 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+// Map a proposal pipeline stage to the corresponding client status.
+// Returns null if no client status update should occur.
+function pipelineStageToClientStatus(stage: string, currentClientStatus: string): string | null {
+  const LEAD_STATUSES = ["lead", "qualifying", "proposal_sent", "negotiating"];
+  switch (stage) {
+    case "sent":
+    case "viewed":
+      return "proposal_sent";
+    case "negotiating":
+      return "negotiating";
+    case "won":
+      return "active";
+    case "lost":
+      // Only move to lost if the client is still in the lead funnel — don't override active/churned
+      return LEAD_STATUSES.includes(currentClientStatus) ? "lost" : null;
+    default:
+      return null;
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -34,6 +54,23 @@ export async function PATCH(
         ...(data.lostReason !== undefined && { lostReason: data.lostReason }),
       },
     });
+
+    // Auto-sync linked client status when the pipeline stage changes
+    if (data.pipelineStage !== undefined && proposal.clientId) {
+      const linkedClient = await prisma.client.findUnique({
+        where: { id: proposal.clientId },
+        select: { id: true, status: true },
+      });
+      if (linkedClient) {
+        const newClientStatus = pipelineStageToClientStatus(data.pipelineStage, linkedClient.status ?? "lead");
+        if (newClientStatus) {
+          await prisma.client.update({
+            where: { id: linkedClient.id },
+            data: { status: newClientStatus },
+          });
+        }
+      }
+    }
 
     return NextResponse.json(updated);
   } catch (error) {

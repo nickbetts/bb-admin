@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         googleAdsAccountName: googleAdsAccountName || null,
         searchConsoleSiteUrl: searchConsoleSiteUrl || null,
         aiReportInstructions: aiReportInstructions || null,
-        status: (["active", "lead", "lost"] as const).includes(status) ? status : "lead",
+        status: (["active", "lead", "qualifying", "proposal_sent", "negotiating", "churned", "lost"] as const).includes(status) ? status : "lead",
       },
     });
 

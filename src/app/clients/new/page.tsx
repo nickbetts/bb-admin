@@ -194,24 +194,29 @@ export default function NewClientPage() {
               />
             </div>
             <div>
-              <label className="form-label">Client Type</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setForm((p) => ({ ...p, status: "lead" }))}
-                  className={form.status === "lead" ? "btn btn-primary btn-sm" : "btn btn-secondary btn-sm"}
-                >
-                  Lead
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setForm((p) => ({ ...p, status: "active" }))}
-                  className={form.status === "active" ? "btn btn-primary btn-sm" : "btn btn-secondary btn-sm"}
-                >
-                  Active Client
-                </button>
-              </div>
-              <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 6 }}>Lead = prospect (Hub only). Active = signed client with channel integrations.</p>
+              <label className="form-label">Status</label>
+              <select
+                name="status"
+                value={form.status}
+                onChange={handleChange}
+                className="form-input"
+                style={{ width: "auto", minWidth: 200 }}
+              >
+                <optgroup label="Lead Pipeline">
+                  <option value="lead">Lead</option>
+                  <option value="qualifying">Qualifying</option>
+                  <option value="proposal_sent">Proposal Sent</option>
+                  <option value="negotiating">Negotiating</option>
+                </optgroup>
+                <optgroup label="Client">
+                  <option value="active">Active</option>
+                </optgroup>
+                <optgroup label="Closed">
+                  <option value="churned">Churned</option>
+                  <option value="lost">Lost</option>
+                </optgroup>
+              </select>
+              <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 6 }}>Lead pipeline = prospect (Hub, SEMrush &amp; Competitors only). Active = signed client with full channel access.</p>
             </div>
           </div>
         </div>
