@@ -53,6 +53,7 @@ type GenerationMode = "semrush" | "upload";
 interface DetectedCompetitor {
   domain: string;
   commonKeywords: number;
+  manual?: boolean;
 }
 
 // ─── Fun mode chaos ──────────────────────────────────────────────────────────
@@ -505,6 +506,7 @@ export default function ContentStrategyPage() {
   const [limitLinkTargets, setLimitLinkTargets] = useState("");
   const [detectedCompetitors, setDetectedCompetitors] = useState<DetectedCompetitor[]>([]);
   const [detectingCompetitors, setDetectingCompetitors] = useState(false);
+  const [customCompetitorInput, setCustomCompetitorInput] = useState("");
   const [semrushProgress, setSemrushProgress] = useState("");
   const [semrushDomain, setSemrushDomain] = useState("");
   const [funMode, setFunMode] = useState<boolean>(() => {
@@ -943,6 +945,17 @@ export default function ContentStrategyPage() {
     setDetectedCompetitors((prev) => prev.filter((c) => c.domain !== domain));
   }
 
+  function addCustomCompetitor() {
+    const raw = customCompetitorInput.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
+    if (!raw) return;
+    if (detectedCompetitors.some((c) => c.domain === raw)) {
+      setCustomCompetitorInput("");
+      return;
+    }
+    setDetectedCompetitors((prev) => [...prev, { domain: raw, commonKeywords: 0, manual: true }]);
+    setCustomCompetitorInput("");
+  }
+
   async function handleSemrushGenerate(e: React.FormEvent) {
     e.preventDefault();
     if (!clientId) {
@@ -1306,20 +1319,25 @@ export default function ContentStrategyPage() {
                   Competitors
                   {detectingCompetitors && <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite", color: "var(--accent)" }} />}
                 </label>
-                {detectedCompetitors.length > 0 ? (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {detectedCompetitors.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
                     {detectedCompetitors.map((c) => (
                       <div
                         key={c.domain}
                         style={{
                           display: "flex", alignItems: "center", gap: 6,
                           padding: "6px 10px 6px 12px", borderRadius: 999,
-                          background: "var(--accent-bg)", border: "1px solid var(--accent-border, #c4b5fd)",
-                          fontSize: 13, color: "var(--accent)",
+                          background: c.manual ? "var(--bg)" : "var(--accent-bg)",
+                          border: `1px solid ${c.manual ? "var(--border)" : "var(--accent-border, #c4b5fd)"}`,
+                          fontSize: 13,
+                          color: c.manual ? "var(--text-2)" : "var(--accent)",
                         }}
                       >
                         <span style={{ fontWeight: 500 }}>{c.domain}</span>
-                        <span style={{ fontSize: 11, color: "var(--text-3)" }}>({c.commonKeywords.toLocaleString()} common)</span>
+                        {c.manual
+                          ? <span style={{ fontSize: 10, color: "var(--text-4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>manual</span>
+                          : <span style={{ fontSize: 11, color: "var(--text-3)" }}>({c.commonKeywords.toLocaleString()} common)</span>
+                        }
                         <button
                           type="button"
                           onClick={() => removeCompetitor(c.domain)}
@@ -1330,8 +1348,9 @@ export default function ContentStrategyPage() {
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <p style={{ fontSize: 12, color: "var(--text-4)", margin: 0 }}>
+                )}
+                {!detectedCompetitors.length && (
+                  <p style={{ fontSize: 12, color: "var(--text-4)", margin: "0 0 10px" }}>
                     {clientId && semrushDomain
                       ? detectingCompetitors
                         ? "Detecting competitors…"
@@ -1339,6 +1358,26 @@ export default function ContentStrategyPage() {
                       : "Select a client to auto-detect competitors"}
                   </p>
                 )}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={customCompetitorInput}
+                    onChange={(e) => setCustomCompetitorInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomCompetitor(); } }}
+                    placeholder="Add competitor domain (e.g. competitor.com)"
+                    style={{ flex: 1, marginBottom: 0 }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ flexShrink: 0, height: 42 }}
+                    onClick={addCustomCompetitor}
+                    disabled={!customCompetitorInput.trim()}
+                  >
+                    <Plus style={{ width: 14, height: 14 }} /> Add
+                  </button>
+                </div>
               </div>
 
               {/* Brief + Period + Database */}
