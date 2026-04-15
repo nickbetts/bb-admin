@@ -16,9 +16,12 @@ export interface BrandColour {
 
 export interface PageContent {
   h1?: string;
-  headings: string[];      // h2 and h3 text
-  ctaTexts: string[];      // button and CTA link text
-  bodyCopy: string[];      // short body copy snippets (first 300 chars of key paragraphs)
+  headings: string[];       // h2–h4 text
+  ctaTexts: string[];       // button and CTA link text
+  bodyCopy: string[];       // body copy snippets
+  listItems: string[];      // <li> content — often services, benefits, features
+  numericStats: string[];   // snippets containing notable numbers/stats
+  allBodyText: string;      // cleaned full-page text (scripts/styles/nav/footer stripped)
   metaTitle?: string;
   metaDescription?: string;
 }
@@ -483,7 +486,7 @@ function stripTags(html: string): string {
 }
 
 function extractPageContent(html: string): PageContent {
-  const content: PageContent = { headings: [], ctaTexts: [], bodyCopy: [] };
+  const content: PageContent = { headings: [], ctaTexts: [], bodyCopy: [], listItems: [], numericStats: [], allBodyText: "" };
 
   // Meta title & description
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
@@ -497,17 +500,17 @@ function extractPageContent(html: string): PageContent {
   const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
   if (h1Match) content.h1 = stripTags(h1Match[1]).slice(0, 200);
 
-  // H2 and H3
-  for (const m of html.matchAll(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/gi)) {
-    const text = stripTags(m[1]).slice(0, 150);
-    if (text.length > 3 && content.headings.length < 12) content.headings.push(text);
+  // H2, H3, H4
+  for (const m of html.matchAll(/<h[234][^>]*>([\s\S]*?)<\/h[234]>/gi)) {
+    const text = stripTags(m[1]).slice(0, 150).trim();
+    if (text.length > 3 && content.headings.length < 25) content.headings.push(text);
   }
 
   // CTA button text (button tags and links styled as buttons)
   const ctaSeen = new Set<string>();
   for (const m of html.matchAll(/<button[^>]*>([\s\S]*?)<\/button>/gi)) {
     const text = stripTags(m[1]).slice(0, 80).trim();
-    if (text.length > 1 && !ctaSeen.has(text) && content.ctaTexts.length < 8) {
+    if (text.length > 1 && !ctaSeen.has(text) && content.ctaTexts.length < 12) {
       ctaSeen.add(text);
       content.ctaTexts.push(text);
     }
@@ -515,21 +518,48 @@ function extractPageContent(html: string): PageContent {
   // Also pick up <a> tags that look like CTAs (class contains btn/button/cta)
   for (const m of html.matchAll(/<a\s[^>]*class=["'][^"']*(?:btn|button|cta)[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi)) {
     const text = stripTags(m[1]).slice(0, 80).trim();
-    if (text.length > 1 && !ctaSeen.has(text) && content.ctaTexts.length < 8) {
+    if (text.length > 1 && !ctaSeen.has(text) && content.ctaTexts.length < 12) {
       ctaSeen.add(text);
       content.ctaTexts.push(text);
     }
   }
 
-  // Key body copy — first few <p> tags inside main content areas
-  const mainMatch = html.match(/<(?:main|section|article|div\s[^>]*(?:class|id)=["'][^"']*(?:content|hero|about|intro)[^"']*["'])[^>]*>([\s\S]*?)<\/(?:main|section|article|div)>/i);
-  const searchArea = mainMatch ? mainMatch[0] : html;
-  for (const m of searchArea.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)) {
+  // Body copy — all meaningful <p> tags across the whole page
+  for (const m of html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)) {
     const text = stripTags(m[1]).trim();
-    if (text.length > 30 && content.bodyCopy.length < 6) {
-      content.bodyCopy.push(text.slice(0, 300));
+    if (text.length > 30 && content.bodyCopy.length < 20) {
+      content.bodyCopy.push(text.slice(0, 400));
     }
   }
+
+  // List items — services, features, benefits
+  const listSeen = new Set<string>();
+  for (const m of html.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)) {
+    const text = stripTags(m[1]).trim();
+    if (text.length > 5 && text.length < 300 && !listSeen.has(text) && content.listItems.length < 40) {
+      listSeen.add(text);
+      content.listItems.push(text);
+    }
+  }
+
+  // Numeric stats — short snippets containing numbers (years, clients, ratings, etc.)
+  const statSeen = new Set<string>();
+  for (const m of html.matchAll(/<(?:p|div|span|h[2-6]|strong|b)[^>]*>([^<]{3,150})<\/(?:p|div|span|h[2-6]|strong|b)>/gi)) {
+    const text = stripTags(m[1]).trim();
+    if (/\d/.test(text) && text.length >= 5 && text.length <= 150 && !statSeen.has(text) && content.numericStats.length < 20) {
+      statSeen.add(text);
+      content.numericStats.push(text);
+    }
+  }
+
+  // Cleaned full-body text (strip scripts, styles, nav, footer — leave main body text for Claude)
+  const cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<nav[\s\S]*?<\/nav>/gi, "")
+    .replace(/<footer[\s\S]*?<\/footer>/gi, "")
+    .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, "");
+  content.allBodyText = cleaned.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 10000);
 
   return content;
 }

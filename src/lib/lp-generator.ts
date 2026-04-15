@@ -60,7 +60,7 @@ function buildGenerateSystemPrompt(brandContext: BrandContext): string {
   // Build page copy reference block
   const pc = brandContext.pageContent;
   let pageCopyBlock = "";
-  if (pc && (pc.h1 || pc.headings.length || pc.ctaTexts.length || pc.bodyCopy.length)) {
+  if (pc) {
     const parts: string[] = [];
     if (pc.metaTitle) parts.push(`Page title: ${pc.metaTitle}`);
     if (pc.metaDescription) parts.push(`Meta description: ${pc.metaDescription}`);
@@ -68,11 +68,16 @@ function buildGenerateSystemPrompt(brandContext: BrandContext): string {
     if (pc.headings.length) parts.push(`Section headings:\n${pc.headings.map((h) => `  - ${h}`).join("\n")}`);
     if (pc.ctaTexts.length) parts.push(`CTA button text: ${pc.ctaTexts.join(" | ")}`);
     if (pc.bodyCopy.length) parts.push(`Body copy samples:\n${pc.bodyCopy.map((p) => `  "${p}"`).join("\n")}`);
-    pageCopyBlock = `\n## Existing website copy (use as reference for tone, terminology, and messaging)\n\n${parts.join("\n")}\n`;
+    if (pc.listItems?.length) parts.push(`List items / bullet points from site (services, features, benefits):\n${pc.listItems.slice(0, 30).map((i) => `  • ${i}`).join("\n")}`);
+    if (pc.numericStats?.length) parts.push(`Stats and numbers found on site:\n${pc.numericStats.slice(0, 15).map((s) => `  ${s}`).join("\n")}`);
+    if (pc.allBodyText) parts.push(`Full page body text (mine for testimonials, team info, offers, services, FAQs):\n${pc.allBodyText}`);
+    if (parts.length > 0) {
+      pageCopyBlock = `\n## Existing website copy — USE ALL OF THIS real content to populate the generated page\n\n${parts.join("\n\n")}\n`;
+    }
   }
 
   const rawHtmlBlock = brandContext.rawHtml
-    ? `\n## Full current website HTML (complete source for deep brand, copy, and structural analysis)\n\n${brandContext.rawHtml.slice(0, 60000)}\n`
+    ? `\n## Raw website HTML (supplementary reference for brand signals and any content missed above)\n\n${brandContext.rawHtml.slice(0, 25000)}\n`
     : "";
 
   return `You are an expert landing page designer, CRO specialist, and front-end developer.
@@ -149,6 +154,21 @@ Follow this general section order (adapt as appropriate):
 - Smooth hover transitions (0.2s ease)
 - Section padding: 60-80px vertical, responsive horizontal
 - Max content width: ~1200px, centred
+
+## Content Mining — CRITICAL
+
+You have been given substantial scraped content from the client's real website above. You MUST use it:
+
+- **Use real services and products** — extract every service, product, or offering mentioned in the list items and body copy. Do NOT invent services that aren't mentioned.
+- **Use real statistics and numbers** — years trading, clients served, ratings, completion rates, project counts, etc.
+- **Use real testimonials** — if any testimonial text appears in the body copy or list items, include them verbatim.
+- **Use real team and staff names/roles** if present.
+- **Use real awards, certifications, accreditations** if mentioned.
+- **Use real process steps/methodology** if described.
+- **Use real pricing or package names** if mentioned.
+- **Use real FAQs** — if any questions or answers appear in the copy, include them.
+- **Every section must be richly populated** — minimum 3-4 bullet points or content items per content section. Sparse sections are not acceptable.
+- **If a piece of content is genuinely not available** from the scraped data, write compelling, accurate copy based on what IS known about the business. Never leave a section with just 1-2 generic lines.
 
 ## Output Rules
 
@@ -235,7 +255,7 @@ export async function generateLandingPage(opts: GenerateLPOptions): Promise<stri
 
   const systemPrompt = buildGenerateSystemPrompt(opts.brandContext);
 
-  let userPrompt = `Generate a landing page for the following campaign:\n\n`;
+  let userPrompt = `Generate a complete, multi-section landing page for the following campaign. Study every piece of scraped website content in the system prompt and use ALL of it — real services, real stats, real testimonials, real process steps. Every section must be fully populated with real, specific content. Do not leave any section sparse.\n\n`;
   userPrompt += `Campaign type: ${opts.campaignType}\n`;
   userPrompt += `Brief: ${opts.brief}\n`;
   if (opts.targetAudience) userPrompt += `Target audience: ${opts.targetAudience}\n`;
