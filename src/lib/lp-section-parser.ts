@@ -31,7 +31,6 @@ export function parseSections(html: string): LPSection[] {
   // This regex finds opening tags of landmark elements at the top level
   const tagRegex = /<(section|header|footer|nav|main|article|aside|div)(\s[^>]*)?>[\s\S]*?<\/\1>/gi;
 
-  let match: RegExpExecArray | null;
   let idx = 0;
 
   // For better parsing, find all top-level elements by tracking nesting
@@ -67,7 +66,6 @@ export function parseSections(html: string): LPSection[] {
 
   // ignore the regex variable
   void tagRegex;
-  void match;
 
   return sections;
 }

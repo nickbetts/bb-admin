@@ -49,5 +49,5 @@ export async function POST(
     description: `Shared landing page "${landingPage.title}"`,
   });
 
-  return NextResponse.json({ shareToken });
+  return NextResponse.json({ shareToken, publicSlug });
 }

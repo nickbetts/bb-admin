@@ -312,6 +312,242 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
 
+  // ── NEW: Initialise history with first HTML ────────────────────────────────
+  useEffect(() => {
+    if (previewHtml && htmlHistory.length === 0) {
+      setHtmlHistory([previewHtml]);
+      setHistoryIndex(0);
+    }
+  }, [previewHtml, htmlHistory.length]);
+
+  // ── NEW: Push to undo history helper ──────────────────────────────────────
+  const pushHistory = useCallback(
+    (html: string) => {
+      if (skipHistoryRef.current) { skipHistoryRef.current = false; return; }
+      setHtmlHistory((prev) => {
+        const truncated = prev.slice(0, historyIndex + 1);
+        const next = [...truncated, html];
+        // Cap history at 50 entries
+        if (next.length > 50) next.shift();
+        return next;
+      });
+      setHistoryIndex((prev) => Math.min(prev + 1, 50));
+    },
+    [historyIndex],
+  );
+
+  // ── NEW: Undo / Redo ──────────────────────────────────────────────────────
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < htmlHistory.length - 1;
+
+  const handleUndo = useCallback(() => {
+    if (!canUndo) return;
+    const newIdx = historyIndex - 1;
+    skipHistoryRef.current = true;
+    setHistoryIndex(newIdx);
+    setPreviewHtml(htmlHistory[newIdx]);
+    setLp((prev) => prev ? { ...prev, currentHtml: htmlHistory[newIdx] } : prev);
+  }, [canUndo, historyIndex, htmlHistory]);
+
+  const handleRedo = useCallback(() => {
+    if (!canRedo) return;
+    const newIdx = historyIndex + 1;
+    skipHistoryRef.current = true;
+    setHistoryIndex(newIdx);
+    setPreviewHtml(htmlHistory[newIdx]);
+    setLp((prev) => prev ? { ...prev, currentHtml: htmlHistory[newIdx] } : prev);
+  }, [canRedo, historyIndex, htmlHistory]);
+
+  // ── NEW: Keyboard shortcuts for undo/redo ─────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key === "z" && !e.shiftKey) { e.preventDefault(); handleUndo(); }
+      if ((e.key === "z" && e.shiftKey) || e.key === "y") { e.preventDefault(); handleRedo(); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleUndo, handleRedo]);
+
+  // ── NEW: Update HTML helper (push history + auto-save) ────────────────────
+  const updateHtml = useCallback(
+    (html: string) => {
+      setPreviewHtml(html);
+      setLp((prev) => prev ? { ...prev, currentHtml: html } : prev);
+      pushHistory(html);
+      // Debounced auto-save to DB (no version creation)
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = setTimeout(() => {
+        fetch(`/api/tools/landing-pages/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ html }),
+        }).catch(() => {});
+      }, 1500);
+    },
+    [id, pushHistory],
+  );
+
+  // ── NEW: Listen for text-edit messages from iframe ────────────────────────
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "lp-text-edit") {
+        const { oldText, newText } = e.data;
+        if (oldText && newText && oldText !== newText) {
+          const updated = applyTextEdit(previewHtml, oldText, newText);
+          if (updated !== previewHtml) updateHtml(updated);
+        }
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [previewHtml, updateHtml]);
+
+  // ── NEW: Edit mode — inject/remove editor overlay ─────────────────────────
+  const iframeHtml = editMode ? injectEditorScript(previewHtml) : removeEditorScript(previewHtml);
+
+  // ── NEW: Parse sections when previewHtml changes (sections tab) ───────────
+  useEffect(() => {
+    if (activeTab === "sections") setSections(parseSections(previewHtml));
+  }, [previewHtml, activeTab]);
+
+  // ── NEW: Parse CSS vars when previewHtml changes (design tab) ─────────────
+  useEffect(() => {
+    if (activeTab === "design") setCssVars(parseCSSVariables(previewHtml));
+  }, [previewHtml, activeTab]);
+
+  // ── NEW: CodeMirror initialisation ────────────────────────────────────────
+  useEffect(() => {
+    if (activeTab !== "code" || !codeEditorRef.current) return;
+    let destroyed = false;
+
+    (async () => {
+      const { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } = await import("@codemirror/view");
+      const { EditorState } = await import("@codemirror/state");
+      const { html } = await import("@codemirror/lang-html");
+      const { defaultKeymap, indentWithTab } = await import("@codemirror/commands");
+      const { syntaxHighlighting, defaultHighlightStyle, bracketMatching } = await import("@codemirror/language");
+
+      if (destroyed || !codeEditorRef.current) return;
+
+      // Destroy previous instance
+      if (editorViewRef.current) { editorViewRef.current.destroy(); editorViewRef.current = null; }
+
+      const darkTheme = EditorView.theme({
+        "&": { height: "100%", fontSize: "12px", background: "#1e1e2e", color: "#cdd6f4" },
+        ".cm-content": { fontFamily: "'JetBrains Mono', 'Fira Code', monospace", caretColor: "#f5e0dc" },
+        ".cm-cursor": { borderLeftColor: "#f5e0dc" },
+        ".cm-activeLine": { backgroundColor: "#313244" },
+        ".cm-gutters": { backgroundColor: "#181825", color: "#6c7086", border: "none" },
+        ".cm-activeLineGutter": { backgroundColor: "#313244" },
+        "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": { backgroundColor: "#45475a !important" },
+      }, { dark: true });
+
+      const view = new EditorView({
+        state: EditorState.create({
+          doc: previewHtml,
+          extensions: [
+            lineNumbers(),
+            highlightActiveLine(),
+            highlightActiveLineGutter(),
+            bracketMatching(),
+            syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+            html(),
+            keymap.of([...defaultKeymap, indentWithTab]),
+            darkTheme,
+            EditorView.lineWrapping,
+          ],
+        }),
+        parent: codeEditorRef.current,
+      });
+      editorViewRef.current = view;
+    })();
+
+    return () => {
+      destroyed = true;
+      if (editorViewRef.current) { editorViewRef.current.destroy(); editorViewRef.current = null; }
+    };
+    // Only re-init when switching TO code tab, not on every previewHtml change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // ── NEW: Apply code from CodeMirror ───────────────────────────────────────
+  const handleApplyCode = useCallback(() => {
+    if (!editorViewRef.current) return;
+    const code = editorViewRef.current.state.doc.toString();
+    if (code !== previewHtml) updateHtml(code);
+  }, [previewHtml, updateHtml]);
+
+  // ── NEW: Manual save version ──────────────────────────────────────────────
+  const handleSaveVersion = useCallback(async () => {
+    setSavingVersion(true);
+    try {
+      await fetch(`/api/tools/landing-pages/${id}/versions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ save: true, description: "Manual save" }),
+      });
+      // Refresh LP to get updated versions list
+      const res = await fetch(`/api/tools/landing-pages/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setLp(data.landingPage);
+      }
+    } catch {} finally {
+      setSavingVersion(false);
+    }
+  }, [id]);
+
+  // ── NEW: Section operations ───────────────────────────────────────────────
+  const handleSectionDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const oldIndex = sections.findIndex((s) => s.id === active.id);
+      const newIndex = sections.findIndex((s) => s.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const newOrder = arrayMove(sections, oldIndex, newIndex);
+      setSections(newOrder);
+      const html = reorderSections(previewHtml, sections, newOrder.map((s) => s.id));
+      updateHtml(html);
+    },
+    [sections, previewHtml, updateHtml],
+  );
+
+  const handleDuplicateSection = useCallback(
+    (section: LPSection) => {
+      const html = duplicateSection(previewHtml, section);
+      updateHtml(html);
+    },
+    [previewHtml, updateHtml],
+  );
+
+  const handleDeleteSection = useCallback(
+    (section: LPSection) => {
+      const html = deleteSection(previewHtml, section);
+      updateHtml(html);
+    },
+    [previewHtml, updateHtml],
+  );
+
+  const handleSectionAnimationChange = useCallback(
+    (section: LPSection, animation: string | null) => {
+      let html = setSectionAnimation(previewHtml, section, animation);
+      html = injectAnimations(html);
+      updateHtml(html);
+    },
+    [previewHtml, updateHtml],
+  );
+
+  // ── NEW: Design panel variable change ─────────────────────────────────────
+  const handleCssVarChange = useCallback(
+    (name: string, value: string) => {
+      const html = updateCSSVariable(previewHtml, name, value);
+      updateHtml(html);
+    },
+    [previewHtml, updateHtml],
+  );
+
   const handleRefine = async (overridePrompt?: string) => {
     const userPrompt = (overridePrompt ?? prompt).trim();
     if (!userPrompt || refining || chatting) return;
@@ -347,6 +583,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       const data = await res.json();
       setPreviewHtml(data.html);
       setLp((prev) => prev ? { ...prev, currentHtml: data.html } : prev);
+      pushHistory(data.html);
 
       setChatHistory((prev) => [
         ...prev,
@@ -454,6 +691,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       const data = await res.json();
       setPreviewHtml(data.html);
       setLp((prev) => prev ? { ...prev, currentHtml: data.html } : prev);
+      pushHistory(data.html);
       setChatHistory((prev) => [
         ...prev,
         { role: "assistant", content: `Reverted to version ${versionNumber}`, version: versionNumber },
@@ -470,11 +708,14 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     const res = await fetch(`/api/tools/landing-pages/${id}/share`, { method: "POST" });
     if (res.ok) {
       const data = await res.json();
-      const url = `${window.location.origin}/api/share/landing-page/${data.shareToken}`;
+      // Copy pretty URL if we have a public slug, otherwise share token URL
+      const url = data.publicSlug
+        ? `${window.location.origin}/lp/${data.publicSlug}`
+        : `${window.location.origin}/api/share/landing-page/${data.shareToken}`;
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      setLp((prev) => prev ? { ...prev, shareToken: data.shareToken } : prev);
+      setLp((prev) => prev ? { ...prev, shareToken: data.shareToken, publicSlug: data.publicSlug ?? prev?.publicSlug ?? null } : prev);
     }
   };
 
@@ -594,6 +835,42 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
         {/* Actions */}
         <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+          {/* Edit mode toggle */}
+          <button
+            onClick={() => setEditMode(!editMode)}
+            style={{
+              ...toolbarBtn,
+              background: editMode ? "var(--accent-bg)" : undefined,
+              color: editMode ? "var(--accent)" : undefined,
+            }}
+            title={editMode ? "Exit edit mode" : "Enter edit mode (click text to edit)"}
+          >
+            <MousePointer style={{ width: 14, height: 14 }} />
+            {editMode ? "Editing" : "Edit"}
+          </button>
+
+          {/* Undo/Redo */}
+          <button onClick={handleUndo} disabled={!canUndo} style={{ ...toolbarBtn, opacity: canUndo ? 1 : 0.3 }} title="Undo (⌘Z)">
+            <Undo2 style={{ width: 14, height: 14 }} />
+          </button>
+          <button onClick={handleRedo} disabled={!canRedo} style={{ ...toolbarBtn, opacity: canRedo ? 1 : 0.3 }} title="Redo (⌘⇧Z)">
+            <Redo2 style={{ width: 14, height: 14 }} />
+          </button>
+
+          {/* Divider */}
+          <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 4px" }} />
+
+          {/* Save version */}
+          <button
+            onClick={handleSaveVersion}
+            disabled={savingVersion}
+            style={toolbarBtn}
+            title="Save snapshot version"
+          >
+            {savingVersion ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <Save style={{ width: 14, height: 14 }} />}
+            Save
+          </button>
+
           <button
             onClick={() => setShowVersions(!showVersions)}
             style={toolbarBtn}
@@ -604,7 +881,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           </button>
 
           <button onClick={() => setShowSaveTemplate(true)} style={toolbarBtn} title="Save as template">
-            <Save style={{ width: 14, height: 14 }} />
+            <Sparkles style={{ width: 14, height: 14 }} />
           </button>
 
           <button onClick={handleDownload} style={toolbarBtn} title="Download HTML">
@@ -623,7 +900,7 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
           {lp.shareToken && (
             <a
-              href={`/api/share/landing-page/${lp.shareToken}`}
+              href={lp.publicSlug ? `/lp/${lp.publicSlug}` : `/api/share/landing-page/${lp.shareToken}`}
               target="_blank"
               rel="noopener noreferrer"
               style={{ ...toolbarBtn, textDecoration: "none" }}
@@ -694,6 +971,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                 <Icon style={{ width: 16, height: 16 }} />
               </button>
             ))}
+            {editMode && (
+              <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 600, color: "var(--accent)", background: "var(--accent-bg)", padding: "2px 8px", borderRadius: 99 }}>
+                EDIT MODE — Click text to edit
+              </span>
+            )}
           </div>
 
           {/* iframe preview */}
@@ -701,12 +983,13 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             <div
               style={{
                 width: DEVICE_WIDTHS[device], maxWidth: "100%", height: "100%",
-                background: "#fff", borderRadius: "var(--r)", boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
+                background: "#fff", borderRadius: "var(--r)", boxShadow: editMode ? "0 0 0 2px var(--accent), 0 4px 24px rgba(0,0,0,0.12)" : "0 4px 24px rgba(0,0,0,0.12)",
                 overflow: "hidden", transition: "width 0.3s ease",
               }}
             >
               <iframe
-                srcDoc={previewHtml}
+                ref={iframeRef}
+                srcDoc={iframeHtml}
                 sandbox="allow-scripts allow-same-origin"
                 style={{ width: "100%", height: "100%", border: "none" }}
                 title="Landing page preview"
@@ -715,261 +998,452 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           </div>
         </div>
 
-        {/* Chat panel (right sidebar) */}
-        <div style={{ width: 360, flexShrink: 0, display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border)", background: "var(--surface)" }}>
-          {/* Chat header */}
-          <div style={{ flexShrink: 0, padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>Refine with AI</h2>
-                <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 2 }}>Chat to discuss · ⌘+Enter to apply directly</p>
-              </div>
-              {/* Hidden file input */}
-              <input
-                ref={referenceInputRef}
-                type="file"
-                accept=".html"
-                onChange={handleReferenceUpload}
-                style={{ display: "none" }}
-              />
+        {/* ── Tabbed sidebar ─────────────────────────────────────────────── */}
+        <div style={{ width: 380, flexShrink: 0, display: "flex", flexDirection: "column", borderLeft: "1px solid var(--border)", background: "var(--surface)" }}>
+          {/* Tab bar */}
+          <div style={{ flexShrink: 0, display: "flex", borderBottom: "1px solid var(--border)" }}>
+            {SIDEBAR_TABS.map(({ id: tid, icon: TabIcon, label }) => (
               <button
-                onClick={() => referenceInputRef.current?.click()}
-                title="Upload a reference HTML page for inspiration"
+                key={tid}
+                onClick={() => setActiveTab(tid)}
                 style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "5px 8px", fontSize: 11, fontWeight: 500,
-                  color: referenceHtml ? "var(--accent)" : "var(--text-3)",
-                  background: referenceHtml ? "var(--accent-bg)" : "var(--border-subtle)",
-                  border: "none", borderRadius: "var(--r-sm)", cursor: "pointer",
+                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                  padding: "10px 0", fontSize: 11, fontWeight: 600, cursor: "pointer",
+                  background: "none", border: "none", borderBottom: activeTab === tid ? "2px solid var(--accent)" : "2px solid transparent",
+                  color: activeTab === tid ? "var(--accent)" : "var(--text-4)",
                   transition: "all 0.15s",
                 }}
               >
-                <FileCode style={{ width: 13, height: 13 }} />
-                {referenceHtml ? "Ref loaded" : "Upload ref"}
+                <TabIcon style={{ width: 14, height: 14 }} />
+                {label}
               </button>
-            </div>
-            {/* Reference file chip */}
-            {referenceHtml && referenceFileName && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, padding: "4px 8px", background: "var(--accent-bg)", borderRadius: "var(--r-sm)" }}>
-                <FileCode style={{ width: 12, height: 12, color: "var(--accent)", flexShrink: 0 }} />
-                <span style={{ fontSize: 11, color: "var(--accent)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{referenceFileName}</span>
-                <button
-                  onClick={() => { setReferenceHtml(null); setReferenceFileName(null); }}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", padding: 0, display: "flex", alignItems: "center" }}
-                  title="Remove reference"
-                >
-                  <X style={{ width: 12, height: 12 }} />
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Chat messages */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-            {chatHistory.length === 0 && (
-              <div style={{ textAlign: "center", paddingTop: 32 }}>
-                <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 12 }}>Your landing page is ready!</p>
-                <p style={{ fontSize: 12, color: "var(--text-4)" }}>Try asking:</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
-                  {["What would make this page convert better?", "What's the weakest section?", "Change the CTA colour to green", "Add more social proof and testimonials"].map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      onClick={() => setPrompt(suggestion)}
-                      style={{
-                        display: "block", width: "100%", textAlign: "left", fontSize: 12,
-                        padding: "8px 12px", borderRadius: "var(--r)", border: "none",
-                        background: "var(--border-subtle)", color: "var(--text-3)", cursor: "pointer",
-                        transition: "background 0.15s, color 0.15s",
-                      }}
-                    >
-                      &ldquo;{suggestion}&rdquo;
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {chatHistory.map((msg, i) => (
-              <div
-                key={i}
-                style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}
-              >
-                <div
-                  style={{
-                    maxWidth: "85%", borderRadius: 12, padding: "8px 12px", fontSize: 12, lineHeight: 1.5,
-                    ...(msg.role === "user"
-                      ? { background: "var(--gradient-accent)", color: "#fff" }
-                      : { background: "var(--border-subtle)", color: "var(--text-2)" }
-                    ),
-                  }}
-                >
-                  <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                    {msg.role === "assistant" && msg.type === "chat"
-                      ? renderMarkdown(msg.content)
-                      : msg.content}
-                  </p>
-                  {/* Refine version badges */}
-                  {msg.role === "assistant" && msg.version && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(128,128,128,0.15)" }}>
-                      <span style={{ fontSize: 10, padding: "1px 6px", background: "var(--accent-bg)", color: "var(--accent)", borderRadius: 99, fontWeight: 600 }}>
-                        v{msg.version}
-                      </span>
-                      <button
-                        onClick={() => {
-                          const v = lp?.versions.find((ver) => ver.versionNumber === msg.version);
-                          if (v) handlePreviewVersion(v);
-                        }}
-                        style={{ fontSize: 10, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                      >
-                        Preview
-                      </button>
-                      <button
-                        onClick={() => handleRevert(msg.version!)}
-                        style={{ fontSize: 10, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center", gap: 2 }}
-                      >
-                        <RotateCcw style={{ width: 10, height: 10 }} /> Revert
-                      </button>
-                    </div>
-                  )}
-                  {/* Apply this change button (chat messages only) */}
-                  {msg.role === "assistant" && msg.type === "chat" && msg.refinementPrompt && (
-                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(128,128,128,0.15)" }}>
-                      <button
-                        onClick={() => handleRefine(msg.refinementPrompt)}
-                        disabled={refining || chatting}
-                        style={{
-                          display: "inline-flex", alignItems: "center", gap: 5,
-                          fontSize: 11, fontWeight: 600, padding: "5px 10px",
-                          background: "var(--success-bg)", color: "var(--success-text)",
-                          border: "none", borderRadius: 99, cursor: "pointer",
-                          opacity: (refining || chatting) ? 0.5 : 1,
-                          transition: "opacity 0.15s",
-                        }}
-                      >
-                        <Wand2 style={{ width: 11, height: 11 }} />
-                        Apply this change
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
             ))}
-
-            {chatting && (
-              <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                <div style={{ background: "var(--border-subtle)", borderRadius: 12, padding: "8px 12px", fontSize: 12, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}>
-                  <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
-                  Thinking...
-                </div>
-              </div>
-            )}
-
-            {refining && (
-              <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                <div style={{ background: "var(--border-subtle)", borderRadius: 12, padding: "8px 12px", fontSize: 12, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}>
-                  <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
-                  Generating changes...
-                </div>
-              </div>
-            )}
-
-            <div ref={chatEndRef} />
           </div>
 
-          {/* Staged changes tray */}
-          {stagedChanges.length > 0 && (
-            <div style={{ flexShrink: 0, borderTop: "1px solid var(--border)", padding: "10px 12px", background: "var(--success-bg)" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--success-text)", display: "flex", alignItems: "center", gap: 5 }}>
-                  <Wand2 style={{ width: 11, height: 11 }} />
-                  Staged changes ({stagedChanges.length})
-                </span>
-                <button
-                  onClick={() => setStagedChanges([])}
-                  style={{ fontSize: 10, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-                >
-                  Clear all
-                </button>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8, maxHeight: 120, overflowY: "auto" }}>
-                {stagedChanges.map((change, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 11, background: "rgba(255,255,255,0.5)", borderRadius: 6, padding: "4px 8px" }}>
-                    <span style={{ flexShrink: 0, width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--success-text)", color: "#fff", borderRadius: "50%", fontSize: 9, fontWeight: 700 }}>{i + 1}</span>
-                    <span style={{ flex: 1, color: "var(--text-2)", lineHeight: 1.4 }}>{change}</span>
+          {/* ── CHAT TAB ──────────────────────────────────────────────────── */}
+          {activeTab === "chat" && (
+            <>
+              {/* Chat header */}
+              <div style={{ flexShrink: 0, padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>Refine with AI</h2>
+                    <p style={{ fontSize: 12, color: "var(--text-4)", marginTop: 2 }}>Chat to discuss · ⌘+Enter to apply directly</p>
+                  </div>
+                  <input
+                    ref={referenceInputRef}
+                    type="file"
+                    accept=".html"
+                    onChange={handleReferenceUpload}
+                    style={{ display: "none" }}
+                  />
+                  <button
+                    onClick={() => referenceInputRef.current?.click()}
+                    title="Upload a reference HTML page for inspiration"
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      padding: "5px 8px", fontSize: 11, fontWeight: 500,
+                      color: referenceHtml ? "var(--accent)" : "var(--text-3)",
+                      background: referenceHtml ? "var(--accent-bg)" : "var(--border-subtle)",
+                      border: "none", borderRadius: "var(--r-sm)", cursor: "pointer",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    <FileCode style={{ width: 13, height: 13 }} />
+                    {referenceHtml ? "Ref loaded" : "Upload ref"}
+                  </button>
+                </div>
+                {referenceHtml && referenceFileName && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, padding: "4px 8px", background: "var(--accent-bg)", borderRadius: "var(--r-sm)" }}>
+                    <FileCode style={{ width: 12, height: 12, color: "var(--accent)", flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, color: "var(--accent)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{referenceFileName}</span>
                     <button
-                      onClick={() => setStagedChanges((prev) => prev.filter((_, idx) => idx !== i))}
-                      style={{ flexShrink: 0, background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 0, display: "flex", alignItems: "center" }}
+                      onClick={() => { setReferenceHtml(null); setReferenceFileName(null); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent)", padding: 0, display: "flex", alignItems: "center" }}
+                      title="Remove reference"
                     >
-                      <X style={{ width: 11, height: 11 }} />
+                      <X style={{ width: 12, height: 12 }} />
                     </button>
                   </div>
-                ))}
-              </div>
-              <button
-                onClick={handleApplyAll}
-                disabled={refining || chatting}
-                className="btn btn-primary btn-sm"
-                style={{ width: "100%", justifyContent: "center", fontSize: 12 }}
-              >
-                {refining ? (
-                  <><Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> Applying...</>
-                ) : (
-                  <><Wand2 style={{ width: 12, height: 12 }} /> Apply all {stagedChanges.length} changes</>
                 )}
-              </button>
-            </div>
+              </div>
+
+              {/* Chat messages */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {chatHistory.length === 0 && (
+                  <div style={{ textAlign: "center", paddingTop: 32 }}>
+                    <p style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 12 }}>Your landing page is ready!</p>
+                    <p style={{ fontSize: 12, color: "var(--text-4)" }}>Try asking:</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                      {["What would make this page convert better?", "What's the weakest section?", "Change the CTA colour to green", "Add more social proof and testimonials"].map((suggestion) => (
+                        <button
+                          key={suggestion}
+                          onClick={() => setPrompt(suggestion)}
+                          style={{
+                            display: "block", width: "100%", textAlign: "left", fontSize: 12,
+                            padding: "8px 12px", borderRadius: "var(--r)", border: "none",
+                            background: "var(--border-subtle)", color: "var(--text-3)", cursor: "pointer",
+                            transition: "background 0.15s, color 0.15s",
+                          }}
+                        >
+                          &ldquo;{suggestion}&rdquo;
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {chatHistory.map((msg, i) => (
+                  <div
+                    key={i}
+                    style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}
+                  >
+                    <div
+                      style={{
+                        maxWidth: "85%", borderRadius: 12, padding: "8px 12px", fontSize: 12, lineHeight: 1.5,
+                        ...(msg.role === "user"
+                          ? { background: "var(--gradient-accent)", color: "#fff" }
+                          : { background: "var(--border-subtle)", color: "var(--text-2)" }
+                        ),
+                      }}
+                    >
+                      <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                        {msg.role === "assistant" && msg.type === "chat"
+                          ? renderMarkdown(msg.content)
+                          : msg.content}
+                      </p>
+                      {msg.role === "assistant" && msg.version && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(128,128,128,0.15)" }}>
+                          <span style={{ fontSize: 10, padding: "1px 6px", background: "var(--accent-bg)", color: "var(--accent)", borderRadius: 99, fontWeight: 600 }}>
+                            v{msg.version}
+                          </span>
+                          <button
+                            onClick={() => {
+                              const v = lp?.versions.find((ver) => ver.versionNumber === msg.version);
+                              if (v) handlePreviewVersion(v);
+                            }}
+                            style={{ fontSize: 10, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                          >
+                            Preview
+                          </button>
+                          <button
+                            onClick={() => handleRevert(msg.version!)}
+                            style={{ fontSize: 10, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center", gap: 2 }}
+                          >
+                            <RotateCcw style={{ width: 10, height: 10 }} /> Revert
+                          </button>
+                        </div>
+                      )}
+                      {msg.role === "assistant" && msg.type === "chat" && msg.refinementPrompt && (
+                        <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(128,128,128,0.15)" }}>
+                          <button
+                            onClick={() => handleRefine(msg.refinementPrompt)}
+                            disabled={refining || chatting}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 5,
+                              fontSize: 11, fontWeight: 600, padding: "5px 10px",
+                              background: "var(--success-bg)", color: "var(--success-text)",
+                              border: "none", borderRadius: 99, cursor: "pointer",
+                              opacity: (refining || chatting) ? 0.5 : 1,
+                              transition: "opacity 0.15s",
+                            }}
+                          >
+                            <Wand2 style={{ width: 11, height: 11 }} />
+                            Apply this change
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {chatting && (
+                  <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                    <div style={{ background: "var(--border-subtle)", borderRadius: 12, padding: "8px 12px", fontSize: 12, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}>
+                      <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
+                      Thinking...
+                    </div>
+                  </div>
+                )}
+                {refining && (
+                  <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                    <div style={{ background: "var(--border-subtle)", borderRadius: 12, padding: "8px 12px", fontSize: 12, color: "var(--text-3)", display: "flex", alignItems: "center", gap: 8 }}>
+                      <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
+                      Generating changes...
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Staged changes tray */}
+              {stagedChanges.length > 0 && (
+                <div style={{ flexShrink: 0, borderTop: "1px solid var(--border)", padding: "10px 12px", background: "var(--success-bg)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--success-text)", display: "flex", alignItems: "center", gap: 5 }}>
+                      <Wand2 style={{ width: 11, height: 11 }} />
+                      Staged changes ({stagedChanges.length})
+                    </span>
+                    <button
+                      onClick={() => setStagedChanges([])}
+                      style={{ fontSize: 10, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8, maxHeight: 120, overflowY: "auto" }}>
+                    {stagedChanges.map((change, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 11, background: "rgba(255,255,255,0.5)", borderRadius: 6, padding: "4px 8px" }}>
+                        <span style={{ flexShrink: 0, width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--success-text)", color: "#fff", borderRadius: "50%", fontSize: 9, fontWeight: 700 }}>{i + 1}</span>
+                        <span style={{ flex: 1, color: "var(--text-2)", lineHeight: 1.4 }}>{change}</span>
+                        <button
+                          onClick={() => setStagedChanges((prev) => prev.filter((_, idx) => idx !== i))}
+                          style={{ flexShrink: 0, background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 0, display: "flex", alignItems: "center" }}
+                        >
+                          <X style={{ width: 11, height: 11 }} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleApplyAll}
+                    disabled={refining || chatting}
+                    className="btn btn-primary btn-sm"
+                    style={{ width: "100%", justifyContent: "center", fontSize: 12 }}
+                  >
+                    {refining ? (
+                      <><Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> Applying...</>
+                    ) : (
+                      <><Wand2 style={{ width: 12, height: 12 }} /> Apply all {stagedChanges.length} changes</>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Chat input */}
+              <div style={{ flexShrink: 0, padding: 12, borderTop: "1px solid var(--border)" }}>
+                <textarea
+                  ref={textareaRef}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask a question or describe a change..."
+                  rows={2}
+                  disabled={refining || chatting}
+                  style={{
+                    ...inputStyle, width: "100%", fontSize: 12,
+                    resize: "none" as const,
+                    opacity: (refining || chatting) ? 0.5 : 1,
+                    marginBottom: 8,
+                  }}
+                />
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    onClick={handleChat}
+                    disabled={refining || chatting || !prompt.trim()}
+                    title="Chat — discuss and get advice (Enter)"
+                    style={{
+                      flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
+                      padding: "7px 10px", fontSize: 12, fontWeight: 500,
+                      background: "var(--border-subtle)", color: "var(--text-2)",
+                      border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer",
+                      opacity: (refining || chatting || !prompt.trim()) ? 0.45 : 1,
+                      transition: "opacity 0.15s, background 0.15s",
+                    }}
+                  >
+                    <MessageSquare style={{ width: 13, height: 13 }} />
+                    Chat
+                  </button>
+                  <button
+                    onClick={() => handleRefine()}
+                    disabled={refining || chatting || !prompt.trim()}
+                    title="Apply — generate updated HTML (⌘+Enter)"
+                    className="btn btn-primary btn-sm"
+                    style={{
+                      flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
+                      fontSize: 12,
+                    }}
+                  >
+                    <Wand2 style={{ width: 13, height: 13 }} />
+                    Apply
+                  </button>
+                </div>
+                <p style={{ fontSize: 10, color: "var(--text-4)", marginTop: 6 }}>Enter to chat · ⌘+Enter to apply · Shift+Enter new line</p>
+              </div>
+            </>
           )}
 
-          {/* Chat input */}
-          <div style={{ flexShrink: 0, padding: 12, borderTop: "1px solid var(--border)" }}>
-            <textarea
-              ref={textareaRef}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask a question or describe a change..."
-              rows={2}
-              disabled={refining || chatting}
-              style={{
-                ...inputStyle, width: "100%", fontSize: 12,
-                resize: "none" as const,
-                opacity: (refining || chatting) ? 0.5 : 1,
-                marginBottom: 8,
-              }}
-            />
-            <div style={{ display: "flex", gap: 6 }}>
-              <button
-                onClick={handleChat}
-                disabled={refining || chatting || !prompt.trim()}
-                title="Chat — discuss and get advice (Enter)"
-                style={{
-                  flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
-                  padding: "7px 10px", fontSize: 12, fontWeight: 500,
-                  background: "var(--border-subtle)", color: "var(--text-2)",
-                  border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer",
-                  opacity: (refining || chatting || !prompt.trim()) ? 0.45 : 1,
-                  transition: "opacity 0.15s, background 0.15s",
+          {/* ── CODE TAB ──────────────────────────────────────────────────── */}
+          {activeTab === "code" && (
+            <>
+              <div style={{ flexShrink: 0, padding: "10px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>HTML / CSS Editor</h2>
+                <button
+                  onClick={handleApplyCode}
+                  className="btn btn-primary btn-sm"
+                  style={{ fontSize: 11, padding: "5px 12px" }}
+                >
+                  <Check style={{ width: 12, height: 12 }} />
+                  Apply (⌘S)
+                </button>
+              </div>
+              <div
+                ref={codeEditorRef}
+                style={{ flex: 1, overflow: "auto" }}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+                    e.preventDefault();
+                    handleApplyCode();
+                  }
                 }}
-              >
-                <MessageSquare style={{ width: 13, height: 13 }} />
-                Chat
-              </button>
-              <button
-                onClick={() => handleRefine()}
-                disabled={refining || chatting || !prompt.trim()}
-                title="Apply — generate updated HTML (⌘+Enter)"
-                className="btn btn-primary btn-sm"
-                style={{
-                  flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
-                  fontSize: 12,
-                }}
-              >
-                <Wand2 style={{ width: 13, height: 13 }} />
-                Apply
-              </button>
-            </div>
-            <p style={{ fontSize: 10, color: "var(--text-4)", marginTop: 6 }}>Enter to chat · ⌘+Enter to apply · Shift+Enter new line</p>
-          </div>
+              />
+            </>
+          )}
+
+          {/* ── SECTIONS TAB ──────────────────────────────────────────────── */}
+          {activeTab === "sections" && (
+            <>
+              <div style={{ flexShrink: 0, padding: "10px 16px", borderBottom: "1px solid var(--border)" }}>
+                <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>Section Organiser</h2>
+                <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 2 }}>Drag to reorder · Set animations per section</p>
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px" }}>
+                {sections.length === 0 ? (
+                  <p style={{ fontSize: 12, color: "var(--text-4)", textAlign: "center", paddingTop: 32 }}>
+                    No semantic sections detected.<br />
+                    Ensure your LP uses &lt;section&gt;, &lt;header&gt;, &lt;footer&gt; etc.
+                  </p>
+                ) : (
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSectionDragEnd}>
+                    <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {sections.map((section) => (
+                          <SortableSectionRow
+                            key={section.id}
+                            section={section}
+                            onDuplicate={() => handleDuplicateSection(section)}
+                            onDelete={() => handleDeleteSection(section)}
+                            onAnimationChange={(anim) => handleSectionAnimationChange(section, anim)}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ── DESIGN TAB ────────────────────────────────────────────────── */}
+          {activeTab === "design" && (
+            <>
+              <div style={{ flexShrink: 0, padding: "10px 16px", borderBottom: "1px solid var(--border)" }}>
+                <h2 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)" }}>Global Design</h2>
+                <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 2 }}>Edit CSS custom properties from :root</p>
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px" }}>
+                {cssVars.length === 0 ? (
+                  <p style={{ fontSize: 12, color: "var(--text-4)", textAlign: "center", paddingTop: 32 }}>
+                    No CSS custom properties found.<br />
+                    Add :root variables to your LP&apos;s &lt;style&gt; block.
+                  </p>
+                ) : (
+                  <>
+                    {/* Colours */}
+                    {cssVars.filter((v) => v.category === "colour").length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <h3 style={{ fontSize: 11, fontWeight: 700, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Colours</h3>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {cssVars.filter((v) => v.category === "colour").map((v) => (
+                            <div key={v.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <input
+                                type="color"
+                                value={v.value.startsWith("#") ? v.value : "#000000"}
+                                onChange={(e) => handleCssVarChange(v.name, e.target.value)}
+                                style={{ width: 28, height: 28, border: "1px solid var(--border)", borderRadius: "var(--r-sm)", cursor: "pointer", padding: 0 }}
+                              />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-2)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.name}</span>
+                                <input
+                                  type="text"
+                                  value={v.value}
+                                  onChange={(e) => handleCssVarChange(v.name, e.target.value)}
+                                  style={{ ...inputStyle, fontSize: 11, padding: "3px 6px", marginTop: 2 }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Fonts */}
+                    {cssVars.filter((v) => v.category === "font").length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <h3 style={{ fontSize: 11, fontWeight: 700, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Fonts</h3>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {cssVars.filter((v) => v.category === "font").map((v) => (
+                            <div key={v.name}>
+                              <label style={{ fontSize: 11, fontWeight: 500, color: "var(--text-2)", display: "block", marginBottom: 2 }}>{v.name}</label>
+                              <input
+                                type="text"
+                                value={v.value}
+                                onChange={(e) => handleCssVarChange(v.name, e.target.value)}
+                                style={{ ...inputStyle, fontSize: 11, padding: "4px 8px" }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sizes */}
+                    {cssVars.filter((v) => v.category === "size").length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <h3 style={{ fontSize: 11, fontWeight: 700, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Sizes</h3>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {cssVars.filter((v) => v.category === "size").map((v) => (
+                            <div key={v.name}>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                <label style={{ fontSize: 11, fontWeight: 500, color: "var(--text-2)" }}>{v.name}</label>
+                                <span style={{ fontSize: 10, color: "var(--text-4)" }}>{v.value}</span>
+                              </div>
+                              <input
+                                type="text"
+                                value={v.value}
+                                onChange={(e) => handleCssVarChange(v.name, e.target.value)}
+                                style={{ ...inputStyle, fontSize: 11, padding: "4px 8px", marginTop: 2 }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Other */}
+                    {cssVars.filter((v) => v.category === "other").length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <h3 style={{ fontSize: 11, fontWeight: 700, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Other</h3>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {cssVars.filter((v) => v.category === "other").map((v) => (
+                            <div key={v.name}>
+                              <label style={{ fontSize: 11, fontWeight: 500, color: "var(--text-2)", display: "block", marginBottom: 2 }}>{v.name}</label>
+                              <input
+                                type="text"
+                                value={v.value}
+                                onChange={(e) => handleCssVarChange(v.name, e.target.value)}
+                                style={{ ...inputStyle, fontSize: 11, padding: "4px 8px" }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
