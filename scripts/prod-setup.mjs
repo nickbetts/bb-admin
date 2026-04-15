@@ -906,6 +906,15 @@ async function main() {
     console.log("✓ Client.status already present");
   }
 
+  // ── LandingPage.publicSlug column (added 2026-04-15) ─────────────────────
+  if (!(await columnExists("LandingPage", "publicSlug"))) {
+    await db.execute(`ALTER TABLE "LandingPage" ADD COLUMN "publicSlug" TEXT`);
+    await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS "LandingPage_publicSlug_key" ON "LandingPage"("publicSlug")`);
+    console.log("✓ Added LandingPage.publicSlug");
+  } else {
+    console.log("✓ LandingPage.publicSlug already present");
+  }
+
   await db.close();
   console.log("✅ Schema migration complete");
 }
