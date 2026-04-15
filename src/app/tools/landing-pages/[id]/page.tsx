@@ -96,6 +96,9 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const [referenceFileName, setReferenceFileName] = useState<string | null>(null);
   const referenceInputRef = useRef<HTMLInputElement>(null);
 
+  // Staged changes (accumulated via STACK_CHANGE tags)
+  const [stagedChanges, setStagedChanges] = useState<string[]>([]);
+
   // Template save state
   const [templateName, setTemplateName] = useState("");
   const [templateCategory, setTemplateCategory] = useState("lead-gen");
@@ -232,6 +235,10 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           refinementPrompt: data.refinementPrompt,
         },
       ]);
+      // Accumulate any STACK_CHANGE items into the staged list
+      if (data.stackedChanges?.length) {
+        setStagedChanges((prev) => [...prev, ...data.stackedChanges]);
+      }
     } catch (err) {
       setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Unknown error"}`, type: "chat" as const }]);
     } finally {
@@ -250,6 +257,15 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     reader.readAsText(file);
     // Reset input so same file can be re-uploaded
     e.target.value = "";
+  };
+
+  const handleApplyAll = async () => {
+    if (stagedChanges.length === 0 || refining || chatting) return;
+    const combined = stagedChanges
+      .map((c, i) => `${i + 1}. ${c}`)
+      .join("\n");
+    setStagedChanges([]);
+    await handleRefine(`Apply all of the following changes:\n${combined}`);
   };
 
   const handleRevert = async (versionNumber: number) => {
@@ -679,6 +695,50 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
             <div ref={chatEndRef} />
           </div>
+
+          {/* Staged changes tray */}
+          {stagedChanges.length > 0 && (
+            <div style={{ flexShrink: 0, borderTop: "1px solid var(--border)", padding: "10px 12px", background: "var(--success-bg)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--success-text)", display: "flex", alignItems: "center", gap: 5 }}>
+                  <Wand2 style={{ width: 11, height: 11 }} />
+                  Staged changes ({stagedChanges.length})
+                </span>
+                <button
+                  onClick={() => setStagedChanges([])}
+                  style={{ fontSize: 10, color: "var(--text-4)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                >
+                  Clear all
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8, maxHeight: 120, overflowY: "auto" }}>
+                {stagedChanges.map((change, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 11, background: "rgba(255,255,255,0.5)", borderRadius: 6, padding: "4px 8px" }}>
+                    <span style={{ flexShrink: 0, width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--success-text)", color: "#fff", borderRadius: "50%", fontSize: 9, fontWeight: 700 }}>{i + 1}</span>
+                    <span style={{ flex: 1, color: "var(--text-2)", lineHeight: 1.4 }}>{change}</span>
+                    <button
+                      onClick={() => setStagedChanges((prev) => prev.filter((_, idx) => idx !== i))}
+                      style={{ flexShrink: 0, background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 0, display: "flex", alignItems: "center" }}
+                    >
+                      <X style={{ width: 11, height: 11 }} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={handleApplyAll}
+                disabled={refining || chatting}
+                className="btn btn-primary btn-sm"
+                style={{ width: "100%", justifyContent: "center", fontSize: 12 }}
+              >
+                {refining ? (
+                  <><Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> Applying...</>
+                ) : (
+                  <><Wand2 style={{ width: 12, height: 12 }} /> Apply all {stagedChanges.length} changes</>
+                )}
+              </button>
+            </div>
+          )}
 
           {/* Chat input */}
           <div style={{ flexShrink: 0, padding: 12, borderTop: "1px solid var(--border)" }}>

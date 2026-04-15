@@ -41,6 +41,7 @@ export interface ChatLPOptions {
 export interface ChatLPResponse {
   message: string;
   refinementPrompt?: string; // Extracted from READY_TO_APPLY: tag in AI response
+  stackedChanges?: string[]; // Extracted from STACK_CHANGE: tags — added to staged list
 }
 
 // ── System prompts ───────────────────────────────────────────────────────────
@@ -298,18 +299,29 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
 
 // ── Chat about landing page ─────────────────────────────────────────────────
 
-const CHAT_SYSTEM_PROMPT = `You are a senior CRO specialist and landing page expert helping a digital agency improve a client landing page.
+const CHAT_SYSTEM_PROMPT = `You are a senior CRO specialist and landing page expert helping a digital agency improve a client landing page. You have access to a web search tool and should use it proactively when the user asks about trends, current best practices, competitor approaches, layout ideas, or anything requiring up-to-date knowledge.
 
-Your role is to discuss improvements conversationally — analyse the page, ask clarifying questions, suggest specific changes, and explain your reasoning. Do NOT generate HTML unless explicitly asked.
+Your role is to discuss improvements conversationally — analyse the page, research current trends when relevant, ask clarifying questions, suggest specific changes, and explain your reasoning. Do NOT generate HTML unless explicitly asked.
 
 Guidelines:
 - Be concise and specific. Focus on one key point per message.
+- Use web search to find current landing page trends, layout patterns, CRO research, or industry-specific examples when relevant. Cite what you found.
 - Ask a single clarifying question if you need more context before recommending.
 - Reference the actual page content (headlines, CTAs, sections) when analysing.
 - If the user has uploaded a reference page, note what specific features or patterns from it would benefit the current page.
-- When you have identified a specific, actionable change that is ready to implement, end your response with exactly:
+
+## Action tags (output these on their own line at the end of your response)
+
+Use READY_TO_APPLY when you have identified a single, specific change the user wants to implement right now:
   READY_TO_APPLY: <a clear, precise instruction Claude can use to update the HTML>
-  This signals an "Apply this change" button in the UI.
+
+Use STACK_CHANGE when building up a list of agreed changes to implement all at once later. Output one tag per change — you can output multiple in a single response:
+  STACK_CHANGE: <a clear, precise instruction Claude can use to update the HTML>
+
+When a user says "yes", "good idea", "save that", "add it to the list", "stack that", or agrees with a suggestion, output a STACK_CHANGE tag for it. When the user wants to apply one thing immediately, use READY_TO_APPLY instead.
+
+Never output both READY_TO_APPLY and STACK_CHANGE in the same response.
+
 - Use British English. Never use em dashes (— or &mdash;). Use commas, colons, or rewrite instead.`;
 
 export async function chatAboutLandingPage(opts: ChatLPOptions): Promise<ChatLPResponse> {
@@ -330,22 +342,42 @@ export async function chatAboutLandingPage(opts: ChatLPOptions): Promise<ChatLPR
 
   messages.push({ role: "user", content: userContent });
 
+  // Use Anthropic's server-side web search tool so Claude can look up trends/layouts
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const webSearchTool = { type: "web_search_20250305", name: "web_search", max_uses: 3 } as any;
+
   const response = await anthropic.messages.create({
     model: MODEL,
-    max_tokens: 600,
+    max_tokens: 1500,
     system: CHAT_SYSTEM_PROMPT,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    tools: [webSearchTool] as any,
     messages,
   });
 
-  const block = response.content[0];
-  const raw = block.type === "text" ? block.text.trim() : "";
+  // Web search produces multiple content blocks; find the last text block (Claude's final answer)
+  const textBlocks = response.content.filter(
+    (b): b is { type: "text"; text: string } => b.type === "text"
+  );
+  const raw = textBlocks.length > 0 ? textBlocks[textBlocks.length - 1].text.trim() : "";
 
-  // Extract READY_TO_APPLY tag if present
+  // Extract READY_TO_APPLY tag
   const tagMatch = raw.match(/READY_TO_APPLY:\s*(.+?)(?:\n|$)/);
   const refinementPrompt = tagMatch ? tagMatch[1].trim() : undefined;
-  const message = raw.replace(/\nREADY_TO_APPLY:.+?(\n|$)/g, "").replace(/READY_TO_APPLY:.+?(\n|$)/g, "").trim();
 
-  return { message, refinementPrompt };
+  // Extract all STACK_CHANGE tags
+  const stackMatches = [...raw.matchAll(/STACK_CHANGE:\s*(.+?)(?:\n|$)/g)];
+  const stackedChanges = stackMatches.length > 0 ? stackMatches.map((m) => m[1].trim()) : undefined;
+
+  // Strip action tags from displayed message
+  const message = raw
+    .replace(/\nREADY_TO_APPLY:.+?(\n|$)/g, "")
+    .replace(/READY_TO_APPLY:.+?(\n|$)/g, "")
+    .replace(/\nSTACK_CHANGE:.+?(\n|$)/g, "")
+    .replace(/STACK_CHANGE:.+?(\n|$)/g, "")
+    .trim();
+
+  return { message, refinementPrompt, stackedChanges };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
