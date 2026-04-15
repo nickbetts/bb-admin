@@ -37,6 +37,8 @@ interface ContentStrategyItem {
   viewCount: number;
   createdAt: string;
   generationMs: number | null;
+  generationStatus?: string;
+  generationError?: string | null;
   client: { name: string } | null;
 }
 
@@ -557,6 +559,14 @@ export default function ContentStrategyPage() {
     loadClients();
   }, [loadStrategies, loadClients]);
 
+  // Auto-poll every 5 s while any strategy is still generating
+  useEffect(() => {
+    const hasGenerating = strategies.some((s) => s.generationStatus === "generating");
+    if (!hasGenerating) return;
+    const interval = setInterval(loadStrategies, 5000);
+    return () => clearInterval(interval);
+  }, [strategies, loadStrategies]);
+
   // postMessage bridge: handles save and regen requests from the strategy HTML iframe
   useEffect(() => {
     async function handleMessage(event: MessageEvent) {
@@ -1003,11 +1013,10 @@ export default function ContentStrategyPage() {
     setGenerating(true);
     setError("");
     setSuccess("");
-    setSemrushProgress("Collecting SEMrush data and analysing keywords…");
+    setSemrushProgress("Queuing generation…");
 
     try {
-      // Step 1: Generate strategy data from SEMrush
-      const genRes = await fetch("/api/tools/content-strategy/generate", {
+      const res = await fetch("/api/tools/content-strategy/start-async", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1029,40 +1038,17 @@ export default function ContentStrategyPage() {
         }),
       });
 
-      const genData = await genRes.json();
-      if (genData.error) {
-        setError(genData.error);
+      const data = await res.json();
+      if (data.error) {
+        setError(data.error);
         return;
       }
 
-      setSemrushProgress("Building content strategy document…");
-
-      // Step 2: Save the strategy (generates HTML via the main route)
-      const saveRes = await fetch("/api/tools/content-strategy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          spreadsheetData: genData.strategyData,
-          clientName: genData.clientName,
-          period,
-          clientId,
-          generationMs: genData.generationMs ?? null,
-        }),
-      });
-
-      const saveData = await saveRes.json();
-      if (saveData.error) {
-        setError(saveData.error);
-        return;
-      }
-
-      setSuccess(
-        `Content strategy generated from SEMrush! ${saveData.stats.totalPageOptimisations} page optimisations, ${saveData.stats.totalLandingPages} landing pages, ${saveData.stats.totalBlogPosts} blog posts, ${saveData.stats.totalLinkTargets} link targets.`
-      );
+      setSuccess("Generation started — you can navigate away and come back. The strategy will appear below when ready.");
       setSemrushBrief("");
       loadStrategies();
     } catch {
-      setError("Failed to generate content strategy");
+      setError("Failed to start content strategy generation");
     } finally {
       setGenerating(false);
       setSemrushProgress("");
@@ -1859,18 +1845,39 @@ export default function ContentStrategyPage() {
                     {s.shareToken && (
                       <span className="badge badge-indigo" style={{ fontSize: 11, padding: "2px 8px", marginLeft: 4 }}>Shared</span>
                     )}
+                    {s.generationStatus === "generating" && (
+                      <>
+                        <span style={{ color: "var(--text-4)" }}>·</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--accent)", fontWeight: 500 }}>
+                          <Loader2 style={{ width: 11, height: 11, animation: "spin 1s linear infinite" }} />
+                          Generating…
+                        </span>
+                      </>
+                    )}
+                    {s.generationStatus === "failed" && (
+                      <>
+                        <span style={{ color: "var(--text-4)" }}>·</span>
+                        <span
+                          className="badge badge-red"
+                          style={{ fontSize: 11, padding: "2px 8px", cursor: s.generationError ? "help" : undefined }}
+                          title={s.generationError ?? undefined}
+                        >
+                          Failed
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
 
                 {/* Actions */}
                 <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <button onClick={() => handlePreview(s.id)} className="btn btn-ghost btn-sm" title="Preview" style={{ padding: 8 }}>
+                  <button onClick={() => handlePreview(s.id)} className="btn btn-ghost btn-sm" title="Preview" style={{ padding: 8 }} disabled={s.generationStatus === "generating"}>
                     <Eye style={{ width: 15, height: 15 }} />
                   </button>
-                  <button onClick={() => handleDownload(s.id, s.title)} className="btn btn-ghost btn-sm" title="Download" style={{ padding: 8 }}>
+                  <button onClick={() => handleDownload(s.id, s.title)} className="btn btn-ghost btn-sm" title="Download" style={{ padding: 8 }} disabled={s.generationStatus === "generating"}>
                     <Download style={{ width: 15, height: 15 }} />
                   </button>
-                  <button onClick={() => handleShare(s.id)} className="btn btn-ghost btn-sm" title="Share" style={{ padding: 8 }}>
+                  <button onClick={() => handleShare(s.id)} className="btn btn-ghost btn-sm" title="Share" style={{ padding: 8 }} disabled={s.generationStatus === "generating"}>
                     <Share2 style={{ width: 15, height: 15 }} />
                   </button>
                   <button onClick={() => handleDelete(s.id)} className="btn btn-ghost btn-sm" title="Delete" style={{ padding: 8, color: "var(--danger)" }}>

@@ -512,7 +512,7 @@ function parseSpreadsheet(buffer: ArrayBuffer): SpreadsheetData {
 
 // ─── HTML template generation ───────────────────────────────────────────────
 
-function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>): string {
+export function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>): string {
   const { clientName, period, pageOptimisations, landingPages, categoryPages, blogPosts, linkTargets, quickWins, roadmap, stats } = data;
 
   let cardIdx = 0;
@@ -1543,6 +1543,7 @@ export async function POST(request: NextRequest) {
     let period: string;
     let clientId: string | null;
     let generationMs: number | null = null;
+    let pendingId: string | null = null;
 
     if (contentType.includes("application/json")) {
       // ── JSON body: SEMrush-generated data ──────────────────────────────
@@ -1555,6 +1556,7 @@ export async function POST(request: NextRequest) {
       period = body.period || new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
       clientId = body.clientId || null;
       generationMs = typeof body.generationMs === "number" ? body.generationMs : null;
+      pendingId = typeof body.pendingId === "string" ? body.pendingId : null;
     } else {
       // ── FormData body: file upload (existing flow) ─────────────────────
       const formData = await request.formData();
@@ -1659,6 +1661,29 @@ Return your response as valid JSON with the following keys:
 
     // Save to database
     const title = `${clientName} Content Strategy (${period})`;
+
+    if (pendingId) {
+      // Update an existing stub record created by start-async
+      const finalHtml = html.replace("'__CS_ID__'", `'${pendingId}'`);
+      await prisma.contentStrategy.update({
+        where: { id: pendingId },
+        data: {
+          title,
+          period,
+          createdBy: session.user.name,
+          spreadsheetData: JSON.stringify(spreadsheetData),
+          generatedHtml: finalHtml,
+          generationMs: generationMs ?? null,
+          generationStatus: "complete",
+        },
+      });
+      return NextResponse.json({
+        id: pendingId,
+        title,
+        stats: spreadsheetData.stats,
+      });
+    }
+
     const record = await prisma.contentStrategy.create({
       data: {
         clientId: clientId || null,
@@ -1687,7 +1712,7 @@ Return your response as valid JSON with the following keys:
   }
 }
 
-function buildDataSummary(data: SpreadsheetData): string {
+export function buildDataSummary(data: SpreadsheetData): string {
   const lines: string[] = [];
   lines.push(`Client: ${data.clientName}`);
   lines.push(`Period: ${data.period}`);
@@ -1747,6 +1772,8 @@ export async function GET(request: NextRequest) {
         viewCount: true,
         createdAt: true,
         generationMs: true,
+        generationStatus: true,
+        generationError: true,
         client: { select: { name: true } },
       },
     });

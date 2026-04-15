@@ -732,9 +732,18 @@ async function main() {
     if (!(await columnExists("ContentStrategy", "generationMs"))) {
       await db.execute('ALTER TABLE "ContentStrategy" ADD COLUMN "generationMs" INTEGER');
       console.log("✓ Added ContentStrategy.generationMs");
-    } else {
-      console.log("✓ ContentStrategy table up to date");
     }
+    // Ensure generationStatus column exists (added 2026-04-15)
+    if (!(await columnExists("ContentStrategy", "generationStatus"))) {
+      await db.execute('ALTER TABLE "ContentStrategy" ADD COLUMN "generationStatus" TEXT NOT NULL DEFAULT \'complete\'');
+      console.log("✓ Added ContentStrategy.generationStatus");
+    }
+    // Ensure generationError column exists (added 2026-04-15)
+    if (!(await columnExists("ContentStrategy", "generationError"))) {
+      await db.execute('ALTER TABLE "ContentStrategy" ADD COLUMN "generationError" TEXT');
+      console.log("✓ Added ContentStrategy.generationError");
+    }
+    console.log("✓ ContentStrategy table up to date");
   }
 
   // ── UserActivityLog table (added 2026-04-08) ──────────────────────────────
