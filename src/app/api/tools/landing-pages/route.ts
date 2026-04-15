@@ -6,7 +6,7 @@ import { generateLandingPage } from "@/lib/lp-generator";
 import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120; // AI generation can take time
+export const maxDuration = 300; // AI generation: up to ~60 s + brand extraction
 
 // GET /api/tools/landing-pages — list all LPs for current user
 export async function GET(request: NextRequest) {

@@ -14,6 +14,15 @@ export interface BrandColour {
   frequency: number; // number of occurrences in CSS
 }
 
+export interface PageContent {
+  h1?: string;
+  headings: string[];      // h2 and h3 text
+  ctaTexts: string[];      // button and CTA link text
+  bodyCopy: string[];      // short body copy snippets (first 300 chars of key paragraphs)
+  metaTitle?: string;
+  metaDescription?: string;
+}
+
 export interface BrandContext {
   colors: BrandColour[];
   fonts: string[];
@@ -28,6 +37,7 @@ export interface BrandContext {
     email?: string;
     address?: string;
   };
+  pageContent?: PageContent;
 }
 
 // ── Main export ──────────────────────────────────────────────────────────────
@@ -96,11 +106,15 @@ export async function extractBrandContext(url: string): Promise<BrandContext> {
   ctx.contactInfo = extractContactInfo(html);
 
   // ── Try to fetch linked CSS for more colour data ─────────────────────────
+  // Cap total CSS-fetch time at 8 s so brand extraction never blocks LP generation
   const linkedCssUrls = extractLinkedCssUrls(html, origin);
+  const cssDeadline = Date.now() + 8_000;
   for (const cssUrl of linkedCssUrls.slice(0, 3)) {
+    if (Date.now() >= cssDeadline) break;
     try {
+      const remaining = cssDeadline - Date.now();
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 6_000);
+      const timer = setTimeout(() => controller.abort(), Math.min(4_000, remaining));
       const cssRes = await fetch(cssUrl, {
         signal: controller.signal,
         headers: { "User-Agent": "Mozilla/5.0 Bot", Accept: "text/css,*/*" },
@@ -118,6 +132,9 @@ export async function extractBrandContext(url: string): Promise<BrandContext> {
 
   // Re-assign roles after merging all colour sources
   assignColourRoles(ctx.colors);
+
+  // ── Page copy ────────────────────────────────────────────────────────────
+  ctx.pageContent = extractPageContent(html);
 
   return ctx;
 }
@@ -453,6 +470,64 @@ function extractContactInfo(html: string): BrandContext["contactInfo"] {
   }
 
   return info;
+}
+
+// ── Page copy extraction ─────────────────────────────────────────────────────
+
+function stripTags(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function extractPageContent(html: string): PageContent {
+  const content: PageContent = { headings: [], ctaTexts: [], bodyCopy: [] };
+
+  // Meta title & description
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  if (titleMatch) content.metaTitle = stripTags(titleMatch[1]).slice(0, 120);
+
+  const metaDesc = html.match(/<meta\s[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i)
+    ?? html.match(/<meta\s[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i);
+  if (metaDesc) content.metaDescription = metaDesc[1].slice(0, 300);
+
+  // H1
+  const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  if (h1Match) content.h1 = stripTags(h1Match[1]).slice(0, 200);
+
+  // H2 and H3
+  for (const m of html.matchAll(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/gi)) {
+    const text = stripTags(m[1]).slice(0, 150);
+    if (text.length > 3 && content.headings.length < 12) content.headings.push(text);
+  }
+
+  // CTA button text (button tags and links styled as buttons)
+  const ctaSeen = new Set<string>();
+  for (const m of html.matchAll(/<button[^>]*>([\s\S]*?)<\/button>/gi)) {
+    const text = stripTags(m[1]).slice(0, 80).trim();
+    if (text.length > 1 && !ctaSeen.has(text) && content.ctaTexts.length < 8) {
+      ctaSeen.add(text);
+      content.ctaTexts.push(text);
+    }
+  }
+  // Also pick up <a> tags that look like CTAs (class contains btn/button/cta)
+  for (const m of html.matchAll(/<a\s[^>]*class=["'][^"']*(?:btn|button|cta)[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const text = stripTags(m[1]).slice(0, 80).trim();
+    if (text.length > 1 && !ctaSeen.has(text) && content.ctaTexts.length < 8) {
+      ctaSeen.add(text);
+      content.ctaTexts.push(text);
+    }
+  }
+
+  // Key body copy — first few <p> tags inside main content areas
+  const mainMatch = html.match(/<(?:main|section|article|div\s[^>]*(?:class|id)=["'][^"']*(?:content|hero|about|intro)[^"']*["'])[^>]*>([\s\S]*?)<\/(?:main|section|article|div)>/i);
+  const searchArea = mainMatch ? mainMatch[0] : html;
+  for (const m of searchArea.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)) {
+    const text = stripTags(m[1]).trim();
+    if (text.length > 30 && content.bodyCopy.length < 6) {
+      content.bodyCopy.push(text.slice(0, 300));
+    }
+  }
+
+  return content;
 }
 
 // ── CSS link discovery ───────────────────────────────────────────────────────

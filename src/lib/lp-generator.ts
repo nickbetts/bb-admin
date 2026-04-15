@@ -42,6 +42,20 @@ function buildGenerateSystemPrompt(brandContext: BrandContext): string {
     ? `Brand fonts: ${brandContext.fonts.join(", ")}`
     : "Use a clean, modern system font stack.";
 
+  // Build page copy reference block
+  const pc = brandContext.pageContent;
+  let pageCopyBlock = "";
+  if (pc && (pc.h1 || pc.headings.length || pc.ctaTexts.length || pc.bodyCopy.length)) {
+    const parts: string[] = [];
+    if (pc.metaTitle) parts.push(`Page title: ${pc.metaTitle}`);
+    if (pc.metaDescription) parts.push(`Meta description: ${pc.metaDescription}`);
+    if (pc.h1) parts.push(`H1: ${pc.h1}`);
+    if (pc.headings.length) parts.push(`Section headings:\n${pc.headings.map((h) => `  - ${h}`).join("\n")}`);
+    if (pc.ctaTexts.length) parts.push(`CTA button text: ${pc.ctaTexts.join(" | ")}`);
+    if (pc.bodyCopy.length) parts.push(`Body copy samples:\n${pc.bodyCopy.map((p) => `  "${p}"`).join("\n")}`);
+    pageCopyBlock = `\n## Existing website copy (use as reference for tone, terminology, and messaging)\n\n${parts.join("\n")}\n`;
+  }
+
   return `You are an expert landing page designer, CRO specialist, and front-end developer.
 
 Your task is to generate a complete, standalone HTML landing page that is ready to deploy. The output must be a single HTML file with ALL CSS inlined in a <style> block. No external dependencies except Google Fonts if needed.
@@ -62,7 +76,7 @@ ${brandContext.contactInfo.phone ? `Phone: ${brandContext.contactInfo.phone}` : 
 ${brandContext.contactInfo.email ? `Email: ${brandContext.contactInfo.email}` : ""}
 
 Social links: ${brandContext.socialLinks.slice(0, 4).join(", ") || "None provided"}
-
+${pageCopyBlock}
 ## Available imagery
 ${brandContext.imageryUrls.length ? brandContext.imageryUrls.slice(0, 6).map((u) => `- ${u}`).join("\n") : "No images available — use CSS gradients, patterns and emoji/icons for visual interest."}
 
@@ -123,7 +137,8 @@ Follow this general section order (adapt as appropriate):
 - Start with <!DOCTYPE html> and end with </html>.
 - Do NOT include any placeholder text like "[Company Name]" — use the actual brand data provided.
 - Make all copy compelling and conversion-focused.
-- Use British English for all text.`;
+- Use British English for all text.
+- **Never use em dashes (— or &mdash;)**. Use a comma, colon, or rewrite the sentence instead.`;
 }
 
 const REFINE_SYSTEM_PROMPT = `You are an expert landing page designer iterating on an existing landing page.
@@ -139,7 +154,8 @@ The user will provide their current HTML and a change request. Apply the request
 Return ONLY the complete updated HTML document. No markdown fences, no explanation.
 Start with <!DOCTYPE html> and end with </html>.
 
-Use British English for all text.`;
+Use British English for all text.
+Never use em dashes (— or &mdash;). Use a comma, colon, or rewrite the sentence instead.`;
 
 // ── Form capture script ──────────────────────────────────────────────────────
 
