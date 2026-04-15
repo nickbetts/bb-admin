@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       googleAdsAccountName,
       searchConsoleSiteUrl,
       aiReportInstructions,
+      status,
     } = data;
 
     if (!name) {
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
         googleAdsAccountName: googleAdsAccountName || null,
         searchConsoleSiteUrl: searchConsoleSiteUrl || null,
         aiReportInstructions: aiReportInstructions || null,
+        status: (status === "active" || status === "lead") ? status : "lead",
       },
     });
 

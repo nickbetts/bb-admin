@@ -63,6 +63,9 @@ export default async function ClientPage({ params, searchParams }: Props) {
             </div>
             <div>
               <h1 className="page-title">{client.name}</h1>
+              {client.status === "lead" && (
+                <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 99, background: "rgba(245,158,11,0.12)", color: "#d97706", display: "inline-block", marginTop: 4 }}>LEAD</span>
+              )}
               {client.website && (
                 <a href={client.website} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--text-3)", textDecoration: "none", marginTop: 6 }}>
                   {client.website.replace(/^https?:\/\//, "")}
@@ -87,7 +90,8 @@ export default async function ClientPage({ params, searchParams }: Props) {
           </div>
         </div>
 
-        {/* Integration badges */}
+        {/* Integration badges — hidden for leads */}
+        {client.status !== "lead" && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 28 }}>
           {client.semrushDomain ? (
             <span className="badge badge-orange" style={{ padding: "6px 14px", fontSize: 13 }} title={`SemRush: ${client.semrushDomain}`}>
@@ -130,6 +134,7 @@ export default async function ClientPage({ params, searchParams }: Props) {
             <span className="badge badge-slate" style={{ padding: "6px 14px", fontSize: 13 }} title="Search Console not configured">Search Console not configured</span>
           )}
         </div>
+        )}
       </div>
 
       {/* Dashboard tabs */}

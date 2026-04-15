@@ -57,6 +57,7 @@ interface Client {
   callrailAccountId?: string | null;
   competitorDomains?: string | null;
   clickFraudToken?: string | null;
+  status?: string;
 }
 
 interface ClientDashboardProps {
@@ -84,6 +85,29 @@ function getDefaultTab(_client: Client): Tab {
   return "hub";
 }
 
+function ConvertToActiveButton({ clientId }: { clientId: string }) {
+  const [loading, setLoading] = useState(false);
+  async function handleConvert() {
+    setLoading(true);
+    await fetch(`/api/clients/${clientId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "active" }),
+    });
+    window.location.reload();
+  }
+  return (
+    <button
+      onClick={handleConvert}
+      disabled={loading}
+      className="btn btn-primary btn-sm"
+      style={{ flexShrink: 0 }}
+    >
+      {loading ? "Converting…" : "Convert to Active"}
+    </button>
+  );
+}
+
 export function ClientDashboard({ client, period: initialPeriod, userRole, permissions = [] }: ClientDashboardProps) {
   const [period, setPeriod] = useState(initialPeriod);
   const [activeTab, setActiveTab] = useState<Tab>(() => getDefaultTab(client));
@@ -94,6 +118,8 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
     setActiveTab(tab);
     setTimeout(() => setTabTransitioning(false), 200);
   }
+
+  const isLead = client.status === "lead";
 
   // Tab visibility: if the role has any "tab:" permissions, restrict to only those tabs
   const tabPermissions = permissions.filter(p => p.startsWith("tab:")).map(p => p.slice(4));
@@ -229,11 +255,23 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
   ].map((tab) => ({
     ...tab,
     // If the role has tab restrictions, hide tabs not in the allowed set (core tabs always stay visible)
-    available: tab.available && (!hasTabRestrictions || tabPermissions.includes(tab.id)),
+    // Leads only see the Hub tab
+    available: tab.available && (!hasTabRestrictions || tabPermissions.includes(tab.id)) && (!isLead || tab.id === "hub"),
   })).filter((tab) => tab.available) as { id: Tab; label: string; available: boolean }[];
 
   return (
     <div>
+      {/* Lead banner */}
+      {isLead && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "12px 18px", marginBottom: 20, borderRadius: 12, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(245,158,11,0.18)", color: "#d97706" }}>LEAD</span>
+            <span style={{ fontSize: 13, color: "var(--text-2)" }}>This is a prospect — only the Hub is available. Once signed, convert to active to unlock all channel integrations.</span>
+          </div>
+          <ConvertToActiveButton clientId={client.id} />
+        </div>
+      )}
+
       {/* Tab bar + date controls */}
       <div className="tabs-bar">
         <nav className="tabs-nav" role="tablist" aria-label="Dashboard sections">

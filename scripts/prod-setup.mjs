@@ -898,6 +898,14 @@ async function main() {
     console.log("✓ KeywordPlannerResearch.clientId already present");
   }
 
+  // ── Client.status column (added 2026-04-15) ────────────────────────────────
+  if (!(await columnExists("Client", "status"))) {
+    await db.execute(`ALTER TABLE "Client" ADD COLUMN "status" TEXT NOT NULL DEFAULT 'active'`);
+    console.log("✓ Added Client.status");
+  } else {
+    console.log("✓ Client.status already present");
+  }
+
   await db.close();
   console.log("✅ Schema migration complete");
 }

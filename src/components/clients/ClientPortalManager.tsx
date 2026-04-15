@@ -132,6 +132,16 @@ export function ClientPortalManager({ clientId, clientName }: ClientPortalManage
             <UserPlus style={{ width: 13, height: 13 }} />
             {showForm ? "Cancel" : "Invite User"}
           </button>
+          {!showForm && (
+            <button
+              onClick={() => { setShowForm(true); setForm({ email: "", name: "", permissions: ["assets"] }); }}
+              className="btn btn-secondary btn-sm"
+              style={{ gap: 6, display: "inline-flex", alignItems: "center" }}
+            >
+              <UserPlus style={{ width: 13, height: 13 }} />
+              Set up Lead Portal
+            </button>
+          )}
         </div>
 
         {/* Create form */}
@@ -151,6 +161,11 @@ export function ClientPortalManager({ clientId, clientName }: ClientPortalManage
             </div>
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: 6 }}>Permissions</label>
+              {form.permissions.length === 1 && form.permissions[0] === "assets" && (
+                <p style={{ fontSize: 12, color: "#d97706", marginBottom: 8, padding: "6px 10px", background: "rgba(245,158,11,0.08)", borderRadius: 6 }}>
+                  Lead portal — prospect can view shared proposals, landing pages, and content strategies only.
+                </p>
+              )}
               <div style={{ display: "flex", gap: 12 }}>
                 {PERMISSIONS.map((p) => (
                   <label key={p} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, color: "var(--text-2)", textTransform: "capitalize" }}>

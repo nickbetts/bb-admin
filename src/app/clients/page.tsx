@@ -42,6 +42,7 @@ export default async function ClientsPage() {
           name: c.name,
           slug: c.slug,
           website: c.website,
+          status: c.status,
           semrushDomain: c.semrushDomain,
           ga4PropertyId: c.ga4PropertyId,
           metaAccountId: c.metaAccountId,

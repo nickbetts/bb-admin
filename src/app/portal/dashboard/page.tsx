@@ -138,6 +138,7 @@ export default function PortalDashboardPage() {
   if (!user) return null;
 
   const permissions: string[] = (() => { try { return JSON.parse(user.permissions) as string[]; } catch { return []; } })();
+  const isLeadPortal = permissions.length === 1 && permissions.includes("assets");
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
@@ -158,7 +159,7 @@ export default function PortalDashboardPage() {
       <main style={{ padding: "32px 48px", maxWidth: 1000, margin: "0 auto" }}>
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>Welcome back{user.name ? `, ${user.name.split(" ")[0]}` : ""}</h1>
-          <p style={{ fontSize: 14, color: "var(--text-3)", marginTop: 4 }}>Here&apos;s an overview of your marketing performance</p>
+          <p style={{ fontSize: 14, color: "var(--text-3)", marginTop: 4 }}>{isLeadPortal ? "Here\u2019s what we\u2019ve prepared for you" : "Here\u2019s an overview of your marketing performance"}</p>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>

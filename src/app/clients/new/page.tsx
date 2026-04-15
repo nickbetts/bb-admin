@@ -62,6 +62,7 @@ export default function NewClientPage() {
   const [form, setForm] = useState({
     name: "",
     website: "",
+    status: "lead" as string,
     semrushDomain: "",
     semrushProjectId: null as number | null,
     ga4PropertyId: "",
@@ -191,6 +192,26 @@ export default function NewClientPage() {
                 placeholder="https://example.com"
                 className="form-input"
               />
+            </div>
+            <div>
+              <label className="form-label">Client Type</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setForm((p) => ({ ...p, status: "lead" }))}
+                  className={form.status === "lead" ? "btn btn-primary btn-sm" : "btn btn-secondary btn-sm"}
+                >
+                  Lead
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm((p) => ({ ...p, status: "active" }))}
+                  className={form.status === "active" ? "btn btn-primary btn-sm" : "btn btn-secondary btn-sm"}
+                >
+                  Active Client
+                </button>
+              </div>
+              <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 6 }}>Lead = prospect (Hub only). Active = signed client with channel integrations.</p>
             </div>
           </div>
         </div>
