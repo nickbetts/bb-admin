@@ -14,11 +14,19 @@ interface ParsedKeyword {
   type?: "primary" | "secondary" | "long-tail";
 }
 
-interface MetaTitleAudit {
+interface OnPageAudit {
   titleText: string;
   titlePresent: boolean;
   titleLength: number;
   titleContainsKeyword: boolean;
+  descriptionText: string;
+  descriptionPresent: boolean;
+  descriptionLength: number;
+  descriptionContainsKeyword: boolean;
+  schemaTypes: string[];
+  h1Text: string;
+  h1Present: boolean;
+  h1ContainsKeyword: boolean;
 }
 
 interface PageOptimisation {
@@ -29,8 +37,10 @@ interface PageOptimisation {
   impact?: number;
   effort?: number;
   quickWin?: boolean;
-  audit?: MetaTitleAudit;
+  audit?: OnPageAudit;
   intent?: string;
+  suggestedSchema?: string;
+  contextLinks?: { url: string; anchorText: string }[];
 }
 
 interface ProposedPage {
@@ -41,6 +51,8 @@ interface ProposedPage {
   impact?: number;
   effort?: number;
   intent?: string;
+  suggestedSchema?: string;
+  internalLinks?: { url: string; anchorText: string }[];
 }
 
 interface BlogPost {
@@ -52,6 +64,8 @@ interface BlogPost {
   effort?: number;
   cluster?: string;
   intent?: string;
+  suggestedSchema?: string;
+  internalLinks?: { url: string; anchorText: string }[];
 }
 
 interface LinkTarget {
@@ -238,7 +252,7 @@ function validateExtractedData(raw: Record<string, unknown>): SpreadsheetData {
       impact: parseScore(obj.impact),
       effort: parseScore(obj.effort),
       quickWin: obj.quickWin === true,
-      audit: obj.audit && typeof obj.audit === "object" ? (obj.audit as MetaTitleAudit) : undefined,
+      audit: obj.audit && typeof obj.audit === "object" ? (obj.audit as OnPageAudit) : undefined,
     };
   }
 
@@ -521,6 +535,21 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
     return `<span class="intent-badge intent-${esc(intent)}">${label}</span>`;
   }
 
+  function schemaBadge(schemaType?: string, hasGap?: boolean): string {
+    if (!schemaType) return "";
+    const cls = hasGap ? "schema-badge schema-gap" : "schema-badge";
+    const prefix = hasGap ? "&#9888; Add schema: " : "Schema: ";
+    return `<span class="${cls}">${prefix}${esc(schemaType)}</span>`;
+  }
+
+  function internalLinksHtml(links: { url: string; anchorText: string }[] | undefined, labelText: string): string {
+    if (!links || links.length === 0) return "";
+    const items = links.map(l =>
+      `<div class="internal-link-item"><span class="internal-link-anchor">"${esc(l.anchorText)}"</span><span class="internal-link-url">\u2192 ${esc(l.url)}</span></div>`
+    ).join("\n          ");
+    return `<div class="internal-links"><div class="internal-links-label">${labelText}</div><div class="internal-link-list">${items}</div></div>`;
+  }
+
   // Sort by impact desc
   function sortByImpact<T extends { keywords: ParsedKeyword[]; impact?: number }>(arr: T[], volThreshold: number): T[] {
     return [...arr].sort((a, b) => {
@@ -552,6 +581,13 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
                 ${opt.keywords.map((k, i) => { const typeLabel = k.type === 'primary' ? '<span class="kw-type kw-type-primary">Primary</span>' : k.type === 'secondary' ? '<span class="kw-type kw-type-secondary">Secondary</span>' : k.type === 'long-tail' ? '<span class="kw-type kw-type-longtail">Long-tail</span>' : ''; return `<tr${i === 0 ? ' class="kw-top"' : ""}><td>${esc(k.keyword)}</td><td>${typeLabel}</td><td>${formatNum(k.volume)}</td></tr>`; }).join("\n                ")}
               </tbody>
             </table>
+            ${opt.audit ? (() => {
+              const a = opt.audit!;
+              const titleColour = (!a.titlePresent) ? '#ef4444' : (a.titleLength < 30 || a.titleLength > 60) ? '#f59e0b' : !a.titleContainsKeyword ? '#f59e0b' : '#22c55e';
+              const titleText2 = !a.titlePresent ? 'Missing' : (a.titleLength < 30 || a.titleLength > 60) ? 'Suboptimal length' : !a.titleContainsKeyword ? 'Keyword absent' : 'Good';
+              return `<div class="audit-panel"><span class="audit-label">Meta title</span><span class="audit-badge" style="background:${titleColour}20;color:${titleColour};border:1px solid ${titleColour}40">${titleText2}</span>${a.titlePresent ? `<span class="audit-title-text">${esc(a.titleText)}</span><span class="audit-length">${a.titleLength} chars</span>` : ''}</div>`;
+            })() : ''}
+            ${internalLinksHtml(opt.contextLinks, "Pages that should link here")}
           </div>`;
     }
   }
@@ -577,7 +613,44 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
                 ${opt.keywords.map((k, i) => { const typeLabel = k.type === 'primary' ? '<span class="kw-type kw-type-primary">Primary</span>' : k.type === 'secondary' ? '<span class="kw-type kw-type-secondary">Secondary</span>' : k.type === 'long-tail' ? '<span class="kw-type kw-type-longtail">Long-tail</span>' : ''; return `<tr${i === 0 ? ' class="kw-top"' : ""}><td>${esc(k.keyword)}</td><td>${typeLabel}</td><td>${formatNum(k.volume)}</td></tr>`; }).join("\n                ")}
               </tbody>
             </table>
-            ${opt.audit ? (() => { const a = opt.audit!; const statusColour = (!a.titlePresent) ? '#ef4444' : (a.titleLength < 30 || a.titleLength > 60) ? '#f59e0b' : !a.titleContainsKeyword ? '#f59e0b' : '#22c55e'; const statusText = !a.titlePresent ? 'Missing' : (a.titleLength < 30 || a.titleLength > 60) ? 'Suboptimal length' : !a.titleContainsKeyword ? 'Keyword absent' : 'Good'; return `<div class="audit-panel"><span class="audit-label">Meta title</span><span class="audit-badge" style="background:${statusColour}20;color:${statusColour};border:1px solid ${statusColour}40">${statusText}</span>${a.titlePresent ? `<span class="audit-title-text">${esc(a.titleText)}</span><span class="audit-length">${a.titleLength} chars</span>` : ''}</div>`; })() : ''}
+            ${opt.audit ? (() => {
+              const a = opt.audit!;
+              // Title
+              const titleColour = (!a.titlePresent) ? '#ef4444' : (a.titleLength < 30 || a.titleLength > 60) ? '#f59e0b' : !a.titleContainsKeyword ? '#f59e0b' : '#22c55e';
+              const titleText2 = !a.titlePresent ? 'Missing' : (a.titleLength < 30 || a.titleLength > 60) ? 'Suboptimal length' : !a.titleContainsKeyword ? 'Keyword absent' : 'Good';
+              // Meta description
+              const descColour = (!a.descriptionPresent) ? '#ef4444' : (a.descriptionLength < 120 || a.descriptionLength > 160) ? '#f59e0b' : !a.descriptionContainsKeyword ? '#f59e0b' : '#22c55e';
+              const descStatusText = !a.descriptionPresent ? 'Missing' : (a.descriptionLength < 120 || a.descriptionLength > 160) ? 'Suboptimal length' : !a.descriptionContainsKeyword ? 'Keyword absent' : 'Good';
+              // H1
+              const h1Colour = (!a.h1Present) ? '#ef4444' : !a.h1ContainsKeyword ? '#f59e0b' : '#22c55e';
+              const h1StatusText = !a.h1Present ? 'Missing' : !a.h1ContainsKeyword ? 'Keyword absent' : 'Good';
+              // Schema
+              const foundSchemaStr = a.schemaTypes.length > 0 ? a.schemaTypes.join(', ') : null;
+              const schemaGap = opt.suggestedSchema && !a.schemaTypes.some(t => t.toLowerCase() === opt.suggestedSchema!.toLowerCase());
+              return `<div class="audit-panel" style="flex-direction:column;align-items:stretch;gap:.5rem;">
+                <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+                  <span class="audit-label">Meta title</span>
+                  <span class="audit-badge" style="background:${titleColour}20;color:${titleColour};border:1px solid ${titleColour}40">${titleText2}</span>
+                  ${a.titlePresent ? `<span class="audit-title-text">${esc(a.titleText)}</span><span class="audit-length">${a.titleLength} chars</span>` : ''}
+                </div>
+                <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+                  <span class="audit-label">Meta desc</span>
+                  <span class="audit-badge" style="background:${descColour}20;color:${descColour};border:1px solid ${descColour}40">${descStatusText}</span>
+                  ${a.descriptionPresent ? `<span class="audit-title-text">${esc(a.descriptionText.slice(0, 120))}${a.descriptionLength > 120 ? '…' : ''}</span><span class="audit-length">${a.descriptionLength} chars</span>` : ''}
+                </div>
+                <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+                  <span class="audit-label">H1</span>
+                  <span class="audit-badge" style="background:${h1Colour}20;color:${h1Colour};border:1px solid ${h1Colour}40">${h1StatusText}</span>
+                  ${a.h1Present ? `<span class="audit-title-text">${esc(a.h1Text)}</span>` : ''}
+                </div>
+                <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+                  <span class="audit-label">Schema</span>
+                  ${foundSchemaStr ? `<span class="audit-badge" style="background:#d1fae520;color:#065f46;border:1px solid #6ee7b740">${esc(foundSchemaStr)}</span>` : `<span class="audit-badge" style="background:#ef444420;color:#ef4444;border:1px solid #ef444440">None found</span>`}
+                  ${schemaGap ? `<span class="audit-badge" style="background:#fff7ed;color:#92400e;border:1px solid #fed7aa">&#9888; Add ${esc(opt.suggestedSchema!)}</span>` : (opt.suggestedSchema && !schemaGap ? `<span class="audit-badge" style="background:#d1fae520;color:#065f46;border:1px solid #6ee7b740">&#10003; ${esc(opt.suggestedSchema)} present</span>` : '')}
+                </div>
+              </div>`;
+            })() : (opt.suggestedSchema ? `<div class="audit-panel">${schemaBadge(opt.suggestedSchema)}</div>` : '')}
+            ${internalLinksHtml(opt.contextLinks, "Pages that should link here")}
           </div>`;
   }
 
@@ -600,6 +673,8 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
             <div class="new-page-kws">
               ${page.keywords.map(k => { const typeLabel = k.type === 'primary' ? '<span class="kw-pill-type primary">P</span>' : k.type === 'secondary' ? '<span class="kw-pill-type secondary">S</span>' : k.type === 'long-tail' ? '<span class="kw-pill-type longtail">LT</span>' : ''; return `<div class="kw-pill${k.volume >= 200 ? " kw-pill-high" : ""}">${typeLabel}${esc(k.keyword)} <span>${formatNum(k.volume)}</span></div>`; }).join("\n              ")}
             </div>
+            ${page.suggestedSchema ? `<div style="margin-top:.65rem;">${schemaBadge(page.suggestedSchema)}</div>` : ''}
+            ${internalLinksHtml(page.internalLinks, "Internal links to include")}
           </div>`;
   }
 
@@ -652,6 +727,8 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
                   <span class="bk-vol">${formatNum(k.volume)}</span>
                 </div>`; }).join("\n                ")}
               </div>
+              ${post.suggestedSchema ? `<div style="margin-top:.65rem;">${schemaBadge(post.suggestedSchema)}</div>` : ''}
+              ${internalLinksHtml(post.internalLinks, "Internal links to include")}
             </div>
           </div>`;
     }
@@ -857,6 +934,17 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 .audit-badge { padding: .15rem .45rem; border-radius: 4px; font-weight: 600; font-size: .7rem; }
 .audit-title-text { color: var(--muted); font-style: italic; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .audit-length { color: var(--muted); white-space: nowrap; }
+
+/* -- Schema + internal links -- */
+.schema-badge { display: inline-flex; align-items: center; gap: .3rem; font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .5rem; border-radius: 4px; background: #f0fdf4; color: #166534; border: 1px solid #a7f3d0; }
+.schema-badge.schema-gap { background: #fff7ed; color: #92400e; border-color: #fed7aa; }
+.internal-links { margin-top: .75rem; padding: .65rem .85rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: .78rem; }
+.internal-links-label { font-weight: 600; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .35rem; }
+.internal-link-list { display: flex; flex-direction: column; gap: .25rem; }
+.internal-link-item { display: flex; align-items: baseline; gap: .45rem; }
+.internal-link-anchor { font-style: italic; color: var(--accent); }
+.internal-link-url { color: var(--muted); font-size: .72rem; }
+.context-links-label { font-weight: 600; color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .35rem; }
 
 /* -- Blog list -- */
 .blog-list { display: flex; flex-direction: column; gap: 1rem; }

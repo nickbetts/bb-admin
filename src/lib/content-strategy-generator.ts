@@ -42,11 +42,23 @@ interface ParsedKeyword {
   intent?: string; // "informational" | "commercial" | "transactional" | "navigational"
 }
 
-interface MetaTitleAudit {
+interface OnPageAudit {
+  // Title
   titleText: string;       // raw <title> content
   titlePresent: boolean;
   titleLength: number;
-  titleContainsKeyword: boolean; // does title contain the primary keyword?
+  titleContainsKeyword: boolean;
+  // Meta description
+  descriptionText: string;
+  descriptionPresent: boolean;
+  descriptionLength: number;
+  descriptionContainsKeyword: boolean;
+  // Schema markup
+  schemaTypes: string[]; // @type values found in JSON-LD blocks, e.g. ["Article", "FAQPage"]
+  // H1
+  h1Text: string;
+  h1Present: boolean;
+  h1ContainsKeyword: boolean;
 }
 
 interface PageOptimisation {
@@ -57,8 +69,10 @@ interface PageOptimisation {
   impact?: number; // 1–5
   effort?: number; // 1–5
   quickWin?: boolean; // derived: any keyword pos 4–10, vol >= 100
-  audit?: MetaTitleAudit; // on-page audit added at generation time
+  audit?: OnPageAudit; // on-page audit added at generation time
   intent?: string; // "informational" | "commercial" | "transactional" | "navigational"
+  suggestedSchema?: string; // e.g. "Article", "FAQPage", "Product", "Service"
+  contextLinks?: { url: string; anchorText: string }[]; // existing pages that should link TO this page
 }
 
 interface ProposedPage {
@@ -69,6 +83,8 @@ interface ProposedPage {
   impact?: number;
   effort?: number;
   intent?: string; // "informational" | "commercial" | "transactional" | "navigational"
+  suggestedSchema?: string; // e.g. "Service", "Product", "FAQPage"
+  internalLinks?: { url: string; anchorText: string }[]; // existing pages this new page should link to
 }
 
 interface BlogPost {
@@ -80,6 +96,8 @@ interface BlogPost {
   effort?: number;
   cluster?: string; // topical cluster grouping
   intent?: string; // "informational" | "commercial" | "transactional" | "navigational"
+  suggestedSchema?: string; // e.g. "Article", "BlogPosting", "FAQPage", "HowTo"
+  internalLinks?: { url: string; anchorText: string }[]; // existing pages this post should link to
 }
 
 interface LinkTarget {
@@ -678,20 +696,42 @@ function buildAnalysisPrompt(
       }
     }
 
+    // Build a reverse map: cleaned URL path → top keywords (by search volume, pos <= 50)
+    const urlKwMap = new Map<string, { keyword: string; volume: number; position: number }[]>();
+    for (const kw of data.organicKeywords) {
+      if (!kw.url) continue;
+      const cleanPath = kw.url.replace(/^https?:\/\/[^/]+/, "") || "/";
+      const existing = urlKwMap.get(cleanPath) ?? [];
+      existing.push({ keyword: kw.keyword, volume: kw.searchVolume, position: kw.position });
+      urlKwMap.set(cleanPath, existing);
+    }
+    // Sort each entry by volume descending
+    for (const [key, arr] of urlKwMap) {
+      urlKwMap.set(key, arr.sort((a, b) => b.volume - a.volume));
+    }
+
+    function formatSitemapLine(u: string): string {
+      const path = u.replace(/^https?:\/\/[^/]+/, "") || "/";
+      const kwData = urlKwMap.get(path);
+      if (!kwData || kwData.length === 0) return `  ${path}`;
+      const top = kwData.slice(0, 3).map((k) => `"${k.keyword}" (vol:${k.volume}, pos:${k.position})`).join(", ");
+      return `  ${path} — ranks for: ${top}`;
+    }
+
     const lines: string[] = [];
     lines.push(`\n═══ EXISTING SITE PAGES (from sitemap, ${data.sitemapUrls.length} total) ═══`);
-    lines.push("Use this to understand what pages ALREADY EXIST. Do NOT suggest landing pages or blog posts that duplicate existing content. Instead, identify GAPS — topics the site doesn't cover yet.");
+    lines.push("Use this to understand what pages ALREADY EXIST and what they already rank for. Do NOT suggest landing pages or blog posts that duplicate existing content. Instead, identify GAPS — topics the site doesn't cover yet.");
     if (blogUrls.length > 0) {
       lines.push(`\nBlog/resource pages (${blogUrls.length}):`);
       for (const u of blogUrls.slice(0, 30)) {
-        lines.push(`  ${u.replace(/^https?:\/\/[^/]+/, "")}`);
+        lines.push(formatSitemapLine(u));
       }
       if (blogUrls.length > 30) lines.push(`  ... and ${blogUrls.length - 30} more`);
     }
     if (serviceUrls.length > 0) {
       lines.push(`\nService/product pages (${serviceUrls.length}):`);
       for (const u of serviceUrls.slice(0, 20)) {
-        lines.push(`  ${u.replace(/^https?:\/\/[^/]+/, "")}`);
+        lines.push(formatSitemapLine(u));
       }
       if (serviceUrls.length > 20) lines.push(`  ... and ${serviceUrls.length - 20} more`);
     }
@@ -860,6 +900,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
     {
       "url": "domain.com/page/",
       "intent": "commercial",
+      "suggestedSchema": "Service",
       "keywords": [
         {"keyword": "exact phrase from pool", "volume": 1000, "type": "primary"},
         {"keyword": "related phrase from pool", "volume": 480, "type": "secondary"},
@@ -867,13 +908,18 @@ OUTPUT FORMAT (strict JSON, no markdown):
       ],
       "notes": "We will expand this page to target [keyword] by adding a FAQ section and updating the title tag to include [keyword].",
       "impact": 4,
-      "effort": 2
+      "effort": 2,
+      "contextLinks": [
+        {"url": "domain.com/related-page/", "anchorText": "anchor text pointing here"},
+        {"url": "domain.com/another-page/", "anchorText": "another internal anchor"}
+      ]
     }
   ],
   "landingPages": [
     {
       "title": "Specific, Audience-Focused Page Title",
       "intent": "transactional",
+      "suggestedSchema": "Service",
       "keywords": [
         {"keyword": "transactional phrase from pool", "volume": 500, "type": "primary"},
         {"keyword": "related phrase from pool", "volume": 210, "type": "secondary"},
@@ -881,13 +927,18 @@ OUTPUT FORMAT (strict JSON, no markdown):
       ],
       "notes": "We will create this page to capture [specific audience] searching for [specific intent]. The page will cover [topics] with a clear donation/conversion path.",
       "impact": 4,
-      "effort": 3
+      "effort": 3,
+      "internalLinks": [
+        {"url": "domain.com/existing-page/", "anchorText": "descriptive anchor text"},
+        {"url": "domain.com/blog/related-post/", "anchorText": "related article anchor"}
+      ]
     }
   ],
   "blogPosts": [
     {
       "title": "A Real Article Title Someone Would Click In Search Results",
       "intent": "informational",
+      "suggestedSchema": "Article",
       "keywords": [
         {"keyword": "informational phrase from pool", "volume": 200, "type": "primary"},
         {"keyword": "related phrase from pool", "volume": 90, "type": "secondary"},
@@ -896,7 +947,11 @@ OUTPUT FORMAT (strict JSON, no markdown):
       "notes": "We will write this article for [audience] at the [reader journey stage]. It will cover [specific angle], answer [real question], and link internally to [relevant commercial page].",
       "cluster": "Cluster Name (e.g. Qurbani Guide, Zakat Explainers, Ramadan Hub)",
       "impact": 3,
-      "effort": 2
+      "effort": 2,
+      "internalLinks": [
+        {"url": "domain.com/donation-page/", "anchorText": "donate qurbani online"},
+        {"url": "domain.com/service-page/", "anchorText": "our qurbani programme"}
+      ]
     }
   ],
   "linkTargets": [
@@ -915,6 +970,24 @@ OUTPUT FORMAT (strict JSON, no markdown):
   }
 }
 
+SCHEMA TYPE GUIDANCE (use for suggestedSchema field):
+- Service page / charity programme: "Service"
+- E-commerce product: "Product"
+- Blog article / news: "Article" or "BlogPosting"
+- How-to guide: "HowTo"
+- Q&A / FAQ page: "FAQPage"
+- Event: "Event"
+- Charity / non-profit: "Organization" or "NGO"
+- Recipe: "Recipe"
+- Local business: "LocalBusiness"
+When a page suits multiple types, pick the most specific one. If genuinely uncertain, use "WebPage".
+
+INTERNAL LINKS GUIDANCE:
+- For each blogPost, provide 2–4 internalLinks: existing pages this article should link to, with descriptive anchor text. Prioritise commercial/landing pages to drive the funnel.
+- For each landingPage, provide 2–3 internalLinks: related existing content (blog posts, FAQs) that this page should reference.
+- For each pageOptimisation, provide 2–3 contextLinks: existing pages on the site that SHOULD link to this page (i.e. pages that would naturally mention or benefit from linking to this one). Base these on the sitemap pages shown above.
+- Anchor text must be natural, keyword-rich, and different from the page's own primary keyword (avoid self-referential anchors). Use path-only URLs (e.g. "domain.com/page/") not full https:// URLs.
+
 KEYWORD TYPE DEFINITIONS:
 - "primary": The EXACT search query a real person would type to find THIS specific page. Must be 2+ words from the PHRASE KEYWORDS section of the pool. Single-word entries are NEVER valid primaries. Exactly one per item.
 - "secondary": A closely related 2–4 word search phrase — a synonym, modifier, or variant of the primary. From PHRASE KEYWORDS section only. 1–3 per item.
@@ -931,13 +1004,20 @@ INTENT COVERAGE RULE: For each major topic (e.g. "qurbani", "zakat", "ramadan"),
 
 REMINDER: Keyword volumes in your output must match the KEYWORD POOL exactly. No invented volumes. No single-word primaries. No duplicated primary keywords across multiple items.`;
 
-// ─── Meta title auditor ─────────────────────────────────────────────────────
+// ─── On-page auditor ────────────────────────────────────────────────────────
 
-async function auditMetaTitle(
+const EMPTY_AUDIT: OnPageAudit = {
+  titleText: "", titlePresent: false, titleLength: 0, titleContainsKeyword: false,
+  descriptionText: "", descriptionPresent: false, descriptionLength: 0, descriptionContainsKeyword: false,
+  schemaTypes: [],
+  h1Text: "", h1Present: false, h1ContainsKeyword: false,
+};
+
+async function auditOnPage(
   domain: string,
   pagePath: string,
   primaryKeyword: string,
-): Promise<MetaTitleAudit> {
+): Promise<OnPageAudit> {
   // Reconstruct a full URL from the stored path (e.g. "domain.com/page/")
   const url = pagePath.startsWith("http")
     ? pagePath
@@ -948,22 +1028,65 @@ async function auditMetaTitle(
       signal: AbortSignal.timeout(8000),
       headers: { "User-Agent": "i3media-report/1.0 (SEO audit)" },
     });
-    if (!res.ok) {
-      return { titleText: "", titlePresent: false, titleLength: 0, titleContainsKeyword: false };
-    }
+    if (!res.ok) return { ...EMPTY_AUDIT };
     const html = await res.text();
-    const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-    const titleText = match ? match[1].replace(/\s+/g, " ").trim() : "";
-    const titleLower = titleText.toLowerCase();
     const kwLower = primaryKeyword.toLowerCase();
+
+    // Title
+    const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    const titleText = titleMatch ? titleMatch[1].replace(/\s+/g, " ").trim() : "";
+
+    // Meta description (handle both attribute orders)
+    const descMatch =
+      html.match(/<meta\s+name=["']description["']\s+content=["']([^"']*)["']/i) ??
+      html.match(/<meta\s+content=["']([^"']*)["']\s+name=["']description["']/i);
+    const descriptionText = descMatch ? descMatch[1].replace(/\s+/g, " ").trim() : "";
+
+    // Schema types from all JSON-LD blocks
+    const schemaTypes: string[] = [];
+    const ldBlocks = html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+    for (const block of ldBlocks) {
+      try {
+        const parsed = JSON.parse(block[1]) as Record<string, unknown> | Record<string, unknown>[];
+        const items = Array.isArray(parsed) ? parsed : [parsed];
+        for (const item of items) {
+          const type = item["@type"];
+          if (Array.isArray(type)) schemaTypes.push(...type.map(String));
+          else if (typeof type === "string" && type.trim()) schemaTypes.push(type.trim());
+          // Handle nested @graph
+          const graph = item["@graph"];
+          if (Array.isArray(graph)) {
+            for (const node of graph as Record<string, unknown>[]) {
+              const nt = node["@type"];
+              if (Array.isArray(nt)) schemaTypes.push(...nt.map(String));
+              else if (typeof nt === "string" && nt.trim()) schemaTypes.push(nt.trim());
+            }
+          }
+        }
+      } catch { /* malformed JSON-LD — skip */ }
+    }
+    const uniqueSchemaTypes = [...new Set(schemaTypes)];
+
+    // H1
+    const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    const h1TextRaw = h1Match ? h1Match[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim() : "";
+
     return {
       titleText,
       titlePresent: titleText.length > 0,
       titleLength: titleText.length,
-      titleContainsKeyword: titleLower.includes(kwLower),
+      titleContainsKeyword: titleText.toLowerCase().includes(kwLower),
+      descriptionText,
+      descriptionPresent: descriptionText.length > 0,
+      descriptionLength: descriptionText.length,
+      descriptionContainsKeyword: descriptionText.toLowerCase().includes(kwLower),
+      schemaTypes: uniqueSchemaTypes,
+      h1Text: h1TextRaw,
+      h1Present: h1TextRaw.length > 0,
+      h1ContainsKeyword: h1TextRaw.toLowerCase().includes(kwLower),
     };
   } catch {
-    return { titleText: "", titlePresent: false, titleLength: 0, titleContainsKeyword: false };
+    return { ...EMPTY_AUDIT };
   }
 }
 
@@ -1069,6 +1192,19 @@ export async function generateContentStrategy(
     return n >= 1 && n <= 5 ? Math.round(n) : undefined;
   }
 
+  // Helper: parse internalLinks / contextLinks arrays from AI output
+  function parseLinks(val: unknown): { url: string; anchorText: string }[] | undefined {
+    if (!Array.isArray(val) || val.length === 0) return undefined;
+    const parsed = (val as Record<string, unknown>[])
+      .filter((l) => typeof l.url === "string" && typeof l.anchorText === "string")
+      .map((l) => ({
+        url: (l.url as string).replace(/^https?:\/\//, "").replace(/^www\./, ""),
+        anchorText: String(l.anchorText).trim(),
+      }))
+      .filter((l) => l.url && l.anchorText);
+    return parsed.length > 0 ? parsed : undefined;
+  }
+
   const pageOptimisations: PageOptimisation[] = (
     Array.isArray(raw.pageOptimisations) ? raw.pageOptimisations : []
   )
@@ -1093,6 +1229,8 @@ export async function generateContentStrategy(
       impact: parseScore(p.impact),
       effort: parseScore(p.effort),
       intent: typeof p.intent === "string" && ["informational", "commercial", "transactional", "navigational"].includes(p.intent) ? p.intent : undefined,
+      suggestedSchema: typeof p.suggestedSchema === "string" && p.suggestedSchema.trim() ? p.suggestedSchema.trim() : undefined,
+      contextLinks: parseLinks(p.contextLinks),
     }));
 
   const landingPages: ProposedPage[] = (
@@ -1119,6 +1257,8 @@ export async function generateContentStrategy(
       impact: parseScore(p.impact),
       effort: parseScore(p.effort),
       intent: typeof p.intent === "string" && ["informational", "commercial", "transactional", "navigational"].includes(p.intent) ? p.intent : undefined,
+      suggestedSchema: typeof p.suggestedSchema === "string" && p.suggestedSchema.trim() ? p.suggestedSchema.trim() : undefined,
+      internalLinks: parseLinks(p.internalLinks),
     }));
 
   const blogPosts: BlogPost[] = (
@@ -1146,6 +1286,8 @@ export async function generateContentStrategy(
       effort: parseScore(p.effort),
       cluster: typeof p.cluster === "string" && p.cluster.trim() ? p.cluster.trim() : undefined,
       intent: typeof p.intent === "string" && ["informational", "commercial", "transactional", "navigational"].includes(p.intent) ? p.intent : undefined,
+      suggestedSchema: typeof p.suggestedSchema === "string" && p.suggestedSchema.trim() ? p.suggestedSchema.trim() : undefined,
+      internalLinks: parseLinks(p.internalLinks),
     }));
 
   const linkTargets: LinkTarget[] = (
@@ -1201,12 +1343,12 @@ export async function generateContentStrategy(
     return hasQuickWinPosition && hasVolume;
   });
 
-  // ── Meta title audit: crawl each page optimisation in parallel ──
+  // ── On-page audit: crawl each page optimisation in parallel ──
   // Cap at 20 pages to avoid excessive crawl time
   const auditResults = await Promise.all(
     pageOptimisations.slice(0, 20).map((opt) => {
       const primary = opt.keywords.find((k) => k.type === "primary") ?? opt.keywords[0];
-      return auditMetaTitle(domain, opt.url, primary?.keyword ?? "");
+      return auditOnPage(domain, opt.url, primary?.keyword ?? "");
     })
   );
   for (let i = 0; i < auditResults.length; i++) {
