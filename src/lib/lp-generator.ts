@@ -71,6 +71,10 @@ function buildGenerateSystemPrompt(brandContext: BrandContext): string {
     pageCopyBlock = `\n## Existing website copy (use as reference for tone, terminology, and messaging)\n\n${parts.join("\n")}\n`;
   }
 
+  const rawHtmlBlock = brandContext.rawHtml
+    ? `\n## Full current website HTML (complete source for deep brand, copy, and structural analysis)\n\n${brandContext.rawHtml.slice(0, 60000)}\n`
+    : "";
+
   return `You are an expert landing page designer, CRO specialist, and front-end developer.
 
 Your task is to generate a complete, standalone HTML landing page that is ready to deploy. The output must be a single HTML file with ALL CSS inlined in a <style> block. No external dependencies except Google Fonts if needed.
@@ -91,7 +95,7 @@ ${brandContext.contactInfo.phone ? `Phone: ${brandContext.contactInfo.phone}` : 
 ${brandContext.contactInfo.email ? `Email: ${brandContext.contactInfo.email}` : ""}
 
 Social links: ${brandContext.socialLinks.slice(0, 4).join(", ") || "None provided"}
-${pageCopyBlock}
+${pageCopyBlock}${rawHtmlBlock}
 ## Available imagery
 ${brandContext.imageryUrls.length ? brandContext.imageryUrls.slice(0, 6).map((u) => `- ${u}`).join("\n") : "No images available — use CSS gradients, patterns and emoji/icons for visual interest."}
 
@@ -158,13 +162,20 @@ Follow this general section order (adapt as appropriate):
 
 const REFINE_SYSTEM_PROMPT = `You are an expert landing page designer iterating on an existing landing page.
 
-The user will provide their current HTML and a change request. Apply the requested changes precisely while:
+CRITICAL RULE: Apply ONLY the specific changes requested. Do NOT:
+- Rewrite sections that were not mentioned
+- Change copy, headlines, or CTAs unless explicitly asked
+- Alter colours, fonts, or brand identity unless asked
+- Restructure the page layout unless asked
+- "Improve" anything that was not part of the request
 
-1. Preserving the overall brand identity (colours, fonts, logo, imagery)
-2. Making minimal, targeted changes — don't rewrite sections that weren't mentioned
-3. Maintaining responsive design and CRO best practices
-4. Keeping all CSS inline in the <style> block
-5. Preserving the data-lp-form="true" attribute on any forms
+For each requested change, make the smallest accurate edit possible. Treat every line you do not need to change as sacred — preserve it exactly.
+
+Always preserve:
+- The data-lp-form="true" attribute on any forms
+- All CSS custom properties and the <style> block structure
+- Responsive breakpoints and media queries
+- The overall section order and structure
 
 Return ONLY the complete updated HTML document. No markdown fences, no explanation.
 Start with <!DOCTYPE html> and end with </html>.
@@ -273,10 +284,16 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
   }
 
   // Add the current refinement request
-  let userContent = `Here is the current landing page HTML:\n\n${opts.currentHtml}\n\nBrand colours: ${colourSummary}\n\nPlease make the following changes:\n${opts.prompt}`;
+  let userContent = `Here is the current landing page HTML:\n\n${opts.currentHtml}\n\nBrand colours: ${colourSummary}`;
+
+  if (opts.brandContext.rawHtml) {
+    userContent += `\n\n## Original scraped website HTML (brand and copy reference):\n${opts.brandContext.rawHtml.slice(0, 40000)}`;
+  }
+
+  userContent += `\n\nPlease make the following changes:\n${opts.prompt}`;
 
   if (opts.referenceHtml) {
-    userContent += `\n\n## Reference page for inspiration\nThe user has uploaded an HTML page they like. Use it for structural and feature inspiration only — preserve the current page's brand identity, colours, and all existing copy:\n\n${opts.referenceHtml.slice(0, 12000)}`;
+    userContent += `\n\n## Reference page for inspiration\nThe user has uploaded an HTML page they like. Use it for structural and feature inspiration only — preserve the current page's brand identity, colours, and all existing copy:\n\n${opts.referenceHtml}`;
   }
 
   messages.push({ role: "user", content: userContent });
@@ -304,40 +321,44 @@ const CHAT_SYSTEM_PROMPT = `You are a senior CRO specialist and landing page exp
 Your role is to discuss improvements conversationally — analyse the page, research current trends when relevant, ask clarifying questions, suggest specific changes, and explain your reasoning. Do NOT generate HTML unless explicitly asked.
 
 Guidelines:
-- Be concise and specific. Focus on one key point per message.
+- Be concise and specific. Format your responses with **bold**, bullet points, and short paragraphs — your output is rendered as Markdown.
 - Use web search to find current landing page trends, layout patterns, CRO research, or industry-specific examples when relevant. Cite what you found.
 - Ask a single clarifying question if you need more context before recommending.
 - Reference the actual page content (headlines, CTAs, sections) when analysing.
 - If the user has uploaded a reference page, note what specific features or patterns from it would benefit the current page.
 
-## Action tags (output these on their own line at the end of your response)
+## Action tags (output these on their own line at the very end of your response, after all explanatory text)
 
-Use READY_TO_APPLY when you have identified a single, specific change the user wants to implement right now:
-  READY_TO_APPLY: <a clear, precise instruction Claude can use to update the HTML>
+Use READY_TO_APPLY when the user wants a single specific change applied to the HTML right now:
+  READY_TO_APPLY: <a clear, precise instruction for updating the HTML>
 
-Use STACK_CHANGE when building up a list of agreed changes to implement all at once later. Output one tag per change — you can output multiple in a single response:
-  STACK_CHANGE: <a clear, precise instruction Claude can use to update the HTML>
+Use STACK_CHANGE to add a change to the user's staged list for later batch implementation. Output one tag per discrete change:
+  STACK_CHANGE: <a clear, precise instruction for updating the HTML>
 
-When a user says "yes", "good idea", "save that", "add it to the list", "stack that", or agrees with a suggestion, output a STACK_CHANGE tag for it. When the user wants to apply one thing immediately, use READY_TO_APPLY instead.
+Rules:
+- When a user says "yes", "do it", "good idea", "save that", "add it to the list", "stack that", or agrees with a single suggestion, output ONE STACK_CHANGE for that agreement.
+- When a user says "stack all of those" or "add everything you suggested", output a STACK_CHANGE tag for each individual suggestion from your previous message.
+- When the user says "do it all now" or similar, output a single READY_TO_APPLY covering all discussed changes.
+- When the user wants to apply one thing immediately, use READY_TO_APPLY.
+- You MAY output both READY_TO_APPLY and one or more STACK_CHANGE tags in the same response if the situation calls for it.
+- Ensure instructions are unambiguous enough for the refine function to execute without further context.
 
-Never output both READY_TO_APPLY and STACK_CHANGE in the same response.
-
-- Use British English. Never use em dashes (— or &mdash;). Use commas, colons, or rewrite instead.`;
+Use British English. Never use em dashes (— or &mdash;). Use commas, colons, or rewrite instead.`;
 
 export async function chatAboutLandingPage(opts: ChatLPOptions): Promise<ChatLPResponse> {
   const anthropic = await getAnthropicClient();
 
   const messages: { role: "user" | "assistant"; content: string }[] = [];
 
-  // Include recent conversation history (last 8 turns — text only, cheap)
+  // Include recent conversation history (last 12 turns)
   if (opts.conversationHistory?.length) {
-    messages.push(...opts.conversationHistory.slice(-8));
+    messages.push(...opts.conversationHistory.slice(-12));
   }
 
-  let userContent = `Here is the current landing page HTML (truncated to 15,000 chars for reference):\n\n${opts.currentHtml.slice(0, 15000)}\n\n${opts.message}`;
+  let userContent = `Here is the current landing page HTML:\n\n${opts.currentHtml}\n\n${opts.message}`;
 
   if (opts.referenceHtml) {
-    userContent += `\n\n## Reference page the user uploaded\n${opts.referenceHtml.slice(0, 8000)}`;
+    userContent += `\n\n## Reference page the user uploaded\n${opts.referenceHtml}`;
   }
 
   messages.push({ role: "user", content: userContent });
@@ -348,7 +369,7 @@ export async function chatAboutLandingPage(opts: ChatLPOptions): Promise<ChatLPR
 
   const response = await anthropic.messages.create({
     model: MODEL,
-    max_tokens: 1500,
+    max_tokens: 2000,
     system: CHAT_SYSTEM_PROMPT,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tools: [webSearchTool] as any,

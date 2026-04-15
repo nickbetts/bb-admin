@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, use } from "react";
+import { useState, useEffect, useCallback, useRef, use, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -70,6 +70,63 @@ const STATUS_STYLES: Record<string, React.CSSProperties> = {
   published: { background: "var(--success-bg)", color: "var(--success-text)" },
   archived: { background: "var(--warning-bg)", color: "var(--warning-text)" },
 };
+
+// ── Markdown helpers (for chat bubble rendering) ─────────────────────────────
+
+function renderInline(text: string): ReactNode[] {
+  const parts: ReactNode[] = [];
+  const regex = /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
+    if (match[2]) parts.push(<strong key={key++}>{match[2]}</strong>);
+    else if (match[3]) parts.push(<em key={key++}>{match[3]}</em>);
+    else if (match[4]) parts.push(<code key={key++} style={{ background: "rgba(0,0,0,0.12)", padding: "1px 4px", borderRadius: 3, fontSize: "0.88em", fontFamily: "monospace" }}>{match[4]}</code>);
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts;
+}
+
+function renderMarkdown(text: string): ReactNode {
+  const lines = text.split("\n");
+  const elements: ReactNode[] = [];
+  let bulletBuffer: string[] = [];
+  let k = 0;
+  const flushBullets = () => {
+    if (bulletBuffer.length > 0) {
+      elements.push(
+        <ul key={k++} style={{ margin: "4px 0", paddingLeft: 18, listStyleType: "disc" }}>
+          {bulletBuffer.map((b, j) => <li key={j} style={{ margin: "2px 0" }}>{renderInline(b)}</li>)}
+        </ul>
+      );
+      bulletBuffer = [];
+    }
+  };
+  for (const line of lines) {
+    const stripped = line.trim();
+    if (/^[-*]\s+/.test(stripped)) {
+      bulletBuffer.push(stripped.replace(/^[-*]\s+/, ""));
+    } else {
+      flushBullets();
+      if (stripped === "") {
+        // skip blank lines
+      } else if (/^###\s+/.test(stripped)) {
+        elements.push(<h4 key={k++} style={{ margin: "6px 0 2px", fontSize: "0.88em", fontWeight: 700 }}>{renderInline(stripped.replace(/^###\s+/, ""))}</h4>);
+      } else if (/^##\s+/.test(stripped)) {
+        elements.push(<h3 key={k++} style={{ margin: "6px 0 3px", fontSize: "0.92em", fontWeight: 700 }}>{renderInline(stripped.replace(/^##\s+/, ""))}</h3>);
+      } else if (/^#\s+/.test(stripped)) {
+        elements.push(<h2 key={k++} style={{ margin: "5px 0 4px", fontSize: "0.95em", fontWeight: 700 }}>{renderInline(stripped.replace(/^#\s+/, ""))}</h2>);
+      } else {
+        elements.push(<p key={k++} style={{ margin: "2px 0" }}>{renderInline(line)}</p>);
+      }
+    }
+  }
+  flushBullets();
+  return <>{elements}</>;
+}
 
 export default function LandingPageEditor({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -148,8 +205,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
     try {
       const aiHistory = chatHistory
-        .filter((m) => m.role === "user")
-        .slice(-3)
+        .filter((m) => !m.content.startsWith("Applied changes →") && !m.content.startsWith("Reverted to") && !m.content.startsWith("Generated version"))
+        .slice(-10)
         .map((m) => ({ role: m.role, content: m.content }));
 
       const res = await fetch(`/api/tools/landing-pages/${id}/refine`, {
@@ -206,7 +263,8 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
     try {
       const aiHistory = chatHistory
-        .slice(-8)
+        .filter((m) => !m.content.startsWith("Applied changes →") && !m.content.startsWith("Reverted to") && !m.content.startsWith("Generated version"))
+        .slice(-12)
         .map((m) => ({ role: m.role, content: m.content }));
 
       const res = await fetch(`/api/tools/landing-pages/${id}/chat`, {
@@ -627,7 +685,11 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
                     ),
                   }}
                 >
-                  <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{msg.content}</p>
+                  <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                    {msg.role === "assistant" && msg.type === "chat"
+                      ? renderMarkdown(msg.content)
+                      : msg.content}
+                  </p>
                   {/* Refine version badges */}
                   {msg.role === "assistant" && msg.version && (
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, paddingTop: 6, borderTop: "1px solid rgba(128,128,128,0.15)" }}>

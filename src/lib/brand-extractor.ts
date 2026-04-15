@@ -38,6 +38,7 @@ export interface BrandContext {
     address?: string;
   };
   pageContent?: PageContent;
+  rawHtml?: string;     // Full source HTML of the scraped page — stored for deep LP generation context
 }
 
 // ── Main export ──────────────────────────────────────────────────────────────
@@ -135,6 +136,9 @@ export async function extractBrandContext(url: string): Promise<BrandContext> {
 
   // ── Page copy ────────────────────────────────────────────────────────────
   ctx.pageContent = extractPageContent(html);
+
+  // ── Raw HTML (for full-context LP generation) ────────────────────────────
+  ctx.rawHtml = html;
 
   return ctx;
 }
