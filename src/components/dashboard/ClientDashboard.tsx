@@ -18,6 +18,7 @@ import { KlaviyoSection } from "./KlaviyoSection";
 import { GoalsSection } from "./GoalsSection";
 import { HubSpotSection } from "./HubSpotSection";
 import { YouTubeSection } from "./YouTubeSection";
+import { ClientStatusControl } from "@/components/clients/ClientStatusControl";
 import { CallRailSection } from "./CallRailSection";
 import { ActionsSection } from "./ActionsSection";
 import { CommunicationsSection } from "./CommunicationsSection";
@@ -83,49 +84,6 @@ function toDateInputValue(d: Date) {
 
 function getDefaultTab(_client: Client): Tab {
   return "hub";
-}
-
-function ClientStatusControl({ clientId, currentStatus }: { clientId: string; currentStatus: string }) {
-  const [loading, setLoading] = useState<string | null>(null);
-
-  const options: { value: string; label: string; color: string; bg: string }[] = [
-    { value: "lead", label: "Lead", color: "#d97706", bg: "rgba(245,158,11,0.12)" },
-    { value: "active", label: "Active", color: "#16a34a", bg: "rgba(22,163,74,0.10)" },
-    { value: "lost", label: "Lost", color: "#64748b", bg: "rgba(100,116,139,0.10)" },
-  ];
-
-  async function handleChange(newStatus: string) {
-    if (newStatus === currentStatus) return;
-    setLoading(newStatus);
-    await fetch(`/api/clients/${clientId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
-    window.location.reload();
-  }
-
-  return (
-    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          onClick={() => handleChange(opt.value)}
-          disabled={loading !== null}
-          style={{
-            fontSize: 12, fontWeight: 700, padding: "4px 12px", borderRadius: 99, cursor: loading !== null ? "wait" : "pointer",
-            background: currentStatus === opt.value ? opt.bg : "transparent",
-            color: currentStatus === opt.value ? opt.color : "var(--text-3)",
-            border: `1.5px solid ${currentStatus === opt.value ? opt.color : "var(--border)"}`,
-            opacity: loading !== null && loading !== opt.value ? 0.5 : 1,
-            transition: "all 0.15s",
-          }}
-        >
-          {loading === opt.value ? "…" : opt.label}
-        </button>
-      ))}
-    </div>
-  );
 }
 
 export function ClientDashboard({ client, period: initialPeriod, userRole, permissions = [] }: ClientDashboardProps) {
@@ -285,7 +243,6 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
       {/* Status banner — shown for non-active clients */}
       {isRestricted && (
         <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16,
           padding: "12px 18px", marginBottom: 20, borderRadius: 12,
           background: isLost ? "rgba(100,116,139,0.06)" : "rgba(245,158,11,0.08)",
           border: `1px solid ${isLost ? "rgba(100,116,139,0.2)" : "rgba(245,158,11,0.25)"}`,
@@ -293,9 +250,8 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
           <span style={{ fontSize: 13, color: "var(--text-2)" }}>
             {isLost
               ? "This client is marked as lost — only the Hub is available."
-              : "This is a prospect — only the Hub is available. Once signed, mark as Active to unlock all channel tabs."}
+              : "This is a prospect — only the Hub is available. Once signed, mark as Active above to unlock all channel tabs."}
           </span>
-          <ClientStatusControl clientId={client.id} currentStatus={client.status ?? "lead"} />
         </div>
       )}
 
