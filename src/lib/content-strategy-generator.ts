@@ -287,8 +287,8 @@ async function expandKeywordsWithClaude(
     const prompt = `You are a semantic keyword research specialist. Given a website domain, a client brief, and a sample of existing ranking keywords, identify additional topic seeds to research via SEMrush.
 
 Focus on:
-- Synonyms and alternate spellings (e.g. "qurbani" / "udhiyah" / "udhiya", "zakat" / "zakaat" / "zakah", "sadaqah" / "sadaqa")
-- Different phrasings real UK searchers use for the same concept (e.g. "animal sacrifice donation" for qurbani)
+- Synonyms and alternate spellings (e.g. "solicitor" / "lawyer" / "legal adviser", "sofa" / "couch" / "settee", "trainers" / "sneakers")
+- Different phrasings real UK searchers use for the same concept (e.g. "roof repair" vs "roofing contractor" vs "roofer near me")
 - Related sub-topics and adjacent subjects not well represented in the existing keywords
 - Different audience angles or intent variations for the same topic
 - Seasonal, occasion-based, or event-driven keyword angles
@@ -814,29 +814,29 @@ RULE A — NEVER INVENT VOLUMES.
 Every keyword you include MUST appear verbatim in the KEYWORD POOL. Copy the exact spelling and volume. No exceptions — fabricated volumes destroy client trust.
 
 RULE B — SINGLE-WORD KEYWORDS ARE NEVER VALID AS PRIMARIES.
-The KEYWORD POOL is split into PHRASE KEYWORDS (2+ words) and SINGLE-WORD ENTRIES. Single-word entries like "family", "water", "compulsory", "charity", "food" are NEVER valid primary keywords for a blog post or landing page. They have zero search intent signal — nobody types one word into Google expecting to find a charity page. Only use single-word pool entries as context; never in your JSON output as primary.
+The KEYWORD POOL is split into PHRASE KEYWORDS (2+ words) and SINGLE-WORD ENTRIES. Single-word entries like "plumber", "insurance", "roofing", "solicitor", "software" are NEVER valid primary keywords for a blog post or landing page. They have zero search intent signal — nobody types one word into Google expecting to find a business page. Only use single-word pool entries as context; never in your JSON output as primary.
 
 RULE C — PRIMARY KEYWORDS MUST BE ACTUAL SEARCH QUERIES.
-Ask yourself: "Is this the exact phrase a real person would type into Google to find THIS specific page?" If not, it is not the right primary keyword. Examples of good primaries: "is qurbani compulsory in islam", "qurbani charity uk 2026", "how much does qurbani cost". Examples of BAD primaries: "family", "compulsory", "eid" — these are words, not search queries.
+Ask yourself: "Is this the exact phrase a real person would type into Google to find THIS specific page?" If not, it is not the right primary keyword. Examples of good primaries: "emergency plumber london 24 hour", "buy leather corner sofa uk", "how to fix a leaking flat roof". Examples of BAD primaries: "plumber", "sofa", "roofing" — these are words, not search queries.
 
 RULE D — LONG-TAIL KEYWORDS MUST BE 4+ WORDS.
-Long-tail means a specific, narrow search phrase — minimum 4 words, reflecting clear and targeted intent. "eid ul adha" is NOT long-tail. "eid ul adha qurbani charity 2026" is long-tail. "is qurbani compulsory for every muslim" is long-tail.
+Long-tail means a specific, narrow search phrase — minimum 4 words, reflecting clear and targeted intent. "web design" is NOT long-tail. "web design for small businesses uk" is long-tail. "how much does a website cost in 2026" is long-tail.
 
 RULE E — NO KEYWORD DUPLICATION ACROSS ITEMS.
-Each keyword (especially primary) should appear on at most ONE item in the entire strategy. If "qurbani 2026" is the primary for one blog post, it cannot appear as primary or secondary on anything else. Spread keywords across items; do not repeat.
+Each keyword (especially primary) should appear on at most ONE item in the entire strategy. If "flat roof repair cost uk" is the primary for one blog post, it cannot appear as primary or secondary on anything else. Spread keywords across items; do not repeat.
 
 RULE F — KEYWORDS MUST MATCH THE SEARCHER'S INTENT, NOT JUST THE TOPIC.
 The primary keyword must reflect the SPECIFIC intent of the page — not just share a word with the title. Before assigning a primary keyword, ask: "Would someone searching this exact phrase want to land on THIS specific page?" If the answer is no, the keyword does not belong — regardless of word overlap or volume.
-Example: A page about "What Is the Nisab Threshold for Qurbani? Who Must Give?" targets people who want to know whether THEY are obligated to give. The correct primaries are phrases like "how much qurbani do i have to give" (110), "who pays qurbani" (90), or "nisab threshold for qurbani" (5) — NOT "qurbani meaning" (590), because someone searching "qurbani meaning" wants a definition, not eligibility rules. Always match the searcher's goal to the page's purpose.
+Example: A page about "How Long Does Divorce Take in the UK?" targets people who need a timeline — not a definition of divorce. The correct primaries are phrases like "how long does divorce take uk" (1,600) or "average time for divorce uk" (480) — NOT "divorce solicitor" (2,400), because someone searching "divorce solicitor" is ready to hire, not looking for timelines. Always match the searcher's goal to the page's purpose.
 
 RULE G — MAXIMISE INTENT-RELEVANT VOLUME.
 Before assigning keywords to any item, scan the ENTIRE keyword pool for ALL phrases whose search intent aligns with the piece's specific topic. Do not settle for the first loosely-related keyword you spot — actively look for the highest-volume, most intent-aligned match.
-Process: (1) Read the content piece's title and notes. (2) Identify the core question or need the page answers. (3) Search the pool for keywords containing synonyms, related verbs, and alternate phrasings that reflect that same need — e.g. for a page about qurbani obligation, search for "compulsory", "obligatory", "must", "required", "who has to", "do i have to". (4) Assign the highest-volume intent-matched keyword as primary. (5) Use remaining intent-matched keywords as secondary and long-tail.
+Process: (1) Read the content piece's title and notes. (2) Identify the core question or need the page answers. (3) Search the pool for keywords containing synonyms, related verbs, and alternate phrasings that reflect that same need — e.g. for a page about boiler replacement cost, search for "price", "cost", "how much", "replace", "new boiler", "install". (4) Assign the highest-volume intent-matched keyword as primary. (5) Use remaining intent-matched keywords as secondary and long-tail.
 If data-rich keywords exist in the pool that perfectly match a piece's intent but are not assigned, that is a failure of the strategy.
 
 RULE H — DO NOT CLAIM THE PARENT TOPIC KEYWORD FOR A SPECIFIC PIECE.
-Every topic has a "parent keyword" — the broad term that describes the category, not a specific piece of content (e.g. "eid ul adha 2026", "zakat", "qurbani", "ramadan"). These belong to authoritative hub/overview pages, not individual articles. A blog post about how to celebrate Eid ul Adha must NOT use "eid ul adha 2026" as its primary — that keyword could equally apply to every other Eid-related page in the strategy and is dominated by Wikipedia, Islamic Relief, and official Islamic calendars.
-Test: if the same keyword could be claimed by 3 or more other items in your strategy, it is a parent topic keyword and must not be the primary for any single specific piece. Instead, find the sub-query that matches the precise angle of THIS content — e.g. "how to celebrate eid ul adha uk", "eid ul adha traditions for families", "celebrating eid ul adha 2026".
+Every topic has a "parent keyword" — the broad term that describes the category, not a specific piece of content (e.g. "car insurance", "web design", "personal injury", "kitchen renovation"). These belong to authoritative hub/overview pages, not individual articles. A blog post about how to reduce your car insurance premium must NOT use "car insurance" as its primary — that keyword could equally apply to every other car insurance page in the strategy and is dominated by comparison sites, large insurers, and government guidance.
+Test: if the same keyword could be claimed by 3 or more other items in your strategy, it is a parent topic keyword and must not be the primary for any single specific piece. Instead, find the sub-query that matches the precise angle of THIS content — e.g. "how to reduce car insurance premium uk", "cheapest car insurance for young drivers", "car insurance tips to save money 2026".
 
 RULE I — BALANCE VOLUME AGAINST KEYWORD DIFFICULTY (KD).
 KD is shown in the keyword pool where available (0–100; higher = harder to rank for). High volume does not guarantee ranking — a KD 80 keyword at 10,000/mo is effectively unreachable for most clients. Apply these thresholds:
@@ -850,7 +850,7 @@ Never assign a KD 70+ keyword as the primary for a blog post unless the client d
 CONTENT IDEATION — THINK BEYOND THE OBVIOUS
 ══════════════════════════════════════════════════════════
 
-Do NOT produce mechanical, literal content ideas. Do NOT name blog posts after keyword phrases (e.g. "Families Helped by Qurbani" is an internal heading, not an article title). Think like a Senior Content Strategist who understands the audience's psychology, seasonal triggers, and the full reader journey.
+Do NOT produce mechanical, literal content ideas. Do NOT name blog posts after keyword phrases (e.g. "Our Services" is a navigation label, not an article title). Think like a Senior Content Strategist who understands the audience's psychology, seasonal triggers, and the full reader journey.
 
 READER JOURNEY FRAMEWORK — for every cluster, think across all five stages:
 1. UNAWARE — they have a need but haven't identified a solution (emotional, seasonal, cultural triggers)
@@ -860,17 +860,17 @@ READER JOURNEY FRAMEWORK — for every cluster, think across all five stages:
 5. CONVERTED — keep them engaged (impact updates, referrals, thank you content)
 
 STRONG CONTENT ANGLES (use these as inspiration, not a checklist):
-- "Real stories" — beneficiary impact narratives (e.g. "The Village That Rebuilt After Our Donors Helped" — NOT "Impact Stories")
-- Seasonal timelines — content planned 6–8 weeks before peak periods (Ramadan, Eid ul-Adha, Dhul Hijjah, winter appeal)  
-- FAQ articles — answer the actual questions people type: "Is qurbani compulsory?", "How much does zakat cost?", "What happens to my qurbani donation?"
-- "Where does my money go?" explainers — transparency content that removes donor hesitation
-- Comparison/decision-helper content — "Qurbani vs Aqiqah: What's the Difference?", "Which Countries Need Qurbani Most?"
-- Cause tours / behind-the-scenes — "How We Distribute Qurbani in Bangladesh" (builds trust, drives sharing)
-- Countdown/urgency content — "10 Days of Dhul Hijjah: What to Do and Why It Matters"
+- "Real stories" — customer or client impact narratives (e.g. "How We Helped a Local Restaurant Double Their Covers" — NOT "Case Studies" or "Success Stories")
+- Seasonal timelines — content planned 6–8 weeks before peak periods (Black Friday for e-commerce, January for fitness and finance, spring for home improvement, September for B2B budget planning)  
+- FAQ articles — answer the actual questions people type: "How long does it take to get a quote?", "What is included in the service?", "How does the pricing work?"
+- "How it works" explainers — transparency content that removes buyer or client hesitation
+- Comparison/decision-helper content — "Flat Roof vs Pitched Roof: Which Is Cheaper?", "Which Solicitor Type Do I Need?", "Agency vs Freelancer: What's the Difference?"
+- Behind-the-scenes / case studies — "How We Delivered a Full Rebrand in 6 Weeks" (builds trust, drives sharing)
+- Countdown/urgency content — "5 Things to Do Before Your Boiler Breaks This Winter"
 
-CLUSTER DESIGN: Each cluster must contain 3–5 posts covering DIFFERENT stages of the reader journey. A cluster of "Qurbani" posts might cover: How Qurbani Works → Is It Compulsory → Where Does My Qurbani Go → Real Stories → Qurbani 2026: Dates & Prices. These are distinct articles that cross-link and build topical authority together.
+CLUSTER DESIGN: Each cluster must contain 3–5 posts covering DIFFERENT stages of the reader journey. A cluster of "Flat Roof Repair" posts might cover: What Is a Flat Roof? → Signs Your Roof Needs Replacing → Repair vs Replacement: What's Best? → How Much Does Flat Roof Repair Cost? → Case Study: A Full Flat Roof Replacement in Manchester. These are distinct articles that cross-link and build topical authority together.
 
-BLOG TITLES must sound like real articles someone would FIND and CLICK in search results. They should have a specific angle, hook, or question. Bad: "Families Helped by Qurbani" — Good: "What Happens to Your Qurbani After You Donate?" or "Real Families, Real Change: The Impact of UK Qurbani Donations".
+BLOG TITLES must sound like real articles someone would FIND and CLICK in search results. They should have a specific angle, hook, or question. Bad: "Our Services" or "Products We Sell" — Good: "Flat Roof vs Pitched Roof: Which Is Cheaper to Maintain?" or "7 Signs Your Roof Needs Replacing Before Winter".
 
 KEYWORD-FIRST CONTENT IDEATION: After drafting each content piece title, immediately ask: "What would a real person type into Google to find this exact content?" Work backwards from that question to find the best primary keyword in the pool — do not pick a keyword first and force a title around it, and do not pick a title first then grab the nearest keyword. The title and primary keyword must reflect the same specific intent.
 
@@ -880,8 +880,8 @@ OTHER RULES
 
 - BRIEF-REQUESTED TOPICS: If a BRIEF-REQUESTED TOPIC RESEARCH section is present, every topic seed MUST appear as at least one landing page or blog post — even if not in current rankings.
 - CLAUDE SEMANTIC EXPANSION: If a CLAUDE SEMANTIC EXPANSION section is present, actively use those discovered keywords when assigning keywords to items. These represent real search volume for synonyms and alternate terms — prioritise them for items covering relevant topics.
-- PILLAR / MEGA GUIDE PAGES: For any page covering a broad, high-volume topic (e.g. "The Complete Guide to Qurbani", "Everything About Zakat", "UK Islamic Charities Explained"), assign 5–8 keywords covering multiple sub-questions and angles. The notes MUST list specific H2 section headings and FAQ questions to include. Effort score must be 4 or 5. These are hub pages that build topical authority.
-- SEMANTIC BREADTH: If you recognise that a topic has common synonyms or alternate spellings that ARE in the keyword pool (e.g. "udhiyah" alongside "qurbani", "zakah" alongside "zakat"), assign both terms across related items. If alternate terms appear in the CLAUDE SEMANTIC EXPANSION section, use them. In the item's notes, flag any semantically related terms the writer should include naturally in the copy.
+- PILLAR / MEGA GUIDE PAGES: For any page covering a broad, high-volume topic (e.g. "The Complete Guide to [Service]", "Everything You Need to Know About [Topic]", "The Ultimate [Industry] Guide for UK Businesses"), assign 5–8 keywords covering multiple sub-questions and angles. The notes MUST list specific H2 section headings and FAQ questions to include. Effort score must be 4 or 5. These are hub pages that build topical authority.
+- SEMANTIC BREADTH: If you recognise that a topic has common synonyms or alternate spellings that ARE in the keyword pool (e.g. "solicitor" alongside "lawyer", "trainers" alongside "sneakers", "sofa" alongside "couch"), assign both terms across related items. If alternate terms appear in the CLAUDE SEMANTIC EXPANSION section, use them. In the item's notes, flag any semantically related terms the writer should include naturally in the copy.
 - URLs must be copied exactly as they appear in the data.
 - British English throughout.
 - Be THOROUGH — if the data supports 15 page optimisations, suggest 15. If 20 blog posts are warranted, suggest 20. A comprehensive strategy inspires confidence.
@@ -938,7 +938,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
         {"keyword": "related phrase from pool", "volume": 210, "type": "secondary"},
         {"keyword": "four plus word long-tail phrase from pool", "volume": 70, "type": "long-tail"}
       ],
-      "notes": "We will create this page to capture [specific audience] searching for [specific intent]. The page will cover [topics] with a clear donation/conversion path.",
+      "notes": "We will create this page to capture [specific audience] searching for [specific intent]. The page will cover [topics] with a clear call-to-action path.",
       "impact": 4,
       "effort": 3,
       "internalLinks": [
@@ -958,12 +958,12 @@ OUTPUT FORMAT (strict JSON, no markdown):
         {"keyword": "four plus word specific phrase from pool", "volume": 40, "type": "long-tail"}
       ],
       "notes": "We will write this article for [audience] at the [reader journey stage]. It will cover [specific angle], answer [real question], and link internally to [relevant commercial page].",
-      "cluster": "Cluster Name (e.g. Qurbani Guide, Zakat Explainers, Ramadan Hub)",
+      "cluster": "Cluster Name (e.g. Buying Guide, Service Hub, How-To Series, Seasonal Campaign)",
       "impact": 3,
       "effort": 2,
       "internalLinks": [
-        {"url": "domain.com/donation-page/", "anchorText": "donate qurbani online"},
-        {"url": "domain.com/service-page/", "anchorText": "our qurbani programme"}
+        {"url": "domain.com/service-page/", "anchorText": "descriptive anchor text for service"},
+        {"url": "domain.com/product-page/", "anchorText": "descriptive anchor text for product"}
       ]
     }
   ],
@@ -1008,12 +1008,12 @@ KEYWORD TYPE DEFINITIONS:
 
 INTENT FIELD DEFINITIONS (required on every pageOptimisation, landingPage, and blogPost):
 - "informational": Searcher wants to learn or understand something. Signals: "how", "what is", "why", "guide", "explained", "when", "is X compulsory", "what happens". These are blog posts and educational hub pages.
-- "commercial": Searcher is researching a purchase or donation decision. Signals: "best", "top", "review", "compare", "vs", "which charity", "cheapest", "recommended". These are comparison or decision-helper pages.
-- "transactional": Searcher is ready to act. Signals: "donate", "give", "buy", "price", "cost", "online", specific product/service/charity name paired with an action verb. These are conversion landing pages.
+- "commercial": Searcher is researching a purchase or service decision. Signals: "best", "top", "review", "compare", "vs", "which provider", "cheapest", "recommended". These are comparison or decision-helper pages.
+- "transactional": Searcher is ready to act. Signals: "buy", "order", "book", "hire", "get a quote", "price", "cost", "online", specific product/service/brand name paired with an action verb. These are conversion landing pages.
 - "navigational": Searcher is looking for a specific brand, site, or named resource.
 Use the [intent] labels in the KEYWORD POOL where shown. Where no label is available, infer intent from the keyword phrasing.
 
-INTENT COVERAGE RULE: For each major topic (e.g. "qurbani", "zakat", "ramadan"), ensure the strategy covers ALL applicable intent types where search demand exists in the pool. A topic that has both informational keywords ("is qurbani compulsory") and transactional keywords ("qurbani donation online") MUST have both an educational blog post and a conversion landing page. If a cluster only has blog posts but the pool contains transactional keywords for the same topic, add a landing page. If a cluster only has a landing page but the pool contains informational keywords, add a blog post. Gaps in intent coverage are gaps in the strategy.
+INTENT COVERAGE RULE: For each major topic in the client's sector (e.g. the main service, product category, or audience need), ensure the strategy covers ALL applicable intent types where search demand exists in the pool. A topic that has both informational keywords ("how does X work", "what is X") and transactional keywords ("buy X online uk", "X price uk") MUST have both an educational blog post and a conversion landing page. If a cluster only has blog posts but the pool contains transactional keywords for the same topic, add a landing page. If a cluster only has a landing page but the pool contains informational keywords, add a blog post. Gaps in intent coverage are gaps in the strategy.
 
 REMINDER: Keyword volumes in your output must match the KEYWORD POOL exactly. No invented volumes. No single-word primaries. No duplicated primary keywords across multiple items.`;
 
