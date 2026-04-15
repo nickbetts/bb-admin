@@ -356,10 +356,9 @@ export async function chatAboutLandingPage(opts: ChatLPOptions): Promise<ChatLPR
   });
 
   // Web search produces multiple content blocks; find the last text block (Claude's final answer)
-  const textBlocks = response.content.filter(
-    (b): b is { type: "text"; text: string } => b.type === "text"
-  );
-  const raw = textBlocks.length > 0 ? textBlocks[textBlocks.length - 1].text.trim() : "";
+  const textBlocks = response.content.filter((b) => b.type === "text");
+  const lastText = textBlocks[textBlocks.length - 1];
+  const raw = lastText && "text" in lastText ? (lastText.text as string).trim() : "";
 
   // Extract READY_TO_APPLY tag
   const tagMatch = raw.match(/READY_TO_APPLY:\s*(.+?)(?:\n|$)/);
