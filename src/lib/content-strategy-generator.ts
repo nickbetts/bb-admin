@@ -609,11 +609,12 @@ function buildAnalysisPrompt(
   }
   const kwPoolText = [
     "── PHRASE KEYWORDS (2+ words — valid as primary, secondary, or long-tail) ──",
-    "── Intent labels shown in [brackets] where known from SEMrush: [informational] [commercial] [transactional] [navigational] ──",
+    "── Format: \"keyword\": volume [intent] KD:difficulty — KD is 0–100, higher = harder to rank. Missing KD means no data. ──",
     ...phrasePool.slice(0, 500).map(([kw, vol]) => {
       const diff = difficultyMap.get(kw);
       const intentStr = diff?.intent && diff.intent !== "unknown" ? ` [${diff.intent}]` : "";
-      return `  "${kw}": ${vol}${intentStr}`;
+      const kdStr = diff?.difficulty != null ? ` KD:${diff.difficulty}` : "";
+      return `  "${kw}": ${vol}${intentStr}${kdStr}`;
     }),
     "",
     "── SINGLE-WORD ENTRIES (supplementary context only — NEVER use as a primary keyword for any blog post or landing page) ──",
@@ -832,6 +833,18 @@ RULE G — MAXIMISE INTENT-RELEVANT VOLUME.
 Before assigning keywords to any item, scan the ENTIRE keyword pool for ALL phrases whose search intent aligns with the piece's specific topic. Do not settle for the first loosely-related keyword you spot — actively look for the highest-volume, most intent-aligned match.
 Process: (1) Read the content piece's title and notes. (2) Identify the core question or need the page answers. (3) Search the pool for keywords containing synonyms, related verbs, and alternate phrasings that reflect that same need — e.g. for a page about qurbani obligation, search for "compulsory", "obligatory", "must", "required", "who has to", "do i have to". (4) Assign the highest-volume intent-matched keyword as primary. (5) Use remaining intent-matched keywords as secondary and long-tail.
 If data-rich keywords exist in the pool that perfectly match a piece's intent but are not assigned, that is a failure of the strategy.
+
+RULE H — DO NOT CLAIM THE PARENT TOPIC KEYWORD FOR A SPECIFIC PIECE.
+Every topic has a "parent keyword" — the broad term that describes the category, not a specific piece of content (e.g. "eid ul adha 2026", "zakat", "qurbani", "ramadan"). These belong to authoritative hub/overview pages, not individual articles. A blog post about how to celebrate Eid ul Adha must NOT use "eid ul adha 2026" as its primary — that keyword could equally apply to every other Eid-related page in the strategy and is dominated by Wikipedia, Islamic Relief, and official Islamic calendars.
+Test: if the same keyword could be claimed by 3 or more other items in your strategy, it is a parent topic keyword and must not be the primary for any single specific piece. Instead, find the sub-query that matches the precise angle of THIS content — e.g. "how to celebrate eid ul adha uk", "eid ul adha traditions for families", "celebrating eid ul adha 2026".
+
+RULE I — BALANCE VOLUME AGAINST KEYWORD DIFFICULTY (KD).
+KD is shown in the keyword pool where available (0–100; higher = harder to rank for). High volume does not guarantee ranking — a KD 80 keyword at 10,000/mo is effectively unreachable for most clients. Apply these thresholds:
+- Blog posts: prefer primaries with KD ≤ 50. If perfect-intent keywords exist at KD ≤ 50, always prefer them over higher-KD alternatives, even at lower volume.
+- Landing pages: KD ≤ 65 is generally achievable with strong on-page signals and some authority.
+- Page optimisations: KD can be higher (up to 80) since the page already has ranking history and existing authority on that topic.
+When KD data is unavailable for a keyword, use phrasing specificity as a proxy — more specific 4+ word phrases are typically lower KD than short generic ones.
+Never assign a KD 70+ keyword as the primary for a blog post unless the client domain has established authority (evident from strong organic traffic figures in the data).
 
 ══════════════════════════════════════════════════════════
 CONTENT IDEATION — THINK BEYOND THE OBVIOUS
