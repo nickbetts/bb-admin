@@ -55,6 +55,8 @@ interface DetectedCompetitor {
   commonKeywords: number;
   manual?: boolean;
   checking?: boolean;
+  scraped?: boolean;
+  pageContext?: { headings: string[]; description?: string; ctaTexts?: string[]; h1?: string };
 }
 
 // ─── Fun mode chaos ──────────────────────────────────────────────────────────
@@ -970,7 +972,13 @@ export default function ContentStrategyPage() {
       });
       const data = await res.json();
       setDetectedCompetitors((prev) =>
-        prev.map((c) => c.domain === raw ? { ...c, commonKeywords: data.commonKeywords ?? 0, checking: false } : c)
+        prev.map((c) => c.domain === raw ? {
+          ...c,
+          commonKeywords: data.commonKeywords ?? 0,
+          scraped: data.scraped ?? false,
+          pageContext: data.pageContext ?? undefined,
+          checking: false,
+        } : c)
       );
     } catch {
       setDetectedCompetitors((prev) =>
@@ -1008,6 +1016,9 @@ export default function ContentStrategyPage() {
           period,
           database: semrushDatabase,
           competitors: detectedCompetitors.map((c) => c.domain),
+          competitorContexts: detectedCompetitors
+            .filter((c) => c.scraped && c.pageContext)
+            .map((c) => ({ domain: c.domain, pageContext: c.pageContext! })),
           model: aiModel,
           limits: {
             ...(limitPageOpts ? { pageOptimisations: parseInt(limitPageOpts, 10) } : {}),
@@ -1359,9 +1370,11 @@ export default function ContentStrategyPage() {
                         <span style={{ fontWeight: 500 }}>{c.domain}</span>
                         {c.checking
                           ? <Loader2 style={{ width: 10, height: 10, animation: "spin 1s linear infinite", color: "var(--text-4)" }} />
-                          : c.manual && c.commonKeywords === 0
-                            ? <span style={{ fontSize: 10, color: "var(--text-4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>not found</span>
-                            : <span style={{ fontSize: 11, color: "var(--text-3)" }}>({c.commonKeywords.toLocaleString()} common)</span>
+                          : c.scraped
+                            ? <span style={{ fontSize: 10, color: "var(--warning, #d97706)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>scraped</span>
+                            : c.manual && c.commonKeywords === 0
+                              ? <span style={{ fontSize: 10, color: "var(--text-4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>not found</span>
+                              : <span style={{ fontSize: 11, color: "var(--text-3)" }}>({c.commonKeywords.toLocaleString()} common)</span>
                         }
                         <button
                           type="button"

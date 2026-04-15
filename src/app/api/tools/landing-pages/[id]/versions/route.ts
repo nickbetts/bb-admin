@@ -34,7 +34,7 @@ export async function GET(
   return NextResponse.json({ versions });
 }
 
-// POST /api/tools/landing-pages/[id]/versions — revert to a specific version
+// POST /api/tools/landing-pages/[id]/versions — revert to a specific version OR save new version
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -50,9 +50,29 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await request.json() as { versionNumber: number };
+  const body = await request.json() as { versionNumber?: number; save?: boolean; description?: string };
+
+  // Manual save: create a new version from current HTML
+  if (body.save) {
+    const latestVersion = await prisma.landingPageVersion.findFirst({
+      where: { landingPageId: id },
+      orderBy: { versionNumber: "desc" },
+    });
+    const nextNumber = (latestVersion?.versionNumber ?? 0) + 1;
+    const version = await prisma.landingPageVersion.create({
+      data: {
+        landingPageId: id,
+        versionNumber: nextNumber,
+        html: landingPage.currentHtml,
+        prompt: body.description || "Manual save",
+      },
+    });
+    return NextResponse.json({ success: true, version });
+  }
+
+  // Revert to a specific version
   if (!body.versionNumber) {
-    return NextResponse.json({ error: "versionNumber is required" }, { status: 400 });
+    return NextResponse.json({ error: "versionNumber or save is required" }, { status: 400 });
   }
 
   const version = await prisma.landingPageVersion.findUnique({

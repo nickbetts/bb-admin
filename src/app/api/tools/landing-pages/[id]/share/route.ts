@@ -24,14 +24,20 @@ export async function POST(
 
   // If already shared, return existing token
   if (landingPage.shareToken) {
-    return NextResponse.json({ shareToken: landingPage.shareToken });
+    return NextResponse.json({
+      shareToken: landingPage.shareToken,
+      publicSlug: (landingPage as Record<string, unknown>).publicSlug ?? null,
+    });
   }
 
   const shareToken = crypto.randomBytes(32).toString("hex");
 
+  // Generate a pretty public slug from the LP slug
+  const publicSlug = landingPage.slug + "-" + shareToken.slice(0, 8);
+
   await prisma.landingPage.update({
     where: { id },
-    data: { shareToken },
+    data: { shareToken, publicSlug },
   });
 
   logActivity({

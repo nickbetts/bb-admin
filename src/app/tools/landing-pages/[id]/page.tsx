@@ -22,7 +22,36 @@ import {
   MessageSquare,
   Wand2,
   FileCode,
+  Code,
+  Layers,
+  Palette,
+  MousePointer,
+  Undo2,
+  Redo2,
+  Copy,
+  Trash2,
+  GripVertical,
+  Sparkles,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { injectEditorScript, removeEditorScript, applyTextEdit } from "@/lib/lp-editor-inject";
+import { parseSections, reorderSections, duplicateSection, deleteSection, setSectionAnimation, type LPSection } from "@/lib/lp-section-parser";
+import { ANIMATION_PRESETS, injectAnimations } from "@/lib/lp-animations";
+import { parseCSSVariables, updateCSSVariable, type CSSVariable } from "@/lib/lp-css-parser";
 
 interface LandingPage {
   id: string;
@@ -31,6 +60,7 @@ interface LandingPage {
   currentHtml: string;
   status: string;
   shareToken: string | null;
+  publicSlug: string | null;
   viewCount: number;
   briefJson: string;
   brandContextJson: string;
@@ -51,6 +81,7 @@ interface Version {
 }
 
 type DeviceMode = "desktop" | "tablet" | "mobile";
+type SidebarTab = "chat" | "code" | "sections" | "design";
 
 const DEVICE_WIDTHS: Record<DeviceMode, string> = {
   desktop: "100%",
@@ -70,6 +101,66 @@ const STATUS_STYLES: Record<string, React.CSSProperties> = {
   published: { background: "var(--success-bg)", color: "var(--success-text)" },
   archived: { background: "var(--warning-bg)", color: "var(--warning-text)" },
 };
+
+const SIDEBAR_TABS: { id: SidebarTab; icon: typeof MessageSquare; label: string }[] = [
+  { id: "chat", icon: MessageSquare, label: "Chat" },
+  { id: "code", icon: Code, label: "Code" },
+  { id: "sections", icon: Layers, label: "Sections" },
+  { id: "design", icon: Palette, label: "Design" },
+];
+
+/* ── Sortable section row for the organiser ──────────────────────────────── */
+
+function SortableSectionRow({
+  section,
+  onDuplicate,
+  onDelete,
+  onAnimationChange,
+}: {
+  section: LPSection;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  onAnimationChange: (anim: string | null) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    display: "flex", alignItems: "center", gap: 8,
+    padding: "8px 10px", borderRadius: "var(--r-sm)",
+    background: isDragging ? "var(--accent-bg)" : "var(--surface)",
+    border: "1px solid var(--border)",
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <button {...attributes} {...listeners} style={{ cursor: "grab", color: "var(--text-4)", background: "none", border: "none", padding: 0, display: "flex" }}>
+        <GripVertical style={{ width: 14, height: 14 }} />
+      </button>
+      <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: "var(--text-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span style={{ fontSize: 10, color: "var(--text-4)", marginRight: 4 }}>{section.tagName}</span>
+        {section.label}
+      </span>
+      <select
+        value={section.animation ?? ""}
+        onChange={(e) => onAnimationChange(e.target.value || null)}
+        style={{ fontSize: 10, padding: "2px 4px", border: "1px solid var(--border)", borderRadius: "var(--r-sm)", background: "var(--surface)", color: "var(--text-3)", cursor: "pointer" }}
+        title="Animation"
+      >
+        <option value="">No animation</option>
+        {ANIMATION_PRESETS.map((p) => (
+          <option key={p.id} value={p.id}>{p.label}</option>
+        ))}
+      </select>
+      <button onClick={onDuplicate} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2, display: "flex" }} title="Duplicate section">
+        <Copy style={{ width: 12, height: 12 }} />
+      </button>
+      <button onClick={onDelete} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--error-text)", padding: 2, display: "flex" }} title="Delete section">
+        <Trash2 style={{ width: 12, height: 12 }} />
+      </button>
+    </div>
+  );
+}
 
 // ── Markdown helpers (for chat bubble rendering) ─────────────────────────────
 
@@ -161,6 +252,33 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const [templateCategory, setTemplateCategory] = useState("lead-gen");
   const [templateDesc, setTemplateDesc] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
+
+  // ── NEW: Sidebar tabs ─────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<SidebarTab>("chat");
+
+  // ── NEW: Edit mode (live text editing) ────────────────────────────────────
+  const [editMode, setEditMode] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // ── NEW: Undo/redo ────────────────────────────────────────────────────────
+  const [htmlHistory, setHtmlHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const skipHistoryRef = useRef(false);
+
+  // ── NEW: Code editor ──────────────────────────────────────────────────────
+  const codeEditorRef = useRef<HTMLDivElement>(null);
+  const editorViewRef = useRef<import("@codemirror/view").EditorView | null>(null);
+
+  // ── NEW: Auto-save debounce ───────────────────────────────────────────────
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [savingVersion, setSavingVersion] = useState(false);
+
+  // ── NEW: Section organiser ────────────────────────────────────────────────
+  const [sections, setSections] = useState<LPSection[]>([]);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  // ── NEW: Design panel ─────────────────────────────────────────────────────
+  const [cssVars, setCssVars] = useState<CSSVariable[]>([]);
 
   const fetchLP = useCallback(async () => {
     try {

@@ -8,6 +8,7 @@ import {
   estimateApiUnits,
   type StrategyModel,
   type ContentStrategyLimits,
+  type CompetitorPageContext,
 } from "@/lib/content-strategy-generator";
 
 export async function POST(request: NextRequest) {
@@ -92,6 +93,7 @@ export async function POST(request: NextRequest) {
 
     // ── Default action: generate strategy ─────────────────────────────────
     const competitors = (body.competitors as string[] | undefined) || [];
+    const competitorContexts = (body.competitorContexts as { domain: string; pageContext: CompetitorPageContext }[] | undefined) || [];
     const finalPeriod =
       period ||
       new Date().toLocaleDateString("en-GB", {
@@ -123,6 +125,7 @@ export async function POST(request: NextRequest) {
       client.searchConsoleSiteUrl,
       model === "claude-opus-4-6" ? "claude-opus-4-6" : "gpt-5.4",
       activeLimits,
+      competitorContexts.length > 0 ? competitorContexts : undefined,
     );
     const generationMs = Date.now() - genStart;
 

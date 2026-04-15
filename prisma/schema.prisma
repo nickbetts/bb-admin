@@ -618,6 +618,7 @@ model LandingPage {
   brandContextJson String               // JSON: extracted brand data (colours, fonts, logo, imagery)
   formConfig       String               @default("{}") // JSON: { builtInFields?: string[], externalFormUrl?: string }
   shareToken       String?              @unique
+  publicSlug       String?              @unique   // Pretty URL slug for /lp/{slug}
   viewCount        Int                  @default(0)
   lastViewedAt     DateTime?
   status           String               @default("draft") // draft | published | archived

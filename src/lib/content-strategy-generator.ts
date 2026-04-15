@@ -452,17 +452,86 @@ export async function detectCompetitors(
   }));
 }
 
+export interface CompetitorPageContext {
+  headings: string[];
+  description?: string;
+  ctaTexts?: string[];
+  h1?: string;
+}
+
+/**
+ * Lightweight scrape of a competitor's homepage. Returns key page signals that
+ * Claude can use when building the content strategy, even when SEMrush has no
+ * keyword overlap data for the domain.
+ */
+async function scrapeCompetitorSite(domain: string): Promise<CompetitorPageContext | null> {
+  try {
+    const url = `https://${domain}`;
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(8000),
+      headers: { "User-Agent": "i3media-report/1.0" },
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+
+    // Meta description
+    const descMatch =
+      html.match(/<meta\s+name=["']description["']\s+content=["']([^"']*)["']/i) ??
+      html.match(/<meta\s+content=["']([^"']*)["']\s+name=["']description["']/i);
+    const description = descMatch ? descMatch[1].replace(/\s+/g, " ").trim() : undefined;
+
+    // H1
+    const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    const h1 = h1Match ? h1Match[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim() : undefined;
+
+    // H2 / H3 headings
+    const headingMatches = [...html.matchAll(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/gi)];
+    const headings = headingMatches
+      .map((m) => m[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim())
+      .filter((h) => h.length > 2 && h.length < 200)
+      .slice(0, 20);
+
+    // CTA button / link text
+    const ctaMatches = [...html.matchAll(/<(?:button|a)[^>]*>([\s\S]*?)<\/(?:button|a)>/gi)];
+    const ctaTexts = ctaMatches
+      .map((m) => m[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim())
+      .filter((t) => t.length > 2 && t.length < 80)
+      .filter((t) => /book|enquire|contact|get|call|start|learn|find|buy|order|sign|join|download|request|quote/i.test(t))
+      .slice(0, 8);
+
+    return { headings, description, ctaTexts, h1 };
+  } catch {
+    return null;
+  }
+}
+
 export async function validateCompetitor(
   domain: string,
   competitor: string,
   database: string = "uk",
-): Promise<{ commonKeywords: number }> {
+): Promise<{ commonKeywords: number; scraped: boolean; pageContext?: CompetitorPageContext }> {
   const commonKeywords = await withApiCache(
     `cs:competitor-overlap:${domain}:${competitor}:${database}`,
     168,
     () => getSingleCompetitorOverlap(domain, competitor, database),
   );
-  return { commonKeywords };
+
+  if (commonKeywords > 0) {
+    return { commonKeywords, scraped: false };
+  }
+
+  // No SEMrush overlap — scrape the competitor's site for qualitative context
+  const pageContext = await withApiCache(
+    `cs:competitor-scrape:${competitor}`,
+    168,
+    () => scrapeCompetitorSite(competitor),
+  );
+
+  return {
+    commonKeywords: 0,
+    scraped: pageContext !== null,
+    pageContext: pageContext ?? undefined,
+  };
 }
 
 // ─── Group keywords by page URL ─────────────────────────────────────────────
@@ -562,6 +631,7 @@ function buildAnalysisPrompt(
   clientName: string,
   brief: string,
   data: CollectedData,
+  competitorContexts?: { domain: string; pageContext: CompetitorPageContext }[],
 ): string {
   const useGsc = data.dataSource === "gsc+semrush" && data.gscQueryPages.length > 0;
   const pages = groupKeywordsByPage(data.organicKeywords);
@@ -813,6 +883,18 @@ These keywords were found by analysing synonyms, alternate spellings, and relate
 ${data.expandedTopics.map((r) => {
   const topKws = r.keywords.slice(0, 8).map((k) => `    "${k.keyword}" — vol:${k.volume} KD:${k.difficulty}`).join("\n");
   return `Expanded seed: "${r.topic}"\nKeywords found:\n${topKws || "    (no volume data — consider targeting as contextual terms)"}`;
+}).join("\n\n")}` : ""}
+${competitorContexts && competitorContexts.length > 0 ? `
+═══ MANUALLY-ADDED COMPETITOR INTELLIGENCE (site-scraped, no SEMrush data) ═══
+These competitors have no measurable keyword overlap in SEMrush — they may be small, new, or niche players. Their sites were scraped to provide qualitative context about what they offer and how they position themselves. Use this to identify positioning gaps, service areas they cover that the client doesn't yet rank for, and angles the client could differentiate on.
+
+${competitorContexts.map(({ domain: cd, pageContext: ctx }) => {
+  const lines: string[] = [`Competitor: ${cd}`];
+  if (ctx.description) lines.push(`  Meta description: ${ctx.description}`);
+  if (ctx.h1) lines.push(`  Main heading (H1): ${ctx.h1}`);
+  if (ctx.headings.length > 0) lines.push(`  Page headings: ${ctx.headings.slice(0, 10).join("; ")}`);
+  if (ctx.ctaTexts && ctx.ctaTexts.length > 0) lines.push(`  Call-to-action texts: ${ctx.ctaTexts.join(", ")}`);
+  return lines.join("\n");
 }).join("\n\n")}` : ""}`;
 }
 
@@ -1128,6 +1210,7 @@ export async function generateContentStrategy(
   searchConsoleSiteUrl?: string | null,
   model: StrategyModel = "claude-opus-4-6",
   limits?: ContentStrategyLimits,
+  competitorContexts?: { domain: string; pageContext: CompetitorPageContext }[],
 ): Promise<{ data: ContentStrategyData; collectedData: CollectedData; autoCompetitors: string[] }> {
   // Step 1: Collect data (uses GSC when available, falls back to SEMrush-only)
   const collectedData = await collectSemrushData(domain, competitors, database, searchConsoleSiteUrl, brief);
@@ -1144,6 +1227,7 @@ export async function generateContentStrategy(
     clientName,
     brief,
     collectedData,
+    competitorContexts,
   );
 
   // Step 3: Call the chosen AI model for intelligent analysis

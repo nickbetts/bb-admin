@@ -55,6 +55,8 @@ export async function PUT(
     slug?: string;
     status?: string;
     formConfig?: Record<string, unknown>;
+    html?: string;       // Direct HTML update (text editing, code editor, etc.)
+    publicSlug?: string;
   };
 
   const data: Record<string, unknown> = {};
@@ -62,6 +64,8 @@ export async function PUT(
   if (body.slug !== undefined) data.slug = body.slug;
   if (body.status !== undefined) data.status = body.status;
   if (body.formConfig !== undefined) data.formConfig = JSON.stringify(body.formConfig);
+  if (body.html !== undefined) data.currentHtml = body.html;
+  if (body.publicSlug !== undefined) data.publicSlug = body.publicSlug;
 
   const updated = await prisma.landingPage.update({
     where: { id },
