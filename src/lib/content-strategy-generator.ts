@@ -39,6 +39,7 @@ interface ParsedKeyword {
   keyword: string;
   volume: number;
   type?: "primary" | "secondary" | "long-tail";
+  intent?: string; // "informational" | "commercial" | "transactional" | "navigational"
 }
 
 interface MetaTitleAudit {
@@ -57,6 +58,7 @@ interface PageOptimisation {
   effort?: number; // 1–5
   quickWin?: boolean; // derived: any keyword pos 4–10, vol >= 100
   audit?: MetaTitleAudit; // on-page audit added at generation time
+  intent?: string; // "informational" | "commercial" | "transactional" | "navigational"
 }
 
 interface ProposedPage {
@@ -66,6 +68,7 @@ interface ProposedPage {
   priority: boolean;
   impact?: number;
   effort?: number;
+  intent?: string; // "informational" | "commercial" | "transactional" | "navigational"
 }
 
 interface BlogPost {
@@ -76,6 +79,7 @@ interface BlogPost {
   impact?: number;
   effort?: number;
   cluster?: string; // topical cluster grouping
+  intent?: string; // "informational" | "commercial" | "transactional" | "navigational"
 }
 
 interface LinkTarget {
@@ -587,7 +591,12 @@ function buildAnalysisPrompt(
   }
   const kwPoolText = [
     "── PHRASE KEYWORDS (2+ words — valid as primary, secondary, or long-tail) ──",
-    ...phrasePool.slice(0, 500).map(([kw, vol]) => `  "${kw}": ${vol}`),
+    "── Intent labels shown in [brackets] where known from SEMrush: [informational] [commercial] [transactional] [navigational] ──",
+    ...phrasePool.slice(0, 500).map(([kw, vol]) => {
+      const diff = difficultyMap.get(kw);
+      const intentStr = diff?.intent && diff.intent !== "unknown" ? ` [${diff.intent}]` : "";
+      return `  "${kw}": ${vol}${intentStr}`;
+    }),
     "",
     "── SINGLE-WORD ENTRIES (supplementary context only — NEVER use as a primary keyword for any blog post or landing page) ──",
     ...singleWordPool.slice(0, 100).map(([kw, vol]) => `  "${kw}": ${vol}`),
@@ -850,6 +859,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "pageOptimisations": [
     {
       "url": "domain.com/page/",
+      "intent": "commercial",
       "keywords": [
         {"keyword": "exact phrase from pool", "volume": 1000, "type": "primary"},
         {"keyword": "related phrase from pool", "volume": 480, "type": "secondary"},
@@ -863,6 +873,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "landingPages": [
     {
       "title": "Specific, Audience-Focused Page Title",
+      "intent": "transactional",
       "keywords": [
         {"keyword": "transactional phrase from pool", "volume": 500, "type": "primary"},
         {"keyword": "related phrase from pool", "volume": 210, "type": "secondary"},
@@ -876,6 +887,7 @@ OUTPUT FORMAT (strict JSON, no markdown):
   "blogPosts": [
     {
       "title": "A Real Article Title Someone Would Click In Search Results",
+      "intent": "informational",
       "keywords": [
         {"keyword": "informational phrase from pool", "volume": 200, "type": "primary"},
         {"keyword": "related phrase from pool", "volume": 90, "type": "secondary"},
@@ -907,6 +919,15 @@ KEYWORD TYPE DEFINITIONS:
 - "primary": The EXACT search query a real person would type to find THIS specific page. Must be 2+ words from the PHRASE KEYWORDS section of the pool. Single-word entries are NEVER valid primaries. Exactly one per item.
 - "secondary": A closely related 2–4 word search phrase — a synonym, modifier, or variant of the primary. From PHRASE KEYWORDS section only. 1–3 per item.
 - "long-tail": A 4+ word phrase with SPECIFIC narrow intent. Must reflect a real question or highly targeted search. From PHRASE KEYWORDS section only. 1–3 per item.
+
+INTENT FIELD DEFINITIONS (required on every pageOptimisation, landingPage, and blogPost):
+- "informational": Searcher wants to learn or understand something. Signals: "how", "what is", "why", "guide", "explained", "when", "is X compulsory", "what happens". These are blog posts and educational hub pages.
+- "commercial": Searcher is researching a purchase or donation decision. Signals: "best", "top", "review", "compare", "vs", "which charity", "cheapest", "recommended". These are comparison or decision-helper pages.
+- "transactional": Searcher is ready to act. Signals: "donate", "give", "buy", "price", "cost", "online", specific product/service/charity name paired with an action verb. These are conversion landing pages.
+- "navigational": Searcher is looking for a specific brand, site, or named resource.
+Use the [intent] labels in the KEYWORD POOL where shown. Where no label is available, infer intent from the keyword phrasing.
+
+INTENT COVERAGE RULE: For each major topic (e.g. "qurbani", "zakat", "ramadan"), ensure the strategy covers ALL applicable intent types where search demand exists in the pool. A topic that has both informational keywords ("is qurbani compulsory") and transactional keywords ("qurbani donation online") MUST have both an educational blog post and a conversion landing page. If a cluster only has blog posts but the pool contains transactional keywords for the same topic, add a landing page. If a cluster only has a landing page but the pool contains informational keywords, add a blog post. Gaps in intent coverage are gaps in the strategy.
 
 REMINDER: Keyword volumes in your output must match the KEYWORD POOL exactly. No invented volumes. No single-word primaries. No duplicated primary keywords across multiple items.`;
 
@@ -1071,6 +1092,7 @@ export async function generateContentStrategy(
       priority: false,
       impact: parseScore(p.impact),
       effort: parseScore(p.effort),
+      intent: typeof p.intent === "string" && ["informational", "commercial", "transactional", "navigational"].includes(p.intent) ? p.intent : undefined,
     }));
 
   const landingPages: ProposedPage[] = (
@@ -1096,6 +1118,7 @@ export async function generateContentStrategy(
       priority: false,
       impact: parseScore(p.impact),
       effort: parseScore(p.effort),
+      intent: typeof p.intent === "string" && ["informational", "commercial", "transactional", "navigational"].includes(p.intent) ? p.intent : undefined,
     }));
 
   const blogPosts: BlogPost[] = (
@@ -1122,6 +1145,7 @@ export async function generateContentStrategy(
       impact: parseScore(p.impact),
       effort: parseScore(p.effort),
       cluster: typeof p.cluster === "string" && p.cluster.trim() ? p.cluster.trim() : undefined,
+      intent: typeof p.intent === "string" && ["informational", "commercial", "transactional", "navigational"].includes(p.intent) ? p.intent : undefined,
     }));
 
   const linkTargets: LinkTarget[] = (

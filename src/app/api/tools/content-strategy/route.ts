@@ -30,6 +30,7 @@ interface PageOptimisation {
   effort?: number;
   quickWin?: boolean;
   audit?: MetaTitleAudit;
+  intent?: string;
 }
 
 interface ProposedPage {
@@ -39,6 +40,7 @@ interface ProposedPage {
   priority: boolean;
   impact?: number;
   effort?: number;
+  intent?: string;
 }
 
 interface BlogPost {
@@ -49,6 +51,7 @@ interface BlogPost {
   impact?: number;
   effort?: number;
   cluster?: string;
+  intent?: string;
 }
 
 interface LinkTarget {
@@ -510,6 +513,14 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
     return n.toLocaleString("en-GB");
   }
 
+  function intentBadge(intent?: string): string {
+    if (!intent) return "";
+    const labels: Record<string, string> = { informational: "Informational", commercial: "Commercial", transactional: "Transactional", navigational: "Navigational" };
+    const label = labels[intent];
+    if (!label) return "";
+    return `<span class="intent-badge intent-${esc(intent)}">${label}</span>`;
+  }
+
   // Sort by impact desc
   function sortByImpact<T extends { keywords: ParsedKeyword[]; impact?: number }>(arr: T[], volThreshold: number): T[] {
     return [...arr].sort((a, b) => {
@@ -532,7 +543,7 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
               <button class="cs-edit-btn cs-regen" onclick="regenItem(this)">Suggest another</button>
             </div>
             <div class="opt-block-hdr">
-              <div class="opt-block-url"><a href="https://${esc(opt.url)}" target="_blank" rel="noopener">${esc(opt.url)}</a></div>
+              <div class="opt-block-url"><a href="https://${esc(opt.url)}" target="_blank" rel="noopener">${esc(opt.url)}</a>${intentBadge(opt.intent)}</div>
             </div>
             <p class="opt-notes">${esc(opt.notes)}</p>
             <table class="kw-table">
@@ -557,7 +568,7 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
               <button class="cs-edit-btn cs-regen" onclick="regenItem(this)">Suggest another</button>
             </div>
             <div class="opt-block-hdr">
-              <div class="opt-block-url"><a href="https://${esc(opt.url)}" target="_blank" rel="noopener">${esc(opt.url)}</a></div>
+              <div class="opt-block-url"><a href="https://${esc(opt.url)}" target="_blank" rel="noopener">${esc(opt.url)}</a>${intentBadge(opt.intent)}</div>
             </div>
             ${opt.notes ? `<p class="opt-notes">${esc(opt.notes)}</p>` : ""}
             <table class="kw-table">
@@ -583,7 +594,7 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
               <button class="cs-edit-btn cs-regen" onclick="regenItem(this)">Suggest another</button>
             </div>
             <div class="new-page-card-hdr">
-              <div class="new-page-title">${esc(page.title)}</div>
+              <div class="new-page-title">${esc(page.title)}${intentBadge(page.intent)}</div>
             </div>
             <p class="new-page-desc">${esc(desc)}</p>
             <div class="new-page-kws">
@@ -632,7 +643,7 @@ function generateHtml(data: SpreadsheetData, aiContent: Record<string, string>):
             </div>
             <div class="blog-item-body">
               <div class="blog-item-top">
-                <div class="blog-title">${esc(post.title)}</div>
+                <div class="blog-title">${esc(post.title)}${intentBadge(post.intent)}</div>
               </div>
               <p class="blog-desc">${esc(desc)}</p>
               <div class="blog-kw-row">
@@ -836,6 +847,11 @@ main { min-width: 0; display: flex; flex-direction: column; gap: 2rem; }
 .kw-type-primary { background: #7c3aed22; color: #7c3aed; }
 .kw-type-secondary { background: #2563eb22; color: #2563eb; }
 .kw-type-longtail { background: #0891b222; color: #0891b2; }
+.intent-badge { display: inline-block; font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: .15rem .5rem; border-radius: 4px; margin-left: .4rem; vertical-align: middle; }
+.intent-informational { background: #dbeafe; color: #1d4ed8; }
+.intent-commercial { background: #fef3c7; color: #92400e; }
+.intent-transactional { background: #d1fae5; color: #065f46; }
+.intent-navigational { background: #f3e8ff; color: #6b21a8; }
 .audit-panel { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; padding: .5rem .75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: .75rem; }
 .audit-label { font-weight: 600; color: var(--muted); }
 .audit-badge { padding: .15rem .45rem; border-radius: 4px; font-weight: 600; font-size: .7rem; }
