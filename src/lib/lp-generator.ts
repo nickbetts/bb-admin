@@ -77,7 +77,7 @@ function buildGenerateSystemPrompt(brandContext: BrandContext): string {
   }
 
   const rawHtmlBlock = brandContext.rawHtml
-    ? `\n## Raw website HTML (supplementary reference for brand signals and any content missed above)\n\n${brandContext.rawHtml.slice(0, 25000)}\n`
+    ? `\n## Raw website HTML (supplementary reference for brand signals and any content missed above)\n\n${brandContext.rawHtml.slice(0, 100000)}\n`
     : "";
 
   return `You are an expert landing page designer, CRO specialist, and front-end developer.
