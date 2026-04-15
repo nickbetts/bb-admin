@@ -380,7 +380,7 @@ export default function ProposalViewPage({ params }: Props) {
           src={blobUrl}
           style={{ flex: 1, border: "none", background: "var(--surface)" }}
           title="Proposal Preview"
-          sandbox="allow-same-origin"
+          sandbox="allow-scripts allow-same-origin"
         />
       ) : (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)" }}>
