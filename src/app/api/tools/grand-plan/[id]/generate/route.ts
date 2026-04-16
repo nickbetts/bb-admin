@@ -7,6 +7,8 @@ import { generateGrandPlan, type GrandPlanSources, type CampaignFocusPeriod } fr
 import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import { suggestAdGroups, researchKeywords } from "@/lib/keyword-planner-pipeline";
 import { generateContentStrategy } from "@/lib/content-strategy-generator";
+import { extractBrandContext } from "@/lib/brand-extractor";
+import { generateLandingPage } from "@/lib/lp-generator";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -101,6 +103,7 @@ export async function POST(
         kwBrief?: { website?: string; brief?: string; monthlyBudget?: string };
         contentBrief?: { domain?: string; database?: string; brief?: string; competitors?: string };
         mediaBrief?: { objective?: string; totalBudget?: number; duration?: number };
+        lpBrief?: { campaignType?: string };
       }>(plan.configJson, {});
 
       const website = config.kwBrief?.website ?? plan.client?.website ?? plan.keywordResearch?.website ?? "";
@@ -230,6 +233,29 @@ export async function POST(
         }
       }
 
+      // ── Auto-generate landing page if requested ───────────────────────────
+      let landingPageData: { html: string; campaignType: string } | undefined;
+      if (config.lpBrief && website) {
+        const lpCampaignType = config.lpBrief.campaignType ?? "lead-gen";
+        const lpBriefText = brief || `${clientName} landing page for ${lpCampaignType} campaign`;
+        try {
+          await setProgress("Extracting brand context from website...");
+          const brandContext = await extractBrandContext(website);
+
+          await setProgress("Generating example landing page with Claude...");
+          const lpHtml = await generateLandingPage({
+            brief: lpBriefText,
+            campaignType: lpCampaignType,
+            brandContext,
+            targetAudience: config.sector || undefined,
+          });
+
+          landingPageData = { html: lpHtml, campaignType: lpCampaignType };
+        } catch (lpError) {
+          console.error("Auto landing page generation failed (continuing without):", lpError);
+        }
+      }
+
       await setProgress("Generating plan sections with Claude...");
 
       const sources: GrandPlanSources = {
@@ -286,6 +312,12 @@ export async function POST(
       };
 
       const planData = await generateGrandPlan(sources, setProgress, enabledSections);
+
+      // Inject landing page if it was generated
+      if (landingPageData) {
+        planData.sections.landingPage = landingPageData;
+      }
+
       const html = renderGrandPlanHtml(planData);
       const generationMs = Date.now() - start;
 

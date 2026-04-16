@@ -30,6 +30,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
   if (s.exampleArticles?.length) navItems.push({ id: "example-articles", label: "Example Articles" });
   if (s.servicesInvestment) navItems.push({ id: "services", label: "Services & Investment" });
   if (s.mediaPlan) navItems.push({ id: "media-plan", label: "Media Plan" });
+  if (s.landingPage) navItems.push({ id: "landing-page", label: "Example Landing Page" });
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -86,6 +87,7 @@ ${s.organicSocial ? renderOrganicSocial(s.organicSocial) : ""}
 ${s.exampleArticles?.length ? renderExampleArticles(s.exampleArticles) : ""}
 ${s.servicesInvestment ? renderServicesInvestment(s.servicesInvestment) : ""}
 ${s.mediaPlan ? renderMediaPlan(s.mediaPlan) : ""}
+${s.landingPage ? renderLandingPage(s.landingPage) : ""}
 
   </main>
 </div>
@@ -500,6 +502,31 @@ function renderMediaPlan(data: any): string {
     </section>`;
 }
 
+// ─── Landing Page ───────────────────────────────────────────────────────────
+
+function renderLandingPage(data: { html: string; campaignType: string }): string {
+  // Base64-encode the HTML so it can be loaded into a srcdoc iframe safely
+  const encoded = Buffer.from(data.html, "utf-8").toString("base64");
+  const typeLabel = data.campaignType.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+  return `
+    <section id="landing-page" class="section">
+      <h2 class="section-title">Example Landing Page</h2>
+      <div class="lp-meta">
+        <span class="lp-badge">${esc(typeLabel)}</span>
+        <span class="lp-hint">AI-generated from the client's actual website content and branding. This is a fully working page that can be deployed as-is or refined further.</span>
+      </div>
+      <div class="lp-frame-wrap">
+        <div class="lp-toolbar">
+          <span class="lp-dot"></span><span class="lp-dot"></span><span class="lp-dot"></span>
+          <span class="lp-url-bar">landing-page-preview</span>
+          <button class="lp-expand-btn" onclick="(function(el){var f=el.closest('.lp-frame-wrap');f.classList.toggle('lp-expanded')})(this)">⤢</button>
+        </div>
+        <iframe class="lp-iframe" srcdoc="" data-lp-html="${encoded}" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>
+      </div>
+    </section>`;
+}
+
 // ─── Utilities ──────────────────────────────────────────────────────────────
 
 function esc(s: string): string {
@@ -728,6 +755,20 @@ a{color:var(--accent);text-decoration:none}
 .channel-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top}
 .channel-table tr:last-child td{border-bottom:none}
 .channel-strategy{color:var(--text-light);font-size:12px;line-height:1.5}
+/* Landing page preview */
+.lp-meta{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.lp-badge{background:#dbeafe;color:#1e40af;font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;white-space:nowrap}
+.lp-hint{font-size:13px;color:var(--text-light);line-height:1.5}
+.lp-frame-wrap{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#1e293b;transition:all .3s}
+.lp-frame-wrap.lp-expanded{position:fixed;inset:0;z-index:200;border-radius:0;border:none}
+.lp-toolbar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:#1e293b}
+.lp-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.15)}
+.lp-dot:first-child{background:#ff5f57}.lp-dot:nth-child(2){background:#ffbd2e}.lp-dot:nth-child(3){background:#28c840}
+.lp-url-bar{flex:1;background:rgba(255,255,255,.1);border-radius:6px;padding:4px 12px;font-size:11px;color:rgba(255,255,255,.5);font-family:monospace}
+.lp-expand-btn{background:none;border:none;color:rgba(255,255,255,.5);font-size:16px;cursor:pointer;padding:4px 8px;border-radius:4px;transition:all .15s}
+.lp-expand-btn:hover{color:#fff;background:rgba(255,255,255,.1)}
+.lp-iframe{width:100%;height:700px;border:none;background:#fff}
+.lp-frame-wrap.lp-expanded .lp-iframe{height:calc(100vh - 42px)}
 /* Responsive */
 @media(max-width:900px){.layout{flex-direction:column}.sidebar{width:100%;position:static}.sidebar-nav{flex-direction:row;flex-wrap:wrap;gap:4px}.sidebar-link{padding:6px 10px;font-size:12px}.ad-copy-cols{grid-template-columns:1fr}}
 @media(max-width:640px){.page-hero{padding:32px 24px}.page-hero h1{font-size:22px}.section{padding:20px}.overview-grid{grid-template-columns:1fr 1fr}.content-cards{grid-template-columns:1fr}.creatives-grid{grid-template-columns:1fr}}
@@ -810,6 +851,14 @@ document.querySelectorAll('.sidebar-link').forEach(function(link){
     var target=document.querySelector(this.getAttribute('href'));
     if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
   });
+});
+
+// Decode and inject landing page iframe content
+document.querySelectorAll('.lp-iframe[data-lp-html]').forEach(function(iframe){
+  try{
+    var encoded=iframe.getAttribute('data-lp-html');
+    if(encoded){iframe.srcdoc=atob(encoded);}
+  }catch(e){console.error('LP decode error:',e);}
 });
 `;
 

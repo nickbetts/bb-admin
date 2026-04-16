@@ -106,6 +106,10 @@ export interface GrandPlanData {
       totalBudget: number;
       channels: { name: string; budget: number; percentage: number; strategy: string }[];
     };
+    landingPage?: {
+      html: string;
+      campaignType: string;
+    };
   };
 }
 
