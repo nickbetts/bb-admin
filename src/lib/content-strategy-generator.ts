@@ -170,26 +170,34 @@ async function fetchSitemapUrls(domain: string): Promise<string[]> {
 
         // Extract <loc> values
         const locMatches = xml.matchAll(/<loc>\s*(.*?)\s*<\/loc>/gi);
+        const subSitemapUrls: string[] = [];
         for (const m of locMatches) {
           const loc = m[1].trim();
-          // If it's a sub-sitemap, fetch it too (one level deep)
           if (loc.endsWith(".xml") || loc.includes("sitemap")) {
-            try {
-              const subRes = await fetch(loc, {
+            subSitemapUrls.push(loc);
+          } else {
+            urls.push(loc);
+          }
+        }
+        // Fetch sub-sitemaps in batches of 5, cap at 10 total
+        const cappedSubs = subSitemapUrls.slice(0, 10);
+        for (let batch = 0; batch < cappedSubs.length; batch += 5) {
+          const chunk = cappedSubs.slice(batch, batch + 5);
+          const results = await Promise.allSettled(
+            chunk.map(async (subUrl) => {
+              const subRes = await fetch(subUrl, {
                 signal: AbortSignal.timeout(5000),
                 headers: { "User-Agent": "i3media-report/1.0" },
               });
-              if (subRes.ok) {
-                const subXml = await subRes.text();
-                const subLocs = subXml.matchAll(/<loc>\s*(.*?)\s*<\/loc>/gi);
-                for (const sl of subLocs) {
-                  const subLoc = sl[1].trim();
-                  if (!subLoc.endsWith(".xml")) urls.push(subLoc);
-                }
-              }
-            } catch { /* skip failed sub-sitemaps */ }
-          } else {
-            urls.push(loc);
+              if (!subRes.ok) return [];
+              const subXml = await subRes.text();
+              return [...subXml.matchAll(/<loc>\s*(.*?)\s*<\/loc>/gi)]
+                .map((sl) => sl[1].trim())
+                .filter((u) => !u.endsWith(".xml"));
+            }),
+          );
+          for (const r of results) {
+            if (r.status === "fulfilled") urls.push(...r.value);
           }
         }
         if (urls.length > 0) return [...new Set(urls)].slice(0, 500);
@@ -632,6 +640,7 @@ function buildAnalysisPrompt(
   brief: string,
   data: CollectedData,
   competitorContexts?: { domain: string; pageContext: CompetitorPageContext }[],
+  limits?: ContentStrategyLimits,
 ): string {
   const useGsc = data.dataSource === "gsc+semrush" && data.gscQueryPages.length > 0;
   const pages = groupKeywordsByPage(data.organicKeywords);
@@ -884,6 +893,14 @@ ${data.expandedTopics.map((r) => {
   const topKws = r.keywords.slice(0, 8).map((k) => `    "${k.keyword}" — vol:${k.volume} KD:${k.difficulty}`).join("\n");
   return `Expanded seed: "${r.topic}"\nKeywords found:\n${topKws || "    (no volume data — consider targeting as contextual terms)"}`;
 }).join("\n\n")}` : ""}
+${limits ? `
+═══ OUTPUT QUANTITY TARGETS ═══
+The client has set specific quantity limits. Produce EXACTLY these numbers (not more, not fewer):
+${limits.pageOptimisations ? `- Page optimisations: ${limits.pageOptimisations}` : ""}
+${limits.landingPages ? `- Landing pages: ${limits.landingPages}` : ""}
+${limits.blogPosts ? `- Blog posts: ${limits.blogPosts}` : ""}
+${limits.linkTargets ? `- Link targets: ${limits.linkTargets}` : ""}
+` : ""}
 ${competitorContexts && competitorContexts.length > 0 ? `
 ═══ MANUALLY-ADDED COMPETITOR INTELLIGENCE (site-scraped, no SEMrush data) ═══
 These competitors have no measurable keyword overlap in SEMrush — they may be small, new, or niche players. Their sites were scraped to provide qualitative context about what they offer and how they position themselves. Use this to identify positioning gaps, service areas they cover that the client doesn't yet rank for, and angles the client could differentiate on.
@@ -1215,6 +1232,22 @@ export async function generateContentStrategy(
   // Step 1: Collect data (uses GSC when available, falls back to SEMrush-only)
   const collectedData = await collectSemrushData(domain, competitors, database, searchConsoleSiteUrl, brief);
 
+  // Guard: if we have no keyword data at all, the AI cannot produce a useful strategy
+  const hasAnyKeywords =
+    collectedData.organicKeywords.length > 0 ||
+    collectedData.contentGap.length > 0 ||
+    collectedData.gscQueryPages.length > 0 ||
+    collectedData.briefTopics.length > 0 ||
+    collectedData.expandedTopics.length > 0;
+
+  if (!hasAnyKeywords && !brief) {
+    throw new Error(
+      `No keyword data found for ${domain} and no brief provided. ` +
+      `The domain may be too new, have no organic rankings, or SEMrush may not have data for it. ` +
+      `Provide a detailed brief so the AI can generate topic suggestions from scratch.`
+    );
+  }
+
   // Determine auto-detected competitors for response
   const autoCompetitors =
     competitors.length > 0
@@ -1228,6 +1261,7 @@ export async function generateContentStrategy(
     brief,
     collectedData,
     competitorContexts,
+    limits,
   );
 
   // Step 3: Call the chosen AI model for intelligent analysis
@@ -1294,7 +1328,41 @@ export async function generateContentStrategy(
     raw = JSON.parse(content) as Record<string, unknown>;
   } catch {
     console.warn("Content strategy JSON parse failed — attempting truncation repair");
-    raw = JSON.parse(repairTruncatedJson(content)) as Record<string, unknown>;
+    try {
+      raw = JSON.parse(repairTruncatedJson(content)) as Record<string, unknown>;
+    } catch (repairError) {
+      // Last resort: retry with a shorter, stricter prompt asking for valid JSON
+      console.warn("Truncation repair failed — retrying AI call with strict JSON nudge", repairError);
+      const retryPrompt = `Your previous response was not valid JSON. Return ONLY a valid JSON object matching the schema. No markdown, no commentary. Be concise — limit to the top 10 items per section if needed.\n\n${analysisPrompt}`;
+      if (model === "claude-opus-4-6") {
+        const anthropic = await getAnthropicClient();
+        const retryStream = anthropic.messages.stream({
+          model: "claude-opus-4-6",
+          max_tokens: 16000,
+          system: STRATEGY_SYSTEM_PROMPT,
+          messages: [{ role: "user", content: retryPrompt }],
+        });
+        const retryResponse = await retryStream.finalMessage();
+        const retryBlock = retryResponse.content[0];
+        const retryText = retryBlock.type === "text" ? retryBlock.text.trim() : "";
+        const retryJsonMatch = retryText.match(/```(?:json)?\s*([\s\S]+?)```/) ?? retryText.match(/(\{[\s\S]+\})/);
+        const retryContent = retryJsonMatch ? retryJsonMatch[1].trim() : retryText;
+        raw = JSON.parse(retryContent) as Record<string, unknown>;
+      } else {
+        const openai = await getOpenAiClient();
+        const retryResponse = await openai.chat.completions.create({
+          model: "gpt-5.4",
+          messages: [
+            { role: "system", content: STRATEGY_SYSTEM_PROMPT },
+            { role: "user", content: retryPrompt },
+          ],
+          temperature: 0.3,
+          max_completion_tokens: 16000,
+          response_format: { type: "json_object" },
+        });
+        raw = JSON.parse(retryResponse.choices[0]?.message?.content?.trim() ?? "{}") as Record<string, unknown>;
+      }
+    }
   }
 
   // Step 4: Validate and structure the output
@@ -1437,6 +1505,83 @@ export async function generateContentStrategy(
     post.priority = post.keywords.some((k) => k.volume >= 1000);
   }
 
+  // ── Post-processing: volume validation against real data ──
+  // Build the same keyword pool that was provided to the AI, then correct any hallucinated volumes
+  const volumePool = new Map<string, number>();
+  for (const kw of collectedData.organicKeywords) {
+    if (kw.keyword && kw.searchVolume > 0) volumePool.set(kw.keyword.toLowerCase(), kw.searchVolume);
+  }
+  for (const gap of collectedData.contentGap) {
+    if (gap.keyword && gap.searchVolume > 0) volumePool.set(gap.keyword.toLowerCase(), gap.searchVolume);
+  }
+  if (collectedData.gscQueryPages.length > 0) {
+    const gscAgg = new Map<string, number>();
+    for (const q of collectedData.gscQueryPages) {
+      gscAgg.set(q.query.toLowerCase(), (gscAgg.get(q.query.toLowerCase()) ?? 0) + q.impressions);
+    }
+    for (const [kw, imp] of gscAgg) {
+      if (!volumePool.has(kw) && imp > 10) volumePool.set(kw, imp);
+    }
+  }
+  for (const result of collectedData.briefTopics) {
+    for (const kw of result.keywords) {
+      if (kw.keyword && kw.volume > 0 && !volumePool.has(kw.keyword.toLowerCase())) {
+        volumePool.set(kw.keyword.toLowerCase(), kw.volume);
+      }
+    }
+  }
+  for (const result of collectedData.expandedTopics) {
+    for (const kw of result.keywords) {
+      if (kw.keyword && kw.volume > 0 && !volumePool.has(kw.keyword.toLowerCase())) {
+        volumePool.set(kw.keyword.toLowerCase(), kw.volume);
+      }
+    }
+  }
+
+  // Correct hallucinated volumes: if the AI returned a volume that doesn't match the pool, fix it
+  let volumeCorrections = 0;
+  function validateKeywordVolumes(keywords: ParsedKeyword[]): void {
+    for (const kw of keywords) {
+      const poolVol = volumePool.get(kw.keyword.toLowerCase());
+      if (poolVol !== undefined && poolVol !== kw.volume) {
+        kw.volume = poolVol;
+        volumeCorrections++;
+      }
+    }
+  }
+  for (const opt of pageOptimisations) validateKeywordVolumes(opt.keywords);
+  for (const page of landingPages) validateKeywordVolumes(page.keywords);
+  for (const post of blogPosts) validateKeywordVolumes(post.keywords);
+  if (volumeCorrections > 0) {
+    console.warn(`Content strategy: corrected ${volumeCorrections} hallucinated keyword volumes`);
+  }
+
+  // ── Post-processing: primary keyword deduplication ──
+  // If two items share the same primary keyword, demote the lower-impact one to secondary
+  const seenPrimaries = new Map<string, string>(); // keyword → first item identifier
+  let primaryDedups = 0;
+  function deduplicatePrimaries<T extends { keywords: ParsedKeyword[]; url?: string; title?: string }>(items: T[], sectionLabel: string): void {
+    for (const item of items) {
+      const primary = item.keywords.find((k) => k.type === "primary");
+      if (!primary) continue;
+      const key = primary.keyword.toLowerCase();
+      const itemLabel = `${sectionLabel}: ${item.title ?? item.url ?? "unknown"}`;
+      if (seenPrimaries.has(key)) {
+        console.warn(`Content strategy: duplicate primary "${primary.keyword}" in ${itemLabel} (first seen in ${seenPrimaries.get(key)}). Demoting to secondary.`);
+        primary.type = "secondary";
+        primaryDedups++;
+      } else {
+        seenPrimaries.set(key, itemLabel);
+      }
+    }
+  }
+  deduplicatePrimaries(pageOptimisations, "Page Opt");
+  deduplicatePrimaries(landingPages, "Landing Page");
+  deduplicatePrimaries(blogPosts, "Blog Post");
+  if (primaryDedups > 0) {
+    console.warn(`Content strategy: demoted ${primaryDedups} duplicate primaries to secondary`);
+  }
+
   // Derive quick wins from SEMrush data: pages ranking 4–10 with any keyword vol >= 100
   // We cross-reference the page optimisations against the raw SEMrush organic data
   const semrushPositionMap = new Map<string, number[]>();
@@ -1454,14 +1599,22 @@ export async function generateContentStrategy(
     return hasQuickWinPosition && hasVolume;
   });
 
-  // ── On-page audit: crawl each page optimisation in parallel ──
-  // Cap at 20 pages to avoid excessive crawl time
-  const auditResults = await Promise.all(
-    pageOptimisations.slice(0, 20).map((opt) => {
-      const primary = opt.keywords.find((k) => k.type === "primary") ?? opt.keywords[0];
-      return auditOnPage(domain, opt.url, primary?.keyword ?? "");
-    })
-  );
+  // ── On-page audit: crawl page optimisations in batches of 5 ──
+  // Cap at 20 pages, process in batches to avoid overwhelming slow/rate-limited sites
+  const pagesToAudit = pageOptimisations.slice(0, 20);
+  const auditResults: OnPageAudit[] = [];
+  for (let batch = 0; batch < pagesToAudit.length; batch += 5) {
+    const chunk = pagesToAudit.slice(batch, batch + 5);
+    const batchResults = await Promise.allSettled(
+      chunk.map((opt) => {
+        const primary = opt.keywords.find((k) => k.type === "primary") ?? opt.keywords[0];
+        return auditOnPage(domain, opt.url, primary?.keyword ?? "");
+      })
+    );
+    for (const r of batchResults) {
+      auditResults.push(r.status === "fulfilled" ? r.value : { ...EMPTY_AUDIT });
+    }
+  }
   for (let i = 0; i < auditResults.length; i++) {
     pageOptimisations[i].audit = auditResults[i];
   }
