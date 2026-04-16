@@ -93,18 +93,26 @@ export async function POST(
         ?? safeJsonParse(plan.campaignFocusPeriodsJson, []);
 
       const brief = bodyOverrides.clientBrief ?? plan.clientBrief ?? "";
-      const website = plan.client?.website ?? plan.keywordResearch?.website ?? "";
+
+      // Parse section config — includes section toggles and inline briefs
+      const config = safeJsonParse<{
+        sections?: string[];
+        kwBrief?: { website?: string; brief?: string; monthlyBudget?: string };
+        contentBrief?: { domain?: string; database?: string; brief?: string; competitors?: string };
+        mediaBrief?: { objective?: string; totalBudget?: number; duration?: number };
+      }>(plan.configJson, {});
+
+      const website = config.kwBrief?.website ?? plan.client?.website ?? plan.keywordResearch?.website ?? "";
       const clientId = plan.clientId;
 
-      // Parse section config — if sections array is set, only generate those
-      const config = safeJsonParse<{ sections?: string[] }>(plan.configJson, {});
       const enabledSections = config.sections?.length ? config.sections : undefined;
 
       // ── Auto-generate keyword research if not linked ───────────────────────
       let keywordResearchData = plan.keywordResearch;
-      if (!keywordResearchData && website && brief) {
+      const kwBriefText = config.kwBrief?.brief || brief;
+      if (!keywordResearchData && website && kwBriefText) {
         await setProgress("Crawling website and suggesting ad groups...");
-        const suggestResult = await suggestAdGroups(website, brief);
+        const suggestResult = await suggestAdGroups(website, kwBriefText);
 
         if (suggestResult.adGroups.length > 0) {
           await setProgress(`Researching ${suggestResult.adGroups.reduce((s, g) => s + g.keywords.length, 0)} keywords via SEMrush...`);
@@ -132,13 +140,13 @@ export async function POST(
               clientId: clientId ?? undefined,
               title: `${clientName} — Auto-generated keyword research`,
               website,
-              brief,
+              brief: kwBriefText,
               location: "2826",
               adGroups: JSON.stringify(adGroupsWithVolumes),
               selectedKws: JSON.stringify(suggestResult.adGroups.flatMap((g) => g.keywords)),
               ideas: JSON.stringify(ideas),
               maxCpc: "",
-              monthlyBudget: "",
+              monthlyBudget: config.kwBrief?.monthlyBudget ?? "",
               conversionRate: "3",
               websiteContext: suggestResult.websiteContext,
             },
@@ -168,17 +176,22 @@ export async function POST(
       // ── Auto-generate content strategy if not linked ───────────────────────
       let contentStrategyData = plan.contentStrategy;
       if (!contentStrategyData && website) {
-        const domain = website.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "");
+        const csDomain = config.contentBrief?.domain ?? website.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "");
+        const csDatabase = config.contentBrief?.database ?? "uk";
+        const csBrief = config.contentBrief?.brief || brief || `Full digital marketing strategy for ${clientName}`;
+        const csCompetitors = config.contentBrief?.competitors
+          ? config.contentBrief.competitors.split(",").map((s: string) => s.trim()).filter(Boolean)
+          : [];
         const searchConsoleSiteUrl = plan.client?.searchConsoleSiteUrl ?? undefined;
 
         try {
           await setProgress("Running SEMrush analysis and generating content strategy with Claude...");
           const strategyResult = await generateContentStrategy(
-            domain,
+            csDomain,
             clientName,
-            brief || `Full digital marketing strategy for ${clientName}`,
-            [], // auto-detect competitors
-            "uk",
+            csBrief,
+            csCompetitors,
+            csDatabase,
             searchConsoleSiteUrl ?? null,
             "claude-opus-4-6",
           );
@@ -259,7 +272,15 @@ export async function POST(
               channels: plan.mediaPlan.channels,
               forecast: plan.mediaPlan.forecast,
             }
-          : undefined,
+          : config.mediaBrief?.totalBudget
+            ? {
+                title: `${clientName} — Media Plan`,
+                objective: config.mediaBrief.objective ?? "lead_gen",
+                totalBudget: config.mediaBrief.totalBudget,
+                channels: "[]",
+                forecast: null,
+              }
+            : undefined,
       };
 
       const planData = await generateGrandPlan(sources, setProgress, enabledSections);

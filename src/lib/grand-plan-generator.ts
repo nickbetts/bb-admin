@@ -186,7 +186,7 @@ export async function generateGrandPlan(
 
   // Generate sections in parallel where possible
   if (onProgress) await onProgress("Generating AI sections...");
-  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles] =
+  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, aiMediaPlan] =
     await Promise.all([
       isEnabled("executiveSummary")
         ? generateExecutiveSummary(anthropic, contextSummary, sources)
@@ -205,6 +205,10 @@ export async function generateGrandPlan(
         : Promise.resolve(undefined),
       isEnabled("exampleArticles") && contentData
         ? generateExampleArticles(anthropic, contextSummary, contentData, sources)
+        : Promise.resolve(undefined),
+      // Auto-generate media plan channel allocation if we have a budget but no channels
+      isEnabled("mediaPlan") && sources.mediaPlan && mediaChannels.length === 0
+        ? generateMediaPlanChannels(anthropic, contextSummary, sources)
         : Promise.resolve(undefined),
     ]);
 
@@ -233,7 +237,7 @@ export async function generateGrandPlan(
     ? {
         objective: sources.mediaPlan.objective,
         totalBudget: sources.mediaPlan.totalBudget,
-        channels: mediaChannels.map((ch: { name?: string; budget?: number; percentage?: number; strategy?: string }) => ({
+        channels: aiMediaPlan ?? mediaChannels.map((ch: { name?: string; budget?: number; percentage?: number; strategy?: string }) => ({
           name: ch.name ?? "Unknown",
           budget: ch.budget ?? 0,
           percentage: ch.percentage ?? 0,
@@ -537,6 +541,58 @@ ${context}`,
   }
 
   return articles;
+}
+
+// ─── Media plan AI generator ────────────────────────────────────────────────
+
+async function generateMediaPlanChannels(
+  anthropic: Anthropic,
+  context: string,
+  sources: GrandPlanSources,
+): Promise<{ name: string; budget: number; percentage: number; strategy: string }[]> {
+  const totalBudget = sources.mediaPlan?.totalBudget ?? 10000;
+  const objective = sources.mediaPlan?.objective ?? "lead_gen";
+
+  const res = await anthropic.messages.create({
+    model: MODEL_LIGHT,
+    max_tokens: 1500,
+    messages: [
+      {
+        role: "user",
+        content: `You are a senior media planner at i3media. Generate a channel allocation for a digital marketing media plan.
+
+Total budget: £${totalBudget.toLocaleString()}
+Objective: ${objective.replace(/_/g, " ")}
+
+Return a JSON object with key "channels" containing an array. Each channel:
+- name: string (e.g. "Google Ads", "Meta Ads", "LinkedIn Ads", "SEO & Content", "Email Marketing", "TikTok Ads")
+- budget: number (in £, must sum to total budget)
+- percentage: number (0-100, must sum to 100)
+- strategy: string (2-3 sentence strategy for this channel)
+
+Rules:
+- Allocate across 4-7 channels appropriate for the objective
+- British English, no AI jargon
+- Be realistic about channel suitability for the objective
+- Return ONLY valid JSON, no markdown fences
+
+Context:
+${context}`,
+      },
+    ],
+  });
+
+  try {
+    const parsed = JSON.parse(extractText(res));
+    return (parsed.channels ?? []).map((ch: { name?: string; budget?: number; percentage?: number; strategy?: string }) => ({
+      name: ch.name ?? "Unknown",
+      budget: ch.budget ?? 0,
+      percentage: ch.percentage ?? 0,
+      strategy: ch.strategy ?? "",
+    }));
+  } catch {
+    return [];
+  }
 }
 
 // ─── Anthropic helper ───────────────────────────────────────────────────────
