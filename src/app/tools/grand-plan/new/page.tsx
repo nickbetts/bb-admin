@@ -175,182 +175,188 @@ export default function NewGrandPlanPage() {
   const hasLinkedCs = !!selectedContentStrategy;
 
   return (
-    <div className="page" style={{ maxWidth: 640, padding: "24px 16px" }}>
+    <div className="page" style={{ maxWidth: 720 }}>
 
       {/* Header */}
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+      <div style={{ marginBottom: 40 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: "linear-gradient(135deg, #0f172a 0%, #334155 100%)",
+            width: 40, height: 40, borderRadius: "var(--r-sm)",
+            background: "var(--gradient-accent)",
             display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
           }}>
-            <Map style={{ width: 18, height: 18, color: "white" }} />
+            <Map style={{ width: 20, height: 20, color: "white" }} />
           </div>
-          <h1 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>New Grand Plan</h1>
+          <h1 className="page-title">New Grand Plan</h1>
         </div>
-        <p style={{ fontSize: 13, color: "var(--text-3)", marginLeft: 46 }}>
+        <p className="page-desc" style={{ marginLeft: 52 }}>
           One brief, every deliverable. Keywords, ads, content, a landing page, and a full strategy document.
         </p>
       </div>
 
       {/* ═══════ THE BRIEF ═══════ */}
-      <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
-        <legend style={S.legend}>The Brief</legend>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", marginBottom: 12 }}>
+          The Brief
+        </div>
 
-        <div style={S.card}>
-          {/* Client + Title row */}
-          <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 12 }}>
-            <div>
-              <label style={S.label}>Client</label>
-              <select style={S.select} value={clientId} onChange={(e) => {
-                setClientId(e.target.value);
-                setSelectedProposal(""); setSelectedKwResearch(""); setSelectedContentStrategy("");
-              }}>
-                <option value="">No client</option>
-                {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={S.label}>Plan Title</label>
-              <input style={S.input} value={title} onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Acme Co — Go-to-Market Plan 2026" />
-            </div>
-          </div>
-
-          {/* Website + Budget row */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 140px", gap: 12 }}>
-            <div>
-              <label style={S.label}>
-                <Globe style={{ width: 12, height: 12, marginRight: 4, verticalAlign: -1 }} />
-                Website
-              </label>
-              <input style={S.input} value={website} onChange={(e) => setWebsite(e.target.value)}
-                placeholder="https://example.com" />
-              <span style={S.hint}>Used for keyword research, content strategy, brand extraction, and landing page</span>
-            </div>
-            <div>
-              <label style={S.label}>Monthly Budget</label>
-              <input style={S.input} value={monthlyBudget} onChange={(e) => setMonthlyBudget(e.target.value)}
-                placeholder="£5,000" />
-            </div>
-          </div>
-
-          {/* Purpose + Sector row */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={S.label}>Purpose</label>
-              <div style={{ display: "flex", gap: 4 }}>
-                {(["pitch", "onboarding", "strategy_refresh"] as const).map((p) => (
-                  <button key={p} onClick={() => setPurpose(p)} style={{
-                    flex: 1, padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                    border: `1px solid ${purpose === p ? "var(--accent)" : "var(--border)"}`,
-                    background: purpose === p ? "var(--accent)" : "transparent",
-                    color: purpose === p ? "white" : "var(--text-3)", cursor: "pointer",
-                    transition: "all 0.15s",
-                  }}>
-                    {p === "pitch" ? "Pitch" : p === "onboarding" ? "Onboarding" : "Refresh"}
-                  </button>
-                ))}
+        <div className="card">
+          <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* Client + Title row */}
+            <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 16 }}>
+              <div>
+                <label className="form-label">Client</label>
+                <select className="form-input form-select" value={clientId} onChange={(e) => {
+                  setClientId(e.target.value);
+                  setSelectedProposal(""); setSelectedKwResearch(""); setSelectedContentStrategy("");
+                }}>
+                  <option value="">No client</option>
+                  {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Plan Title</label>
+                <input className="form-input" value={title} onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Acme Co — Go-to-Market Plan 2026" />
               </div>
             </div>
+
+            {/* Website + Budget row */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: 16 }}>
+              <div>
+                <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <Globe style={{ width: 13, height: 13 }} />
+                  Website
+                </label>
+                <input className="form-input" value={website} onChange={(e) => setWebsite(e.target.value)}
+                  placeholder="https://example.com" />
+                <span className="form-hint">Used for keyword research, content strategy, brand extraction, and landing page</span>
+              </div>
+              <div>
+                <label className="form-label">Monthly Budget</label>
+                <input className="form-input" value={monthlyBudget} onChange={(e) => setMonthlyBudget(e.target.value)}
+                  placeholder="£5,000" />
+              </div>
+            </div>
+
+            {/* Purpose + Sector row */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div>
+                <label className="form-label">Purpose</label>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {(["pitch", "onboarding", "strategy_refresh"] as const).map((p) => (
+                    <button key={p} onClick={() => setPurpose(p)} style={{
+                      flex: 1, padding: "9px 0", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600,
+                      border: `1.5px solid ${purpose === p ? "var(--accent)" : "var(--border)"}`,
+                      background: purpose === p ? "var(--gradient-accent)" : "transparent",
+                      color: purpose === p ? "white" : "var(--text-3)", cursor: "pointer",
+                      transition: "all 0.2s",
+                    }}>
+                      {p === "pitch" ? "Pitch" : p === "onboarding" ? "Onboarding" : "Refresh"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="form-label">Sector</label>
+                <select className="form-input form-select" value={sector} onChange={(e) => setSector(e.target.value)}>
+                  <option value="">Select...</option>
+                  {SECTORS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Brief */}
             <div>
-              <label style={S.label}>Sector</label>
-              <select style={S.select} value={sector} onChange={(e) => setSector(e.target.value)}>
-                <option value="">Select...</option>
-                {SECTORS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
+              <label className="form-label">Brief</label>
+              <textarea
+                className="form-input form-textarea"
+                value={brief}
+                onChange={(e) => setBrief(e.target.value)}
+                placeholder="Describe the business, their goals, campaign focus, and any pain points. This single brief powers keywords, ads, content, and the landing page."
+              />
             </div>
           </div>
-
-          {/* Brief */}
-          <div>
-            <label style={S.label}>Brief</label>
-            <textarea
-              style={{ ...S.input, minHeight: 80, resize: "vertical" }}
-              value={brief}
-              onChange={(e) => setBrief(e.target.value)}
-              placeholder="Describe the business, their goals, campaign focus, and any pain points. This single brief powers keywords, ads, content, and the landing page."
-            />
-          </div>
         </div>
-      </fieldset>
+      </div>
 
       {/* ═══════ LINK EXISTING (only when client selected) ═══════ */}
       {clientId && (
-        <fieldset style={{ border: "none", padding: 0, margin: "24px 0 0" }}>
-          <legend style={S.legend}>
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", marginBottom: 12 }}>
             Link Existing Records <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: "0" }}>(optional)</span>
-          </legend>
+          </div>
 
           {loadingSources ? (
             <div style={{ padding: "20px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--text-4)", fontSize: 13 }}>
               <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> Loading records...
             </div>
           ) : sources ? (
-            <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
+            <div className="card">
               {/* Keyword Research */}
               {sources.keywordResearch.length > 0 && (
-                <div style={S.linkRow}>
+                <div style={{ padding: "14px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
                   <SearchIcon style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0 }} />
-                  <span style={S.linkLabel}>Keywords</span>
-                  <select style={S.linkSelect} value={selectedKwResearch} onChange={(e) => setSelectedKwResearch(e.target.value)}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", minWidth: 100 }}>Keywords</span>
+                  <select className="form-input form-select" style={{ flex: 1, padding: "8px 12px", fontSize: 13 }} value={selectedKwResearch} onChange={(e) => setSelectedKwResearch(e.target.value)}>
                     <option value="">Generate fresh from brief</option>
                     {sources.keywordResearch.map((k) => <option key={k.id} value={k.id}>{k.title}</option>)}
                   </select>
-                  {selectedKwResearch && <span style={S.linkedBadge}><LinkIcon style={{ width: 9, height: 9 }} /> Linked</span>}
+                  {selectedKwResearch && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, color: "#059669", background: "#d1fae5", borderRadius: 12, padding: "2px 8px", flexShrink: 0 }}><LinkIcon style={{ width: 9, height: 9 }} /> Linked</span>}
                 </div>
               )}
 
               {/* Content Strategy */}
               {sources.contentStrategies.length > 0 && (
-                <div style={S.linkRow}>
+                <div style={{ padding: "14px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
                   <Calendar style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0 }} />
-                  <span style={S.linkLabel}>Content</span>
-                  <select style={S.linkSelect} value={selectedContentStrategy} onChange={(e) => setSelectedContentStrategy(e.target.value)}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", minWidth: 100 }}>Content</span>
+                  <select className="form-input form-select" style={{ flex: 1, padding: "8px 12px", fontSize: 13 }} value={selectedContentStrategy} onChange={(e) => setSelectedContentStrategy(e.target.value)}>
                     <option value="">Generate fresh from SEMrush</option>
                     {sources.contentStrategies.map((cs) => <option key={cs.id} value={cs.id}>{cs.title}</option>)}
                   </select>
-                  {selectedContentStrategy && <span style={S.linkedBadge}><LinkIcon style={{ width: 9, height: 9 }} /> Linked</span>}
+                  {selectedContentStrategy && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, color: "#059669", background: "#d1fae5", borderRadius: 12, padding: "2px 8px", flexShrink: 0 }}><LinkIcon style={{ width: 9, height: 9 }} /> Linked</span>}
                 </div>
               )}
 
               {/* Proposal */}
               {sources.proposals.length > 0 && (
-                <div style={{ ...S.linkRow, borderBottom: "none" }}>
+                <div style={{ padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
                   <FileText style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0 }} />
-                  <span style={S.linkLabel}>Proposal</span>
-                  <select style={S.linkSelect} value={selectedProposal} onChange={(e) => setSelectedProposal(e.target.value)}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", minWidth: 100 }}>Proposal</span>
+                  <select className="form-input form-select" style={{ flex: 1, padding: "8px 12px", fontSize: 13 }} value={selectedProposal} onChange={(e) => setSelectedProposal(e.target.value)}>
                     <option value="">None</option>
                     {sources.proposals.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
                   </select>
-                  {selectedProposal && <span style={S.linkedBadge}><LinkIcon style={{ width: 9, height: 9 }} /> Linked</span>}
+                  {selectedProposal && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, color: "#059669", background: "#d1fae5", borderRadius: 12, padding: "2px 8px", flexShrink: 0 }}><LinkIcon style={{ width: 9, height: 9 }} /> Linked</span>}
                 </div>
               )}
 
               {sources.keywordResearch.length === 0 && sources.contentStrategies.length === 0 && sources.proposals.length === 0 && (
-                <div style={{ padding: "16px 20px", fontSize: 13, color: "var(--text-4)" }}>
+                <div className="card-body" style={{ padding: "20px 24px", fontSize: 13, color: "var(--text-4)" }}>
                   No existing records found. Everything will be auto-generated.
                 </div>
               )}
             </div>
           ) : null}
-        </fieldset>
+        </div>
       )}
 
       {/* ═══════ EXTRAS ═══════ */}
-      <fieldset style={{ border: "none", padding: 0, margin: "24px 0 0" }}>
-        <legend style={S.legend}>Extras</legend>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", marginBottom: 12 }}>
+          Extras
+        </div>
 
-        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, overflow: "hidden" }}>
+        <div className="card">
           {/* Content strategy settings */}
           {!hasLinkedCs && (
-            <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", marginBottom: 8 }}>Content Strategy Settings</div>
-              <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 10 }}>
+            <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", marginBottom: 10 }}>Content Strategy Settings</div>
+              <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 12 }}>
                 <div>
-                  <label style={S.hintLabel}>SEMrush Region</label>
-                  <select style={S.linkSelect} value={csDatabase} onChange={(e) => setCsDatabase(e.target.value)}>
+                  <label className="form-label" style={{ fontSize: 12 }}>SEMrush Region</label>
+                  <select className="form-input form-select" style={{ padding: "8px 12px", fontSize: 13 }} value={csDatabase} onChange={(e) => setCsDatabase(e.target.value)}>
                     <option value="uk">🇬🇧 UK</option>
                     <option value="us">🇺🇸 US</option>
                     <option value="au">🇦🇺 Australia</option>
@@ -360,8 +366,10 @@ export default function NewGrandPlanPage() {
                   </select>
                 </div>
                 <div>
-                  <label style={S.hintLabel}>Competitors <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(comma-separated)</span></label>
-                  <input style={{ ...S.input, fontSize: 12, padding: "6px 10px" }} value={csCompetitors}
+                  <label className="form-label" style={{ fontSize: 12 }}>
+                    Competitors <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(comma-separated)</span>
+                  </label>
+                  <input className="form-input" style={{ padding: "8px 12px", fontSize: 13 }} value={csCompetitors}
                     onChange={(e) => setCsCompetitors(e.target.value)}
                     placeholder="competitor1.com, competitor2.com" />
                 </div>
@@ -370,30 +378,30 @@ export default function NewGrandPlanPage() {
           )}
 
           {/* Landing page toggle */}
-          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 14 }}>
             <button
               onClick={() => setGenerateLandingPage(!generateLandingPage)}
               style={{
-                width: 20, height: 20, borderRadius: 6,
+                width: 22, height: 22, borderRadius: 6,
                 border: `1.5px solid ${generateLandingPage ? "var(--accent)" : "var(--border)"}`,
                 background: generateLandingPage ? "var(--accent)" : "transparent",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer", flexShrink: 0, transition: "all 0.15s",
+                cursor: "pointer", flexShrink: 0, transition: "all 0.2s",
               }}
             >
-              {generateLandingPage && <Check style={{ width: 12, height: 12, color: "white" }} />}
+              {generateLandingPage && <Check style={{ width: 13, height: 13, color: "white" }} />}
             </button>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
-                <Layout style={{ width: 13, height: 13, color: "var(--text-3)" }} />
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
+                <Layout style={{ width: 14, height: 14, color: "var(--text-3)" }} />
                 Generate Example Landing Page
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-4)", marginTop: 2 }}>
+              <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>
                 Auto-generates a real, branded landing page from the website. Included as a live preview in the plan.
               </div>
             </div>
             {generateLandingPage && (
-              <select style={{ ...S.select, width: "auto", fontSize: 12, padding: "5px 10px" }}
+              <select className="form-input form-select" style={{ width: "auto", fontSize: 13, padding: "7px 12px" }}
                 value={lpCampaignType} onChange={(e) => setLpCampaignType(e.target.value)}>
                 <option value="lead-gen">Lead Gen</option>
                 <option value="event">Event</option>
@@ -405,38 +413,34 @@ export default function NewGrandPlanPage() {
           </div>
 
           {/* Focus periods */}
-          <div style={{ padding: "14px 20px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: focusPeriods.length > 0 ? 10 : 0 }}>
+          <div style={{ padding: "18px 24px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: focusPeriods.length > 0 ? 12 : 0 }}>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)" }}>Campaign Focus Periods</div>
-                <div style={{ fontSize: 11, color: "var(--text-4)", marginTop: 1 }}>Ramadan, Black Friday, seasonal peaks</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>Campaign Focus Periods</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Ramadan, Black Friday, seasonal peaks</div>
               </div>
-              <button onClick={addFocusPeriod} style={{
-                padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
-                border: "1px solid var(--border)", background: "transparent",
-                color: "var(--text-3)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
-              }}>
-                <Plus style={{ width: 11, height: 11 }} /> Add
+              <button className="btn btn-secondary btn-sm" onClick={addFocusPeriod}>
+                <Plus style={{ width: 12, height: 12 }} /> Add
               </button>
             </div>
             {focusPeriods.map((fp, i) => (
               <div key={i} style={{
-                background: "var(--bg-2, #f8fafc)", borderRadius: 8, padding: 12,
+                background: "var(--bg)", borderRadius: "var(--r-sm)", padding: 14,
                 marginBottom: 8, position: "relative",
               }}>
-                <button onClick={() => removeFocusPeriod(i)} style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2 }}>
-                  <X style={{ width: 12, height: 12 }} />
+                <button onClick={() => removeFocusPeriod(i)} style={{ position: "absolute", top: 10, right: 10, background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: 2 }}>
+                  <X style={{ width: 13, height: 13 }} />
                 </button>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 8 }}>
-                  <select style={S.linkSelect} value={fp.startMonth}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 10 }}>
+                  <select className="form-input form-select" style={{ padding: "8px 12px", fontSize: 13 }} value={fp.startMonth}
                     onChange={(e) => updateFocusPeriod(i, "startMonth", parseInt(e.target.value))}>
                     {MONTHS.map((m, mi) => <option key={mi} value={mi}>{m}</option>)}
                   </select>
-                  <select style={S.linkSelect} value={fp.endMonth}
+                  <select className="form-input form-select" style={{ padding: "8px 12px", fontSize: 13 }} value={fp.endMonth}
                     onChange={(e) => updateFocusPeriod(i, "endMonth", parseInt(e.target.value))}>
                     {MONTHS.map((m, mi) => <option key={mi} value={mi}>{m}</option>)}
                   </select>
-                  <input style={{ ...S.input, fontSize: 12, padding: "5px 8px" }} value={fp.label}
+                  <input className="form-input" style={{ padding: "8px 12px", fontSize: 13 }} value={fp.label}
                     onChange={(e) => updateFocusPeriod(i, "label", e.target.value)}
                     placeholder="e.g. Ramadan, Summer Sale" />
                 </div>
@@ -444,58 +448,56 @@ export default function NewGrandPlanPage() {
             ))}
           </div>
         </div>
-      </fieldset>
+      </div>
 
       {/* ═══════ WHAT GETS GENERATED ═══════ */}
-      <div style={{
-        margin: "24px 0", padding: "14px 18px",
-        background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 10,
-      }}>
-        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", marginBottom: 8 }}>
-          What gets generated
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {[
-            { label: "Executive Summary", ai: true },
-            { label: "Strategy Plan", ai: true },
-            { label: "Google Ads + Ad Copy", ai: !hasLinkedKw },
-            { label: "Keyword Research", ai: !hasLinkedKw },
-            { label: "Meta Campaigns", ai: true },
-            { label: "Content Strategy", ai: !hasLinkedCs },
-            { label: "Content Calendar", ai: true },
-            { label: "Organic Social", ai: true },
-            { label: "Example Articles", ai: true },
-            ...(generateLandingPage ? [{ label: "Landing Page", ai: true }] : []),
-          ].map((item) => (
-            <span key={item.label} style={{
-              padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 500,
-              background: item.ai ? "var(--accent-bg, #f1f5f9)" : "#d1fae5",
-              color: item.ai ? "var(--accent, #0f172a)" : "#059669",
-            }}>
-              {item.ai
-                ? <Sparkles style={{ width: 9, height: 9, marginRight: 3, verticalAlign: -1 }} />
-                : <LinkIcon style={{ width: 9, height: 9, marginRight: 3, verticalAlign: -1 }} />}
-              {item.label}
-            </span>
-          ))}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-body" style={{ padding: "20px 24px" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", marginBottom: 10 }}>
+            What gets generated
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {[
+              { label: "Executive Summary", ai: true },
+              { label: "Strategy Plan", ai: true },
+              { label: "Google Ads + Ad Copy", ai: !hasLinkedKw },
+              { label: "Keyword Research", ai: !hasLinkedKw },
+              { label: "Meta Campaigns", ai: true },
+              { label: "Content Strategy", ai: !hasLinkedCs },
+              { label: "Content Calendar", ai: true },
+              { label: "Organic Social", ai: true },
+              { label: "Example Articles", ai: true },
+              ...(generateLandingPage ? [{ label: "Landing Page", ai: true }] : []),
+            ].map((item) => (
+              <span key={item.label} style={{
+                padding: "4px 12px", borderRadius: "var(--r-sm)", fontSize: 12, fontWeight: 500,
+                background: item.ai ? "var(--accent-bg)" : "#d1fae5",
+                color: item.ai ? "var(--accent)" : "#059669",
+                display: "inline-flex", alignItems: "center",
+              }}>
+                {item.ai
+                  ? <Sparkles style={{ width: 10, height: 10, marginRight: 4 }} />
+                  : <LinkIcon style={{ width: 10, height: 10, marginRight: 4 }} />}
+                {item.label}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* ═══════ ACTIONS ═══════ */}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingBottom: 32 }}>
-        <button className="btn btn-ghost" onClick={() => router.push("/tools/grand-plan")}
-          style={{ padding: "10px 18px" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingBottom: 40 }}>
+        <button className="btn btn-ghost" onClick={() => router.push("/tools/grand-plan")}>
           Cancel
         </button>
         <button
           className="btn btn-primary"
           disabled={!title || creating}
           onClick={handleCreate}
-          style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 24px" }}
         >
           {creating
-            ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />
-            : <ChevronRight style={{ width: 14, height: 14 }} />
+            ? <Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} />
+            : <ChevronRight style={{ width: 15, height: 15 }} />
           }
           Create Plan
         </button>
@@ -503,56 +505,3 @@ export default function NewGrandPlanPage() {
     </div>
   );
 }
-
-// ─── Shared inline styles ────────────────────────────────────────────────────
-
-const S = {
-  legend: {
-    fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.5px",
-    color: "var(--text-3)", marginBottom: 12,
-  } as React.CSSProperties,
-  card: {
-    background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12,
-    padding: "20px 22px", display: "flex", flexDirection: "column" as const, gap: 16,
-  } as React.CSSProperties,
-  label: {
-    fontSize: 12, fontWeight: 600, color: "var(--text-2)",
-    marginBottom: 5, display: "block",
-  } as React.CSSProperties,
-  hintLabel: {
-    fontSize: 11, fontWeight: 600, color: "var(--text-3)",
-    marginBottom: 4, display: "block",
-  } as React.CSSProperties,
-  input: {
-    width: "100%", padding: "8px 11px",
-    border: "1px solid var(--border)", borderRadius: 8,
-    fontSize: 13, background: "var(--bg-input)", color: "var(--text)", outline: "none",
-  } as React.CSSProperties,
-  select: {
-    width: "100%", padding: "8px 11px",
-    border: "1px solid var(--border)", borderRadius: 8,
-    fontSize: 13, background: "var(--bg-input)", color: "var(--text)", outline: "none",
-    cursor: "pointer",
-  } as React.CSSProperties,
-  hint: {
-    fontSize: 11, color: "var(--text-4)", marginTop: 3, display: "block",
-  } as React.CSSProperties,
-  linkRow: {
-    padding: "12px 20px", borderBottom: "1px solid var(--border)",
-    display: "flex", alignItems: "center", gap: 10,
-  } as React.CSSProperties,
-  linkLabel: {
-    fontSize: 13, fontWeight: 600, color: "var(--text)", minWidth: 100,
-  } as React.CSSProperties,
-  linkSelect: {
-    flex: 1, padding: "6px 10px",
-    border: "1px solid var(--border)", borderRadius: 8,
-    fontSize: 12, background: "var(--bg-input)", color: "var(--text)", outline: "none",
-    cursor: "pointer",
-  } as React.CSSProperties,
-  linkedBadge: {
-    display: "inline-flex", alignItems: "center", gap: 3,
-    fontSize: 11, fontWeight: 600, color: "#059669", background: "#d1fae5",
-    borderRadius: 12, padding: "2px 8px", flexShrink: 0,
-  } as React.CSSProperties,
-};
