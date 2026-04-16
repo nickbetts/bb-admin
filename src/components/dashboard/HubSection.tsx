@@ -10,6 +10,7 @@ import {
   BarChart3,
   Search,
   CheckSquare,
+  Map,
   Plus,
   ArrowRight,
   ExternalLink,
@@ -82,6 +83,15 @@ interface QaChecklistItem {
   updatedAt: string;
 }
 
+interface GrandPlanItem {
+  id: string;
+  title: string;
+  status: string;
+  purpose: string;
+  shareToken: string | null;
+  updatedAt: string;
+}
+
 interface AssetsData {
   reports: AssetGroup<ReportItem>;
   landingPages: AssetGroup<LandingPageItem>;
@@ -90,6 +100,7 @@ interface AssetsData {
   mediaPlans: AssetGroup<MediaPlanItem>;
   keywordResearch: AssetGroup<KeywordResearchItem>;
   qaChecklists: AssetGroup<QaChecklistItem>;
+  grandPlans: AssetGroup<GrandPlanItem>;
 }
 
 interface HubSectionProps {
@@ -108,6 +119,7 @@ const TOOL_CONFIG = [
   { key: "mediaPlans" as const, label: "Media Plans", icon: BarChart3, color: "#10b981" },
   { key: "keywordResearch" as const, label: "Keyword Research", icon: Search, color: "#ec4899" },
   { key: "qaChecklists" as const, label: "QA Checklists", icon: CheckSquare, color: "#06b6d4" },
+  { key: "grandPlans" as const, label: "Grand Plans", icon: Map, color: "#0f172a" },
 ] as const;
 
 function statusBadgeVariant(status: string): "default" | "success" | "warning" | "danger" | "info" {
@@ -197,6 +209,7 @@ export function HubSection({ clientId, clientSlug, clientName }: HubSectionProps
     { label: "New Proposal", href: `/tools/proposals?clientId=${clientId}&clientName=${enc(clientName)}&action=new`, icon: FileSignature },
     { label: "New Media Plan", href: `/tools/media-plan?clientId=${clientId}&clientName=${enc(clientName)}&action=new`, icon: BarChart3 },
     { label: "New QA Checklist", href: `/tools/qa-checklist?clientId=${clientId}&clientName=${enc(clientName)}&action=new`, icon: CheckSquare },
+    { label: "New Grand Plan", href: `/tools/grand-plan/new?clientId=${clientId}&clientName=${enc(clientName)}`, icon: Map },
   ];
 
   // ─── Loading state ──────────────────────────────────────────────────────
@@ -415,6 +428,18 @@ export function HubSection({ clientId, clientSlug, clientName }: HubSectionProps
                       date={item.updatedAt}
                     />
                   ))}
+                  {key === "grandPlans" && (group.recent as GrandPlanItem[]).map(item => (
+                    <ItemRow
+                      key={item.id}
+                      href={`/tools/grand-plan/${item.id}`}
+                      title={item.title}
+                      subtitle={formatStatus(item.purpose)}
+                      status={item.status}
+                      date={item.updatedAt}
+                      shareToken={item.shareToken}
+                      sharePrefix="/share/grand-plan/"
+                    />
+                  ))}
 
                   {/* View all footer */}
                   <ViewAllFooter
@@ -510,6 +535,7 @@ function ViewAllFooter({
     mediaPlans: `/tools/media-plan?clientId=${clientId}`,
     keywordResearch: `/tools/keyword-planner?clientId=${clientId}`,
     qaChecklists: `/tools/qa-checklist?clientId=${clientId}`,
+    grandPlans: `/tools/grand-plan?clientId=${clientId}`,
   };
 
   if (count <= 5) return null;

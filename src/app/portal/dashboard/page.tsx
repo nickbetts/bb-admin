@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Target, MessageSquare, LogOut, Loader2, ExternalLink, Globe, BookOpen, Layers } from "lucide-react";
+import { FileText, Target, MessageSquare, LogOut, Loader2, ExternalLink, Globe, BookOpen, Layers, Map } from "lucide-react";
 import Link from "next/link";
 
 interface PortalUser {
@@ -72,11 +72,20 @@ interface AssetProposal {
   createdAt: string;
 }
 
+interface AssetGrandPlan {
+  id: string;
+  title: string;
+  purpose: string;
+  shareToken: string;
+  createdAt: string;
+}
+
 interface PortalAssets {
   reports: AssetReport[];
   landingPages: AssetLandingPage[];
   contentStrategies: AssetContentStrategy[];
   proposals: AssetProposal[];
+  grandPlans: AssetGrandPlan[];
 }
 
 interface PortalData {
@@ -254,7 +263,7 @@ export default function PortalDashboardPage() {
                 <Layers style={{ width: 16, height: 16, color: "var(--accent)" }} />
                 <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Your Assets</h2>
               </div>
-              {!assets || (!assets.reports.length && !assets.landingPages.length && !assets.contentStrategies.length && !assets.proposals.length) ? (
+              {!assets || (!assets.reports.length && !assets.landingPages.length && !assets.contentStrategies.length && !assets.proposals.length && !assets.grandPlans?.length) ? (
                 <p style={{ fontSize: 13, color: "var(--text-3)" }}>No shared assets available yet.</p>
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
@@ -336,6 +345,29 @@ export default function PortalDashboardPage() {
                           <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                             <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.title}</p>
                             <a href={`/share/proposal/${p.shareToken}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ padding: 5, flexShrink: 0 }}>
+                              <ExternalLink style={{ width: 12, height: 12 }} />
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Grand Plans */}
+                  {assets.grandPlans?.length > 0 && (
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                        <Map style={{ width: 13, height: 13, color: "#0f172a" }} />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Grand Plans</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {assets.grandPlans.map((gp) => (
+                          <div key={gp.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div style={{ minWidth: 0 }}>
+                              <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{gp.title}</p>
+                              <p style={{ fontSize: 11, color: "var(--text-3)" }}>{gp.purpose === "pitch" ? "Pitch" : gp.purpose === "onboarding" ? "Onboarding" : "Strategy"}</p>
+                            </div>
+                            <a href={`/share/grand-plan/${gp.shareToken}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ padding: 5, flexShrink: 0 }}>
                               <ExternalLink style={{ width: 12, height: 12 }} />
                             </a>
                           </div>

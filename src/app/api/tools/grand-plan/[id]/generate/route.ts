@@ -1,0 +1,336 @@
+import { after } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activity-logger";
+import { generateGrandPlan, type GrandPlanSources, type CampaignFocusPeriod } from "@/lib/grand-plan-generator";
+import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
+import { suggestAdGroups, researchKeywords } from "@/lib/keyword-planner-pipeline";
+import { generateContentStrategy } from "@/lib/content-strategy-generator";
+
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
+
+// POST /api/tools/grand-plan/[id]/generate — trigger generation
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+
+  const plan = await prisma.grandPlan.findUnique({
+    where: { id },
+    include: {
+      client: { select: { id: true, name: true, slug: true, website: true, searchConsoleSiteUrl: true } },
+      proposal: {
+        select: {
+          id: true, title: true, clientName: true,
+          servicesJson: true, timelineJson: true, proposalDataJson: true,
+        },
+      },
+      keywordResearch: {
+        select: {
+          id: true, title: true, website: true, brief: true,
+          adGroups: true, selectedKws: true, ideas: true,
+          maxCpc: true, monthlyBudget: true,
+        },
+      },
+      contentStrategy: {
+        select: { id: true, title: true, period: true, spreadsheetData: true },
+      },
+      mediaPlan: {
+        select: {
+          id: true, title: true, objective: true,
+          totalBudget: true, channels: true, forecast: true,
+        },
+      },
+    },
+  });
+
+  if (!plan) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (plan.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (plan.status === "generating") {
+    return NextResponse.json({ error: "Generation already in progress" }, { status: 409 });
+  }
+
+  // Allow optional body overrides
+  let bodyOverrides: { clientBrief?: string; campaignFocusPeriods?: CampaignFocusPeriod[] } = {};
+  try {
+    bodyOverrides = await request.json();
+  } catch {
+    // No body or invalid JSON — that's fine
+  }
+
+  // Set status to generating immediately
+  await prisma.grandPlan.update({
+    where: { id },
+    data: { status: "generating" },
+  });
+
+  // Capture values for the after() closure
+  const planId = plan.id;
+  const clientName = plan.client?.name || plan.proposal?.clientName || "Client";
+  const userId = session.user.id;
+  const userEmail = session.user.email;
+
+  // Run heavy generation in after() — response returns immediately
+  after(async () => {
+    const start = Date.now();
+
+    // Helper to update status message (visible to the polling UI)
+    async function setProgress(message: string) {
+      await prisma.grandPlan.update({
+        where: { id: planId },
+        data: { statusMessage: message },
+      });
+    }
+
+    try {
+      const focusPeriods: CampaignFocusPeriod[] = bodyOverrides.campaignFocusPeriods
+        ?? safeJsonParse(plan.campaignFocusPeriodsJson, []);
+
+      const brief = bodyOverrides.clientBrief ?? plan.clientBrief ?? "";
+      const website = plan.client?.website ?? plan.keywordResearch?.website ?? "";
+      const clientId = plan.clientId;
+
+      // Parse section config — if sections array is set, only generate those
+      const config = safeJsonParse<{ sections?: string[] }>(plan.configJson, {});
+      const enabledSections = config.sections?.length ? config.sections : undefined;
+
+      // ── Auto-generate keyword research if not linked ───────────────────────
+      let keywordResearchData = plan.keywordResearch;
+      if (!keywordResearchData && website && brief) {
+        await setProgress("Crawling website and suggesting ad groups...");
+        const suggestResult = await suggestAdGroups(website, brief);
+
+        if (suggestResult.adGroups.length > 0) {
+          await setProgress(`Researching ${suggestResult.adGroups.reduce((s, g) => s + g.keywords.length, 0)} keywords via SEMrush...`);
+          const ideas = await researchKeywords(suggestResult.adGroups);
+
+          // Convert ad groups with volumes into the format the generator expects
+          const adGroupsWithVolumes = suggestResult.adGroups.map((g) => ({
+            name: g.name,
+            rationale: g.rationale,
+            keywords: g.keywords.map((kw) => {
+              const idea = ideas.find((i) => i.text.toLowerCase() === kw.toLowerCase());
+              return {
+                keyword: kw,
+                matchType: "broad" as const,
+                volume: idea?.avgMonthlySearches,
+                cpc: idea ? (idea.highTopOfPageBidMicros / 1_000_000) : undefined,
+              };
+            }),
+          }));
+
+          // Save as a real KeywordPlannerResearch record
+          const savedResearch = await prisma.keywordPlannerResearch.create({
+            data: {
+              userId,
+              clientId: clientId ?? undefined,
+              title: `${clientName} — Auto-generated keyword research`,
+              website,
+              brief,
+              location: "2826",
+              adGroups: JSON.stringify(adGroupsWithVolumes),
+              selectedKws: JSON.stringify(suggestResult.adGroups.flatMap((g) => g.keywords)),
+              ideas: JSON.stringify(ideas),
+              maxCpc: "",
+              monthlyBudget: "",
+              conversionRate: "3",
+              websiteContext: suggestResult.websiteContext,
+            },
+          });
+
+          // Link to the grand plan
+          await prisma.grandPlan.update({
+            where: { id: planId },
+            data: { keywordResearchId: savedResearch.id },
+          });
+
+          // Set as source data for the generator
+          keywordResearchData = {
+            id: savedResearch.id,
+            title: savedResearch.title,
+            website: savedResearch.website,
+            brief: savedResearch.brief,
+            adGroups: savedResearch.adGroups,
+            selectedKws: savedResearch.selectedKws,
+            ideas: savedResearch.ideas,
+            maxCpc: savedResearch.maxCpc,
+            monthlyBudget: savedResearch.monthlyBudget,
+          };
+        }
+      }
+
+      // ── Auto-generate content strategy if not linked ───────────────────────
+      let contentStrategyData = plan.contentStrategy;
+      if (!contentStrategyData && website) {
+        const domain = website.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "");
+        const searchConsoleSiteUrl = plan.client?.searchConsoleSiteUrl ?? undefined;
+
+        try {
+          await setProgress("Running SEMrush analysis and generating content strategy with Claude...");
+          const strategyResult = await generateContentStrategy(
+            domain,
+            clientName,
+            brief || `Full digital marketing strategy for ${clientName}`,
+            [], // auto-detect competitors
+            "uk",
+            searchConsoleSiteUrl ?? null,
+            "claude-opus-4-6",
+          );
+
+          // Save as a real ContentStrategy record
+          const now = new Date();
+          const period = `${now.toLocaleString("en-GB", { month: "long", year: "numeric" })} — Auto-generated`;
+
+          const savedStrategy = await prisma.contentStrategy.create({
+            data: {
+              clientId: clientId ?? undefined,
+              createdBy: "Grand Plan Auto-Pipeline",
+              title: `${clientName} — Content & SEO Strategy`,
+              period,
+              spreadsheetData: JSON.stringify(strategyResult.data),
+              generatedHtml: "", // HTML not rendered during auto-pipeline — can be generated later
+            },
+          });
+
+          // Link to the grand plan
+          await prisma.grandPlan.update({
+            where: { id: planId },
+            data: { contentStrategyId: savedStrategy.id },
+          });
+
+          contentStrategyData = {
+            id: savedStrategy.id,
+            title: savedStrategy.title,
+            period: savedStrategy.period,
+            spreadsheetData: savedStrategy.spreadsheetData,
+          };
+        } catch (csError) {
+          console.error("Auto content strategy generation failed (continuing without):", csError);
+          // Continue without content strategy — the plan will still generate
+        }
+      }
+
+      await setProgress("Generating plan sections with Claude...");
+
+      const sources: GrandPlanSources = {
+        clientName,
+        purpose: plan.purpose,
+        clientBrief: brief || undefined,
+        campaignFocusPeriods: focusPeriods,
+        proposal: plan.proposal
+          ? {
+              title: plan.proposal.title,
+              clientName: plan.proposal.clientName,
+              servicesJson: plan.proposal.servicesJson,
+              timelineJson: plan.proposal.timelineJson,
+              proposalDataJson: plan.proposal.proposalDataJson,
+            }
+          : undefined,
+        keywordResearch: keywordResearchData
+          ? {
+              title: keywordResearchData.title,
+              website: keywordResearchData.website,
+              brief: keywordResearchData.brief,
+              adGroups: keywordResearchData.adGroups,
+              selectedKws: keywordResearchData.selectedKws,
+              ideas: keywordResearchData.ideas,
+              maxCpc: keywordResearchData.maxCpc,
+              monthlyBudget: keywordResearchData.monthlyBudget,
+            }
+          : undefined,
+        contentStrategy: contentStrategyData
+          ? {
+              title: contentStrategyData.title,
+              period: contentStrategyData.period,
+              spreadsheetData: contentStrategyData.spreadsheetData,
+            }
+          : undefined,
+        mediaPlan: plan.mediaPlan
+          ? {
+              title: plan.mediaPlan.title,
+              objective: plan.mediaPlan.objective,
+              totalBudget: plan.mediaPlan.totalBudget,
+              channels: plan.mediaPlan.channels,
+              forecast: plan.mediaPlan.forecast,
+            }
+          : undefined,
+      };
+
+      const planData = await generateGrandPlan(sources, setProgress, enabledSections);
+      const html = renderGrandPlanHtml(planData);
+      const generationMs = Date.now() - start;
+
+      // Get next version number
+      const lastVersion = await prisma.grandPlanVersion.findFirst({
+        where: { grandPlanId: planId },
+        orderBy: { versionNumber: "desc" },
+        select: { versionNumber: true },
+      });
+      const nextVersion = (lastVersion?.versionNumber ?? 0) + 1;
+
+      // Save generated HTML + plan data, create version
+      await prisma.$transaction([
+        prisma.grandPlan.update({
+          where: { id: planId },
+          data: {
+            status: "complete",
+            statusMessage: null,
+            generatedHtml: html,
+            planDataJson: JSON.stringify(planData),
+            generationMs,
+          },
+        }),
+        prisma.grandPlanVersion.create({
+          data: {
+            grandPlanId: planId,
+            versionNumber: nextVersion,
+            generatedHtml: html,
+            planDataJson: JSON.stringify(planData),
+            prompt: sources.clientBrief || "Initial generation",
+          },
+        }),
+      ]);
+
+      logActivity({
+        userId,
+        userEmail,
+        action: "grand_plan_generated",
+        resourceType: "GrandPlan",
+        resourceId: planId,
+        clientId: plan.clientId ?? undefined,
+        clientName,
+        description: `Generated grand plan "${plan.title}" (v${nextVersion}, ${Math.round(generationMs / 1000)}s)`,
+      });
+    } catch (genError) {
+      const message = genError instanceof Error ? genError.message : "Unknown error";
+      console.error("Grand plan generation error:", genError);
+
+      await prisma.grandPlan.update({
+        where: { id: planId },
+        data: {
+          status: "failed",
+          statusMessage: null,
+          generationError: message,
+          planDataJson: JSON.stringify({ error: message }),
+        },
+      });
+    }
+  });
+
+  return NextResponse.json({
+    id: planId,
+    status: "generating",
+    message: "Generation started. Poll GET /api/tools/grand-plan/[id] for completion.",
+  });
+}
+
+function safeJsonParse<T>(s: string | null | undefined, fallback: T): T {
+  if (!s) return fallback;
+  try { return JSON.parse(s); } catch { return fallback; }
+}

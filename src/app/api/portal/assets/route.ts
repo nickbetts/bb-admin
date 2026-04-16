@@ -56,7 +56,7 @@ export async function GET() {
     const clientId = portalUser.clientId;
 
     // Only expose items that have been shared or published — never internal-only items
-    const [reports, landingPages, contentStrategies, proposals] = await Promise.all([
+    const [reports, landingPages, contentStrategies, proposals, grandPlans] = await Promise.all([
       // Published reports with a share token
       prisma.report.findMany({
         where: { clientId, status: "published", shareToken: { not: null } },
@@ -88,9 +88,17 @@ export async function GET() {
         take: 6,
         select: { id: true, title: true, clientName: true, shareToken: true, createdAt: true },
       }),
+
+      // Grand plans with a share token
+      prisma.grandPlan.findMany({
+        where: { clientId, shareToken: { not: null }, status: "complete" },
+        orderBy: { createdAt: "desc" },
+        take: 6,
+        select: { id: true, title: true, purpose: true, shareToken: true, createdAt: true },
+      }),
     ]);
 
-    return NextResponse.json({ reports, landingPages, contentStrategies, proposals });
+    return NextResponse.json({ reports, landingPages, contentStrategies, proposals, grandPlans });
   } catch (error) {
     console.error("Portal assets error:", error);
     return NextResponse.json({ error: "Failed to get portal assets" }, { status: 500 });

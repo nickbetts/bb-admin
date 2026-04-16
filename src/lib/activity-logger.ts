@@ -25,6 +25,11 @@ export type ActivityAction =
   | "landing_page_refined"
   | "landing_page_shared"
   | "landing_page_deleted"
+  | "grand_plan_created"
+  | "grand_plan_generated"
+  | "grand_plan_refined"
+  | "grand_plan_shared"
+  | "grand_plan_deleted"
   | "snapshot_triggered"
   | "user_login"
   | "user_created";

@@ -13,6 +13,8 @@ import {
   Grid3X3,
   ChevronRight,
   X,
+  Plus,
+  Check,
 } from "lucide-react";
 
 interface Client {
@@ -64,11 +66,19 @@ export default function NewLandingPage() {
   const [targetAudience, setTargetAudience] = useState("");
   const [templateId, setTemplateId] = useState("");
 
+  // Inline new-client form
+  const [showNewClient, setShowNewClient] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientWebsite, setNewClientWebsite] = useState("");
+  const [creatingClient, setCreatingClient] = useState(false);
+  const [clientError, setClientError] = useState<string | null>(null);
+
   useEffect(() => {
     fetch("/api/clients").then(async (r) => {
       if (r.ok) {
         const data = await r.json();
-        setClients(data.clients ?? []);
+        // API returns a plain array
+        setClients(Array.isArray(data) ? data : (data.clients ?? []));
       }
     }).catch(() => {});
     fetch("/api/tools/landing-pages/templates").then(async (r) => {
@@ -84,6 +94,38 @@ export default function NewLandingPage() {
     if (newClientId) {
       const client = clients.find((c) => c.id === newClientId);
       if (client?.website && !url) setUrl(client.website);
+    }
+  };
+
+  const handleCreateClient = async () => {
+    if (!newClientName.trim()) {
+      setClientError("Client name is required.");
+      return;
+    }
+    setCreatingClient(true);
+    setClientError(null);
+    try {
+      const res = await fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newClientName.trim(), website: newClientWebsite.trim() || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setClientError(data.error ?? "Failed to create client");
+        return;
+      }
+      const created: Client = { id: data.id, name: data.name, website: data.website };
+      setClients((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setClientId(created.id);
+      if (created.website && !url) setUrl(created.website);
+      setShowNewClient(false);
+      setNewClientName("");
+      setNewClientWebsite("");
+    } catch {
+      setClientError("Network error — please try again.");
+    } finally {
+      setCreatingClient(false);
     }
   };
 
@@ -149,19 +191,73 @@ export default function NewLandingPage() {
 
           {/* Client selection */}
           <div>
-            <label style={labelStyle}>
-              Client <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
-            </label>
-            <select
-              value={clientId}
-              onChange={(e) => handleClientChange(e.target.value)}
-              style={inputStyle}
-            >
-              <option value="">No client (standalone)</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <label style={{ ...labelStyle, marginBottom: 0 }}>
+                Client <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+              </label>
+              {!showNewClient && (
+                <button
+                  type="button"
+                  onClick={() => setShowNewClient(true)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600, fontFamily: "inherit" }}
+                >
+                  <Plus style={{ width: 13, height: 13 }} /> New client
+                </button>
+              )}
+            </div>
+
+            {showNewClient ? (
+              <div style={{ border: "1px solid var(--accent)", borderRadius: "var(--r)", padding: "14px 16px", background: "var(--accent-bg)", display: "flex", flexDirection: "column", gap: 10 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", margin: 0 }}>New client</p>
+                <input
+                  type="text"
+                  value={newClientName}
+                  onChange={(e) => setNewClientName(e.target.value)}
+                  placeholder="Client name *"
+                  style={inputStyle}
+                  autoFocus
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCreateClient(); if (e.key === "Escape") setShowNewClient(false); }}
+                />
+                <input
+                  type="url"
+                  value={newClientWebsite}
+                  onChange={(e) => setNewClientWebsite(e.target.value)}
+                  placeholder="Website (optional, e.g. https://example.com)"
+                  style={inputStyle}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCreateClient(); if (e.key === "Escape") setShowNewClient(false); }}
+                />
+                {clientError && <p style={{ fontSize: 12, color: "var(--danger)", margin: 0 }}>{clientError}</p>}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={handleCreateClient}
+                    disabled={creatingClient || !newClientName.trim()}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 14px", background: "var(--accent)", color: "#fff", border: "none", borderRadius: "var(--r)", fontSize: 13, fontWeight: 600, cursor: creatingClient ? "not-allowed" : "pointer", opacity: creatingClient ? 0.7 : 1, fontFamily: "inherit" }}
+                  >
+                    {creatingClient ? <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} /> : <Check style={{ width: 13, height: 13 }} />}
+                    {creatingClient ? "Creating…" : "Create & select"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowNewClient(false); setNewClientName(""); setNewClientWebsite(""); setClientError(null); }}
+                    style={{ padding: "7px 14px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--r)", fontSize: 13, cursor: "pointer", color: "var(--text-2)", fontFamily: "inherit" }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <select
+                value={clientId}
+                onChange={(e) => handleClientChange(e.target.value)}
+                style={inputStyle}
+              >
+                <option value="">No client (standalone)</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Title */}

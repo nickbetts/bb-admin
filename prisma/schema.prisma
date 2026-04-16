@@ -125,6 +125,7 @@ model Client {
   qaChecklists          QaChecklist[]
   proposals             Proposal[]
   keywordResearch       KeywordPlannerResearch[]
+  grandPlans            GrandPlan[]
 }
 
 model ClientGoal {
@@ -312,6 +313,7 @@ model KeywordPlannerResearch {
   updatedAt        DateTime @updatedAt
   client           Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
   proposals        Proposal[]
+  grandPlans       GrandPlan[]
 }
 
 model Proposal {
@@ -338,6 +340,7 @@ model Proposal {
   client          Client?                 @relation(fields: [clientId], references: [id], onDelete: SetNull)
   research        KeywordPlannerResearch? @relation(fields: [researchId], references: [id], onDelete: SetNull)
   enquiries       ProposalEnquiry[]
+  grandPlans      GrandPlan[]
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
 }
@@ -494,6 +497,7 @@ model MediaPlan {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   client      Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  grandPlans  GrandPlan[]
 }
 
 // Phase 3: Client Portal — self-serve client-facing dashboard access
@@ -571,6 +575,7 @@ model ContentStrategy {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   client           Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  grandPlans       GrandPlan[]
 
   @@index([clientId, createdAt])
 }
@@ -679,4 +684,66 @@ model LandingPageTemplate {
   createdBy      String?  // User email who saved this template
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+// ── Grand Plan Generator ────────────────────────────────────────────────────
+
+// Go-to-market plans combining proposals, keyword research, content strategy,
+// media plans, campaign structures, and content calendars into a single
+// client-facing deliverable. Used for pitches (pre-sale) and onboarding (post-sale).
+model GrandPlan {
+  id                      String              @id @default(cuid())
+  clientId                String?
+  userId                  String              // Creator
+  title                   String
+  status                  String              @default("draft") // draft | generating | complete | failed
+  statusMessage           String?             // Progress message during generation (e.g., "Researching keywords...")
+  purpose                 String              @default("pitch") // pitch | onboarding | strategy_refresh
+  generationMs            Int?                // How long AI generation took in ms
+  generationError         String?             // Error message when status = "failed"
+  // Source links — all optional, sections auto-enabled based on what's linked
+  proposalId              String?
+  keywordResearchId       String?
+  contentStrategyId       String?
+  mediaPlanId             String?
+  // Generated output
+  planDataJson            String?             // JSON: structured plan data for interactive viewer
+  generatedHtml           String?             // Full standalone HTML deliverable
+  // Customisation
+  configJson              String    @default("{}") // JSON: { sections: string[], brandingOverrides?: {} }
+  campaignFocusPeriodsJson String   @default("[]") // JSON: Array<{ startMonth: number, endMonth: number, label: string, description?: string }>
+  customSectionsJson      String    @default("[]") // JSON: user-added custom sections
+  clientBrief             String?             // Free-text brief for AI context
+  // Sharing
+  shareToken              String?   @unique
+  sharePassword           String?             // SHA256 hash of password for share link
+  viewCount               Int       @default(0)
+  lastViewedAt            DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  // Relations
+  client                  Client?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  proposal                Proposal?           @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  keywordResearch         KeywordPlannerResearch? @relation(fields: [keywordResearchId], references: [id], onDelete: SetNull)
+  contentStrategy         ContentStrategy?    @relation(fields: [contentStrategyId], references: [id], onDelete: SetNull)
+  mediaPlan               MediaPlan?          @relation(fields: [mediaPlanId], references: [id], onDelete: SetNull)
+  versions                GrandPlanVersion[]
+
+  @@index([clientId, createdAt])
+  @@index([userId, createdAt])
+}
+
+// Version history: every AI refinement creates a new version
+model GrandPlanVersion {
+  id            String    @id @default(cuid())
+  grandPlanId   String
+  versionNumber Int       // Sequential per plan (1, 2, 3…)
+  generatedHtml String    // Full HTML at this version
+  planDataJson  String?   // Structured data at this version
+  prompt        String    // The user prompt that produced this version
+  createdAt     DateTime  @default(now())
+  grandPlan     GrandPlan @relation(fields: [grandPlanId], references: [id], onDelete: Cascade)
+
+  @@unique([grandPlanId, versionNumber])
+  @@index([grandPlanId, createdAt])
 }

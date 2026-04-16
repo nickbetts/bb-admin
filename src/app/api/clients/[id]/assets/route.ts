@@ -38,6 +38,8 @@ export async function GET(
     recentKeywordResearch,
     qaChecklistCount,
     recentQaChecklists,
+    grandPlanCount,
+    recentGrandPlans,
   ] = await Promise.all([
     prisma.report.count({ where: { clientId } }),
     prisma.report.findMany({
@@ -94,6 +96,14 @@ export async function GET(
       take: 5,
       select: { id: true, checklistType: true, label: true, status: true, updatedAt: true },
     }),
+
+    prisma.grandPlan.count({ where: { clientId } }),
+    prisma.grandPlan.findMany({
+      where: { clientId },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      select: { id: true, title: true, status: true, purpose: true, shareToken: true, updatedAt: true },
+    }),
   ]);
 
   return NextResponse.json({
@@ -104,6 +114,7 @@ export async function GET(
     mediaPlans: { count: mediaPlanCount, recent: recentMediaPlans },
     keywordResearch: { count: keywordResearchCount, recent: recentKeywordResearch },
     qaChecklists: { count: qaChecklistCount, recent: recentQaChecklists },
+    grandPlans: { count: grandPlanCount, recent: recentGrandPlans },
   });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
