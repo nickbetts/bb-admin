@@ -139,7 +139,7 @@ function renderGoogleAdsCampaigns(data: any): string {
     .map((k: string) => `<span class="neg-chip">${esc(k)}</span>`)
     .join(" ");
 
-  const adGroupsHtml = (data.adGroups as { name: string; keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[] }[])
+  const adGroupsHtml = (data.adGroups as { name: string; keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[]; adCopy?: { headlines: string[]; descriptions: string[]; sitelinks?: string[] } }[])
     .map((g, i) => {
       const kwRows = g.keywords
         .map((k) => {
@@ -149,6 +149,35 @@ function renderGoogleAdsCampaigns(data: any): string {
           return `<tr><td class="kw-text">${esc(display)}</td><td><span class="match-badge ${badge}">${badgeLabel}</span></td>${k.volume != null ? `<td class="kw-vol">${k.volume.toLocaleString()}</td>` : ""}</tr>`;
         })
         .join("\n");
+
+      const adCopyHtml = g.adCopy ? (() => {
+        const headlinesHtml = g.adCopy!.headlines
+          .map((h, hi) => `<div class="headline-item"><span class="headline-num">${hi + 1}</span><span class="headline-text">${esc(h)}</span><button class="copy-btn-sm" onclick="copySingle(this,'${escAttr(h)}')">Copy</button></div>`)
+          .join("\n");
+        const descriptionsHtml = g.adCopy!.descriptions
+          .map((d, di) => `<div class="desc-item"><span class="headline-num">${di + 1}</span><span class="headline-text">${esc(d)}</span><button class="copy-btn-sm" onclick="copySingle(this,'${escAttr(d)}')">Copy</button></div>`)
+          .join("\n");
+        const sitelinksHtml = (g.adCopy!.sitelinks ?? []).length > 0
+          ? `<div class="sitelinks-section"><div class="ad-copy-label">Sitelinks</div><div class="sitelink-chips">${g.adCopy!.sitelinks!.map((s) => `<span class="sitelink-chip">${esc(s)}</span>`).join("")}</div></div>`
+          : "";
+        return `
+        <div class="ad-copy-section">
+          <div class="ad-copy-title">Ad Copy</div>
+          <div class="ad-copy-cols">
+            <div class="ad-copy-col">
+              <div class="ad-copy-label">Headlines <span class="ad-copy-count">${g.adCopy!.headlines.length}</span></div>
+              <div class="headlines-list">${headlinesHtml}</div>
+              <button class="copy-btn" onclick="copyAdItems(this,'headlines')">Copy All Headlines</button>
+            </div>
+            <div class="ad-copy-col">
+              <div class="ad-copy-label">Descriptions <span class="ad-copy-count">${g.adCopy!.descriptions.length}</span></div>
+              <div class="descriptions-list">${descriptionsHtml}</div>
+              <button class="copy-btn" onclick="copyAdItems(this,'descriptions')">Copy All Descriptions</button>
+            </div>
+          </div>
+          ${sitelinksHtml}
+        </div>`;
+      })() : "";
 
       return `
       <div class="ag-section">
@@ -164,6 +193,7 @@ function renderGoogleAdsCampaigns(data: any): string {
             <tbody>${kwRows}</tbody>
           </table>
           <button class="copy-btn" onclick="copyAgKeywords(this)">Copy Keywords</button>
+          ${adCopyHtml}
         </div>
       </div>`;
     })
@@ -447,6 +477,16 @@ function renderMediaPlan(data: any): string {
     </div>`)
     .join("\n");
 
+  const tableRowsHtml = (data.channels ?? [])
+    .map((ch: { name: string; budget: number; percentage: number; strategy: string }) => `
+    <tr>
+      <td style="font-weight:600;white-space:nowrap">${esc(ch.name)}</td>
+      <td style="font-weight:600">£${ch.budget.toLocaleString()}</td>
+      <td>${ch.percentage}%</td>
+      <td class="channel-strategy">${esc(ch.strategy)}</td>
+    </tr>`)
+    .join("\n");
+
   return `
     <section id="media-plan" class="section">
       <h2 class="section-title">Media Plan</h2>
@@ -456,6 +496,7 @@ function renderMediaPlan(data: any): string {
       </div>
       <h3>Channel Allocation</h3>
       <div class="channel-chart">${channelsHtml}</div>
+      ${tableRowsHtml ? `<table class="channel-table"><thead><tr><th>Channel</th><th>Budget</th><th>Split</th><th>Strategy</th></tr></thead><tbody>${tableRowsHtml}</tbody></table>` : ""}
     </section>`;
 }
 
@@ -667,9 +708,41 @@ a{color:var(--accent);text-decoration:none}
 .auth-box button{width:100%;padding:10px;background:var(--heading);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
 .auth-box button:hover{background:#1e293b}
 .auth-error{color:#dc2626;font-size:13px;margin-top:8px;min-height:20px}
+/* Ad copy */
+.ad-copy-section{margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+.ad-copy-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mid);margin-bottom:12px}
+.ad-copy-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px}
+.ad-copy-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--mid);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ad-copy-count{background:var(--border);color:var(--text-light);border-radius:10px;padding:1px 7px;font-size:11px;font-weight:600}
+.headlines-list,.descriptions-list{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.headline-item,.desc-item{display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:var(--bg);border-radius:6px;font-size:13px}
+.headline-num{font-size:11px;font-weight:700;color:var(--mid);min-width:18px;margin-top:1px;flex-shrink:0}
+.headline-text{flex:1;color:var(--heading);line-height:1.4}
+.desc-item .headline-text{color:var(--text);font-size:12px}
+.sitelinks-section{margin-top:12px}
+.sitelink-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.sitelink-chip{display:inline-block;padding:4px 12px;background:#dbeafe;color:#1e40af;border-radius:12px;font-size:12px;font-weight:500}
+/* Media plan table */
+.channel-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px}
+.channel-table th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--mid);background:var(--bg);border-bottom:1px solid var(--border)}
+.channel-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.channel-table tr:last-child td{border-bottom:none}
+.channel-strategy{color:var(--text-light);font-size:12px;line-height:1.5}
 /* Responsive */
-@media(max-width:900px){.layout{flex-direction:column}.sidebar{width:100%;position:static}.sidebar-nav{flex-direction:row;flex-wrap:wrap;gap:4px}.sidebar-link{padding:6px 10px;font-size:12px}}
+@media(max-width:900px){.layout{flex-direction:column}.sidebar{width:100%;position:static}.sidebar-nav{flex-direction:row;flex-wrap:wrap;gap:4px}.sidebar-link{padding:6px 10px;font-size:12px}.ad-copy-cols{grid-template-columns:1fr}}
 @media(max-width:640px){.page-hero{padding:32px 24px}.page-hero h1{font-size:22px}.section{padding:20px}.overview-grid{grid-template-columns:1fr 1fr}.content-cards{grid-template-columns:1fr}.creatives-grid{grid-template-columns:1fr}}
+/* Print */
+@media print{
+  .site-header,.sidebar,.watermark,.auth-gate,.copy-btn,.copy-btn-sm{display:none!important}
+  .layout{padding:0;max-width:100%;display:block}
+  .main{width:100%}
+  .section{border:none;border-radius:0;padding:16px 0;break-inside:avoid;page-break-inside:avoid}
+  .section-title{border-bottom:2px solid #e2e8f0}
+  .ag-body{display:block!important}
+  .article-body{display:block!important}
+  .page-hero{border-radius:0}
+  body{font-size:12px}
+}
 `;
 
 // ─── Inline JS ──────────────────────────────────────────────────────────────
@@ -716,6 +789,17 @@ function copySingle(btn,text){
   navigator.clipboard.writeText(text).then(function(){
     btn.textContent='Copied!';
     setTimeout(function(){btn.textContent='Copy';},1800);
+  });
+}
+
+// Copy all ad items (headlines or descriptions)
+function copyAdItems(btn,type){
+  var section=btn.closest('.ad-copy-section');
+  var items=section.querySelectorAll(type==='headlines'?'.headline-item .headline-text':'.desc-item .headline-text');
+  var text=Array.from(items).map(function(el){return el.textContent.trim()}).join('\\n');
+  navigator.clipboard.writeText(text).then(function(){
+    btn.textContent='Copied!';
+    setTimeout(function(){btn.textContent=type==='headlines'?'Copy All Headlines':'Copy All Descriptions';},1800);
   });
 }
 

@@ -59,6 +59,7 @@ export default function NewGrandPlanPage() {
   const [selectedMediaPlan, setSelectedMediaPlan] = useState("");
   const [focusPeriods, setFocusPeriods] = useState<FocusPeriod[]>([]);
   const [creating, setCreating] = useState(false);
+  const [sector, setSector] = useState("");
 
   // Inline brief state
   const [kwWebsite, setKwWebsite] = useState("");
@@ -134,6 +135,7 @@ export default function NewGrandPlanPage() {
           contentStrategyId: selectedContentStrategy || undefined,
           mediaPlanId: selectedMediaPlan || undefined,
           clientBrief: clientBrief || undefined,
+          sector: sector || undefined,
           campaignFocusPeriods: focusPeriods.filter((fp) => fp.label),
           config: {
             ...(!selectedKwResearch && kwWebsite ? { kwBrief: { website: kwWebsite, brief: kwBrief, monthlyBudget: kwMonthlyBudget } } : {}),
@@ -295,6 +297,21 @@ export default function NewGrandPlanPage() {
               </button>
             ))}
           </div>
+
+          <label style={{ ...label, marginTop: 16 }}>Sector <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span></label>
+          <select style={select} value={sector} onChange={(e) => setSector(e.target.value)}>
+            <option value="">Select a sector...</option>
+            <option value="dental">Dental Practices</option>
+            <option value="ecommerce">Ecommerce &amp; DTC Brands</option>
+            <option value="industrial">Industrial &amp; Manufacturing</option>
+            <option value="charities">Charities &amp; Non-Profits</option>
+            <option value="healthcare">Private Healthcare &amp; Clinics</option>
+            <option value="hospitality">Hospitality &amp; Events</option>
+            <option value="professional_services">Professional Services</option>
+            <option value="saas">SaaS &amp; Technology</option>
+            <option value="education">Education &amp; Training</option>
+            <option value="other">Other</option>
+          </select>
 
           <label style={{ ...label, marginTop: 16 }}>Client Brief <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span></label>
           <textarea

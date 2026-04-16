@@ -142,6 +142,7 @@ export interface GrandPlanSources {
     forecast?: string | null;
   };
   clientBrief?: string;
+  sector?: string;
   clientName: string;
   purpose: string;
   campaignFocusPeriods: CampaignFocusPeriod[];
@@ -186,7 +187,7 @@ export async function generateGrandPlan(
 
   // Generate sections in parallel where possible
   if (onProgress) await onProgress("Generating AI sections...");
-  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, aiMediaPlan] =
+  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, aiMediaPlan, adCopyData] =
     await Promise.all([
       isEnabled("executiveSummary")
         ? generateExecutiveSummary(anthropic, contextSummary, sources)
@@ -210,11 +211,15 @@ export async function generateGrandPlan(
       isEnabled("mediaPlan") && sources.mediaPlan && mediaChannels.length === 0
         ? generateMediaPlanChannels(anthropic, contextSummary, sources)
         : Promise.resolve(undefined),
+      // Generate ad copy for Google Ads ad groups
+      isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
+        ? generateGoogleAdsAdCopy(anthropic, adGroups, contextSummary, sources)
+        : Promise.resolve([]),
     ]);
 
-  // Build Google Ads campaigns from keyword research (no AI needed, structured data)
+  // Build Google Ads campaigns from keyword research (structured data + AI ad copy)
   const googleAdsCampaigns = isEnabled("googleAdsCampaigns") && sources.keywordResearch
-    ? buildGoogleAdsCampaigns(adGroups, sources)
+    ? buildGoogleAdsCampaigns(adGroups, sources, adCopyData ?? [])
     : undefined;
 
   // Build keyword research section
@@ -280,6 +285,10 @@ function buildContextSummary(
   const parts: string[] = [];
   parts.push(`Client: ${sources.clientName}`);
   parts.push(`Purpose: ${sources.purpose === "pitch" ? "Pre-sale pitch — persuasive tone" : sources.purpose === "onboarding" ? "Post-sale onboarding — operational tone" : "Strategy refresh — analytical tone"}`);
+
+  if (sources.sector) {
+    parts.push(`Sector: ${sources.sector}`);
+  }
 
   if (sources.clientBrief) {
     parts.push(`Brief: ${sources.clientBrief}`);
@@ -543,6 +552,59 @@ ${context}`,
   return articles;
 }
 
+// ─── Google Ads ad copy generator ───────────────────────────────────────────
+
+async function generateGoogleAdsAdCopy(
+  anthropic: Anthropic,
+  adGroups: AdGroup[],
+  context: string,
+  sources: GrandPlanSources,
+): Promise<{ name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[] } }[]> {
+  const groupList = adGroups
+    .map((g) => `${g.name}: ${g.keywords.slice(0, 5).map((k) => k.keyword).join(", ")}`)
+    .join("\n");
+
+  const res = await anthropic.messages.create({
+    model: MODEL_LIGHT,
+    max_tokens: 3000,
+    messages: [
+      {
+        role: "user",
+        content: `You are a Google Ads specialist at i3media. Write Responsive Search Ad copy for each ad group below.
+
+Return a JSON object with key "adGroups" containing an array. Each item:
+- name: string (must match the ad group name exactly)
+- headlines: string[] (15 headlines, STRICTLY max 30 characters each — count carefully)
+- descriptions: string[] (4 descriptions, STRICTLY max 90 characters each)
+- sitelinks: string[] (4-6 sitelink labels, max 25 chars each)
+
+Rules:
+- British English. No AI jargon. Be direct and benefit-led.
+- Vary headlines between: primary keyword inclusion, benefit statement, USP, CTA, social proof.
+- Descriptions expand on the proposition with a call to action.
+- Character limits are hard limits — headlines over 30 chars or descriptions over 90 chars will be rejected by Google.
+- Return ONLY valid JSON, no markdown fences.
+
+Client: ${sources.clientName}
+Brief: ${sources.clientBrief ?? sources.keywordResearch?.brief ?? ""}
+
+Ad groups and top keywords:
+${groupList}
+
+Context:
+${context}`,
+      },
+    ],
+  });
+
+  try {
+    const parsed = safeJsonParse(extractText(res), { adGroups: [] });
+    return (parsed.adGroups ?? []) as { name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[] } }[];
+  } catch {
+    return [];
+  }
+}
+
 // ─── Media plan AI generator ────────────────────────────────────────────────
 
 async function generateMediaPlanChannels(
@@ -606,7 +668,8 @@ function extractText(response: Anthropic.Message): string {
 
 // ─── Structured data builders (no AI needed) ────────────────────────────────
 
-function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources) {
+function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources, adCopyData: { name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[] } }[]) {
+  const adCopyMap = new Map(adCopyData.map((d) => [d.name, d.adCopy]));
   return {
     campaignName: `${sources.clientName} — Search`,
     overview: {
@@ -630,7 +693,7 @@ function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources)
         volume: k.volume,
         cpc: k.cpc,
       })),
-      adCopy: undefined, // Could be generated per-group but keeping it simple
+      adCopy: adCopyMap.get(g.name),
     })),
   };
 }

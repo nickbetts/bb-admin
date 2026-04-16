@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
       contentStrategyId?: string;
       mediaPlanId?: string;
       clientBrief?: string;
+      sector?: string;
       campaignFocusPeriods?: { startMonth: number; endMonth: number; label: string; description?: string }[];
       config?: { sections?: string[] };
     };
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
         mediaPlanId: body.mediaPlanId || null,
         clientBrief: body.clientBrief || null,
         campaignFocusPeriodsJson: JSON.stringify(body.campaignFocusPeriods ?? []),
-        configJson: JSON.stringify(body.config ?? {}),
+        configJson: JSON.stringify({ ...(body.config ?? {}), ...(body.sector ? { sector: body.sector } : {}) }),
       },
       include: {
         client: { select: { id: true, name: true } },

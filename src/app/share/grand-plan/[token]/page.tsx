@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { Loader2, Lock, Download } from "lucide-react";
+import { Loader2, Lock, Download, Calendar } from "lucide-react";
 
 export default function GrandPlanSharePage({
   params,
@@ -128,7 +128,16 @@ export default function GrandPlanSharePage({
 
   return (
     <div className="min-h-screen">
-      <div className="fixed top-0 right-0 z-[200] p-3">
+      <div className="fixed top-0 right-0 z-[200] p-3 flex items-center gap-2">
+        <a
+          href="https://calendly.com/i3media"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors shadow-lg"
+        >
+          <Calendar className="h-4 w-4" />
+          Book a Call
+        </a>
         <button
           onClick={handleDownload}
           className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors shadow-lg"

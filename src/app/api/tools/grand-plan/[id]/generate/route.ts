@@ -97,6 +97,7 @@ export async function POST(
       // Parse section config — includes section toggles and inline briefs
       const config = safeJsonParse<{
         sections?: string[];
+        sector?: string;
         kwBrief?: { website?: string; brief?: string; monthlyBudget?: string };
         contentBrief?: { domain?: string; database?: string; brief?: string; competitors?: string };
         mediaBrief?: { objective?: string; totalBudget?: number; duration?: number };
@@ -235,6 +236,7 @@ export async function POST(
         clientName,
         purpose: plan.purpose,
         clientBrief: brief || undefined,
+        sector: config.sector || undefined,
         campaignFocusPeriods: focusPeriods,
         proposal: plan.proposal
           ? {
