@@ -27,6 +27,7 @@ export const ALL_PERMISSIONS = [
   "landing_page_generator",
   "qa_checklist",
   "meridian_architecture",
+  "grand_plan",
 ] as const;
 
 export type Permission = typeof ALL_PERMISSIONS[number];
