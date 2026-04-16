@@ -9,7 +9,6 @@ import {
   FileText,
   Search as SearchIcon,
   Calendar,
-  BarChart3,
   Plus,
   X,
   Sparkles,
@@ -56,7 +55,6 @@ export default function NewGrandPlanPage() {
   const [selectedProposal, setSelectedProposal] = useState("");
   const [selectedKwResearch, setSelectedKwResearch] = useState("");
   const [selectedContentStrategy, setSelectedContentStrategy] = useState("");
-  const [selectedMediaPlan, setSelectedMediaPlan] = useState("");
   const [focusPeriods, setFocusPeriods] = useState<FocusPeriod[]>([]);
   const [creating, setCreating] = useState(false);
   const [sector, setSector] = useState("");
@@ -69,10 +67,6 @@ export default function NewGrandPlanPage() {
   const [csDatabase, setCsDatabase] = useState("uk");
   const [csBrief, setCsBrief] = useState("");
   const [csCompetitors, setCsCompetitors] = useState("");
-  const [mpObjective, setMpObjective] = useState("lead_gen");
-  const [mpTotalBudget, setMpTotalBudget] = useState("");
-  const [mpDuration, setMpDuration] = useState("90");
-
   useEffect(() => {
     fetch("/api/clients")
       .then((r) => r.json())
@@ -133,14 +127,12 @@ export default function NewGrandPlanPage() {
           proposalId: selectedProposal || undefined,
           keywordResearchId: selectedKwResearch || undefined,
           contentStrategyId: selectedContentStrategy || undefined,
-          mediaPlanId: selectedMediaPlan || undefined,
           clientBrief: clientBrief || undefined,
           sector: sector || undefined,
           campaignFocusPeriods: focusPeriods.filter((fp) => fp.label),
           config: {
             ...(!selectedKwResearch && kwWebsite ? { kwBrief: { website: kwWebsite, brief: kwBrief, monthlyBudget: kwMonthlyBudget } } : {}),
             ...(!selectedContentStrategy && csDomain ? { contentBrief: { domain: csDomain, database: csDatabase, brief: csBrief, competitors: csCompetitors } } : {}),
-            ...(!selectedMediaPlan && mpTotalBudget ? { mediaBrief: { objective: mpObjective, totalBudget: parseFloat(mpTotalBudget) || 0, duration: parseInt(mpDuration) || 90 } } : {}),
           },
         }),
       });
@@ -271,7 +263,7 @@ export default function NewGrandPlanPage() {
           <label style={label}>Client</label>
           <select style={select} value={clientId} onChange={(e) => {
             setClientId(e.target.value);
-            setSelectedProposal(""); setSelectedKwResearch(""); setSelectedContentStrategy(""); setSelectedMediaPlan("");
+            setSelectedProposal(""); setSelectedKwResearch(""); setSelectedContentStrategy("");
           }}>
             <option value="">No client (standalone)</option>
             {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -431,57 +423,6 @@ export default function NewGrandPlanPage() {
                 <div>
                   <label style={fieldLabel}>Competitors <span style={{ fontWeight: 400 }}>(comma-separated)</span></label>
                   <input style={fieldInput} value={csCompetitors} onChange={(e) => setCsCompetitors(e.target.value)} placeholder="competitor1.com, competitor2.com" />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ── Media Plan ── */}
-          <div style={sectionCard}>
-            <div style={sectionHeader}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--bg-2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <BarChart3 style={{ width: 13, height: 13, color: "var(--text-3)" }} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Media Plan</div>
-                {clientId && sources ? (
-                  <select
-                    style={{ ...select, fontSize: 12, padding: "4px 8px", marginTop: 4, maxWidth: "100%" }}
-                    value={selectedMediaPlan}
-                    onChange={(e) => setSelectedMediaPlan(e.target.value)}
-                  >
-                    <option value="">Auto-generate from brief</option>
-                    {sources.mediaPlans.map((mp) => <option key={mp.id} value={mp.id}>{mp.title} (£{mp.totalBudget.toLocaleString()})</option>)}
-                  </select>
-                ) : (
-                  <div style={{ fontSize: 12, color: "var(--text-4)", marginTop: 2 }}>Brief below to auto-generate</div>
-                )}
-              </div>
-              {selectedMediaPlan
-                ? <span style={linkedPill}><LinkIcon style={{ width: 10, height: 10 }} /> Linked</span>
-                : <span style={aiPill}><Sparkles style={{ width: 10, height: 10 }} /> AI</span>
-              }
-            </div>
-            {!selectedMediaPlan && (
-              <div style={briefPanel}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 120px", gap: 10 }}>
-                  <div>
-                    <label style={fieldLabel}>Objective</label>
-                    <select style={{ ...fieldInput, cursor: "pointer" }} value={mpObjective} onChange={(e) => setMpObjective(e.target.value)}>
-                      <option value="lead_gen">Lead Generation</option>
-                      <option value="brand_awareness">Brand Awareness</option>
-                      <option value="ecommerce">Ecommerce</option>
-                      <option value="traffic">Traffic</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={fieldLabel}>Total Budget (£)</label>
-                    <input style={fieldInput} type="text" value={mpTotalBudget} onChange={(e) => setMpTotalBudget(e.target.value)} placeholder="e.g. 10,000" />
-                  </div>
-                  <div>
-                    <label style={fieldLabel}>Duration (days)</label>
-                    <input style={fieldInput} type="text" value={mpDuration} onChange={(e) => setMpDuration(e.target.value)} placeholder="90" />
-                  </div>
                 </div>
               </div>
             )}
