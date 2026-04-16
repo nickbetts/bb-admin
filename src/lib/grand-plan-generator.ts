@@ -71,6 +71,44 @@ interface OrganicSocialPlan {
   hashtagStrategy: string[];
 }
 
+interface EmailMarketingPlan {
+  flows: { name: string; trigger: string; emails: { subject: string; purpose: string; delay?: string }[] }[];
+  campaigns: { name: string; frequency: string; audience: string; objectiveText: string }[];
+  segmentation: { segments: { name: string; criteria: string; purpose: string }[] };
+}
+
+interface LinkedInCampaign {
+  campaignName: string;
+  objective: string;
+  budget: string;
+  format: string;
+  audienceTargeting: { jobTitles: string[]; industries: string[]; companySize: string; seniority: string[] };
+  adCreatives: { headline: string; introText: string; description?: string; cta: string }[];
+}
+
+interface CompetitorInsight {
+  domain: string;
+  organicTraffic?: number;
+  organicKeywords?: number;
+  paidKeywords?: number;
+  backlinks?: number;
+  topKeywords: string[];
+  strengths: string[];
+  weaknesses: string[];
+}
+
+interface GoogleAdsForecast {
+  clicks: number;
+  impressions: number;
+  conversions: number;
+  cost: number;
+  avgCpa: number;
+  ctr: number;
+  avgCpc: number;
+  monthlyBudget: number;
+  conversionRate: number;
+}
+
 export interface GrandPlanData {
   title: string;
   clientName: string;
@@ -96,7 +134,7 @@ export interface GrandPlanData {
     };
     contentCalendar?: ContentCalendarMonth[];
     organicSocial?: OrganicSocialPlan;
-    exampleArticles?: { title: string; html: string }[];
+    exampleArticles?: { title: string; html: string; seoMeta?: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } }[];
     servicesInvestment?: {
       services: { name: string; description: string; price?: string }[];
       timeline: { phase: string; items: string[] }[];
@@ -110,6 +148,10 @@ export interface GrandPlanData {
       html: string;
       campaignType: string;
     };
+    emailMarketing?: EmailMarketingPlan;
+    linkedInAds?: LinkedInCampaign[];
+    competitorIntel?: CompetitorInsight[];
+    googleAdsForecast?: GoogleAdsForecast;
   };
 }
 
@@ -199,6 +241,9 @@ export async function generateGrandPlan(
   if (isEnabled("exampleArticles") && contentData) sectionNames.push("Example Articles");
   if (isEnabled("mediaPlan") && sources.mediaPlan && mediaChannels.length === 0) sectionNames.push("Media Plan");
   if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0) sectionNames.push("Ad Copy");
+  if (isEnabled("emailMarketing")) sectionNames.push("Email Marketing");
+  if (isEnabled("linkedInAds")) sectionNames.push("LinkedIn Ads");
+  if (isEnabled("competitorIntel") && sources.keywordResearch) sectionNames.push("Competitor Intel");
 
   let completedCount = 0;
   const total = sectionNames.length;
@@ -210,7 +255,7 @@ export async function generateGrandPlan(
   };
 
   if (onProgress) await onProgress(`Generating ${total} AI sections...`);
-  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, aiMediaPlan, adCopyData] =
+  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, aiMediaPlan, adCopyData, emailMarketing, linkedInAds, competitorIntel] =
     await Promise.all([
       isEnabled("executiveSummary")
         ? trackProgress("Executive Summary", generateExecutiveSummary(anthropic, contextSummary, sources))
@@ -236,6 +281,15 @@ export async function generateGrandPlan(
       isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
         ? trackProgress("Ad Copy", generateGoogleAdsAdCopy(anthropic, adGroups, contextSummary, sources))
         : Promise.resolve([]),
+      isEnabled("emailMarketing")
+        ? trackProgress("Email Marketing", generateEmailMarketing(anthropic, contextSummary, sources))
+        : Promise.resolve(undefined),
+      isEnabled("linkedInAds")
+        ? trackProgress("LinkedIn Ads", generateLinkedInAds(anthropic, contextSummary, sources))
+        : Promise.resolve(undefined),
+      isEnabled("competitorIntel") && sources.keywordResearch
+        ? trackProgress("Competitor Intel", generateCompetitorIntel(anthropic, contextSummary, sources))
+        : Promise.resolve(undefined),
     ]);
 
   // Build Google Ads campaigns from keyword research (structured data + AI ad copy)
@@ -272,6 +326,11 @@ export async function generateGrandPlan(
       }
     : undefined;
 
+  // Build Google Ads forecast from keyword data (no AI needed — pure maths)
+  const googleAdsForecast = isEnabled("googleAdsForecast") && sources.keywordResearch && adGroups.length > 0
+    ? buildGoogleAdsForecast(adGroups, sources)
+    : undefined;
+
   if (onProgress) await onProgress("Assembling final document...");
 
   return {
@@ -291,6 +350,10 @@ export async function generateGrandPlan(
       exampleArticles,
       servicesInvestment,
       mediaPlan: mediaPlanSection,
+      emailMarketing,
+      linkedInAds,
+      competitorIntel,
+      googleAdsForecast,
     },
   };
 }
@@ -533,14 +596,14 @@ ${context}`,
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function generateExampleArticles(anthropic: Anthropic, context: string, contentData: any, sources: GrandPlanSources): Promise<{ title: string; html: string }[]> {
+async function generateExampleArticles(anthropic: Anthropic, context: string, contentData: any, sources: GrandPlanSources): Promise<{ title: string; html: string; seoMeta?: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } }[]> {
   // Pick 3 blog topics to generate examples for
   const blogPosts = contentData?.blogPosts ?? [];
   const topicsToGenerate = blogPosts.slice(0, 3).map((b: { title?: string; keyword?: string }) => b.title || b.keyword || "Untitled");
 
   if (topicsToGenerate.length === 0) return [];
 
-  const articles: { title: string; html: string }[] = [];
+  const articles: { title: string; html: string; seoMeta?: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } }[] = [];
 
   for (const topic of topicsToGenerate) {
     const res = await anthropic.messages.create({
@@ -559,6 +622,13 @@ Rules:
 - Write for the client's target audience, grounding every paragraph in a real pain point or practical value
 - Return HTML content only (h2, h3, p, ul, li, blockquote, strong). No wrapper div, no article tag.
 - This is an EXAMPLE article to show what the content plan will deliver. Mark it clearly as an example.
+- At the very end, add a comment block with SEO metadata in this exact format:
+  <!-- SEO_META
+  title_tag: [55-60 char title tag with primary keyword]
+  meta_description: [150-160 char meta description with primary keyword and CTA]
+  primary_keyword: [main target keyword]
+  secondary_keywords: [2-3 related keywords, comma separated]
+  -->
 
 Write an article titled "${topic}" for ${sources.clientName}.
 
@@ -569,7 +639,28 @@ ${context}`,
     });
 
     const html = extractText(res);
-    if (html) articles.push({ title: topic as string, html });
+    if (html) {
+      // Extract SEO metadata from comment block if present
+      const seoMatch = html.match(/<!--\s*SEO_META\s*\n([\s\S]*?)-->/);
+      let seoMeta: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } | undefined;
+      if (seoMatch) {
+        const lines = seoMatch[1].split("\n").map(l => l.trim()).filter(Boolean);
+        const meta: Record<string, string> = {};
+        for (const line of lines) {
+          const [key, ...rest] = line.split(":");
+          if (key && rest.length) meta[key.trim()] = rest.join(":").trim();
+        }
+        seoMeta = {
+          titleTag: meta.title_tag,
+          metaDescription: meta.meta_description,
+          primaryKeyword: meta.primary_keyword,
+          secondaryKeywords: meta.secondary_keywords?.split(",").map(s => s.trim()),
+        };
+      }
+      // Strip the SEO comment from the HTML
+      const cleanHtml = html.replace(/<!--\s*SEO_META\s*\n[\s\S]*?-->/, "").trim();
+      articles.push({ title: topic as string, html: cleanHtml, seoMeta });
+    }
   }
 
   return articles;
@@ -784,6 +875,178 @@ function buildContentStrategySection(contentData: any) {
     landingPages: contentData.landingPages ?? [],
     blogPosts: contentData.blogPosts ?? [],
   };
+}
+
+// ─── Email Marketing generator ──────────────────────────────────────────────
+
+async function generateEmailMarketing(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<EmailMarketingPlan> {
+  const res = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 2500,
+    messages: [
+      {
+        role: "user",
+        content: `You are an email marketing strategist at i3media. Create an email marketing plan for this client.
+
+Return a JSON object:
+- flows: array of { name: string, trigger: string, emails: [{ subject: string, purpose: string, delay: string }] } — 3-5 automated flows
+- campaigns: array of { name: string, frequency: string, audience: string, objectiveText: string } — 4-6 regular campaigns
+- segmentation: { segments: [{ name: string, criteria: string, purpose: string }] } — 4-6 audience segments
+
+Rules:
+- Flows must include: Welcome sequence, Abandoned cart/enquiry, Re-engagement, and sector-appropriate triggers
+- Campaigns should mix promotional, educational, and nurture content
+- ${sources.sector === "ecommerce" ? "Include post-purchase, browse abandonment, VIP/loyalty flows" : sources.sector === "charities" ? "Include donation receipt, Ramadan series, impact updates" : "Include lead nurture, case study digest, service update flows"}
+- British English, no AI jargon
+- Return ONLY valid JSON, no markdown fences
+
+Client: ${sources.clientName}
+${sources.sector ? `Sector: ${sources.sector}` : ""}
+Context:
+${context}`,
+      },
+    ],
+  });
+
+  return safeJsonParse(extractText(res), {
+    flows: [],
+    campaigns: [],
+    segmentation: { segments: [] },
+  });
+}
+
+// ─── LinkedIn Ads generator ─────────────────────────────────────────────────
+
+async function generateLinkedInAds(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<LinkedInCampaign[]> {
+  const res = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 2500,
+    messages: [
+      {
+        role: "user",
+        content: `You are a LinkedIn Ads specialist at i3media. Create LinkedIn advertising campaign structures.
+
+Return a JSON object with key "campaigns" containing an array of 2-3 campaign objects:
+- campaignName: string
+- objective: string (brand awareness, website visits, lead generation, engagement)
+- budget: string (monthly budget recommendation)
+- format: string (single image, carousel, video, document, conversation ad, message ad)
+- audienceTargeting: { jobTitles: string[], industries: string[], companySize: string, seniority: string[] }
+- adCreatives: array of { headline: string (max 70 chars), introText: string (max 150 chars), description: string (optional, max 100 chars), cta: string }
+
+Rules:
+- One campaign should focus on lead gen, one on awareness/thought leadership
+- Audience targeting should be specific to the client's ICP
+- ${sources.sector === "industrial" || sources.sector === "professional_services" ? "LinkedIn is a primary channel — make campaigns comprehensive" : sources.sector === "ecommerce" || sources.sector === "dental" ? "LinkedIn is secondary for this sector — focus on brand building and partnerships" : "LinkedIn campaigns should target decision makers"}
+- British English, no AI jargon
+- Return ONLY valid JSON, no markdown fences
+
+Client: ${sources.clientName}
+${sources.sector ? `Sector: ${sources.sector}` : ""}
+Context:
+${context}`,
+      },
+    ],
+  });
+
+  const parsed = safeJsonParse(extractText(res), { campaigns: [] });
+  return parsed.campaigns ?? [];
+}
+
+// ─── Competitor Intelligence generator ──────────────────────────────────────
+
+async function generateCompetitorIntel(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<CompetitorInsight[]> {
+  const website = sources.keywordResearch?.website ?? "";
+  const brief = sources.clientBrief ?? sources.keywordResearch?.brief ?? "";
+
+  const res = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 2500,
+    messages: [
+      {
+        role: "user",
+        content: `You are a competitive intelligence analyst at i3media. Identify and analyse the top competitors for this client.
+
+Return a JSON object with key "competitors" containing an array of 4-6 competitor objects:
+- domain: string (competitor website URL)
+- organicTraffic: number (estimated monthly organic visits)
+- organicKeywords: number (estimated number of ranking keywords)
+- paidKeywords: number (estimated number of PPC keywords)
+- backlinks: number (estimated backlink count)
+- topKeywords: string[] (5-8 keywords they rank well for)
+- strengths: string[] (2-3 competitive strengths)
+- weaknesses: string[] (2-3 areas where the client could beat them)
+
+Rules:
+- Identify REAL competitors in this sector and geography (UK market)
+- Be realistic with traffic estimates — these are approximations
+- Strengths and weaknesses should be actionable — things the client can actually exploit
+- British English, no AI jargon
+- Return ONLY valid JSON, no markdown fences
+
+Client: ${sources.clientName}
+Website: ${website}
+Brief: ${brief}
+${sources.sector ? `Sector: ${sources.sector}` : ""}
+Context:
+${context}`,
+      },
+    ],
+  });
+
+  const parsed = safeJsonParse(extractText(res), { competitors: [] });
+  return parsed.competitors ?? [];
+}
+
+// ─── Google Ads Forecast builder (computed, no AI) ──────────────────────────
+
+function buildGoogleAdsForecast(adGroups: AdGroup[], sources: GrandPlanSources): GoogleAdsForecast {
+  const ideas = adGroups.flatMap(g => g.keywords.filter(k => k.volume && k.cpc));
+  const budgetPounds = parseFloat(sources.keywordResearch?.monthlyBudget ?? "0") || 2000;
+  const maxCpcPounds = parseFloat(sources.keywordResearch?.maxCpc ?? "0");
+  const convRatePct = 3; // Default 3% conversion rate
+
+  if (ideas.length === 0 || budgetPounds <= 0) {
+    return { clicks: 0, impressions: 0, conversions: 0, cost: 0, avgCpa: 0, ctr: 0, avgCpc: 0, monthlyBudget: budgetPounds, conversionRate: convRatePct };
+  }
+
+  // Bid-aware, position-adjusted forecast model (matches keyword planner logic)
+  const BASE_CTR: Record<string, number> = { HIGH: 0.02, MEDIUM: 0.03, LOW: 0.04 };
+
+  const perKw = ideas.map(kw => {
+    const marketCpc = kw.cpc ?? 1;
+    const effectiveMax = maxCpcPounds > 0 ? maxCpcPounds : marketCpc;
+    const isEst = Math.min(1, effectiveMax / (marketCpc * 1.5)); // impression share estimate
+    const baseCtr = BASE_CTR[kw.competition ?? "MEDIUM"] ?? 0.03;
+    const ctr = baseCtr * (0.6 + isEst * 0.4); // position-adjusted CTR
+    const impressions = Math.round((kw.volume ?? 0) * isEst);
+    const clicks = Math.round(impressions * ctr);
+    const actualCpc = Math.min(effectiveMax, marketCpc);
+    return { impressions, clicks, actualCpc };
+  });
+
+  const totalUncappedCost = perKw.reduce((s, k) => s + k.clicks * k.actualCpc, 0);
+  const totalUncappedClicks = perKw.reduce((s, k) => s + k.clicks, 0);
+  const totalUncappedImpressions = perKw.reduce((s, k) => s + k.impressions, 0);
+
+  let clicks: number, impressions: number, cost: number;
+  if (totalUncappedCost <= budgetPounds || totalUncappedCost === 0) {
+    clicks = totalUncappedClicks;
+    impressions = totalUncappedImpressions;
+    cost = totalUncappedCost;
+  } else {
+    const scale = budgetPounds / totalUncappedCost;
+    clicks = Math.round(totalUncappedClicks * scale);
+    impressions = Math.round(totalUncappedImpressions * scale);
+    cost = budgetPounds;
+  }
+
+  const conversions = Math.round(clicks * (convRatePct / 100));
+  const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+  const avgCpc = clicks > 0 ? cost / clicks : 0;
+  const avgCpa = conversions > 0 ? cost / conversions : 0;
+
+  return { clicks, impressions, conversions, cost, avgCpa, ctr, avgCpc, monthlyBudget: budgetPounds, conversionRate: convRatePct };
 }
 
 // ─── Utils ──────────────────────────────────────────────────────────────────

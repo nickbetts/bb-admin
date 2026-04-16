@@ -68,10 +68,48 @@ export async function POST(request: NextRequest) {
       sector?: string;
       campaignFocusPeriods?: { startMonth: number; endMonth: number; label: string; description?: string }[];
       config?: { sections?: string[] };
+      cloneFromId?: string;
     };
 
     if (!body.title) {
       return NextResponse.json({ error: "title is required" }, { status: 400 });
+    }
+
+    // Clone: copy config and sources from an existing plan
+    if (body.cloneFromId) {
+      const source = await prisma.grandPlan.findUnique({ where: { id: body.cloneFromId } });
+      if (!source) return NextResponse.json({ error: "Source plan not found" }, { status: 404 });
+      if (source.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+      const cloned = await prisma.grandPlan.create({
+        data: {
+          userId: session.user.id,
+          clientId: source.clientId,
+          title: body.title,
+          purpose: source.purpose,
+          proposalId: source.proposalId,
+          keywordResearchId: source.keywordResearchId,
+          contentStrategyId: source.contentStrategyId,
+          mediaPlanId: source.mediaPlanId,
+          clientBrief: source.clientBrief,
+          campaignFocusPeriodsJson: source.campaignFocusPeriodsJson,
+          configJson: source.configJson,
+        },
+        include: { client: { select: { id: true, name: true } } },
+      });
+
+      logActivity({
+        userId: session.user.id,
+        userEmail: session.user.email,
+        action: "grand_plan_created",
+        resourceType: "GrandPlan",
+        resourceId: cloned.id,
+        clientId: cloned.clientId ?? undefined,
+        clientName: cloned.client?.name ?? undefined,
+        description: `Cloned grand plan "${body.title}" from "${source.title}"`,
+      });
+
+      return NextResponse.json({ grandPlan: cloned });
     }
 
     // Validate that linked source records exist and belong to the same client
@@ -136,10 +174,11 @@ export async function PATCH(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const { id, action, password } = (await request.json()) as {
+    const { id, action, password, expiresInDays } = (await request.json()) as {
       id: string;
       action: "share" | "unshare";
       password?: string;
+      expiresInDays?: number;
     };
 
     if (!id || !action) {
@@ -157,10 +196,13 @@ export async function PATCH(request: NextRequest) {
       const sharePassword = password
         ? crypto.createHash("sha256").update(password).digest("hex")
         : null;
+      const shareExpiresAt = expiresInDays && expiresInDays > 0
+        ? new Date(Date.now() + expiresInDays * 86_400_000)
+        : null;
 
       const updated = await prisma.grandPlan.update({
         where: { id },
-        data: { shareToken, sharePassword },
+        data: { shareToken, sharePassword, shareExpiresAt },
       });
 
       logActivity({
@@ -172,13 +214,13 @@ export async function PATCH(request: NextRequest) {
         description: `Shared grand plan "${existing.title}"`,
       });
 
-      return NextResponse.json({ shareToken: updated.shareToken });
+      return NextResponse.json({ shareToken: updated.shareToken, shareExpiresAt: updated.shareExpiresAt });
     }
 
     // unshare
     await prisma.grandPlan.update({
       where: { id },
-      data: { shareToken: null, sharePassword: null },
+      data: { shareToken: null, sharePassword: null, shareExpiresAt: null },
     });
 
     return NextResponse.json({ success: true });

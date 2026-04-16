@@ -717,6 +717,7 @@ model GrandPlan {
   // Sharing
   shareToken              String?   @unique
   sharePassword           String?             // SHA256 hash of password for share link
+  shareExpiresAt          DateTime?           // Optional expiry for share link
   viewCount               Int       @default(0)
   lastViewedAt            DateTime?
   createdAt               DateTime  @default(now())

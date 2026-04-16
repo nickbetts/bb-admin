@@ -30,6 +30,10 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
   if (s.exampleArticles?.length) navItems.push({ id: "example-articles", label: "Example Articles" });
   if (s.servicesInvestment) navItems.push({ id: "services", label: "Services & Investment" });
   if (s.mediaPlan) navItems.push({ id: "media-plan", label: "Media Plan" });
+  if (s.emailMarketing) navItems.push({ id: "email-marketing", label: "Email Marketing" });
+  if (s.linkedInAds?.length) navItems.push({ id: "linkedin-ads", label: "LinkedIn Ads" });
+  if (s.googleAdsForecast) navItems.push({ id: "google-ads-forecast", label: "Google Ads Forecast" });
+  if (s.competitorIntel?.length) navItems.push({ id: "competitor-intel", label: "Competitor Intelligence" });
   if (s.landingPage) navItems.push({ id: "landing-page", label: "Example Landing Page" });
 
   return `<!DOCTYPE html>
@@ -87,6 +91,10 @@ ${s.organicSocial ? renderOrganicSocial(s.organicSocial) : ""}
 ${s.exampleArticles?.length ? renderExampleArticles(s.exampleArticles) : ""}
 ${s.servicesInvestment ? renderServicesInvestment(s.servicesInvestment) : ""}
 ${s.mediaPlan ? renderMediaPlan(s.mediaPlan) : ""}
+${s.emailMarketing ? renderEmailMarketing(s.emailMarketing) : ""}
+${s.linkedInAds?.length ? renderLinkedInAds(s.linkedInAds) : ""}
+${s.googleAdsForecast ? renderGoogleAdsForecast(s.googleAdsForecast) : ""}
+${s.competitorIntel?.length ? renderCompetitorIntel(s.competitorIntel) : ""}
 ${s.landingPage ? renderLandingPage(s.landingPage) : ""}
 
   </main>
@@ -422,9 +430,20 @@ function renderOrganicSocial(data: any): string {
     </section>`;
 }
 
-function renderExampleArticles(articles: { title: string; html: string }[]): string {
+function renderExampleArticles(articles: { title: string; html: string; seoMeta?: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } }[]): string {
   const articlesHtml = articles
-    .map((a, i) => `
+    .map((a, i) => {
+      const seoBlock = a.seoMeta ? `
+        <div class="seo-meta-block">
+          <div class="seo-meta-title">SEO Metadata</div>
+          <div class="seo-meta-grid">
+            ${a.seoMeta.titleTag ? `<div class="seo-meta-item"><span class="seo-meta-label">Title Tag</span><span class="seo-meta-value">${esc(a.seoMeta.titleTag)}<span class="char-badge ${a.seoMeta.titleTag.length <= 60 ? "char-ok" : "char-over"}">${a.seoMeta.titleTag.length}/60</span></span></div>` : ""}
+            ${a.seoMeta.metaDescription ? `<div class="seo-meta-item"><span class="seo-meta-label">Meta Description</span><span class="seo-meta-value">${esc(a.seoMeta.metaDescription)}<span class="char-badge ${a.seoMeta.metaDescription.length <= 160 ? "char-ok" : "char-over"}">${a.seoMeta.metaDescription.length}/160</span></span></div>` : ""}
+            ${a.seoMeta.primaryKeyword ? `<div class="seo-meta-item"><span class="seo-meta-label">Primary Keyword</span><span class="seo-meta-value">${esc(a.seoMeta.primaryKeyword)}</span></div>` : ""}
+            ${a.seoMeta.secondaryKeywords?.length ? `<div class="seo-meta-item"><span class="seo-meta-label">Secondary Keywords</span><span class="seo-meta-value">${a.seoMeta.secondaryKeywords.map(k => `<span class="seo-kw-chip">${esc(k)}</span>`).join(" ")}</span></div>` : ""}
+          </div>
+        </div>` : "";
+      return `
     <div class="example-article">
       <div class="article-header" onclick="this.parentElement.classList.toggle('open')">
         <span class="article-num">${i + 1}</span>
@@ -432,8 +451,9 @@ function renderExampleArticles(articles: { title: string; html: string }[]): str
         <span class="article-badge">Example</span>
         <span class="ag-chevron">+</span>
       </div>
-      <div class="article-body">${a.html}</div>
-    </div>`)
+      <div class="article-body">${seoBlock}${a.html}</div>
+    </div>`;
+    })
     .join("\n");
 
   return `
@@ -507,6 +527,171 @@ function renderMediaPlan(data: any): string {
 }
 
 // ─── Landing Page ───────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function renderEmailMarketing(data: any): string {
+  const flowsHtml = (data.flows ?? [])
+    .map((flow: { name: string; trigger: string; emails: { subject: string; purpose: string; delay?: string }[] }, i: number) => `
+    <div class="em-flow">
+      <div class="em-flow-header" onclick="this.parentElement.classList.toggle('open')">
+        <span class="ag-num">${i + 1}</span>
+        <span class="ag-name">${esc(flow.name)}</span>
+        <span class="ag-count">${flow.emails.length} emails</span>
+        <span class="ag-chevron">+</span>
+      </div>
+      <div class="em-flow-body">
+        <p class="em-trigger"><strong>Trigger:</strong> ${esc(flow.trigger)}</p>
+        <div class="em-emails">
+          ${flow.emails.map((e: { subject: string; purpose: string; delay?: string }, j: number) => `
+          <div class="em-email-item">
+            <span class="em-email-num">${j + 1}</span>
+            <div class="em-email-content">
+              <div class="em-subject">${esc(e.subject)}</div>
+              <div class="em-purpose">${esc(e.purpose)}</div>
+              ${e.delay ? `<span class="em-delay">${esc(e.delay)}</span>` : ""}
+            </div>
+          </div>`).join("\n")}
+        </div>
+      </div>
+    </div>`)
+    .join("\n");
+
+  const campaignsHtml = (data.campaigns ?? [])
+    .map((c: { name: string; frequency: string; audience: string; objectiveText: string }) => `
+    <div class="em-campaign-card">
+      <h4>${esc(c.name)}</h4>
+      <div class="em-campaign-meta">
+        <span class="em-tag">${esc(c.frequency)}</span>
+        <span class="em-tag">${esc(c.audience)}</span>
+      </div>
+      <p>${esc(c.objectiveText)}</p>
+    </div>`)
+    .join("\n");
+
+  const segmentsHtml = (data.segmentation?.segments ?? [])
+    .map((s: { name: string; criteria: string; purpose: string }) => `
+    <div class="em-segment">
+      <strong>${esc(s.name)}</strong>
+      <span class="em-criteria">${esc(s.criteria)}</span>
+      <span class="em-seg-purpose">${esc(s.purpose)}</span>
+    </div>`)
+    .join("\n");
+
+  return `
+    <section id="email-marketing" class="section">
+      <h2 class="section-title">Email Marketing</h2>
+      <h3 class="subsection-title">Automated Flows</h3>
+      ${flowsHtml}
+      <h3 class="subsection-title" style="margin-top:24px">Regular Campaigns</h3>
+      <div class="em-campaigns-grid">${campaignsHtml}</div>
+      ${segmentsHtml ? `<h3 class="subsection-title" style="margin-top:24px">Audience Segments</h3><div class="em-segments">${segmentsHtml}</div>` : ""}
+    </section>`;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function renderLinkedInAds(campaigns: any[]): string {
+  const campaignsHtml = campaigns
+    .map((c, idx) => {
+      const targeting = c.audienceTargeting ?? {};
+      const targetingChips = [
+        ...(targeting.jobTitles ?? []).map((t: string) => `<span class="audience-chip interest">${esc(t)}</span>`),
+        ...(targeting.industries ?? []).map((i: string) => `<span class="audience-chip custom">${esc(i)}</span>`),
+        ...(targeting.seniority ?? []).map((s: string) => `<span class="audience-chip lookalike">${esc(s)}</span>`),
+      ].join(" ");
+
+      const creativesHtml = (c.adCreatives ?? [])
+        .map((cr: { headline: string; introText: string; description?: string; cta: string }) => `
+        <div class="li-creative">
+          <div class="li-creative-headline">${esc(cr.headline)}<span class="char-badge ${cr.headline.length <= 70 ? "char-ok" : "char-over"}">${cr.headline.length}/70</span></div>
+          <div class="li-creative-text">${esc(cr.introText)}</div>
+          ${cr.description ? `<div class="li-creative-desc">${esc(cr.description)}</div>` : ""}
+          <span class="li-cta-badge">${esc(cr.cta)}</span>
+        </div>`)
+        .join("\n");
+
+      return `
+      <div class="li-campaign">
+        <h3>${esc(c.campaignName ?? `Campaign ${idx + 1}`)}</h3>
+        <div class="overview-grid">
+          <div class="ov-item"><span class="ov-label">Objective</span><span class="ov-value">${esc(c.objective ?? "")}</span></div>
+          <div class="ov-item"><span class="ov-label">Budget</span><span class="ov-value">${esc(c.budget ?? "")}</span></div>
+          <div class="ov-item"><span class="ov-label">Format</span><span class="ov-value">${esc(c.format ?? "")}</span></div>
+          ${targeting.companySize ? `<div class="ov-item"><span class="ov-label">Company Size</span><span class="ov-value">${esc(targeting.companySize)}</span></div>` : ""}
+        </div>
+        ${targetingChips ? `<div class="li-targeting"><h4>Audience Targeting</h4><div class="audience-chips">${targetingChips}</div></div>` : ""}
+        ${creativesHtml ? `<div class="li-creatives"><h4>Ad Creatives</h4>${creativesHtml}</div>` : ""}
+      </div>`;
+    })
+    .join("\n");
+
+  return `
+    <section id="linkedin-ads" class="section">
+      <h2 class="section-title">LinkedIn Ads</h2>
+      ${campaignsHtml}
+    </section>`;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function renderGoogleAdsForecast(data: any): string {
+  const fmtNum = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n.toLocaleString();
+
+  return `
+    <section id="google-ads-forecast" class="section">
+      <h2 class="section-title">Google Ads Forecast</h2>
+      <p class="section-intro">Estimated monthly performance based on keyword volumes, CPCs, and a £${Number(data.monthlyBudget ?? 0).toLocaleString()}/month budget at ${data.conversionRate ?? 3}% conversion rate.</p>
+      <div class="forecast-grid">
+        <div class="forecast-card"><span class="forecast-value">${fmtNum(data.clicks ?? 0)}</span><span class="forecast-label">Est. Clicks</span></div>
+        <div class="forecast-card"><span class="forecast-value">${fmtNum(data.impressions ?? 0)}</span><span class="forecast-label">Est. Impressions</span></div>
+        <div class="forecast-card"><span class="forecast-value">${data.conversions ?? 0}</span><span class="forecast-label">Est. Conversions</span></div>
+        <div class="forecast-card"><span class="forecast-value">£${Number(data.cost ?? 0).toFixed(0)}</span><span class="forecast-label">Est. Monthly Cost</span></div>
+        <div class="forecast-card"><span class="forecast-value">${Number(data.ctr ?? 0).toFixed(2)}%</span><span class="forecast-label">Avg CTR</span></div>
+        <div class="forecast-card"><span class="forecast-value">£${Number(data.avgCpc ?? 0).toFixed(2)}</span><span class="forecast-label">Avg CPC</span></div>
+        <div class="forecast-card accent"><span class="forecast-value">£${Number(data.avgCpa ?? 0).toFixed(2)}</span><span class="forecast-label">Est. CPA</span></div>
+      </div>
+    </section>`;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function renderCompetitorIntel(competitors: any[]): string {
+  const fmtNum = (n: number) => {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return n.toLocaleString();
+  };
+
+  const tableRows = competitors
+    .map((c) => `
+    <tr>
+      <td class="comp-domain">${esc(c.domain ?? "")}</td>
+      <td class="comp-num">${c.organicTraffic ? fmtNum(c.organicTraffic) : "—"}</td>
+      <td class="comp-num">${c.organicKeywords ? fmtNum(c.organicKeywords) : "—"}</td>
+      <td class="comp-num">${c.paidKeywords ? fmtNum(c.paidKeywords) : "—"}</td>
+      <td class="comp-num">${c.backlinks ? fmtNum(c.backlinks) : "—"}</td>
+    </tr>`)
+    .join("\n");
+
+  const detailCards = competitors
+    .map((c) => `
+    <div class="comp-detail-card">
+      <h4>${esc(c.domain ?? "")}</h4>
+      <div class="comp-keywords"><span class="comp-kw-label">Top Keywords:</span> ${(c.topKeywords ?? []).map((k: string) => `<span class="comp-kw-chip">${esc(k)}</span>`).join(" ")}</div>
+      <div class="comp-sw-grid">
+        <div class="comp-sw-col"><span class="comp-sw-title comp-strength">Strengths</span><ul>${(c.strengths ?? []).map((s: string) => `<li>${esc(s)}</li>`).join("")}</ul></div>
+        <div class="comp-sw-col"><span class="comp-sw-title comp-weakness">Weaknesses</span><ul>${(c.weaknesses ?? []).map((w: string) => `<li>${esc(w)}</li>`).join("")}</ul></div>
+      </div>
+    </div>`)
+    .join("\n");
+
+  return `
+    <section id="competitor-intel" class="section">
+      <h2 class="section-title">Competitor Intelligence</h2>
+      <table class="channel-table">
+        <thead><tr><th>Domain</th><th>Organic Traffic</th><th>Organic KWs</th><th>Paid KWs</th><th>Backlinks</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      <div class="comp-details" style="margin-top:20px">${detailCards}</div>
+    </section>`;
+}
 
 function renderLandingPage(data: { html: string; campaignType: string }): string {
   // Base64-encode the HTML so it can be loaded into a srcdoc iframe safely
@@ -792,6 +977,74 @@ a{color:var(--accent);text-decoration:none}
   .page-hero{border-radius:0}
   body{font-size:12px}
 }
+/* Email marketing */
+.em-flow{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px}
+.em-flow .em-flow-body{display:none;padding:16px}
+.em-flow.open .em-flow-body{display:block}
+.em-flow-header{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;background:var(--white)}
+.em-flow-header:hover{background:var(--bg)}
+.em-trigger{font-size:12px;color:var(--text-light);margin-bottom:12px}
+.em-emails{display:flex;flex-direction:column;gap:6px}
+.em-email-item{display:flex;gap:10px;padding:8px 10px;background:var(--bg);border-radius:6px}
+.em-email-num{font-size:11px;font-weight:700;color:var(--mid);min-width:18px;flex-shrink:0;margin-top:2px}
+.em-email-content{flex:1}
+.em-subject{font-size:13px;font-weight:600;color:var(--heading)}
+.em-purpose{font-size:12px;color:var(--text-light);margin-top:2px}
+.em-delay{display:inline-block;font-size:10px;padding:1px 6px;background:#dbeafe;color:#1e40af;border-radius:8px;margin-top:4px}
+.em-campaigns-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.em-campaign-card{padding:14px;background:var(--bg);border-radius:8px;border:1px solid var(--border)}
+.em-campaign-card h4{font-size:14px;font-weight:600;color:var(--heading);margin-bottom:6px}
+.em-campaign-card p{font-size:12px;color:var(--text-light);margin-top:6px}
+.em-campaign-meta{display:flex;gap:6px;flex-wrap:wrap}
+.em-tag{font-size:10px;padding:2px 8px;background:var(--white);border:1px solid var(--border);border-radius:10px;color:var(--text-light)}
+.em-segments{display:flex;flex-direction:column;gap:6px}
+.em-segment{display:flex;flex-direction:column;gap:2px;padding:10px 14px;background:var(--bg);border-radius:8px}
+.em-segment strong{font-size:13px;color:var(--heading)}
+.em-criteria{font-size:11px;color:var(--text-light)}
+.em-seg-purpose{font-size:11px;color:var(--mid)}
+/* LinkedIn Ads */
+.li-campaign{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.li-campaign:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.li-campaign h3{font-size:16px;font-weight:700;color:var(--heading);margin-bottom:12px}
+.li-targeting{margin-top:12px}
+.li-targeting h4,.li-creatives h4{font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px}
+.audience-chips{display:flex;flex-wrap:wrap;gap:6px}
+.li-creatives{margin-top:12px}
+.li-creative{padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:6px}
+.li-creative-headline{font-size:14px;font-weight:600;color:var(--heading);display:flex;align-items:center;gap:6px}
+.li-creative-text{font-size:12px;color:var(--text);margin-top:4px}
+.li-creative-desc{font-size:11px;color:var(--text-light);margin-top:2px}
+.li-cta-badge{display:inline-block;font-size:10px;padding:2px 8px;background:#dbeafe;color:#1e40af;border-radius:8px;margin-top:6px}
+/* Google Ads Forecast */
+.forecast-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:16px}
+.forecast-card{padding:16px;background:var(--bg);border-radius:10px;text-align:center;border:1px solid var(--border)}
+.forecast-card.accent{background:#0f172a;border-color:#0f172a}
+.forecast-card.accent .forecast-value{color:#fff}
+.forecast-card.accent .forecast-label{color:#94a3b8}
+.forecast-value{display:block;font-size:22px;font-weight:700;color:var(--heading)}
+.forecast-label{display:block;font-size:11px;color:var(--text-light);margin-top:4px;text-transform:uppercase;letter-spacing:.3px}
+/* Competitor Intelligence */
+.comp-domain{font-weight:600;color:var(--heading)}
+.comp-num{text-align:right;font-variant-numeric:tabular-nums}
+.comp-details{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.comp-detail-card{padding:14px;background:var(--bg);border-radius:10px;border:1px solid var(--border)}
+.comp-detail-card h4{font-size:14px;font-weight:600;color:var(--heading);margin-bottom:8px}
+.comp-keywords{font-size:12px;color:var(--text-light);margin-bottom:10px}
+.comp-kw-label{font-weight:600}
+.comp-kw-chip{display:inline-block;font-size:11px;padding:1px 6px;background:var(--white);border:1px solid var(--border);border-radius:6px;margin:2px}
+.comp-sw-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.comp-sw-col ul{margin:0;padding-left:16px;font-size:12px;color:var(--text)}
+.comp-sw-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px}
+.comp-strength{color:#065f46}
+.comp-weakness{color:#dc2626}
+/* SEO metadata on articles */
+.seo-meta-block{padding:12px 16px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;margin-bottom:16px}
+.seo-meta-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--mid);margin-bottom:8px}
+.seo-meta-grid{display:flex;flex-direction:column;gap:6px}
+.seo-meta-item{display:flex;gap:8px;align-items:flex-start}
+.seo-meta-label{font-size:11px;font-weight:600;color:var(--text-light);min-width:100px;flex-shrink:0}
+.seo-meta-value{font-size:12px;color:var(--heading);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.seo-kw-chip{display:inline-block;font-size:10px;padding:1px 6px;background:#dbeafe;color:#1e40af;border-radius:6px}
 `;
 
 // ─── Inline JS ──────────────────────────────────────────────────────────────

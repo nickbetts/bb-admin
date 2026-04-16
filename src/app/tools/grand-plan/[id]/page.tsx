@@ -26,12 +26,16 @@ const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered
   { key: "executiveSummary", label: "Executive Summary", description: "AI-generated overview of the strategy", aiPowered: true },
   { key: "strategyPlan", label: "Strategy Plan", description: "Phased rollout plan (Month 1 / 2-3 / 4+)", aiPowered: true },
   { key: "googleAdsCampaigns", label: "Google Ads Campaigns", description: "Campaign structure from keyword research", aiPowered: false },
+  { key: "googleAdsForecast", label: "Google Ads Forecast", description: "Estimated clicks, conversions, CPA from keyword data", aiPowered: false },
   { key: "metaCampaigns", label: "Meta Campaigns", description: "AI-generated Facebook/Instagram campaigns", aiPowered: true },
+  { key: "linkedInAds", label: "LinkedIn Ads", description: "AI-generated LinkedIn campaign structures", aiPowered: true },
   { key: "keywordResearch", label: "Keyword Research", description: "Ad groups and keyword data", aiPowered: false },
   { key: "contentStrategy", label: "Content Strategy", description: "Page optimisations, landing pages, blog posts", aiPowered: false },
   { key: "contentCalendar", label: "Content Calendar", description: "6-month blog and social posting schedule", aiPowered: true },
   { key: "organicSocial", label: "Organic Social", description: "Social pillars, posting frequency, hashtags", aiPowered: true },
-  { key: "exampleArticles", label: "Example Articles", description: "3 sample blog posts written in full", aiPowered: true },
+  { key: "emailMarketing", label: "Email Marketing", description: "Automated flows, campaigns, segmentation", aiPowered: true },
+  { key: "exampleArticles", label: "Example Articles", description: "3 sample blog posts with SEO metadata", aiPowered: true },
+  { key: "competitorIntel", label: "Competitor Intelligence", description: "AI-generated competitive analysis", aiPowered: true },
   { key: "servicesInvestment", label: "Services & Investment", description: "Pricing and timeline from proposal", aiPowered: false },
   { key: "mediaPlan", label: "Media Plan", description: "Budget allocation across channels", aiPowered: false },
 ];
@@ -46,6 +50,7 @@ interface GrandPlanFull {
   clientBrief: string | null;
   shareToken: string | null;
   sharePassword: string | null;
+  shareExpiresAt: string | null;
   viewCount: number;
   lastViewedAt: string | null;
   generationMs: number | null;
@@ -86,6 +91,7 @@ export default function GrandPlanViewPage({ params }: Props) {
   const [copied, setCopied] = useState(false);
   const [sharePassword, setSharePassword] = useState("");
   const [showShareForm, setShowShareForm] = useState(false);
+  const [shareExpiry, setShareExpiry] = useState("0"); // days: 0 = never
 
   // Generation
   const [generating, setGenerating] = useState(false);
@@ -99,6 +105,9 @@ export default function GrandPlanViewPage({ params }: Props) {
   // Refinement
   const [refinePrompt, setRefinePrompt] = useState("");
   const [refining, setRefining] = useState(false);
+
+  // Per-section regeneration
+  const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
 
   useEffect(() => {
     loadPlan();
@@ -206,6 +215,24 @@ export default function GrandPlanViewPage({ params }: Props) {
     }
   }
 
+  async function handleRegenerateSection(sectionKey: string) {
+    setRegeneratingSection(sectionKey);
+    try {
+      const res = await fetch(`/api/tools/grand-plan/${id}/regenerate-section`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sectionKey }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        updateBlobUrl(data.html);
+        await loadPlan();
+      }
+    } finally {
+      setRegeneratingSection(null);
+    }
+  }
+
   function toggleSection(key: string) {
     setEnabledSections((prev) => {
       const next = new Set(prev);
@@ -253,7 +280,7 @@ export default function GrandPlanViewPage({ params }: Props) {
       const res = await fetch("/api/tools/grand-plan", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, action: "share", password: sharePassword || undefined }),
+        body: JSON.stringify({ id, action: "share", password: sharePassword || undefined, expiresInDays: parseInt(shareExpiry) || undefined }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -304,6 +331,26 @@ export default function GrandPlanViewPage({ params }: Props) {
     a.download = `${plan.title || "grand-plan"}.html`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function handleClone() {
+    if (!plan) return;
+    try {
+      const res = await fetch("/api/tools/grand-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: plan.clientId,
+          title: `${plan.title} (Copy)`,
+          purpose: plan.purpose,
+          cloneFromId: plan.id,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        router.push(`/tools/grand-plan/${data.grandPlan.id}`);
+      }
+    } catch { /* ignore */ }
   }
 
   if (loading) {
@@ -453,11 +500,25 @@ export default function GrandPlanViewPage({ params }: Props) {
                       onChange={() => toggleSection(s.key)}
                       style={{ marginTop: 2, accentColor: "var(--accent)" }}
                     />
-                    <div style={{ minWidth: 0 }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{s.label}</span>
                         {s.aiPowered && (
                           <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: "var(--info-bg)", color: "var(--info)", fontWeight: 600 }}>AI</span>
+                        )}
+                        {s.aiPowered && plan?.status === "complete" && checked && (
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            style={{ marginLeft: "auto", fontSize: 10, padding: "2px 6px", gap: 3, opacity: regeneratingSection === s.key ? 1 : 0.6 }}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRegenerateSection(s.key); }}
+                            disabled={regeneratingSection !== null}
+                            title={`Regenerate ${s.label}`}
+                          >
+                            {regeneratingSection === s.key
+                              ? <Loader2 style={{ width: 10, height: 10, animation: "spin 1s linear infinite" }} />
+                              : <RefreshCw style={{ width: 10, height: 10 }} />}
+                            Regen
+                          </button>
                         )}
                       </div>
                       <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>{s.description}</p>
@@ -534,6 +595,17 @@ export default function GrandPlanViewPage({ params }: Props) {
                     placeholder="Password (optional)"
                     style={{ padding: "5px 10px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, width: 150 }}
                   />
+                  <select
+                    value={shareExpiry}
+                    onChange={(e) => setShareExpiry(e.target.value)}
+                    style={{ padding: "5px 8px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, background: "var(--white)" }}
+                  >
+                    <option value="0">No expiry</option>
+                    <option value="7">7 days</option>
+                    <option value="14">14 days</option>
+                    <option value="30">30 days</option>
+                    <option value="90">90 days</option>
+                  </select>
                   <button className="btn btn-primary btn-sm" onClick={handleShare} disabled={sharingBusy}>
                     {sharingBusy ? <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> : <Share2 style={{ width: 12, height: 12 }} />}
                     Share
@@ -559,11 +631,21 @@ export default function GrandPlanViewPage({ params }: Props) {
               <Link href={`/share/grand-plan/${plan.shareToken}`} target="_blank" className="btn btn-ghost btn-sm" style={{ gap: 4 }}>
                 <Eye style={{ width: 12, height: 12 }} /> Preview
               </Link>
+              {plan.shareExpiresAt && (
+                <span style={{ fontSize: 11, color: new Date(plan.shareExpiresAt) < new Date() ? "var(--danger)" : "var(--text-3)" }}>
+                  {new Date(plan.shareExpiresAt) < new Date() ? "Expired" : `Expires ${new Date(plan.shareExpiresAt).toLocaleDateString("en-GB")}`}
+                </span>
+              )}
               <button className="btn btn-ghost btn-sm" style={{ color: "var(--danger)", gap: 4 }} onClick={handleUnshare} disabled={sharingBusy}>
                 <X style={{ width: 12, height: 12 }} /> Unshare
               </button>
             </div>
           )}
+
+          {/* Clone */}
+          <button className="btn btn-ghost btn-sm" style={{ gap: 5 }} onClick={handleClone}>
+            <Copy style={{ width: 13, height: 13 }} /> Clone
+          </button>
 
           {/* Delete */}
           <button className="btn btn-ghost btn-sm" style={{ color: "var(--danger)" }} onClick={handleDelete} disabled={deleting}>

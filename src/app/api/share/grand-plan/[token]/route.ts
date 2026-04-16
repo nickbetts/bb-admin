@@ -17,12 +17,17 @@ export async function GET(
       id: true,
       title: true,
       sharePassword: true,
+      shareExpiresAt: true,
       generatedHtml: true,
     },
   });
 
   if (!plan) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (plan.shareExpiresAt && new Date(plan.shareExpiresAt) < new Date()) {
+    return NextResponse.json({ error: "This share link has expired" }, { status: 410 });
   }
 
   if (plan.sharePassword) {
@@ -64,12 +69,17 @@ export async function POST(
       id: true,
       title: true,
       sharePassword: true,
+      shareExpiresAt: true,
       generatedHtml: true,
     },
   });
 
   if (!plan) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (plan.shareExpiresAt && new Date(plan.shareExpiresAt) < new Date()) {
+    return NextResponse.json({ error: "This share link has expired" }, { status: 410 });
   }
 
   if (!plan.sharePassword) {
