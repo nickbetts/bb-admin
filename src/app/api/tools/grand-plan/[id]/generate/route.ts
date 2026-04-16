@@ -111,6 +111,9 @@ export async function POST(
 
       const enabledSections = config.sections?.length ? config.sections : undefined;
 
+      // Track pipeline warnings for the UI
+      const pipelineWarnings: string[] = [];
+
       // ── Auto-generate keyword research if not linked ───────────────────────
       let keywordResearchData = plan.keywordResearch;
       const kwBriefText = config.kwBrief?.brief || brief;
@@ -229,7 +232,7 @@ export async function POST(
           };
         } catch (csError) {
           console.error("Auto content strategy generation failed (continuing without):", csError);
-          // Continue without content strategy — the plan will still generate
+          pipelineWarnings.push("Auto content strategy generation failed. The plan was generated without a content strategy section.");
         }
       }
 
@@ -253,6 +256,7 @@ export async function POST(
           landingPageData = { html: lpHtml, campaignType: lpCampaignType };
         } catch (lpError) {
           console.error("Auto landing page generation failed (continuing without):", lpError);
+          pipelineWarnings.push("Auto landing page generation failed. The plan was generated without an example landing page.");
         }
       }
 
@@ -316,6 +320,12 @@ export async function POST(
       // Inject landing page if it was generated
       if (landingPageData) {
         planData.sections.landingPage = landingPageData;
+      }
+
+      // Attach pipeline warnings if any
+      if (pipelineWarnings.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (planData as any).pipelineWarnings = pipelineWarnings;
       }
 
       const html = renderGrandPlanHtml(planData);

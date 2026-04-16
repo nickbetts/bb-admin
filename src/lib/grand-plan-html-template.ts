@@ -153,14 +153,18 @@ function renderGoogleAdsCampaigns(data: any): string {
         .join("\n");
 
       const adCopyHtml = g.adCopy ? (() => {
+        const charBadge = (len: number, max: number) => {
+          const cls = len > max ? "char-over" : len > max - 5 ? "char-warn" : "char-ok";
+          return `<span class="char-badge ${cls}">${len}/${max}</span>`;
+        };
         const headlinesHtml = g.adCopy!.headlines
-          .map((h, hi) => `<div class="headline-item"><span class="headline-num">${hi + 1}</span><span class="headline-text">${esc(h)}</span><button class="copy-btn-sm" onclick="copySingle(this,'${escAttr(h)}')">Copy</button></div>`)
+          .map((h, hi) => `<div class="headline-item"><span class="headline-num">${hi + 1}</span><span class="headline-text">${esc(h)}</span>${charBadge(h.length, 30)}<button class="copy-btn-sm" onclick="copySingle(this,'${escAttr(h)}')">Copy</button></div>`)
           .join("\n");
         const descriptionsHtml = g.adCopy!.descriptions
-          .map((d, di) => `<div class="desc-item"><span class="headline-num">${di + 1}</span><span class="headline-text">${esc(d)}</span><button class="copy-btn-sm" onclick="copySingle(this,'${escAttr(d)}')">Copy</button></div>`)
+          .map((d, di) => `<div class="desc-item"><span class="headline-num">${di + 1}</span><span class="headline-text">${esc(d)}</span>${charBadge(d.length, 90)}<button class="copy-btn-sm" onclick="copySingle(this,'${escAttr(d)}')">Copy</button></div>`)
           .join("\n");
         const sitelinksHtml = (g.adCopy!.sitelinks ?? []).length > 0
-          ? `<div class="sitelinks-section"><div class="ad-copy-label">Sitelinks</div><div class="sitelink-chips">${g.adCopy!.sitelinks!.map((s) => `<span class="sitelink-chip">${esc(s)}</span>`).join("")}</div></div>`
+          ? `<div class="sitelinks-section"><div class="ad-copy-label">Sitelinks</div><div class="sitelink-chips">${g.adCopy!.sitelinks!.map((s) => `<span class="sitelink-chip">${esc(s)}${charBadge(s.length, 25)}</span>`).join("")}</div></div>`
           : "";
         return `
         <div class="ad-copy-section">
@@ -748,7 +752,11 @@ a{color:var(--accent);text-decoration:none}
 .desc-item .headline-text{color:var(--text);font-size:12px}
 .sitelinks-section{margin-top:12px}
 .sitelink-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.sitelink-chip{display:inline-block;padding:4px 12px;background:#dbeafe;color:#1e40af;border-radius:12px;font-size:12px;font-weight:500}
+.sitelink-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;background:#dbeafe;color:#1e40af;border-radius:12px;font-size:12px;font-weight:500}
+.char-badge{font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;white-space:nowrap;flex-shrink:0;margin-top:1px}
+.char-ok{background:#d1fae5;color:#065f46}
+.char-warn{background:#fef3c7;color:#92400e}
+.char-over{background:#fee2e2;color:#dc2626}
 /* Media plan table */
 .channel-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px}
 .channel-table th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--mid);background:var(--bg);border-bottom:1px solid var(--border)}

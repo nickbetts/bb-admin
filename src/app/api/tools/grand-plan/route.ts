@@ -74,6 +74,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "title is required" }, { status: 400 });
     }
 
+    // Validate that linked source records exist and belong to the same client
+    const clientId = body.clientId || null;
+    if (body.proposalId) {
+      const p = await prisma.proposal.findUnique({ where: { id: body.proposalId }, select: { clientId: true } });
+      if (!p) return NextResponse.json({ error: "Linked proposal not found" }, { status: 400 });
+      if (clientId && p.clientId && p.clientId !== clientId) return NextResponse.json({ error: "Proposal belongs to a different client" }, { status: 400 });
+    }
+    if (body.keywordResearchId) {
+      const kr = await prisma.keywordPlannerResearch.findUnique({ where: { id: body.keywordResearchId }, select: { clientId: true } });
+      if (!kr) return NextResponse.json({ error: "Linked keyword research not found" }, { status: 400 });
+      if (clientId && kr.clientId && kr.clientId !== clientId) return NextResponse.json({ error: "Keyword research belongs to a different client" }, { status: 400 });
+    }
+    if (body.contentStrategyId) {
+      const cs = await prisma.contentStrategy.findUnique({ where: { id: body.contentStrategyId }, select: { clientId: true } });
+      if (!cs) return NextResponse.json({ error: "Linked content strategy not found" }, { status: 400 });
+      if (clientId && cs.clientId && cs.clientId !== clientId) return NextResponse.json({ error: "Content strategy belongs to a different client" }, { status: 400 });
+    }
+
     const grandPlan = await prisma.grandPlan.create({
       data: {
         userId: session.user.id,

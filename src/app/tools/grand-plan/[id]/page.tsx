@@ -50,6 +50,7 @@ interface GrandPlanFull {
   lastViewedAt: string | null;
   generationMs: number | null;
   statusMessage: string | null;
+  generationError: string | null;
   configJson: string | null;
   clientId: string | null;
   createdAt: string;
@@ -610,6 +611,25 @@ export default function GrandPlanViewPage({ params }: Props) {
         </div>
       )}
 
+      {/* Pipeline warnings */}
+      {isComplete && (() => {
+        try {
+          const data = JSON.parse(plan.planDataJson || "{}");
+          const warnings = data.pipelineWarnings as string[] | undefined;
+          if (warnings?.length) {
+            return (
+              <div className="card" style={{ padding: "12px 16px", marginBottom: 16, background: "var(--warning-bg)", border: "1px solid var(--warning)", borderRadius: 10 }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: "var(--warning)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Warnings</p>
+                {warnings.map((w, i) => (
+                  <p key={i} style={{ fontSize: 12, color: "var(--warning)", marginBottom: 2 }}>{w}</p>
+                ))}
+              </div>
+            );
+          }
+        } catch { /* ignore */ }
+        return null;
+      })()}
+
       {/* Preview iframe */}
       {isComplete && blobUrl ? (
         <div className="card" style={{ padding: 0, overflow: "hidden", borderRadius: 12 }}>
@@ -632,12 +652,27 @@ export default function GrandPlanViewPage({ params }: Props) {
           />
         </div>
       ) : !isGenerating ? (
-        <div className="card" style={{ padding: 80, textAlign: "center" }}>
-          <Map style={{ width: 48, height: 48, color: "var(--text-4)", margin: "0 auto 16px" }} />
-          <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)" }}>Ready to generate</p>
-          <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 6, maxWidth: 400, margin: "6px auto 0" }}>
-            Click &ldquo;Generate Plan&rdquo; above to create the full document from your linked sources.
-          </p>
+        <div>
+          {plan.status === "failed" && (
+            <div className="card" style={{ padding: "14px 16px", marginBottom: 16, background: "var(--danger-bg)", border: "1px solid var(--danger)", borderRadius: 10 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "var(--danger)", marginBottom: 4 }}>Generation failed</p>
+              {plan.generationError && (
+                <p style={{ fontSize: 12, color: "var(--danger)", opacity: 0.85 }}>{plan.generationError}</p>
+              )}
+              <button className="btn btn-primary btn-sm" style={{ marginTop: 10, gap: 6 }} onClick={handleGenerate}>
+                <RefreshCw style={{ width: 13, height: 13 }} /> Retry
+              </button>
+            </div>
+          )}
+          {plan.status !== "failed" && (
+            <div className="card" style={{ padding: 80, textAlign: "center" }}>
+              <Map style={{ width: 48, height: 48, color: "var(--text-4)", margin: "0 auto 16px" }} />
+              <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)" }}>Ready to generate</p>
+              <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 6, maxWidth: 400, margin: "6px auto 0" }}>
+                Click &ldquo;Generate Plan&rdquo; above to create the full document from your linked sources.
+              </p>
+            </div>
+          )}
         </div>
       ) : null}
     </div>

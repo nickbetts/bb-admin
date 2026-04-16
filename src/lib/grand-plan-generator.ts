@@ -189,35 +189,52 @@ export async function generateGrandPlan(
   // Build context summary for AI prompts
   const contextSummary = buildContextSummary(sources, adGroups, contentData, services);
 
-  // Generate sections in parallel where possible
-  if (onProgress) await onProgress("Generating AI sections...");
+  // Generate sections in parallel where possible, with per-section progress tracking
+  const sectionNames: string[] = [];
+  if (isEnabled("executiveSummary")) sectionNames.push("Executive Summary");
+  if (isEnabled("strategyPlan")) sectionNames.push("Strategy Plan");
+  if (isEnabled("metaCampaigns") && sources.keywordResearch) sectionNames.push("Meta Campaigns");
+  if (isEnabled("contentCalendar")) sectionNames.push("Content Calendar");
+  if (isEnabled("organicSocial")) sectionNames.push("Organic Social");
+  if (isEnabled("exampleArticles") && contentData) sectionNames.push("Example Articles");
+  if (isEnabled("mediaPlan") && sources.mediaPlan && mediaChannels.length === 0) sectionNames.push("Media Plan");
+  if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0) sectionNames.push("Ad Copy");
+
+  let completedCount = 0;
+  const total = sectionNames.length;
+  const trackProgress = async <T>(label: string, promise: Promise<T>): Promise<T> => {
+    if (onProgress) await onProgress(`Generating ${label} (${completedCount + 1}/${total})...`);
+    const result = await promise;
+    completedCount++;
+    return result;
+  };
+
+  if (onProgress) await onProgress(`Generating ${total} AI sections...`);
   const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, aiMediaPlan, adCopyData] =
     await Promise.all([
       isEnabled("executiveSummary")
-        ? generateExecutiveSummary(anthropic, contextSummary, sources)
+        ? trackProgress("Executive Summary", generateExecutiveSummary(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
       isEnabled("strategyPlan")
-        ? generateStrategyPlan(anthropic, contextSummary, sources)
+        ? trackProgress("Strategy Plan", generateStrategyPlan(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
       isEnabled("metaCampaigns") && sources.keywordResearch
-        ? generateMetaCampaigns(anthropic, contextSummary, adGroups, sources)
+        ? trackProgress("Meta Campaigns", generateMetaCampaigns(anthropic, contextSummary, adGroups, sources))
         : Promise.resolve(undefined),
       isEnabled("contentCalendar")
-        ? generateContentCalendar(anthropic, contextSummary, contentData, sources)
+        ? trackProgress("Content Calendar", generateContentCalendar(anthropic, contextSummary, contentData, sources))
         : Promise.resolve(undefined),
       isEnabled("organicSocial")
-        ? generateOrganicSocial(anthropic, contextSummary, contentData, sources)
+        ? trackProgress("Organic Social", generateOrganicSocial(anthropic, contextSummary, contentData, sources))
         : Promise.resolve(undefined),
       isEnabled("exampleArticles") && contentData
-        ? generateExampleArticles(anthropic, contextSummary, contentData, sources)
+        ? trackProgress("Example Articles", generateExampleArticles(anthropic, contextSummary, contentData, sources))
         : Promise.resolve(undefined),
-      // Auto-generate media plan channel allocation if we have a budget but no channels
       isEnabled("mediaPlan") && sources.mediaPlan && mediaChannels.length === 0
-        ? generateMediaPlanChannels(anthropic, contextSummary, sources)
+        ? trackProgress("Media Plan", generateMediaPlanChannels(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
-      // Generate ad copy for Google Ads ad groups
       isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
-        ? generateGoogleAdsAdCopy(anthropic, adGroups, contextSummary, sources)
+        ? trackProgress("Ad Copy", generateGoogleAdsAdCopy(anthropic, adGroups, contextSummary, sources))
         : Promise.resolve([]),
     ]);
 
@@ -254,6 +271,8 @@ export async function generateGrandPlan(
         })),
       }
     : undefined;
+
+  if (onProgress) await onProgress("Assembling final document...");
 
   return {
     title: `${sources.clientName} — Go-To-Market Plan`,
@@ -603,7 +622,17 @@ ${context}`,
 
   try {
     const parsed = safeJsonParse(extractText(res), { adGroups: [] });
-    return (parsed.adGroups ?? []) as { name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[] } }[];
+    const raw = (parsed.adGroups ?? []) as { name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[] } }[];
+
+    // Validate and truncate ad copy to Google Ads character limits
+    return raw.map((group) => ({
+      ...group,
+      adCopy: group.adCopy ? {
+        headlines: (group.adCopy.headlines ?? []).map((h) => h.slice(0, 30)),
+        descriptions: (group.adCopy.descriptions ?? []).map((d) => d.slice(0, 90)),
+        sitelinks: (group.adCopy.sitelinks ?? []).map((s) => s.slice(0, 25)),
+      } : group.adCopy,
+    }));
   } catch {
     return [];
   }
@@ -672,8 +701,41 @@ function extractText(response: Anthropic.Message): string {
 
 // ─── Structured data builders (no AI needed) ────────────────────────────────
 
+// ─── Sector-aware settings ───────────────────────────────────────────────────
+
+const SECTOR_NEGATIVES: Record<string, string[]> = {
+  dental:                ["NHS", "NHS dentist", "free dental", "dental school", "dental nurse", "dental hygienist jobs"],
+  ecommerce:             ["wholesale", "dropshipping", "alibaba", "sample"],
+  industrial:            ["training", "apprenticeship", "course", "certification"],
+  charities:             ["volunteering", "intern", "work experience"],
+  healthcare:            ["NHS waiting list", "NHS referral", "free treatment", "GP referral"],
+  hospitality:           ["jobs", "work", "employment", "training course"],
+  professional_services: ["course", "certification", "how to become"],
+  saas:                  ["open source", "free alternative", "vs", "comparison"],
+  education:             ["free course", "YouTube", "reddit"],
+};
+
+const SECTOR_AD_SCHEDULE: Record<string, string> = {
+  dental:                "Mon-Sat, 8am-8pm",
+  ecommerce:             "All week, 7am-11pm",
+  industrial:            "Mon-Fri, 7am-6pm",
+  charities:             "All week, 6am-11pm",
+  healthcare:            "Mon-Sat, 7am-9pm",
+  hospitality:           "All week, 8am-10pm",
+  professional_services: "Mon-Fri, 8am-7pm",
+  saas:                  "Mon-Fri, 8am-8pm",
+  education:             "All week, 8am-10pm",
+};
+
+const BASE_NEGATIVES = ["free", "cheap", "DIY", "job", "jobs", "career", "salary", "reddit", "forum", "template", "download"];
+
 function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources, adCopyData: { name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[] } }[]) {
   const adCopyMap = new Map(adCopyData.map((d) => [d.name, d.adCopy]));
+  const sector = sources.sector ?? "";
+  const sectorNegs = SECTOR_NEGATIVES[sector] ?? [];
+  const allNegatives = [...new Set([...BASE_NEGATIVES, ...sectorNegs])];
+  const adSchedule = SECTOR_AD_SCHEDULE[sector] ?? "Mon-Fri, 7am-9pm";
+
   return {
     campaignName: `${sources.clientName} — Search`,
     overview: {
@@ -683,12 +745,12 @@ function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources,
       "Budget": sources.keywordResearch?.monthlyBudget ? `£${sources.keywordResearch.monthlyBudget}/month` : "TBC",
       "Locations": "United Kingdom",
       "Language": "English",
-      "Ad Schedule": "Mon–Fri, 7am–9pm",
+      "Ad Schedule": adSchedule,
       "Conversion Tracking": "Website form submissions, phone calls",
       "Networks": "Search Network only",
       "Max CPC": sources.keywordResearch?.maxCpc ? `£${sources.keywordResearch.maxCpc}` : "Auto",
     },
-    negativeKeywords: ["free", "cheap", "DIY", "job", "jobs", "career", "salary", "reddit", "forum", "template", "download"],
+    negativeKeywords: allNegatives,
     adGroups: adGroups.map((g) => ({
       name: g.name,
       keywords: g.keywords.map((k) => ({
