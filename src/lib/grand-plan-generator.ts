@@ -888,7 +888,7 @@ function buildContentStrategySection(contentData: any) {
 
 async function generateEmailMarketing(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<EmailMarketingPlan> {
   const res = await anthropic.messages.create({
-    model: MODEL_LIGHT,
+    model: MODEL,
     max_tokens: 2500,
     messages: [
       {
@@ -926,7 +926,7 @@ ${context}`,
 
 async function generateLinkedInAds(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<LinkedInCampaign[]> {
   const res = await anthropic.messages.create({
-    model: MODEL_LIGHT,
+    model: MODEL,
     max_tokens: 2500,
     messages: [
       {
@@ -967,7 +967,7 @@ async function generateCompetitorIntel(anthropic: Anthropic, context: string, so
   const brief = sources.clientBrief ?? sources.keywordResearch?.brief ?? "";
 
   const res = await anthropic.messages.create({
-    model: MODEL_LIGHT,
+    model: MODEL,
     max_tokens: 2500,
     messages: [
       {

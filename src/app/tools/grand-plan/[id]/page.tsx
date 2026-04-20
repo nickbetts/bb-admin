@@ -95,6 +95,7 @@ export default function GrandPlanViewPage({ params }: Props) {
 
   // Generation
   const [generating, setGenerating] = useState(false);
+  const [generationMessage, setGenerationMessage] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Section toggles
@@ -185,12 +186,58 @@ export default function GrandPlanViewPage({ params }: Props) {
   }
 
   async function handleGenerate() {
+    if (!plan) return;
     setGenerating(true);
+    setPlan((prev) => (prev ? { ...prev, status: "generating" } : prev));
+
+    const sectionLabels: Record<string, string> = {};
+    for (const s of ALL_SECTIONS) sectionLabels[s.key] = s.label;
+
     try {
-      await fetch(`/api/tools/grand-plan/${id}/generate`, { method: "POST" });
-      setPlan((prev) => (prev ? { ...prev, status: "generating" } : prev));
-      startPolling();
-    } catch {
+      // Helper to call a step and handle errors
+      async function runStep(step: string, label: string): Promise<boolean> {
+        setGenerationMessage(label);
+        const res = await fetch(`/api/tools/grand-plan/${id}/generate-step`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ step }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: "Unknown error" }));
+          throw new Error(err.error || `Step "${step}" failed`);
+        }
+        const data = await res.json();
+        return !data.skipped;
+      }
+
+      // 1. Start — initialise plan data
+      await runStep("start", "Initialising...");
+
+      // 2. Prepare pipeline (each is its own 300s call)
+      await runStep("prepare-keywords", "Researching keywords...");
+      await runStep("prepare-content", "Generating content strategy...");
+      await runStep("prepare-lp", "Generating landing page...");
+
+      // 3. Generate each enabled section sequentially
+      const enabled = Array.from(enabledSections);
+      for (let i = 0; i < enabled.length; i++) {
+        const key = enabled[i];
+        const label = sectionLabels[key] || key;
+        await runStep(key, `Generating ${label} (${i + 1}/${enabled.length})...`);
+      }
+
+      // 4. Assemble — render HTML, create version
+      await runStep("assemble", "Assembling final document...");
+
+      // Done — reload plan to get the HTML
+      setGenerationMessage("Complete!");
+      await loadPlan();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Generation failed";
+      setGenerationMessage(`Error: ${message}`);
+      // Reload plan to get the failed status
+      await loadPlan();
+    } finally {
       setGenerating(false);
     }
   }
@@ -570,7 +617,7 @@ export default function GrandPlanViewPage({ params }: Props) {
           {isGenerating && (
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--warning)" }}>
               <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />
-              {plan.statusMessage || "Generating... this may take a couple of minutes"}
+              {generationMessage || plan.statusMessage || "Generating..."}
             </span>
           )}
 
