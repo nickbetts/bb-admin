@@ -10,7 +10,7 @@ import { generateContentStrategy } from "@/lib/content-strategy-generator";
 import { extractBrandContext } from "@/lib/brand-extractor";
 import { generateLandingPage } from "@/lib/lp-generator";
 
-export const maxDuration = 300;
+export const maxDuration = 900;
 export const dynamic = "force-dynamic";
 
 // POST /api/tools/grand-plan/[id]/generate — trigger generation
@@ -200,7 +200,7 @@ export async function POST(
             csCompetitors,
             csDatabase,
             searchConsoleSiteUrl ?? null,
-            "claude-opus-4-6",
+            "claude-sonnet-4-6",
           );
 
           // Save as a real ContentStrategy record

@@ -25,7 +25,7 @@ import { withApiCache } from "@/lib/api-cache";
 import { getOpenAiClient } from "@/lib/openai-client";
 import { getAnthropicClient } from "@/lib/anthropic-client";
 
-export type StrategyModel = "gpt-5.4" | "claude-opus-4-6";
+export type StrategyModel = "gpt-5.4" | "claude-opus-4-6" | "claude-sonnet-4-6";
 
 export interface ContentStrategyLimits {
   pageOptimisations?: number;
@@ -1267,12 +1267,14 @@ export async function generateContentStrategy(
   // Step 3: Call the chosen AI model for intelligent analysis
   let content: string;
 
-  if (model === "claude-opus-4-6") {
+  if (model === "claude-opus-4-6" || model === "claude-sonnet-4-6") {
     const anthropic = await getAnthropicClient();
+    const claudeModel = model === "claude-sonnet-4-6" ? "claude-sonnet-4-6" : "claude-opus-4-6";
+    const claudeMaxTokens = model === "claude-sonnet-4-6" ? 16000 : 32000;
     // Streaming is required for requests that may exceed 10 minutes (large max_tokens)
     const stream = anthropic.messages.stream({
-      model: "claude-opus-4-6",
-      max_tokens: 32000,
+      model: claudeModel,
+      max_tokens: claudeMaxTokens,
       system: STRATEGY_SYSTEM_PROMPT,
       messages: [{ role: "user", content: analysisPrompt }],
     });
@@ -1334,10 +1336,11 @@ export async function generateContentStrategy(
       // Last resort: retry with a shorter, stricter prompt asking for valid JSON
       console.warn("Truncation repair failed — retrying AI call with strict JSON nudge", repairError);
       const retryPrompt = `Your previous response was not valid JSON. Return ONLY a valid JSON object matching the schema. No markdown, no commentary. Be concise — limit to the top 10 items per section if needed.\n\n${analysisPrompt}`;
-      if (model === "claude-opus-4-6") {
+      if (model === "claude-opus-4-6" || model === "claude-sonnet-4-6") {
         const anthropic = await getAnthropicClient();
+        const retryModel = model === "claude-sonnet-4-6" ? "claude-sonnet-4-6" : "claude-opus-4-6";
         const retryStream = anthropic.messages.stream({
-          model: "claude-opus-4-6",
+          model: retryModel,
           max_tokens: 16000,
           system: STRATEGY_SYSTEM_PROMPT,
           messages: [{ role: "user", content: retryPrompt }],
