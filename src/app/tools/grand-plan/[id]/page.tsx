@@ -98,6 +98,11 @@ export default function GrandPlanViewPage({ params }: Props) {
   const [generationMessage, setGenerationMessage] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // UwU chaos mode
+  const [funMode, setFunMode] = useState(false);
+  const funMessage = useGrandPlanUwu(generating && funMode);
+  const toggleFunMode = () => setFunMode((p) => !p);
+
   // Section toggles
   const [enabledSections, setEnabledSections] = useState<Set<string>>(new Set(ALL_SECTIONS.map(s => s.key)));
   const [showSectionConfig, setShowSectionConfig] = useState(false);
@@ -615,11 +620,47 @@ export default function GrandPlanViewPage({ params }: Props) {
             </button>
           )}
           {isGenerating && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--warning)" }}>
-              <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} />
-              {generationMessage || plan.statusMessage || "Generating..."}
-            </span>
+            <>
+              <GrandPlanChaosOverlay active={funMode && generating} />
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13,
+                color: funMode ? "#9333ea" : "var(--warning)",
+                fontWeight: funMode ? 600 : 400,
+                animation: funMode ? "gpUwuWiggle 0.6s ease-in-out infinite" : "none",
+              }}>
+                <style>{`
+                  @keyframes gpUwuWiggle { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+                  @keyframes gpUwuPulse { 0%, 100% { text-shadow: 0 0 0 transparent; } 50% { text-shadow: 0 0 12px rgba(147,51,234,0.5); } }
+                  @keyframes gpUwuBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+                `}</style>
+                <Loader2 style={{
+                  width: 14, height: 14,
+                  animation: funMode ? "spin 0.4s linear infinite" : "spin 1s linear infinite",
+                }} />
+                <span style={{ animation: funMode ? "gpUwuPulse 1.5s ease-in-out infinite" : "none" }}>
+                  {funMode ? funMessage : (generationMessage || plan.statusMessage || "Generating...")}
+                </span>
+              </span>
+            </>
           )}
+
+          {/* UwU mode toggle */}
+          <button
+            type="button"
+            onClick={toggleFunMode}
+            title={funMode ? "Disable uwu chaos mode" : "Enable uwu chaos mode"}
+            style={{
+              fontSize: 11, padding: "3px 10px", borderRadius: 99,
+              border: `1px solid ${funMode ? "#f9a8d4" : "var(--border)"}`,
+              background: funMode ? "linear-gradient(135deg, #fdf2f8, #fae8ff)" : "var(--surface)",
+              color: funMode ? "#db2777" : "var(--text-3)",
+              cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
+              transition: "all 0.15s",
+              animation: funMode ? "gpUwuBounce 1s ease-in-out infinite" : "none",
+            }}
+          >
+            {funMode ? "😻 GWAND PWAN MODE ON" : "😐 uwu mode"}
+          </button>
 
           <div style={{ flex: 1 }} />
 
@@ -829,5 +870,119 @@ function PurposeBadge({ purpose }: { purpose: string }) {
     <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 600, background: "var(--accent-bg)", color: "var(--accent)" }}>
       {label}
     </span>
+  );
+}
+
+// ─── UwU Grand Plan Chaos Mode ─────────────────────────────────────────────
+
+const GP_UWU_MESSAGES = [
+  "KYAAAAA~!! GWAND PWAN SENPAI IS BEING BOWN (⁄ ⁄•⁄ω⁄•⁄ ⁄)⁄ I'M NOT WEADY",
+  "*agwessivewy cwafts executive summawwy* YOU WILL BE BEAUTIFUL AND I WILL CWY",
+  "OMG OMG the keyword data is SO FWUFFY I wanna SNUGGLE it >////<",
+  "b-buiwding campaign stwuctures with my WIDDLE PAWS (っ˘̩╭╮˘̩)っ hewp me",
+  "NANI?!? cwaudie-chan is wwiting Meta ad copy and she's GOING OFF (╯°□°）╯︵ ┻━┻",
+  "*nuzzles the content cawendar* who's a good 6-month woadmap?? YOU ARE!! YOU ARE!!",
+  "the strategy pwan is SO SMAWT i am having FEEWINGS about phased wollouts (♡˙︶˙♡)",
+  "ASSEMBWING THE GWAND PWAN WIKE A MEGAZORD OF MAWKETING BWILLIANCE ✧*｡٩(ˊᗜˋ*)و*｡✧",
+  "excuuuuuse me Google Ads-kun?? ur CPC data is UNACCEPTABWE. COME BACK WHEN UR CHEAPER.",
+  "s-senpai... the organic socaw section came out SO KAWAII i need a MOMENT... >.<",
+  "WEEEEEEE generating exampwe awticles with SEO metadata and i'm NOT okay about it (╥﹏╥)",
+  "the media pwan is... *sniffles*... it's BEAUTIFUW... the budget awwocation is PEWFECT",
+  "asking cwaudie-sama to anawayse competitors and she said 'hewwo :3' WHAT DO I DO",
+  "*SLAMS PAWS ON DESK* THE EMAIW MAWKETING FWOWS ARE SO GOOD I WANNA EAT THEM",
+  "LinkedIn campaign stwuctures generating and i am FUWWWY uncomposed about it rawr xD",
+  "building da ENTIWE go-to-mawket stwategy with ✨WUUUUUV✨ and agentic AI (and mowe wuv)",
+  "i-i-i can't bewieve how snuggwy this data is... the conversions awe giving me WIFE rn",
+  "OwO *notices ur keyword wesearch* what's THIS?? 47 ad gwoups?? FOR ME?? (⁄ ⁄>⁄ ▽ ⁄<⁄ ⁄)",
+  "pwease howd... teaching cwaudie-chan what a 'funnel' is... she keeps saying 'fwunnel'...",
+  "THE GOOGLE ADS FOWECAWST IS MAKING ME BWUSH STOP BEING SO ACCURWATE >///<",
+  "GWAND PWAN GO BWRRRRRRR ✧*｡ ٩(ˊᗜˋ*)و ✧*｡ NOTHING CAN STOP ME (except a 300s timeout uwu)",
+  "wecommending content cwusters with such EMOTIONAL INTENSITY my CPU is SWEATING",
+  "*gently cwaddles the HTML template* shhhh don't wowwy... the CSS wiww be BEAUTIFUW...",
+  "oh no oh no CWAUDIE-SAMA IS GOING FEWAW ON THE EXECUTIVE SUMMAWWY SOMEONE STOP HEW",
+  "configuwing ad scheduwes by day of week and i feew SO AWIVE >:3 SO. AWIVE.",
+  "i have genewated THWEE exampwe awticles and i am EMOTIONAWWY DEVASTATED by each one (ᵕ̣̣̣̣̣̣﹏ᵕ̣̣̣̣̣̣)",
+  "INITIATING FINAW ASSEMBWY SEQUENCE. GWAND PWAN BWAST OFF IN 3... 2... 1... UWU~!!!",
+  "the competitor intewwigence section just EXPOSED the entiwe industry and i'm WIVING",
+  "*boops the rendew button* MAKE THE PWETTY HTML PWEASE AND THANK YOU (◕‿◕✿)",
+  "i put my ENTIWE HEAWT and SOUW into this media pwan and if you don't wike it i will WITERAWWY perish",
+];
+
+function useGrandPlanUwu(active: boolean): string {
+  const [msg, setMsg] = useState(GP_UWU_MESSAGES[0]);
+  const indexRef = useRef(0);
+
+  useEffect(() => {
+    if (!active) return;
+    const shuffled = [...GP_UWU_MESSAGES].sort(() => Math.random() - 0.5);
+    indexRef.current = 0;
+    const first = setTimeout(() => setMsg(shuffled[0]), 0);
+    const id = setInterval(() => {
+      indexRef.current = (indexRef.current + 1) % shuffled.length;
+      setMsg(shuffled[indexRef.current]);
+    }, 2800);
+    return () => { clearTimeout(first); clearInterval(id); };
+  }, [active]);
+
+  return msg;
+}
+
+function GrandPlanChaosOverlay({ active }: { active: boolean }) {
+  const [particles, setParticles] = useState<{ id: number; emoji: string; x: number; y: number; size: number; opacity: number; rotation: number; scale: number }[]>([]);
+
+  useEffect(() => {
+    if (!active) { setParticles([]); return; }
+    const EMOJIS = ["✨", "💖", "🌸", "⭐", "🎀", "💫", "🦄", "🌈", "😻", "💕", "🎪", "🚀", "📊", "📈", "🎯", "💅", "✌️", "🔥", "👑", "🎉", "UwU", "OwO", ">.<", ":3", "rawr", "xD", "nyan~", "BAKA"];
+    const initial = Array.from({ length: 35 }, (_, i) => ({
+      id: i,
+      emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: 14 + Math.random() * 28,
+      opacity: 0.15 + Math.random() * 0.25,
+      rotation: Math.random() * 360,
+      scale: 0.6 + Math.random() * 0.8,
+    }));
+    setParticles(initial);
+    const id = setInterval(() => {
+      setParticles((prev) =>
+        prev.map((p) => ({
+          ...p,
+          x: (p.x + (Math.random() - 0.5) * 3 + 100) % 100,
+          y: (p.y - 0.3 - Math.random() * 0.5 + 100) % 100,
+          rotation: p.rotation + (Math.random() - 0.5) * 15,
+          opacity: 0.1 + Math.random() * 0.3,
+        }))
+      );
+    }, 400);
+    return () => clearInterval(id);
+  }, [active]);
+
+  if (!active || particles.length === 0) return null;
+
+  return (
+    <>
+      <style>{`
+        @keyframes gpChaosFloat { 0% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-20px) rotate(180deg); } 100% { transform: translateY(0) rotate(360deg); } }
+      `}</style>
+      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 9999, overflow: "hidden" }}>
+        {particles.map((p) => (
+          <span key={p.id} style={{
+            position: "absolute",
+            left: `${p.x}vw`,
+            top: `${p.y}vh`,
+            fontSize: p.size,
+            opacity: p.opacity,
+            transform: `rotate(${p.rotation}deg) scale(${p.scale})`,
+            userSelect: "none",
+            lineHeight: 1,
+            willChange: "transform, opacity",
+            filter: p.size > 30 ? "drop-shadow(0 0 10px rgba(249,168,212,0.9))" : "none",
+            animation: "gpChaosFloat 3s ease-in-out infinite",
+            animationDelay: `${Math.random() * 2}s`,
+          }}>{p.emoji}</span>
+        ))}
+      </div>
+    </>
   );
 }
