@@ -255,7 +255,9 @@ export async function generateGrandPlan(
   };
 
   if (onProgress) await onProgress(`Generating ${total} AI sections...`);
-  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, aiMediaPlan, adCopyData, emailMarketing, linkedInAds, competitorIntel] =
+
+  // Batch 1: core sections (exec summary, strategy, campaigns, calendar, articles, ad copy)
+  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, aiMediaPlan, adCopyData] =
     await Promise.all([
       isEnabled("executiveSummary")
         ? trackProgress("Executive Summary", generateExecutiveSummary(anthropic, contextSummary, sources))
@@ -281,6 +283,11 @@ export async function generateGrandPlan(
       isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
         ? trackProgress("Ad Copy", generateGoogleAdsAdCopy(anthropic, adGroups, contextSummary, sources))
         : Promise.resolve([]),
+    ]);
+
+  // Batch 2: supplementary sections (email, LinkedIn, competitor — run after core to avoid rate limits)
+  const [emailMarketing, linkedInAds, competitorIntel] =
+    await Promise.all([
       isEnabled("emailMarketing")
         ? trackProgress("Email Marketing", generateEmailMarketing(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
@@ -881,7 +888,7 @@ function buildContentStrategySection(contentData: any) {
 
 async function generateEmailMarketing(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<EmailMarketingPlan> {
   const res = await anthropic.messages.create({
-    model: MODEL,
+    model: MODEL_LIGHT,
     max_tokens: 2500,
     messages: [
       {
@@ -919,7 +926,7 @@ ${context}`,
 
 async function generateLinkedInAds(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<LinkedInCampaign[]> {
   const res = await anthropic.messages.create({
-    model: MODEL,
+    model: MODEL_LIGHT,
     max_tokens: 2500,
     messages: [
       {
@@ -960,7 +967,7 @@ async function generateCompetitorIntel(anthropic: Anthropic, context: string, so
   const brief = sources.clientBrief ?? sources.keywordResearch?.brief ?? "";
 
   const res = await anthropic.messages.create({
-    model: MODEL,
+    model: MODEL_LIGHT,
     max_tokens: 2500,
     messages: [
       {
