@@ -4,6 +4,7 @@ import { use, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { PieChart, Save, Sparkles, Loader2, ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 interface MediaPlan {
   id: string;
@@ -42,6 +43,7 @@ const objectiveLabels: Record<string, string> = {
 export default function MediaPlanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const confirm = useConfirm();
   const [plan, setPlan] = useState<MediaPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -123,7 +125,7 @@ export default function MediaPlanDetailPage({ params }: { params: Promise<{ id: 
   }
 
   async function handleDelete() {
-    if (!confirm("Delete this media plan?")) return;
+    if (!(await confirm({ title: "Delete this media plan?", confirmLabel: "Delete", danger: true }))) return;
     await fetch(`/api/tools/media-plan/${id}`, { method: "DELETE" });
     router.push("/tools/media-plan");
   }

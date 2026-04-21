@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, Edit2, Star, Check, X, LayoutTemplate } from "lucide-react";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 const CONTENT_SECTION_TYPES = [
   { sectionType: "overview", title: "Overview & Commentary" },
@@ -57,6 +58,7 @@ export default function ReportTemplatesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   const load = async () => {
     setLoading(true);
@@ -122,7 +124,7 @@ export default function ReportTemplatesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this template? This cannot be undone.")) return;
+    if (!(await confirm({ title: "Delete this template?", description: "This cannot be undone.", confirmLabel: "Delete", danger: true }))) return;
     await fetch(`/api/report-templates/${id}`, { method: "DELETE" });
     await load();
   };

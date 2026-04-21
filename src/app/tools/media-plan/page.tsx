@@ -6,6 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { PieChart, Plus, Trash2, Pencil, ExternalLink } from "lucide-react";
 import { ClientBackLink } from "@/components/ui/ClientBackLink";
 import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 interface MediaPlan {
   id: string;
@@ -38,6 +40,7 @@ const statusColors: Record<string, string> = {
 export default function MediaPlanListPage() {
   const searchParams = useSearchParams();
   const clientId = searchParams.get("clientId");
+  const confirm = useConfirm();
   const [plans, setPlans] = useState<MediaPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -82,7 +85,7 @@ export default function MediaPlanListPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this media plan?")) return;
+    if (!(await confirm({ title: "Delete this media plan?", confirmLabel: "Delete", danger: true }))) return;
     setDeleting(id);
     await fetch(`/api/tools/media-plan/${id}`, { method: "DELETE" });
     await load();
@@ -142,11 +145,11 @@ export default function MediaPlanListPage() {
       {loading ? (
         <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 14 }}>Loading plans…</div>
       ) : plans.length === 0 ? (
-        <div className="card" style={{ padding: 60, textAlign: "center" }}>
-          <PieChart style={{ width: 40, height: 40, color: "var(--text-4)", margin: "0 auto 16px" }} />
-          <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)" }}>No media plans yet</p>
-          <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 8 }}>Create your first plan above to get started.</p>
-        </div>
+        <EmptyState
+          icon={<PieChart style={{ width: 40, height: 40 }} />}
+          title="No media plans yet"
+          description="Create your first plan above to get started."
+        />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {plans.map((plan) => (

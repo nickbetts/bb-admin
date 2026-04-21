@@ -3,6 +3,8 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useToast } from "@/components/ui/Toast";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 const SECTION_LABEL_MAP: Record<string, string> = {
   seo: "SEO", web: "Web", ga4: "GA4", paid_social: "Paid Social", meta: "Meta",
@@ -55,7 +57,7 @@ import {
   ChevronDown, ChevronRight, BarChart2, Globe, TrendingUp, Search,
   MessageSquare, LayoutGrid, FileText, Image, ShoppingCart, CalendarRange,
   LayoutTemplate, Save, GripVertical, Globe2, Link2, Link2Off, CheckCircle2,
-  Sparkles, Pencil, Star, Video, Users, Phone, Play, Loader2,
+  Sparkles, Pencil, Star, Video, Users, Phone, Play, Loader2, SeparatorHorizontal, RotateCcw,
 } from "lucide-react";
 import {
   DndContext,
@@ -227,11 +229,15 @@ function SortableSectionItem({
   availableBlocks,
   visibleBlocks,
   blockOrder,
+  pageBreakBefore,
   subSections,
   onToggleEnabled,
   onToggleExpand,
   onToggleBlock,
   onReorderBlocks,
+  onTogglePageBreak,
+  onResetConfig,
+  hasCustomConfig,
   onToggleSubSection,
   onReorderSubSections,
   onScrollTo,
@@ -243,11 +249,15 @@ function SortableSectionItem({
   availableBlocks: { id: string; label: string }[];
   visibleBlocks: string[] | undefined;
   blockOrder: string[] | null;
+  pageBreakBefore: boolean;
   subSections?: Array<{ id: string; sectionType: string; title: string; enabled?: boolean | null | undefined }>;
   onToggleEnabled: () => void;
   onToggleExpand: () => void;
   onToggleBlock: (blockId: string) => void;
   onReorderBlocks: (newOrder: string[]) => void;
+  onTogglePageBreak: () => void;
+  onResetConfig: () => void;
+  hasCustomConfig: boolean;
   onToggleSubSection?: (id: string) => void;
   onReorderSubSections?: (newOrder: string[]) => void;
   onScrollTo: () => void;
@@ -365,6 +375,28 @@ function SortableSectionItem({
 
       {isExpanded && isEnabled && (
         <div style={{ padding: "4px 16px 12px", display: "flex", flexDirection: "column", gap: 2 }}>
+          {/* Page break toggle — controls PDF print breaks */}
+          <button
+            type="button"
+            onClick={onTogglePageBreak}
+            title={pageBreakBefore ? "Remove forced page break before this section" : "Force a new page before this section in PDFs"}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "6px 8px", borderRadius: "var(--r-sm)",
+              background: pageBreakBefore ? "var(--accent-bg)" : "transparent",
+              border: "1px solid",
+              borderColor: pageBreakBefore ? "rgb(99 102 241 / 0.25)" : "transparent",
+              color: pageBreakBefore ? "var(--accent)" : "var(--text-3)",
+              fontSize: 12,
+              cursor: "pointer",
+              marginBottom: 4,
+              transition: "all 0.15s",
+            }}
+          >
+            <SeparatorHorizontal size={13} />
+            <span style={{ flex: 1, textAlign: "left" }}>Page break before (PDF)</span>
+            {pageBreakBefore && <Check size={13} />}
+          </button>
           {availableBlocks.length > 0 && (
             <DndContext sensors={blockSensors} collisionDetection={closestCenter} onDragEnd={handleBlockDragEnd}>
               <SortableContext items={orderedBlocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
@@ -395,6 +427,27 @@ function SortableSectionItem({
                 ))}
               </SortableContext>
             </DndContext>
+          )}
+          {hasCustomConfig && (
+            <button
+              type="button"
+              onClick={onResetConfig}
+              title="Reset block visibility, ordering, and page-break to defaults"
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "5px 8px", marginTop: 6,
+                borderRadius: "var(--r-sm)",
+                background: "transparent",
+                border: "1px dashed var(--border-subtle)",
+                color: "var(--text-3)",
+                fontSize: 11,
+                cursor: "pointer",
+                alignSelf: "flex-start",
+              }}
+            >
+              <RotateCcw size={11} />
+              Reset to defaults
+            </button>
           )}
         </div>
       )}
@@ -465,6 +518,8 @@ function SortableMainSectionWrapper({
 // ── Main component ──────────────────────────────────────────────────────────
 export function ReportView({ report: initialReport }: ReportViewProps) {
   const router = useRouter();
+  const { toast } = useToast();
+  const confirm = useConfirm();
   const [report, setReport] = useState<Report>({
     ...initialReport,
     sections: initialReport.sections.map((s) => ({
@@ -542,6 +597,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [generateAllProgress, setGenerateAllProgress] = useState(0);
   const [generateAllTotal, setGenerateAllTotal] = useState(0);
   const [generatingExecutiveSummary, setGeneratingExecutiveSummary] = useState(false);
+  const [regeneratingSectionId, setRegeneratingSectionId] = useState<string | null>(null);
 
   // ── Report narrative ────────────────────────────────────────────────────────
   const [generatingNarrative, setGeneratingNarrative] = useState(false);
@@ -795,6 +851,47 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
     });
   }, [report.id, report.sections]);
 
+  const handleTogglePageBreak = useCallback(async (sectionId: string) => {
+    const section = report.sections.find((s) => s.id === sectionId);
+    if (!section) return;
+    let existing: { visibleBlocks?: string[]; blockOrder?: string[]; pageBreakBefore?: boolean } = {};
+    try { if (section.cardConfig) existing = JSON.parse(section.cardConfig); } catch { /* ignore */ }
+    const next = !existing.pageBreakBefore;
+    // If turning off and the rest of the config is empty, store null to keep DB tidy.
+    const updated = { ...existing, pageBreakBefore: next ? true : undefined };
+    const isEmpty = !updated.pageBreakBefore && (!updated.visibleBlocks || updated.visibleBlocks.length === 0) && (!updated.blockOrder || updated.blockOrder.length === 0);
+    const newCardConfig = isEmpty ? null : JSON.stringify(updated);
+    setReport((prev) => ({
+      ...prev,
+      sections: prev.sections.map((s) => s.id === sectionId ? { ...s, cardConfig: newCardConfig } : s),
+    }));
+    await fetch(`/api/reports/${report.id}/sections`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sectionId, cardConfig: newCardConfig }),
+    });
+  }, [report.id, report.sections]);
+
+  const handleResetCardConfig = useCallback(async (sectionId: string) => {
+    const section = report.sections.find((s) => s.id === sectionId);
+    if (!section || !section.cardConfig) return;
+    if (!(await confirm({
+      title: "Reset section to defaults?",
+      description: "This restores default block visibility, ordering, and page-break settings. Commentary and AI insights are not affected.",
+      confirmLabel: "Reset",
+    }))) return;
+    setReport((prev) => ({
+      ...prev,
+      sections: prev.sections.map((s) => s.id === sectionId ? { ...s, cardConfig: null } : s),
+    }));
+    await fetch(`/api/reports/${report.id}/sections`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sectionId, cardConfig: null }),
+    });
+    toast("Section reset to defaults", "success");
+  }, [report.id, report.sections, confirm, toast]);
+
   // ── Commentary ───────────────────────────────────────────────────────────────
   const handleEditSection = (section: Section) => {
     setEditingSection(section.id);
@@ -943,6 +1040,55 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       setGenerateAllProgress((p) => p + 1);
     }
     setGeneratingAll(false);
+  };
+
+  // ── Regenerate AI commentary for a single section ─────────────────────────
+  const handleRegenerateSection = async (sectionId: string) => {
+    const section = report.sections.find((s) => s.id === sectionId);
+    if (!section) return;
+    if (section.sectionType !== "overview" && !sectionMetrics[section.id]) {
+      toast("No metrics loaded for this section yet \u2014 open the section first.", "warning");
+      return;
+    }
+    setRegeneratingSectionId(sectionId);
+    try {
+      const apiSectionType =
+        section.sectionType === "web" ? "ga4" :
+        section.sectionType === "paid_social" ? "meta" :
+        section.sectionType;
+      const res = await fetch("/api/ai/report-commentary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sectionType: apiSectionType,
+          metrics: sectionMetrics[section.id] ?? {},
+          previousMetrics: sectionPreviousMetrics[section.id] ?? undefined,
+          clientName: report.client.name,
+          clientId: report.client.id,
+          dateRange: report.period,
+          tone: aiTone,
+          length: aiLength,
+          format: aiFormat,
+          spin: aiSpin,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { commentary: text } = await res.json();
+      await fetch(`/api/reports/${report.id}/sections`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sectionId, commentary: text }),
+      });
+      setReport((prev) => ({
+        ...prev,
+        sections: prev.sections.map((s) => s.id === sectionId ? { ...s, commentary: text } : s),
+      }));
+      toast("AI commentary regenerated", "success");
+    } catch (err) {
+      toast(`Regeneration failed: ${err instanceof Error ? err.message : "unknown error"}`, "error");
+    } finally {
+      setRegeneratingSectionId(null);
+    }
   };
 
   // ── Executive summary AI ────────────────────────────────────────────────────
@@ -1173,7 +1319,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("PDF export error:", err);
-      alert(`PDF export failed: ${err instanceof Error ? err.message : String(err)}`);
+      toast(`PDF export failed: ${err instanceof Error ? err.message : String(err)}`, "error");
     } finally {
       setExportingPdf(false);
     }
@@ -1620,6 +1766,19 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                     )}
                   </div>
                   <div className="print:hidden" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    {section.commentary && section.sectionType !== "overview" && (
+                      <button
+                        onClick={() => handleRegenerateSection(section.id)}
+                        disabled={regeneratingSectionId === section.id || generatingAll}
+                        className="btn btn-secondary btn-sm"
+                        style={{ gap: 6 }}
+                        title="Regenerate AI commentary for this section"
+                      >
+                        {regeneratingSectionId === section.id
+                          ? <><Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> Regenerating…</>
+                          : <><Sparkles size={13} /> Regenerate</>}
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         pendingSectionIdRef.current = section.id;
@@ -2142,7 +2301,7 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
         </div>
 
         {/* ── Right sidebar ─────────────────────────────────────────────── */}
-        <aside className="print:hidden" style={{
+        <aside className="print:hidden report-builder-sidebar" style={{
           width: 264, flexShrink: 0,
           position: "sticky", top: 60, height: "calc(100vh - 60px)",
           alignSelf: "flex-start",
@@ -2183,11 +2342,15 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                         availableBlocks={availableBlocks}
                         visibleBlocks={visibleBlocks}
                         blockOrder={blockOrder}
+                        pageBreakBefore={getPageBreakBefore(section)}
                         subSections={textSubItems.length > 0 ? textSubItems : undefined}
                         onToggleEnabled={() => handleToggleSectionEnabled(section.id)}
                         onToggleExpand={() => setExpandedSections((prev) => ({ ...prev, [section.id]: !isExpanded }))}
                         onToggleBlock={(blockId) => handleToggleBlock(section.id, blockId)}
                         onReorderBlocks={(newOrder) => handleReorderBlocks(section.id, newOrder)}
+                        onTogglePageBreak={() => handleTogglePageBreak(section.id)}
+                        onResetConfig={() => handleResetCardConfig(section.id)}
+                        hasCustomConfig={Boolean(section.cardConfig)}
                         onToggleSubSection={(id) => handleToggleSectionEnabled(id)}
                         onReorderSubSections={handleReorderSubSections}
                         onScrollTo={() => {

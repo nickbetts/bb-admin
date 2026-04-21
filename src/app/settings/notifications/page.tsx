@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Bell, Mail, Hash, Clock, Check, Loader2, Save } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 
 interface NotificationPrefs {
   email: boolean;
@@ -31,6 +32,7 @@ const DIGEST_OPTIONS = [
 ];
 
 export default function NotificationPreferencesPage() {
+  const { toast } = useToast();
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,15 +51,17 @@ export default function NotificationPreferencesPage() {
     setSaving(true);
     setSaved(false);
     try {
-      await fetch("/api/notifications/preferences", {
+      const res = await fetch("/api/notifications/preferences", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(prefs),
       });
+      if (!res.ok) throw new Error("save failed");
       setSaved(true);
+      toast("Notification preferences saved", "success");
       setTimeout(() => setSaved(false), 3000);
     } catch {
-      alert("Failed to save preferences");
+      toast("Failed to save notification preferences", "error");
     } finally {
       setSaving(false);
     }

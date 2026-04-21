@@ -16,6 +16,8 @@ import {
 import { SearchInput } from "@/components/ui/SearchInput";
 import { ClientBackLink } from "@/components/ui/ClientBackLink";
 import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 interface GrandPlanSummary {
   id: string;
@@ -36,6 +38,7 @@ interface GrandPlanSummary {
 export default function GrandPlansPage() {
   const searchParams = useSearchParams();
   const clientId = searchParams.get("clientId");
+  const confirm = useConfirm();
   const [plans, setPlans] = useState<GrandPlanSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -74,7 +77,7 @@ export default function GrandPlansPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this grand plan?")) return;
+    if (!(await confirm({ title: "Delete this grand plan?", confirmLabel: "Delete", danger: true }))) return;
     setDeleting(id);
     await fetch(`/api/tools/grand-plan/${id}`, { method: "DELETE" });
     await load();
@@ -224,46 +227,12 @@ export default function GrandPlansPage() {
           Loading...
         </div>
       ) : plans.length === 0 ? (
-        <div className="card" style={{ padding: 60, textAlign: "center" }}>
-          <Map
-            style={{
-              width: 40,
-              height: 40,
-              color: "var(--text-4)",
-              margin: "0 auto 16px",
-            }}
-          />
-          <p
-            style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)" }}
-          >
-            No grand plans yet
-          </p>
-          <p
-            style={{
-              fontSize: 13,
-              color: "var(--text-3)",
-              marginTop: 8,
-              maxWidth: 400,
-              margin: "8px auto 0",
-            }}
-          >
-            Create a grand plan to combine your proposals, keyword research,
-            content strategy, and media plans into a single client-facing
-            document.
-          </p>
-          <Link
-            href="/tools/grand-plan/new"
-            className="btn btn-primary"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              marginTop: 20,
-            }}
-          >
-            <Plus style={{ width: 14, height: 14 }} /> Create Grand Plan
-          </Link>
-        </div>
+        <EmptyState
+          icon={<Map style={{ width: 40, height: 40 }} />}
+          title="No grand plans yet"
+          description="Create a grand plan to combine your proposals, keyword research, content strategy, and media plans into a single client-facing document."
+          actions={[{ label: "Create Grand Plan", href: "/tools/grand-plan/new" }]}
+        />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {plans

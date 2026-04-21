@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Download, Pencil, Check, X, Trash2, Loader2, RefreshCw, Share2, Copy, Eye, EyeOff, BarChart3, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 interface ProposalFull {
   id: string;
@@ -45,6 +46,7 @@ function timeAgo(dateStr: string): string {
 export default function ProposalViewPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
+  const confirm = useConfirm();
   const [proposal, setProposal] = useState<ProposalFull | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -130,6 +132,19 @@ export default function ProposalViewPage({ params }: Props) {
       if (res.ok) {
         const data = await res.json() as { shareToken: string | null };
         setProposal((prev) => prev ? { ...prev, shareToken: data.shareToken } : prev);
+        // Auto-copy the new share link to clipboard when enabling so the user
+        // can paste it straight into an email/Slack message.
+        if (action === "enable" && data.shareToken) {
+          try {
+            const link = `${window.location.origin}/share/proposal/${data.shareToken}`;
+            await navigator.clipboard.writeText(link);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2500);
+          } catch {
+            // Clipboard may be unavailable in insecure contexts \u2014 fail silently;
+            // user can still copy via the explicit Copy Link button.
+          }
+        }
       }
     } finally { setSharingBusy(false); }
   }
@@ -155,7 +170,7 @@ export default function ProposalViewPage({ params }: Props) {
   }
 
   async function handleDelete() {
-    if (!confirm("Delete this proposal? This cannot be undone.")) return;
+    if (!(await confirm({ title: "Delete this proposal?", description: "This cannot be undone.", confirmLabel: "Delete", danger: true }))) return;
     setDeleting(true);
     await fetch(`/api/tools/proposals/${id}`, { method: "DELETE" });
     router.push("/tools/proposals");

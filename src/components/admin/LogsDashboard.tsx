@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useToast } from "@/components/ui/Toast";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 interface ServerLog {
   id: string;
@@ -52,6 +54,8 @@ function LevelBadge({ level }: { level: string }) {
 }
 
 export function LogsDashboard() {
+  const { toast } = useToast();
+  const confirm = useConfirm();
   const [data, setData] = useState<LogsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -120,17 +124,17 @@ export function LogsDashboard() {
   }
 
   async function clearOldLogs(days: number) {
-    if (!confirm(`Delete all logs older than ${days} day${days === 1 ? "" : "s"}?`)) return;
+    if (!(await confirm({ title: `Delete all logs older than ${days} day${days === 1 ? "" : "s"}?`, description: "This cannot be undone.", confirmLabel: "Delete", danger: true }))) return;
     setClearing(true);
     try {
       const res = await fetch(`/api/admin/logs?days=${days}`, { method: "DELETE" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const { deleted } = await res.json();
-      alert(`Deleted ${deleted} log${deleted === 1 ? "" : "s"}.`);
+      toast(`Deleted ${deleted} log${deleted === 1 ? "" : "s"}.`, "success");
       setPage(1);
       void fetchLogs(1);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to clear logs");
+      toast(e instanceof Error ? e.message : "Failed to clear logs", "error");
     } finally {
       setClearing(false);
     }

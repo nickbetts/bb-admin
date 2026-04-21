@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Target, Plus, Pencil, Trash2, Check, AlertTriangle, X, Loader2, Sparkles } from "lucide-react";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 interface ClientGoal {
   id: string;
@@ -103,6 +104,7 @@ function GoalProgress({ goal }: { goal: ClientGoal }) {
 
 export function GoalsSection({ clientId, visibleBlocks }: GoalsSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const confirm = useConfirm();
   const [goals, setGoals] = useState<ClientGoal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -180,7 +182,7 @@ export function GoalsSection({ clientId, visibleBlocks }: GoalsSectionProps) {
   }
 
   async function handleDelete(goalId: string) {
-    if (!confirm("Delete this goal?")) return;
+    if (!(await confirm({ title: "Delete this goal?", confirmLabel: "Delete", danger: true }))) return;
     await fetch(`/api/clients/${clientId}/goals/${goalId}`, { method: "DELETE" });
     await fetchGoals();
   }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { RefreshDataButton } from "@/components/ui/RefreshDataButton";
 import { SemrushSection } from "./SemrushSection";
 import { GA4Section } from "./GA4Section";
@@ -33,7 +34,7 @@ import { SectionErrorBoundary } from "./shared/SectionErrorBoundary";
 import { HubSection } from "./HubSection";
 import { getDateRange, buildCrossContextString } from "@/lib/utils";
 import type { PlatformSummary } from "@/lib/utils";
-import { Calendar } from "lucide-react";
+import { Calendar, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Client {
@@ -88,20 +89,83 @@ function toDateInputValue(d: Date) {
   return d.toISOString().split("T")[0];
 }
 
+const VALID_TABS: Tab[] = ["hub", "signals", "overview", "seo", "web", "paid", "googleads", "searchconsole", "ecommerce", "tiktok", "microsoftads", "cwv", "linkedin", "klaviyo", "goals", "hubspot", "youtube", "callrail", "actions", "communications", "competitors", "strategy", "financials"];
+
 function getDefaultTab(_client: Client): Tab {
   return "hub";
 }
 
 export function ClientDashboard({ client, period: initialPeriod, userRole, permissions = [] }: ClientDashboardProps) {
-  const [period, setPeriod] = useState(initialPeriod);
-  const [activeTab, setActiveTab] = useState<Tab>(() => getDefaultTab(client));
-  const [tabTransitioning, setTabTransitioning] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  function handleTabChange(tab: Tab) {
+  const [period, setPeriod] = useState(initialPeriod);
+
+  // Initialise active tab from ?tab= URL param if valid, else default.
+  const initialTab = ((): Tab => {
+    const fromUrl = searchParams?.get("tab") as Tab | null;
+    return fromUrl && (VALID_TABS as string[]).includes(fromUrl) ? fromUrl : getDefaultTab(client);
+  })();
+
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  const [tabTransitioning, setTabTransitioning] = useState(false);
+  const tabsNavRef = useRef<HTMLElement | null>(null);
+
+  // Favourite (pinned) tabs — persisted per-client in localStorage so each client
+  // can have its own most-used set. "hub" is always first and not pinnable.
+  const favKey = `clientDashboardFavTabs:${client.id}`;
+  const [favTabs, setFavTabs] = useState<Set<Tab>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = window.localStorage.getItem(favKey);
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw) as Tab[];
+      return new Set(arr.filter((t) => (VALID_TABS as string[]).includes(t)));
+    } catch {
+      return new Set();
+    }
+  });
+
+  const toggleFav = useCallback((tabId: Tab) => {
+    setFavTabs((prev) => {
+      const next = new Set(prev);
+      if (next.has(tabId)) next.delete(tabId);
+      else next.add(tabId);
+      try {
+        window.localStorage.setItem(favKey, JSON.stringify(Array.from(next)));
+      } catch { /* ignore quota errors */ }
+      return next;
+    });
+  }, [favKey]);
+
+  const handleTabChange = useCallback((tab: Tab) => {
     setTabTransitioning(true);
     setActiveTab(tab);
+    // Persist active tab to URL so refresh + back-button work as expected.
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    params.set("tab", tab);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     setTimeout(() => setTabTransitioning(false), 200);
-  }
+  }, [router, pathname, searchParams]);
+
+  // Sync state if user navigates with browser back/forward to a different ?tab=.
+  useEffect(() => {
+    const fromUrl = searchParams?.get("tab") as Tab | null;
+    if (fromUrl && (VALID_TABS as string[]).includes(fromUrl) && fromUrl !== activeTab) {
+      setActiveTab(fromUrl);
+    }
+    // We deliberately don't depend on activeTab here — only react to URL changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Auto-scroll active tab into view (matters on mobile where the tab bar overflows).
+  useEffect(() => {
+    const el = tabsNavRef.current?.querySelector<HTMLButtonElement>(`#tab-${activeTab}`);
+    if (el && typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  }, [activeTab]);
 
   const LEAD_STATUSES = ["lead", "qualifying", "proposal_sent", "negotiating"];
   const CLOSED_STATUSES = ["churned", "lost"];
@@ -248,7 +312,15 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
     available: tab.available && (!hasTabRestrictions || tabPermissions.includes(tab.id))
       && (!isInLeadFunnel || LEAD_ALLOWED_TABS.includes(tab.id))
       && (!isClosed || tab.id === "hub"),
-  })).filter((tab) => tab.available) as { id: Tab; label: string; available: boolean }[];
+  })).filter((tab) => tab.available)
+    // Sort: Hub stays first, then pinned favourites (preserving original order), then the rest.
+    .sort((a, b) => {
+      if (a.id === "hub") return -1;
+      if (b.id === "hub") return 1;
+      const aFav = favTabs.has(a.id) ? 0 : 1;
+      const bFav = favTabs.has(b.id) ? 0 : 1;
+      return aFav - bFav;
+    }) as { id: Tab; label: string; available: boolean }[];
 
   return (
     <div>
@@ -269,21 +341,69 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
 
       {/* Tab bar + date controls */}
       <div className="tabs-bar">
-        <nav className="tabs-nav" role="tablist" aria-label="Dashboard sections">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              id={`tab-${tab.id}`}
-              onClick={() => handleTabChange(tab.id)}
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              aria-controls={`tab-panel-${tab.id}`}
-              tabIndex={activeTab === tab.id ? 0 : -1}
-              className={cn("tab-btn", activeTab === tab.id && "active")}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <nav
+          ref={tabsNavRef}
+          className="tabs-nav"
+          role="tablist"
+          aria-label="Dashboard sections"
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "Home" && e.key !== "End") return;
+            e.preventDefault();
+            const idx = tabs.findIndex((t) => t.id === activeTab);
+            if (idx === -1) return;
+            let nextIdx = idx;
+            if (e.key === "ArrowLeft") nextIdx = (idx - 1 + tabs.length) % tabs.length;
+            if (e.key === "ArrowRight") nextIdx = (idx + 1) % tabs.length;
+            if (e.key === "Home") nextIdx = 0;
+            if (e.key === "End") nextIdx = tabs.length - 1;
+            const nextTab = tabs[nextIdx];
+            if (!nextTab) return;
+            handleTabChange(nextTab.id);
+            // Move focus to the newly active tab so keyboard users can keep arrowing.
+            requestAnimationFrame(() => {
+              const el = tabsNavRef.current?.querySelector<HTMLButtonElement>(`#tab-${nextTab.id}`);
+              el?.focus();
+            });
+          }}
+        >
+          {tabs.map((tab) => {
+            const isFav = favTabs.has(tab.id);
+            const canPin = tab.id !== "hub";
+            return (
+              <button
+                key={tab.id}
+                id={`tab-${tab.id}`}
+                onClick={() => handleTabChange(tab.id)}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`tab-panel-${tab.id}`}
+                aria-label={`${tab.label} tab${isFav ? " (pinned)" : ""}`}
+                tabIndex={activeTab === tab.id ? 0 : -1}
+                className={cn("tab-btn", activeTab === tab.id && "active", isFav && "tab-btn-pinned")}
+              >
+                {tab.label}
+                {canPin && (
+                  <span
+                    role="button"
+                    tabIndex={-1}
+                    aria-label={isFav ? `Unpin ${tab.label}` : `Pin ${tab.label}`}
+                    title={isFav ? "Unpin tab" : "Pin tab"}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFav(tab.id);
+                    }}
+                    className={cn("tab-pin-btn", isFav && "tab-pin-btn-active")}
+                  >
+                    <Star
+                      style={{ width: 12, height: 12 }}
+                      fill={isFav ? "currentColor" : "none"}
+                      strokeWidth={isFav ? 0 : 2}
+                    />
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </nav>
 
         <div className="period-pills">

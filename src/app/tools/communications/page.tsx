@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { MessageSquare, Mail, Phone, Users, FileText, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Communication {
   id: string;
@@ -56,11 +58,28 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function CommunicationsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [comms, setComms] = useState<CommWithClient[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterClient, setFilterClient] = useState("all");
-  const [filterType, setFilterType] = useState("all");
+  const [filterClient, setFilterClient] = useState(() => searchParams?.get("client") ?? "all");
+  const [filterType, setFilterType] = useState(() => searchParams?.get("type") ?? "all");
   const [clients, setClients] = useState<Client[]>([]);
+
+  // Mirror filter state → URL so refresh + back/forward preserve choices.
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    if (filterClient === "all") params.delete("client"); else params.set("client", filterClient);
+    if (filterType === "all") params.delete("type"); else params.set("type", filterType);
+    const next = params.toString();
+    const current = searchParams?.toString() ?? "";
+    if (next !== current) {
+      router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterClient, filterType]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -131,13 +150,11 @@ export default function CommunicationsPage() {
           Loading communications…
         </div>
       ) : filtered.length === 0 ? (
-        <div className="card" style={{ padding: 60, textAlign: "center" }}>
-          <MessageSquare style={{ width: 40, height: 40, color: "var(--text-4)", margin: "0 auto 16px" }} />
-          <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)" }}>No communications yet</p>
-          <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 8 }}>
-            Log communications from individual client dashboards.
-          </p>
-        </div>
+        <EmptyState
+          icon={<MessageSquare style={{ width: 40, height: 40 }} />}
+          title="No communications yet"
+          description="Log communications from individual client dashboards."
+        />
       ) : (
         <div style={{ display: "flex", flexDirection: "column" }}>
           {filtered.map((comm, i) => (

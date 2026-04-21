@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ClientBackLink } from "@/components/ui/ClientBackLink";
+import { GenerationProgress } from "@/components/ui/GenerationProgress";
 import {
   ArrowLeft,
   Globe,
@@ -430,10 +431,17 @@ export default function NewLandingPage() {
           </button>
 
           {loading && (
-            <div style={{ textAlign: "center", fontSize: 12, color: "var(--text-4)" }}>
-              <p>Scraping website for brand identity...</p>
-              <p style={{ marginTop: 4 }}>This can take 30–60 seconds for complex pages</p>
-            </div>
+            <GenerationProgress
+              active={loading}
+              message="Generating with Claude Sonnet…"
+              tips={[
+                "Scraping your website for brand identity…",
+                "Analysing your brief and structuring the page…",
+                "Drafting headlines, copy, and CTA hierarchy…",
+                "Composing the final HTML — this can take 30–60 seconds.",
+              ]}
+              estimatedSeconds={50}
+            />
           )}
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { UserPlus, Trash2, Link as LinkIcon, Check, X, Shield, Loader2 } from "lucide-react";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 interface PortalUser {
   id: string;
@@ -38,6 +39,7 @@ export function ClientPortalManager({ clientId, clientName }: ClientPortalManage
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
+  const confirm = useConfirm();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -91,7 +93,7 @@ export function ClientPortalManager({ clientId, clientName }: ClientPortalManage
   }
 
   async function handleDelete(userId: string) {
-    if (!confirm("Remove this portal user?")) return;
+    if (!(await confirm({ title: "Remove this portal user?", confirmLabel: "Remove", danger: true }))) return;
     setDeleting(userId);
     await fetch(`/api/portal/users/${userId}`, { method: "DELETE" });
     await load();

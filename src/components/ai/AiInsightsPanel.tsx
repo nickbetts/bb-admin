@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, AlertTriangle, TrendingUp, Lightbulb, ChevronDown, ChevronUp, Loader2, Search } from "lucide-react";
+import { Sparkles, AlertTriangle, TrendingUp, Lightbulb, ChevronDown, ChevronUp, Loader2, Search, ShieldCheck } from "lucide-react";
+import { CopyButton } from "@/components/ui/CopyButton";
 
 interface Anomaly {
   metric: string;
@@ -346,13 +347,21 @@ export function AiInsightsPanel({
         </div>
         <div className="flex items-center gap-2">
           {result && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="p-1.5 rounded-lg hover:bg-slate-100 transition"
-              style={{ color: "var(--text-3)" }}
-            >
-              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
+            <>
+              <CopyButton
+                text={buildCommentaryText(result)}
+                size={28}
+                iconSize={13}
+                label="Copy AI commentary to clipboard"
+              />
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 transition"
+                style={{ color: "var(--text-3)" }}
+              >
+                {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+            </>
           )}
           <button
             onClick={generateInsights}
@@ -412,7 +421,7 @@ export function AiInsightsPanel({
           </div>
 
           {/* Anomalies */}
-          {result.anomalies.length > 0 && (
+          {result.anomalies.length > 0 ? (
             <div className="card-body" style={{ paddingTop: 24, paddingBottom: 24, borderTop: "1px solid var(--border-subtle)" }}>
               <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
@@ -431,6 +440,25 @@ export function AiInsightsPanel({
                     crossPlatformContext={crossPlatformContext}
                   />
                 ))}
+              </div>
+            </div>
+          ) : (
+            <div className="card-body" style={{ paddingTop: 20, paddingBottom: 20, borderTop: "1px solid var(--border-subtle)" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  background: "var(--success-bg, rgba(16,185,129,0.08))",
+                  border: "1px solid rgba(16,185,129,0.25)",
+                }}
+              >
+                <ShieldCheck className="h-4 w-4" style={{ color: "var(--success, #10b981)", flexShrink: 0 }} />
+                <p style={{ fontSize: 12, fontWeight: 600, color: "var(--success, #10b981)" }}>
+                  All systems nominal — no anomalies detected this period.
+                </p>
               </div>
             </div>
           )}

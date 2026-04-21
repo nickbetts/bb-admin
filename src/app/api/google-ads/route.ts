@@ -64,35 +64,54 @@ export async function GET(request: NextRequest) {
     const cacheKey = `googleads:${customerId}:${startDate}:${endDate}`;
 
     const data = await withApiCache(cacheKey, GADS_CACHE_TTL_HOURS, async () => {
+      // Run every helper independently. A single failing query (e.g. PMax for
+      // an account that has no PMax campaigns, or a transient quota error on
+      // a previous-period fetch) must NOT take down the whole response —
+      // otherwise the dashboard loses period-over-period deltas (the green/red
+      // change badges) on every metric card and table.
+      const settle = async <T,>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> => {
+        try {
+          return await fn();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn(`[google-ads] ${label} failed: ${msg}`);
+          return fallback;
+        }
+      };
+
       const [overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, keywordQualityScores, audienceCriteria, invalidClicks, deviceBreakdown, rsaAssets, pmaxInsights, pmaxSearchTerms, geoPerformance, schedulePerformance, bidSimulator, negativeKeywords, demographics, shoppingPerformance, conversionActions, callExtensions, sitelinkPerformance, displayVideoData, recommendations, budgetUtilisation] =
         await Promise.all([
+          // Overview is the one query that MUST succeed — if Google Ads is
+          // genuinely down for this account we want a real 500. Everything
+          // else degrades to a safe empty default so the rest of the
+          // dashboard (and crucially, period-over-period badges) still works.
           getGoogleAdsOverview(customerId, startDate, endDate),
-          getGoogleAdsCampaigns(customerId, startDate, endDate),
-          getGoogleAdsCampaignsEnriched(customerId, startDate, endDate),
-          getGoogleAdsAdGroups(customerId, startDate, endDate),
-          getGoogleAdsDailyData(customerId, startDate, endDate),
-          getGoogleAdsSearchTerms(customerId, startDate, endDate),
-          getGoogleAdsLandingPages(customerId, startDate, endDate),
-          getGoogleAdsAvgQualityScore(customerId),
-          getGoogleAdsKeywordQualityScores(customerId, startDate, endDate),
-          getGoogleAdsAudienceCriteria(customerId),
-          getGoogleAdsInvalidClicks(customerId, startDate, endDate),
-          getGoogleAdsDeviceBreakdown(customerId, startDate, endDate),
-          getGoogleAdsRSAAssets(customerId, startDate, endDate),
-          getGoogleAdsPMaxInsights(customerId, startDate, endDate),
-          getGoogleAdsPMaxSearchTerms(customerId, startDate, endDate),
-          getGoogleAdsGeoPerformance(customerId, startDate, endDate),
-          getGoogleAdsSchedulePerformance(customerId, startDate, endDate),
-          getGoogleAdsBidSimulator(customerId),
-          getGoogleAdsNegativeKeywords(customerId),
-          getGoogleAdsDemographics(customerId, startDate, endDate),
-          getGoogleAdsShoppingPerformance(customerId, startDate, endDate),
-          getGoogleAdsConversionActions(customerId, startDate, endDate),
-          getGoogleAdsCallExtensions(customerId, startDate, endDate),
-          getGoogleAdsSitelinkPerformance(customerId, startDate, endDate),
-          getGoogleAdsDisplayVideoData(customerId, startDate, endDate),
-          getGoogleAdsRecommendations(customerId),
-          getGoogleAdsBudgetUtilisation(customerId, startDate, endDate),
+          settle("campaigns", () => getGoogleAdsCampaigns(customerId, startDate, endDate), []),
+          settle("campaignsEnriched", () => getGoogleAdsCampaignsEnriched(customerId, startDate, endDate), []),
+          settle("adGroups", () => getGoogleAdsAdGroups(customerId, startDate, endDate), []),
+          settle("daily", () => getGoogleAdsDailyData(customerId, startDate, endDate), []),
+          settle("searchTerms", () => getGoogleAdsSearchTerms(customerId, startDate, endDate), []),
+          settle("landingPages", () => getGoogleAdsLandingPages(customerId, startDate, endDate), []),
+          settle("avgQualityScore", () => getGoogleAdsAvgQualityScore(customerId), null),
+          settle("keywordQualityScores", () => getGoogleAdsKeywordQualityScores(customerId, startDate, endDate), []),
+          settle("audienceCriteria", () => getGoogleAdsAudienceCriteria(customerId), []),
+          settle("invalidClicks", () => getGoogleAdsInvalidClicks(customerId, startDate, endDate), null),
+          settle("deviceBreakdown", () => getGoogleAdsDeviceBreakdown(customerId, startDate, endDate), []),
+          settle("rsaAssets", () => getGoogleAdsRSAAssets(customerId, startDate, endDate), []),
+          settle("pmaxInsights", () => getGoogleAdsPMaxInsights(customerId, startDate, endDate), []),
+          settle("pmaxSearchTerms", () => getGoogleAdsPMaxSearchTerms(customerId, startDate, endDate), []),
+          settle("geoPerformance", () => getGoogleAdsGeoPerformance(customerId, startDate, endDate), []),
+          settle("schedulePerformance", () => getGoogleAdsSchedulePerformance(customerId, startDate, endDate), []),
+          settle("bidSimulator", () => getGoogleAdsBidSimulator(customerId), []),
+          settle("negativeKeywords", () => getGoogleAdsNegativeKeywords(customerId), []),
+          settle("demographics", () => getGoogleAdsDemographics(customerId, startDate, endDate), []),
+          settle("shoppingPerformance", () => getGoogleAdsShoppingPerformance(customerId, startDate, endDate), []),
+          settle("conversionActions", () => getGoogleAdsConversionActions(customerId, startDate, endDate), []),
+          settle("callExtensions", () => getGoogleAdsCallExtensions(customerId, startDate, endDate), []),
+          settle("sitelinkPerformance", () => getGoogleAdsSitelinkPerformance(customerId, startDate, endDate), []),
+          settle("displayVideoData", () => getGoogleAdsDisplayVideoData(customerId, startDate, endDate), null),
+          settle("recommendations", () => getGoogleAdsRecommendations(customerId), []),
+          settle("budgetUtilisation", () => getGoogleAdsBudgetUtilisation(customerId, startDate, endDate), []),
         ]);
       return { overview, campaigns, campaignsEnriched, adGroups, daily, searchTerms, landingPages, avgQualityScore, keywordQualityScores, audienceCriteria, invalidClicks, deviceBreakdown, rsaAssets, pmaxInsights, pmaxSearchTerms, geoPerformance, schedulePerformance, bidSimulator, negativeKeywords, demographics, shoppingPerformance, conversionActions, callExtensions, sitelinkPerformance, displayVideoData, recommendations, budgetUtilisation };
     });

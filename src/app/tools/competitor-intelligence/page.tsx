@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { TrendingUp, Plus, RefreshCw, Globe, Search, Loader2, BarChart2 } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 
 interface CompetitorSnapshot {
   id: string;
@@ -38,6 +39,7 @@ function getPeriodRange() {
 }
 
 export default function CompetitorIntelligencePage() {
+  const { toast } = useToast();
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [snapshots, setSnapshots] = useState<CompetitorSnapshot[]>([]);
@@ -92,7 +94,7 @@ export default function CompetitorIntelligencePage() {
       try { domains.push(...(JSON.parse(selectedClient.competitorDomains) as string[])); } catch { /* ignore */ }
     }
     if (newDomain.trim()) domains.push(newDomain.trim());
-    if (domains.length === 0) { alert("No competitor domains configured. Add a domain below or in Client Settings."); return; }
+    if (domains.length === 0) { toast("No competitor domains configured. Add a domain below or in Client Settings.", "warning"); return; }
     for (const d of domains) await runAnalysis(d);
   }
 

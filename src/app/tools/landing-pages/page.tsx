@@ -18,6 +18,8 @@ import {
 import { SearchInput } from "@/components/ui/SearchInput";
 import { ClientBackLink } from "@/components/ui/ClientBackLink";
 import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 interface LandingPageItem {
   id: string;
@@ -57,6 +59,7 @@ export default function LandingPagesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const clientId = searchParams.get("clientId");
+  const confirm = useConfirm();
   const [pages, setPages] = useState<LandingPageItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -80,7 +83,7 @@ export default function LandingPagesPage() {
   useEffect(() => { load(); }, [load]);
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this landing page?")) return;
+    if (!(await confirm({ title: "Delete this landing page?", confirmLabel: "Delete", danger: true }))) return;
     setDeleting(id);
     await fetch(`/api/tools/landing-pages/${id}`, { method: "DELETE" });
     await load();
@@ -138,16 +141,12 @@ export default function LandingPagesPage() {
       {loading ? (
         <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 14 }}>Loading landing pages…</div>
       ) : pages.length === 0 ? (
-        <div className="card" style={{ padding: 60, textAlign: "center" }}>
-          <Globe style={{ width: 40, height: 40, color: "var(--text-4)", margin: "0 auto 16px" }} />
-          <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)" }}>No landing pages yet</p>
-          <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 8 }}>
-            Generate your first AI-powered landing page with Claude Sonnet.
-          </p>
-          <Link href="/tools/landing-pages/new" className="btn btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 20 }}>
-            <Plus style={{ width: 14, height: 14 }} /> Create Landing Page
-          </Link>
-        </div>
+        <EmptyState
+          icon={<Globe style={{ width: 40, height: 40 }} />}
+          title="No landing pages yet"
+          description="Generate your first AI-powered landing page with Claude Sonnet."
+          actions={[{ label: "Create Landing Page", href: "/tools/landing-pages/new" }]}
+        />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {filtered.map((p) => (

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCw, User, Clock, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -104,6 +106,8 @@ const ALL_ACTIONS = Object.keys(ACTION_LABELS);
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function ActivityLogDashboard() {
+  const { toast } = useToast();
+  const confirm = useConfirm();
   const [data, setData] = useState<ActivityResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -146,17 +150,17 @@ export function ActivityLogDashboard() {
   };
 
   const handleClear = async (days: number) => {
-    if (!confirm(`Delete all activity logs older than ${days} day${days === 1 ? "" : "s"}?`)) return;
+    if (!(await confirm({ title: `Delete all activity logs older than ${days} day${days === 1 ? "" : "s"}?`, description: "This cannot be undone.", confirmLabel: "Delete", danger: true }))) return;
     setClearing(true);
     try {
       const res = await fetch(`/api/admin/activity?olderThanDays=${days}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
       const { deleted } = await res.json() as { deleted: number };
-      alert(`Deleted ${deleted} log${deleted === 1 ? "" : "s"}.`);
+      toast(`Deleted ${deleted} log${deleted === 1 ? "" : "s"}.`, "success");
       setPage(1);
       load(1, actionFilter, search);
     } catch {
-      alert("Failed to delete logs.");
+      toast("Failed to delete logs.", "error");
     } finally {
       setClearing(false);
     }

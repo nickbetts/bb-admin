@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Plus, Trash2, Save, PoundSterling, Package, Zap, RotateCcw } from "lucide-react";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -153,6 +154,7 @@ export default function PricingPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const confirm = useConfirm();
 
   const load = useCallback(async () => {
     try {
@@ -184,8 +186,8 @@ export default function PricingPage() {
     }
   }
 
-  function handleReset() {
-    if (confirm("Reset to default pricing? This will overwrite your current pricing settings.")) {
+  async function handleReset() {
+    if (await confirm({ title: "Reset to default pricing?", description: "This will overwrite your current pricing settings.", confirmLabel: "Reset", danger: true })) {
       setPricing(DEFAULT_PRICING);
     }
   }

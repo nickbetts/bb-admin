@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { FileText, Plus, Trash2, ExternalLink, Clock, Eye, Share2, BarChart3, MessageSquare } from "lucide-react";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { ClientBackLink } from "@/components/ui/ClientBackLink";
 import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 interface ProposalSummary {
   id: string;
@@ -23,12 +25,27 @@ interface ProposalSummary {
 }
 
 export default function ProposalsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const confirm = useConfirm();
   const clientId = searchParams.get("clientId");
   const [proposals, setProposals] = useState<ProposalSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams?.get("q") ?? "");
+
+  // Mirror search query → URL so refresh + back/forward preserve it.
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    if (search) params.set("q", search); else params.delete("q");
+    const next = params.toString();
+    const current = searchParams?.toString() ?? "";
+    if (next !== current) {
+      router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,7 +72,7 @@ export default function ProposalsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this proposal?")) return;
+    if (!(await confirm({ title: "Delete this proposal?", confirmLabel: "Delete", danger: true }))) return;
     setDeleting(id);
     await fetch(`/api/tools/proposals/${id}`, { method: "DELETE" });
     await load();
@@ -91,16 +108,12 @@ export default function ProposalsPage() {
       {loading ? (
         <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 14 }}>Loading proposals…</div>
       ) : proposals.length === 0 ? (
-        <div className="card" style={{ padding: 60, textAlign: "center" }}>
-          <FileText style={{ width: 40, height: 40, color: "var(--text-4)", margin: "0 auto 16px" }} />
-          <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)" }}>No proposals yet</p>
-          <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 8 }}>
-            Generate a proposal from the Keyword Planner tool — it will be automatically saved here.
-          </p>
-          <Link href="/tools/keyword-planner" className="btn btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 20 }}>
-            <Plus style={{ width: 14, height: 14 }} /> Go to Keyword Planner
-          </Link>
-        </div>
+        <EmptyState
+          icon={<FileText style={{ width: 40, height: 40 }} />}
+          title="No proposals yet"
+          description="Generate a proposal from the Keyword Planner tool — it will be automatically saved here."
+          actions={[{ label: "Go to Keyword Planner", href: "/tools/keyword-planner" }]}
+        />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {proposals.filter((p) => {

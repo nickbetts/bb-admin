@@ -397,6 +397,11 @@ body {
   .app-main { padding-top: 56px; }
 }
 
+/* Report builder right sidebar — hide on mobile, edit on a larger screen */
+@media (max-width: 900px) {
+  .report-builder-sidebar { display: none !important; }
+}
+
 /* =============================================
    PAGE LAYOUT
 ============================================= */
@@ -644,6 +649,17 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
   color: var(--accent);
 }
 
+.btn-danger {
+  background: var(--danger, #ef4444);
+  color: white;
+  box-shadow: 0 2px 16px -2px rgb(239 68 68 / 0.45), 0 0 0 1px rgb(239 68 68 / 0.15);
+}
+.btn-danger:hover {
+  box-shadow: 0 4px 28px -4px rgb(239 68 68 / 0.65), 0 0 0 1px rgb(239 68 68 / 0.20);
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
 .btn-sm {
   font-size: 13px;
   padding: 8px 14px;
@@ -653,10 +669,20 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
 .btn:disabled,
 .btn-primary:disabled,
 .btn-ghost:disabled,
-.btn-secondary:disabled {
+.btn-secondary:disabled,
+.btn-danger:disabled {
   opacity: 0.55;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+@keyframes confirm-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes confirm-dialog-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
 }
 
 /* =============================================
@@ -675,6 +701,9 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
   overflow-x: auto;
   scrollbar-width: none;
   position: relative;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
   -webkit-mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
   mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
 }
@@ -697,6 +726,7 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
   white-space: nowrap;
   gap: 8px;
   position: relative;
+  scroll-snap-align: center;
 }
 
 .tab-btn:hover:not(:disabled) {
@@ -713,6 +743,37 @@ h1, h2, h3, h4, .page-title, .section-title, .card-title {
 .tab-btn:disabled {
   color: var(--text-4);
   cursor: not-allowed;
+}
+
+/* Pin/favourite star inside tab buttons */
+.tab-pin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 2px;
+  border-radius: 4px;
+  color: var(--text-4);
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+  cursor: pointer;
+}
+.tab-btn:hover .tab-pin-btn,
+.tab-btn:focus-within .tab-pin-btn,
+.tab-pin-btn-active {
+  opacity: 1;
+}
+.tab-pin-btn:hover {
+  background: rgb(99 102 241 / 0.1);
+  color: var(--accent);
+}
+.tab-pin-btn-active {
+  color: var(--warning, #f59e0b);
+}
+.tab-btn-pinned {
+  /* Subtle accent so pinned tabs are visibly grouped at the front. */
+  scroll-snap-align: start;
 }
 
 /* Period pills */

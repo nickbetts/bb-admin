@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 import {
   Upload,
   FileSpreadsheet,
@@ -23,6 +25,7 @@ import {
   Search,
   AlertCircle,
   ChevronDown,
+  ListChecks,
 } from "lucide-react";
 import { ClientBackLink } from "@/components/ui/ClientBackLink";
 import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
@@ -457,6 +460,8 @@ function MethodologyAccordion() {
 export default function ContentStrategyPage() {
   const searchParams = useSearchParams();
   const urlClientId = searchParams.get("clientId");
+  const confirm = useConfirm();
+  const { toast } = useToast();
   const [strategies, setStrategies] = useState<ContentStrategyItem[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -765,14 +770,14 @@ export default function ContentStrategyPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: sharingId, sharePassword: sharePassword || null }),
       });
-      setSuccess(sharePassword ? "Password set" : "Password removed");
+      toast(sharePassword ? "Password set" : "Password removed", "success");
     } catch {
       setError("Failed to set password");
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Are you sure you want to delete this content strategy?"))
+    if (!(await confirm({ title: "Delete this content strategy?", description: "This cannot be undone.", confirmLabel: "Delete", danger: true })))
       return;
     try {
       await fetch(`/api/tools/content-strategy?id=${id}`, {
@@ -781,6 +786,37 @@ export default function ContentStrategyPage() {
       loadStrategies();
     } catch {
       setError("Failed to delete");
+    }
+  }
+
+  async function handleExportToActions(id: string, title: string, hasClient: boolean) {
+    if (!hasClient) {
+      setError("This strategy is not linked to a client — cannot export actions.");
+      return;
+    }
+    if (!(await confirm({
+      title: "Convert this strategy to action items?",
+      description: `Each page optimisation, landing page, blog post and link target in "${title}" will be created as an open action on the client. Existing actions will not be modified.`,
+      confirmLabel: "Create actions",
+    }))) return;
+    try {
+      const res = await fetch(`/api/tools/content-strategy/${id}/export-actions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to export actions");
+        return;
+      }
+      if (data.created === 0) {
+        toast("No exportable items found in this strategy.", "warning");
+      } else {
+        toast(`Created ${data.created} action${data.created === 1 ? "" : "s"} from "${title}"`, "success");
+      }
+    } catch {
+      setError("Failed to export actions");
     }
   }
 
@@ -1879,6 +1915,15 @@ export default function ContentStrategyPage() {
                   </button>
                   <button onClick={() => handleShare(s.id)} className="btn btn-ghost btn-sm" title="Share" style={{ padding: 8 }} disabled={s.generationStatus === "generating"}>
                     <Share2 style={{ width: 15, height: 15 }} />
+                  </button>
+                  <button
+                    onClick={() => handleExportToActions(s.id, s.title, Boolean(s.client))}
+                    className="btn btn-ghost btn-sm"
+                    title={s.client ? "Convert to action items" : "Link this strategy to a client to enable action export"}
+                    style={{ padding: 8 }}
+                    disabled={s.generationStatus === "generating" || !s.client}
+                  >
+                    <ListChecks style={{ width: 15, height: 15 }} />
                   </button>
                   <button onClick={() => handleDelete(s.id)} className="btn btn-ghost btn-sm" title="Delete" style={{ padding: 8, color: "var(--danger)" }}>
                     <Trash2 style={{ width: 15, height: 15 }} />

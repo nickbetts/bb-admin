@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { CheckSquare, Plus, Loader2, Trash2, Pencil, Filter } from "lucide-react";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 interface ActionItem {
   id: string;
@@ -29,6 +31,20 @@ interface ActionWithClient extends ActionItem {
 }
 
 const STATUSES = ["open", "in_progress", "completed", "cancelled"];
+
+// Sources used by ActionItem.sourceType across the platform
+const SOURCE_LABELS: Record<string, string> = {
+  manual: "Manual",
+  ai_recommendation: "AI",
+  content_strategy: "Content strategy",
+  anomaly: "Anomaly",
+};
+const SOURCE_COLORS: Record<string, string> = {
+  manual: "#6b7280",
+  ai_recommendation: "#8b5cf6",
+  content_strategy: "#0ea5e9",
+  anomaly: "#f59e0b",
+};
 const PRIORITIES = ["urgent", "high", "medium", "low"];
 
 const statusColors: Record<string, string> = {
@@ -53,16 +69,37 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function ActionsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const confirm = useConfirm();
+
   const [actions, setActions] = useState<ActionWithClient[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterClient, setFilterClient] = useState("all");
-  const [filterPriority, setFilterPriority] = useState("all");
+  const [filterStatus, setFilterStatus] = useState(() => searchParams?.get("status") ?? "all");
+  const [filterClient, setFilterClient] = useState(() => searchParams?.get("client") ?? "all");
+  const [filterPriority, setFilterPriority] = useState(() => searchParams?.get("priority") ?? "all");
+  const [filterSource, setFilterSource] = useState(() => searchParams?.get("source") ?? "all");
   const [showForm, setShowForm] = useState(false);
   const [editingAction, setEditingAction] = useState<ActionWithClient | null>(null);
   const [form, setForm] = useState({ clientId: "", title: "", description: "", priority: "medium", assignedTo: "", dueDate: "" });
   const [saving, setSaving] = useState(false);
+
+  // Mirror filter state → URL so refresh + back/forward preserve choices.
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    if (filterStatus === "all") params.delete("status"); else params.set("status", filterStatus);
+    if (filterClient === "all") params.delete("client"); else params.set("client", filterClient);
+    if (filterPriority === "all") params.delete("priority"); else params.set("priority", filterPriority);
+    if (filterSource === "all") params.delete("source"); else params.set("source", filterSource);
+    const next = params.toString();
+    const current = searchParams?.toString() ?? "";
+    if (next !== current) {
+      router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterStatus, filterClient, filterPriority, filterSource]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -126,7 +163,7 @@ export default function ActionsPage() {
   }
 
   async function handleDelete(action: ActionWithClient) {
-    if (!confirm("Delete this action?")) return;
+    if (!(await confirm({ title: "Delete this action?", confirmLabel: "Delete", danger: true }))) return;
     await fetch(`/api/clients/${action.clientId}/actions/${action.id}`, { method: "DELETE" });
     await loadData();
   }
@@ -148,8 +185,15 @@ export default function ActionsPage() {
     if (filterStatus !== "all" && a.status !== filterStatus) return false;
     if (filterClient !== "all" && a.clientId !== filterClient) return false;
     if (filterPriority !== "all" && a.priority !== filterPriority) return false;
+    if (filterSource !== "all") {
+      const src = a.sourceType ?? "manual";
+      if (src !== filterSource) return false;
+    }
     return true;
   });
+
+  // Sources actually present on the loaded actions — used to populate the dropdown.
+  const availableSources = Array.from(new Set(actions.map((a) => a.sourceType ?? "manual"))).sort();
 
   const grouped = STATUSES.reduce<Record<string, ActionWithClient[]>>((acc, s) => {
     acc[s] = filtered.filter((a) => a.status === s);
@@ -192,6 +236,12 @@ export default function ActionsPage() {
           <option value="all">All Priorities</option>
           {PRIORITIES.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
         </select>
+        {availableSources.length > 1 && (
+          <select className="form-input" style={{ width: "auto", fontSize: 13 }} value={filterSource} onChange={(e) => setFilterSource(e.target.value)}>
+            <option value="all">All Sources</option>
+            {availableSources.map((s) => <option key={s} value={s}>{SOURCE_LABELS[s] ?? s}</option>)}
+          </select>
+        )}
       </div>
 
       {/* Create/Edit Form */}
@@ -263,26 +313,82 @@ export default function ActionsPage() {
                     No actions
                   </div>
                 ) : (
-                  (grouped[status] ?? []).map((action) => (
-                    <div key={action.id} className="card" style={{ padding: 14 }}>
+                  (grouped[status] ?? []).map((action) => {
+                    const isOverdue = !!action.dueDate
+                      && action.status !== "completed"
+                      && action.status !== "cancelled"
+                      && new Date(action.dueDate) < new Date(new Date().toDateString());
+                    return (
+                    <div
+                      key={action.id}
+                      className="card"
+                      style={{
+                        padding: 14,
+                        ...(isOverdue ? { borderColor: "rgba(239,68,68,0.45)", background: "rgba(239,68,68,0.04)" } : {}),
+                      }}
+                    >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                        <div style={{ flex: 1 }}>
-                          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 4 }}>{action.title}</p>
-                          <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>{action.clientName}</p>
-                          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                            <span style={{ fontSize: 10, fontWeight: 600, color: priorityColors[action.priority], background: `${priorityColors[action.priority]}18`, padding: "2px 6px", borderRadius: 99 }}>
-                              {action.priority}
-                            </span>
-                            {action.dueDate && (
-                              <span style={{ fontSize: 10, color: "var(--text-3)", background: "var(--bg-2)", padding: "2px 6px", borderRadius: 99 }}>
-                                Due {new Date(action.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                              </span>
+                        <div style={{ flex: 1, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                          <button
+                            type="button"
+                            onClick={() => handleStatusChange(action, action.status === "completed" ? "open" : "completed")}
+                            title={action.status === "completed" ? "Mark as open" : "Mark as completed"}
+                            aria-label={action.status === "completed" ? "Mark as open" : "Mark as completed"}
+                            style={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: "50%",
+                              border: `1.5px solid ${action.status === "completed" ? "#22c55e" : "var(--border)"}`,
+                              background: action.status === "completed" ? "#22c55e" : "transparent",
+                              cursor: "pointer",
+                              padding: 0,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                              marginTop: 1,
+                              transition: "all 0.15s",
+                            }}
+                          >
+                            {action.status === "completed" && (
+                              <svg width="10" height="10" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2 6.5L4.5 9L10 3" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
                             )}
-                            {action.assignedTo && (
-                              <span style={{ fontSize: 10, color: "var(--text-3)", background: "var(--bg-2)", padding: "2px 6px", borderRadius: 99 }}>
-                                → {action.assignedTo}
+                          </button>
+                          <div style={{ flex: 1 }}>
+                            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 4, textDecoration: action.status === "completed" ? "line-through" : "none", opacity: action.status === "completed" ? 0.6 : 1 }}>{action.title}</p>
+                            <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>{action.clientName}</p>
+                            <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: priorityColors[action.priority], background: `${priorityColors[action.priority]}18`, padding: "2px 6px", borderRadius: 99 }}>
+                                {action.priority}
                               </span>
-                            )}
+                              {action.sourceType && action.sourceType !== "manual" && (
+                                <span
+                                  title={`Created from ${SOURCE_LABELS[action.sourceType] ?? action.sourceType}`}
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    color: SOURCE_COLORS[action.sourceType] ?? "var(--text-3)",
+                                    background: `${SOURCE_COLORS[action.sourceType] ?? "#6b7280"}18`,
+                                    padding: "2px 6px",
+                                    borderRadius: 99,
+                                  }}
+                                >
+                                  {SOURCE_LABELS[action.sourceType] ?? action.sourceType}
+                                </span>
+                              )}
+                              {action.dueDate && (
+                                <span style={{ fontSize: 10, color: isOverdue ? "#ef4444" : "var(--text-3)", background: isOverdue ? "rgba(239,68,68,0.12)" : "var(--bg-2)", padding: "2px 6px", borderRadius: 99, fontWeight: isOverdue ? 600 : 400 }}>
+                                  {isOverdue ? "Overdue " : "Due "}{new Date(action.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                                </span>
+                              )}
+                              {action.assignedTo && (
+                                <span style={{ fontSize: 10, color: "var(--text-3)", background: "var(--bg-2)", padding: "2px 6px", borderRadius: 99 }}>
+                                  → {action.assignedTo}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
@@ -306,7 +412,8 @@ export default function ActionsPage() {
                         {STATUSES.map((s) => <option key={s} value={s}>{statusLabels[s]}</option>)}
                       </select>
                     </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
