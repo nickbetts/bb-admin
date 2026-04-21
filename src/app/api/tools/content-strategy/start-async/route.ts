@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getAnthropicClient } from "@/lib/anthropic-client";
 import {
   generateContentStrategy,
+  runOnPageAudit,
   type StrategyModel,
   type ContentStrategyLimits,
   type CompetitorPageContext,
@@ -110,6 +111,9 @@ export async function POST(request: NextRequest) {
       try {
         const genStart = Date.now();
 
+        // Skip the on-page audit inside the generator — we'll run it in
+        // parallel with the narrative AI call below to keep the lambda
+        // well under the 300 s Vercel limit without sacrificing quality.
         const { data } = await generateContentStrategy(
           client.semrushDomain!,
           clientName,
@@ -120,22 +124,31 @@ export async function POST(request: NextRequest) {
           model === "claude-opus-4-6" ? "claude-opus-4-6" : ("gpt-5.4" as StrategyModel),
           activeLimits,
           competitorContexts && competitorContexts.length > 0 ? competitorContexts : undefined,
+          true, // skipAudit — run separately in parallel
         );
 
-        const generationMs = Date.now() - genStart;
         data.clientName = clientName;
         data.period = finalPeriod;
 
-        // Generate AI narrative descriptions for the HTML document
-        let aiContent: Record<string, string> = {};
-        try {
-          const anthropic = await getAnthropicClient();
-          const dataSummary = buildDataSummary(data as Parameters<typeof buildDataSummary>[0]);
+        // Kick off audit and narrative AI in parallel. The narrative call
+        // does not need the audit data — it summarises the structured
+        // strategy, so both can run concurrently.
+        const auditPromise = runOnPageAudit(
+          client.semrushDomain!,
+          data.pageOptimisations,
+        ).catch((err) => {
+          console.warn("On-page audit failed (continuing without audit data):", err);
+        });
 
-          const aiResponse = await anthropic.messages.create({
-            model: "claude-sonnet-4-6",
-            max_tokens: 4000,
-            system: `You are an expert SEO content strategist at a UK digital marketing agency. You write in British English. You are creating descriptions for a content strategy document for a client called "${clientName}". This is a document the agency will present to the client — write everything from the agency's perspective ("we will do this for you", not "you should do this").
+        const narrativePromise = (async (): Promise<Record<string, string>> => {
+          try {
+            const anthropic = await getAnthropicClient();
+            const dataSummary = buildDataSummary(data as Parameters<typeof buildDataSummary>[0]);
+
+            const aiResponse = await anthropic.messages.create({
+              model: "claude-sonnet-4-6",
+              max_tokens: 4000,
+              system: `You are an expert SEO content strategist at a UK digital marketing agency. You write in British English. You are creating descriptions for a content strategy document for a client called "${clientName}". This is a document the agency will present to the client — write everything from the agency's perspective ("we will do this for you", not "you should do this").
 
 Your task is to write short, punchy descriptions for each section and content piece. Each description should:
 - Be 1–2 sentences maximum
@@ -154,24 +167,30 @@ Return your response as valid JSON with the following keys:
 - "sectionDescLinks": 1–2 sentences explaining the link-building outreach we'll conduct
 - For each landing page, a key like "landing_PageTitle": 1–2 sentence description of what we'll build and why
 - For each blog post, a key like "blog_PostTitle": 1–2 sentence description of the angle we'll take and who it targets`,
-            messages: [
-              {
-                role: "user",
-                content: `Here is the content strategy data for ${clientName} (${finalPeriod}):\n\n${dataSummary}\n\nPlease generate the descriptions as JSON.`,
-              },
-            ],
-          });
+              messages: [
+                {
+                  role: "user",
+                  content: `Here is the content strategy data for ${clientName} (${finalPeriod}):\n\n${dataSummary}\n\nPlease generate the descriptions as JSON.`,
+                },
+              ],
+            });
 
-          const textBlock = aiResponse.content.find((b) => b.type === "text");
-          if (textBlock && textBlock.type === "text") {
-            let jsonStr = textBlock.text;
-            const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-            if (jsonMatch) jsonStr = jsonMatch[1];
-            aiContent = JSON.parse(jsonStr.trim());
+            const textBlock = aiResponse.content.find((b) => b.type === "text");
+            if (textBlock && textBlock.type === "text") {
+              let jsonStr = textBlock.text;
+              const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+              if (jsonMatch) jsonStr = jsonMatch[1];
+              return JSON.parse(jsonStr.trim()) as Record<string, string>;
+            }
+          } catch (aiError) {
+            console.error("AI description generation failed, using defaults:", aiError);
           }
-        } catch (aiError) {
-          console.error("AI description generation failed, using defaults:", aiError);
-        }
+          return {};
+        })();
+
+        const [, aiContent] = await Promise.all([auditPromise, narrativePromise]);
+
+        const generationMs = Date.now() - genStart;
 
         // Generate HTML and inject the real record ID
         const html = generateHtml(data as Parameters<typeof generateHtml>[0], aiContent);

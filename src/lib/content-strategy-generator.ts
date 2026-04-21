@@ -1216,6 +1216,32 @@ async function auditOnPage(
   }
 }
 
+/**
+ * Crawl up to 20 page-optimisation URLs in parallel and attach the audit
+ * result to each. Mutates the array in place. Concurrency is unbounded
+ * because each request has an 8 s abort timeout, and 20 parallel HEAD-like
+ * GETs against (mostly) the same origin is well within sensible limits.
+ *
+ * Exposed so the route can run this in parallel with other AI work after
+ * the main strategy generation, keeping the lambda well under 300 s.
+ */
+export async function runOnPageAudit(
+  domain: string,
+  pageOptimisations: { url: string; keywords: ParsedKeyword[]; audit?: OnPageAudit }[],
+): Promise<void> {
+  const pagesToAudit = pageOptimisations.slice(0, 20);
+  const results = await Promise.allSettled(
+    pagesToAudit.map((opt) => {
+      const primary = opt.keywords.find((k) => k.type === "primary") ?? opt.keywords[0];
+      return auditOnPage(domain, opt.url, primary?.keyword ?? "");
+    }),
+  );
+  for (let i = 0; i < pagesToAudit.length; i++) {
+    const r = results[i];
+    pagesToAudit[i].audit = r.status === "fulfilled" ? r.value : { ...EMPTY_AUDIT };
+  }
+}
+
 // ─── Generate the strategy ──────────────────────────────────────────────────
 
 export async function generateContentStrategy(
@@ -1228,6 +1254,7 @@ export async function generateContentStrategy(
   model: StrategyModel = "claude-opus-4-6",
   limits?: ContentStrategyLimits,
   competitorContexts?: { domain: string; pageContext: CompetitorPageContext }[],
+  skipAudit?: boolean,
 ): Promise<{ data: ContentStrategyData; collectedData: CollectedData; autoCompetitors: string[] }> {
   // Step 1: Collect data (uses GSC when available, falls back to SEMrush-only)
   const collectedData = await collectSemrushData(domain, competitors, database, searchConsoleSiteUrl, brief);
@@ -1601,22 +1628,8 @@ export async function generateContentStrategy(
 
   // ── On-page audit: crawl page optimisations in batches of 5 ──
   // Cap at 20 pages, process in batches to avoid overwhelming slow/rate-limited sites
-  const pagesToAudit = pageOptimisations.slice(0, 20);
-  const auditResults: OnPageAudit[] = [];
-  for (let batch = 0; batch < pagesToAudit.length; batch += 5) {
-    const chunk = pagesToAudit.slice(batch, batch + 5);
-    const batchResults = await Promise.allSettled(
-      chunk.map((opt) => {
-        const primary = opt.keywords.find((k) => k.type === "primary") ?? opt.keywords[0];
-        return auditOnPage(domain, opt.url, primary?.keyword ?? "");
-      })
-    );
-    for (const r of batchResults) {
-      auditResults.push(r.status === "fulfilled" ? r.value : { ...EMPTY_AUDIT });
-    }
-  }
-  for (let i = 0; i < auditResults.length; i++) {
-    pageOptimisations[i].audit = auditResults[i];
+  if (skipAudit !== true) {
+    await runOnPageAudit(domain, pageOptimisations);
   }
 
   // Apply per-client output limits if configured
