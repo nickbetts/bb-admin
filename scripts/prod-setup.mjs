@@ -924,6 +924,14 @@ async function main() {
     console.log("✓ LandingPage.publicSlug already present");
   }
 
+  // ── GrandPlan.targetAudiences column (added 2026-04-21) ──────────────────
+  if (!(await columnExists("GrandPlan", "targetAudiences"))) {
+    await db.execute(`ALTER TABLE "GrandPlan" ADD COLUMN "targetAudiences" TEXT`);
+    console.log("✓ Added GrandPlan.targetAudiences");
+  } else {
+    console.log("✓ GrandPlan.targetAudiences already present");
+  }
+
   await db.close();
   console.log("✅ Schema migration complete");
 }
