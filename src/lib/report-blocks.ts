@@ -25,6 +25,24 @@ export function isTextSection(sectionType: string): boolean {
   return (TEXT_SECTION_TYPES as readonly string[]).includes(sectionType);
 }
 
+/**
+ * Returns the CSS `order` index for a block based on the user's saved
+ * `visibleBlocks` order. When `visibleBlocks` is undefined or empty, every
+ * block returns 0 so the natural JSX order applies. Otherwise the index in
+ * the array becomes the CSS order, with unknown blocks pushed to the end.
+ *
+ * Use with a flex-column wrapper:
+ *   <div className="flex flex-col gap-8">
+ *     <div style={{ order: blockOrderIndex(visibleBlocks, "kpis") }}>...</div>
+ *     <div style={{ order: blockOrderIndex(visibleBlocks, "chart") }}>...</div>
+ *   </div>
+ */
+export function blockOrderIndex(visibleBlocks: string[] | undefined, blockId: string): number {
+  if (!visibleBlocks || visibleBlocks.length === 0) return 0;
+  const idx = visibleBlocks.indexOf(blockId);
+  return idx === -1 ? 999 : idx;
+}
+
 export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
   overview: [
     { id: "funnel", label: "Full-Funnel Board" },

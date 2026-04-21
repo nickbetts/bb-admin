@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { parsePeriodToDateRange, formatDateDisplay, getPreviousPeriod } from "@/lib/utils";
 import { isTextSection, TEXT_SECTION_LABELS, type TextSectionType } from "@/lib/report-blocks";
 import { SemrushSection } from "@/components/dashboard/SemrushSection";
@@ -93,6 +93,12 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
   const compareEndDate = report.compareEndDate || null;
 
   const enabledSections = report.sections.filter((s) => s.enabled !== false);
+
+  // Stable parsed array — keeps the reference identity steady across renders.
+  const semrushCampaignIds = useMemo<string[]>(() => {
+    try { return JSON.parse(report.client.semrushCampaignIds ?? "[]") as string[]; }
+    catch { return []; }
+  }, [report.client.semrushCampaignIds]);
 
   // Parse the narrative once so it can be used in the overview section's afterHeader
   const narrativeResult: {
@@ -488,7 +494,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                 <SemrushSection
                   domain={report.client.semrushDomain}
                   projectId={report.client.semrushProjectId}
-                  campaignIds={(() => { try { return JSON.parse(report.client.semrushCampaignIds ?? "[]") as string[]; } catch { return []; } })()}
+                  campaignIds={semrushCampaignIds}
                   startDate={startDate}
                   endDate={endDate}
                   visibleBlocks={visibleBlocks}
