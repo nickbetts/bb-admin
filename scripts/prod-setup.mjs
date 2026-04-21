@@ -932,6 +932,113 @@ async function main() {
     console.log("✓ GrandPlan.targetAudiences already present");
   }
 
+  // ── Bet A: Financials tables (added 2026-04-21) ──────────────────────────
+  if (!(await tableExists("ClientRetainer"))) {
+    await db.execute(`CREATE TABLE "ClientRetainer" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "clientId" TEXT NOT NULL,
+      "monthlyFee" REAL NOT NULL,
+      "contractedHours" REAL,
+      "startDate" TEXT NOT NULL,
+      "endDate" TEXT,
+      "notes" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL,
+      FOREIGN KEY ("clientId") REFERENCES "Client" ("id") ON DELETE CASCADE
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "ClientRetainer_clientId_startDate_idx" ON "ClientRetainer"("clientId", "startDate")`);
+    console.log("✓ Created ClientRetainer table");
+  } else {
+    console.log("✓ ClientRetainer table already present");
+  }
+
+  if (!(await tableExists("ClientInvoice"))) {
+    await db.execute(`CREATE TABLE "ClientInvoice" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "clientId" TEXT NOT NULL,
+      "invoiceRef" TEXT NOT NULL,
+      "amount" REAL NOT NULL,
+      "issuedDate" TEXT NOT NULL,
+      "dueDate" TEXT,
+      "paidDate" TEXT,
+      "status" TEXT NOT NULL DEFAULT 'issued',
+      "description" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL,
+      FOREIGN KEY ("clientId") REFERENCES "Client" ("id") ON DELETE CASCADE
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "ClientInvoice_clientId_paidDate_idx" ON "ClientInvoice"("clientId", "paidDate")`);
+    await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS "ClientInvoice_clientId_invoiceRef_key" ON "ClientInvoice"("clientId", "invoiceRef")`);
+    console.log("✓ Created ClientInvoice table");
+  } else {
+    console.log("✓ ClientInvoice table already present");
+  }
+
+  if (!(await tableExists("AgencyTimeEntry"))) {
+    await db.execute(`CREATE TABLE "AgencyTimeEntry" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "clientId" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "date" TEXT NOT NULL,
+      "hours" REAL NOT NULL,
+      "category" TEXT,
+      "notes" TEXT,
+      "billable" BOOLEAN NOT NULL DEFAULT true,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("clientId") REFERENCES "Client" ("id") ON DELETE CASCADE,
+      FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "AgencyTimeEntry_clientId_date_idx" ON "AgencyTimeEntry"("clientId", "date")`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "AgencyTimeEntry_userId_date_idx" ON "AgencyTimeEntry"("userId", "date")`);
+    console.log("✓ Created AgencyTimeEntry table");
+  } else {
+    console.log("✓ AgencyTimeEntry table already present");
+  }
+
+  // ── Bet B: Portal threads tables (added 2026-04-21) ──────────────────────
+  if (!(await tableExists("PortalThread"))) {
+    await db.execute(`CREATE TABLE "PortalThread" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "clientId" TEXT NOT NULL,
+      "subject" TEXT NOT NULL,
+      "status" TEXT NOT NULL DEFAULT 'open',
+      "lastMessageAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL,
+      FOREIGN KEY ("clientId") REFERENCES "Client" ("id") ON DELETE CASCADE
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "PortalThread_clientId_lastMessageAt_idx" ON "PortalThread"("clientId", "lastMessageAt")`);
+    console.log("✓ Created PortalThread table");
+  } else {
+    console.log("✓ PortalThread table already present");
+  }
+
+  if (!(await tableExists("PortalMessage"))) {
+    await db.execute(`CREATE TABLE "PortalMessage" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "threadId" TEXT NOT NULL,
+      "authorType" TEXT NOT NULL,
+      "authorId" TEXT NOT NULL,
+      "body" TEXT NOT NULL,
+      "attachments" TEXT,
+      "readAt" DATETIME,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("threadId") REFERENCES "PortalThread" ("id") ON DELETE CASCADE
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "PortalMessage_threadId_createdAt_idx" ON "PortalMessage"("threadId", "createdAt")`);
+    console.log("✓ Created PortalMessage table");
+  } else {
+    console.log("✓ PortalMessage table already present");
+  }
+
+  // ── Client.signalConfig column (added 2026-04-21) ────────────────────────
+  if (!(await columnExists("Client", "signalConfig"))) {
+    await db.execute(`ALTER TABLE "Client" ADD COLUMN "signalConfig" TEXT`);
+    console.log("✓ Added Client.signalConfig");
+  } else {
+    console.log("✓ Client.signalConfig already present");
+  }
+
   await db.close();
   console.log("✅ Schema migration complete");
 }
