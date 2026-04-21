@@ -445,6 +445,7 @@ function buildSources(plan: any, config: any, brief: string): GrandPlanSources {
     clientName,
     purpose: plan.purpose,
     clientBrief: brief || undefined,
+    targetAudiences: plan.targetAudiences || undefined,
     sector: config.sector || undefined,
     campaignFocusPeriods: safeJsonParse(plan.campaignFocusPeriodsJson, []),
     proposal: plan.proposal

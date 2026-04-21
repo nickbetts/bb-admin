@@ -786,16 +786,26 @@ export default function GrandPlanViewPage({ params }: Props) {
         try {
           const data = JSON.parse(plan.planDataJson || "{}");
           const warnings = data.pipelineWarnings as string[] | undefined;
-          if (warnings?.length) {
-            return (
-              <div className="card" style={{ padding: "12px 16px", marginBottom: 16, background: "var(--warning-bg)", border: "1px solid var(--warning)", borderRadius: 10 }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: "var(--warning)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Warnings</p>
-                {warnings.map((w, i) => (
-                  <p key={i} style={{ fontSize: 12, color: "var(--warning)", marginBottom: 2 }}>{w}</p>
-                ))}
-              </div>
-            );
-          }
+          const report = data.generationReport as Record<string, { status: string; error?: string }> | undefined;
+          const failures = report ? Object.entries(report).filter(([, r]) => r.status === "failed") : [];
+
+          if (!warnings?.length && failures.length === 0) return null;
+
+          return (
+            <div className="card" style={{ padding: "12px 16px", marginBottom: 16, background: "var(--warning-bg)", border: "1px solid var(--warning)", borderRadius: 10 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: "var(--warning)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+                {failures.length > 0 ? `Generation issues (${failures.length} section${failures.length === 1 ? "" : "s"} failed)` : "Warnings"}
+              </p>
+              {warnings?.map((w, i) => (
+                <p key={`w-${i}`} style={{ fontSize: 12, color: "var(--warning)", marginBottom: 2 }}>• {w}</p>
+              ))}
+              {failures.map(([key, r]) => (
+                <p key={`f-${key}`} style={{ fontSize: 12, color: "var(--warning)", marginBottom: 2 }}>
+                  • <strong>{key}</strong> failed{r.error ? `: ${r.error}` : ""} — try regenerating this section.
+                </p>
+              ))}
+            </div>
+          );
         } catch { /* ignore */ }
         return null;
       })()}

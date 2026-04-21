@@ -4,6 +4,39 @@ import type Anthropic from "@anthropic-ai/sdk";
 const MODEL = "claude-sonnet-4-6";
 const MODEL_LIGHT = "claude-haiku-4-5";
 
+// ─── Resilience helpers ─────────────────────────────────────────────────────
+
+const TRANSIENT_ERROR_CODES = new Set([408, 425, 429, 500, 502, 503, 504, 529]);
+
+function isTransientError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyErr = err as any;
+  if (anyErr.status && TRANSIENT_ERROR_CODES.has(Number(anyErr.status))) return true;
+  if (typeof anyErr.message === "string") {
+    const msg = anyErr.message.toLowerCase();
+    if (msg.includes("rate limit") || msg.includes("timeout") || msg.includes("overloaded") || msg.includes("econnreset")) return true;
+  }
+  return false;
+}
+
+/** Run an Anthropic call with up to 3 retries on transient errors (1s, 3s, 8s backoff). */
+async function withAnthropicRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const delays = [1000, 3000, 8000];
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (attempt === delays.length || !isTransientError(err)) throw err;
+      console.warn(`[grand-plan] ${label} attempt ${attempt + 1} failed (${(err as Error).message}). Retrying in ${delays[attempt]}ms...`);
+      await new Promise((r) => setTimeout(r, delays[attempt]));
+    }
+  }
+  throw lastErr;
+}
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface CampaignFocusPeriod {
@@ -107,6 +140,13 @@ interface GoogleAdsForecast {
   avgCpc: number;
   monthlyBudget: number;
   conversionRate: number;
+  conversionRateOverridden?: boolean;
+  range?: {
+    clicks: { low: number; high: number };
+    conversions: { low: number; high: number };
+    avgCpa: { low: number; high: number };
+  };
+  disclaimer?: string;
 }
 
 export interface GrandPlanData {
@@ -156,6 +196,7 @@ export interface GrandPlanData {
     competitorIntel?: CompetitorInsight[];
     googleAdsForecast?: GoogleAdsForecast;
   };
+  generationReport?: Record<string, { status: "ok" | "skipped" | "failed"; error?: string }>;
 }
 
 // ─── Source data interfaces ─────────────────────────────────────────────────
@@ -177,6 +218,7 @@ export interface GrandPlanSources {
     ideas: string; // JSON
     maxCpc: string;
     monthlyBudget: string;
+    conversionRate?: string;
   };
   contentStrategy?: {
     title: string;
@@ -252,58 +294,69 @@ export async function generateGrandPlan(
 
   let completedCount = 0;
   const total = sectionNames.length;
-  const trackProgress = async <T>(label: string, promise: Promise<T>): Promise<T> => {
+  const generationReport: Record<string, { status: "ok" | "skipped" | "failed"; error?: string }> = {};
+
+  const runSection = async <T>(label: string, key: string, fn: () => Promise<T>): Promise<T | undefined> => {
     if (onProgress) await onProgress(`Generating ${label} (${completedCount + 1}/${total})...`);
-    const result = await promise;
-    completedCount++;
-    return result;
+    try {
+      const result = await fn();
+      completedCount++;
+      generationReport[key] = { status: "ok" };
+      return result;
+    } catch (error) {
+      completedCount++;
+      const message = error instanceof Error ? error.message : String(error);
+      generationReport[key] = { status: "failed", error: message };
+      console.error(`[grand-plan] Section "${label}" failed:`, message);
+      return undefined;
+    }
   };
 
   if (onProgress) await onProgress(`Generating ${total} AI sections...`);
 
-  // Batch 1: core sections (exec summary, strategy, campaigns, calendar, articles, ad copy)
+  // Batch 1: core sections (errors are isolated — one failure does not abort the rest)
   const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, aiMediaPlan, adCopyData] =
     await Promise.all([
       isEnabled("executiveSummary")
-        ? trackProgress("Executive Summary", generateExecutiveSummary(anthropic, contextSummary, sources))
+        ? runSection("Executive Summary", "executiveSummary", () => generateExecutiveSummary(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
       isEnabled("strategyPlan")
-        ? trackProgress("Strategy Plan", generateStrategyPlan(anthropic, contextSummary, sources))
+        ? runSection("Strategy Plan", "strategyPlan", () => generateStrategyPlan(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
       isEnabled("metaCampaigns") && sources.keywordResearch
-        ? trackProgress("Meta Campaigns", generateMetaCampaigns(anthropic, contextSummary, adGroups, sources))
+        ? runSection("Meta Campaigns", "metaCampaigns", () => generateMetaCampaigns(anthropic, contextSummary, adGroups, sources))
         : Promise.resolve(undefined),
       isEnabled("contentCalendar")
-        ? trackProgress("Content Calendar", generateContentCalendar(anthropic, contextSummary, contentData, sources))
+        ? runSection("Content Calendar", "contentCalendar", () => generateContentCalendar(anthropic, contextSummary, contentData, sources))
         : Promise.resolve(undefined),
       isEnabled("organicSocial")
-        ? trackProgress("Organic Social", generateOrganicSocial(anthropic, contextSummary, contentData, sources))
+        ? runSection("Organic Social", "organicSocial", () => generateOrganicSocial(anthropic, contextSummary, contentData, sources))
         : Promise.resolve(undefined),
       isEnabled("exampleArticles") && contentData
-        ? trackProgress("Example Articles", generateExampleArticles(anthropic, contextSummary, contentData, sources))
+        ? runSection("Example Articles", "exampleArticles", () => generateExampleArticles(anthropic, contextSummary, contentData, sources))
         : Promise.resolve(undefined),
       isEnabled("mediaPlan") && sources.mediaPlan && mediaChannels.length === 0
-        ? trackProgress("Media Plan", generateMediaPlanChannels(anthropic, contextSummary, sources))
+        ? runSection("Media Plan", "mediaPlan", () => generateMediaPlanChannels(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
       isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
-        ? trackProgress("Ad Copy", generateGoogleAdsAdCopy(anthropic, adGroups, contextSummary, sources))
-        : Promise.resolve([]),
+        ? runSection("Ad Copy", "googleAdsAdCopy", () => generateGoogleAdsAdCopy(anthropic, adGroups, contextSummary, sources))
+        : Promise.resolve(undefined),
     ]);
 
-  // Batch 2: supplementary sections (email, LinkedIn, competitor, audiences — run after core to avoid rate limits)
+  // Batch 2: supplementary sections
   const [emailMarketing, linkedInAds, competitorIntel, audiences] =
     await Promise.all([
       isEnabled("emailMarketing")
-        ? trackProgress("Email Marketing", generateEmailMarketing(anthropic, contextSummary, sources))
+        ? runSection("Email Marketing", "emailMarketing", () => generateEmailMarketing(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
       isEnabled("linkedInAds")
-        ? trackProgress("LinkedIn Ads", generateLinkedInAds(anthropic, contextSummary, sources))
+        ? runSection("LinkedIn Ads", "linkedInAds", () => generateLinkedInAds(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
       isEnabled("competitorIntel") && sources.keywordResearch
-        ? trackProgress("Competitor Intel", generateCompetitorIntel(anthropic, contextSummary, sources))
+        ? runSection("Competitor Intel", "competitorIntel", () => generateCompetitorIntel(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
       isEnabled("audiences")
-        ? trackProgress("Audiences", generateAudiences(anthropic, contextSummary, sources))
+        ? runSection("Audiences", "audiences", () => generateAudiences(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
     ]);
 
@@ -373,6 +426,7 @@ export async function generateGrandPlan(
       competitorIntel,
       googleAdsForecast,
     },
+    generationReport,
   };
 }
 
@@ -399,7 +453,7 @@ function buildContextSummary(
   }
 
   if (sources.targetAudiences) {
-    parts.push(`Target audiences: ${sources.targetAudiences}`);
+    parts.push(`Target audiences (provided by strategist):\n${sources.targetAudiences}`);
   }
 
   if (sources.keywordResearch) {
@@ -436,12 +490,50 @@ function buildContextSummary(
   return parts.join("\n");
 }
 
+// ─── Per-section context helpers ────────────────────────────────────────────
+
+const SECTOR_LABELS: Record<string, string> = {
+  dental: "UK dental practice (mix of NHS and private patients)",
+  ecommerce: "UK direct-to-consumer ecommerce / online retail",
+  industrial: "UK industrial / manufacturing / B2B engineering",
+  charities: "UK charity / non-profit",
+  healthcare: "UK private healthcare clinic",
+  hospitality: "UK hospitality / events / venue",
+  professional_services: "UK professional services firm (law, accountancy, consultancy)",
+  saas: "UK SaaS / B2B software",
+  education: "UK education / training provider",
+  other: "UK business",
+};
+
+function buildAudienceBlock(sources: GrandPlanSources): string {
+  if (!sources.targetAudiences) return "";
+  return `\n\nTarget audiences for this client (these MUST shape the output — reference them by name, address their pain points, and meet them on the channels they use):\n${sources.targetAudiences}`;
+}
+
+function buildSectorBlock(sources: GrandPlanSources): string {
+  if (!sources.sector) return "";
+  const label = SECTOR_LABELS[sources.sector] ?? sources.sector;
+  return `\n\nSector: ${label}. Use sector-specific language, regulatory considerations, and benchmarks where relevant.`;
+}
+
+function buildCampaignPeriodsBlock(sources: GrandPlanSources): string {
+  if (!sources.campaignFocusPeriods.length) return "";
+  const lines = sources.campaignFocusPeriods.map(
+    (p) => `- ${MONTH_NAMES[p.startMonth - 1]}–${MONTH_NAMES[p.endMonth - 1]}: ${p.label}${p.description ? ` (${p.description})` : ""}`,
+  );
+  return `\n\nKey campaign focus periods (the plan must reflect these — emphasise relevant messaging, creative, and offers in these windows):\n${lines.join("\n")}`;
+}
+
+function buildSharedContextBlocks(sources: GrandPlanSources): string {
+  return buildAudienceBlock(sources) + buildSectorBlock(sources) + buildCampaignPeriodsBlock(sources);
+}
+
 // ─── AI generation functions ────────────────────────────────────────────────
 
 async function generateExecutiveSummary(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<string> {
-  const res = await anthropic.messages.create({
+  const res = await withAnthropicRetry("executiveSummary", () => anthropic.messages.create({
     model: MODEL_LIGHT,
-    max_tokens: 1000,
+    max_tokens: 1200,
     messages: [
       {
         role: "user",
@@ -452,23 +544,24 @@ Rules:
 - No em dashes, no semicolons
 - No AI jargon: never use "harness", "leverage", "supercharge", "elevate", "craft", "tailored", "seamlessly", "cutting-edge", "robust"
 - Write like you've sat in the room with this client. Be direct, specific, grounded.
+- Open by naming the audiences this plan is built for and the commercial outcome we are chasing.
 - ${sources.purpose === "pitch" ? "This is a pitch — be persuasive but honest. Show you understand their business." : "This is an onboarding plan — be operational and clear about what happens next."}
 - Return HTML content (paragraphs, headings h3/h4, bullet lists). No wrapper div or section tags.
 - Keep it to 300-400 words.
 
 Write the executive summary for this plan:
 
-${context}`,
+${context}${buildSharedContextBlocks(sources)}`,
       },
     ],
-  });
+  }));
   return extractText(res);
 }
 
 async function generateStrategyPlan(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<string> {
-  const res = await anthropic.messages.create({
+  const res = await withAnthropicRetry("strategyPlan", () => anthropic.messages.create({
     model: MODEL_LIGHT,
-    max_tokens: 1200,
+    max_tokens: 1600,
     messages: [
       {
         role: "user",
@@ -476,25 +569,26 @@ async function generateStrategyPlan(anthropic: Anthropic, context: string, sourc
 
 Rules:
 - British English, no em dashes, no semicolons, no AI jargon
-- Each phase should cover: what gets done, expected outcomes, key metrics to track
-- Reference real channels and tactics from the context provided
+- Each phase should cover: what gets done, which audiences we are reaching and on which channels, expected outcomes, key metrics to track
+- Reference real channels and tactics from the context provided. Match channels to audiences explicitly (e.g. "reach Practice Managers via LinkedIn in Phase 2").
+- If campaign focus periods are listed, weave them into the relevant phase.
 - ${sources.purpose === "pitch" ? "Persuasive but grounded — show clear ROI potential" : "Operational clarity — this is the actual plan"}
 - Return HTML content (h3 for phases, p, ul/li). No wrapper tags.
 - 400-500 words total.
 
 Write the phased strategy plan:
 
-${context}`,
+${context}${buildSharedContextBlocks(sources)}`,
       },
     ],
-  });
+  }));
   return extractText(res);
 }
 
 async function generateMetaCampaigns(anthropic: Anthropic, context: string, adGroups: AdGroup[], sources: GrandPlanSources): Promise<MetaCampaign[]> {
   const topThemes = adGroups.slice(0, 4).map((g) => g.name).join(", ");
 
-  const res = await anthropic.messages.create({
+  const res = await withAnthropicRetry("metaCampaigns", () => anthropic.messages.create({
     model: MODEL,
     max_tokens: 3000,
     messages: [
@@ -514,9 +608,11 @@ Return a JSON object with key "campaigns" containing an array of campaign object
 - contentPillars: string[] (4-6 organic content themes)
 
 Rules:
-- Create 2-3 campaigns based on the keyword themes provided
+- Create 2-3 campaigns based on the keyword themes provided AND the target audiences below. Each campaign should clearly map to one or more named audiences.
+- Audience targeting interests/customAudiences/lookalikes should reflect the real personas — reference their behaviours and pain points, not generic demographics.
+- Captions and creative copy must speak directly to the audience's situation in plain British English.
+- If campaign focus periods are listed, design at least one campaign or creative variant around the most imminent period.
 - British English, no AI jargon
-- Captions should feel human, not corporate
 - Return ONLY valid JSON, no markdown fences
 
 Client: ${sources.clientName}
@@ -524,10 +620,10 @@ Key themes: ${topThemes}
 Brief: ${sources.clientBrief || sources.keywordResearch?.brief || "General digital marketing"}
 
 Context:
-${context}`,
+${context}${buildSharedContextBlocks(sources)}`,
       },
     ],
-  });
+  }));
 
   const raw = extractText(res);
   const parsed = safeJsonParse(raw, { campaigns: [] });
@@ -544,9 +640,9 @@ async function generateContentCalendar(anthropic: Anthropic, context: string, co
     ? contentData.blogPosts.slice(0, 15).map((b: { title?: string; keyword?: string }) => b.title || b.keyword).filter(Boolean).join(", ")
     : "";
 
-  const res = await anthropic.messages.create({
+  const res = await withAnthropicRetry("contentCalendar", () => anthropic.messages.create({
     model: MODEL,
-    max_tokens: 3000,
+    max_tokens: 3500,
     messages: [
       {
         role: "user",
@@ -562,15 +658,16 @@ Rules:
 - Start from next month
 - Align blog topics with the content strategy data if available
 - Campaign focus periods MUST drive the topic selection for those months
+- Topics should clearly serve at least one of the named target audiences
 - British English, no AI jargon
 - Return ONLY valid JSON, no markdown fences${focusPeriodText}
 
 Client: ${sources.clientName}
 ${blogTopics ? `Available blog topics: ${blogTopics}\n` : ""}Context:
-${context}`,
+${context}${buildSharedContextBlocks(sources)}`,
       },
     ],
-  });
+  }));
 
   const raw = extractText(res);
   const parsed = safeJsonParse(raw, { months: [] });
@@ -579,9 +676,9 @@ ${context}`,
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function generateOrganicSocial(anthropic: Anthropic, context: string, contentData: any, sources: GrandPlanSources): Promise<OrganicSocialPlan> {
-  const res = await anthropic.messages.create({
+  const res = await withAnthropicRetry("organicSocial", () => anthropic.messages.create({
     model: MODEL_LIGHT,
-    max_tokens: 2000,
+    max_tokens: 2200,
     messages: [
       {
         role: "user",
@@ -594,19 +691,19 @@ Return a JSON object:
 - hashtagStrategy: string[] (10-15 relevant hashtags)
 
 Rules:
-- Pillars should reflect the client's business and content strategy
+- Pillars must serve the named target audiences — each pillar should explicitly help at least one audience.
+- Example posts must reference real audience pain points or moments, not generic platitudes.
 - British English, no AI jargon
-- Example posts should feel genuine, not templated
 - Return ONLY valid JSON, no markdown fences
 
 Client: ${sources.clientName}
 Brief: ${sources.clientBrief || sources.keywordResearch?.brief || ""}
 ${contentData?.blogPosts ? `Blog topics: ${contentData.blogPosts.slice(0, 10).map((b: { title?: string }) => b.title).filter(Boolean).join(", ")}` : ""}
 Context:
-${context}`,
+${context}${buildSharedContextBlocks(sources)}`,
       },
     ],
-  });
+  }));
 
   const raw = extractText(res);
   return safeJsonParse(raw, {
@@ -628,7 +725,7 @@ async function generateExampleArticles(anthropic: Anthropic, context: string, co
   const articles: { title: string; html: string; seoMeta?: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } }[] = [];
 
   for (const topic of topicsToGenerate) {
-    const res = await anthropic.messages.create({
+    const res = await withAnthropicRetry(`exampleArticle:${topic}`, () => anthropic.messages.create({
       model: MODEL_LIGHT,
       max_tokens: 2500,
       messages: [
@@ -641,7 +738,7 @@ Rules:
 - No AI jargon: never "harness", "leverage", "supercharge", "elevate", "craft", "tailored", "seamlessly"
 - Structure: H2 sections (4-5), H3 subsections where needed, introductory paragraph, FAQ section (3-4 questions), conclusion with CTA
 - 800-1000 words
-- Write for the client's target audience, grounding every paragraph in a real pain point or practical value
+- Write directly to the named target audience for this topic. Address their pain points and reading-level. State who the article is for in the intro.
 - Return HTML content only (h2, h3, p, ul, li, blockquote, strong). No wrapper div, no article tag.
 - This is an EXAMPLE article to show what the content plan will deliver. Mark it clearly as an example.
 - At the very end, add a comment block with SEO metadata in this exact format:
@@ -655,10 +752,10 @@ Rules:
 Write an article titled "${topic}" for ${sources.clientName}.
 
 Context:
-${context}`,
+${context}${buildSharedContextBlocks(sources)}`,
         },
       ],
-    });
+    }));
 
     const html = extractText(res);
     if (html) {
@@ -700,26 +797,25 @@ async function generateGoogleAdsAdCopy(
     .map((g) => `${g.name}: ${g.keywords.slice(0, 5).map((k) => k.keyword).join(", ")}`)
     .join("\n");
 
-  const res = await anthropic.messages.create({
-    model: MODEL_LIGHT,
-    max_tokens: 3000,
-    messages: [
-      {
-        role: "user",
-        content: `You are a Google Ads specialist at i3media. Write Responsive Search Ad copy for each ad group below.
+  const HEADLINE_LIMIT = 30;
+  const DESC_LIMIT = 90;
+  const SITELINK_LIMIT = 25;
+
+  const buildPrompt = (feedback?: string) => `You are a Google Ads specialist at i3media. Write Responsive Search Ad copy for each ad group below.
 
 Return a JSON object with key "adGroups" containing an array. Each item:
 - name: string (must match the ad group name exactly)
-- headlines: string[] (15 headlines, STRICTLY max 30 characters each — count carefully)
-- descriptions: string[] (4 descriptions, STRICTLY max 90 characters each)
-- sitelinks: string[] (4-6 sitelink labels, max 25 chars each)
+- headlines: string[] (15 headlines, STRICTLY max ${HEADLINE_LIMIT} characters each — count carefully)
+- descriptions: string[] (4 descriptions, STRICTLY max ${DESC_LIMIT} characters each)
+- sitelinks: string[] (4-6 sitelink labels, max ${SITELINK_LIMIT} chars each)
 
 Rules:
 - British English. No AI jargon. Be direct and benefit-led.
 - Vary headlines between: primary keyword inclusion, benefit statement, USP, CTA, social proof.
+- Speak to the named target audiences provided in the context — at least 3 headlines per group should reference an audience pain point or moment.
 - Descriptions expand on the proposition with a call to action.
-- Character limits are hard limits — headlines over 30 chars or descriptions over 90 chars will be rejected by Google.
-- Return ONLY valid JSON, no markdown fences.
+- Character limits are HARD limits — count every character including spaces. Anything over will be rejected by Google.
+- Return ONLY valid JSON, no markdown fences.${feedback ? `\n\nIMPORTANT — your previous attempt was invalid:\n${feedback}\nFix these issues and try again.` : ""}
 
 Client: ${sources.clientName}
 Brief: ${sources.clientBrief ?? sources.keywordResearch?.brief ?? ""}
@@ -728,27 +824,73 @@ Ad groups and top keywords:
 ${groupList}
 
 Context:
-${context}`,
-      },
-    ],
-  });
+${context}${buildSharedContextBlocks(sources)}`;
 
-  try {
-    const parsed = safeJsonParse(extractText(res), { adGroups: [] });
-    const raw = (parsed.adGroups ?? []) as { name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[] } }[];
+  type RawGroup = {
+    name?: string;
+    headlines?: unknown;
+    descriptions?: unknown;
+    sitelinks?: unknown;
+    adCopy?: { headlines?: unknown; descriptions?: unknown; sitelinks?: unknown };
+  };
 
-    // Validate and truncate ad copy to Google Ads character limits
-    return raw.map((group) => ({
-      ...group,
-      adCopy: group.adCopy ? {
-        headlines: (group.adCopy.headlines ?? []).map((h) => h.slice(0, 30)),
-        descriptions: (group.adCopy.descriptions ?? []).map((d) => d.slice(0, 90)),
-        sitelinks: (group.adCopy.sitelinks ?? []).map((s) => s.slice(0, 25)),
-      } : group.adCopy,
+  const toStringArray = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+
+  const normalise = (groups: RawGroup[]) =>
+    groups.map((g) => {
+      const src = g.adCopy ?? g; // accept both flat and nested shapes
+      return {
+        name: String(g.name ?? "").trim(),
+        headlines: toStringArray(src.headlines),
+        descriptions: toStringArray(src.descriptions),
+        sitelinks: toStringArray(src.sitelinks),
+      };
+    });
+
+  const collectViolations = (
+    groups: { name: string; headlines: string[]; descriptions: string[]; sitelinks: string[] }[],
+  ) => {
+    const issues: string[] = [];
+    for (const g of groups) {
+      const overH = g.headlines.filter((h) => h.length > HEADLINE_LIMIT);
+      const overD = g.descriptions.filter((d) => d.length > DESC_LIMIT);
+      const overS = g.sitelinks.filter((s) => s.length > SITELINK_LIMIT);
+      if (overH.length) issues.push(`Ad group "${g.name}": ${overH.length} headline(s) exceed ${HEADLINE_LIMIT} chars: ${overH.map((h) => `"${h}" (${h.length})`).join(", ")}`);
+      if (overD.length) issues.push(`Ad group "${g.name}": ${overD.length} description(s) exceed ${DESC_LIMIT} chars`);
+      if (overS.length) issues.push(`Ad group "${g.name}": ${overS.length} sitelink(s) exceed ${SITELINK_LIMIT} chars`);
+    }
+    return issues;
+  };
+
+  let lastNormalised: { name: string; headlines: string[]; descriptions: string[]; sitelinks: string[] }[] = [];
+  let feedback: string | undefined;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await withAnthropicRetry(`googleAdsAdCopy:${attempt}`, () => anthropic.messages.create({
+      model: MODEL_LIGHT,
+      max_tokens: 3000,
+      messages: [{ role: "user", content: buildPrompt(feedback) }],
     }));
-  } catch {
-    return [];
+
+    const parsed = safeJsonParse<{ adGroups?: RawGroup[] }>(extractText(res), { adGroups: [] });
+    lastNormalised = normalise(parsed.adGroups ?? []);
+    const violations = collectViolations(lastNormalised);
+
+    if (violations.length === 0) break;
+    feedback = violations.join("\n");
+    console.warn(`[grand-plan] Ad copy attempt ${attempt + 1} had ${violations.length} validation issue(s); retrying.`);
   }
+
+  // Final safety net: hard-truncate anything still over limit
+  return lastNormalised.map((g) => ({
+    name: g.name,
+    adCopy: {
+      headlines: g.headlines.map((h) => h.slice(0, HEADLINE_LIMIT)),
+      descriptions: g.descriptions.map((d) => d.slice(0, DESC_LIMIT)),
+      sitelinks: g.sitelinks.map((s) => s.slice(0, SITELINK_LIMIT)),
+    },
+  }));
 }
 
 // ─── Media plan AI generator ────────────────────────────────────────────────
@@ -761,9 +903,9 @@ async function generateMediaPlanChannels(
   const totalBudget = sources.mediaPlan?.totalBudget ?? 10000;
   const objective = sources.mediaPlan?.objective ?? "lead_gen";
 
-  const res = await anthropic.messages.create({
+  const res = await withAnthropicRetry("mediaPlanChannels", () => anthropic.messages.create({
     model: MODEL_LIGHT,
-    max_tokens: 1500,
+    max_tokens: 1800,
     messages: [
       {
         role: "user",
@@ -776,19 +918,21 @@ Return a JSON object with key "channels" containing an array. Each channel:
 - name: string (e.g. "Google Ads", "Meta Ads", "LinkedIn Ads", "SEO & Content", "Email Marketing", "TikTok Ads")
 - budget: number (in £, must sum to total budget)
 - percentage: number (0-100, must sum to 100)
-- strategy: string (2-3 sentence strategy for this channel)
+- strategy: string (2-3 sentence strategy for this channel — explicitly link to which audiences this channel reaches and why)
 
 Rules:
 - Allocate across 4-7 channels appropriate for the objective
+- Channel choice MUST be justified by audience fit (e.g. "LinkedIn for Practice Managers, Meta for Decision-Maker partners")
+- Reserve a small test budget if there are emerging channels worth validating
 - British English, no AI jargon
 - Be realistic about channel suitability for the objective
 - Return ONLY valid JSON, no markdown fences
 
 Context:
-${context}`,
+${context}${buildSharedContextBlocks(sources)}`,
       },
     ],
-  });
+  }));
 
   try {
     const parsed = JSON.parse(extractText(res));
@@ -902,7 +1046,7 @@ function buildContentStrategySection(contentData: any) {
 // ─── Email Marketing generator ──────────────────────────────────────────────
 
 async function generateEmailMarketing(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<EmailMarketingPlan> {
-  const res = await anthropic.messages.create({
+  const res = await withAnthropicRetry("emailMarketing", () => anthropic.messages.create({
     model: MODEL,
     max_tokens: 2500,
     messages: [
@@ -918,17 +1062,18 @@ Return a JSON object:
 Rules:
 - Flows must include: Welcome sequence, Abandoned cart/enquiry, Re-engagement, and sector-appropriate triggers
 - Campaigns should mix promotional, educational, and nurture content
+- Segments MUST mirror the named target audiences where possible (use the same names) and include at least one behavioural segment.
+- Each campaign's audience field must reference a real named audience, not "all subscribers".
 - ${sources.sector === "ecommerce" ? "Include post-purchase, browse abandonment, VIP/loyalty flows" : sources.sector === "charities" ? "Include donation receipt, Ramadan series, impact updates" : "Include lead nurture, case study digest, service update flows"}
 - British English, no AI jargon
 - Return ONLY valid JSON, no markdown fences
 
 Client: ${sources.clientName}
-${sources.sector ? `Sector: ${sources.sector}` : ""}
 Context:
-${context}`,
+${context}${buildSharedContextBlocks(sources)}`,
       },
     ],
-  });
+  }));
 
   return safeJsonParse(extractText(res), {
     flows: [],
@@ -940,7 +1085,7 @@ ${context}`,
 // ─── LinkedIn Ads generator ─────────────────────────────────────────────────
 
 async function generateLinkedInAds(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<LinkedInCampaign[]> {
-  const res = await anthropic.messages.create({
+  const res = await withAnthropicRetry("linkedInAds", () => anthropic.messages.create({
     model: MODEL,
     max_tokens: 2500,
     messages: [
@@ -958,21 +1103,32 @@ Return a JSON object with key "campaigns" containing an array of 2-3 campaign ob
 
 Rules:
 - One campaign should focus on lead gen, one on awareness/thought leadership
-- Audience targeting should be specific to the client's ICP
+- Audience targeting MUST be derived from the named target audiences (use their job titles, seniority, industries)
+- Headlines and intro text must speak to the audience by their role and pain point
 - ${sources.sector === "industrial" || sources.sector === "professional_services" ? "LinkedIn is a primary channel — make campaigns comprehensive" : sources.sector === "ecommerce" || sources.sector === "dental" ? "LinkedIn is secondary for this sector — focus on brand building and partnerships" : "LinkedIn campaigns should target decision makers"}
+- Strictly respect character limits: headline ≤70, intro ≤150, description ≤100
 - British English, no AI jargon
 - Return ONLY valid JSON, no markdown fences
 
 Client: ${sources.clientName}
-${sources.sector ? `Sector: ${sources.sector}` : ""}
 Context:
-${context}`,
+${context}${buildSharedContextBlocks(sources)}`,
       },
     ],
-  });
+  }));
 
   const parsed = safeJsonParse(extractText(res), { campaigns: [] });
-  return parsed.campaigns ?? [];
+  const campaigns = (parsed.campaigns ?? []) as LinkedInCampaign[];
+  // Hard truncate as a safety net (LinkedIn rejects over-length copy)
+  return campaigns.map((c) => ({
+    ...c,
+    adCreatives: (c.adCreatives ?? []).map((ad) => ({
+      ...ad,
+      headline: (ad.headline ?? "").slice(0, 70),
+      introText: (ad.introText ?? "").slice(0, 150),
+      description: ad.description ? ad.description.slice(0, 100) : undefined,
+    })),
+  }));
 }
 
 // ─── Competitor Intelligence generator ──────────────────────────────────────
@@ -981,7 +1137,7 @@ async function generateCompetitorIntel(anthropic: Anthropic, context: string, so
   const website = sources.keywordResearch?.website ?? "";
   const brief = sources.clientBrief ?? sources.keywordResearch?.brief ?? "";
 
-  const res = await anthropic.messages.create({
+  const res = await withAnthropicRetry("competitorIntel", () => anthropic.messages.create({
     model: MODEL,
     max_tokens: 2500,
     messages: [
@@ -991,7 +1147,7 @@ async function generateCompetitorIntel(anthropic: Anthropic, context: string, so
 
 Return a JSON object with key "competitors" containing an array of 4-6 competitor objects:
 - domain: string (competitor website URL)
-- organicTraffic: number (estimated monthly organic visits)
+- organicTraffic: number (estimated monthly organic visits — LABEL CLEARLY AS APPROXIMATE)
 - organicKeywords: number (estimated number of ranking keywords)
 - paidKeywords: number (estimated number of PPC keywords)
 - backlinks: number (estimated backlink count)
@@ -999,9 +1155,11 @@ Return a JSON object with key "competitors" containing an array of 4-6 competito
 - strengths: string[] (2-3 competitive strengths)
 - weaknesses: string[] (2-3 areas where the client could beat them)
 
+IMPORTANT: All numeric estimates here are AI approximations, NOT verified third-party data. Be conservative — do not claim precision you do not have. The client will see a disclaimer to that effect.
+
 Rules:
 - Identify REAL competitors in this sector and geography (UK market)
-- Be realistic with traffic estimates — these are approximations
+- If you genuinely do not know likely competitors, return fewer entries rather than fabricating
 - Strengths and weaknesses should be actionable — things the client can actually exploit
 - British English, no AI jargon
 - Return ONLY valid JSON, no markdown fences
@@ -1009,12 +1167,11 @@ Rules:
 Client: ${sources.clientName}
 Website: ${website}
 Brief: ${brief}
-${sources.sector ? `Sector: ${sources.sector}` : ""}
 Context:
-${context}`,
+${context}${buildSharedContextBlocks(sources)}`,
       },
     ],
-  });
+  }));
 
   const parsed = safeJsonParse(extractText(res), { competitors: [] });
   return parsed.competitors ?? [];
@@ -1027,7 +1184,23 @@ async function generateAudiences(
   context: string,
   sources: GrandPlanSources
 ): Promise<{ name: string; description: string; painPoints: string[]; channels: string[] }[]> {
-  const res = await anthropic.messages.create({
+  if (sources.targetAudiences) {
+    // Strategist has provided audiences — parse them rather than regenerate from scratch.
+    const lines = sources.targetAudiences.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length) {
+      return lines.slice(0, 6).map((line) => {
+        const [namePart, ...rest] = line.split(/[:–—\-]/);
+        return {
+          name: (namePart ?? line).trim().slice(0, 80),
+          description: rest.join(":").trim() || "Provided by client strategist.",
+          painPoints: [],
+          channels: [],
+        };
+      });
+    }
+  }
+
+  const res = await withAnthropicRetry("audiences", () => anthropic.messages.create({
     model: MODEL_LIGHT,
     max_tokens: 1200,
     messages: [
@@ -1055,10 +1228,10 @@ Return JSON in this exact format:
 ]
 
 Client context:
-${context}`,
+${context}${buildSharedContextBlocks(sources)}`,
       },
     ],
-  });
+  }));
 
   const raw = extractText(res);
   const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -1077,10 +1250,14 @@ function buildGoogleAdsForecast(adGroups: AdGroup[], sources: GrandPlanSources):
   const ideas = adGroups.flatMap(g => g.keywords.filter(k => k.volume && k.cpc));
   const budgetPounds = parseFloat(sources.keywordResearch?.monthlyBudget ?? "0") || 2000;
   const maxCpcPounds = parseFloat(sources.keywordResearch?.maxCpc ?? "0");
-  const convRatePct = 3; // Default 3% conversion rate
+  const overrideRate = parseFloat(sources.keywordResearch?.conversionRate ?? "");
+  const convRatePct = Number.isFinite(overrideRate) && overrideRate > 0 ? overrideRate : 3;
+  const overridden = Number.isFinite(overrideRate) && overrideRate > 0;
+
+  const disclaimer = `Forecast is a planning estimate based on keyword volume, market CPC and ${overridden ? `your supplied conversion rate of ${convRatePct}%` : `an industry-standard ${convRatePct}% conversion rate`}. Actual performance depends on landing-page quality, ad relevance and seasonality. Treat figures as a directional range, not a guarantee.`;
 
   if (ideas.length === 0 || budgetPounds <= 0) {
-    return { clicks: 0, impressions: 0, conversions: 0, cost: 0, avgCpa: 0, ctr: 0, avgCpc: 0, monthlyBudget: budgetPounds, conversionRate: convRatePct };
+    return { clicks: 0, impressions: 0, conversions: 0, cost: 0, avgCpa: 0, ctr: 0, avgCpc: 0, monthlyBudget: budgetPounds, conversionRate: convRatePct, conversionRateOverridden: overridden, disclaimer };
   }
 
   // Bid-aware, position-adjusted forecast model (matches keyword planner logic)
@@ -1119,7 +1296,14 @@ function buildGoogleAdsForecast(adGroups: AdGroup[], sources: GrandPlanSources):
   const avgCpc = clicks > 0 ? cost / clicks : 0;
   const avgCpa = conversions > 0 ? cost / conversions : 0;
 
-  return { clicks, impressions, conversions, cost, avgCpa, ctr, avgCpc, monthlyBudget: budgetPounds, conversionRate: convRatePct };
+  // ±25% planning band
+  const range = {
+    clicks: { low: Math.round(clicks * 0.75), high: Math.round(clicks * 1.25) },
+    conversions: { low: Math.round(conversions * 0.75), high: Math.round(conversions * 1.25) },
+    avgCpa: { low: avgCpa * 0.8, high: avgCpa * 1.25 },
+  };
+
+  return { clicks, impressions, conversions, cost, avgCpa, ctr, avgCpc, monthlyBudget: budgetPounds, conversionRate: convRatePct, conversionRateOverridden: overridden, range, disclaimer };
 }
 
 // ─── Utils ──────────────────────────────────────────────────────────────────

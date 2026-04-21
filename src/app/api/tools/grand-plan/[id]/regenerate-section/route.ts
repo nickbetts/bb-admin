@@ -74,6 +74,7 @@ export async function POST(
       clientName,
       purpose: plan.purpose,
       clientBrief: plan.clientBrief || undefined,
+      targetAudiences: plan.targetAudiences || undefined,
       sector: config.sector || undefined,
       campaignFocusPeriods: safeJsonParse(plan.campaignFocusPeriodsJson, []),
       proposal: plan.proposal

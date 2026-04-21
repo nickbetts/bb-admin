@@ -952,22 +952,35 @@ function renderLinkedInAds(campaigns: any[]): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderGoogleAdsForecast(data: any): string {
   const fmtNum = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}K` : n.toLocaleString();
+  const range = data.range as { clicks?: { low: number; high: number }; conversions?: { low: number; high: number }; avgCpa?: { low: number; high: number } } | undefined;
+  const rateNote = data.conversionRateOverridden
+    ? `${data.conversionRate}% conversion rate (your override)`
+    : `${data.conversionRate ?? 3}% industry-standard conversion rate`;
+
+  const clicksRange = range?.clicks ? `<div class="forecast-sub">Range: ${fmtNum(range.clicks.low)} – ${fmtNum(range.clicks.high)}</div>` : "";
+  const convRange = range?.conversions ? `<div class="forecast-sub">Range: ${range.conversions.low} – ${range.conversions.high}</div>` : "";
+  const cpaRange = range?.avgCpa ? `<div class="forecast-sub">Range: £${range.avgCpa.low.toFixed(0)} – £${range.avgCpa.high.toFixed(0)}</div>` : "";
+
+  const disclaimer = data.disclaimer
+    ? `<p class="section-disclaimer" style="margin-top:16px;padding:12px 16px;background:rgba(245,158,11,0.08);border-left:3px solid #f59e0b;border-radius:4px;font-size:13px;color:#92400e;"><strong>Planning estimate:</strong> ${esc(String(data.disclaimer))}</p>`
+    : "";
 
   return `
     <section id="google-ads-forecast" class="section">
       <div class="section-inner">
         <div class="section-kicker">Performance</div>
         <h2>Google Ads Forecast</h2>
-      <p class="section-intro">Estimated monthly performance based on keyword volumes, CPCs, and a £${Number(data.monthlyBudget ?? 0).toLocaleString()}/month budget at ${data.conversionRate ?? 3}% conversion rate.</p>
+      <p class="section-intro">Estimated monthly performance based on keyword volumes, CPCs, and a £${Number(data.monthlyBudget ?? 0).toLocaleString()}/month budget at ${rateNote}.</p>
       <div class="forecast-grid">
-        <div class="forecast-card"><span class="forecast-value">${fmtNum(data.clicks ?? 0)}</span><span class="forecast-label">Est. Clicks</span></div>
+        <div class="forecast-card"><span class="forecast-value">${fmtNum(data.clicks ?? 0)}</span><span class="forecast-label">Est. Clicks</span>${clicksRange}</div>
         <div class="forecast-card"><span class="forecast-value">${fmtNum(data.impressions ?? 0)}</span><span class="forecast-label">Est. Impressions</span></div>
-        <div class="forecast-card"><span class="forecast-value">${data.conversions ?? 0}</span><span class="forecast-label">Est. Conversions</span></div>
+        <div class="forecast-card"><span class="forecast-value">${data.conversions ?? 0}</span><span class="forecast-label">Est. Conversions</span>${convRange}</div>
         <div class="forecast-card"><span class="forecast-value">£${Number(data.cost ?? 0).toFixed(0)}</span><span class="forecast-label">Est. Monthly Cost</span></div>
         <div class="forecast-card"><span class="forecast-value">${Number(data.ctr ?? 0).toFixed(2)}%</span><span class="forecast-label">Avg CTR</span></div>
         <div class="forecast-card"><span class="forecast-value">£${Number(data.avgCpc ?? 0).toFixed(2)}</span><span class="forecast-label">Avg CPC</span></div>
-        <div class="forecast-card accent"><span class="forecast-value">£${Number(data.avgCpa ?? 0).toFixed(2)}</span><span class="forecast-label">Est. CPA</span></div>
+        <div class="forecast-card accent"><span class="forecast-value">£${Number(data.avgCpa ?? 0).toFixed(2)}</span><span class="forecast-label">Est. CPA</span>${cpaRange}</div>
       </div>
+      ${disclaimer}
       </div>
     </section>`;
 }
@@ -1008,6 +1021,7 @@ function renderCompetitorIntel(competitors: any[]): string {
       <div class="section-inner">
         <div class="section-kicker">Research</div>
         <h2>Competitor Intelligence</h2>
+      <p class="section-disclaimer" style="margin-bottom:16px;padding:12px 16px;background:rgba(59,130,246,0.06);border-left:3px solid #3b82f6;border-radius:4px;font-size:13px;color:#1e40af;"><strong>AI-generated estimates:</strong> Competitor metrics below are AI-generated approximations, not verified third-party data. Use for directional planning. For audited figures, run a SemRush or Ahrefs audit.</p>
       <table class="channel-table">
         <thead><tr><th>Domain</th><th>Organic Traffic</th><th>Organic KWs</th><th>Paid KWs</th><th>Backlinks</th></tr></thead>
         <tbody>${tableRows}</tbody>
@@ -1411,6 +1425,8 @@ a{color:var(--blue);text-decoration:none}
 .forecast-card.accent .forecast-label{color:#94a3b8}
 .forecast-value{display:block;font-size:1.5rem;font-weight:800;color:var(--heading);letter-spacing:-1px}
 .forecast-label{display:block;font-size:11px;color:var(--text-light);margin-top:4px;text-transform:uppercase;letter-spacing:.04em}
+.forecast-sub{display:block;font-size:10px;color:var(--text-light);margin-top:6px;font-style:italic}
+.forecast-card.accent .forecast-sub{color:#cbd5e1}
 /* Competitor Intelligence */
 .comp-domain{font-weight:600;color:var(--heading)}
 .comp-num{text-align:right;font-variant-numeric:tabular-nums}
