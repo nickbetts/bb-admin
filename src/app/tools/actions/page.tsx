@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { CheckSquare, Plus, Loader2, Trash2, Pencil, Filter } from "lucide-react";
+import { CheckSquare, Plus, Loader2, Trash2, Pencil, Filter, Square, CheckCheck } from "lucide-react";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
 
 interface ActionItem {
   id: string;
@@ -73,6 +74,7 @@ export default function ActionsPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const confirm = useConfirm();
+  const { toast } = useToast();
 
   const [actions, setActions] = useState<ActionWithClient[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -85,6 +87,16 @@ export default function ActionsPage() {
   const [editingAction, setEditingAction] = useState<ActionWithClient | null>(null);
   const [form, setForm] = useState({ clientId: "", title: "", description: "", priority: "medium", assignedTo: "", dueDate: "" });
   const [saving, setSaving] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkWorking, setBulkWorking] = useState(false);
+  const [defaultAssignee, setDefaultAssignee] = useState("");
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.ok ? r.json() : {})
+      .then((s: Record<string, string>) => { if (s.defaultActionAssignee) setDefaultAssignee(s.defaultActionAssignee); })
+      .catch(() => {});
+  }, []);
 
   // Mirror filter state → URL so refresh + back/forward preserve choices.
   useEffect(() => {
@@ -165,7 +177,36 @@ export default function ActionsPage() {
   async function handleDelete(action: ActionWithClient) {
     if (!(await confirm({ title: "Delete this action?", confirmLabel: "Delete", danger: true }))) return;
     await fetch(`/api/clients/${action.clientId}/actions/${action.id}`, { method: "DELETE" });
+    setSelectedIds((prev) => { const next = new Set(prev); next.delete(action.id); return next; });
     await loadData();
+  }
+
+  async function handleBulkComplete() {
+    const toComplete = filtered.filter((a) => selectedIds.has(a.id) && a.status !== "completed");
+    if (toComplete.length === 0) return;
+    setBulkWorking(true);
+    try {
+      await Promise.all(toComplete.map((a) => fetch(`/api/clients/${a.clientId}/actions/${a.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "completed" }),
+      })));
+      setSelectedIds(new Set());
+      toast(`Marked ${toComplete.length} action${toComplete.length === 1 ? "" : "s"} as completed`, "success");
+      await loadData();
+    } finally { setBulkWorking(false); }
+  }
+
+  async function handleBulkDelete() {
+    const targets = filtered.filter((a) => selectedIds.has(a.id));
+    if (targets.length === 0) return;
+    if (!(await confirm({ title: `Delete ${targets.length} action${targets.length === 1 ? "" : "s"}?`, description: "This cannot be undone.", confirmLabel: "Delete", danger: true }))) return;
+    setBulkWorking(true);
+    try {
+      await Promise.all(targets.map((a) => fetch(`/api/clients/${a.clientId}/actions/${a.id}`, { method: "DELETE" })));
+      setSelectedIds(new Set());
+      toast(`Deleted ${targets.length} action${targets.length === 1 ? "" : "s"}`, "success");
+      await loadData();
+    } finally { setBulkWorking(false); }
   }
 
   function startEdit(action: ActionWithClient) {
@@ -215,7 +256,7 @@ export default function ActionsPage() {
         <button
           className="btn btn-primary btn-sm"
           style={{ gap: 6, display: "inline-flex", alignItems: "center" }}
-          onClick={() => { setShowForm(true); setEditingAction(null); setForm({ clientId: "", title: "", description: "", priority: "medium", assignedTo: "", dueDate: "" }); }}
+          onClick={() => { setShowForm(true); setEditingAction(null); setForm({ clientId: "", title: "", description: "", priority: "medium", assignedTo: defaultAssignee, dueDate: "" }); }}
         >
           <Plus style={{ width: 14, height: 14 }} /> New Action
         </button>
@@ -291,6 +332,47 @@ export default function ActionsPage() {
         </div>
       )}
 
+      {/* Bulk action bar — shown when items are selected */}
+      {selectedIds.size > 0 && (
+        <div style={{
+          position: "sticky", top: 60, zIndex: 50,
+          background: "var(--accent)", color: "#fff",
+          borderRadius: "var(--r)",
+          padding: "10px 16px",
+          marginBottom: 16,
+          display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+          boxShadow: "0 4px 16px rgba(99,102,241,0.35)",
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{selectedIds.size} selected</span>
+          <div style={{ flex: 1 }} />
+          <button
+            className="btn btn-sm"
+            disabled={bulkWorking}
+            onClick={handleBulkComplete}
+            style={{ background: "rgba(255,255,255,0.2)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)", gap: 5, display: "inline-flex", alignItems: "center" }}
+          >
+            <CheckCheck style={{ width: 13, height: 13 }} />
+            Mark complete
+          </button>
+          <button
+            className="btn btn-sm"
+            disabled={bulkWorking}
+            onClick={handleBulkDelete}
+            style={{ background: "rgba(239,68,68,0.25)", color: "#fff", border: "1px solid rgba(239,68,68,0.4)", gap: 5, display: "inline-flex", alignItems: "center" }}
+          >
+            <Trash2 style={{ width: 13, height: 13 }} />
+            Delete
+          </button>
+          <button
+            className="btn btn-sm"
+            onClick={() => setSelectedIds(new Set())}
+            style={{ background: "transparent", color: "rgba(255,255,255,0.75)", border: "none", fontSize: 12 }}
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 14 }}>
           <Loader2 style={{ width: 20, height: 20, animation: "spin 1s linear infinite", margin: "0 auto 8px", display: "block" }} />
@@ -298,13 +380,35 @@ export default function ActionsPage() {
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
-          {STATUSES.map((status) => (
+          {STATUSES.map((status) => {
+            const colActions = grouped[status] ?? [];
+            const allInColSelected = colActions.length > 0 && colActions.every((a) => selectedIds.has(a.id));
+            const someInColSelected = colActions.some((a) => selectedIds.has(a.id));
+            return (
             <div key={status}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                {/* Select-all for this column */}
+                <button
+                  type="button"
+                  aria-label={allInColSelected ? `Deselect all ${statusLabels[status]}` : `Select all ${statusLabels[status]}`}
+                  onClick={() => {
+                    if (allInColSelected) {
+                      setSelectedIds((prev) => { const next = new Set(prev); colActions.forEach((a) => next.delete(a.id)); return next; });
+                    } else {
+                      setSelectedIds((prev) => { const next = new Set(prev); colActions.forEach((a) => next.add(a.id)); return next; });
+                    }
+                  }}
+                  style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", color: someInColSelected ? "var(--accent)" : "var(--text-4)" }}
+                >
+                  {allInColSelected
+                    ? <CheckCheck style={{ width: 14, height: 14 }} />
+                    : <Square style={{ width: 14, height: 14 }} />
+                  }
+                </button>
                 <span style={{ width: 10, height: 10, borderRadius: "50%", background: statusColors[status], flexShrink: 0 }} />
                 <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{statusLabels[status]}</span>
                 <span style={{ fontSize: 11, color: "var(--text-4)", background: "var(--bg-2)", borderRadius: 99, padding: "2px 7px" }}>
-                  {grouped[status]?.length ?? 0}
+                  {colActions.length}
                 </span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -318,15 +422,32 @@ export default function ActionsPage() {
                       && action.status !== "completed"
                       && action.status !== "cancelled"
                       && new Date(action.dueDate) < new Date(new Date().toDateString());
+                    const isSelected = selectedIds.has(action.id);
                     return (
                     <div
                       key={action.id}
                       className="card"
                       style={{
                         padding: 14,
-                        ...(isOverdue ? { borderColor: "rgba(239,68,68,0.45)", background: "rgba(239,68,68,0.04)" } : {}),
+                        ...(isSelected ? { borderColor: "var(--accent)", boxShadow: "0 0 0 2px rgba(99,102,241,0.15)" } : {}),
+                        ...(isOverdue && !isSelected ? { borderColor: "rgba(239,68,68,0.45)", background: "rgba(239,68,68,0.04)" } : {}),
                       }}
                     >
+                      {/* Selection checkbox row */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                        <button
+                          type="button"
+                          aria-label={isSelected ? "Deselect action" : "Select action"}
+                          onClick={() => setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(action.id)) next.delete(action.id); else next.add(action.id);
+                            return next;
+                          })}
+                          style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", color: isSelected ? "var(--accent)" : "var(--text-4)", flexShrink: 0 }}
+                        >
+                          {isSelected ? <CheckSquare style={{ width: 14, height: 14 }} /> : <Square style={{ width: 14, height: 14 }} />}
+                        </button>
+                      </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                         <div style={{ flex: 1, display: "flex", gap: 10, alignItems: "flex-start" }}>
                           <button
@@ -417,7 +538,8 @@ export default function ActionsPage() {
                 )}
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
     </div>

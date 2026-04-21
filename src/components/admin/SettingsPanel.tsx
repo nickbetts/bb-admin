@@ -87,6 +87,10 @@ function SettingsPanelInner() {
   const [benchmarksSaving, setBenchmarksSaving] = useState(false);
   const [benchmarksSaved, setBenchmarksSaved] = useState(false);
 
+  const [defaultAssignee, setDefaultAssignee] = useState("");
+  const [defaultAssigneeSaving, setDefaultAssigneeSaving] = useState(false);
+  const [defaultAssigneeSaved, setDefaultAssigneeSaved] = useState(false);
+
   const oauthErrorKey = searchParams.get("error");
   const oauthConnected = searchParams.get("connected");
   const [banner, setBanner] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -173,6 +177,7 @@ function SettingsPanelInner() {
           if (Array.isArray(stored) && stored.length > 0) setBenchmarks(stored);
         } catch { /* keep defaults */ }
       }
+      setDefaultAssignee(settings.defaultActionAssignee ?? "");
     } catch (err) {
       setMccError(err instanceof Error ? err.message : "Failed to load");
     } finally {
@@ -279,7 +284,24 @@ function SettingsPanelInner() {
     }
   }
 
-  const [snapshotMonths, setSnapshotMonths] = useState(12);
+  async function handleDefaultAssigneeSave() {
+    setDefaultAssigneeSaving(true);
+    setDefaultAssigneeSaved(false);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ defaultActionAssignee: defaultAssignee }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      setDefaultAssigneeSaved(true);
+      setTimeout(() => setDefaultAssigneeSaved(false), 3000);
+    } catch { /* ignore */ } finally {
+      setDefaultAssigneeSaving(false);
+    }
+  }
+
+
   const [snapshotRunning, setSnapshotRunning] = useState(false);
   const [snapshotResult, setSnapshotResult] = useState<{
     clientsProcessed: number;
@@ -614,6 +636,30 @@ function SettingsPanelInner() {
             </button>
           </div>
           {anthropicKey && <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>✓ Anthropic API key configured. Content Strategy Creator is ready to use.</p>}
+        </div>
+      </div>
+
+      {/* Action Defaults */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-header">
+          <h2 className="card-title">Action Defaults</h2>
+          <p className="card-subtitle">Default values pre-filled when creating new action items.</p>
+        </div>
+        <div className="card-body">
+          <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 6 }}>Default Assignee</label>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <input
+              type="text"
+              className="form-input"
+              style={{ fontSize: 13, maxWidth: 320 }}
+              placeholder="Name or email"
+              value={defaultAssignee}
+              onChange={(e) => setDefaultAssignee(e.target.value)}
+            />
+            <button className="btn btn-primary btn-sm" onClick={handleDefaultAssigneeSave} disabled={defaultAssigneeSaving}>
+              {defaultAssigneeSaving ? "Saving…" : defaultAssigneeSaved ? "Saved!" : "Save"}
+            </button>
+          </div>
         </div>
       </div>
 

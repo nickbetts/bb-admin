@@ -397,9 +397,37 @@ body {
   .app-main { padding-top: 56px; }
 }
 
-/* Report builder right sidebar — hide on mobile, edit on a larger screen */
+/* Report builder right sidebar — slide-over drawer on mobile */
 @media (max-width: 900px) {
-  .report-builder-sidebar { display: none !important; }
+  .report-builder-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    height: 100dvh !important;
+    width: 280px !important;
+    z-index: 200 !important;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.18);
+  }
+  .report-builder-sidebar.is-open {
+    transform: translateX(0);
+  }
+  .report-builder-mobile-btn {
+    display: flex !important;
+  }
+  .report-builder-backdrop {
+    display: block !important;
+  }
+}
+@media (min-width: 901px) {
+  .report-builder-mobile-btn {
+    display: none !important;
+  }
+  .report-builder-backdrop {
+    display: none !important;
+  }
 }
 
 /* =============================================

@@ -15,6 +15,11 @@ interface SpreadsheetData {
   categoryPages?: Array<{ title?: string; keywords?: KeywordRef[]; notes?: string }>;
   blogPosts?: Array<{ title?: string; keywords?: KeywordRef[]; notes?: string }>;
   linkTargets?: Array<{ url?: string; anchorKeyword?: string; anchorType?: string }>;
+  roadmap?: {
+    month1?: string[];
+    months2to3?: string[];
+    months4plus?: string[];
+  };
 }
 
 interface CreatePayload {
@@ -78,46 +83,63 @@ export async function POST(
     const assignedTo = body.assignedTo ?? null;
     const sourceRef = `content-strategy:${strategy.id}`;
 
-    const toCreate: Array<{ title: string; description: string | null }> = [];
+    // Build a due-date lookup from roadmap phases (30 / 60 / 120 days from today)
+    const today = new Date();
+    function addDays(days: number): string {
+      const d = new Date(today);
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split("T")[0];
+    }
+    const roadmapDueDates = new Map<string, string>(); // lowercased needle → ISO date
+    if (data.roadmap) {
+      const assign = (entries: string[] | undefined, days: number) => {
+        if (!entries) return;
+        for (const e of entries) roadmapDueDates.set(e.toLowerCase().trim(), addDays(days));
+      };
+      assign(data.roadmap.month1, 30);
+      assign(data.roadmap.months2to3, 60);
+      assign(data.roadmap.months4plus, 120);
+    }
+    function resolveDueDate(rawNeedle: string): string | null {
+      if (roadmapDueDates.size === 0) return dueDate;
+      const needle = rawNeedle.toLowerCase().trim();
+      // Exact match first
+      if (roadmapDueDates.has(needle)) return roadmapDueDates.get(needle)!;
+      // Substring match: check if the roadmap entry appears in the needle or vice versa
+      for (const [entry, date] of roadmapDueDates) {
+        if (needle.includes(entry) || entry.includes(needle)) return date;
+      }
+      return dueDate;
+    }
+
+    const toCreate: Array<{ title: string; description: string | null; dueDate: string | null }> = [];
 
     if (include.has("pageOptimisations") && data.pageOptimisations) {
       for (const item of data.pageOptimisations) {
         if (!item.url) continue;
         const desc = [item.notes, buildKeywordSummary(item.keywords)].filter(Boolean).join("\n\n");
-        toCreate.push({
-          title: `Optimise page: ${item.url}`,
-          description: desc || null,
-        });
+        toCreate.push({ title: `Optimise page: ${item.url}`, description: desc || null, dueDate: resolveDueDate(item.url) });
       }
     }
     if (include.has("landingPages") && data.landingPages) {
       for (const item of data.landingPages) {
         if (!item.title) continue;
         const desc = [item.notes, buildKeywordSummary(item.keywords)].filter(Boolean).join("\n\n");
-        toCreate.push({
-          title: `Build landing page: ${item.title}`,
-          description: desc || null,
-        });
+        toCreate.push({ title: `Build landing page: ${item.title}`, description: desc || null, dueDate: resolveDueDate(item.title) });
       }
     }
     if (include.has("categoryPages") && data.categoryPages) {
       for (const item of data.categoryPages) {
         if (!item.title) continue;
         const desc = [item.notes, buildKeywordSummary(item.keywords)].filter(Boolean).join("\n\n");
-        toCreate.push({
-          title: `Build category page: ${item.title}`,
-          description: desc || null,
-        });
+        toCreate.push({ title: `Build category page: ${item.title}`, description: desc || null, dueDate: resolveDueDate(item.title) });
       }
     }
     if (include.has("blogPosts") && data.blogPosts) {
       for (const item of data.blogPosts) {
         if (!item.title) continue;
         const desc = [item.notes, buildKeywordSummary(item.keywords)].filter(Boolean).join("\n\n");
-        toCreate.push({
-          title: `Write blog post: ${item.title}`,
-          description: desc || null,
-        });
+        toCreate.push({ title: `Write blog post: ${item.title}`, description: desc || null, dueDate: resolveDueDate(item.title) });
       }
     }
     if (include.has("linkTargets") && data.linkTargets) {
@@ -126,10 +148,7 @@ export async function POST(
         const anchor = item.anchorKeyword
           ? `Anchor: "${item.anchorKeyword}"${item.anchorType ? ` (${item.anchorType})` : ""}`
           : "";
-        toCreate.push({
-          title: `Build backlink to: ${item.url}`,
-          description: anchor || null,
-        });
+        toCreate.push({ title: `Build backlink to: ${item.url}`, description: anchor || null, dueDate: resolveDueDate(item.url) });
       }
     }
 
@@ -146,7 +165,7 @@ export async function POST(
         status: "open",
         priority,
         assignedTo,
-        dueDate,
+        dueDate: a.dueDate,
         sourceType: "content_strategy",
         sourceRef,
       })),

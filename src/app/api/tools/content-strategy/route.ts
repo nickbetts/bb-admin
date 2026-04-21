@@ -1758,7 +1758,12 @@ export async function GET(request: NextRequest) {
 
   if (action === "list") {
     const clientId = searchParams.get("clientId");
-    const where = clientId ? { clientId } : {};
+    const statusFilter = searchParams.get("status");
+    const where: Record<string, unknown> = {};
+    if (clientId) where.clientId = clientId;
+    // Default to "live" unless caller explicitly asks for all or archived
+    if (statusFilter === "archived") where.status = "archived";
+    else if (statusFilter !== "all") where.status = "live";
     const strategies = await prisma.contentStrategy.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -1768,6 +1773,7 @@ export async function GET(request: NextRequest) {
         period: true,
         clientId: true,
         createdBy: true,
+        status: true,
         shareToken: true,
         viewCount: true,
         createdAt: true,
@@ -1818,10 +1824,17 @@ export async function PATCH(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const { id, sharePassword, generatedHtml } = await request.json();
+    const { id, sharePassword, generatedHtml, status } = await request.json();
     if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
     const updateData: Record<string, unknown> = {};
+
+    if (status !== undefined) {
+      if (status !== "live" && status !== "archived") {
+        return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+      }
+      updateData.status = status;
+    }
 
     if (sharePassword !== undefined) {
       if (sharePassword === null || sharePassword === "") {

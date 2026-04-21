@@ -542,6 +542,9 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [dpCompareEnd, setDpCompareEnd] = useState(compareEndDate ?? "");
   const [savingDates, setSavingDates] = useState(false);
 
+  // Mobile sections drawer
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
   // Share state
   const [shareLoading, setShareLoading] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
@@ -616,6 +619,14 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   // ── DnD sensors ────────────────────────────────────────────────────────────
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const mainContentSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  // Close mobile drawer on Escape
+  useEffect(() => {
+    if (!mobileDrawerOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileDrawerOpen(false); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [mobileDrawerOpen]);
 
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -2298,10 +2309,41 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               {report.title} · {report.period} · {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
             </p>
           </div>
+
+          {/* Mobile floating "Sections" button — visible below 900px only */}
+          <button
+            className="report-builder-mobile-btn print:hidden"
+            onClick={() => setMobileDrawerOpen(true)}
+            aria-label="Open sections panel"
+            style={{
+              display: "none",
+              position: "fixed", bottom: 24, right: 24, zIndex: 198,
+              alignItems: "center", gap: 8,
+              background: "var(--accent)", color: "#fff",
+              border: "none", borderRadius: 99,
+              padding: "10px 18px",
+              fontSize: 13, fontWeight: 600,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
+              cursor: "pointer",
+            }}
+          >
+            <LayoutGrid size={15} />
+            Sections
+          </button>
         </div>
 
         {/* ── Right sidebar ─────────────────────────────────────────────── */}
-        <aside className="print:hidden report-builder-sidebar" style={{
+        {/* Backdrop for mobile drawer */}
+        <div
+          className="report-builder-backdrop print:hidden"
+          onClick={() => setMobileDrawerOpen(false)}
+          style={{
+            display: "none",
+            position: "fixed", inset: 0, zIndex: 199,
+            background: "rgba(0,0,0,0.35)", backdropFilter: "blur(2px)",
+          }}
+        />
+        <aside className={`print:hidden report-builder-sidebar${mobileDrawerOpen ? " is-open" : ""}`} style={{
           width: 264, flexShrink: 0,
           position: "sticky", top: 60, height: "calc(100vh - 60px)",
           alignSelf: "flex-start",
@@ -2309,10 +2351,23 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           display: "flex", flexDirection: "column", overflow: "hidden",
         }}>
           {/* Sidebar header */}
-          <div style={{ padding: "20px 20px 14px", borderBottom: "1px solid var(--border-subtle)", flexShrink: 0 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: "var(--text-3)" }}>
+          <div style={{ padding: "20px 20px 14px", borderBottom: "1px solid var(--border-subtle)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.09em", color: "var(--text-3)", margin: 0 }}>
               Report Sections
             </p>
+            {/* Close button visible only when in drawer mode (mobile) */}
+            <button
+              className="report-builder-mobile-btn"
+              onClick={() => setMobileDrawerOpen(false)}
+              aria-label="Close sections panel"
+              style={{
+                display: "none", background: "none", border: "none",
+                cursor: "pointer", padding: 4, color: "var(--text-3)",
+                alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <X size={16} />
+            </button>
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", padding: "8px 0", minHeight: 0 }}>

@@ -26,6 +26,8 @@ import {
   AlertCircle,
   ChevronDown,
   ListChecks,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import { ClientBackLink } from "@/components/ui/ClientBackLink";
 import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
@@ -36,6 +38,7 @@ interface ContentStrategyItem {
   period: string;
   clientId: string;
   createdBy: string | null;
+  status: string;
   shareToken: string | null;
   viewCount: number;
   createdAt: string;
@@ -466,6 +469,7 @@ export default function ContentStrategyPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [archiveView, setArchiveView] = useState<"live" | "archived" | "all">("live");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -534,10 +538,10 @@ export default function ContentStrategyPage() {
 
   const loadStrategies = useCallback(async () => {
     try {
-      const url = urlClientId
-        ? `/api/tools/content-strategy?action=list&clientId=${urlClientId}`
-        : "/api/tools/content-strategy?action=list";
-      const res = await fetch(url);
+      const params = new URLSearchParams({ action: "list" });
+      if (urlClientId) params.set("clientId", urlClientId);
+      if (archiveView !== "live") params.set("status", archiveView);
+      const res = await fetch(`/api/tools/content-strategy?${params.toString()}`);
       const data = await res.json();
       if (data.strategies) setStrategies(data.strategies);
     } catch {
@@ -545,7 +549,7 @@ export default function ContentStrategyPage() {
     } finally {
       setLoading(false);
     }
-  }, [urlClientId]);
+  }, [urlClientId, archiveView]);
 
   const loadClients = useCallback(async () => {
     try {
@@ -786,6 +790,22 @@ export default function ContentStrategyPage() {
       loadStrategies();
     } catch {
       setError("Failed to delete");
+    }
+  }
+
+  async function handleArchive(id: string, currentStatus: string) {
+    const toArchive = currentStatus !== "archived";
+    try {
+      const res = await fetch("/api/tools/content-strategy", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: toArchive ? "archived" : "live" }),
+      });
+      if (!res.ok) { setError("Failed to update strategy status"); return; }
+      toast(toArchive ? "Strategy archived" : "Strategy restored", "success");
+      loadStrategies();
+    } catch {
+      setError("Failed to update strategy status");
     }
   }
 
@@ -1799,9 +1819,31 @@ export default function ContentStrategyPage() {
       {/* Strategies List */}
       <div className="card" style={{ padding: 0 }}>
         <div className="card-header">
-          <div>
-            <h2 className="card-title">Generated Strategies</h2>
-            <p className="card-subtitle">{strategies.length} {strategies.length === 1 ? "strategy" : "strategies"} created</p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <h2 className="card-title">Generated Strategies</h2>
+              <p className="card-subtitle">{strategies.length} {strategies.length === 1 ? "strategy" : "strategies"} {archiveView === "archived" ? "archived" : archiveView === "all" ? "total" : "active"}</p>
+            </div>
+            {/* Archive filter tabs */}
+            <div style={{ display: "flex", gap: 4, background: "var(--bg-2)", borderRadius: "var(--r-sm)", padding: 4 }}>
+              {(["live", "archived", "all"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setArchiveView(v)}
+                  style={{
+                    fontSize: 12, fontWeight: 500, padding: "4px 12px",
+                    borderRadius: "var(--r-sm)", border: "none", cursor: "pointer",
+                    background: archiveView === v ? "var(--surface)" : "transparent",
+                    color: archiveView === v ? "var(--text)" : "var(--text-3)",
+                    boxShadow: archiveView === v ? "var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.1))" : "none",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {v === "live" ? "Live" : v === "archived" ? "Archived" : "All"}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -1881,6 +1923,9 @@ export default function ContentStrategyPage() {
                     {s.shareToken && (
                       <span className="badge badge-indigo" style={{ fontSize: 11, padding: "2px 8px", marginLeft: 4 }}>Shared</span>
                     )}
+                    {s.status === "archived" && (
+                      <span className="badge badge-slate" style={{ fontSize: 11, padding: "2px 8px", marginLeft: 4 }}>Archived</span>
+                    )}
                     {s.generationStatus === "generating" && (
                       <>
                         <span style={{ color: "var(--text-4)" }}>·</span>
@@ -1924,6 +1969,14 @@ export default function ContentStrategyPage() {
                     disabled={s.generationStatus === "generating" || !s.client}
                   >
                     <ListChecks style={{ width: 15, height: 15 }} />
+                  </button>
+                  <button
+                    onClick={() => handleArchive(s.id, s.status)}
+                    className="btn btn-ghost btn-sm"
+                    title={s.status === "archived" ? "Restore strategy" : "Archive strategy"}
+                    style={{ padding: 8 }}
+                  >
+                    {s.status === "archived" ? <ArchiveRestore style={{ width: 15, height: 15 }} /> : <Archive style={{ width: 15, height: 15 }} />}
                   </button>
                   <button onClick={() => handleDelete(s.id)} className="btn btn-ghost btn-sm" title="Delete" style={{ padding: 8, color: "var(--danger)" }}>
                     <Trash2 style={{ width: 15, height: 15 }} />
