@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionOrCronAuth } from "@/lib/auth";
+import { getSessionCronOrShareAuth, assertShareResourceAccess } from "@/lib/auth";
 import {
   getGoogleAdsOverview,
   getGoogleAdsCampaigns,
@@ -40,7 +40,7 @@ const GADS_CACHE_TTL_HOURS = 4;
 export async function GET(request: NextRequest) {
   return withCacheBypass(request, async () => {
   try {
-    const session = await getSessionOrCronAuth(request);
+    const session = await getSessionCronOrShareAuth(request);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -53,6 +53,11 @@ export async function GET(request: NextRequest) {
     const customerId = searchParams.get("customerId");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+
+    // Share-token sessions may only access the Google Ads account of their bound client.
+    if (!(await assertShareResourceAccess(session, "googleAdsCustomerId", customerId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     if (!customerId || !startDate || !endDate) {
       return NextResponse.json(

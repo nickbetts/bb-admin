@@ -194,3 +194,132 @@ export async function getSessionOrCronAuth(request: Request): Promise<Session | 
 export function hasPermission(session: Session, permission: Permission): boolean {
   return session.user.permissions.includes(permission);
 }
+
+/* --------------------------------------------------------------------------
+ * Share-token auth (public report share links)
+ *
+ * Allows unauthenticated browsers viewing a /share/report/<token> URL to make
+ * read-only data fetches against channel API routes scoped to the report's
+ * client. The token is sent via either a HttpOnly cookie (set by the share
+ * page on first render) or a `?shareToken=` query param.
+ * --------------------------------------------------------------------------*/
+
+export interface ShareSession {
+  kind: "share";
+  reportId: string;
+  clientId: string;
+  shareToken: string;
+}
+
+export const SHARE_TOKEN_COOKIE = "share_report_token";
+
+export async function getShareTokenAuth(request: Request): Promise<ShareSession | null> {
+  let token: string | undefined;
+  // Cookie first (set by share page render)
+  try {
+    const cookieStore = await cookies();
+    token = cookieStore.get(SHARE_TOKEN_COOKIE)?.value;
+  } catch {
+    // cookies() unavailable in some contexts — fall through to query param
+  }
+  // Fallback to query param
+  if (!token) {
+    try {
+      const url = new URL(request.url);
+      token = url.searchParams.get("shareToken") ?? undefined;
+    } catch {
+      // ignore
+    }
+  }
+  if (!token) return null;
+
+  try {
+    const report = await prisma.report.findUnique({
+      where: { shareToken: token },
+      select: { id: true, clientId: true },
+    });
+    if (!report) return null;
+    return { kind: "share", reportId: report.id, clientId: report.clientId, shareToken: token };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Returns either a normal Session or a ShareSession. Use for read-only data
+ * routes that should be reachable by both authed users and public share-link
+ * viewers. Routes MUST gate any clientId lookup with `assertShareClientAccess`
+ * to prevent share-token leakage from being used against other clients.
+ */
+export async function getSessionOrShareAuth(
+  request: Request,
+): Promise<Session | ShareSession | null> {
+  const session = await getSession();
+  if (session) return session;
+  return getShareTokenAuth(request);
+}
+
+/**
+ * Read-only data route auth: accepts cron token, user session, OR share token.
+ * Routes that opt into share-token access MUST also call assertShareClientAccess
+ * (or assertShareResourceAccess) before returning data.
+ */
+export async function getSessionCronOrShareAuth(
+  request: Request,
+): Promise<Session | ShareSession | null> {
+  const cronOrSession = await getSessionOrCronAuth(request);
+  if (cronOrSession) return cronOrSession;
+  return getShareTokenAuth(request);
+}
+
+export function isShareSession(s: Session | ShareSession | null): s is ShareSession {
+  return !!s && (s as ShareSession).kind === "share";
+}
+
+/**
+ * Throws (returns false) if the session is a share session and the requested
+ * clientId is not the one the share token is scoped to. Returns true for
+ * normal authenticated sessions (full access).
+ */
+export function assertShareClientAccess(
+  session: Session | ShareSession,
+  clientId: string | null | undefined,
+): boolean {
+  if (!isShareSession(session)) return true;
+  if (!clientId) return false;
+  return session.clientId === clientId;
+}
+
+/**
+ * For routes that look up data by an identifier other than clientId
+ * (e.g. ga4PropertyId, googleAdsCustomerId, semrushDomain).
+ * Verifies that the resolved record belongs to the share session's client.
+ *
+ * Field must be a Client column that uniquely identifies the resource.
+ * Returns true for normal sessions.
+ */
+export async function assertShareResourceAccess(
+  session: Session | ShareSession,
+  field:
+    | "ga4PropertyId"
+    | "googleAdsCustomerId"
+    | "semrushDomain"
+    | "searchConsoleSiteUrl"
+    | "metaAccountId"
+    | "website",
+  value: string | null | undefined,
+): Promise<boolean> {
+  if (!isShareSession(session)) return true;
+  if (!value) return false;
+  try {
+    const client = await prisma.client.findUnique({
+      where: { id: session.clientId },
+      // Dynamic field selection
+      select: { [field]: true } as Record<string, true>,
+    });
+    if (!client) return false;
+    return (client as Record<string, unknown>)[field] === value;
+  } catch {
+    return false;
+  }
+}

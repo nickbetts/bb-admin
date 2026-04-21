@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionOrCronAuth } from "@/lib/auth";
+import { getSessionCronOrShareAuth, assertShareResourceAccess } from "@/lib/auth";
 import {
   getGSCOverview,
   getGSCTopQueries,
@@ -29,13 +29,18 @@ const GSC_CACHE_TTL_HOURS = 4;
 export async function GET(request: NextRequest) {
   return withCacheBypass(request, async () => {
   try {
-    const session = await getSessionOrCronAuth(request);
+    const session = await getSessionCronOrShareAuth(request);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const siteUrl = searchParams.get("siteUrl");
+
+    // Share-token sessions may only query the Search Console site of their bound client.
+    if (!(await assertShareResourceAccess(session, "searchConsoleSiteUrl", siteUrl))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const type = searchParams.get("type") ?? "overview";
     const startDate = searchParams.get("startDate") ?? "30daysAgo";
     const endDate = searchParams.get("endDate") ?? "today";

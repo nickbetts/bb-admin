@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionOrCronAuth } from "@/lib/auth";
+import { getSessionCronOrShareAuth, assertShareClientAccess } from "@/lib/auth";
 import { getMetaAdsOverview, getMetaCampaigns, getMetaCampaignsEnriched, getMetaDailyData, getMetaLandingPages, getMetaAdSets, getMetaAdCreatives, getMetaAdSetAudiences, getMetaPlacementBreakdown, getMetaAudienceDemographics, getMetaFrequencyDistribution, getMetaLeadGenForms, getMetaAdRelevanceDiagnostics, getMetaCostPerActionType, getMetaProductPerformance, getMetaCountryBreakdown, getMetaAttributionSettings, getMetaActionBreakdowns, getMetaInstantExperienceMetrics, getMetaCustomConversions, getMetaSavedAudiences, getMetaReachEstimate, getMetaCampaignSpendingLimits, getMetaHourlyBreakdown } from "@/lib/meta";
 import { prisma } from "@/lib/prisma";
 import { withApiCache, withCacheBypass } from "@/lib/api-cache";
@@ -11,13 +11,18 @@ const META_CACHE_TTL_HOURS = 4;
 export async function GET(request: NextRequest) {
   return withCacheBypass(request, async () => {
   try {
-    const session = await getSessionOrCronAuth(request);
+    const session = await getSessionCronOrShareAuth(request);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get("clientId");
+
+    // Share-token sessions may only access their bound client.
+    if (!assertShareClientAccess(session, clientId)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const type = searchParams.get("type") ?? "overview";
     const startDate = searchParams.get("startDate") ?? "2024-01-01";
     const endDate = searchParams.get("endDate") ?? new Date().toISOString().split("T")[0];

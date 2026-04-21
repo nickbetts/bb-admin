@@ -303,6 +303,7 @@ function SettingsPanelInner() {
 
 
   const [snapshotRunning, setSnapshotRunning] = useState(false);
+  const [snapshotMonths, setSnapshotMonths] = useState<number>(1);
   const [snapshotResult, setSnapshotResult] = useState<{
     clientsProcessed: number;
     periodsProcessed: number;

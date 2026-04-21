@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionOrCronAuth } from "@/lib/auth";
+import { getSessionCronOrShareAuth, assertShareClientAccess } from "@/lib/auth";
 import { withApiCache, withCacheBypass } from "@/lib/api-cache";
 import { prisma } from "@/lib/prisma";
 import { resolveConfig, filterAlertsByConfig } from "@/lib/signals/defaults";
@@ -181,7 +181,7 @@ async function fetchInternalApi(
 export async function GET(request: NextRequest) {
   return withCacheBypass(request, async () => {
   try {
-    const session = await getSessionOrCronAuth(request);
+    const session = await getSessionCronOrShareAuth(request);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -196,6 +196,10 @@ export async function GET(request: NextRequest) {
         { error: "clientId, startDate, and endDate are required" },
         { status: 400 }
       );
+    }
+
+    if (!assertShareClientAccess(session, clientId)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const cacheKey = `cross:alerts:${clientId}:${startDate}:${endDate}`;

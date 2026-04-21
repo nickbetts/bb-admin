@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
-import { getSessionOrCronAuth } from "@/lib/auth";
+import { getSessionCronOrShareAuth, assertShareResourceAccess } from "@/lib/auth";
 import {
   getDomainOverview,
   getTopOrganicKeywords,
@@ -41,13 +41,18 @@ const SEMRUSH_TRACKING_TTL = 24;
 export async function GET(request: NextRequest) {
   return withCacheBypass(request, async () => {
   try {
-    const session = await getSessionOrCronAuth(request);
+    const session = await getSessionCronOrShareAuth(request);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const domain = searchParams.get("domain");
+
+    // Share-token sessions may only query the SemRush domain of their bound client.
+    if (!(await assertShareResourceAccess(session, "semrushDomain", domain))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const type = searchParams.get("type") ?? "overview";
     const database = searchParams.get("database") ?? "uk";
     const projectId = searchParams.get("projectId");

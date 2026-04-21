@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSessionCronOrShareAuth, assertShareClientAccess } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getOpenAiClient } from "@/lib/openai-client";
 
@@ -68,7 +68,7 @@ function closestSnapshot<
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSession();
+    const session = await getSessionCronOrShareAuth(request);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -80,6 +80,10 @@ export async function GET(request: NextRequest) {
         { error: "clientId query parameter is required" },
         { status: 400 },
       );
+    }
+
+    if (!assertShareClientAccess(session, clientId)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // 1. Find the latest non-draft report
