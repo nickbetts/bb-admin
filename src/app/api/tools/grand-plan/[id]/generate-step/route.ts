@@ -634,6 +634,11 @@ export async function POST(
       return NextResponse.json({ ok: true, step, html: true });
     }
 
+    // Unknown step — mark plan as failed so polling stops
+    await prisma.grandPlan.update({
+      where: { id },
+      data: { status: "failed", statusMessage: null, generationError: `Unknown step: ${step}` },
+    }).catch(() => {});
     return NextResponse.json({ error: `Unknown step: ${step}` }, { status: 400 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
