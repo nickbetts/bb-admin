@@ -317,8 +317,8 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
     .sort((a, b) => {
       if (a.id === "hub") return -1;
       if (b.id === "hub") return 1;
-      const aFav = favTabs.has(a.id) ? 0 : 1;
-      const bFav = favTabs.has(b.id) ? 0 : 1;
+      const aFav = favTabs.has(a.id as Tab) ? 0 : 1;
+      const bFav = favTabs.has(b.id as Tab) ? 0 : 1;
       return aFav - bFav;
     }) as { id: Tab; label: string; available: boolean }[];
 
