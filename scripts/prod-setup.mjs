@@ -743,6 +743,11 @@ async function main() {
       await db.execute('ALTER TABLE "ContentStrategy" ADD COLUMN "generationError" TEXT');
       console.log("✓ Added ContentStrategy.generationError");
     }
+    // Ensure status column exists (added 2026-04-21)
+    if (!(await columnExists("ContentStrategy", "status"))) {
+      await db.execute('ALTER TABLE "ContentStrategy" ADD COLUMN "status" TEXT NOT NULL DEFAULT \'live\'');
+      console.log("✓ Added ContentStrategy.status");
+    }
     console.log("✓ ContentStrategy table up to date");
   }
 
@@ -922,6 +927,14 @@ async function main() {
     console.log("✓ Added LandingPage.publicSlug");
   } else {
     console.log("✓ LandingPage.publicSlug already present");
+  }
+
+  // ── GrandPlan.shareExpiresAt column (added 2026-04-20) ──────────────────
+  if (!(await columnExists("GrandPlan", "shareExpiresAt"))) {
+    await db.execute(`ALTER TABLE "GrandPlan" ADD COLUMN "shareExpiresAt" DATETIME`);
+    console.log("✓ Added GrandPlan.shareExpiresAt");
+  } else {
+    console.log("✓ GrandPlan.shareExpiresAt already present");
   }
 
   // ── GrandPlan.targetAudiences column (added 2026-04-21) ──────────────────
