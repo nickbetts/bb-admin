@@ -56,6 +56,35 @@ const SECTORS = [
   { value: "other", label: "Other" },
 ];
 
+// Platform options. Each platform maps to one or more generator section
+// keys (see src/lib/grand-plan-generator.ts:282-293). Always-on sections
+// like Executive Summary, Strategy Plan, Audiences, Content Calendar,
+// Competitor Intel, Example Articles and Media Plan are added separately
+// regardless of platform selection.
+type PlatformId = "googleAds" | "metaAds" | "linkedInAds" | "organicSocial" | "emailMarketing";
+
+const PLATFORMS: { id: PlatformId; label: string; description: string; sections: string[] }[] = [
+  { id: "googleAds", label: "Google Ads", description: "Search campaigns, RSA ad copy, forecast", sections: ["googleAdsCampaigns", "googleAdsForecast"] },
+  { id: "metaAds", label: "Meta Ads", description: "Facebook & Instagram audience-led campaigns", sections: ["metaCampaigns"] },
+  { id: "linkedInAds", label: "LinkedIn Ads", description: "B2B targeting and ad mockups", sections: ["linkedInAds"] },
+  { id: "organicSocial", label: "Organic Social", description: "Content pillars and posting cadence", sections: ["organicSocial"] },
+  { id: "emailMarketing", label: "Email Marketing", description: "Lifecycle and nurture flows", sections: ["emailMarketing"] },
+];
+
+// Sections that should always run (independent of platform selection).
+const ALWAYS_ON_SECTIONS = [
+  "executiveSummary",
+  "strategyPlan",
+  "audiences",
+  "contentCalendar",
+  "exampleArticles",
+  "competitorIntel",
+  "mediaPlan",
+  "contentStrategy",
+  "keywordResearch",
+  "servicesInvestment",
+];
+
 export default function NewGrandPlanPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -88,6 +117,13 @@ export default function NewGrandPlanPage() {
 
   // Target audiences
   const [targetAudiences, setTargetAudiences] = useState("");
+
+  // Platforms — controls which paid/organic channels the AI focuses on
+  const [platforms, setPlatforms] = useState<PlatformId[]>(["googleAds", "metaAds", "linkedInAds", "organicSocial", "emailMarketing"]);
+
+  function togglePlatform(id: PlatformId) {
+    setPlatforms((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
+  }
 
   // Focus periods
   const [focusPeriods, setFocusPeriods] = useState<FocusPeriod[]>([]);
@@ -144,6 +180,13 @@ export default function NewGrandPlanPage() {
     if (!title) return;
     setCreating(true);
     try {
+      // Build the section enable list from selected platforms + always-on
+      // sections, so the generator knows exactly what to produce.
+      const platformSections = platforms.flatMap(
+        (id) => PLATFORMS.find((p) => p.id === id)?.sections ?? [],
+      );
+      const enabledSections = Array.from(new Set([...ALWAYS_ON_SECTIONS, ...platformSections]));
+
       const res = await fetch("/api/tools/grand-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -159,6 +202,7 @@ export default function NewGrandPlanPage() {
           sector: sector || undefined,
           campaignFocusPeriods: focusPeriods.filter((fp) => fp.label),
           config: {
+            sections: enabledSections,
             ...(sector ? { sector } : {}),
             ...(!selectedKwResearch && website ? { kwBrief: { website, brief, monthlyBudget } } : {}),
             ...(!selectedContentStrategy && domain ? { contentBrief: { domain, database: csDatabase, brief, competitors: csCompetitors } } : {}),
@@ -291,6 +335,59 @@ export default function NewGrandPlanPage() {
                 placeholder="Describe the key audiences the AI should keep in mind — e.g. 'Parents of children aged 6-16 looking for football coaching', 'School PE coordinators seeking holiday camps'. Used across all AI-generated sections."
                 style={{ minHeight: 80 }}
               />
+            </div>
+
+            {/* Platforms */}
+            <div>
+              <label className="form-label">Platforms</label>
+              <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 10, marginTop: -4 }}>
+                Choose which channels the plan should focus on. Sections for unselected platforms are skipped.
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
+                {PLATFORMS.map((p) => {
+                  const checked = platforms.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => togglePlatform(p.id)}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 10,
+                        padding: "12px 14px",
+                        borderRadius: "var(--r-sm)",
+                        border: `1.5px solid ${checked ? "var(--accent)" : "var(--border)"}`,
+                        background: checked ? "var(--accent-bg)" : "var(--white, #fff)",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: 5,
+                          border: `1.5px solid ${checked ? "var(--accent)" : "var(--border)"}`,
+                          background: checked ? "var(--accent)" : "transparent",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          marginTop: 1,
+                        }}
+                      >
+                        {checked && <Check style={{ width: 11, height: 11, color: "white" }} />}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{p.label}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{p.description}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -474,29 +571,39 @@ export default function NewGrandPlanPage() {
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {[
-              { label: "Executive Summary", ai: true },
-              { label: "Strategy Plan", ai: true },
-              { label: "Google Ads + Ad Copy", ai: !hasLinkedKw },
-              { label: "Keyword Research", ai: !hasLinkedKw },
-              { label: "Meta Campaigns", ai: true },
-              { label: "Content Strategy", ai: !hasLinkedCs },
-              { label: "Content Calendar", ai: true },
-              { label: "Organic Social", ai: true },
-              { label: "Example Articles", ai: true },
-              ...(generateLandingPage ? [{ label: "Landing Page", ai: true }] : []),
-            ].map((item) => (
-              <span key={item.label} style={{
-                padding: "4px 12px", borderRadius: "var(--r-sm)", fontSize: 12, fontWeight: 500,
-                background: item.ai ? "var(--accent-bg)" : "#d1fae5",
-                color: item.ai ? "var(--accent)" : "#059669",
-                display: "inline-flex", alignItems: "center",
-              }}>
-                {item.ai
-                  ? <Sparkles style={{ width: 10, height: 10, marginRight: 4 }} />
-                  : <LinkIcon style={{ width: 10, height: 10, marginRight: 4 }} />}
-                {item.label}
-              </span>
-            ))}
+              { label: "Executive Summary", ai: true, on: true },
+              { label: "Strategy Plan", ai: true, on: true },
+              { label: "Audiences", ai: true, on: true },
+              { label: "Google Ads + Ad Copy", ai: !hasLinkedKw, on: platforms.includes("googleAds") },
+              { label: "Keyword Research", ai: !hasLinkedKw, on: true },
+              { label: "Meta Campaigns", ai: true, on: platforms.includes("metaAds") },
+              { label: "LinkedIn Ads", ai: true, on: platforms.includes("linkedInAds") },
+              { label: "Content Strategy", ai: !hasLinkedCs, on: true },
+              { label: "Content Calendar", ai: true, on: true },
+              { label: "Organic Social", ai: true, on: platforms.includes("organicSocial") },
+              { label: "Email Marketing", ai: true, on: platforms.includes("emailMarketing") },
+              { label: "Example Articles", ai: true, on: true },
+              ...(generateLandingPage ? [{ label: "Landing Page", ai: true, on: true }] : []),
+            ]
+              .filter((item) => item.on)
+              .map((item) => (
+                <span
+                  key={item.label}
+                  style={{
+                    padding: "4px 12px",
+                    borderRadius: "var(--r-sm)",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    background: item.ai ? "var(--accent-bg)" : "#d1fae5",
+                    color: item.ai ? "var(--accent)" : "#059669",
+                    display: "inline-flex",
+                    alignItems: "center",
+                  }}
+                >
+                  {item.ai ? <Sparkles style={{ width: 10, height: 10, marginRight: 4 }} /> : <LinkIcon style={{ width: 10, height: 10, marginRight: 4 }} />}
+                  {item.label}
+                </span>
+              ))}
           </div>
         </div>
       </div>

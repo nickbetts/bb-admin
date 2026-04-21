@@ -9,7 +9,11 @@ import { getAnthropicClient } from "@/lib/anthropic-client";
 import type { BrandContext } from "@/lib/brand-extractor";
 
 const MODEL = "claude-sonnet-4-6";
-const MAX_TOKENS = 16000;
+// Sonnet 4.6 supports up to 64K output tokens. A fully-populated landing
+// page (hero + social proof + 3-4 benefits + how-it-works + testimonials
+// + offer + FAQ + final CTA + footer) routinely exceeds 16K. 32K gives
+// comfortable headroom so the page never truncates after the hero.
+const MAX_TOKENS = 32000;
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -287,6 +291,21 @@ export async function generateLandingPage(opts: GenerateLPOptions): Promise<stri
 
   // Strip markdown fences if Claude wraps output
   html = stripMarkdownFences(html);
+
+  // Surface truncation: if Claude hit max_tokens or the HTML doesn't end
+  // with a closing </html> tag, the page will visually "die" partway down.
+  // Log loudly so it's visible in lambda logs.
+  if (response.stop_reason === "max_tokens") {
+    console.warn(
+      `[lp-generator] Output truncated at max_tokens (${MAX_TOKENS}). ` +
+        `HTML length: ${html.length} chars. Consider raising MAX_TOKENS or simplifying the brief.`,
+    );
+  } else if (!/<\/html>\s*$/i.test(html)) {
+    console.warn(
+      `[lp-generator] HTML does not end with </html> (stop_reason: ${response.stop_reason}). ` +
+        `Length: ${html.length} chars. Output may be incomplete.`,
+    );
+  }
 
   return html;
 }

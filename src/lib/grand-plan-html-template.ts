@@ -1049,7 +1049,8 @@ function renderLandingPage(data: { html: string; campaignType: string }): string
         <div class="lp-toolbar">
           <span class="lp-dot"></span><span class="lp-dot"></span><span class="lp-dot"></span>
           <span class="lp-url-bar">landing-page-preview</span>
-          <button class="lp-expand-btn" onclick="(function(el){var f=el.closest('.lp-frame-wrap');f.classList.toggle('lp-expanded')})(this)">⤢</button>
+          <button class="lp-open-btn" data-lp-open="true" title="Open full page in new tab">↗ Open</button>
+          <button class="lp-expand-btn" onclick="(function(el){var f=el.closest('.lp-frame-wrap');f.classList.toggle('lp-expanded')})(this)" title="Expand to full screen">⤢</button>
         </div>
         <iframe class="lp-iframe" srcdoc="" data-lp-html="${encoded}" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>
       </div>
@@ -1375,9 +1376,10 @@ a{color:var(--blue);text-decoration:none}
 .lp-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.15)}
 .lp-dot:first-child{background:#ff5f57}.lp-dot:nth-child(2){background:#ffbd2e}.lp-dot:nth-child(3){background:#28c840}
 .lp-url-bar{flex:1;background:rgba(255,255,255,.1);border-radius:6px;padding:4px 12px;font-size:11px;color:rgba(255,255,255,.5);font-family:monospace}
-.lp-expand-btn{background:none;border:none;color:rgba(255,255,255,.5);font-size:16px;cursor:pointer;padding:4px 8px;border-radius:4px;transition:all .15s}
-.lp-expand-btn:hover{color:#fff;background:rgba(255,255,255,.1)}
-.lp-iframe{width:100%;height:700px;border:none;background:#fff}
+.lp-expand-btn,.lp-open-btn{background:none;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);font-size:12px;font-weight:500;cursor:pointer;padding:4px 10px;border-radius:6px;transition:all .15s;font-family:inherit}
+.lp-expand-btn{font-size:14px;padding:4px 8px}
+.lp-expand-btn:hover,.lp-open-btn:hover{color:#fff;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3)}
+.lp-iframe{width:100%;height:1100px;border:none;background:#fff;display:block}
 .lp-frame-wrap.lp-expanded .lp-iframe{height:calc(100vh - 42px)}
 /* Email marketing */
 .em-flow{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:8px;background:var(--white)}
@@ -1753,11 +1755,27 @@ document.querySelectorAll('.snav-link').forEach(function(link){
   sections.forEach(function(s){observer.observe(s);});
 })();
 
-// Decode and inject landing page iframe content
+// Decode and inject landing page iframe content. Wire up the "Open in
+// new tab" button so users can view the full page outside the embedded
+// iframe (which has a fixed height for layout reasons).
 document.querySelectorAll('.lp-iframe[data-lp-html]').forEach(function(iframe){
   try{
     var encoded=iframe.getAttribute('data-lp-html');
-    if(encoded){iframe.srcdoc=atob(encoded);}
+    if(!encoded)return;
+    var html=atob(encoded);
+    iframe.srcdoc=html;
+    var wrap=iframe.closest('.lp-frame-wrap');
+    var openBtn=wrap&&wrap.querySelector('[data-lp-open]');
+    if(openBtn){
+      openBtn.addEventListener('click',function(){
+        try{
+          var blob=new Blob([html],{type:'text/html'});
+          var url=URL.createObjectURL(blob);
+          window.open(url,'_blank','noopener,noreferrer');
+          setTimeout(function(){URL.revokeObjectURL(url);},60000);
+        }catch(err){console.error('LP open error:',err);}
+      });
+    }
   }catch(e){console.error('LP decode error:',e);}
 });
 `;
