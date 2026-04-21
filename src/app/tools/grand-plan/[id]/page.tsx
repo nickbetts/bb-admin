@@ -171,7 +171,16 @@ export default function GrandPlanViewPage({ params }: Props) {
 
   function startPolling() {
     if (pollRef.current) return;
+    let pollCount = 0;
     pollRef.current = setInterval(async () => {
+      // Safety cap: stop polling after 10 minutes (200 × 3s) to prevent infinite loops
+      if (++pollCount > 200) {
+        if (pollRef.current) clearInterval(pollRef.current);
+        pollRef.current = null;
+        setGenerating(false);
+        setGenerationMessage("Generation timed out. Please try again.");
+        return;
+      }
       try {
         const res = await fetch(`/api/tools/grand-plan/${id}`);
         if (!res.ok) return;
@@ -246,9 +255,13 @@ export default function GrandPlanViewPage({ params }: Props) {
       setGenerationMessage("Complete!");
       await loadPlan();
     } catch (error) {
+      // Stop polling immediately — the plan may still be in "generating" on the server
+      // (e.g. a 400 early-return that didn't update status). Without this, loadPlan()
+      // below would see status=generating and restart the poll indefinitely.
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
       const message = error instanceof Error ? error.message : "Generation failed";
       setGenerationMessage(`Error: ${message}`);
-      // Reload plan to get the failed status
+      // Reload plan to get the accurate server status
       await loadPlan();
     } finally {
       setGenerating(false);

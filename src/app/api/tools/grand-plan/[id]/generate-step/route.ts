@@ -581,6 +581,10 @@ export async function POST(
 
       const planData = safeJsonParse<GrandPlanData | null>(freshPlan.planDataJson, null);
       if (!planData) {
+        await prisma.grandPlan.update({
+          where: { id },
+          data: { status: "failed", generationError: "No plan data found at assemble step. Please regenerate." },
+        }).catch(() => {});
         return NextResponse.json({ error: "No plan data to assemble" }, { status: 400 });
       }
 
