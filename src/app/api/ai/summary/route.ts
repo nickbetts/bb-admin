@@ -2,8 +2,123 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 import { getSeasonalityContext } from "@/lib/seasonality";
+import { resolveConfig, type ResolvedSignalConfig } from "@/lib/signals/defaults";
+import { AlertRecommendationsSchema, validateAiJson } from "@/lib/ai/schemas";
+import { getSession } from "@/lib/auth";
+import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 
 export const dynamic = "force-dynamic";
+
+// ─── Per-alert metadata used by the direction-sanity guard ───────────────────
+// When a caller produces alerts via `src/lib/signals/detect.ts`, every alert
+// carries the typed signal fields. The recommendation pipeline uses them to:
+//   1. Tell the LLM EXACTLY which way the metric should move (no example imitation).
+//   2. Strip recommendations whose imperative verb contradicts `desiredDirection`.
+//   3. Suppress recommendations whose current value is already on the right side
+//      of the benchmark (root cause of the original "reduce 2.6× to under 3×" bug).
+interface AlertSignalMeta {
+  id?: string;                                // stable signal ID, e.g. "meta.campaign.fatigue"
+  currentValue?: number;
+  benchmarkValue?: number;
+  desiredDirection?: "up" | "down";
+  unit?: string;
+}
+type AlertInput = {
+  severity: string;
+  level?: string;
+  label?: string;
+  metric?: string;
+  detail: string;
+  platform?: string;
+} & AlertSignalMeta;
+
+/** Verbs whose direction we can confidently classify. */
+const DOWN_VERBS = ["reduce", "pause", "remove", "cut", "lower", "decrease", "archive", "drop", "shrink"];
+const UP_VERBS = ["increase", "expand", "scale", "raise", "boost", "grow", "lift", "add"];
+
+function recDirection(rec: string): "up" | "down" | null {
+  const lower = rec.toLowerCase().replace(/\*/g, "").trim();
+  // Match the first imperative verb (after optional "**").
+  for (const v of DOWN_VERBS) if (lower.startsWith(v + " ") || lower.startsWith(v + ":")) return "down";
+  for (const v of UP_VERBS) if (lower.startsWith(v + " ") || lower.startsWith(v + ":")) return "up";
+  return null;
+}
+
+/**
+ * Strip recommendations that contradict the alert's `desiredDirection`, and
+ * blank out recommendations for alerts whose current value is already on the
+ * right side of the benchmark. Returns the same-length array (empty string ⇒
+ * no rec) so callers preserve alert ordering.
+ */
+function applyDirectionSanity(recs: string[], alerts: AlertInput[]): string[] {
+  return recs.map((rec, i) => {
+    const a = alerts[i];
+    if (!rec || !a) return rec ?? "";
+    // Already healthy → suppress
+    if (
+      a.desiredDirection &&
+      typeof a.currentValue === "number" &&
+      typeof a.benchmarkValue === "number"
+    ) {
+      const onRightSide =
+        (a.desiredDirection === "down" && a.currentValue <= a.benchmarkValue) ||
+        (a.desiredDirection === "up" && a.currentValue >= a.benchmarkValue);
+      if (onRightSide) return "";
+    }
+    // Contradictory verb → blank
+    const dir = recDirection(rec);
+    if (a.desiredDirection && dir && dir !== a.desiredDirection) return "";
+    return rec;
+  });
+}
+
+/**
+ * Load and resolve a client's signal config + AI instructions + active goals.
+ * Cheap helper used by both `alert_recommendations` and `holistic_game_plan`.
+ */
+async function loadClientAiContext(clientId: string | undefined): Promise<{
+  config: ResolvedSignalConfig;
+  aiInstructions: string;
+  goalsContext: string;
+}> {
+  const empty = { config: resolveConfig(null), aiInstructions: "", goalsContext: "" };
+  if (!clientId) return empty;
+  try {
+    const [client, goals] = await Promise.all([
+      prisma.client.findUnique({
+        where: { id: clientId },
+        select: { aiReportInstructions: true, signalConfig: true },
+      }),
+      prisma.clientGoal.findMany({
+        where: { clientId, status: { in: ["active", "at_risk"] } },
+        select: { title: true, metric: true, targetValue: true, currentValue: true, unit: true, status: true },
+        take: 8,
+      }),
+    ]);
+    const config = resolveConfig(client?.signalConfig ?? null);
+    const aiInstructions = client?.aiReportInstructions ?? "";
+    const goalsContext = goals.length
+      ? "\n\nACTIVE CLIENT GOALS:\n" + goals.map((g) => {
+          const cur = g.currentValue != null ? `${g.currentValue}${g.unit ?? ""}` : "n/a";
+          const tgt = `${g.targetValue}${g.unit ?? ""}`;
+          return `• ${g.title} (${g.metric}): ${cur} → target ${tgt}${g.status === "at_risk" ? " [AT RISK]" : ""}`;
+        }).join("\n")
+      : "";
+    return { config, aiInstructions, goalsContext };
+  } catch {
+    return empty;
+  }
+}
+
+/** Compact one-line summary of resolved config for prompt injection. */
+function configBriefForPrompt(cfg: ResolvedSignalConfig): string {
+  const parts: string[] = [];
+  parts.push(`primaryKpi=${cfg.primaryKpi}`);
+  parts.push(`tracksRevenue=${cfg.tracksRevenue}`);
+  parts.push(`tracksConversions=${cfg.tracksConversions}`);
+  if (cfg.sector) parts.push(`sector=${cfg.sector}`);
+  return parts.join(", ");
+}
 
 interface Anomaly {
   metric: string;
@@ -326,7 +441,11 @@ const SECTION_CONFIGS: Record<
   meta: {
     name: "Meta Ads",
     higherIsBetter: ["totalClicks", "totalConversions", "avgRoas", "avgCtr", "totalConversionValue", "reach", "outboundClicks", "landingPageViews"],
-    lowerIsBetter: ["avgCpc", "avgCpm", "avgFrequency"],
+    // NOTE: avgFrequency intentionally NOT in lowerIsBetter. Frequency naturally varies with
+    // campaign maturity / audience size and only matters in absolute terms (>3.5× = fatigue risk).
+    // Period-over-period frequency changes are not anomalies on their own — fatigue is detected
+    // at the campaign level via detectMetaCampaignAnomalies() using an absolute threshold.
+    lowerIsBetter: ["avgCpc", "avgCpm"],
     metricLabels: {
       totalSpend: "Total Spend",
       totalImpressions: "Impressions",
@@ -370,7 +489,8 @@ const SECTION_CONFIGS: Record<
   tiktok: {
     name: "TikTok Ads",
     higherIsBetter: ["clicks", "impressions", "conversions", "videoViews", "reach"],
-    lowerIsBetter: ["cpc", "cpm", "costPerConversion", "frequency"],
+    // NOTE: frequency intentionally NOT in lowerIsBetter — see meta config for rationale.
+    lowerIsBetter: ["cpc", "cpm", "costPerConversion"],
     metricLabels: {
       spend: "Total Spend",
       impressions: "Impressions",
@@ -600,6 +720,11 @@ function detectLandingPageAnomalies(pages: LandingPageContext[]): Anomaly[] {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const rl = enforceAiRateLimit(session.user.id);
+    if (!rl.ok) return rl.response!;
+
     const body = await request.json() as {
       sectionType: string;
       metrics: Record<string, number>;
@@ -636,7 +761,7 @@ export async function POST(request: NextRequest) {
     // channel-appropriate persona so suggestions are always relevant to that platform.
     if (sectionType === "alert_recommendations") {
       const alerts = (body as unknown as {
-        alerts?: Array<{ severity: string; level?: string; label?: string; metric?: string; detail: string; platform?: string }>;
+        alerts?: AlertInput[];
         campaignPlatform?: string;
         channelType?: string;
         channelContext?: string;
@@ -646,6 +771,36 @@ export async function POST(request: NextRequest) {
       const channelContext = (body as unknown as { channelContext?: string }).channelContext ?? "";
 
       if (!alerts.length) return NextResponse.json({ recommendations: [] });
+
+      // Load client config + AI instructions + goals up-front so we can both
+      // (a) suppress muted signals before they reach the LLM and (b) tell the
+      // LLM about the client's primary KPI / business model.
+      const { config: clientCfg, aiInstructions, goalsContext } = await loadClientAiContext(clientId);
+
+      // Pre-filter: drop muted signals and signals where the value is already healthy.
+      const filteredIdx: number[] = [];
+      const filteredAlerts: AlertInput[] = [];
+      alerts.forEach((a, i) => {
+        if (a.id && clientCfg.mutedSignals.has(a.id)) return;
+        // Suppress ROAS / conversion-tracking signals when the client doesn't track them.
+        if (!clientCfg.tracksRevenue && /roas/i.test(a.metric ?? "")) return;
+        if (!clientCfg.tracksConversions && /conversion/i.test(a.metric ?? "")) return;
+        if (
+          a.desiredDirection &&
+          typeof a.currentValue === "number" &&
+          typeof a.benchmarkValue === "number"
+        ) {
+          const onRightSide =
+            (a.desiredDirection === "down" && a.currentValue <= a.benchmarkValue) ||
+            (a.desiredDirection === "up" && a.currentValue >= a.benchmarkValue);
+          if (onRightSide) return;
+        }
+        filteredAlerts.push(a);
+        filteredIdx.push(i);
+      });
+
+      // If everything was filtered out, return empty recs in the original shape.
+      if (!filteredAlerts.length) return NextResponse.json({ recommendations: alerts.map(() => "") });
 
       const openai2 = await getOpenAiClient();
 
@@ -827,15 +982,28 @@ AVAILABLE LEVERS: channel budget reallocation based on revenue contribution, ema
         ? buildCampaignSummaryText(campaignPlatform, campaignData)
         : "";
 
-      const alertList = alerts
-        .map((a, i) =>
-          `${i + 1}. [${(a.severity ?? "").toUpperCase()}]${a.level ? ` [${a.level}]` : ""} "${a.label ?? ""}" — ${a.detail}`
-        )
+      const alertList = filteredAlerts
+        .map((a, i) => {
+          const meta: string[] = [];
+          if (typeof a.currentValue === "number") meta.push(`current=${a.currentValue}${a.unit ?? ""}`);
+          if (typeof a.benchmarkValue === "number") meta.push(`benchmark=${a.benchmarkValue}${a.unit ?? ""}`);
+          if (a.desiredDirection) meta.push(`desiredDirection=${a.desiredDirection}`);
+          const metaStr = meta.length ? ` { ${meta.join(", ")} }` : "";
+          return `${i + 1}. [${(a.severity ?? "").toUpperCase()}]${a.level ? ` [${a.level}]` : ""} "${a.label ?? ""}" — ${a.detail}${metaStr}`;
+        })
         .join("\n");
 
       const contextBlock = [channelContext, campaignCtxText].filter(Boolean).join("\n\n");
 
+      const clientContextBlock = [
+        `Client business model: ${configBriefForPrompt(clientCfg)}`,
+        aiInstructions ? `Client-specific guidance:\n${aiInstructions}` : "",
+        goalsContext.trim(),
+      ].filter(Boolean).join("\n\n");
+
       const recPrompt = `Client: ${clientName ?? "client"} | Period: ${dateRange ?? "selected period"}
+
+${clientContextBlock}
 
 For each numbered alert below, write ONE specific, immediately actionable recommendation (1–2 sentences max).
 
@@ -843,10 +1011,16 @@ MANDATORY FORMAT RULES:
 1. ALWAYS begin with a bold imperative verb: **Increase**, **Pause**, **Reduce**, **Add**, **Update**, **Remove**, **Switch**, **Expand**, **Archive**, **Restructure**. A recommendation that starts with "Investigate", "Review", "Examine", "Assess", "Monitor", "Evaluate", or "Consider" is INVALID and must be rewritten.
 2. Use EXACT numbers from the alert and context. If daily budget is £20.00 and 27% IS is lost to budget, write: "**Increase** daily budget for '[campaign name]' from £20.00 to £27.00/day — this is losing 27% of eligible impressions purely due to budget cap."
 3. Name specific campaigns, ad sets, ads, and queries by their exact names from the data. Never write "the campaign" when you know its name.
-4. State the expected outcome: "…recovering approximately 27% of lost impression share" or "…reducing frequency from 4.1× to under 3×".
-5. If the signal genuinely requires investigation before a fix, still start with the action: "**Check** GA4 → Acquisition → Traffic Sources for [date range] — the 95% session drop suggests a tracking break or paid channel going dark; if confirmed, [specific fix]."
-6. Do NOT fabricate numbers or metrics not present in the data.
-7. British English at all times.
+4. State the expected outcome with numbers that ACTUALLY MOVE IN THE RIGHT DIRECTION:
+   - Each alert may carry a "current / benchmark / desiredDirection" block. The recommendation MUST move "current" toward "benchmark" in "desiredDirection". If "current" is already on the correct side of "benchmark", output an EMPTY STRING for that alert — do not invent a recommendation.
+   - For "**Increase**" / "**Expand**" the new value MUST be greater than the current value.
+   - For "**Reduce**" / "**Pause**" / "**Remove**" the new value MUST be lower than the current value.
+   - NEVER write "reduce X from 2.6× to under 3×" — 2.6 is already under 3, so there is nothing to reduce. Output an empty string instead.
+   - Reference benchmarks only when the current value is on the wrong side of them.
+5. The client business model line above tells you whether ROAS / conversion-tracking apply. If the client does NOT track revenue, do not phrase recommendations around ROAS — pivot to CPA, CPL, engagement, or whichever metric matches the primary KPI. Honour the client-specific guidance verbatim where given.
+6. If the signal genuinely requires investigation before a fix, still start with the action: "**Check** GA4 → Acquisition → Traffic Sources for [date range] — the 95% session drop suggests a tracking break or paid channel going dark; if confirmed, [specific fix]."
+7. Do NOT fabricate numbers or metrics not present in the data. Do NOT invent benchmarks. Do NOT cite a number from the context block as a "problem to fix" if it is already healthy.
+8. British English at all times.
 
 ${contextBlock ? `Channel data:\n${contextBlock}\n` : ""}
 Alerts:
@@ -866,23 +1040,68 @@ One string per alert, same order. British English.`;
         temperature: 0.3,
       });
 
-      let recs: { recommendations?: string[] } = {};
-      try { recs = JSON.parse(comp2.choices[0]?.message?.content ?? "{}"); } catch { /* */ }
-      return NextResponse.json({ recommendations: recs.recommendations ?? alerts.map(() => "") });
+      // Validate against schema. On failure, retry once with a stricter nudge.
+      let validated = validateAiJson(
+        AlertRecommendationsSchema,
+        comp2.choices[0]?.message?.content ?? null,
+      );
+      if (!validated.ok) {
+        console.warn("[ai/summary] alert_recommendations schema fail, retrying:", validated.error);
+        const retry = await openai2.chat.completions.create({
+          model: "gpt-5.4-nano",
+          messages: [
+            { role: "system", content: systemPrompt + "\nReturn ONLY a JSON object exactly matching: { \"recommendations\": string[] }. No prose, no fences." },
+            { role: "user", content: recPrompt },
+          ],
+          response_format: { type: "json_object" },
+          max_completion_tokens: Math.max(1500, alerts.length * 180),
+          temperature: 0.2,
+        });
+        validated = validateAiJson(
+          AlertRecommendationsSchema,
+          retry.choices[0]?.message?.content ?? null,
+        );
+      }
+      const recs = validated.ok ? validated.data : { recommendations: filteredAlerts.map(() => "") };
+
+      // Apply direction-sanity guard against the FILTERED alerts (same indexing).
+      const guardedFiltered = applyDirectionSanity(
+        recs.recommendations ?? filteredAlerts.map(() => ""),
+        filteredAlerts,
+      );
+
+      // Remap back to the original alerts array — anything we filtered out
+      // earlier returns an empty string so the caller's indexing stays intact.
+      const finalRecs = alerts.map(() => "");
+      filteredIdx.forEach((origIdx, i) => {
+        finalRecs[origIdx] = guardedFiltered[i] ?? "";
+      });
+      return NextResponse.json({ recommendations: finalRecs });
     }
 
     // ── Holistic Game Plan — cross-channel unified strategy ────────────────────
     if (sectionType === "holistic_game_plan") {
       const alerts = (body as unknown as {
-        alerts?: Array<{ platform: string; severity: string; level?: string; label?: string; metric?: string; detail: string; direction?: string; recommendation?: string }>;
+        alerts?: Array<{ platform: string; severity: string; level?: string; label?: string; metric?: string; detail: string; direction?: string; recommendation?: string; id?: string }>;
         crossPlatformContext?: string;
       }).alerts ?? [];
 
       if (!alerts.length) return NextResponse.json({ gamePlan: "" });
 
+      // Pull client config + AI instructions + goals so the game plan respects
+      // the client's primary KPI, muted signals, and bespoke guidance.
+      const { config: clientCfg, aiInstructions, goalsContext } = await loadClientAiContext(clientId);
+      const filteredGpAlerts = alerts.filter((a) => {
+        if (a.id && clientCfg.mutedSignals.has(a.id)) return false;
+        if (!clientCfg.tracksRevenue && /roas/i.test(a.metric ?? "")) return false;
+        if (!clientCfg.tracksConversions && /conversion/i.test(a.metric ?? "")) return false;
+        return true;
+      });
+      if (!filteredGpAlerts.length) return NextResponse.json({ gamePlan: "" });
+
       const openaiGP = await getOpenAiClient();
 
-      const signalSummary = alerts
+      const signalSummary = filteredGpAlerts
         .map((a, i) =>
           `${i + 1}. [${(a.severity ?? "").toUpperCase()}] [${a.platform}]${a.level ? ` [${a.level}]` : ""} "${a.label ?? a.metric ?? ""}" — ${a.detail}${a.recommendation ? `\n   Current recommendation: ${a.recommendation}` : ""}`
         )
@@ -890,15 +1109,24 @@ One string per alert, same order. British English.`;
 
       const crossCtx = (body as unknown as { crossPlatformContext?: string }).crossPlatformContext ?? "";
 
+      const clientContextBlock = [
+        `Client business model: ${configBriefForPrompt(clientCfg)}`,
+        aiInstructions ? `Client-specific guidance:\n${aiInstructions}` : "",
+        goalsContext.trim(),
+      ].filter(Boolean).join("\n\n");
+
       const gamePlanPrompt = `You are a senior digital marketing strategist at a UK performance marketing agency. You have been given ALL the signals detected across ALL channels for a client. Your job is to synthesise these into a single, unified game plan — NOT repeat each signal individually.
 
 Client: ${clientName ?? "client"} | Period: ${dateRange ?? "selected period"}
+
+${clientContextBlock}
 
 ${crossCtx ? `Cross-platform performance:\n${crossCtx}\n` : ""}
 ALL DETECTED SIGNALS:
 ${signalSummary}
 
 INSTRUCTIONS:
+0. The client business model line above is authoritative. If the client does NOT track revenue, do not centre the plan on ROAS — anchor it on the listed primary KPI (CPL, leads, calls, awareness, etc.). Honour the client-specific guidance verbatim.
 1. Group related signals together (e.g. multiple budget-constrained campaigns, multiple audience exclusion issues, related metric movements).
 2. Identify cross-channel connections (e.g. "Meta reach is down 42.7% but conversions are up 65.7% — the campaign is narrowing to higher-intent audiences, which is positive").
 3. Produce a PRIORITISED ACTION PLAN with 3–6 concrete actions, ordered by impact.

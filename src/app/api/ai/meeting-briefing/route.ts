@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
+import { MeetingBriefingSchema, validateAiJson } from "@/lib/ai/schemas";
 import { prisma } from "@/lib/prisma";
 import { getOpenAiClient } from "@/lib/openai-client";
 
@@ -11,6 +13,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const rl = enforceAiRateLimit(session.user.id); if (!rl.ok) return rl.response!;
 
     const body = await request.json() as { clientId: string; stream?: boolean };
     const { clientId } = body;
@@ -213,10 +216,12 @@ Generate the meeting briefing JSON now.`;
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
-    let briefing;
-    try {
-      briefing = JSON.parse(raw);
-    } catch {
+    const validated = validateAiJson(MeetingBriefingSchema, raw);
+    let briefing: Record<string, unknown>;
+    if (validated.ok) {
+      briefing = validated.data as Record<string, unknown>;
+    } else {
+      console.warn("[ai/meeting-briefing] schema validation failed:", validated.error);
       briefing = {
         wins: [],
         decisionsNeeded: [],

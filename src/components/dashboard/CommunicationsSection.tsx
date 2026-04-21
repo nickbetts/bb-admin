@@ -122,7 +122,10 @@ export function CommunicationsSection({ clientId }: CommunicationsSectionProps) 
     setLoading(true);
     try {
       const res = await fetch(`/api/clients/${clientId}/communications`);
-      if (res.ok) setComms(await res.json() as Communication[]);
+      if (res.ok) {
+        const json = await res.json() as { items: Communication[]; nextCursor: string | null; hasMore: boolean };
+        setComms(json.items ?? []);
+      }
     } catch { /* ignore */ } finally {
       setLoading(false);
     }

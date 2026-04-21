@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
+import { BudgetAdvisorSchema, validateAiJson } from "@/lib/ai/schemas";
 import { prisma } from "@/lib/prisma";
 import { getOpenAiClient } from "@/lib/openai-client";
 
@@ -26,6 +28,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const rl = enforceAiRateLimit(session.user.id); if (!rl.ok) return rl.response!;
 
     const { clientId, campaigns, periodStart, periodEnd, ecommerceData } = await request.json() as {
       clientId: string;
@@ -122,11 +125,12 @@ Respond with JSON only — no markdown, no code fences:
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
-    let result;
-    try {
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      result = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
-    } catch {
+    const validated = validateAiJson(BudgetAdvisorSchema, raw);
+    let result: Record<string, unknown>;
+    if (validated.ok) {
+      result = validated.data as Record<string, unknown>;
+    } else {
+      console.warn("[ai/budget-advisor] schema validation failed:", validated.error);
       result = { recommendations: [], summary: raw };
     }
 
@@ -140,7 +144,7 @@ Respond with JSON only — no markdown, no code fences:
         periodStart: start,
         periodEnd: end,
         recommendations: JSON.stringify(result.recommendations ?? []),
-        summary: result.summary ?? null,
+        summary: typeof result.summary === "string" ? result.summary : null,
       },
     });
 

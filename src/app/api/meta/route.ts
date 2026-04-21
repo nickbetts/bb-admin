@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { getMetaAdsOverview, getMetaCampaigns, getMetaCampaignsEnriched, getMetaDailyData, getMetaLandingPages, getMetaAdSets, getMetaAdCreatives, getMetaAdSetAudiences, getMetaPlacementBreakdown, getMetaAudienceDemographics, getMetaFrequencyDistribution, getMetaLeadGenForms, getMetaAdRelevanceDiagnostics, getMetaCostPerActionType, getMetaProductPerformance, getMetaCountryBreakdown, getMetaAttributionSettings, getMetaActionBreakdowns, getMetaInstantExperienceMetrics, getMetaCustomConversions, getMetaSavedAudiences, getMetaReachEstimate, getMetaCampaignSpendingLimits, getMetaHourlyBreakdown } from "@/lib/meta";
 import { prisma } from "@/lib/prisma";
-import { withApiCache } from "@/lib/api-cache";
+import { withApiCache, withCacheBypass } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
 const META_CACHE_TTL_HOURS = 4;
 
 export async function GET(request: NextRequest) {
+  return withCacheBypass(request, async () => {
   try {
     const session = await getSessionOrCronAuth(request);
     if (!session) {
@@ -101,4 +102,5 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : "Failed to fetch Meta Ads data";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+  });
 }

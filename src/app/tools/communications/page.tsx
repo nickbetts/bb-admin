@@ -75,7 +75,8 @@ export default function CommunicationsPage() {
           (data.clients ?? []).map(async (client) => {
             const res = await fetch(`/api/clients/${client.id}/communications`);
             if (res.ok) {
-              const clientComms = await res.json() as Communication[];
+              const json = await res.json() as { items: Communication[]; nextCursor: string | null; hasMore: boolean };
+              const clientComms = json.items ?? [];
               allComms.push(...clientComms.map((c) => ({ ...c, clientName: client.name, clientSlug: client.slug })));
             }
           })

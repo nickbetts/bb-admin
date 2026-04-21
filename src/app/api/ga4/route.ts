@@ -26,7 +26,7 @@ import {
   getGA4UserAcquisition,
   getGA4RevenuePerSession,
 } from "@/lib/ga4";
-import { withApiCache } from "@/lib/api-cache";
+import { withApiCache, withCacheBypass } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +35,7 @@ export const dynamic = "force-dynamic";
 const GA4_CACHE_TTL_HOURS = 4;
 
 export async function GET(request: NextRequest) {
+  return withCacheBypass(request, async () => {
   try {
     const session = await getSessionOrCronAuth(request);
     if (!session) {
@@ -117,4 +118,5 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : "Failed to fetch GA4 data";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+  });
 }

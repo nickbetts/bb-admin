@@ -8,6 +8,10 @@
 export async function register() {
   // Only patch in Node.js runtime (not Edge Runtime which can't use Prisma)
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // Validate environment first so missing critical vars surface before anything else
+    const { validateEnvOnBoot } = await import("@/lib/env-validation");
+    validateEnvOnBoot();
+
     const { patchConsole } = await import("@/lib/server-logger");
     patchConsole();
   }

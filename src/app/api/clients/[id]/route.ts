@@ -85,6 +85,7 @@ export async function PATCH(
         klaviyoApiKey: data.klaviyoApiKey || null,
         klaviyoAccountName: data.klaviyoAccountName || null,
         contactEmails: data.contactEmails !== undefined ? data.contactEmails : undefined,
+        signalConfig: data.signalConfig !== undefined ? data.signalConfig : undefined,
         status: data.status !== undefined
           ? (["active", "lead", "qualifying", "proposal_sent", "negotiating", "churned", "lost"].includes(data.status) ? data.status : undefined)
           : undefined,

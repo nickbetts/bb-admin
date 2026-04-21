@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { withApiCache } from "@/lib/api-cache";
+import { withApiCache, withCacheBypass } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +41,7 @@ const MOCK_HUBSPOT_DATA = {
 };
 
 export async function GET(request: NextRequest) {
+  return withCacheBypass(request, async () => {
   try {
     const session = await getSessionOrCronAuth(request);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -190,4 +191,5 @@ export async function GET(request: NextRequest) {
     console.error("HubSpot error:", error);
     return NextResponse.json({ error: "Failed to fetch HubSpot data" }, { status: 500 });
   }
+  });
 }

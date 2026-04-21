@@ -35,6 +35,7 @@ model User {
   sessions            Session[]
   notifications       Notification[]
   conversations       ClientConversation[]
+  timeEntries         AgencyTimeEntry[]
 }
 
 model Session {
@@ -103,6 +104,17 @@ model Client {
   // Microsoft 365 email sync
   contactEmails         String?   // JSON: string[] — client contact email addresses for email sync
   contentStrategyLimits String?   // JSON: { pageOptimisations?: number, landingPages?: number, blogPosts?: number, linkTargets?: number }
+  // Per-client signal/AI configuration. Drives which alerts fire and how the AI frames recommendations.
+  // JSON shape: {
+  //   primaryKpi?: "roas" | "cpa" | "leads" | "calls" | "awareness" | "engagement",
+  //   tracksConversions?: boolean,   // false → suppress 0-conversion / CPA alerts
+  //   tracksRevenue?: boolean,       // false → suppress ROAS alerts entirely
+  //   conversionsSource?: "ga4" | "platform" | "callrail" | "hubspot" | "none",
+  //   sector?: string,               // preset key (charity, ecommerce, lead_gen, ...)
+  //   thresholds?: { roasMin?, roasTarget?, freqMax?, ctrMin?, qsMin?, ... },
+  //   mutedSignals?: string[]        // stable signal IDs to suppress (e.g. "meta.campaign.fatigue")
+  // }
+  signalConfig          String?
   status                String    @default("active") // lead | qualifying | proposal_sent | negotiating | active | churned | lost
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
@@ -126,6 +138,10 @@ model Client {
   proposals             Proposal[]
   keywordResearch       KeywordPlannerResearch[]
   grandPlans            GrandPlan[]
+  retainers             ClientRetainer[]
+  invoices              ClientInvoice[]
+  timeEntries           AgencyTimeEntry[]
+  portalThreads         PortalThread[]
 }
 
 model ClientGoal {
@@ -748,4 +764,93 @@ model GrandPlanVersion {
 
   @@unique([grandPlanId, versionNumber])
   @@index([grandPlanId, createdAt])
+}
+
+// ─── Bet A: Agency Financials ──────────────────────────────────────────────
+// Recurring retainer / project fees billed per client. Drives utilisation,
+// margin and "is this account profitable?" reporting.
+model ClientRetainer {
+  id           String   @id @default(cuid())
+  clientId     String
+  monthlyFee   Float    // GBP per month
+  contractedHours Float? // Hours included per month
+  startDate    String   // ISO date
+  endDate      String?  // null = active
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, startDate])
+}
+
+// Issued / paid invoices. Lightweight — we are not building Xero, just enough
+// to compute revenue, ageing, and profitability per client.
+model ClientInvoice {
+  id          String   @id @default(cuid())
+  clientId    String
+  invoiceRef  String   // External reference (e.g. Xero invoice number)
+  amount      Float    // GBP, ex VAT
+  issuedDate  String   // ISO date
+  dueDate     String?  // ISO date
+  paidDate    String?  // ISO date — null = unpaid
+  status      String   @default("issued") // draft|issued|paid|overdue|void
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, invoiceRef])
+  @@index([clientId, paidDate])
+}
+
+// Time logged by team members against a client. The unit feeding utilisation,
+// margin, and capacity planning. Could be imported from a timer or manual.
+model AgencyTimeEntry {
+  id          String   @id @default(cuid())
+  clientId    String
+  userId      String
+  date        String   // ISO date
+  hours       Float
+  category    String?  // "strategy" | "ads" | "seo" | "creative" | "meeting" | …
+  notes       String?
+  billable    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, date])
+  @@index([userId, date])
+}
+
+// ─── Bet B: Two-way Client Portal ───────────────────────────────────────────
+// Threaded conversation between agency and the client portal. Cleanly
+// separate from `ClientCommunication` (which is the agency-side log) so the
+// permission boundaries are obvious.
+model PortalThread {
+  id          String         @id @default(cuid())
+  clientId    String
+  subject     String
+  status      String         @default("open") // open|resolved|archived
+  lastMessageAt DateTime     @default(now())
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  client      Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  messages    PortalMessage[]
+
+  @@index([clientId, lastMessageAt])
+}
+
+model PortalMessage {
+  id          String       @id @default(cuid())
+  threadId    String
+  authorType  String       // "agency_user" | "portal_user"
+  authorId    String       // FK to User (agency) or ClientPortalUser
+  body        String
+  attachments String?      // JSON: [{ name, url, size }]
+  readAt      DateTime?
+  createdAt   DateTime     @default(now())
+  thread      PortalThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
 }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
+import { StrategyDocumentSchema, validateAiJson } from "@/lib/ai/schemas";
 import { prisma } from "@/lib/prisma";
 import { getOpenAiClient, createWithWebSearch, streamWithWebSearch } from "@/lib/openai-client";
 import { logActivity } from "@/lib/activity-logger";
@@ -11,6 +13,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const rl = enforceAiRateLimit(session.user.id); if (!rl.ok) return rl.response!;
 
     const requestBody = await request.json() as {
       clientId: string;
@@ -137,10 +140,11 @@ Return only valid JSON.`;
       });
 
       let content;
-      try {
-        const jsonMatch = wsResult.text.match(/\{[\s\S]*\}/);
-        content = JSON.parse(jsonMatch ? jsonMatch[0] : wsResult.text);
-      } catch {
+      const validated1 = validateAiJson(StrategyDocumentSchema, wsResult.text);
+      if (validated1.ok) {
+        content = validated1.data as Record<string, unknown>;
+      } else {
+        console.warn("[ai/strategy-document] websearch JSON validation failed:", validated1.error);
         content = { performanceSummary: wsResult.text, wins: [], challenges: [], opportunities: [], channelStrategy: {}, contentPriorities: [], technicalActions: [], kpiTargets: [] };
       }
 
@@ -217,10 +221,11 @@ Return only valid JSON.`;
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     let content;
-    try {
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      content = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
-    } catch {
+    const validated2 = validateAiJson(StrategyDocumentSchema, raw);
+    if (validated2.ok) {
+      content = validated2.data as Record<string, unknown>;
+    } else {
+      console.warn("[ai/strategy-document] standard JSON validation failed:", validated2.error);
       content = { performanceSummary: raw, wins: [], challenges: [], opportunities: [], channelStrategy: {}, contentPriorities: [], technicalActions: [], kpiTargets: [] };
     }
 

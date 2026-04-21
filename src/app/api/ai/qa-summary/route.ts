@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 import { prisma } from "@/lib/prisma";
 import { getOpenAiClient } from "@/lib/openai-client";
 
@@ -9,6 +10,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const rl = enforceAiRateLimit(session.user.id); if (!rl.ok) return rl.response!;
 
     const { checklistId } = await request.json() as { checklistId: string };
     if (!checklistId) return NextResponse.json({ error: "checklistId is required" }, { status: 400 });

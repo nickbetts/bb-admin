@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
+import { AudienceSuggestionsSchema, validateAiJson } from "@/lib/ai/schemas";
 import { prisma } from "@/lib/prisma";
 import { getOpenAiClient } from "@/lib/openai-client";
 import { getSeasonalityContext } from "@/lib/seasonality";
@@ -11,6 +13,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const rl = enforceAiRateLimit(session.user.id); if (!rl.ok) return rl.response!;
 
     const {
       clientId,
@@ -171,8 +174,9 @@ Produce audience recommendations as JSON:
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
-    let parsed: Record<string, unknown> = {};
-    try { parsed = JSON.parse(raw); } catch { parsed = {}; }
+    const validated = validateAiJson(AudienceSuggestionsSchema, raw);
+    const parsed: Record<string, unknown> = validated.ok ? (validated.data as Record<string, unknown>) : {};
+    if (!validated.ok) console.warn("[ai/audience-suggestions] schema validation failed:", validated.error);
 
     return NextResponse.json(parsed);
   } catch (error) {

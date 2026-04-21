@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 import { prisma } from "@/lib/prisma";
 import { getOpenAiClient } from "@/lib/openai-client";
 
@@ -65,6 +66,8 @@ export async function POST(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const rl = enforceAiRateLimit(session.user.id);
+    if (!rl.ok) return rl.response!;
 
     const body = await request.json();
     const { clientId, metric, channel } = body as {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { getDomainAuthority, getMozLinkIntersect } from "@/lib/domain-authority";
-import { withApiCache } from "@/lib/api-cache";
+import { withApiCache, withCacheBypass } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 const MOZ_CACHE_TTL_HOURS = 720;
 
 export async function GET(request: NextRequest) {
+  return withCacheBypass(request, async () => {
   try {
     const session = await getSessionOrCronAuth(request);
     if (!session) {
@@ -44,4 +45,5 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : "Failed to fetch Moz data";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+  });
 }

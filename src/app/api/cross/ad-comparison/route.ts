@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
-import { withApiCache } from "@/lib/api-cache";
+import { withApiCache, withCacheBypass } from "@/lib/api-cache";
 import { prisma } from "@/lib/prisma";
 import { getGoogleAdsSearchTerms } from "@/lib/google-ads";
 import { getMicrosoftAdsKeywords } from "@/lib/microsoft-ads";
@@ -36,6 +36,7 @@ interface KeywordEntry {
 }
 
 export async function GET(request: NextRequest) {
+  return withCacheBypass(request, async () => {
   try {
     const session = await getSessionOrCronAuth(request);
     if (!session) {
@@ -225,4 +226,5 @@ export async function GET(request: NextRequest) {
     console.error("Ad comparison error:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
+  });
 }

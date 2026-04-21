@@ -24,6 +24,7 @@ import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { AiLandingPageAnalysis } from "@/components/ai/AiLandingPageAnalysis";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 import { CreativeIntelligencePanel } from "./CreativeIntelligencePanel";
+import { resolveConfig, filterAlertsByConfig } from "@/lib/signals/defaults";
 import { ClickFraudPanel } from "./ClickFraudPanel";
 
 interface GoogleAdsOverview {
@@ -251,6 +252,8 @@ interface Props {
   hideAi?: boolean;
   reportMode?: boolean;
   clickFraudToken?: string | null;
+  /** JSON string — see SignalConfig in `src/lib/signals/types.ts`. */
+  signalConfig?: string | null;
   onMetricsReady?: (metrics: Record<string, number>) => void;
   onPreviousMetricsReady?: (metrics: Record<string, number>) => void;
   afterHeader?: ReactNode;
@@ -285,7 +288,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
 
 type GAdsAlert = { severity: "high" | "medium"; label: string; level: string; detail: string; recommendation: string };
 
-export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, onMetricsReady, onPreviousMetricsReady, afterHeader }: Props) {
+export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, signalConfig, onMetricsReady, onPreviousMetricsReady, afterHeader }: Props) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
@@ -365,8 +368,10 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
     }
     const sevOrder: Record<string, number> = { high: 0, medium: 1 };
     alerts.sort((a, b) => (sevOrder[a.severity] ?? 2) - (sevOrder[b.severity] ?? 2));
-    return alerts;
-  }, [data]);
+    // Drop ROAS/conversion alerts the client config says shouldn't fire.
+    const cfg = resolveConfig(signalConfig ?? null);
+    return filterAlertsByConfig(alerts, cfg);
+  }, [data, signalConfig]);
 
   // Fetch AI-generated recommendations for each alert
   useEffect(() => {
@@ -379,6 +384,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       body: JSON.stringify({
         sectionType: "alert_recommendations",
         campaignPlatform: "googleads",
+        // clientId lets the backend load signalConfig + AI instructions + goals
+        // and apply the direction-sanity guard.
+        clientId,
         alerts: gadsAlerts.map(a => ({ severity: a.severity, level: a.level, label: a.label, detail: a.detail })),
         campaignData: data?.campaignsEnriched ?? [],
         clientName,

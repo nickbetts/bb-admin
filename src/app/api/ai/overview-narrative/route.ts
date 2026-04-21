@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOpenAiClient, createWithWebSearch, streamWithWebSearch } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
+import { getSession } from "@/lib/auth";
+import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -188,6 +190,11 @@ interface OverviewNarrativeResponse {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const rl = enforceAiRateLimit(session.user.id);
+    if (!rl.ok) return rl.response!;
+
     const body = (await request.json()) as OverviewNarrativeRequest & { stream?: boolean; enableWebSearch?: boolean };
     const {
       clientName,

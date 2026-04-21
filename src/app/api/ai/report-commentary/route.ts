@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
+import { getSessionOrCronAuth } from "@/lib/auth";
+import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -103,6 +105,11 @@ function formatMetrics(metrics: Record<string, number>): string {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getSessionOrCronAuth(req);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const rl = enforceAiRateLimit(session.user.id);
+    if (!rl.ok) return rl.response!;
+
     const { sectionType, metrics, previousMetrics, clientName, clientId, reportId, dateRange, length = "medium", tone = "professional", format = "prose", spin = "positive", previousCommentaries } =
       await req.json() as {
         sectionType: string;

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
-import { withApiCache } from "@/lib/api-cache";
+import { withApiCache, withCacheBypass } from "@/lib/api-cache";
 import { prisma } from "@/lib/prisma";
+import { resolveConfig, filterAlertsByConfig } from "@/lib/signals/defaults";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -178,6 +179,7 @@ async function fetchInternalApi(
 // ── Route handler ────────────────────────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
+  return withCacheBypass(request, async () => {
   try {
     const session = await getSessionOrCronAuth(request);
     if (!session) {
@@ -211,10 +213,13 @@ export async function GET(request: NextRequest) {
           tiktokAccessToken: true,
           microsoftAdsAccountId: true,
           ga4PropertyId: true,
+          signalConfig: true,
         },
       });
 
       if (!client) throw new Error("Client not found");
+
+      const cfg = resolveConfig(client.signalConfig ?? null);
 
       const alerts: Alert[] = [];
       const now = new Date();
@@ -574,16 +579,19 @@ export async function GET(request: NextRequest) {
       );
 
       // ── Build summary ────────────────────────────────────────────────────
-      const high = alerts.filter((a) => a.severity === "high").length;
-      const medium = alerts.filter((a) => a.severity === "medium").length;
-      const low = alerts.filter((a) => a.severity === "low").length;
+      // Drop alerts the client config says shouldn't fire (ROAS for non-revenue
+      // clients, conversion alerts when conversions aren't tracked, muted IDs).
+      const filteredAlerts = filterAlertsByConfig(alerts, cfg);
+      const high = filteredAlerts.filter((a) => a.severity === "high").length;
+      const medium = filteredAlerts.filter((a) => a.severity === "medium").length;
+      const low = filteredAlerts.filter((a) => a.severity === "low").length;
 
-      const categorySet = new Set(alerts.map((a) => a.category));
+      const categorySet = new Set(filteredAlerts.map((a) => a.category));
 
       return {
-        alerts,
+        alerts: filteredAlerts,
         summary: {
-          total: alerts.length,
+          total: filteredAlerts.length,
           high,
           medium,
           low,
@@ -598,4 +606,5 @@ export async function GET(request: NextRequest) {
     console.error("Proactive alerts error:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
+  });
 }

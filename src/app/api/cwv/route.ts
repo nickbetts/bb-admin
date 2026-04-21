@@ -6,13 +6,14 @@ import {
   getCoreWebVitalsByDevice,
   getCoreWebVitalsHistory,
 } from "@/lib/core-web-vitals";
-import { withApiCache } from "@/lib/api-cache";
+import { withApiCache, withCacheBypass } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/cwv — fetch Core Web Vitals for a URL
 // ?url=example.com&type=overview|page|by-device|history
 export async function GET(request: NextRequest) {
+  return withCacheBypass(request, async () => {
   try {
     const session = await getSessionOrCronAuth(request);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -40,4 +41,5 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+  });
 }

@@ -29,7 +29,7 @@ import {
   getGoogleAdsRecommendations,
   getGoogleAdsBudgetUtilisation,
 } from "@/lib/google-ads";
-import { withApiCache } from "@/lib/api-cache";
+import { withApiCache, withCacheBypass } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +38,7 @@ export const dynamic = "force-dynamic";
 const GADS_CACHE_TTL_HOURS = 4;
 
 export async function GET(request: NextRequest) {
+  return withCacheBypass(request, async () => {
   try {
     const session = await getSessionOrCronAuth(request);
     if (!session) {
@@ -102,4 +103,5 @@ export async function GET(request: NextRequest) {
     console.error("Google Ads data error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
+  });
 }

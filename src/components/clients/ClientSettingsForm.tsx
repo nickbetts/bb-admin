@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Save, Loader2, Upload, X, Plus, Trash2, Shield, Copy, Check, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import { getAppUrl, buildClickProtectionSnippet } from "@/lib/utils";
+import { SignalConfigEditor } from "./SignalConfigEditor";
+import type { SignalConfig } from "@/lib/signals/types";
 
 interface Client {
   id: string;
@@ -52,6 +54,7 @@ interface Client {
   competitorDomains: string | null;
   contactEmails?: string | null; // JSON: string[]
   clickFraudToken?: string | null; // Click fraud protection snippet token
+  signalConfig?: string | null; // JSON — see SignalConfig in src/lib/signals/types.ts
 }
 
 interface ClientSettingsFormProps {
@@ -195,6 +198,12 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
   const [generatingToken, setGeneratingToken] = useState(false);
   const [snippetCopied, setSnippetCopied] = useState(false);
 
+  // Per-client signals config
+  const [signalConfig, setSignalConfig] = useState<SignalConfig>(() => {
+    if (!client.signalConfig) return {};
+    try { return JSON.parse(client.signalConfig) as SignalConfig; } catch { return {}; }
+  });
+
   useEffect(() => {
     fetch("/api/ga4/properties")
       .then((r) => r.json())
@@ -320,6 +329,8 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
           contactEmails: form.contactEmails.trim()
             ? JSON.stringify(form.contactEmails.split(",").map((e) => e.trim()).filter(Boolean))
             : null,
+          // Per-client signals config (omit empty object so DB column stays NULL)
+          signalConfig: Object.keys(signalConfig).length > 0 ? JSON.stringify(signalConfig) : null,
         }),
       });
 
@@ -808,6 +819,9 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
           </div>
         </div>
       </div>
+
+      {/* Signals & Alerts — per-client config */}
+      <SignalConfigEditor value={signalConfig} onChange={setSignalConfig} />
 
       {/* WooCommerce */}
       <div className="card">

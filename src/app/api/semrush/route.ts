@@ -27,7 +27,7 @@ import {
   getBacklinkComparison,
   getOrganicPositionChanges,
 } from "@/lib/semrush";
-import { withApiCache } from "@/lib/api-cache";
+import { withApiCache, withCacheBypass } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +39,7 @@ const SEMRUSH_BACKLINKS_TTL = 168;
 const SEMRUSH_TRACKING_TTL = 24;
 
 export async function GET(request: NextRequest) {
+  return withCacheBypass(request, async () => {
   try {
     const session = await getSessionOrCronAuth(request);
     if (!session) {
@@ -199,5 +200,5 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : "Failed to fetch SemRush data";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+  });
 }
-

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { AlertTriangle, CheckCircle, RefreshCw, Loader2, Zap } from "lucide-react";
 import { getPreviousPeriod, formatCurrency, formatNumber } from "@/lib/utils";
+import { resolveConfig, type ResolvedSignalConfig } from "@/lib/signals/defaults";
 
 interface Client {
   id: string;
@@ -13,6 +14,8 @@ interface Client {
   metaAccountId: string | null;
   googleAdsCustomerId: string | null;
   searchConsoleSiteUrl: string | null;
+  /** JSON string — see SignalConfig in `src/lib/signals/types.ts`. */
+  signalConfig?: string | null;
 }
 
 interface SignalsSectionProps {
@@ -32,6 +35,39 @@ interface Signal {
   direction?: "up" | "down";
   recommendation?: string;
   aiRec?: boolean;
+  /** Stable signal ID — used by mute lists and the backend sanity guard. */
+  signalId?: string;
+  currentValue?: number;
+  benchmarkValue?: number;
+  desiredDirection?: "up" | "down";
+  unit?: string;
+}
+
+/**
+ * Drop signals the resolved client config says shouldn't fire:
+ *   - tracksRevenue=false → no ROAS-based signals
+ *   - tracksConversions=false → no conversion/zero-conv signals
+ *   - mutedSignals → drop by stable id
+ * Also suppresses signals where the current value is already on the right side
+ * of its benchmark (the structural fix for the original "reduce 2.6× to under 3×" bug).
+ */
+function applyConfigFilter(signals: Signal[], cfg: ResolvedSignalConfig): Signal[] {
+  return signals.filter((s) => {
+    if (s.signalId && cfg.mutedSignals.has(s.signalId)) return false;
+    if (!cfg.tracksRevenue && /roas/i.test(s.metric)) return false;
+    if (!cfg.tracksConversions && /conversion/i.test(s.metric)) return false;
+    if (
+      s.desiredDirection &&
+      typeof s.currentValue === "number" &&
+      typeof s.benchmarkValue === "number"
+    ) {
+      const onRightSide =
+        (s.desiredDirection === "down" && s.currentValue <= s.benchmarkValue) ||
+        (s.desiredDirection === "up" && s.currentValue >= s.benchmarkValue);
+      if (onRightSide) return false;
+    }
+    return true;
+  });
 }
 
 // ─── Signal deduplication ──────────────────────────────────────────────────────
@@ -727,7 +763,10 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
                 const campStr = activeCamps.slice(0, 8).map(c => {
                   const budget = c.dailyBudget ? `\u00a3${c.dailyBudget.toFixed(0)}/d` : c.lifetimeBudget ? `\u00a3${c.lifetimeBudget.toFixed(0)}ltm` : "no budget";
                   const roasStr = c.roas > 0 ? ` ROAS ${c.roas.toFixed(2)}x` : "";
-                  const freqStr = c.frequency > 0 ? ` freq ${c.frequency.toFixed(1)}x` : "";
+                  // Only surface frequency when it's at or near the fatigue threshold (3.5×) —
+                  // injecting healthy frequencies (e.g. 1.8×, 2.6×) into the AI context tempts
+                  // the LLM to "recommend" reducing them even though they're already fine.
+                  const freqStr = c.frequency >= 3 ? ` freq ${c.frequency.toFixed(1)}x` : "";
                   const spendStr = c.spend > 0 ? ` \u00a3${c.spend.toFixed(0)} spent` : "";
                   const convStr = typeof c.conversions === "number" ? ` ${c.conversions}conv` : "";
                   const ctrStr = c.ctr != null && c.ctr > 0 ? ` CTR ${c.ctr.toFixed(2)}%` : "";
@@ -909,7 +948,9 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
       });
 
       // ── Deduplicate signals ─────────────────────────────────────────────────
-      const dedupedSignals = deduplicateSignals(allSignals);
+      const cfg = resolveConfig(client.signalConfig ?? null);
+      const filteredSignals = applyConfigFilter(allSignals, cfg);
+      const dedupedSignals = deduplicateSignals(filteredSignals);
 
       setSignals(dedupedSignals);
 
@@ -1010,12 +1051,22 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
               sectionType: "alert_recommendations",
               channelType,
               channelContext,
+              // clientId lets the backend load this client's signalConfig + AI
+              // instructions + goals, and apply the direction-sanity guard.
+              clientId: client.id,
               alerts: entries.map(({ signal }) => ({
                 severity: signal.severity,
                 level: signal.level ?? "",
                 label: signal.label ?? signal.metric,
                 metric: signal.metric,
                 detail: signal.detail,
+                // Typed metadata — used by the backend's pre-filter and
+                // direction-sanity guard. Optional; older signals omit them.
+                id: signal.signalId,
+                currentValue: signal.currentValue,
+                benchmarkValue: signal.benchmarkValue,
+                desiredDirection: signal.desiredDirection,
+                unit: signal.unit,
               })),
               clientName: client.name,
               dateRange: `${startDate} to ${endDate}`,

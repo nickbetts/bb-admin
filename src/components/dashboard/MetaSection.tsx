@@ -27,6 +27,7 @@ import { AiLandingPageAnalysis } from "@/components/ai/AiLandingPageAnalysis";
 import { SuperSummary } from "@/components/ai/SuperSummary";
 import { CreativeIntelligencePanel } from "./CreativeIntelligencePanel";
 import { ClickFraudPanel } from "./ClickFraudPanel";
+import { resolveConfig, filterAlertsByConfig } from "@/lib/signals/defaults";
 
 interface MetaSectionProps {
   clientId: string;
@@ -41,6 +42,8 @@ interface MetaSectionProps {
   hideAi?: boolean;
   reportMode?: boolean;
   clickFraudToken?: string | null;
+  /** JSON string — see SignalConfig in `src/lib/signals/types.ts`. */
+  signalConfig?: string | null;
   onMetricsReady?: (metrics: Record<string, number>) => void;
   onPreviousMetricsReady?: (metrics: Record<string, number>) => void;
   afterHeader?: React.ReactNode;
@@ -238,7 +241,7 @@ interface MetaSavedAud { id: string; name: string; approximateCount: number; typ
 interface MetaSpendLimit { campaignId: string; campaignName: string; spendingLimit: number | null; dailyBudget: number | null; lifetimeBudget: number | null; amountSpent: number }
 interface MetaHourlyRow { hourOfDay: string; impressions: number; clicks: number; spend: number; conversions: number; cpc: number }
 
-export function MetaSection({ clientId, clientName, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, onMetricsReady, onPreviousMetricsReady, afterHeader }: MetaSectionProps) {
+export function MetaSection({ clientId, clientName, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, signalConfig, onMetricsReady, onPreviousMetricsReady, afterHeader }: MetaSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<MetaOverview | null>(null);
@@ -366,8 +369,10 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
     }
     const sevOrder: Record<string, number> = { high: 0, medium: 1 };
     alerts.sort((a, b) => (sevOrder[a.severity] ?? 2) - (sevOrder[b.severity] ?? 2));
-    return alerts;
-  }, [campaignsEnriched, adSets, creatives, adSetAudiences]);
+    // Drop ROAS/conversion alerts the client config says shouldn't fire.
+    const cfg = resolveConfig(signalConfig ?? null);
+    return filterAlertsByConfig(alerts, cfg);
+  }, [campaignsEnriched, adSets, creatives, adSetAudiences, signalConfig]);
 
   // Memoize creative summary — expensive string concatenation across potentially 500+ creatives
   const creativeSummary = useMemo(
@@ -402,6 +407,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       body: JSON.stringify({
         sectionType: "alert_recommendations",
         campaignPlatform: "meta",
+        // clientId lets the backend load signalConfig + AI instructions + goals
+        // and apply the direction-sanity guard.
+        clientId,
         alerts: metaAlerts.map(a => ({ severity: a.severity, level: a.level, label: a.label, detail: a.detail })),
         campaignData: campaignsEnriched,
         clientName,

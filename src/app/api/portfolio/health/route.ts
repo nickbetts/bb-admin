@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
 
     // All unresolved anomalies created within the period across all clients
     // Use createdAt (when detected) not periodStart (which is the data comparison window start)
+    // Capped at 5000 to protect agencies with very large client portfolios.
     const allAnomalies = await prisma.detectedAnomaly.findMany({
       where: { createdAt: { gte: startDate }, resolvedAt: null },
       select: {
@@ -78,6 +79,7 @@ export async function GET(request: NextRequest) {
         detail: true, periodStart: true, periodEnd: true,
       },
       orderBy: { createdAt: "desc" },
+      take: 5000,
     });
 
     // Exclude anomalies for metrics with no defined direction — these are stale false-positives
@@ -87,10 +89,12 @@ export async function GET(request: NextRequest) {
     );
 
     // Recent metric snapshots — last N per client+platform (all-time, not period-scoped)
-    // Used to: (a) confirm client has data, (b) detect trends, (c) get "data as of" date
+    // Used to: (a) confirm client has data, (b) detect trends, (c) get "data as of" date.
+    // Capped at 10000 (well above the largest agency size); we then keep latest 2 per client+platform.
     const allSnapshots = await prisma.metricSnapshot.findMany({
       select: { clientId: true, sectionType: true, periodStart: true, periodEnd: true, metrics: true },
       orderBy: { periodStart: "desc" },
+      take: 10000,
     });
 
     // Index anomalies by clientId

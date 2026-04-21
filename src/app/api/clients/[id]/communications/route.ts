@@ -13,12 +13,21 @@ export async function GET(
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
+    const { searchParams } = new URL(_request.url);
+    // Default to 50 most-recent comms; client can request more via ?limit= and page via ?cursor=
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") ?? "50", 10) || 50, 1), 200);
+    const cursor = searchParams.get("cursor");
     const comms = await prisma.clientCommunication.findMany({
       where: { clientId: id },
       orderBy: { createdAt: "desc" },
+      take: limit + 1, // fetch one extra to know if there's a next page
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
+    const hasMore = comms.length > limit;
+    const items = hasMore ? comms.slice(0, limit) : comms;
+    const nextCursor = hasMore ? items[items.length - 1]?.id ?? null : null;
 
-    return NextResponse.json(comms);
+    return NextResponse.json({ items, nextCursor, hasMore });
   } catch (error) {
     console.error("Get communications error:", error);
     return NextResponse.json({ error: "Failed to get communications" }, { status: 500 });

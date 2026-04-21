@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { RefreshDataButton } from "@/components/ui/RefreshDataButton";
 import { SemrushSection } from "./SemrushSection";
 import { GA4Section } from "./GA4Section";
 import { MetaSection } from "./MetaSection";
@@ -8,6 +9,7 @@ import { GoogleAdsSection } from "./GoogleAdsSection";
 import { SearchConsoleSection } from "./SearchConsoleSection";
 import { OverviewSection } from "./OverviewSection";
 import { SignalsSection } from "./SignalsSection";
+import { ActionQueueSection } from "./ActionQueueSection";
 import { EcommerceSection } from "./EcommerceSection";
 import { TikTokSection } from "./TikTokSection";
 import { MicrosoftAdsSection } from "./MicrosoftAdsSection";
@@ -59,6 +61,8 @@ interface Client {
   competitorDomains?: string | null;
   clickFraudToken?: string | null;
   status?: string;
+  /** JSON string — see SignalConfig in `src/lib/signals/types.ts`. */
+  signalConfig?: string | null;
 }
 
 interface ClientDashboardProps {
@@ -290,6 +294,25 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
               {p.label}
             </button>
           ))}
+          <RefreshDataButton
+            prefixes={[
+              `ga4:${client.id}`,
+              `meta:${client.metaAccountId ?? client.id}`,
+              `googleads:${client.googleAdsCustomerId ?? client.id}`,
+              `searchconsole:${client.searchConsoleSiteUrl ?? client.id}`,
+              `semrush:${client.semrushDomain ?? client.id}`,
+              `tiktok:${client.tiktokAdvertiserId ?? client.id}`,
+              `microsoftads:${client.microsoftAdsAccountId ?? client.id}`,
+              `linkedin:${client.linkedinAccountId ?? client.id}`,
+              `klaviyo:${client.id}`,
+              `youtube:${client.id}`,
+              `hubspot:${client.id}`,
+              `callrail:${client.id}`,
+              `woocommerce:${client.id}`,
+              `shopify:${client.id}`,
+              `cwv:${client.cwvUrl ?? client.id}`,
+            ]}
+          />
         </div>
       </div>
 
@@ -330,7 +353,10 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
       )}
 
       {activeTab === "signals" && (
-        <SignalsSection client={client} startDate={startDate} endDate={endDate} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <ActionQueueSection clientId={client.id} />
+          <SignalsSection client={client} startDate={startDate} endDate={endDate} />
+        </div>
       )}
 
       {activeTab === "overview" && (
@@ -358,7 +384,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
       ) : null}
 
       {activeTab === "paid" && client.metaAccountId ? (
-        <MetaSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.meta} clickFraudToken={client.clickFraudToken} />
+        <MetaSection clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.meta} clickFraudToken={client.clickFraudToken} signalConfig={client.signalConfig} />
       ) : activeTab === "paid" ? (
         <NotConfigured
           name="Paid Social (Meta)"
@@ -368,7 +394,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
       ) : null}
 
       {activeTab === "googleads" && client.googleAdsCustomerId ? (
-        <GoogleAdsSection customerId={client.googleAdsCustomerId} clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.googleads} clickFraudToken={client.clickFraudToken} />
+        <GoogleAdsSection customerId={client.googleAdsCustomerId} clientId={client.id} clientName={client.name} startDate={startDate} endDate={endDate} crossPlatformContext={crossCtx.googleads} clickFraudToken={client.clickFraudToken} signalConfig={client.signalConfig} />
       ) : activeTab === "googleads" ? (
         <NotConfigured
           name="Paid Search (Google Ads)"

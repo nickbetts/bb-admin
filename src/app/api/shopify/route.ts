@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getShopifyStats, getShopifyCustomerData } from "@/lib/shopify";
-import { withApiCache } from "@/lib/api-cache";
+import { withApiCache, withCacheBypass } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  return withCacheBypass(request, async () => {
   try {
     const session = await getSessionOrCronAuth(request);
     if (!session) {
@@ -53,4 +54,5 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : "Failed to fetch Shopify data";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+  });
 }

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
+import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
+import { ForecastSchema, validateAiJson } from "@/lib/ai/schemas";
 import { prisma } from "@/lib/prisma";
 import { getOpenAiClient } from "@/lib/openai-client";
 
@@ -67,6 +69,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const rl = enforceAiRateLimit(session.user.id); if (!rl.ok) return rl.response!;
 
     const { clientId, currentMetrics, historicalData, ecommerceData } = await request.json() as {
       clientId: string;
@@ -152,11 +155,12 @@ Write in British English. Return only valid JSON — no markdown, no code fences
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
-    let result;
-    try {
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      result = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
-    } catch {
+    const validated = validateAiJson(ForecastSchema, raw);
+    let result: Record<string, unknown>;
+    if (validated.ok) {
+      result = validated.data as Record<string, unknown>;
+    } else {
+      console.warn("[ai/forecast] schema validation failed:", validated.error);
       result = { forecasts: { days30: {}, days60: {}, days90: {} }, narrative: raw, confidence: "low", keyAssumptions: [] };
     }
 

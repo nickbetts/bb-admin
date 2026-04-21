@@ -19,7 +19,7 @@ import {
   getGSCQueryCountry,
 } from "@/lib/search-console";
 import { getPreviousPeriod } from "@/lib/utils";
-import { withApiCache } from "@/lib/api-cache";
+import { withApiCache, withCacheBypass } from "@/lib/api-cache";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -27,6 +27,7 @@ export const maxDuration = 30;
 const GSC_CACHE_TTL_HOURS = 4;
 
 export async function GET(request: NextRequest) {
+  return withCacheBypass(request, async () => {
   try {
     const session = await getSessionOrCronAuth(request);
     if (!session) {
@@ -210,4 +211,5 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : "Failed to fetch Search Console data";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+  });
 }

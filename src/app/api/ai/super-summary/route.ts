@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOpenAiClient } from "@/lib/openai-client";
+import { SuperSummarySchema, validateAiJson } from "@/lib/ai/schemas";
 import { prisma } from "@/lib/prisma";
 import { fetchPageSignals, type PageSignals } from "@/lib/landing-page-analyzer";
 import { getSeasonalityContext } from "@/lib/seasonality";
+import { getSession } from "@/lib/auth";
+import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -134,6 +137,11 @@ const METRIC_LABELS: Record<string, Record<string, string>> = {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const rl = enforceAiRateLimit(session.user.id);
+    if (!rl.ok) return rl.response!;
+
     const body = (await request.json()) as SuperSummaryRequest & { stream?: boolean };
     const {
       sectionType,
@@ -350,10 +358,12 @@ Be frank and specific. Reference actual campaign names, URLs, and figures.`;
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
+    const validated = validateAiJson(SuperSummarySchema, raw);
     let parsed: Partial<SuperSummaryResponse> = {};
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
+    if (validated.ok) {
+      parsed = validated.data as Partial<SuperSummaryResponse>;
+    } else {
+      console.warn("[ai/super-summary] schema validation failed:", validated.error);
       parsed = { narrative: raw };
     }
 

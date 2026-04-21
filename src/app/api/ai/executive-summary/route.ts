@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
+import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const rl = enforceAiRateLimit(session.user.id);
+    if (!rl.ok) return rl.response!;
+
     const { sections, clientName, clientId, reportId, period } = await req.json() as {
       sections: { sectionType: string; title: string; commentary: string }[];
       clientName?: string;
