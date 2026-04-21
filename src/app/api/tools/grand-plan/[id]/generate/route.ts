@@ -95,6 +95,7 @@ export async function POST(
         ?? safeJsonParse(plan.campaignFocusPeriodsJson, []);
 
       const brief = bodyOverrides.clientBrief ?? plan.clientBrief ?? "";
+      const targetAudiences = plan.targetAudiences ?? "";
 
       // Parse section config — includes section toggles and inline briefs
       const config = safeJsonParse<{
@@ -266,6 +267,7 @@ export async function POST(
         clientName,
         purpose: plan.purpose,
         clientBrief: brief || undefined,
+        targetAudiences: targetAudiences || undefined,
         sector: config.sector || undefined,
         campaignFocusPeriods: focusPeriods,
         proposal: plan.proposal

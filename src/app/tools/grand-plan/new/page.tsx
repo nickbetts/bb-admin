@@ -86,6 +86,9 @@ export default function NewGrandPlanPage() {
   const [generateLandingPage, setGenerateLandingPage] = useState(true);
   const [lpCampaignType, setLpCampaignType] = useState("lead-gen");
 
+  // Target audiences
+  const [targetAudiences, setTargetAudiences] = useState("");
+
   // Focus periods
   const [focusPeriods, setFocusPeriods] = useState<FocusPeriod[]>([]);
 
@@ -152,6 +155,7 @@ export default function NewGrandPlanPage() {
           keywordResearchId: selectedKwResearch || undefined,
           contentStrategyId: selectedContentStrategy || undefined,
           clientBrief: brief || undefined,
+          targetAudiences: targetAudiences || undefined,
           sector: sector || undefined,
           campaignFocusPeriods: focusPeriods.filter((fp) => fp.label),
           config: {
@@ -274,6 +278,18 @@ export default function NewGrandPlanPage() {
                 value={brief}
                 onChange={(e) => setBrief(e.target.value)}
                 placeholder="Describe the business, their goals, campaign focus, and any pain points. This single brief powers keywords, ads, content, and the landing page."
+              />
+            </div>
+
+            {/* Target Audiences */}
+            <div>
+              <label className="form-label">Target Audiences</label>
+              <textarea
+                className="form-input form-textarea"
+                value={targetAudiences}
+                onChange={(e) => setTargetAudiences(e.target.value)}
+                placeholder="Describe the key audiences the AI should keep in mind — e.g. 'Parents of children aged 6-16 looking for football coaching', 'School PE coordinators seeking holiday camps'. Used across all AI-generated sections."
+                style={{ minHeight: 80 }}
               />
             </div>
           </div>

@@ -191,6 +191,7 @@ export interface GrandPlanSources {
     forecast?: string | null;
   };
   clientBrief?: string;
+  targetAudiences?: string;
   sector?: string;
   clientName: string;
   purpose: string;
@@ -395,6 +396,10 @@ function buildContextSummary(
 
   if (sources.clientBrief) {
     parts.push(`Brief: ${sources.clientBrief}`);
+  }
+
+  if (sources.targetAudiences) {
+    parts.push(`Target audiences: ${sources.targetAudiences}`);
   }
 
   if (sources.keywordResearch) {

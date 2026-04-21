@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
       contentStrategyId?: string;
       mediaPlanId?: string;
       clientBrief?: string;
+      targetAudiences?: string;
       sector?: string;
       campaignFocusPeriods?: { startMonth: number; endMonth: number; label: string; description?: string }[];
       config?: { sections?: string[] };
@@ -92,6 +93,7 @@ export async function POST(request: NextRequest) {
           contentStrategyId: source.contentStrategyId,
           mediaPlanId: source.mediaPlanId,
           clientBrief: source.clientBrief,
+          targetAudiences: source.targetAudiences,
           campaignFocusPeriodsJson: source.campaignFocusPeriodsJson,
           configJson: source.configJson,
         },
@@ -141,6 +143,7 @@ export async function POST(request: NextRequest) {
         contentStrategyId: body.contentStrategyId || null,
         mediaPlanId: body.mediaPlanId || null,
         clientBrief: body.clientBrief || null,
+        targetAudiences: body.targetAudiences || null,
         campaignFocusPeriodsJson: JSON.stringify(body.campaignFocusPeriods ?? []),
         configJson: JSON.stringify({ ...(body.config ?? {}), ...(body.sector ? { sector: body.sector } : {}) }),
       },
