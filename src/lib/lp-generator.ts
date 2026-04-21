@@ -310,6 +310,185 @@ export async function generateLandingPage(opts: GenerateLPOptions): Promise<stri
   return html;
 }
 
+// ── Critique landing page ───────────────────────────────────────────────────
+
+export interface LPCritiqueItem {
+  area: string; // e.g. "Hero", "Social Proof", "FAQ"
+  issue: string; // What's wrong
+  fix: string; // Concrete change to make
+  severity: "high" | "medium" | "low";
+}
+
+const CRITIQUE_SYSTEM_PROMPT = `You are a brutally honest senior CRO specialist and conversion expert reviewing a post-click landing page generated for a paid ad campaign.
+
+Your job: identify what is genuinely weak about this page and how to fix it. Be specific, be honest, do not flatter.
+
+Score the page across these dimensions:
+1. **Message match** — does the hero message-match what an ad-clicker would expect?
+2. **Above-fold conviction** — within 3 seconds, is the value prop crystal clear?
+3. **Section completeness** — is every section richly populated, or are some sparse/generic?
+4. **Specificity** — does it use real numbers, real services, real testimonials, or generic filler?
+5. **Visual hierarchy** — is the page scannable, with clear breaks and emphasis?
+6. **Trust building** — does social proof appear early and feel authentic?
+7. **Single conversion goal** — is there one clear CTA, repeated where needed?
+8. **Mobile considerations** — would this work on a phone (the dominant paid traffic device)?
+9. **Copy quality** — short, punchy, benefit-led, or overwritten?
+10. **Design boldness** — does it look premium, or does it feel templated/generic?
+
+Return ONLY a valid JSON array of critique items. Each item must have:
+- "area": short label (e.g. "Hero", "Benefits", "FAQ", "Final CTA")
+- "issue": one-sentence description of what is wrong
+- "fix": one-sentence concrete instruction the refinement model can execute
+- "severity": "high" | "medium" | "low"
+
+Return between 5 and 12 items, prioritising the highest-impact improvements. If the page is genuinely strong in an area, do not invent issues — focus on the real weaknesses.
+
+Output format example:
+[
+  { "area": "Hero", "issue": "Headline is generic and does not echo the campaign brief language.", "fix": "Rewrite the H1 to lead with the specific outcome from the brief: '[outcome]'.", "severity": "high" }
+]
+
+Use British English. No markdown fences, no commentary, just the JSON array.`;
+
+export async function critiqueLandingPage(opts: {
+  html: string;
+  brief: string;
+  campaignType: string;
+  brandContext: BrandContext;
+  targetAudience?: string;
+}): Promise<LPCritiqueItem[]> {
+  const anthropic = await getAnthropicClient();
+
+  const userPrompt = `Review the following landing page HTML for a ${opts.campaignType} campaign.
+
+## Campaign brief
+${opts.brief}
+
+${opts.targetAudience ? `## Target audience\n${opts.targetAudience}\n` : ""}
+## Company
+${opts.brandContext.companyName ?? "Unknown"}${opts.brandContext.tagline ? ` — ${opts.brandContext.tagline}` : ""}
+
+## The landing page HTML to critique
+${opts.html}
+
+Identify the highest-impact improvements as a JSON array.`;
+
+  const response = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 4000,
+    system: CRITIQUE_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  const block = response.content[0];
+  let text = block.type === "text" ? block.text.trim() : "";
+
+  // Strip any markdown fences just in case
+  text = stripMarkdownFences(text).trim();
+
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    if (!Array.isArray(parsed)) {
+      console.warn("[lp-generator] Critique response was not an array, ignoring");
+      return [];
+    }
+    return parsed.filter(
+      (item): item is LPCritiqueItem =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof (item as LPCritiqueItem).area === "string" &&
+        typeof (item as LPCritiqueItem).issue === "string" &&
+        typeof (item as LPCritiqueItem).fix === "string",
+    );
+  } catch (err) {
+    console.warn("[lp-generator] Critique JSON parse failed:", err);
+    return [];
+  }
+}
+
+// ── Generate, critique, and iteratively refine ──────────────────────────────
+
+export interface GenerateAndRefineOptions extends GenerateLPOptions {
+  /** Number of refinement passes to run after the initial generation. Default 1. */
+  refinementPasses?: number;
+  /** Maximum number of fixes to apply per refinement pass. Default 4. */
+  fixesPerPass?: number;
+  /** Optional progress callback for surfacing status to the caller. */
+  onProgress?: (message: string) => Promise<void> | void;
+}
+
+/**
+ * Generate a landing page, then critique it and apply targeted refinements
+ * in batches. Splitting the work across multiple Anthropic calls gives each
+ * pass a fresh 32K-token output budget, so neither the initial generation
+ * nor the refinements get truncated. Each pass also stays focused: critique
+ * is one structured call, and each refinement only applies a handful of
+ * specific changes rather than rewriting the whole page in one go.
+ */
+export async function generateLandingPageWithCritique(
+  opts: GenerateAndRefineOptions,
+): Promise<{ html: string; critique: LPCritiqueItem[]; passes: number }> {
+  const refinementPasses = Math.max(0, opts.refinementPasses ?? 1);
+  const fixesPerPass = Math.max(1, opts.fixesPerPass ?? 4);
+
+  if (opts.onProgress) await opts.onProgress("Generating landing page draft...");
+  let html = await generateLandingPage(opts);
+
+  if (refinementPasses === 0) {
+    return { html, critique: [], passes: 0 };
+  }
+
+  if (opts.onProgress) await opts.onProgress("Critiquing landing page...");
+  const critique = await critiqueLandingPage({
+    html,
+    brief: opts.brief,
+    campaignType: opts.campaignType,
+    brandContext: opts.brandContext,
+    targetAudience: opts.targetAudience,
+  });
+
+  if (critique.length === 0) {
+    return { html, critique: [], passes: 0 };
+  }
+
+  // Sort highest severity first so the most impactful fixes land in the
+  // earliest passes — if anything fails we still get the big wins.
+  const severityRank = { high: 0, medium: 1, low: 2 } as const;
+  const sorted = [...critique].sort(
+    (a, b) => severityRank[a.severity] - severityRank[b.severity],
+  );
+
+  let passes = 0;
+  for (let i = 0; i < refinementPasses; i++) {
+    const batch = sorted.slice(i * fixesPerPass, (i + 1) * fixesPerPass);
+    if (batch.length === 0) break;
+
+    const instructions = batch
+      .map((item, idx) => `${idx + 1}. [${item.area}] ${item.fix}`)
+      .join("\n");
+
+    if (opts.onProgress) {
+      await opts.onProgress(
+        `Refining landing page (pass ${i + 1}/${refinementPasses}, ${batch.length} fixes)...`,
+      );
+    }
+
+    try {
+      html = await refineLandingPage({
+        currentHtml: html,
+        brandContext: opts.brandContext,
+        prompt: `Apply the following targeted improvements. Each is a small, specific change — do not rewrite anything that is not mentioned.\n\n${instructions}`,
+      });
+      passes++;
+    } catch (err) {
+      console.warn(`[lp-generator] Refinement pass ${i + 1} failed (keeping previous version):`, err);
+      break;
+    }
+  }
+
+  return { html, critique, passes };
+}
+
 // ── Refine landing page ──────────────────────────────────────────────────────
 
 export async function refineLandingPage(opts: RefineLPOptions): Promise<string> {

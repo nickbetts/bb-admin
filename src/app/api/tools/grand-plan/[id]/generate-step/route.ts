@@ -7,7 +7,7 @@ import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import { suggestAdGroups, researchKeywords } from "@/lib/keyword-planner-pipeline";
 import { generateContentStrategy } from "@/lib/content-strategy-generator";
 import { extractBrandContext } from "@/lib/brand-extractor";
-import { generateLandingPage } from "@/lib/lp-generator";
+import { generateLandingPageWithCritique } from "@/lib/lp-generator";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -260,13 +260,21 @@ export async function POST(
       await setStatus(id, "Extracting brand context from website...");
       const brandContext = await extractBrandContext(website);
 
-      await setStatus(id, "Generating example landing page...");
-      const lpHtml = await generateLandingPage({
+      // Three-pass: draft -> critique -> targeted refinements. Each pass
+      // gets a fresh 32K-token output budget, so the LP no longer dies
+      // after the hero and copy quality lifts noticeably.
+      const { html: lpHtml, critique, passes } = await generateLandingPageWithCritique({
         brief: lpBriefText,
         campaignType: lpCampaignType,
         brandContext,
         targetAudience: config.sector || undefined,
+        refinementPasses: 2,
+        fixesPerPass: 4,
+        onProgress: async (msg) => { await setStatus(id, msg); },
       });
+      console.log(
+        `[grand-plan] Landing page generated with ${passes} refinement pass(es), ${critique.length} critique items.`,
+      );
 
       // Save landing page directly into planDataJson
       const existing = safeJsonParse<GrandPlanData | null>(plan.planDataJson, null);
