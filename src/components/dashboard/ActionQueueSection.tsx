@@ -133,10 +133,7 @@ export function ActionQueueSection({ clientId }: ActionQueueSectionProps) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", margin: 0 }}>
-          Top {actions.length} actions
-        </h3>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
         <span style={{ fontSize: 11, color: "var(--text-3)" }}>
           Last {data?.windowDays ?? 30} days · ranked by severity × recency
         </span>
