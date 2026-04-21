@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
-import { withApiCache } from "@/lib/api-cache";
+import { withApiCache, shouldBypassCache } from "@/lib/api-cache";
 import { getGSCTopQueries } from "@/lib/search-console";
 import { getKeywordDifficultyAndIntent } from "@/lib/semrush";
 
@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
   }
 
   const cacheKey = `cross:quick-wins:${clientId}:${startDate}:${endDate}`;
+  const bypass = shouldBypassCache(request);
 
   try {
     const result = await withApiCache(cacheKey, 6, async () => {
@@ -94,7 +95,7 @@ export async function GET(request: NextRequest) {
       const quickWins = scored.slice(0, 30);
 
       return { quickWins, total: quickWins.length };
-    });
+    }, { bypass });
 
     return NextResponse.json(result);
   } catch (error) {

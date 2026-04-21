@@ -938,10 +938,10 @@ function useGrandPlanUwu(active: boolean): string {
 }
 
 function GrandPlanChaosOverlay({ active }: { active: boolean }) {
-  const [particles, setParticles] = useState<{ id: number; emoji: string; x: number; y: number; size: number; opacity: number; rotation: number; scale: number }[]>([]);
+  const [particles, setParticles] = useState<{ id: number; emoji: string; x: number; y: number; size: number; opacity: number; rotation: number; scale: number; delay: number }[]>([]);
 
   useEffect(() => {
-    if (!active) { setParticles([]); return; }
+    if (!active) { queueMicrotask(() => setParticles([])); return; }
     const EMOJIS = ["✨", "💖", "🌸", "⭐", "🎀", "💫", "🦄", "🌈", "😻", "💕", "🎪", "🚀", "📊", "📈", "🎯", "💅", "✌️", "🔥", "👑", "🎉", "UwU", "OwO", ">.<", ":3", "rawr", "xD", "nyan~", "BAKA"];
     const initial = Array.from({ length: 35 }, (_, i) => ({
       id: i,
@@ -952,8 +952,9 @@ function GrandPlanChaosOverlay({ active }: { active: boolean }) {
       opacity: 0.15 + Math.random() * 0.25,
       rotation: Math.random() * 360,
       scale: 0.6 + Math.random() * 0.8,
+      delay: Math.random() * 2,
     }));
-    setParticles(initial);
+    queueMicrotask(() => setParticles(initial));
     const id = setInterval(() => {
       setParticles((prev) =>
         prev.map((p) => ({
@@ -989,7 +990,7 @@ function GrandPlanChaosOverlay({ active }: { active: boolean }) {
             willChange: "transform, opacity",
             filter: p.size > 30 ? "drop-shadow(0 0 10px rgba(249,168,212,0.9))" : "none",
             animation: "gpChaosFloat 3s ease-in-out infinite",
-            animationDelay: `${Math.random() * 2}s`,
+            animationDelay: `${p.delay}s`,
           }}>{p.emoji}</span>
         ))}
       </div>

@@ -10,6 +10,7 @@ import { SearchConsoleSection } from "./SearchConsoleSection";
 import { OverviewSection } from "./OverviewSection";
 import { SignalsSection } from "./SignalsSection";
 import { ActionQueueSection } from "./ActionQueueSection";
+import { FinancialsSection } from "./FinancialsSection";
 import { EcommerceSection } from "./EcommerceSection";
 import { TikTokSection } from "./TikTokSection";
 import { MicrosoftAdsSection } from "./MicrosoftAdsSection";
@@ -24,6 +25,7 @@ import { ClientStatusControl } from "@/components/clients/ClientStatusControl";
 import { CallRailSection } from "./CallRailSection";
 import { ActionsSection } from "./ActionsSection";
 import { CommunicationsSection } from "./CommunicationsSection";
+import { PortalThreadsPanel } from "./PortalThreadsPanel";
 import { CompetitorIntelligenceSection } from "./CompetitorIntelligenceSection";
 import { StrategyDocumentPanel } from "./StrategyDocumentPanel";
 import { MeetingBriefingPanel } from "./MeetingBriefingPanel";
@@ -80,7 +82,7 @@ const periods = [
   { value: "custom", label: "Custom" },
 ];
 
-type Tab = "hub" | "signals" | "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole" | "ecommerce" | "tiktok" | "microsoftads" | "cwv" | "linkedin" | "klaviyo" | "goals" | "hubspot" | "youtube" | "callrail" | "actions" | "communications" | "competitors" | "strategy";
+type Tab = "hub" | "signals" | "overview" | "seo" | "web" | "paid" | "googleads" | "searchconsole" | "ecommerce" | "tiktok" | "microsoftads" | "cwv" | "linkedin" | "klaviyo" | "goals" | "hubspot" | "youtube" | "callrail" | "actions" | "communications" | "competitors" | "strategy" | "financials";
 
 function toDateInputValue(d: Date) {
   return d.toISOString().split("T")[0];
@@ -239,6 +241,7 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
     { id: "actions", label: "Actions", available: true },
     { id: "communications", label: "Communications", available: true },
     { id: "strategy", label: "Strategy", available: true },
+    { id: "financials", label: "Financials", available: true },
   ].map((tab) => ({
     ...tab,
     // Lead funnel: Hub + SEMrush + Competitors. Closed: Hub only. Active: all.
@@ -511,7 +514,10 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
       )}
 
       {activeTab === "communications" && (
-        <CommunicationsSection clientId={client.id} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <PortalThreadsPanel clientId={client.id} />
+          <CommunicationsSection clientId={client.id} />
+        </div>
       )}
 
       {activeTab === "strategy" && (
@@ -526,6 +532,10 @@ export function ClientDashboard({ client, period: initialPeriod, userRole, permi
             clientName={client.name}
           />
         </div>
+      )}
+
+      {activeTab === "financials" && (
+        <FinancialsSection clientId={client.id} />
       )}
 
       </SectionErrorBoundary>

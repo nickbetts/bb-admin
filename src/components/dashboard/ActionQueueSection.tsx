@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ArrowUpRight, AlertCircle } from "lucide-react";
+import { Loader2, ArrowUpRight, AlertCircle, Sparkles, ChevronDown } from "lucide-react";
 
 interface PriorityAction {
   id: string;
@@ -47,6 +47,34 @@ export function ActionQueueSection({ clientId }: ActionQueueSectionProps) {
   const [data, setData] = useState<ActionQueueResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [recs, setRecs] = useState<Record<string, { loading: boolean; text?: string; error?: string }>>({});
+
+  function toggleExpand(action: PriorityAction) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(action.id)) {
+        next.delete(action.id);
+      } else {
+        next.add(action.id);
+        if (!recs[action.id]) {
+          setRecs((r) => ({ ...r, [action.id]: { loading: true } }));
+          fetch("/api/action-queue/recommend", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ clientId, anomalyId: action.id }),
+          })
+            .then(async (res) => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return (await res.json()) as { recommendation: string };
+            })
+            .then((json) => setRecs((r) => ({ ...r, [action.id]: { loading: false, text: json.recommendation } })))
+            .catch((err: unknown) => setRecs((r) => ({ ...r, [action.id]: { loading: false, error: err instanceof Error ? err.message : "Failed" } })));
+        }
+      }
+      return next;
+    });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -117,24 +145,28 @@ export function ActionQueueSection({ clientId }: ActionQueueSectionProps) {
       <ol style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
         {actions.map((a, idx) => {
           const sev = SEV_STYLE[a.severity] ?? SEV_STYLE.medium;
+          const isOpen = expanded.has(a.id);
+          const rec = recs[a.id];
           return (
-            <li key={a.id}>
-              <a
-                href={a.href}
+            <li key={a.id} style={{ borderRadius: 8, border: `1px solid ${sev.border}`, background: "var(--bg)", overflow: "hidden" }}>
+              <button
+                type="button"
+                onClick={() => toggleExpand(a)}
                 style={{
+                  width: "100%",
                   display: "flex",
                   alignItems: "stretch",
                   gap: 12,
                   padding: "10px 12px",
-                  borderRadius: 8,
-                  border: `1px solid ${sev.border}`,
-                  background: "var(--bg)",
-                  textDecoration: "none",
+                  background: "transparent",
+                  border: "none",
+                  textAlign: "left",
+                  cursor: "pointer",
                   color: "inherit",
                   transition: "background 120ms ease",
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = sev.bg; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 24, color: "var(--text-3)", fontWeight: 600, fontSize: 12 }}>
                   {idx + 1}
@@ -153,11 +185,38 @@ export function ActionQueueSection({ clientId }: ActionQueueSectionProps) {
                   </div>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--text-3)", fontSize: 11 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-3)", fontSize: 11 }}>
                   <span>{Math.round(a.score * 100)}</span>
-                  <ArrowUpRight style={{ width: 14, height: 14 }} />
+                  <ChevronDown style={{ width: 14, height: 14, transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 120ms ease" }} />
                 </div>
-              </a>
+              </button>
+
+              {isOpen && (
+                <div style={{ padding: "10px 14px 12px 100px", borderTop: `1px solid ${sev.border}`, background: sev.bg, fontSize: 12, color: "var(--text-2)", lineHeight: 1.55 }}>
+                  {rec?.loading && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--text-3)" }}>
+                      <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
+                      Generating recommendation…
+                    </span>
+                  )}
+                  {rec?.error && <span style={{ color: "#991b1b" }}>Failed: {rec.error}</span>}
+                  {rec?.text && (
+                    <>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", color: sev.badge, marginBottom: 4 }}>
+                        <Sparkles style={{ width: 10, height: 10 }} />
+                        Recommended next step
+                      </div>
+                      <div>{rec.text}</div>
+                    </>
+                  )}
+                  <div style={{ marginTop: 8 }}>
+                    <a href={a.href} style={{ fontSize: 11, color: sev.badge, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      Open {a.platform} section
+                      <ArrowUpRight style={{ width: 12, height: 12 }} />
+                    </a>
+                  </div>
+                </div>
+              )}
             </li>
           );
         })}

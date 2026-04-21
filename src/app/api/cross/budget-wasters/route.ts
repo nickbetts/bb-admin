@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionOrCronAuth } from "@/lib/auth";
-import { withApiCache } from "@/lib/api-cache";
+import { withApiCache, shouldBypassCache } from "@/lib/api-cache";
 import { getGoogleAdsSearchTerms } from "@/lib/google-ads";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
   }
 
   const cacheKey = `cross:budget-wasters:${clientId}:${startDate}:${endDate}`;
+  const bypass = shouldBypassCache(request);
 
   try {
     const result = await withApiCache(cacheKey, 4, async () => {
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
         total: topWasters.length,
         totalWastedSpend: Math.round(totalWastedSpend * 100) / 100,
       };
-    });
+    }, { bypass });
 
     return NextResponse.json(result);
   } catch (error) {
