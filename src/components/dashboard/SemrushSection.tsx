@@ -137,6 +137,9 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
 }
 
 export function SemrushSection({ domain, projectId, campaignIds, startDate, endDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, onMetricsReady, afterHeader }: SemrushSectionProps) {
+  // Derive a stable primitive so the data-fetch effect doesn't re-fire when
+  // the caller passes a new array *reference* on every render (e.g. inline IIFE).
+  const campaignIdsKey = campaignIds?.join(",") ?? "";
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
@@ -337,7 +340,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
     }
     fetchData();
     return () => controller.abort();
-  }, [domain, projectId, campaignIds, startDate, endDate]);
+  }, [domain, projectId, campaignIdsKey, startDate, endDate]);
 
   // Compute anomaly alerts from SEMrush data
   const semrushAlerts = useMemo<SemrushAlert[]>(() => {
