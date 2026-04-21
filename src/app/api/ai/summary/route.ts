@@ -1156,8 +1156,8 @@ Output the result as clean HTML only — no markdown, no code fences, no preambl
 
       // Anthropic returns content blocks; collect text-type blocks.
       const gamePlan = opusResponse.content
-        .filter((b): b is { type: "text"; text: string } => b.type === "text")
-        .map((b) => b.text)
+        .filter((b) => b.type === "text")
+        .map((b) => "text" in b ? String(b.text) : "")
         .join("")
         .trim();
 
