@@ -114,7 +114,10 @@ export interface GrandPlanData {
   clientName: string;
   purpose: string;
   generatedAt: string;
+  brief?: string;
+  campaignPeriods?: CampaignFocusPeriod[];
   sections: {
+    audiences?: { name: string; description: string; painPoints: string[]; channels: string[] }[];
     executiveSummary?: string;
     strategyPlan?: string;
     googleAdsCampaigns?: {
@@ -233,6 +236,7 @@ export async function generateGrandPlan(
 
   // Generate sections in parallel where possible, with per-section progress tracking
   const sectionNames: string[] = [];
+  if (isEnabled("audiences")) sectionNames.push("Audiences");
   if (isEnabled("executiveSummary")) sectionNames.push("Executive Summary");
   if (isEnabled("strategyPlan")) sectionNames.push("Strategy Plan");
   if (isEnabled("metaCampaigns") && sources.keywordResearch) sectionNames.push("Meta Campaigns");
@@ -285,8 +289,8 @@ export async function generateGrandPlan(
         : Promise.resolve([]),
     ]);
 
-  // Batch 2: supplementary sections (email, LinkedIn, competitor — run after core to avoid rate limits)
-  const [emailMarketing, linkedInAds, competitorIntel] =
+  // Batch 2: supplementary sections (email, LinkedIn, competitor, audiences — run after core to avoid rate limits)
+  const [emailMarketing, linkedInAds, competitorIntel, audiences] =
     await Promise.all([
       isEnabled("emailMarketing")
         ? trackProgress("Email Marketing", generateEmailMarketing(anthropic, contextSummary, sources))
@@ -296,6 +300,9 @@ export async function generateGrandPlan(
         : Promise.resolve(undefined),
       isEnabled("competitorIntel") && sources.keywordResearch
         ? trackProgress("Competitor Intel", generateCompetitorIntel(anthropic, contextSummary, sources))
+        : Promise.resolve(undefined),
+      isEnabled("audiences")
+        ? trackProgress("Audiences", generateAudiences(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
     ]);
 
@@ -345,7 +352,10 @@ export async function generateGrandPlan(
     clientName: sources.clientName,
     purpose: sources.purpose,
     generatedAt: new Date().toISOString(),
+    brief: sources.clientBrief,
+    campaignPeriods: sources.campaignFocusPeriods.length > 0 ? sources.campaignFocusPeriods : undefined,
     sections: {
+      audiences,
       executiveSummary,
       strategyPlan,
       googleAdsCampaigns,
@@ -1003,6 +1013,57 @@ ${context}`,
 
   const parsed = safeJsonParse(extractText(res), { competitors: [] });
   return parsed.competitors ?? [];
+}
+
+// ─── Audience generator ──────────────────────────────────────────────────────
+
+async function generateAudiences(
+  anthropic: Anthropic,
+  context: string,
+  sources: GrandPlanSources
+): Promise<{ name: string; description: string; painPoints: string[]; channels: string[] }[]> {
+  const res = await anthropic.messages.create({
+    model: MODEL_LIGHT,
+    max_tokens: 1200,
+    messages: [
+      {
+        role: "user",
+        content: `You are a senior digital strategist at i3media. Define the target audiences for this client's digital marketing plan.
+
+Rules:
+- British English only
+- No em dashes, no semicolons
+- Be specific and realistic about who this client is trying to reach
+- Each audience should reflect a real person or buying group, not a generic demographic label
+- Pain points must be grounded in the specific sector context — not generic marketing platitudes
+- Return ONLY a valid JSON array, no prose, no markdown fences
+- 3 to 5 audiences maximum
+
+Return JSON in this exact format:
+[
+  {
+    "name": "Audience name (short, specific — e.g. 'Practice Managers considering Invisalign')",
+    "description": "2-3 sentence description of who they are and what motivates them",
+    "painPoints": ["Pain point 1", "Pain point 2", "Pain point 3"],
+    "channels": ["Google Search", "Facebook", "Instagram"]
+  }
+]
+
+Client context:
+${context}`,
+      },
+    ],
+  });
+
+  const raw = extractText(res);
+  const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (Array.isArray(parsed)) return parsed;
+    return [];
+  } catch {
+    return [];
+  }
 }
 
 // ─── Google Ads Forecast builder (computed, no AI) ──────────────────────────

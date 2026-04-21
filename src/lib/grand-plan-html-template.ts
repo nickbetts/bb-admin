@@ -17,24 +17,83 @@ import type { GrandPlanData } from "./grand-plan-generator";
 
 export function renderGrandPlanHtml(plan: GrandPlanData): string {
   const s = plan.sections;
-  const navItems: { id: string; label: string }[] = [];
 
-  if (s.executiveSummary) navItems.push({ id: "executive-summary", label: "Executive Summary" });
-  if (s.strategyPlan) navItems.push({ id: "strategy-plan", label: "Strategy Plan" });
-  if (s.googleAdsCampaigns) navItems.push({ id: "google-ads", label: "Google Ads Campaigns" });
-  if (s.metaCampaigns?.length) navItems.push({ id: "meta-campaigns", label: "Meta Campaigns" });
-  if (s.keywordResearch) navItems.push({ id: "keyword-research", label: "Keyword Research" });
-  if (s.contentStrategy) navItems.push({ id: "content-strategy", label: "Content & SEO Strategy" });
-  if (s.contentCalendar?.length) navItems.push({ id: "content-calendar", label: "Content Calendar" });
-  if (s.organicSocial) navItems.push({ id: "organic-social", label: "Organic Social — Meta" });
-  if (s.exampleArticles?.length) navItems.push({ id: "example-articles", label: "Example Articles" });
-  if (s.servicesInvestment) navItems.push({ id: "services", label: "Services & Investment" });
-  if (s.mediaPlan) navItems.push({ id: "media-plan", label: "Media Plan" });
-  if (s.emailMarketing) navItems.push({ id: "email-marketing", label: "Email Marketing" });
-  if (s.linkedInAds?.length) navItems.push({ id: "linkedin-ads", label: "LinkedIn Ads" });
-  if (s.googleAdsForecast) navItems.push({ id: "google-ads-forecast", label: "Google Ads Forecast" });
-  if (s.competitorIntel?.length) navItems.push({ id: "competitor-intel", label: "Competitor Intelligence" });
-  if (s.landingPage) navItems.push({ id: "landing-page", label: "Example Landing Page" });
+  // ── Build chapter-grouped nav ──────────────────────────────────────────────
+  type NavItem = { id: string; label: string; isChapter?: boolean };
+  const navItems: NavItem[] = [];
+
+  const addChapter = (title: string) => {
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    navItems.push({ id: `chapter-${slug}`, label: title, isChapter: true });
+  };
+
+  const hasContext = s.audiences?.length || plan.brief || plan.campaignPeriods?.length;
+  const hasStrategy = s.executiveSummary || s.strategyPlan;
+  const hasPaidSearch = s.googleAdsCampaigns || s.googleAdsForecast;
+  const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
+  const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial || s.exampleArticles?.length;
+  const hasResearch = s.keywordResearch || s.competitorIntel?.length;
+  const hasCommercial = s.servicesInvestment || s.mediaPlan || s.emailMarketing;
+  const hasCreative = s.landingPage;
+
+  if (hasContext) {
+    addChapter("Context");
+    navItems.push({ id: "context", label: "Brief & Audiences" });
+  }
+  if (hasStrategy) {
+    addChapter("Strategy");
+    if (s.executiveSummary) navItems.push({ id: "executive-summary", label: "Executive Summary" });
+    if (s.strategyPlan) navItems.push({ id: "strategy-plan", label: "Strategy Plan" });
+  }
+  if (hasPaidSearch) {
+    addChapter("Paid Search");
+    if (s.googleAdsCampaigns) navItems.push({ id: "google-ads", label: "Google Ads" });
+    if (s.googleAdsForecast) navItems.push({ id: "google-ads-forecast", label: "Performance Forecast" });
+  }
+  if (hasPaidSocial) {
+    addChapter("Paid Social");
+    if (s.metaCampaigns?.length) navItems.push({ id: "meta-campaigns", label: "Meta Campaigns" });
+    if (s.linkedInAds?.length) navItems.push({ id: "linkedin-ads", label: "LinkedIn Ads" });
+  }
+  if (hasContent) {
+    addChapter("Content & SEO");
+    if (s.contentStrategy) navItems.push({ id: "content-strategy", label: "Content Strategy" });
+    if (s.contentCalendar?.length) navItems.push({ id: "content-calendar", label: "Content Calendar" });
+    if (s.organicSocial) navItems.push({ id: "organic-social", label: "Organic Social" });
+    if (s.exampleArticles?.length) navItems.push({ id: "example-articles", label: "Example Articles" });
+  }
+  if (hasResearch) {
+    addChapter("Research");
+    if (s.keywordResearch) navItems.push({ id: "keyword-research", label: "Keyword Research" });
+    if (s.competitorIntel?.length) navItems.push({ id: "competitor-intel", label: "Competitor Intel" });
+  }
+  if (hasCommercial) {
+    addChapter("Commercial");
+    if (s.servicesInvestment) navItems.push({ id: "services", label: "Services & Investment" });
+    if (s.mediaPlan) navItems.push({ id: "media-plan", label: "Media Plan" });
+    if (s.emailMarketing) navItems.push({ id: "email-marketing", label: "Email Marketing" });
+  }
+  if (hasCreative) {
+    addChapter("Creative");
+    navItems.push({ id: "landing-page", label: "Landing Page" });
+  }
+
+  // ── Stats band ─────────────────────────────────────────────────────────────
+  const stats: { num: string; label: string }[] = [];
+  const sectionCount = navItems.filter(n => !n.isChapter).length;
+  stats.push({ num: String(sectionCount), label: "Sections" });
+  if (s.googleAdsCampaigns?.adGroups?.length) stats.push({ num: String(s.googleAdsCampaigns.adGroups.length), label: "Ad Groups" });
+  if (s.keywordResearch?.adGroups?.length) {
+    const totalKws = s.keywordResearch.adGroups.reduce((sum: number, g: { keywords: unknown[] }) => sum + g.keywords.length, 0);
+    stats.push({ num: totalKws > 100 ? `${Math.round(totalKws / 10) * 10}+` : String(totalKws), label: "Target Keywords" });
+  }
+  if (s.contentStrategy) {
+    const contentCount = (s.contentStrategy.pageOptimisations?.length ?? 0) + (s.contentStrategy.landingPages?.length ?? 0) + (s.contentStrategy.blogPosts?.length ?? 0);
+    if (contentCount) stats.push({ num: String(contentCount), label: "Content Assets" });
+  }
+  if (s.metaCampaigns?.length) stats.push({ num: String(s.metaCampaigns.length), label: "Meta Campaigns" });
+  if (s.linkedInAds?.length) stats.push({ num: String(s.linkedInAds.length), label: "LinkedIn Campaigns" });
+  if (s.competitorIntel?.length) stats.push({ num: String(s.competitorIntel.length), label: "Competitors Analysed" });
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -47,58 +106,57 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
 </head>
 <body>
 
-<!-- Header -->
-<header class="site-header">
-  <div class="header-inner">
-    <div class="logo-area">
-      ${I3_LOGO_SVG}
-      <span class="header-sep">|</span>
-      <span class="header-client">${esc(plan.clientName)}</span>
-    </div>
-    <div class="header-meta">
-      <span class="header-badge">${plan.purpose === "pitch" ? "Pitch" : plan.purpose === "onboarding" ? "Onboarding" : "Strategy"}</span>
-      <span class="header-date">${new Date(plan.generatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
+<!-- Sticky Nav -->
+<nav id="sticky-nav" class="sticky-nav" aria-label="Page navigation">
+  <div class="sticky-nav-inner">
+    <a class="sticky-nav-logo" href="#">${I3_LOGO_SVG}</a>
+    <button class="snav-menu-btn" id="snav-hamburger" aria-expanded="false" aria-label="Navigate">
+      <span id="snav-active-label">Contents</span>
+      <span class="snav-chevron">&#9660;</span>
+    </button>
+  </div>
+  <div class="snav-dropdown">
+    <div class="snav-dropdown-inner" id="snav-links">
+      ${navItems.map((n) => n.isChapter
+        ? `<span class="snav-chapter-label">${esc(n.label)}</span>`
+        : `<a href="#${n.id}" class="snav-link" data-section="${n.id}">${esc(n.label)}</a>`
+      ).join("\n      ")}
     </div>
   </div>
-</header>
+</nav>
 
-<!-- Layout -->
-<div class="layout">
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <nav class="sidebar-nav">
-      <p class="sidebar-title">Contents</p>
-      ${navItems.map((n, i) => `<a href="#${n.id}" class="sidebar-link"><span class="sidebar-num">${String(i + 1).padStart(2, "0")}</span>${esc(n.label)}</a>`).join("\n      ")}
-    </nav>
-  </aside>
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-orb"></div>
+  <div class="hero-orb"></div>
+  <div class="hero-orb"></div>
+  <div class="hero-inner">
+    ${I3_LOGO_SVG.replace('viewBox="0 0 161 53"', 'viewBox="0 0 161 53" style="width:140px;height:auto;margin-bottom:2.5rem;display:block;color:#fff"')}
+    <div class="hero-label">${plan.purpose === "pitch" ? "Pitch Deck" : plan.purpose === "onboarding" ? "Onboarding Plan" : "Strategy Overview"} &nbsp;&middot;&nbsp; ${new Date(plan.generatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })} &nbsp;&middot;&nbsp; i3media</div>
+    <h1>${esc(plan.title)}</h1>
+    <div class="hero-divider"></div>
+    <p class="hero-sub">${s.executiveSummary ? esc(s.executiveSummary.replace(/<[^>]*>/g, "").slice(0, 200).trim()) + "..." : `A comprehensive digital marketing strategy for ${esc(plan.clientName)}.`}</p>
+    <div class="hero-meta">
+      <div class="hero-meta-item"><strong>Client</strong><span>${esc(plan.clientName)}</span></div>
+      <div class="hero-meta-item"><strong>Agency</strong><span>i3media</span></div>
+      <div class="hero-meta-item"><strong>Date</strong><span>${new Date(plan.generatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</span></div>
+      <div class="hero-meta-item"><strong>Scope</strong><span>${navItems.slice(0, 4).map(n => n.label.split(" ")[0]).join(", ")}</span></div>
+    </div>
+  </div>
+</section>
 
-  <!-- Main content -->
-  <main class="main">
-    <!-- Hero -->
-    <section class="page-hero">
-      <h1>${esc(plan.title)}</h1>
-      <p class="hero-subtitle">Prepared by i3media — ${new Date(plan.generatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</p>
-    </section>
-
-${s.executiveSummary ? renderExecutiveSummary(s.executiveSummary) : ""}
-${s.strategyPlan ? renderStrategyPlan(s.strategyPlan) : ""}
-${s.googleAdsCampaigns ? renderGoogleAdsCampaigns(s.googleAdsCampaigns) : ""}
-${s.metaCampaigns?.length ? renderMetaCampaigns(s.metaCampaigns) : ""}
-${s.keywordResearch ? renderKeywordResearch(s.keywordResearch) : ""}
-${s.contentStrategy ? renderContentStrategy(s.contentStrategy) : ""}
-${s.contentCalendar?.length ? renderContentCalendar(s.contentCalendar) : ""}
-${s.organicSocial ? renderOrganicSocial(s.organicSocial) : ""}
-${s.exampleArticles?.length ? renderExampleArticles(s.exampleArticles) : ""}
-${s.servicesInvestment ? renderServicesInvestment(s.servicesInvestment) : ""}
-${s.mediaPlan ? renderMediaPlan(s.mediaPlan) : ""}
-${s.emailMarketing ? renderEmailMarketing(s.emailMarketing) : ""}
-${s.linkedInAds?.length ? renderLinkedInAds(s.linkedInAds) : ""}
-${s.googleAdsForecast ? renderGoogleAdsForecast(s.googleAdsForecast) : ""}
-${s.competitorIntel?.length ? renderCompetitorIntel(s.competitorIntel) : ""}
-${s.landingPage ? renderLandingPage(s.landingPage) : ""}
-
-  </main>
+<!-- Stats Band -->
+<div class="stats-band">
+  <div class="stats-inner">
+    ${stats.slice(0, 5).map(st => `<div class="stat-item"><span class="stat-num">${st.num}</span><span class="stat-label">${st.label}</span></div>`).join("\n    ")}
+  </div>
 </div>
+
+<!-- Main Content -->
+${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods)}
+
+<!-- Closing CTA -->
+${renderCtaClose(plan.clientName)}
 
 <!-- Watermark -->
 <div class="watermark">Confidential</div>
@@ -121,21 +179,197 @@ ${s.landingPage ? renderLandingPage(s.landingPage) : ""}
 </html>`;
 }
 
+// ─── Chapter layout builder ─────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildChapteredSections(s: any, clientName: string, brief?: string, campaignPeriods?: { label: string; startMonth: number; endMonth: number; description?: string }[]): string {
+  let chapterNum = 0;
+  const ch = (title: string, sub: string) => {
+    chapterNum++;
+    return chapterPanel(chapterNum, title, sub);
+  };
+
+  const hasContext = brief || s.audiences?.length || campaignPeriods?.length;
+  const hasStrategy = s.executiveSummary || s.strategyPlan;
+  const hasPaidSearch = s.googleAdsCampaigns || s.googleAdsForecast;
+  const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
+  const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial || s.exampleArticles?.length;
+  const hasResearch = s.keywordResearch || s.competitorIntel?.length;
+  const hasCommercial = s.servicesInvestment || s.mediaPlan || s.emailMarketing;
+  const hasCreative = s.landingPage;
+
+  const parts: string[] = [];
+
+  if (hasContext) {
+    parts.push(ch("Context", `The brief, target audiences, and campaign periods that define this plan.`));
+    parts.push(renderContext(brief, s.audiences, campaignPeriods));
+  }
+
+  if (hasStrategy) {
+    parts.push(ch("Strategy", `The overall marketing strategy and executive overview for ${clientName}.`));
+    if (s.executiveSummary) parts.push(renderExecutiveSummary(s.executiveSummary));
+    if (s.strategyPlan) parts.push(renderStrategyPlan(s.strategyPlan));
+  }
+
+  if (hasPaidSearch) {
+    parts.push(ch("Paid Search", "Google Ads campaign structure, ad groups, keyword targeting, and performance forecasts."));
+    if (s.googleAdsCampaigns) parts.push(renderGoogleAdsCampaigns(s.googleAdsCampaigns));
+    if (s.googleAdsForecast) parts.push(renderGoogleAdsForecast(s.googleAdsForecast));
+  }
+
+  if (hasPaidSocial) {
+    parts.push(ch("Paid Social", "Facebook, Instagram, and LinkedIn campaign structures with audience targeting and ad creative."));
+    if (s.metaCampaigns?.length) parts.push(renderMetaCampaigns(s.metaCampaigns));
+    if (s.linkedInAds?.length) parts.push(renderLinkedInAds(s.linkedInAds));
+  }
+
+  if (hasContent) {
+    parts.push(ch("Content & SEO", "Content strategy, publishing calendar, organic social, and example content assets."));
+    if (s.contentStrategy) parts.push(renderContentStrategy(s.contentStrategy));
+    if (s.contentCalendar?.length) parts.push(renderContentCalendar(s.contentCalendar));
+    if (s.organicSocial) parts.push(renderOrganicSocial(s.organicSocial));
+    if (s.exampleArticles?.length) parts.push(renderExampleArticles(s.exampleArticles));
+  }
+
+  if (hasResearch) {
+    parts.push(ch("Research", "Keyword research and competitor intelligence across all target areas."));
+    if (s.keywordResearch) parts.push(renderKeywordResearch(s.keywordResearch));
+    if (s.competitorIntel?.length) parts.push(renderCompetitorIntel(s.competitorIntel));
+  }
+
+  if (hasCommercial) {
+    parts.push(ch("Commercial", "Services, investment overview, media budget allocation, and email lifecycle."));
+    if (s.servicesInvestment) parts.push(renderServicesInvestment(s.servicesInvestment));
+    if (s.mediaPlan) parts.push(renderMediaPlan(s.mediaPlan));
+    if (s.emailMarketing) parts.push(renderEmailMarketing(s.emailMarketing));
+  }
+
+  if (hasCreative) {
+    parts.push(ch("Creative", "An AI-generated example landing page built from your website content and branding."));
+    parts.push(renderLandingPage(s.landingPage));
+  }
+
+  return parts.join("\n");
+}
+
+function chapterPanel(num: number, title: string, sub: string): string {
+  const numStr = String(num).padStart(2, "0");
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return `
+<div class="chapter-panel" id="chapter-${slug}" data-snap>
+  <div class="chapter-panel-orb"></div>
+  <div class="chapter-inner">
+    <div class="chapter-num">Chapter ${numStr}</div>
+    <h2 class="chapter-heading">${esc(title)}</h2>
+    <p class="chapter-sub">${esc(sub)}</p>
+  </div>
+</div>`;
+}
+
+function renderCtaClose(clientName: string): string {
+  return `
+<section class="cta-section">
+  <div class="cta-orb"></div>
+  <div class="cta-orb"></div>
+  <div class="section-inner" style="max-width:800px;margin:0 auto;position:relative;z-index:1">
+    <div class="section-kicker" style="color:rgba(255,255,255,.45)">Next Steps</div>
+    <h2 style="font-size:clamp(2rem,5vw,3.25rem);color:#fff;letter-spacing:-1.5px;margin-bottom:1.25rem">Ready when you are.</h2>
+    <p style="font-size:1.1rem;color:rgba(255,255,255,.6);max-width:560px;line-height:1.7;margin-bottom:3rem">This plan is ready to execute. If you have any questions about the strategy for ${esc(clientName)}, get in touch and we can walk through it together.</p>
+    <div class="cta-links">
+      <a href="mailto:hello@i3media.co.uk" class="cta-link-card">
+        <span class="cta-link-icon">✉</span>
+        <div><div class="cta-link-label">Email us</div><div class="cta-link-val">hello@i3media.co.uk</div></div>
+      </a>
+      <a href="https://i3media.co.uk" class="cta-link-card" target="_blank" rel="noopener">
+        <span class="cta-link-icon">🌐</span>
+        <div><div class="cta-link-label">Website</div><div class="cta-link-val">i3media.co.uk</div></div>
+      </a>
+    </div>
+  </div>
+</section>`;
+}
+
 // ─── Section renderers ──────────────────────────────────────────────────────
+
+function renderContext(
+  brief: string | undefined,
+  audiences: { name: string; description: string; painPoints: string[]; channels: string[] }[] | undefined,
+  periods: { label: string; startMonth: number; endMonth: number; description?: string }[] | undefined
+): string {
+  const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  const briefBlock = brief ? `
+    <div class="ctx-brief">
+      <div class="ctx-block-label">The Brief</div>
+      <p class="ctx-brief-text">${esc(brief)}</p>
+    </div>` : "";
+
+  const audiencesBlock = audiences?.length ? `
+    <div class="ctx-block-label" style="margin-top:3rem">Target Audiences</div>
+    <div class="ctx-audience-grid">
+      ${audiences.map((a, i) => `
+      <div class="ctx-audience-card">
+        <div class="ctx-audience-num">${String(i + 1).padStart(2, "0")}</div>
+        <h4 class="ctx-audience-name">${esc(a.name)}</h4>
+        <p class="ctx-audience-desc">${esc(a.description)}</p>
+        ${a.painPoints?.length ? `
+        <div class="ctx-pain-label">Pain Points</div>
+        <ul class="ctx-pain-list">
+          ${a.painPoints.map(p => `<li>${esc(p)}</li>`).join("")}
+        </ul>` : ""}
+        ${a.channels?.length ? `
+        <div class="ctx-channels">
+          ${a.channels.map(c => `<span class="ctx-channel-chip">${esc(c)}</span>`).join("")}
+        </div>` : ""}
+      </div>`).join("\n")}
+    </div>` : "";
+
+  const periodsBlock = periods?.length ? `
+    <div class="ctx-block-label" style="margin-top:3rem">Campaign Focus Periods</div>
+    <div class="ctx-periods-list">
+      ${periods.map((p, i) => `
+      <div class="ctx-period-item">
+        <div class="ctx-period-num">${String(i + 1).padStart(2, "0")}</div>
+        <div class="ctx-period-content">
+          <div class="ctx-period-dates">${MONTH_SHORT[p.startMonth - 1]} – ${MONTH_SHORT[p.endMonth - 1]}</div>
+          <div class="ctx-period-label">${esc(p.label)}</div>
+          ${p.description ? `<div class="ctx-period-desc">${esc(p.description)}</div>` : ""}
+        </div>
+      </div>`).join("\n")}
+    </div>` : "";
+
+  return `
+    <section id="context" class="section dark">
+      <div class="section-inner">
+        <div class="section-kicker blue">Context</div>
+        <h2>Who We're Talking To</h2>
+        <p class="section-intro">The brief, the target audiences, and the key campaign windows that shape every decision in this plan.</p>
+        ${briefBlock}
+        ${audiencesBlock}
+        ${periodsBlock}
+      </div>
+    </section>`;
+}
 
 function renderExecutiveSummary(html: string): string {
   return `
-    <section id="executive-summary" class="section">
-      <h2 class="section-title">Executive Summary</h2>
-      <div class="section-body">${html}</div>
+    <section id="executive-summary" class="section alt">
+      <div class="section-inner">
+        <div class="section-kicker">Overview</div>
+        <h2>Executive Summary</h2>
+        <div class="section-body">${html}</div>
+      </div>
     </section>`;
 }
 
 function renderStrategyPlan(html: string): string {
   return `
     <section id="strategy-plan" class="section">
-      <h2 class="section-title">Strategy Plan</h2>
-      <div class="section-body">${html}</div>
+      <div class="section-inner">
+        <div class="section-kicker">The Plan</div>
+        <h2>Strategy Plan</h2>
+        <div class="section-body">${html}</div>
+      </div>
     </section>`;
 }
 
@@ -174,6 +408,28 @@ function renderGoogleAdsCampaigns(data: any): string {
         const sitelinksHtml = (g.adCopy!.sitelinks ?? []).length > 0
           ? `<div class="sitelinks-section"><div class="ad-copy-label">Sitelinks</div><div class="sitelink-chips">${g.adCopy!.sitelinks!.map((s) => `<span class="sitelink-chip">${esc(s)}${charBadge(s.length, 25)}</span>`).join("")}</div></div>`
           : "";
+
+        // Google ad preview mockup
+        const h1 = g.adCopy!.headlines[0] ?? "";
+        const h2 = g.adCopy!.headlines[1] ?? "";
+        const h3 = g.adCopy!.headlines[2] ?? "";
+        const desc1 = g.adCopy!.descriptions[0] ?? "";
+        const previewSitelinks = (g.adCopy!.sitelinks ?? []).slice(0, 4);
+        const gadPreview = `
+        <div class="ad-channel-group" style="margin-top:1.5rem">
+          <div class="ad-channel-label">&#128269; Ad Preview</div>
+          <div class="ad-card">
+            <div class="ad-card-header"><span class="ad-badge google">Google</span><span style="font-size:11px;color:var(--mid)">${esc(g.name)}</span></div>
+            <div class="ad-card-body">
+              <div class="gad-sponsor-row"><div class="gad-dot"></div><span class="gad-sponsored-tag">Sponsored</span></div>
+              <div class="gad-url-text">https://example.com</div>
+              <div class="gad-headline">${esc(h1)}${h2 ? ` <span class="gad-headline-sep">|</span> ${esc(h2)}` : ""}${h3 ? ` <span class="gad-headline-sep">|</span> ${esc(h3)}` : ""}</div>
+              <div class="gad-desc">${esc(desc1)}</div>
+              ${previewSitelinks.length ? `<div class="gad-sitelinks">${previewSitelinks.map((sl: string) => `<span class="gad-sitelink">${esc(sl)}</span>`).join("")}</div>` : ""}
+            </div>
+          </div>
+        </div>`;
+
         return `
         <div class="ad-copy-section">
           <div class="ad-copy-title">Ad Copy</div>
@@ -190,6 +446,7 @@ function renderGoogleAdsCampaigns(data: any): string {
             </div>
           </div>
           ${sitelinksHtml}
+          ${gadPreview}
         </div>`;
       })() : "";
 
@@ -214,18 +471,21 @@ function renderGoogleAdsCampaigns(data: any): string {
     .join("\n");
 
   return `
-    <section id="google-ads" class="section">
-      <h2 class="section-title">Google Ads Campaigns</h2>
-      <div class="campaign-hero">
-        <h3>${esc(data.campaignName)}</h3>
+    <section id="google-ads" class="section dark">
+      <div class="section-inner">
+        <div class="section-kicker blue">Paid Search</div>
+        <h2>Google Ads Campaigns</h2>
+        <div class="campaign-hero">
+          <h3>${esc(data.campaignName)}</h3>
+        </div>
+        <div class="overview-grid">${overviewGrid}</div>
+        <div class="neg-section">
+          <h4>Campaign-Level Negative Keywords</h4>
+          <div class="neg-list">${negKws}</div>
+        </div>
+        <h3 class="ag-heading">Ad Groups</h3>
+        ${adGroupsHtml}
       </div>
-      <div class="overview-grid">${overviewGrid}</div>
-      <div class="neg-section">
-        <h4>Campaign-Level Negative Keywords</h4>
-        <div class="neg-list">${negKws}</div>
-      </div>
-      <h3 class="ag-heading">Ad Groups</h3>
-      ${adGroupsHtml}
     </section>`;
 }
 
@@ -241,11 +501,22 @@ function renderMetaCampaigns(campaigns: any[]): string {
 
       const creatives = (c.adCreatives ?? [])
         .map((cr: { format: string; headline: string; primaryText: string; cta: string }) =>
-          `<div class="ad-creative">
-            <span class="creative-format">${esc(cr.format)}</span>
-            <p class="creative-headline">${esc(cr.headline)}</p>
-            <p class="creative-text">${esc(cr.primaryText)}</p>
-            <span class="creative-cta">${esc(cr.cta)}</span>
+          `<div class="ad-card">
+            <div class="ad-card-header"><span class="ad-badge meta">Meta</span><span style="font-size:11px;color:rgba(255,255,255,.5)">${esc(cr.format)}</span></div>
+            <div class="ad-card-body">
+              <div class="mad-header">
+                <div class="mad-avatar">i3</div>
+                <div><div class="mad-info-name">${esc(c.campaignName ?? "")}</div><div class="mad-info-sub">Sponsored &middot; ${esc(cr.format)}</div></div>
+              </div>
+              <div class="mad-image-wrap">
+                <div class="mad-img-content"><strong>${esc(cr.headline)}</strong></div>
+              </div>
+              <p class="mad-caption">${esc(cr.primaryText)}</p>
+              <div class="mad-cta-block">
+                <div><div class="mad-cta-block-url">i3media.co.uk</div><div class="mad-cta-block-title">${esc(cr.headline)}</div></div>
+                <div class="mad-cta-btn">${esc(cr.cta)}</div>
+              </div>
+            </div>
           </div>`)
         .join("\n");
 
@@ -270,7 +541,7 @@ function renderMetaCampaigns(campaigns: any[]): string {
           <h5>Audience Targeting</h5>
           <div class="audience-list">${audiences}</div>
           <h5>Ad Creatives</h5>
-          <div class="creatives-grid">${creatives}</div>
+          <div class="ad-mockup-grid">${creatives}</div>
           <h5>Caption Copy Bank</h5>
           <div class="captions-list">${captions}</div>
           ${pillars ? `<h5>Content Pillars</h5><ul class="pillars-list">${pillars}</ul>` : ""}
@@ -281,9 +552,12 @@ function renderMetaCampaigns(campaigns: any[]): string {
 
   return `
     <section id="meta-campaigns" class="section">
-      <h2 class="section-title">Meta Campaigns</h2>
+      <div class="section-inner">
+        <div class="section-kicker">Paid Social</div>
+        <h2>Meta Campaigns</h2>
       <p class="section-intro">Facebook and Instagram campaign structures with audience targeting, ad creative, and caption banks.</p>
       ${campaignsHtml}
+      </div>
     </section>`;
 }
 
@@ -308,10 +582,13 @@ function renderKeywordResearch(data: any): string {
     .join("\n");
 
   return `
-    <section id="keyword-research" class="section">
-      <h2 class="section-title">Keyword Research</h2>
+    <section id="keyword-research" class="section alt">
+      <div class="section-inner">
+        <div class="section-kicker">Keywords</div>
+        <h2>Keyword Research</h2>
       <p class="section-intro">Keywords organised by ad group. Use the copy buttons to export directly into Google Keyword Planner or Ads Editor.</p>
       ${groupsHtml}
+      </div>
     </section>`;
 }
 
@@ -355,10 +632,13 @@ function renderContentStrategy(data: any): string {
 
   return `
     <section id="content-strategy" class="section">
-      <h2 class="section-title">Content & SEO Strategy</h2>
+      <div class="section-inner">
+        <div class="section-kicker">Content & SEO</div>
+        <h2>Content & SEO Strategy</h2>
       ${pageOptsHtml}
       ${landingsHtml}
       ${blogsHtml}
+      </div>
     </section>`;
 }
 
@@ -388,10 +668,13 @@ function renderContentCalendar(months: any[]): string {
     .join("\n");
 
   return `
-    <section id="content-calendar" class="section">
-      <h2 class="section-title">Content Calendar</h2>
+    <section id="content-calendar" class="section alt">
+      <div class="section-inner">
+        <div class="section-kicker">Publishing</div>
+        <h2>Content Calendar</h2>
       <p class="section-intro">A 6-month publishing schedule across blog content and organic social, aligned to campaign focus periods.</p>
       <div class="calendar-grid">${monthsHtml}</div>
+      </div>
     </section>`;
 }
 
@@ -419,7 +702,9 @@ function renderOrganicSocial(data: any): string {
 
   return `
     <section id="organic-social" class="section">
-      <h2 class="section-title">Organic Social — Meta</h2>
+      <div class="section-inner">
+        <div class="section-kicker">Social Media</div>
+        <h2>Organic Social — Meta</h2>
       <p class="section-intro">Content pillars, posting frequency, and content type mix for Instagram and Facebook.</p>
       <div class="social-freq"><strong>Posting frequency:</strong> ${esc(data.postingFrequency ?? "")}</div>
       <h3>Content Mix</h3>
@@ -427,6 +712,7 @@ function renderOrganicSocial(data: any): string {
       <h3>Content Pillars</h3>
       <div class="pillars-grid">${pillarsHtml}</div>
       ${hashtags ? `<h3>Hashtag Strategy</h3><div class="hashtag-list">${hashtags}</div>` : ""}
+      </div>
     </section>`;
 }
 
@@ -457,23 +743,31 @@ function renderExampleArticles(articles: { title: string; html: string; seoMeta?
     .join("\n");
 
   return `
-    <section id="example-articles" class="section">
-      <h2 class="section-title">Example Articles</h2>
+    <section id="example-articles" class="section alt">
+      <div class="section-inner">
+        <div class="section-kicker">Content Examples</div>
+        <h2>Example Articles</h2>
       <p class="section-intro">These are example articles showing the quality and style of content this plan will deliver. Click to expand.</p>
       ${articlesHtml}
+      </div>
     </section>`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderServicesInvestment(data: any): string {
-  const servicesHtml = (data.services ?? [])
-    .map((s: { name: string; description?: string; price?: string }) => `
-    <div class="service-card">
-      <h4>${esc(s.name)}</h4>
-      ${s.description ? `<p>${esc(s.description)}</p>` : ""}
-      ${s.price ? `<span class="service-price">${esc(s.price)}</span>` : ""}
-    </div>`)
-    .join("\n");
+  const DELIV_COLORS = ["c1","c2","c3","c4","c5","c6","c7","c8"];
+
+  const delivGrid = (data.services ?? []).length > 0 ? `
+    <div class="deliv-grid">
+      ${(data.services as { name: string; description?: string; price?: string }[]).map((s, i) => `
+      <div class="deliv-card">
+        <div class="deliv-head ${DELIV_COLORS[i % DELIV_COLORS.length]}">${esc(s.name)}${s.price ? ` <span style="float:right;opacity:.8;font-weight:500">${esc(s.price)}</span>` : ""}</div>
+        <div class="deliv-body">
+          ${s.description ? s.description.split(".").filter(Boolean).map((line: string) => `
+          <div class="deliv-row"><div class="deliv-dot"></div><div>${esc(line.trim())}.</div></div>`).join("") : '<div class="deliv-row"><div class="deliv-dot"></div><div>See scope of work for full details.</div></div>'}
+        </div>
+      </div>`).join("\n")}
+    </div>` : "";
 
   const timelineHtml = (data.timeline ?? [])
     .map((t: { phase: string; items: string[] }) => `
@@ -485,9 +779,12 @@ function renderServicesInvestment(data: any): string {
 
   return `
     <section id="services" class="section">
-      <h2 class="section-title">Services & Investment</h2>
-      ${servicesHtml ? `<h3>Recommended Services</h3><div class="services-grid">${servicesHtml}</div>` : ""}
-      ${timelineHtml ? `<h3>Timeline</h3><div class="timeline-list">${timelineHtml}</div>` : ""}
+      <div class="section-inner">
+        <div class="section-kicker">Pricing</div>
+        <h2>Services &amp; Investment</h2>
+      ${delivGrid ? `<h3 style="margin-bottom:1.25rem">Recommended Services</h3>${delivGrid}` : ""}
+      ${timelineHtml ? `<h3 style="margin:2rem 0 1rem">Timeline</h3><div class="timeline-list">${timelineHtml}</div>` : ""}
+      </div>
     </section>`;
 }
 
@@ -514,8 +811,10 @@ function renderMediaPlan(data: any): string {
     .join("\n");
 
   return `
-    <section id="media-plan" class="section">
-      <h2 class="section-title">Media Plan</h2>
+    <section id="media-plan" class="section alt">
+      <div class="section-inner">
+        <div class="section-kicker">Budget</div>
+        <h2>Media Plan</h2>
       <div class="media-summary">
         <div class="media-stat"><span class="media-label">Objective</span><span class="media-value">${esc(data.objective)}</span></div>
         <div class="media-stat"><span class="media-label">Total Budget</span><span class="media-value">£${data.totalBudget.toLocaleString()}</span></div>
@@ -523,6 +822,7 @@ function renderMediaPlan(data: any): string {
       <h3>Channel Allocation</h3>
       <div class="channel-chart">${channelsHtml}</div>
       ${tableRowsHtml ? `<table class="channel-table"><thead><tr><th>Channel</th><th>Budget</th><th>Split</th><th>Strategy</th></tr></thead><tbody>${tableRowsHtml}</tbody></table>` : ""}
+      </div>
     </section>`;
 }
 
@@ -579,12 +879,15 @@ function renderEmailMarketing(data: any): string {
 
   return `
     <section id="email-marketing" class="section">
-      <h2 class="section-title">Email Marketing</h2>
+      <div class="section-inner">
+        <div class="section-kicker">Lifecycle</div>
+        <h2>Email Marketing</h2>
       <h3 class="subsection-title">Automated Flows</h3>
       ${flowsHtml}
       <h3 class="subsection-title" style="margin-top:24px">Regular Campaigns</h3>
       <div class="em-campaigns-grid">${campaignsHtml}</div>
       ${segmentsHtml ? `<h3 class="subsection-title" style="margin-top:24px">Audience Segments</h3><div class="em-segments">${segmentsHtml}</div>` : ""}
+      </div>
     </section>`;
 }
 
@@ -601,11 +904,23 @@ function renderLinkedInAds(campaigns: any[]): string {
 
       const creativesHtml = (c.adCreatives ?? [])
         .map((cr: { headline: string; introText: string; description?: string; cta: string }) => `
-        <div class="li-creative">
-          <div class="li-creative-headline">${esc(cr.headline)}<span class="char-badge ${cr.headline.length <= 70 ? "char-ok" : "char-over"}">${cr.headline.length}/70</span></div>
-          <div class="li-creative-text">${esc(cr.introText)}</div>
-          ${cr.description ? `<div class="li-creative-desc">${esc(cr.description)}</div>` : ""}
-          <span class="li-cta-badge">${esc(cr.cta)}</span>
+        <div class="ad-card">
+          <div class="ad-card-header"><span class="ad-badge linkedin">LinkedIn</span></div>
+          <div class="ad-card-body">
+            <div class="lad-profile">
+              <div class="lad-avatar">i3</div>
+              <div><div class="lad-info-name">${esc(c.campaignName ?? "LinkedIn Ad")}</div><div class="lad-info-sub">Sponsored</div><div class="lad-follow">+ Follow</div></div>
+            </div>
+            <p class="lad-caption">${esc(cr.introText)}</p>
+            <div class="lad-image-wrap">
+              <div class="lad-img-txt">${esc(cr.headline)}<span class="char-badge ${cr.headline.length <= 70 ? "char-ok" : "char-over"}" style="margin-left:6px">${cr.headline.length}/70</span></div>
+            </div>
+            ${cr.description ? `<p style="font-size:12px;color:var(--text-light);margin-bottom:8px">${esc(cr.description)}</p>` : ""}
+            <div class="lad-cta-row">
+              <div class="lad-cta-btn">${esc(cr.cta)}</div>
+              <div class="lad-stats">Sponsored</div>
+            </div>
+          </div>
         </div>`)
         .join("\n");
 
@@ -619,15 +934,18 @@ function renderLinkedInAds(campaigns: any[]): string {
           ${targeting.companySize ? `<div class="ov-item"><span class="ov-label">Company Size</span><span class="ov-value">${esc(targeting.companySize)}</span></div>` : ""}
         </div>
         ${targetingChips ? `<div class="li-targeting"><h4>Audience Targeting</h4><div class="audience-chips">${targetingChips}</div></div>` : ""}
-        ${creativesHtml ? `<div class="li-creatives"><h4>Ad Creatives</h4>${creativesHtml}</div>` : ""}
+        ${creativesHtml ? `<div class="li-creatives"><h4>Ad Creatives</h4><div class="ad-mockup-grid">${creativesHtml}</div></div>` : ""}
       </div>`;
     })
     .join("\n");
 
   return `
-    <section id="linkedin-ads" class="section">
-      <h2 class="section-title">LinkedIn Ads</h2>
+    <section id="linkedin-ads" class="section alt">
+      <div class="section-inner">
+        <div class="section-kicker">LinkedIn</div>
+        <h2>LinkedIn Ads</h2>
       ${campaignsHtml}
+      </div>
     </section>`;
 }
 
@@ -637,7 +955,9 @@ function renderGoogleAdsForecast(data: any): string {
 
   return `
     <section id="google-ads-forecast" class="section">
-      <h2 class="section-title">Google Ads Forecast</h2>
+      <div class="section-inner">
+        <div class="section-kicker">Performance</div>
+        <h2>Google Ads Forecast</h2>
       <p class="section-intro">Estimated monthly performance based on keyword volumes, CPCs, and a £${Number(data.monthlyBudget ?? 0).toLocaleString()}/month budget at ${data.conversionRate ?? 3}% conversion rate.</p>
       <div class="forecast-grid">
         <div class="forecast-card"><span class="forecast-value">${fmtNum(data.clicks ?? 0)}</span><span class="forecast-label">Est. Clicks</span></div>
@@ -647,6 +967,7 @@ function renderGoogleAdsForecast(data: any): string {
         <div class="forecast-card"><span class="forecast-value">${Number(data.ctr ?? 0).toFixed(2)}%</span><span class="forecast-label">Avg CTR</span></div>
         <div class="forecast-card"><span class="forecast-value">£${Number(data.avgCpc ?? 0).toFixed(2)}</span><span class="forecast-label">Avg CPC</span></div>
         <div class="forecast-card accent"><span class="forecast-value">£${Number(data.avgCpa ?? 0).toFixed(2)}</span><span class="forecast-label">Est. CPA</span></div>
+      </div>
       </div>
     </section>`;
 }
@@ -683,13 +1004,16 @@ function renderCompetitorIntel(competitors: any[]): string {
     .join("\n");
 
   return `
-    <section id="competitor-intel" class="section">
-      <h2 class="section-title">Competitor Intelligence</h2>
+    <section id="competitor-intel" class="section alt">
+      <div class="section-inner">
+        <div class="section-kicker">Research</div>
+        <h2>Competitor Intelligence</h2>
       <table class="channel-table">
         <thead><tr><th>Domain</th><th>Organic Traffic</th><th>Organic KWs</th><th>Paid KWs</th><th>Backlinks</th></tr></thead>
         <tbody>${tableRows}</tbody>
       </table>
       <div class="comp-details" style="margin-top:20px">${detailCards}</div>
+      </div>
     </section>`;
 }
 
@@ -700,7 +1024,9 @@ function renderLandingPage(data: { html: string; campaignType: string }): string
 
   return `
     <section id="landing-page" class="section">
-      <h2 class="section-title">Example Landing Page</h2>
+      <div class="section-inner">
+        <div class="section-kicker">Creative</div>
+        <h2>Example Landing Page</h2>
       <div class="lp-meta">
         <span class="lp-badge">${esc(typeLabel)}</span>
         <span class="lp-hint">AI-generated from the client's actual website content and branding. This is a fully working page that can be deployed as-is or refined further.</span>
@@ -712,6 +1038,7 @@ function renderLandingPage(data: { html: string; campaignType: string }): string
           <button class="lp-expand-btn" onclick="(function(el){var f=el.closest('.lp-frame-wrap');f.classList.toggle('lp-expanded')})(this)">⤢</button>
         </div>
         <iframe class="lp-iframe" srcdoc="" data-lp-html="${encoded}" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>
+      </div>
       </div>
     </section>`;
 }
@@ -734,65 +1061,118 @@ function escAttr(s: string): string {
 // ─── Inline CSS ─────────────────────────────────────────────────────────────
 
 const CSS = `
-:root{--bg:#f1f5f9;--white:#fff;--border:#e2e8f0;--text:#334155;--text-light:#64748b;--mid:#94a3b8;--heading:#0f172a;--accent:#0f172a}
+:root{--bg:#f1f5f9;--white:#fff;--border:#e2e8f0;--text:#334155;--text-light:#64748b;--mid:#94a3b8;--heading:#0f172a;--ink:#0f172a;--blue:#3b82f6}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:15px}
-a{color:var(--accent);text-decoration:none}
-.site-header{position:sticky;top:0;z-index:100;background:var(--heading);color:#fff;padding:0 24px;height:56px;display:flex;align-items:center}
-.header-inner{display:flex;align-items:center;justify-content:space-between;max-width:1340px;width:100%;margin:0 auto}
-.logo-area{display:flex;align-items:center;gap:12px}
-.logo-area svg{height:28px;width:auto}
-.header-sep{color:rgba(255,255,255,.3);font-size:18px}
-.header-client{font-weight:600;font-size:14px;opacity:.9}
-.header-meta{display:flex;align-items:center;gap:12px}
-.header-badge{background:rgba(255,255,255,.15);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-.header-date{font-size:12px;opacity:.7}
-.layout{display:flex;max-width:1340px;margin:0 auto;padding:24px;gap:24px}
-.sidebar{width:220px;flex-shrink:0;position:sticky;top:80px;height:fit-content}
-.sidebar-nav{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:2px}
-.sidebar-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mid);margin-bottom:8px}
-.sidebar-link{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;font-size:13px;color:var(--text-light);transition:all .15s}
-.sidebar-link:hover{background:var(--bg);color:var(--heading)}
-.sidebar-num{font-size:11px;font-weight:700;color:var(--mid);min-width:20px}
-.main{flex:1;min-width:0;display:flex;flex-direction:column;gap:24px}
-.page-hero{background:linear-gradient(135deg,#0f172a 0%,#1e293b 65%,#162040 100%);color:#fff;padding:48px 40px;border-radius:16px}
-.page-hero h1{font-size:28px;font-weight:800;line-height:1.2;margin-bottom:8px}
-.hero-subtitle{font-size:14px;opacity:.7}
-.section{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:32px}
-.section-title{font-size:20px;font-weight:800;color:var(--heading);margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--border)}
-.section-intro{color:var(--text-light);font-size:14px;margin-bottom:20px}
-.section-body h3{font-size:17px;font-weight:700;color:var(--heading);margin:20px 0 8px}
-.section-body h4{font-size:15px;font-weight:600;color:var(--heading);margin:16px 0 6px}
-.section-body p{margin-bottom:12px}
-.section-body ul,.section-body ol{margin:0 0 12px 20px}
-.section-body li{margin-bottom:4px}
-/* Campaign hero */
-.campaign-hero{background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:20px 24px;border-radius:10px;margin-bottom:20px}
-.campaign-hero h3{font-size:18px;font-weight:700;margin:0;color:#fff}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:var(--white);color:var(--text);line-height:1.7;font-size:15px}
+a{color:var(--blue);text-decoration:none}
+
+/* ── Sticky Nav ────────────────────────────────────────────── */
+.sticky-nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(15,23,42,.96);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.08);transform:translateY(-100%);transition:transform .32s cubic-bezier(.4,0,.2,1)}
+.sticky-nav.visible{transform:translateY(0)}
+.sticky-nav-inner{max-width:1200px;margin:0 auto;padding:0 3rem;display:flex;align-items:center;height:50px;gap:2rem}
+.sticky-nav-logo{flex-shrink:0;opacity:.65;transition:opacity .2s;display:flex;align-items:center}
+.sticky-nav-logo:hover{opacity:1}
+.sticky-nav-logo svg{height:22px;width:auto;color:#fff}
+.snav-menu-btn{margin-left:auto;flex-shrink:0;display:flex;align-items:center;gap:.45rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.65);font-size:12px;font-weight:600;padding:.28rem .9rem;border-radius:6px;cursor:pointer;transition:background .18s,color .18s;font-family:inherit;letter-spacing:.01em;white-space:nowrap}
+.snav-menu-btn:hover{background:rgba(255,255,255,.13);color:#fff}
+.snav-menu-btn[aria-expanded="true"]{background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.4);color:#fff}
+.snav-chevron{font-size:8px;transition:transform .2s;flex-shrink:0;opacity:.6;margin-top:1px}
+.snav-menu-btn[aria-expanded="true"] .snav-chevron{transform:rotate(180deg)}
+.snav-dropdown{display:none;position:absolute;top:100%;left:0;right:0;background:rgba(10,18,36,.98);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.1);padding:.85rem 0 1rem}
+.snav-dropdown-inner{max-width:1200px;margin:0 auto;padding:0 3rem;display:flex;flex-wrap:wrap;gap:.2rem}
+.sticky-nav.nav-open .snav-dropdown{display:block}
+.snav-link{font-size:11.5px;font-weight:600;letter-spacing:.01em;color:rgba(255,255,255,.42);text-decoration:none;padding:.3rem .7rem;border-radius:6px;white-space:nowrap;transition:color .18s,background .18s}
+.snav-link:hover{color:rgba(255,255,255,.8);background:rgba(255,255,255,.07)}
+.snav-link.active{color:#fff;background:rgba(59,130,246,.28)}
+.snav-chapter-label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.15em;color:rgba(255,255,255,.25);padding:.3rem .7rem;margin-top:.5rem;display:block;white-space:nowrap}
+
+/* ── Hero ──────────────────────────────────────────────────── */
+.hero{min-height:100vh;background:linear-gradient(145deg,#0c1426 0%,#0f172a 40%,#131f38 72%,#0e1a31 100%);display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;padding:6rem 3rem 5rem}
+.hero-orb{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.07) 0%,transparent 70%);pointer-events:none}
+.hero-orb:nth-child(1){width:700px;height:700px;top:-200px;right:-150px}
+.hero-orb:nth-child(2){width:400px;height:400px;bottom:-100px;left:-80px}
+.hero-orb:nth-child(3){width:250px;height:250px;top:30%;right:25%}
+.hero-inner{max-width:1100px;margin:0 auto;width:100%;position:relative;z-index:1}
+.hero-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:#64748b;margin-bottom:2rem;display:flex;align-items:center;gap:10px}
+.hero-label::before{content:'';width:28px;height:1px;background:#64748b;display:block}
+.hero h1{font-size:clamp(2.8rem,6vw,5rem);font-weight:800;letter-spacing:-2px;line-height:1.06;color:#fff;margin-bottom:1.75rem;max-width:800px}
+.hero-divider{width:48px;height:3px;background:#3b82f6;border-radius:2px;margin-bottom:2.5rem}
+.hero-sub{font-size:1.1rem;color:#94a3b8;line-height:1.75;max-width:580px;margin-bottom:3rem}
+.hero-meta{display:flex;flex-wrap:wrap;gap:2.5rem;font-size:13px;color:#64748b;border-top:1px solid rgba(255,255,255,.08);padding-top:2.5rem;margin-top:auto}
+.hero-meta-item strong{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#475569;margin-bottom:2px}
+.hero-meta-item span{color:#94a3b8}
+
+/* ── Stats Band ────────────────────────────────────────────── */
+.stats-band{background:var(--ink);padding:3.5rem 3rem}
+.stats-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:0}
+.stat-item{padding:0 2rem;border-right:1px solid rgba(255,255,255,.1);text-align:center}
+.stat-item:last-child{border-right:none}
+.stat-num{font-size:3rem;font-weight:800;letter-spacing:-2px;color:#fff;line-height:1;display:block;margin-bottom:.35rem}
+.stat-num span{color:#60a5fa}
+.stat-label{font-size:12px;font-weight:500;color:#475569;text-transform:uppercase;letter-spacing:.1em}
+
+/* ── Sections ──────────────────────────────────────────────── */
+.section{padding:6rem 3rem}
+.section.alt{background:var(--bg)}
+.section.dark{background:#0c1426}
+.section-inner{max-width:1100px;margin:0 auto}
+.section-kicker{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:#94a3b8;margin-bottom:1rem;display:flex;align-items:center;gap:10px}
+.section-kicker::before{content:'';width:24px;height:1px;background:currentColor;display:block}
+.section-kicker.blue{color:#60a5fa}
+.section h2{font-size:clamp(1.75rem,3.5vw,2.75rem);font-weight:800;color:var(--heading);letter-spacing:-1px;line-height:1.15;margin-bottom:1.25rem}
+.section.dark h2{color:#fff}
+.section-intro,.section-lede{font-size:1.05rem;color:var(--text-light);max-width:640px;line-height:1.75;margin-bottom:3rem}
+.section.dark .section-intro{color:#64748b}
+.section-body h3{font-size:1.15rem;font-weight:700;color:var(--heading);margin:2rem 0 .75rem}
+.section-body h4{font-size:1rem;font-weight:600;color:var(--heading);margin:1.5rem 0 .5rem}
+.section-body p{margin-bottom:1rem;line-height:1.7}
+.section-body ul,.section-body ol{margin:0 0 1rem 1.5rem}
+.section-body li{margin-bottom:.35rem}
+.section-body strong{color:var(--heading)}
+.subsection-title{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mid);margin-bottom:12px}
+
+/* ── Campaign hero ─────────────────────────────────────────── */
+.campaign-hero{background:linear-gradient(135deg,#0f172a,#1e293b 60%,#162040);color:#fff;padding:2rem 2.5rem;border-radius:14px;margin-bottom:2rem;position:relative;overflow:hidden}
+.campaign-hero::after{content:'';position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(59,130,246,.08);top:-60px;right:-40px;pointer-events:none}
+.campaign-hero h3{font-size:1.25rem;font-weight:700;margin:0;color:#fff;position:relative;z-index:1}
 /* Overview grid */
-.overview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:24px}
-.ov-item{background:var(--bg);padding:12px 16px;border-radius:8px}
-.ov-label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--mid);margin-bottom:2px}
+.overview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:2rem}
+.section.dark .overview-grid .ov-item{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
+.section.dark .ov-label{color:#64748b}
+.section.dark .ov-value{color:#fff}
+.ov-item{background:var(--bg);padding:1rem 1.25rem;border-radius:10px;border:1px solid var(--border)}
+.ov-label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);margin-bottom:2px}
 .ov-value{font-size:14px;font-weight:600;color:var(--heading)}
 /* Negative keywords */
-.neg-section{margin-bottom:24px}
+.neg-section{margin-bottom:2rem}
 .neg-section h4{font-size:14px;font-weight:700;color:var(--heading);margin-bottom:10px}
-.neg-chip{display:inline-block;background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;margin:3px 4px 3px 0}
+.section.dark .neg-section h4{color:#fff}
+.neg-chip{display:inline-block;background:rgba(220,38,38,.12);color:#dc2626;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;margin:3px 4px 3px 0}
+.section.dark .neg-chip{background:rgba(220,38,38,.2);color:#fca5a5}
 /* Ad groups */
-.ag-heading{font-size:17px;font-weight:700;color:var(--heading);margin-bottom:12px}
-.ag-section{border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden}
-.ag-header{display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--bg);cursor:pointer;user-select:none}
+.ag-heading{font-size:1.1rem;font-weight:700;color:var(--heading);margin-bottom:1rem}
+.section.dark .ag-heading{color:#fff}
+.ag-section{border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;background:var(--white)}
+.section.dark .ag-section{border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.04)}
+.ag-header{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;user-select:none;transition:background .15s}
+.ag-header:hover{background:var(--bg)}
+.section.dark .ag-header:hover{background:rgba(255,255,255,.06)}
 .ag-num{width:28px;height:28px;border-radius:8px;background:var(--heading);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.section.dark .ag-num{background:rgba(59,130,246,.3);color:#93c5fd}
 .ag-name{flex:1;font-weight:600;font-size:14px;color:var(--heading)}
+.section.dark .ag-name{color:#fff}
 .ag-count{font-size:12px;color:var(--mid)}
 .ag-chevron{font-size:18px;color:var(--mid);transition:transform .2s}
 .ag-section.open .ag-chevron{transform:rotate(45deg)}
-.ag-body{display:none;padding:16px 18px;border-top:1px solid var(--border)}
+.ag-body{display:none;padding:18px;border-top:1px solid var(--border)}
+.section.dark .ag-body{border-top-color:rgba(255,255,255,.1)}
 .ag-section.open .ag-body{display:block}
 /* Keyword table */
 .kw-tbl{width:100%;border-collapse:collapse;font-size:13px}
-.kw-tbl th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--mid);background:var(--bg);border-bottom:1px solid var(--border)}
+.kw-tbl th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);background:var(--bg);border-bottom:1px solid var(--border)}
+.section.dark .kw-tbl th{background:rgba(255,255,255,.04);color:#64748b;border-bottom-color:rgba(255,255,255,.08)}
 .kw-tbl td{padding:8px 12px;border-bottom:1px solid var(--border)}
+.section.dark .kw-tbl td{border-bottom-color:rgba(255,255,255,.06);color:#cbd5e1}
 .kw-text{font-family:'SF Mono','Fira Code','Courier New',monospace;font-size:13px}
 .kw-vol{text-align:right;color:var(--text-light);font-size:12px}
 .match-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
@@ -801,11 +1181,11 @@ a{color:var(--accent);text-decoration:none}
 .match-broad{background:#fef3c7;color:#92400e}
 /* Copy buttons */
 .copy-btn{margin-top:12px;padding:8px 16px;background:var(--heading);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s}
-.copy-btn:hover{background:#1e293b}
+.copy-btn:hover{background:#334155}
 .copy-btn-sm{padding:3px 10px;background:transparent;border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-light);cursor:pointer;transition:all .15s}
 .copy-btn-sm:hover{background:var(--bg)}
-/* Keyword lines */
-.kw-group{margin-bottom:20px}
+/* Keyword lines (research section) */
+.kw-group{margin-bottom:1.5rem}
 .kw-group-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .kw-group-header h4{font-size:15px;font-weight:700;color:var(--heading)}
 .kw-line-list{display:flex;flex-direction:column;gap:4px}
@@ -813,13 +1193,13 @@ a{color:var(--accent);text-decoration:none}
 .kw-word{flex:1;font-family:'SF Mono','Fira Code','Courier New',monospace}
 .kw-meta{font-size:11px;color:var(--mid)}
 /* Meta campaigns */
-.meta-campaign{border:1px solid var(--border);border-radius:10px;margin-bottom:16px;overflow:hidden}
-.meta-campaign-header{display:flex;align-items:center;gap:12px;padding:16px 20px;background:linear-gradient(135deg,#1877f2,#0f4c95);color:#fff}
+.meta-campaign{border:1px solid var(--border);border-radius:14px;margin-bottom:1.25rem;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.04)}
+.meta-campaign-header{display:flex;align-items:center;gap:12px;padding:1.25rem 1.5rem;background:linear-gradient(135deg,#1877f2,#0f4c95);color:#fff}
 .meta-num{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
-.meta-campaign-header h4{font-size:16px;font-weight:700;margin:0;color:#fff}
+.meta-campaign-header h4{font-size:1rem;font-weight:700;margin:0;color:#fff}
 .meta-obj{font-size:12px;opacity:.8;margin-top:2px}
-.meta-campaign-body{padding:20px}
-.meta-campaign-body h5{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--mid);margin:16px 0 8px}
+.meta-campaign-body{padding:1.5rem}
+.meta-campaign-body h5{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);margin:1.25rem 0 .5rem}
 .meta-campaign-body h5:first-child{margin-top:0}
 .audience-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .audience-chip{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500}
@@ -827,114 +1207,137 @@ a{color:var(--accent);text-decoration:none}
 .audience-chip.custom{background:#ede9fe;color:#7c3aed}
 .audience-chip.lookalike{background:#d1fae5;color:#065f46}
 .creatives-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:12px}
-.ad-creative{background:var(--bg);padding:16px;border-radius:8px}
+.ad-creative{background:var(--bg);padding:1.25rem;border-radius:10px;border:1px solid var(--border)}
 .creative-format{display:inline-block;padding:2px 8px;background:var(--heading);color:#fff;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;margin-bottom:8px}
 .creative-headline{font-size:14px;font-weight:700;color:var(--heading);margin-bottom:4px}
 .creative-text{font-size:13px;color:var(--text-light);margin-bottom:8px}
 .creative-cta{display:inline-block;padding:4px 12px;background:var(--heading);color:#fff;border-radius:6px;font-size:12px;font-weight:600}
 .captions-list{display:flex;flex-direction:column;gap:8px}
-.caption-item{display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--bg);border-radius:8px}
+.caption-item{display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border)}
 .caption-item p{flex:1;font-size:13px;margin:0}
 .pillars-list{margin:0 0 12px 20px;font-size:14px}
 .pillars-list li{margin-bottom:6px}
 /* Content cards */
-.content-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:24px}
-.content-card{background:var(--bg);padding:14px 16px;border-radius:8px}
+.content-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:2rem}
+.content-card{background:var(--white);padding:1.25rem;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.03)}
 .content-url{font-size:12px;color:var(--text-light);font-family:'SF Mono','Fira Code','Courier New',monospace;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .content-title{font-size:14px;font-weight:600;color:var(--heading);margin-bottom:6px}
 .content-kws{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .content-notes{font-size:13px;color:var(--text-light);margin-top:6px}
-.kw-pill{display:inline-block;padding:2px 8px;background:var(--white);border:1px solid var(--border);border-radius:4px;font-size:11px;color:var(--text-light)}
+.kw-pill{display:inline-block;padding:2px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:11px;color:var(--text-light)}
 .intent-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
 .intent-awareness,.intent-informational{background:#dbeafe;color:#1e40af}
 .intent-commercial{background:#fef3c7;color:#92400e}
 .intent-decision,.intent-transactional{background:#d1fae5;color:#065f46}
 /* Content calendar */
-.calendar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
-.cal-month{background:var(--bg);border-radius:10px;overflow:hidden}
-.cal-month-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--heading);color:#fff}
+.calendar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
+.cal-month{background:var(--white);border-radius:12px;overflow:hidden;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.03)}
+.cal-month-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--ink);color:#fff}
 .cal-month-header h4{font-size:14px;font-weight:700;margin:0;color:#fff}
 .cal-focus{background:rgba(255,255,255,.15);padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}
 .cal-items{padding:12px 16px;display:flex;flex-direction:column;gap:6px}
-.cal-item{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--white);border-radius:6px;font-size:13px}
-.cal-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding:2px 6px;border-radius:4px;flex-shrink:0}
+.cal-item{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border-radius:6px;font-size:13px}
+.cal-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 6px;border-radius:4px;flex-shrink:0}
 .cal-blog .cal-type{background:#dbeafe;color:#1e40af}
 .cal-social .cal-type{background:#ede9fe;color:#7c3aed}
 .cal-topic{flex:1}
 .cal-platform{font-size:11px;color:var(--mid)}
 /* Organic social */
-.social-freq{background:var(--bg);padding:12px 16px;border-radius:8px;font-size:14px;margin-bottom:20px}
-.mix-chart{display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+.social-freq{background:var(--bg);padding:1rem 1.25rem;border-radius:10px;font-size:14px;margin-bottom:1.5rem;border:1px solid var(--border)}
+.mix-chart{display:flex;flex-direction:column;gap:10px;margin-bottom:2rem}
 .mix-item{display:flex;align-items:center;gap:12px}
-.mix-type{width:80px;font-size:13px;font-weight:600;color:var(--heading);text-transform:capitalize}
-.mix-bar{flex:1;height:24px;background:var(--bg);border-radius:6px;overflow:hidden}
-.mix-fill{height:100%;background:linear-gradient(90deg,#0f172a,#334155);border-radius:6px;transition:width .5s}
-.mix-pct{width:40px;text-align:right;font-size:13px;font-weight:600;color:var(--text-light)}
-.pillars-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:20px}
-.pillar-card{background:var(--bg);padding:16px;border-radius:10px}
+.mix-type{width:90px;font-size:13px;font-weight:600;color:var(--heading);text-transform:capitalize}
+.mix-bar{flex:1;height:28px;background:var(--bg);border-radius:8px;overflow:hidden}
+.mix-fill{height:100%;background:linear-gradient(90deg,#0f172a,#334155);border-radius:8px;transition:width .5s}
+.mix-pct{width:40px;text-align:right;font-size:13px;font-weight:700;color:var(--text)}
+.pillars-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:1.5rem}
+.pillar-card{background:var(--white);padding:1.25rem;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.03)}
 .pillar-card h4{font-size:14px;font-weight:700;color:var(--heading);margin-bottom:6px}
 .pillar-card p{font-size:13px;color:var(--text-light);margin-bottom:10px}
 .pillar-examples{display:flex;flex-direction:column;gap:4px}
-.pillar-example{font-size:12px;color:var(--text);padding:6px 10px;background:var(--white);border-radius:6px;border-left:3px solid var(--heading)}
+.pillar-example{font-size:12px;color:var(--text);padding:6px 10px;background:var(--bg);border-radius:6px;border-left:3px solid var(--blue)}
 .hashtag-list{display:flex;flex-wrap:wrap;gap:6px}
-.hashtag{display:inline-block;padding:4px 10px;background:var(--bg);border-radius:8px;font-size:13px;color:var(--text-light)}
+.hashtag{display:inline-block;padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text-light)}
 /* Example articles */
-.example-article{border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden}
-.article-header{display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--bg);cursor:pointer;user-select:none}
+.example-article{border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;background:var(--white);box-shadow:0 2px 12px rgba(0,0,0,.03)}
+.article-header{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;user-select:none;transition:background .12s}
+.article-header:hover{background:var(--bg)}
 .article-num{width:28px;height:28px;border-radius:8px;background:var(--heading);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
 .article-title{flex:1;font-weight:600;font-size:14px;color:var(--heading)}
 .article-badge{display:inline-block;padding:2px 10px;background:#fef3c7;color:#92400e;border-radius:12px;font-size:11px;font-weight:600}
-.article-body{display:none;padding:24px;border-top:1px solid var(--border)}
+.article-body{display:none;padding:2rem;border-top:1px solid var(--border)}
 .example-article.open .article-body{display:block}
-.article-body h2{font-size:18px;font-weight:700;color:var(--heading);margin:20px 0 10px}
-.article-body h3{font-size:15px;font-weight:600;color:var(--heading);margin:16px 0 8px}
-.article-body p{margin-bottom:12px;line-height:1.7}
-.article-body ul,.article-body ol{margin:0 0 12px 20px}
-.article-body blockquote{border-left:3px solid var(--heading);padding:12px 16px;background:var(--bg);margin:16px 0;border-radius:0 8px 8px 0;font-style:italic}
+.article-body h2{font-size:1.25rem;font-weight:700;color:var(--heading);margin:1.5rem 0 .75rem}
+.article-body h3{font-size:1rem;font-weight:600;color:var(--heading);margin:1.25rem 0 .5rem}
+.article-body p{margin-bottom:1rem;line-height:1.7}
+.article-body ul,.article-body ol{margin:0 0 1rem 1.5rem}
+.article-body blockquote{border-left:3px solid var(--blue);padding:1rem 1.25rem;background:var(--bg);margin:1.25rem 0;border-radius:0 10px 10px 0;font-style:italic;color:var(--text-light)}
 /* Services */
-.services-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-bottom:24px}
-.service-card{background:var(--bg);padding:16px;border-radius:10px}
+.services-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-bottom:2rem}
+.service-card{background:var(--white);padding:1.25rem;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.03)}
 .service-card h4{font-size:14px;font-weight:700;color:var(--heading);margin-bottom:6px}
 .service-card p{font-size:13px;color:var(--text-light);margin-bottom:8px}
-.service-price{font-size:14px;font-weight:700;color:var(--heading)}
-.timeline-list{display:flex;flex-direction:column;gap:16px}
+.service-price{font-size:1rem;font-weight:800;color:var(--heading)}
+.timeline-list{display:flex;flex-direction:column;gap:1.5rem}
 .timeline-phase h4{font-size:15px;font-weight:700;color:var(--heading);margin-bottom:8px}
-.timeline-phase ul{margin:0 0 0 20px;font-size:14px}
+.timeline-phase ul{margin:0 0 0 1.25rem;font-size:14px}
 /* Media plan */
-.media-summary{display:flex;gap:16px;margin-bottom:20px}
-.media-stat{background:var(--bg);padding:16px;border-radius:8px;flex:1}
-.media-label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--mid);margin-bottom:2px}
-.media-value{font-size:18px;font-weight:700;color:var(--heading)}
-.channel-chart{display:flex;flex-direction:column;gap:10px}
+.media-summary{display:flex;gap:1rem;margin-bottom:1.5rem}
+.media-stat{background:var(--bg);padding:1.25rem;border-radius:10px;flex:1;border:1px solid var(--border)}
+.media-label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);margin-bottom:2px}
+.media-value{font-size:1.25rem;font-weight:800;color:var(--heading)}
+.channel-chart{display:flex;flex-direction:column;gap:10px;margin-bottom:1.5rem}
 .channel-row{display:flex;align-items:center;gap:12px}
-.channel-name{width:120px;font-size:13px;font-weight:600;color:var(--heading)}
-.channel-bar{flex:1;height:28px;background:var(--bg);border-radius:6px;overflow:hidden}
-.channel-fill{height:100%;background:linear-gradient(90deg,#0f172a,#334155);border-radius:6px}
-.channel-budget{width:80px;text-align:right;font-size:13px;font-weight:600;color:var(--heading)}
+.channel-name{width:130px;font-size:13px;font-weight:600;color:var(--heading)}
+.channel-bar{flex:1;height:28px;background:var(--bg);border-radius:8px;overflow:hidden}
+.channel-fill{height:100%;background:linear-gradient(90deg,#0f172a,#1e40af);border-radius:8px}
+.channel-budget{width:80px;text-align:right;font-size:13px;font-weight:700;color:var(--heading)}
 .channel-pct{width:40px;text-align:right;font-size:12px;color:var(--mid)}
 /* Watermark */
-.watermark{position:fixed;bottom:16px;right:16px;font-size:11px;color:rgba(0,0,0,.08);font-weight:700;text-transform:uppercase;letter-spacing:2px;pointer-events:none;z-index:50}
+.watermark{position:fixed;bottom:16px;right:16px;font-size:11px;color:rgba(0,0,0,.06);font-weight:700;text-transform:uppercase;letter-spacing:2px;pointer-events:none;z-index:50}
+/* Chapter panels */
+.chapter-panel{background:linear-gradient(135deg,#0c1426 0%,#0f172a 55%,#131f38 100%);padding:5rem 3rem;position:relative;overflow:hidden}
+.chapter-panel-orb{position:absolute;width:480px;height:480px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,.2) 0%,transparent 70%);right:-120px;top:-120px;pointer-events:none}
+.chapter-inner{max-width:1100px;margin:0 auto;position:relative;z-index:1}
+.chapter-num{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:rgba(255,255,255,.3);margin-bottom:.85rem}
+.chapter-heading{font-size:clamp(2.4rem,5vw,3.75rem);font-weight:900;color:#fff;letter-spacing:-2px;line-height:1.08;margin-bottom:1.1rem}
+.chapter-sub{font-size:1.05rem;color:rgba(255,255,255,.45);max-width:520px;line-height:1.65;margin:0}
+/* CTA close section */
+.cta-section{background:linear-gradient(145deg,#0c1426 0%,#0f172a 40%,#131f38 80%,#0a1020 100%);padding:6rem 3rem;position:relative;overflow:hidden}
+.cta-orb{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,.18) 0%,transparent 70%);pointer-events:none}
+.cta-orb:nth-child(1){width:600px;height:600px;top:-200px;right:-100px}
+.cta-orb:nth-child(2){width:350px;height:350px;bottom:-100px;left:-80px}
+.cta-links{display:flex;flex-wrap:wrap;gap:1rem}
+.cta-link-card{display:flex;align-items:center;gap:1rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:1.25rem 1.75rem;color:#fff;text-decoration:none;transition:background .2s,border-color .2s}
+.cta-link-card:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18)}
+.cta-link-icon{font-size:1.5rem;flex-shrink:0}
+.cta-link-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.4);margin-bottom:2px}
+.cta-link-val{font-size:14px;font-weight:600;color:rgba(255,255,255,.85)}
 /* Password gate */
-.auth-gate{position:fixed;inset:0;z-index:9999;background:var(--heading);display:flex;align-items:center;justify-content:center;display:none}
-.auth-box{background:var(--white);padding:40px;border-radius:16px;max-width:400px;width:90%;text-align:center}
-.auth-box svg{height:32px;margin-bottom:20px}
-.auth-box h2{font-size:16px;font-weight:700;color:var(--heading);margin-bottom:16px}
-.auth-box input{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:12px}
-.auth-box input:focus{outline:none;border-color:var(--heading);box-shadow:0 0 0 3px rgba(15,23,42,.1)}
-.auth-box button{width:100%;padding:10px;background:var(--heading);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
-.auth-box button:hover{background:#1e293b}
+.auth-gate{position:fixed;inset:0;z-index:9999;background:var(--ink);display:none;align-items:center;justify-content:center}
+.auth-box{background:var(--white);padding:3rem;border-radius:20px;max-width:400px;width:90%;text-align:center;box-shadow:0 25px 60px rgba(0,0,0,.35)}
+.auth-box svg{height:32px;margin-bottom:1.5rem;color:var(--heading)}
+.auth-box h2{font-size:1rem;font-weight:700;color:var(--heading);margin-bottom:1.25rem}
+.auth-box input{width:100%;padding:12px 16px;border:1px solid var(--border);border-radius:10px;font-size:14px;margin-bottom:12px;transition:border-color .15s,box-shadow .15s}
+.auth-box input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.auth-box button{width:100%;padding:12px;background:var(--heading);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s}
+.auth-box button:hover{background:#334155}
 .auth-error{color:#dc2626;font-size:13px;margin-top:8px;min-height:20px}
 /* Ad copy */
-.ad-copy-section{margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
-.ad-copy-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mid);margin-bottom:12px}
-.ad-copy-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:8px}
-.ad-copy-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--mid);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ad-copy-section{margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--border)}
+.section.dark .ad-copy-section{border-top-color:rgba(255,255,255,.1)}
+.ad-copy-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mid);margin-bottom:12px}
+.ad-copy-cols{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:8px}
+.ad-copy-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .ad-copy-count{background:var(--border);color:var(--text-light);border-radius:10px;padding:1px 7px;font-size:11px;font-weight:600}
 .headlines-list,.descriptions-list{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .headline-item,.desc-item{display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:var(--bg);border-radius:6px;font-size:13px}
+.section.dark .headline-item,.section.dark .desc-item{background:rgba(255,255,255,.05)}
 .headline-num{font-size:11px;font-weight:700;color:var(--mid);min-width:18px;margin-top:1px;flex-shrink:0}
 .headline-text{flex:1;color:var(--heading);line-height:1.4}
+.section.dark .headline-text{color:#e2e8f0}
 .desc-item .headline-text{color:var(--text);font-size:12px}
+.section.dark .desc-item .headline-text{color:#cbd5e1}
 .sitelinks-section{margin-top:12px}
 .sitelink-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .sitelink-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;background:#dbeafe;color:#1e40af;border-radius:12px;font-size:12px;font-weight:500}
@@ -943,16 +1346,16 @@ a{color:var(--accent);text-decoration:none}
 .char-warn{background:#fef3c7;color:#92400e}
 .char-over{background:#fee2e2;color:#dc2626}
 /* Media plan table */
-.channel-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px}
-.channel-table th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--mid);background:var(--bg);border-bottom:1px solid var(--border)}
-.channel-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.channel-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:1rem}
+.channel-table th{text-align:left;padding:10px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);background:var(--bg);border-bottom:1px solid var(--border)}
+.channel-table td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
 .channel-table tr:last-child td{border-bottom:none}
 .channel-strategy{color:var(--text-light);font-size:12px;line-height:1.5}
 /* Landing page preview */
-.lp-meta{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.lp-meta{display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;flex-wrap:wrap}
 .lp-badge{background:#dbeafe;color:#1e40af;font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;white-space:nowrap}
 .lp-hint{font-size:13px;color:var(--text-light);line-height:1.5}
-.lp-frame-wrap{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#1e293b;transition:all .3s}
+.lp-frame-wrap{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:#1e293b;transition:all .3s;box-shadow:0 8px 40px rgba(0,0,0,.12)}
 .lp-frame-wrap.lp-expanded{position:fixed;inset:0;z-index:200;border-radius:0;border:none}
 .lp-toolbar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:#1e293b}
 .lp-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.15)}
@@ -962,90 +1365,275 @@ a{color:var(--accent);text-decoration:none}
 .lp-expand-btn:hover{color:#fff;background:rgba(255,255,255,.1)}
 .lp-iframe{width:100%;height:700px;border:none;background:#fff}
 .lp-frame-wrap.lp-expanded .lp-iframe{height:calc(100vh - 42px)}
-/* Responsive */
-@media(max-width:900px){.layout{flex-direction:column}.sidebar{width:100%;position:static}.sidebar-nav{flex-direction:row;flex-wrap:wrap;gap:4px}.sidebar-link{padding:6px 10px;font-size:12px}.ad-copy-cols{grid-template-columns:1fr}}
-@media(max-width:640px){.page-hero{padding:32px 24px}.page-hero h1{font-size:22px}.section{padding:20px}.overview-grid{grid-template-columns:1fr 1fr}.content-cards{grid-template-columns:1fr}.creatives-grid{grid-template-columns:1fr}}
-/* Print */
-@media print{
-  .site-header,.sidebar,.watermark,.auth-gate,.copy-btn,.copy-btn-sm{display:none!important}
-  .layout{padding:0;max-width:100%;display:block}
-  .main{width:100%}
-  .section{border:none;border-radius:0;padding:16px 0;break-inside:avoid;page-break-inside:avoid}
-  .section-title{border-bottom:2px solid #e2e8f0}
-  .ag-body{display:block!important}
-  .article-body{display:block!important}
-  .page-hero{border-radius:0}
-  body{font-size:12px}
-}
 /* Email marketing */
-.em-flow{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px}
-.em-flow .em-flow-body{display:none;padding:16px}
+.em-flow{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:8px;background:var(--white)}
+.em-flow .em-flow-body{display:none;padding:1.25rem}
 .em-flow.open .em-flow-body{display:block}
-.em-flow-header{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;background:var(--white)}
+.em-flow-header{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;transition:background .12s}
 .em-flow-header:hover{background:var(--bg)}
 .em-trigger{font-size:12px;color:var(--text-light);margin-bottom:12px}
 .em-emails{display:flex;flex-direction:column;gap:6px}
-.em-email-item{display:flex;gap:10px;padding:8px 10px;background:var(--bg);border-radius:6px}
+.em-email-item{display:flex;gap:10px;padding:8px 10px;background:var(--bg);border-radius:8px}
 .em-email-num{font-size:11px;font-weight:700;color:var(--mid);min-width:18px;flex-shrink:0;margin-top:2px}
 .em-email-content{flex:1}
 .em-subject{font-size:13px;font-weight:600;color:var(--heading)}
 .em-purpose{font-size:12px;color:var(--text-light);margin-top:2px}
 .em-delay{display:inline-block;font-size:10px;padding:1px 6px;background:#dbeafe;color:#1e40af;border-radius:8px;margin-top:4px}
 .em-campaigns-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
-.em-campaign-card{padding:14px;background:var(--bg);border-radius:8px;border:1px solid var(--border)}
+.em-campaign-card{padding:1.25rem;background:var(--white);border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.03)}
 .em-campaign-card h4{font-size:14px;font-weight:600;color:var(--heading);margin-bottom:6px}
 .em-campaign-card p{font-size:12px;color:var(--text-light);margin-top:6px}
 .em-campaign-meta{display:flex;gap:6px;flex-wrap:wrap}
-.em-tag{font-size:10px;padding:2px 8px;background:var(--white);border:1px solid var(--border);border-radius:10px;color:var(--text-light)}
+.em-tag{font-size:10px;padding:2px 8px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text-light)}
 .em-segments{display:flex;flex-direction:column;gap:6px}
-.em-segment{display:flex;flex-direction:column;gap:2px;padding:10px 14px;background:var(--bg);border-radius:8px}
+.em-segment{display:flex;flex-direction:column;gap:2px;padding:10px 14px;background:var(--white);border-radius:10px;border:1px solid var(--border)}
 .em-segment strong{font-size:13px;color:var(--heading)}
 .em-criteria{font-size:11px;color:var(--text-light)}
 .em-seg-purpose{font-size:11px;color:var(--mid)}
 /* LinkedIn Ads */
-.li-campaign{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.li-campaign{margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)}
 .li-campaign:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
-.li-campaign h3{font-size:16px;font-weight:700;color:var(--heading);margin-bottom:12px}
+.li-campaign h3{font-size:1.1rem;font-weight:700;color:var(--heading);margin-bottom:12px}
 .li-targeting{margin-top:12px}
-.li-targeting h4,.li-creatives h4{font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px}
+.li-targeting h4,.li-creatives h4{font-size:12px;font-weight:600;color:var(--text-light);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
 .audience-chips{display:flex;flex-wrap:wrap;gap:6px}
 .li-creatives{margin-top:12px}
-.li-creative{padding:10px 14px;background:var(--bg);border-radius:8px;margin-bottom:6px}
+.li-creative{padding:12px 16px;background:var(--bg);border-radius:10px;margin-bottom:6px;border:1px solid var(--border)}
 .li-creative-headline{font-size:14px;font-weight:600;color:var(--heading);display:flex;align-items:center;gap:6px}
 .li-creative-text{font-size:12px;color:var(--text);margin-top:4px}
 .li-creative-desc{font-size:11px;color:var(--text-light);margin-top:2px}
 .li-cta-badge{display:inline-block;font-size:10px;padding:2px 8px;background:#dbeafe;color:#1e40af;border-radius:8px;margin-top:6px}
 /* Google Ads Forecast */
-.forecast-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:16px}
-.forecast-card{padding:16px;background:var(--bg);border-radius:10px;text-align:center;border:1px solid var(--border)}
-.forecast-card.accent{background:#0f172a;border-color:#0f172a}
+.forecast-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:1.25rem}
+.forecast-card{padding:1.25rem;background:var(--white);border-radius:12px;text-align:center;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.03)}
+.forecast-card.accent{background:linear-gradient(135deg,#0f172a,#1e293b);border-color:transparent}
 .forecast-card.accent .forecast-value{color:#fff}
 .forecast-card.accent .forecast-label{color:#94a3b8}
-.forecast-value{display:block;font-size:22px;font-weight:700;color:var(--heading)}
-.forecast-label{display:block;font-size:11px;color:var(--text-light);margin-top:4px;text-transform:uppercase;letter-spacing:.3px}
+.forecast-value{display:block;font-size:1.5rem;font-weight:800;color:var(--heading);letter-spacing:-1px}
+.forecast-label{display:block;font-size:11px;color:var(--text-light);margin-top:4px;text-transform:uppercase;letter-spacing:.04em}
 /* Competitor Intelligence */
 .comp-domain{font-weight:600;color:var(--heading)}
 .comp-num{text-align:right;font-variant-numeric:tabular-nums}
 .comp-details{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
-.comp-detail-card{padding:14px;background:var(--bg);border-radius:10px;border:1px solid var(--border)}
+.comp-detail-card{padding:1.25rem;background:var(--white);border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.03)}
 .comp-detail-card h4{font-size:14px;font-weight:600;color:var(--heading);margin-bottom:8px}
 .comp-keywords{font-size:12px;color:var(--text-light);margin-bottom:10px}
 .comp-kw-label{font-weight:600}
-.comp-kw-chip{display:inline-block;font-size:11px;padding:1px 6px;background:var(--white);border:1px solid var(--border);border-radius:6px;margin:2px}
+.comp-kw-chip{display:inline-block;font-size:11px;padding:1px 6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin:2px}
 .comp-sw-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.comp-sw-col ul{margin:0;padding-left:16px;font-size:12px;color:var(--text)}
-.comp-sw-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px}
+.comp-sw-col ul{margin:0;padding-left:1rem;font-size:12px;color:var(--text)}
+.comp-sw-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px}
 .comp-strength{color:#065f46}
 .comp-weakness{color:#dc2626}
 /* SEO metadata on articles */
-.seo-meta-block{padding:12px 16px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;margin-bottom:16px}
-.seo-meta-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--mid);margin-bottom:8px}
+.seo-meta-block{padding:1rem 1.25rem;background:#f8fafc;border:1px solid var(--border);border-radius:10px;margin-bottom:1.25rem}
+.seo-meta-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);margin-bottom:8px}
 .seo-meta-grid{display:flex;flex-direction:column;gap:6px}
 .seo-meta-item{display:flex;gap:8px;align-items:flex-start}
 .seo-meta-label{font-size:11px;font-weight:600;color:var(--text-light);min-width:100px;flex-shrink:0}
 .seo-meta-value{font-size:12px;color:var(--heading);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .seo-kw-chip{display:inline-block;font-size:10px;padding:1px 6px;background:#dbeafe;color:#1e40af;border-radius:6px}
+/* Responsive */
+@media(max-width:900px){
+  .hero{padding:4rem 2rem 3rem;min-height:auto}
+  .hero h1{font-size:clamp(2rem,5vw,3rem)}
+  .stats-inner{grid-template-columns:repeat(3,1fr);row-gap:2rem}
+  .stat-item{border-right:none;padding:0 1rem}
+  .section{padding:4rem 2rem}
+  .ad-copy-cols{grid-template-columns:1fr}
+  .snav-dropdown-inner{padding:0 2rem}
+  .sticky-nav-inner{padding:0 2rem}
+}
+@media(max-width:640px){
+  .hero{padding:3rem 1.5rem 2.5rem}
+  .hero h1{font-size:2rem;letter-spacing:-1px}
+  .hero-meta{gap:1.5rem}
+  .stats-inner{grid-template-columns:repeat(2,1fr)}
+  .section{padding:3rem 1.5rem}
+  .overview-grid{grid-template-columns:1fr}
+  .content-cards{grid-template-columns:1fr}
+  .creatives-grid{grid-template-columns:1fr}
+  .forecast-grid{grid-template-columns:repeat(2,1fr)}
+  .ctx-audience-grid{grid-template-columns:1fr}
+  .deliv-grid{grid-template-columns:1fr}
+  .ad-mockup-grid{grid-template-columns:1fr}
+  .opp-grid{grid-template-columns:1fr}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+}
+/* Print */
+@media print{
+  .sticky-nav,.watermark,.auth-gate,.copy-btn,.copy-btn-sm,.hero-orb{display:none!important}
+  .hero{min-height:auto;padding:3rem;page-break-after:always}
+  .stats-band{page-break-after:always}
+  .section{padding:2rem 0;break-inside:avoid;page-break-inside:avoid}
+  .ag-body{display:block!important}
+  .article-body{display:block!important}
+  body{font-size:12px}
+}
+
+/* ── Context section ────────────────────────────────────────── */
+.ctx-brief{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:2rem 2.5rem;margin-bottom:1rem}
+.ctx-block-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.18em;color:rgba(255,255,255,.3);margin-bottom:1rem;display:flex;align-items:center;gap:10px}
+.ctx-block-label::before{content:'';width:20px;height:1px;background:currentColor;display:block}
+.ctx-brief-text{font-size:1.05rem;color:rgba(255,255,255,.75);line-height:1.75;margin:0}
+.ctx-audience-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.25rem;margin-top:1.25rem}
+.ctx-audience-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:1.75rem}
+.ctx-audience-num{font-size:2rem;font-weight:900;color:rgba(99,102,241,.4);letter-spacing:-2px;line-height:1;margin-bottom:.75rem}
+.ctx-audience-name{font-size:1rem;font-weight:700;color:#fff;margin-bottom:.6rem;line-height:1.35}
+.ctx-audience-desc{font-size:13.5px;color:rgba(255,255,255,.55);line-height:1.7;margin-bottom:1.25rem}
+.ctx-pain-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.3);margin-bottom:.5rem}
+.ctx-pain-list{list-style:none;padding:0;margin:0 0 1rem;display:flex;flex-direction:column;gap:5px}
+.ctx-pain-list li{font-size:13px;color:rgba(255,255,255,.6);padding:5px 10px;background:rgba(255,255,255,.04);border-radius:6px;border-left:2px solid rgba(99,102,241,.5)}
+.ctx-channels{display:flex;flex-wrap:wrap;gap:5px;margin-top:.25rem}
+.ctx-channel-chip{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(59,130,246,.18);color:#93c5fd;border:1px solid rgba(59,130,246,.25)}
+.ctx-periods-list{display:flex;flex-direction:column;gap:10px;margin-top:1.25rem}
+.ctx-period-item{display:flex;gap:1.25rem;padding:1.25rem 1.5rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;align-items:flex-start}
+.ctx-period-num{font-size:1.5rem;font-weight:900;color:rgba(99,102,241,.4);letter-spacing:-1px;line-height:1;flex-shrink:0;width:36px}
+.ctx-period-dates{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:3px}
+.ctx-period-label{font-size:15px;font-weight:700;color:#fff;margin-bottom:3px}
+.ctx-period-desc{font-size:13px;color:rgba(255,255,255,.5);line-height:1.55}
+
+/* ── Opportunity cards (Lux plan.html) ──────────────────────── */
+.opp-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem}
+.opp-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.25rem;box-shadow:0 2px 12px rgba(0,0,0,.03)}
+.opp-card h4{font-size:13.5px;font-weight:700;color:var(--heading);margin-bottom:6px;line-height:1.35;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.opp-card p{font-size:13.5px;color:var(--text);margin:0}
+.opp-stat{color:var(--blue);font-weight:700}
+
+/* ── Strategy cards (Lux plan.html) ─────────────────────────── */
+.str-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem}
+.str-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:1.25rem}
+.str-icon{font-size:1.5rem;margin-bottom:.5rem;display:block}
+.str-card h4{font-size:13.5px;font-weight:700;color:var(--heading);margin-bottom:5px}
+.str-card p{font-size:13px;color:var(--text-light);margin:0}
+
+/* ── Tactic list (Lux plan.html) ────────────────────────────── */
+.tac-list{list-style:none;padding:0}
+.tac-item{display:flex;gap:1rem;padding:1rem 0;border-bottom:1px solid var(--border);align-items:flex-start}
+.tac-item:last-child{border-bottom:none}
+.tac-num{width:32px;height:32px;border-radius:10px;background:var(--heading);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.tac-title{font-size:14px;font-weight:700;color:var(--heading);margin-bottom:3px}
+.tac-body{font-size:13px;color:var(--text-light)}
+
+/* ── Action grid with priority badges ───────────────────────── */
+.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.ac-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:1.25rem}
+.ac-card h4{font-size:13.5px;font-weight:700;color:var(--heading);margin-bottom:5px;line-height:1.35}
+.ac-card p{font-size:12.5px;color:var(--text-light);margin:0}
+.pri{display:inline-flex;align-items:center;padding:2px 10px;border-radius:12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+.pri-h{background:#fee2e2;color:#b91c1c}
+.pri-mh{background:#fff7ed;color:#b45309}
+.pri-m{background:#d1fae5;color:#065f46}
+.pri-low{background:#f1f5f9;color:#64748b}
+
+/* ── KPI cards ──────────────────────────────────────────────── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
+.kpi-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.25rem;box-shadow:0 2px 12px rgba(0,0,0,.03)}
+.kpi-icon{font-size:1.35rem;margin-bottom:6px}
+.kpi-card h4{font-size:13px;font-weight:700;color:var(--heading);margin-bottom:6px}
+.kpi-card ul{list-style:none;padding:0}
+.kpi-card ul li{font-size:12px;color:var(--text);padding:3px 0;border-bottom:1px dotted var(--border)}
+.kpi-card ul li:last-child{border:none}
+
+/* ── Future items list ──────────────────────────────────────── */
+.fut-list{display:flex;flex-direction:column}
+.fut-item{display:flex;gap:14px;padding:1rem 0;border-bottom:1px solid var(--border);align-items:flex-start}
+.fut-item:last-child{border-bottom:none}
+.fut-dot{width:10px;height:10px;border-radius:50%;background:var(--blue);margin-top:5px;flex-shrink:0}
+.fut-item h4{font-size:14px;font-weight:700;color:var(--heading);margin-bottom:3px}
+.fut-item p{font-size:13.5px;color:var(--text-light);margin:0}
+
+/* ── Callout block ──────────────────────────────────────────── */
+.callout{background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #bfdbfe;border-radius:12px;padding:1.25rem 1.5rem;margin:1.5rem 0;font-size:14px;color:#1e40af;line-height:1.6}
+.callout strong{color:#1e3a8a}
+
+/* ── Deliverables grid (Lux index.html) ─────────────────────── */
+.deliv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-bottom:2rem}
+.deliv-card{border-radius:14px;overflow:hidden;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.04)}
+.deliv-head{padding:1.25rem 1.5rem;color:#fff;font-size:13.5px;font-weight:700;letter-spacing:-.1px}
+.deliv-head.c1{background:#0f172a}
+.deliv-head.c2{background:#1d4ed8}
+.deliv-head.c3{background:#0369a1}
+.deliv-head.c4{background:#7c3aed}
+.deliv-head.c5{background:#b45309}
+.deliv-head.c6{background:#065f46}
+.deliv-head.c7{background:#374151}
+.deliv-head.c8{background:#dc2626}
+.deliv-body{padding:1rem 1.25rem;background:var(--white)}
+.deliv-row{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text)}
+.deliv-row:last-child{border-bottom:none;padding-bottom:0}
+.deliv-dot{width:5px;height:5px;border-radius:50%;background:var(--mid);margin-top:7px;flex-shrink:0}
+.deliv-count{font-size:10.5px;font-weight:600;color:var(--mid);margin-left:auto;white-space:nowrap;flex-shrink:0}
+
+/* ── Objective cards ────────────────────────────────────────── */
+.obj-panel{display:flex;flex-direction:column;gap:1rem;margin-bottom:2rem}
+.obj-card{display:flex;gap:1.25rem;background:var(--white);border:1px solid var(--border);border-radius:14px;padding:1.5rem;align-items:flex-start;box-shadow:0 2px 12px rgba(0,0,0,.03)}
+.obj-num{width:40px;height:40px;border-radius:12px;background:var(--heading);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0}
+.obj-card h3{font-size:1rem;font-weight:700;color:var(--heading);margin-bottom:.5rem}
+.obj-card p{font-size:13.5px;color:var(--text);line-height:1.7;margin:0}
+
+/* ── Three pillar cards (Lux index.html) ────────────────────── */
+.pillars-hero{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin:1.5rem 0 2rem}
+.pillar-hero-card{border-radius:16px;padding:2rem;position:relative;overflow:hidden;color:#fff}
+.pillar-hero-card.p1{background:linear-gradient(135deg,#1e3a5f,#1d4ed8)}
+.pillar-hero-card.p2{background:linear-gradient(135deg,#14532d,#16a34a)}
+.pillar-hero-card.p3{background:linear-gradient(135deg,#581c87,#7c3aed)}
+.pillar-hero-orb{position:absolute;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.1);top:-50px;right:-40px}
+.pillar-hero-icon{font-size:2rem;margin-bottom:.75rem;display:block;position:relative;z-index:1}
+.pillar-hero-card h3{font-size:1.05rem;font-weight:700;color:#fff;margin-bottom:.5rem;position:relative;z-index:1}
+.pillar-hero-card p{font-size:13px;color:rgba(255,255,255,.75);margin:0;position:relative;z-index:1;line-height:1.6}
+.pillar-hero-count{position:absolute;bottom:1.25rem;right:1.25rem;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.4);z-index:1}
+
+/* ── Ad card mockups ────────────────────────────────────────── */
+.ad-mockup-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin:1.5rem 0}
+.ad-channel-group{margin-bottom:2rem}
+.ad-channel-group:last-child{margin-bottom:0}
+.ad-channel-label{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);margin:0 0 1rem;display:flex;align-items:center;gap:.55rem}
+.ad-card{background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.05)}
+.ad-card-header{padding:.75rem 1rem;display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-bottom:1px solid var(--border)}
+.ad-badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase}
+.ad-badge.google{background:#ea4335;color:#fff}
+.ad-badge.linkedin{background:#0077b5;color:#fff}
+.ad-badge.meta{background:#1877f2;color:#fff}
+.ad-card-body{padding:1.25rem}
+/* Google ad mockup */
+.gad-sponsor-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.gad-dot{width:6px;height:6px;border-radius:50%;background:#000;opacity:.8}
+.gad-sponsored-tag{font-size:10.5px;border:1px solid #70757a;color:#70757a;padding:1px 5px;border-radius:3px;font-weight:600}
+.gad-url-text{font-size:12px;color:#1a0dab;margin-bottom:2px}
+.gad-headline{font-size:17px;color:#1a0dab;line-height:1.35;margin-bottom:3px;cursor:default}
+.gad-headline-sep{color:#70757a;font-weight:400;margin:0 2px}
+.gad-desc{font-size:13px;color:#4d5156;line-height:1.55;margin-bottom:0}
+.gad-sitelinks{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid #e2e8f0}
+.gad-sitelink{font-size:12px;color:#1a0dab}
+/* Meta ad mockup */
+.mad-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.mad-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1877f2,#0f4c95);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0}
+.mad-info-name{font-size:13.5px;font-weight:700;color:var(--heading);line-height:1.2}
+.mad-info-sub{font-size:11.5px;color:var(--mid)}
+.mad-image-wrap{background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:8px;margin-bottom:10px;overflow:hidden;min-height:120px;display:flex;align-items:center;justify-content:center}
+.mad-img-content{padding:1.5rem;color:#fff;text-align:center}
+.mad-img-content strong{font-size:.95rem;font-weight:800;display:block;line-height:1.35}
+.mad-img-content span{font-size:12px;opacity:.75;margin-top:4px;display:block}
+.mad-caption{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px}
+.mad-cta-block{background:var(--bg);border-radius:8px;padding:.65rem 1rem;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.mad-cta-block-url{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid)}
+.mad-cta-block-title{font-size:13px;font-weight:700;color:var(--heading)}
+.mad-cta-btn{background:#1877f2;color:#fff;font-size:12px;font-weight:700;padding:.3rem .85rem;border-radius:6px;flex-shrink:0}
+/* LinkedIn ad mockup */
+.lad-profile{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.lad-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0077b5,#004e78);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0}
+.lad-info-name{font-size:13.5px;font-weight:700;color:var(--heading);line-height:1.2}
+.lad-info-sub{font-size:11.5px;color:var(--mid)}
+.lad-follow{font-size:12px;font-weight:700;color:#0077b5;margin-top:2px}
+.lad-image-wrap{background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:8px;margin-bottom:10px;overflow:hidden;min-height:100px;display:flex;align-items:center;justify-content:center}
+.lad-img-txt{padding:1.25rem;color:#fff;font-weight:700;font-size:.9rem;text-align:center;line-height:1.4}
+.lad-caption{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:10px}
+.lad-cta-row{display:flex;align-items:center;justify-content:space-between}
+.lad-cta-btn{background:transparent;border:1px solid #0077b5;color:#0077b5;font-size:12.5px;font-weight:700;padding:.3rem .85rem;border-radius:6px}
+.lad-stats{font-size:11.5px;color:var(--mid)}
 `;
+
 
 // ─── Inline JS ──────────────────────────────────────────────────────────────
 
@@ -1106,13 +1694,48 @@ function copyAdItems(btn,type){
 }
 
 // Smooth scroll for sidebar links
-document.querySelectorAll('.sidebar-link').forEach(function(link){
+document.querySelectorAll('.snav-link').forEach(function(link){
   link.addEventListener('click',function(e){
     e.preventDefault();
-    var target=document.querySelector(this.getAttribute('href'));
+    var target=document.querySelector('#'+this.getAttribute('data-section'));
     if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+    // Close dropdown
+    var nav=document.getElementById('sticky-nav');
+    nav.classList.remove('nav-open');
+    document.getElementById('snav-hamburger').setAttribute('aria-expanded','false');
   });
 });
+
+// Sticky nav show/hide on scroll
+(function(){
+  var nav=document.getElementById('sticky-nav');
+  var lastY=0;
+  window.addEventListener('scroll',function(){
+    var y=window.scrollY;
+    if(y>400){nav.classList.add('visible');}else{nav.classList.remove('visible');}
+    lastY=y;
+  },{passive:true});
+  // Hamburger toggle
+  var btn=document.getElementById('snav-hamburger');
+  btn.addEventListener('click',function(){
+    var open=nav.classList.toggle('nav-open');
+    btn.setAttribute('aria-expanded',open?'true':'false');
+  });
+  // Active section tracking
+  var sections=document.querySelectorAll('.section[id]');
+  var links=document.querySelectorAll('.snav-link');
+  var label=document.getElementById('snav-active-label');
+  var observer=new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        links.forEach(function(l){l.classList.remove('active')});
+        var active=document.querySelector('.snav-link[data-section="'+entry.target.id+'"]');
+        if(active){active.classList.add('active');if(label)label.textContent=active.textContent.replace(/^\\d+\\s*/,'');}
+      }
+    });
+  },{threshold:0.15,rootMargin:'-80px 0px -60% 0px'});
+  sections.forEach(function(s){observer.observe(s);});
+})();
 
 // Decode and inject landing page iframe content
 document.querySelectorAll('.lp-iframe[data-lp-html]').forEach(function(iframe){

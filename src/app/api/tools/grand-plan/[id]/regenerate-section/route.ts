@@ -12,7 +12,7 @@ const VALID_SECTIONS = [
   "executiveSummary", "strategyPlan", "googleAdsCampaigns", "metaCampaigns",
   "keywordResearch", "contentStrategy", "contentCalendar", "organicSocial",
   "exampleArticles", "servicesInvestment", "mediaPlan", "emailMarketing",
-  "linkedInAds", "competitorIntel", "googleAdsForecast",
+  "linkedInAds", "competitorIntel", "googleAdsForecast", "audiences",
 ];
 
 // POST /api/tools/grand-plan/[id]/regenerate-section — regenerate a single section
