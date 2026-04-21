@@ -221,7 +221,10 @@ export default function GrandPlanViewPage({ params }: Props) {
       // 2. Prepare pipeline (each is its own 300s call)
       await runStep("prepare-keywords", "Researching keywords...");
       await runStep("prepare-content", "Generating content strategy...");
-      await runStep("prepare-lp", "Generating landing page...");
+      await runStep("prepare-content-audit", "Auditing on-page SEO...");
+      await runStep("prepare-lp-draft", "Drafting landing page...");
+      await runStep("prepare-lp-refine-1", "Refining landing page (pass 1/2)...");
+      await runStep("prepare-lp-refine-2", "Refining landing page (pass 2/2)...");
 
       // 3. Generate each enabled section sequentially
       const enabled = Array.from(enabledSections);
