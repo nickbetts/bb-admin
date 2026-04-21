@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOpenAiClient } from "@/lib/openai-client";
+import { getAnthropicClient } from "@/lib/anthropic-client";
 import { prisma } from "@/lib/prisma";
 import { getSeasonalityContext } from "@/lib/seasonality";
 import { resolveConfig, type ResolvedSignalConfig } from "@/lib/signals/defaults";
@@ -8,6 +9,8 @@ import { getSession } from "@/lib/auth";
 import { enforceAiRateLimit } from "@/lib/ai/rate-limit";
 
 export const dynamic = "force-dynamic";
+// Holistic game plan + heavy summaries can take 60–120s with Opus and large data.
+export const maxDuration = 300;
 
 // ─── Per-alert metadata used by the direction-sanity guard ───────────────────
 // When a caller produces alerts via `src/lib/signals/detect.ts`, every alert
@@ -1099,8 +1102,6 @@ One string per alert, same order. British English.`;
       });
       if (!filteredGpAlerts.length) return NextResponse.json({ gamePlan: "" });
 
-      const openaiGP = await getOpenAiClient();
-
       const signalSummary = filteredGpAlerts
         .map((a, i) =>
           `${i + 1}. [${(a.severity ?? "").toUpperCase()}] [${a.platform}]${a.level ? ` [${a.level}]` : ""} "${a.label ?? a.metric ?? ""}" — ${a.detail}${a.recommendation ? `\n   Current recommendation: ${a.recommendation}` : ""}`
@@ -1142,17 +1143,29 @@ INSTRUCTIONS:
 
 Output the result as clean HTML only — no markdown, no code fences, no preamble. Use <h3> for the main heading, <ol> for the numbered action list, <strong> for the WHAT/WHERE/WHY/EXPECTED IMPACT labels, and <ul> with <li></li> items for sub-points within each action. Use a <h3> for the Contradictory Signals section if applicable. British English.`;
 
-      const gpResponse = await openaiGP.chat.completions.create({
-        model: "gpt-5.4",
-        messages: [
-          { role: "system", content: "You are a senior cross-channel digital marketing strategist. Produce a unified, prioritised action plan that synthesises all detected signals into a coherent strategy. Be specific with numbers, campaign names, exact platform settings, and concrete steps. Output clean HTML only — no markdown, no code fences. British English." },
-          { role: "user", content: gamePlanPrompt },
-        ],
-        max_completion_tokens: 2000,
+      // Use Claude Opus for the holistic game plan — better at long-form
+      // strategic synthesis across many signals + needs the larger output budget.
+      const anthropic = await getAnthropicClient();
+      const opusResponse = await anthropic.messages.create({
+        model: "claude-opus-4-6",
+        max_tokens: 8000,
         temperature: 0.35,
+        system: "You are a senior cross-channel digital marketing strategist at a UK performance marketing agency. Produce a unified, prioritised action plan that synthesises all detected signals into a coherent strategy. Be specific with numbers, campaign names, exact platform settings, and concrete steps. Output clean HTML only — no markdown, no code fences, no preamble. British English.",
+        messages: [{ role: "user", content: gamePlanPrompt }],
       });
 
-      const gamePlan = gpResponse.choices[0]?.message?.content?.trim() ?? "";
+      // Anthropic returns content blocks; collect text-type blocks.
+      const gamePlan = opusResponse.content
+        .filter((b): b is { type: "text"; text: string } => b.type === "text")
+        .map((b) => b.text)
+        .join("")
+        .trim();
+
+      // If Claude hit max_tokens or output is suspiciously truncated, log it.
+      if (opusResponse.stop_reason === "max_tokens") {
+        console.warn("[holistic_game_plan] Opus hit max_tokens — output may be truncated");
+      }
+
       return NextResponse.json({ gamePlan });
     }
     // ──────────────────────────────────────────────────────────────────────────

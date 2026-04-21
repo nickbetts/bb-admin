@@ -1482,42 +1482,52 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
       {/* ── Holistic Game Plan ──────────────────────────────────────────────── */}
       {(gamePlan || gamePlanLoading) && (
         <div style={{
-          borderRadius: 14, border: "1px solid rgb(99 102 241 / 0.25)",
+          borderRadius: 16, border: "1px solid rgb(99 102 241 / 0.25)",
           background: "#fafbff",
           overflow: "hidden",
-          boxShadow: "0 1px 3px rgba(99,102,241,0.08)",
+          boxShadow: "0 2px 8px rgba(99,102,241,0.08)",
         }}>
           {/* Header */}
           <div style={{
-            display: "flex", alignItems: "center", gap: 10, padding: "14px 20px",
+            display: "flex", alignItems: "center", gap: 12, padding: "16px 22px",
             background: "linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%)",
             borderBottom: "1px solid rgb(99 102 241 / 0.25)",
           }}>
             <div style={{
-              width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+              width: 32, height: 32, borderRadius: 10, flexShrink: 0,
               background: "var(--gradient-accent)",
               display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 2px 6px rgba(99,102,241,0.3)",
             }}>
-              <Zap style={{ width: 14, height: 14, color: "white" }} />
+              <Zap style={{ width: 16, height: 16, color: "white" }} />
             </div>
-            <div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#312e81", display: "block", lineHeight: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#312e81", display: "block", lineHeight: 1.2 }}>
                 Cross-Channel Game Plan
               </span>
-              <span style={{ fontSize: 11, color: "var(--accent)", marginTop: 2, display: "block" }}>
+              <span style={{ fontSize: 11, color: "var(--accent)", marginTop: 3, display: "block" }}>
                 AI-synthesised action plan across all signals
               </span>
             </div>
+            <span style={{
+              fontSize: 10, fontWeight: 600, color: "#6366f1",
+              background: "white", border: "1px solid #e0e7ff",
+              padding: "4px 8px", borderRadius: 6,
+              letterSpacing: "0.04em", textTransform: "uppercase",
+              flexShrink: 0,
+            }}>
+              Claude Opus
+            </span>
             {gamePlanLoading && (
-              <Loader2 style={{ width: 14, height: 14, marginLeft: "auto", color: "var(--accent)", animation: "spin 1s linear infinite" }} />
+              <Loader2 style={{ width: 16, height: 16, color: "var(--accent)", animation: "spin 1s linear infinite", flexShrink: 0 }} />
             )}
           </div>
-          <div style={{ padding: "16px 20px" }}>
+          <div style={{ padding: "20px 22px" }}>
             {gamePlanLoading && !gamePlan ? (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
                 <Loader2 style={{ width: 14, height: 14, color: "var(--accent)", flexShrink: 0, animation: "spin 1s linear infinite" }} />
                 <p style={{ fontSize: 12, color: "var(--accent)", margin: 0, fontStyle: "italic" }}>
-                  Analysing all signals together to build a unified action plan&hellip;
+                  Analysing all signals together to build a unified action plan&hellip; (this may take 60–120 seconds)
                 </p>
               </div>
             ) : gamePlan ? (
