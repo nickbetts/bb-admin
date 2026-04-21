@@ -26,6 +26,7 @@ import {
 const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered: boolean }[] = [
   { key: "executiveSummary", label: "Executive Summary", description: "AI-generated overview of the strategy", aiPowered: true },
   { key: "strategyPlan", label: "Strategy Plan", description: "Phased rollout plan (Month 1 / 2-3 / 4+)", aiPowered: true },
+  { key: "audiences", label: "Audiences", description: "Target audience profiles, pain points and channel mapping", aiPowered: true },
   { key: "googleAdsCampaigns", label: "Google Ads Campaigns", description: "Campaign structure from keyword research", aiPowered: false },
   { key: "googleAdsForecast", label: "Google Ads Forecast", description: "Estimated clicks, conversions, CPA from keyword data", aiPowered: false },
   { key: "metaCampaigns", label: "Meta Campaigns", description: "AI-generated Facebook/Instagram campaigns", aiPowered: true },
