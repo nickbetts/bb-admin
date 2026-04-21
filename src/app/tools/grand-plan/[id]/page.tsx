@@ -3,6 +3,7 @@
 import { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import {
   ArrowLeft,
   Download,
@@ -75,6 +76,7 @@ interface Props {
 export default function GrandPlanViewPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
+  const confirm = useConfirm();
   const [plan, setPlan] = useState<GrandPlanFull | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -220,9 +222,12 @@ export default function GrandPlanViewPage({ params }: Props) {
 
       // 2. Prepare pipeline (each is its own 300s call)
       await runStep("prepare-keywords", "Researching keywords...");
-      await runStep("prepare-content", "Generating content strategy...");
+      await runStep("prepare-content-data", "Collecting SEMrush data...");
+      await runStep("prepare-content", "Generating content strategy (Claude Opus)...");
       await runStep("prepare-content-audit", "Auditing on-page SEO...");
-      await runStep("prepare-lp-draft", "Drafting landing page...");
+      await runStep("prepare-lp-brand", "Extracting brand context...");
+      await runStep("prepare-lp-draft", "Generating landing page draft...");
+      await runStep("prepare-lp-critique", "Critiquing landing page...");
       await runStep("prepare-lp-refine-1", "Refining landing page (pass 1/2)...");
       await runStep("prepare-lp-refine-2", "Refining landing page (pass 2/2)...");
 
@@ -371,7 +376,7 @@ export default function GrandPlanViewPage({ params }: Props) {
   }
 
   async function handleDelete() {
-    if (!confirm("Are you sure you want to delete this grand plan?")) return;
+    if (!(await confirm({ title: "Delete this grand plan?", description: "This cannot be undone.", confirmLabel: "Delete", danger: true }))) return;
     setDeleting(true);
     await fetch(`/api/tools/grand-plan/${id}`, { method: "DELETE" });
     router.push("/tools/grand-plan");

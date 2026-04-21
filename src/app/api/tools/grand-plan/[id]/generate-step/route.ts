@@ -5,7 +5,7 @@ import { logActivity } from "@/lib/activity-logger";
 import { generateGrandPlan, type GrandPlanSources, type GrandPlanData, type CampaignFocusPeriod } from "@/lib/grand-plan-generator";
 import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import { suggestAdGroups, researchKeywords } from "@/lib/keyword-planner-pipeline";
-import { generateContentStrategy, runOnPageAudit } from "@/lib/content-strategy-generator";
+import { generateContentStrategy, collectSemrushData, runOnPageAudit } from "@/lib/content-strategy-generator";
 import { extractBrandContext, type BrandContext } from "@/lib/brand-extractor";
 import {
   generateLandingPage,
@@ -195,7 +195,39 @@ export async function POST(
       return NextResponse.json({ ok: true, step });
     }
 
+    // ─── STEP: prepare-content-data ──────────────────────────────────────────
+    // Warms all SEMrush / GSC caches via withApiCache before the heavy Claude
+    // Opus generation step. Because every sub-call in collectSemrushData uses
+    // withApiCache, this step stores the results in the DB so prepare-content
+    // gets instant cache hits and its full 300 s budget goes to the AI call.
+    if (step === "prepare-content-data") {
+      const freshPlan = await prisma.grandPlan.findUnique({
+        where: { id },
+        include: { contentStrategy: { select: { id: true } } },
+      });
+
+      // Skip if content strategy is already linked or no website to query
+      if (freshPlan?.contentStrategy || !website) {
+        return NextResponse.json({ ok: true, step, skipped: true });
+      }
+
+      const csDomain = config.contentBrief?.domain ?? website.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "");
+      const csDatabase = config.contentBrief?.database ?? "uk";
+      const csBrief = config.contentBrief?.brief || brief || `Full digital marketing strategy for ${clientName}`;
+      const csCompetitors = config.contentBrief?.competitors
+        ? config.contentBrief.competitors.split(",").map((s: string) => s.trim()).filter(Boolean)
+        : [];
+      const searchConsoleSiteUrl = plan.client?.searchConsoleSiteUrl ?? undefined;
+
+      await setStatus(id, "Collecting SEMrush & Search Console data...");
+      await collectSemrushData(csDomain, csCompetitors, csDatabase, searchConsoleSiteUrl, csBrief);
+
+      return NextResponse.json({ ok: true, step });
+    }
+
     // ─── STEP: prepare-content ───────────────────────────────────────────────
+    // All SEMrush data is already in the DB cache from prepare-content-data, so
+    // this step's full 300 s budget is available for the Claude Opus generation.
     if (step === "prepare-content") {
       // Reload plan to pick up keyword research from previous step
       const freshPlan = await prisma.grandPlan.findUnique({
@@ -219,7 +251,7 @@ export async function POST(
         : [];
       const searchConsoleSiteUrl = plan.client?.searchConsoleSiteUrl ?? undefined;
 
-      await setStatus(id, "Running SEMrush analysis and generating content strategy...");
+      await setStatus(id, "Generating content strategy with Claude Opus...");
 
       const strategyResult = await generateContentStrategy(
         csDomain,
@@ -298,13 +330,11 @@ export async function POST(
       return NextResponse.json({ ok: true, step });
     }
 
-    // ─── STEP: prepare-lp-draft ──────────────────────────────────────────────
-    // Brand extraction + initial 32K-token Claude Opus draft + critique. Stashed
-    // in planDataJson under a transient key so the next refinement steps can
-    // pick it up. Each LP sub-step runs in its own 300 s lambda — previously
-    // the whole draft+critique+2×refine pipeline was crammed into one call,
-    // which routinely tipped past 300 s.
-    if (step === "prepare-lp-draft") {
+    // ─── STEP: prepare-lp-brand ───────────────────────────────────────────────
+    // Scrapes the website for brand colours, fonts, copy and stashes the
+    // BrandContext in planDataJson. Isolated so the LP generation step has the
+    // full 300 s budget for the 32K-token Opus call.
+    if (step === "prepare-lp-brand") {
       if (!config.lpBrief || !website) {
         return NextResponse.json({ ok: true, step, skipped: true });
       }
@@ -315,44 +345,101 @@ export async function POST(
       await setStatus(id, "Extracting brand context from website...");
       const brandContext = await extractBrandContext(website);
 
-      await setStatus(id, "Generating landing page draft (Claude Opus, ~32K tokens)...");
+      // Stash brand context so subsequent LP steps don't need to re-scrape.
+      const existing = safeJsonParse<GrandPlanData | null>(plan.planDataJson, null);
+      if (existing) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (existing as any)._lpInProgress = {
+          html: "",
+          critique: [],
+          brandContext,
+          campaignType: lpCampaignType,
+          brief: lpBriefText,
+          targetAudience: config.sector || undefined,
+        } satisfies LpInProgress;
+        await prisma.grandPlan.update({
+          where: { id },
+          data: { planDataJson: JSON.stringify(existing) },
+        });
+      }
+
+      return NextResponse.json({ ok: true, step });
+    }
+
+    // ─── STEP: prepare-lp-draft ──────────────────────────────────────────────
+    // 32K-token Claude Opus LP generation. Brand context comes from the stash
+    // written by prepare-lp-brand so we don't re-scrape. Runs in its own 300 s
+    // budget — the only "expensive" operation here is the single Opus stream.
+    if (step === "prepare-lp-draft") {
+      if (!config.lpBrief || !website) {
+        return NextResponse.json({ ok: true, step, skipped: true });
+      }
+
+      const stash = readLpInProgress(plan.planDataJson);
+      if (!stash?.brandContext) {
+        // Brand step didn't run or failed — re-extract inline (adds ~15s but unblocks)
+        const lpCampaignType = config.lpBrief.campaignType ?? "lead-gen";
+        const lpBriefText = brief || `${clientName} landing page for ${lpCampaignType} campaign`;
+        await setStatus(id, "Extracting brand context from website...");
+        const brandContext = await extractBrandContext(website);
+        await stashLpInProgress(id, plan.planDataJson, {
+          html: "", critique: [], brandContext,
+          campaignType: lpCampaignType, brief: lpBriefText,
+          targetAudience: config.sector || undefined,
+        });
+        // Re-read fresh plan to get updated stash
+        const updated = await prisma.grandPlan.findUnique({ where: { id }, select: { planDataJson: true } });
+        Object.assign(plan, { planDataJson: updated?.planDataJson });
+      }
+
+      const s = readLpInProgress(plan.planDataJson)!;
+      await setStatus(id, "Generating landing page draft (Claude Opus)...");
       const draftHtml = await generateLandingPage({
-        brief: lpBriefText,
-        campaignType: lpCampaignType,
-        brandContext,
-        targetAudience: config.sector || undefined,
+        brief: s.brief,
+        campaignType: s.campaignType,
+        brandContext: s.brandContext,
+        targetAudience: s.targetAudience,
       });
+
+      // Reload plan before stashing to pick up any intervening writes
+      const freshForStash = await prisma.grandPlan.findUnique({ where: { id }, select: { planDataJson: true } });
+      await stashLpInProgress(id, freshForStash?.planDataJson ?? null, { ...s, html: draftHtml });
+
+      // Promote draft immediately so the user has a page even if refinement fails
+      await promoteLpDraftToSection(id, draftHtml, s.campaignType);
+
+      return NextResponse.json({ ok: true, step });
+    }
+
+    // ─── STEP: prepare-lp-critique ───────────────────────────────────────────
+    // CRO critique of the draft. Isolated from the generation step so a slow
+    // Opus stream on the draft doesn't eat into the critique budget.
+    if (step === "prepare-lp-critique") {
+      if (!config.lpBrief || !website) {
+        return NextResponse.json({ ok: true, step, skipped: true });
+      }
+
+      const stash = readLpInProgress(plan.planDataJson);
+      if (!stash?.html) {
+        return NextResponse.json({ ok: true, step, skipped: true, reason: "No draft to critique" });
+      }
 
       await setStatus(id, "Critiquing landing page draft...");
       const critique = await critiqueLandingPage({
-        html: draftHtml,
-        brief: lpBriefText,
-        campaignType: lpCampaignType,
-        brandContext,
-        targetAudience: config.sector || undefined,
+        html: stash.html,
+        brief: stash.brief,
+        campaignType: stash.campaignType,
+        brandContext: stash.brandContext,
+        targetAudience: stash.targetAudience,
       });
 
-      // Sort highest severity first so the most impactful fixes land in the
-      // earliest refinement pass.
       const severityRank = { high: 0, medium: 1, low: 2 } as const;
       const sortedCritique = [...critique].sort(
         (a, b) => severityRank[a.severity] - severityRank[b.severity],
       );
 
-      // Save draft + critique + brand context into planDataJson under a
-      // transient key. The HTML template ignores keys it doesn't know about.
-      await stashLpInProgress(id, plan.planDataJson, {
-        html: draftHtml,
-        critique: sortedCritique,
-        brandContext,
-        campaignType: lpCampaignType,
-        brief: lpBriefText,
-        targetAudience: config.sector || undefined,
-      });
-
-      // Also write the draft into sections.landingPage straight away so even
-      // if a refinement step fails, the user still sees the draft.
-      await promoteLpDraftToSection(id, draftHtml, lpCampaignType);
+      const freshForCritique = await prisma.grandPlan.findUnique({ where: { id }, select: { planDataJson: true } });
+      await stashLpInProgress(id, freshForCritique?.planDataJson ?? null, { ...stash, critique: sortedCritique });
 
       return NextResponse.json({ ok: true, step, critiqueItems: sortedCritique.length });
     }
