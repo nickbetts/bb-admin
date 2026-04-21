@@ -1516,7 +1516,7 @@ export function SignalsSection({ client, startDate, endDate }: SignalsSectionPro
               letterSpacing: "0.04em", textTransform: "uppercase",
               flexShrink: 0,
             }}>
-              Claude Opus
+              Meridian by i3MEDIA
             </span>
             {gamePlanLoading && (
               <Loader2 style={{ width: 16, height: 16, color: "var(--accent)", animation: "spin 1s linear infinite", flexShrink: 0 }} />
