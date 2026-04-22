@@ -570,6 +570,34 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
   const [pendingUpload, setPendingUpload] = useState<{ file: File; sectionId: string | null } | null>(null);
 
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [pdfStatusIndex, setPdfStatusIndex] = useState(0);
+
+  const PDF_STATUSES = [
+    "Firing up the printing press…",
+    "Persuading Puppeteer to behave…",
+    "Rendering all those beautiful charts…",
+    "Measuring margins to the pixel…",
+    "Adding the i3media header (very swish)…",
+    "Asking the AI nicely to move aside…",
+    "Compiling 14 channels of chaos into order…",
+    "Checking the font kerning obsessively…",
+    "Nearly there — just buffing the PDF…",
+    "Running spell-check on the numbers…",
+    "Bribing Chromium with biscuits…",
+    "Converting pixels to points…",
+    "Stamping date range on every page…",
+    "Double-checking the page breaks…",
+    "Wrapping everything in a lovely PDF bow…",
+  ];
+
+  useEffect(() => {
+    if (!exportingPdf) { setPdfStatusIndex(0); return; }
+    const interval = setInterval(() => {
+      setPdfStatusIndex((i) => (i + 1) % PDF_STATUSES.length);
+    }, 2800);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exportingPdf]);
   const [showDescriptions, setShowDescriptions] = useState(true);
   const [aiLength, setAiLength] = useState<"short" | "medium" | "long">("medium");
   const [aiTone, setAiTone] = useState<"professional" | "friendly" | "technical" | "executive" | "roadman" | "uwu_anime" | "patronising" | "toxic" | "gaslighty" | "cuck">("professional");
@@ -1385,6 +1413,62 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
           onUpload={(caption) => handleUploadScreenshot(pendingUpload.file, caption, pendingUpload.sectionId)}
           onCancel={() => setPendingUpload(null)}
         />
+      )}
+
+      {/* PDF export modal */}
+      {exportingPdf && (
+        <div
+          className="print:hidden"
+          style={{
+            position: "fixed", inset: 0, zIndex: 1100,
+            background: "rgba(15,23,42,0.6)",
+            backdropFilter: "blur(4px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <div style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 16,
+            boxShadow: "var(--shadow-lg)",
+            padding: "36px 44px",
+            maxWidth: 380,
+            width: "90%",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 20,
+          }}>
+            {/* Spinner */}
+            <div style={{
+              width: 52, height: 52, borderRadius: "50%",
+              border: "3px solid var(--border)",
+              borderTopColor: "var(--accent)",
+              animation: "spin 0.9s linear infinite",
+              flexShrink: 0,
+            }} />
+            <div>
+              <p style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>
+                Exporting PDF
+              </p>
+              <p
+                key={pdfStatusIndex}
+                style={{
+                  fontSize: 13,
+                  color: "var(--text-3)",
+                  minHeight: 20,
+                  animation: "fadeIn 0.4s ease",
+                }}
+              >
+                {PDF_STATUSES[pdfStatusIndex]}
+              </p>
+            </div>
+            <p style={{ fontSize: 11, color: "var(--text-4)" }}>
+              This usually takes 20&ndash;60 seconds
+            </p>
+          </div>
+        </div>
       )}
 
       {/* Upload error toast */}
