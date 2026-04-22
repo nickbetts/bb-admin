@@ -19,11 +19,14 @@ import {
   Check,
   Upload,
 } from "lucide-react";
+import { AnalyticsConfigForm } from "@/components/landing-pages/AnalyticsConfigForm";
+import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
 
 interface Client {
   id: string;
   name: string;
   website?: string | null;
+  defaultAnalyticsConfig?: string | null;
 }
 
 interface Template {
@@ -69,6 +72,11 @@ export default function NewLandingPage() {
   const [targetAudience, setTargetAudience] = useState("");
   const [templateId, setTemplateId] = useState("");
 
+  // Tracking & conversions
+  const [analyticsConfig, setAnalyticsConfig] = useState<LpAnalyticsConfig>({});
+  const [inheritedAnalytics, setInheritedAnalytics] = useState<LpAnalyticsConfig | undefined>(undefined);
+  const [saveAsClientDefault, setSaveAsClientDefault] = useState(false);
+
   // Uploaded reference images
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [uploadedImages, setUploadedImages] = useState<{ url: string; filename: string }[]>([]);
@@ -103,6 +111,20 @@ export default function NewLandingPage() {
     if (newClientId) {
       const client = clients.find((c) => c.id === newClientId);
       if (client?.website && !url) setUrl(client.website);
+      // Prefill tracking from client default if the user hasn't set anything yet
+      if (client?.defaultAnalyticsConfig) {
+        try {
+          const parsed = JSON.parse(client.defaultAnalyticsConfig) as LpAnalyticsConfig;
+          setInheritedAnalytics(parsed);
+          setAnalyticsConfig((prev) => (Object.keys(prev).length === 0 ? parsed : prev));
+        } catch {
+          setInheritedAnalytics(undefined);
+        }
+      } else {
+        setInheritedAnalytics(undefined);
+      }
+    } else {
+      setInheritedAnalytics(undefined);
     }
   };
 
@@ -185,6 +207,7 @@ export default function NewLandingPage() {
           campaignType,
           targetAudience: targetAudience || undefined,
           templateId: templateId || undefined,
+          analyticsConfig: Object.keys(analyticsConfig).length > 0 ? analyticsConfig : undefined,
           additionalImageUrls: uploadedImages.length > 0 ? uploadedImages.map((i) => i.url) : undefined,
         }),
       });
@@ -197,6 +220,16 @@ export default function NewLandingPage() {
       }
 
       const data = await res.json();
+
+      // Optionally persist this config as the client's default for future LPs
+      if (saveAsClientDefault && clientId && Object.keys(analyticsConfig).length > 0) {
+        fetch(`/api/clients/${clientId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ defaultAnalyticsConfig: analyticsConfig }),
+        }).catch(() => {});
+      }
+
       router.push(`/tools/landing-pages/${data.landingPage.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -510,6 +543,25 @@ export default function NewLandingPage() {
               </div>
             </div>
           )}
+
+          {/* Tracking & conversions */}
+          <div>
+            <AnalyticsConfigForm
+              value={analyticsConfig}
+              onChange={setAnalyticsConfig}
+              inheritedFrom={inheritedAnalytics}
+            />
+            {clientId && Object.keys(analyticsConfig).length > 0 && (
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-3)", marginTop: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={saveAsClientDefault}
+                  onChange={(e) => setSaveAsClientDefault(e.target.checked)}
+                />
+                Also save as the default for {clients.find((c) => c.id === clientId)?.name ?? "this client"}
+              </label>
+            )}
+          </div>
 
           {/* Error */}
           {error && (

@@ -107,7 +107,26 @@ ${brandContext.contactInfo.email ? `Email: ${brandContext.contactInfo.email}` : 
 Social links: ${brandContext.socialLinks.slice(0, 4).join(", ") || "None provided"}
 ${pageCopyBlock}${rawHtmlBlock}
 ## Available imagery
-${uploadedImageUrls && uploadedImageUrls.length > 0 ? `### User-uploaded reference images — YOU MUST use these as <img src="..."> tags in the page\n${uploadedImageUrls.map((u) => `- ${u}`).join("\n")}\n\n` : ""}${brandContext.imageryUrls.length ? `### Scraped website imagery\n${brandContext.imageryUrls.slice(0, 6).map((u) => `- ${u}`).join("\n")}` : uploadedImageUrls && uploadedImageUrls.length > 0 ? "" : "No images available — use CSS gradients, patterns and emoji/icons for visual interest."}
+${uploadedImageUrls && uploadedImageUrls.length > 0 ? `### User-uploaded reference images — YOU MUST use these as <img src="..."> tags in the page\n${uploadedImageUrls.map((u) => `- ${u}`).join("\n")}\n\n` : ""}${brandContext.imageryUrls.length ? `### Scraped website imagery\n${brandContext.imageryUrls.slice(0, 6).map((u) => `- ${u}`).join("\n")}` : uploadedImageUrls && uploadedImageUrls.length > 0 ? "" : "No images available — use CSS gradients, patterns and bold typography for visual interest. Do NOT use emoji as illustrations."}
+
+## Iconography — strict rule
+
+Never use emoji glyphs (🎯 ✓ ⭐ 🏆 ✅ 📞 etc.) as decorative or functional icons in body content. The Lucide icon library is loaded for you in <head>; render every icon as:
+
+  <i data-lucide="icon-name" aria-hidden="true"></i>
+
+When you need to control size, wrap or style with width/height (Lucide outputs an inline SVG inheriting currentColor). Useful icon names you may rely on:
+
+  check, check-circle, check-circle-2, x, star, sparkles, shield, shield-check, award, badge-check, trophy,
+  arrow-right, chevron-right, arrow-down, mouse-pointer-click, hand,
+  phone, mail, map-pin, message-circle, message-square, calendar, clock, timer, zap,
+  users, user, heart, thumbs-up, smile,
+  dollar-sign, pound-sterling, gift, package, truck, shopping-cart, credit-card,
+  rocket, target, lightbulb, flame, trending-up, bar-chart, line-chart, percent,
+  lock, eye, search, settings, info, help-circle, alert-circle, plus, minus,
+  facebook, instagram, twitter, linkedin, youtube, tiktok, github
+
+Use these for benefit ticks, feature lists, social-proof badges, step numbers (paired with the numeral), CTA buttons, contact strips and footer social links. If you need an icon not on this list, pick the closest Lucide name from https://lucide.dev/icons; never invent a name. Do not import any other icon library — Lucide is the only one available.
 
 ## Post-Click Landing Page Principles
 
@@ -214,7 +233,9 @@ Return ONLY the complete updated HTML document. No markdown fences, no explanati
 Start with <!DOCTYPE html> and end with </html>.
 
 Use British English for all text.
-Never use em dashes (— or &mdash;). Use a comma, colon, or rewrite the sentence instead.`;
+Never use em dashes (— or &mdash;). Use a comma, colon, or rewrite the sentence instead.
+
+Never introduce emoji glyphs as icons. Lucide icons are available — replace any emoji with <i data-lucide="name" aria-hidden="true"></i>. Preserve any existing <i data-lucide=...> tags exactly.`;
 
 // ── Form capture script ──────────────────────────────────────────────────────
 
@@ -259,6 +280,46 @@ export function injectFormScript(html: string, shareToken: string): string {
     return html.replace("</body>", `${script}\n</body>`);
   }
   return html + script;
+}
+
+// ── Inject Lucide icon runtime ──────────────────────────────────────────────
+//
+// Loads Lucide via CDN and re-renders any <i data-lucide="name"> elements.
+// A small MutationObserver re-runs createIcons() if the page mutates so that
+// dynamically-injected sections (e.g. from the lead-capture success state)
+// still show icons. Safe to call multiple times — the script tag is idempotent.
+
+const LUCIDE_SCRIPT = `
+<!-- Lucide icons (post-click LP icon set) -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+<script>
+(function(){
+  function init(){
+    if (!window.lucide) return;
+    try { window.lucide.createIcons(); } catch(e){}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+  // Re-render on dynamic DOM changes (form success states, etc.)
+  if (window.MutationObserver) {
+    var pending = false;
+    var mo = new MutationObserver(function(){
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(function(){ pending = false; init(); });
+    });
+    if (document.body) mo.observe(document.body, { childList: true, subtree: true });
+    else document.addEventListener('DOMContentLoaded', function(){ mo.observe(document.body, { childList: true, subtree: true }); });
+  }
+})();
+</script>`;
+
+export function injectLucide(html: string): string {
+  if (html.includes("unpkg.com/lucide")) return html; // already injected
+  if (html.includes("</body>")) {
+    return html.replace("</body>", `${LUCIDE_SCRIPT}\n</body>`);
+  }
+  return html + LUCIDE_SCRIPT;
 }
 
 // ── Generate landing page ────────────────────────────────────────────────────
@@ -348,6 +409,8 @@ Output format example:
 [
   { "area": "Hero", "issue": "Headline is generic and does not echo the campaign brief language.", "fix": "Rewrite the H1 to lead with the specific outcome from the brief: '[outcome]'.", "severity": "high" }
 ]
+
+If you spot any emoji glyphs being used as icons (e.g. ✓ 🎯 ⭐ 📞), flag it as a high-severity issue with the fix: "Replace the emoji with the matching Lucide icon: <i data-lucide=\"name\" aria-hidden=\"true\"></i> using the project's Lucide whitelist."
 
 Use British English. No markdown fences, no commentary, just the JSON array.`;
 

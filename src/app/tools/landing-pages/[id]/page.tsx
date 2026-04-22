@@ -32,6 +32,8 @@ import {
   Trash2,
   GripVertical,
   Sparkles,
+  Settings,
+  Bug,
 } from "lucide-react";
 import {
   DndContext,
@@ -52,6 +54,8 @@ import { injectEditorScript, removeEditorScript, applyTextEdit } from "@/lib/lp-
 import { parseSections, reorderSections, duplicateSection, deleteSection, setSectionAnimation, type LPSection } from "@/lib/lp-section-parser";
 import { ANIMATION_PRESETS, injectAnimations } from "@/lib/lp-animations";
 import { parseCSSVariables, updateCSSVariable, type CSSVariable } from "@/lib/lp-css-parser";
+import { AnalyticsConfigForm } from "@/components/landing-pages/AnalyticsConfigForm";
+import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
 
 interface LandingPage {
   id: string;
@@ -65,6 +69,7 @@ interface LandingPage {
   briefJson: string;
   brandContextJson: string;
   formConfig: string;
+  analyticsConfig: string;
   createdAt: string;
   updatedAt: string;
   client: { id: string; name: string; slug: string } | null;
@@ -232,6 +237,12 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
   const [showVersions, setShowVersions] = useState(false);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
 
+  // Tracking & conversions modal
+  const [showTrackingSettings, setShowTrackingSettings] = useState(false);
+  const [analyticsConfig, setAnalyticsConfig] = useState<LpAnalyticsConfig>({});
+  const [savingAnalytics, setSavingAnalytics] = useState(false);
+  const [analyticsSaved, setAnalyticsSaved] = useState(false);
+
   // Chat state
   const [prompt, setPrompt] = useState("");
   const [chatHistory, setChatHistory] = useState<{ role: "user" | "assistant"; content: string; version?: number; type?: "chat" | "refine"; refinementPrompt?: string }[]>([]);
@@ -290,6 +301,14 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       const data = await res.json();
       setLp(data.landingPage);
       setPreviewHtml(data.landingPage.currentHtml);
+
+      // Hydrate analytics config from the saved JSON
+      try {
+        const parsed = data.landingPage.analyticsConfig ? JSON.parse(data.landingPage.analyticsConfig) : {};
+        setAnalyticsConfig(parsed && typeof parsed === "object" ? parsed : {});
+      } catch {
+        setAnalyticsConfig({});
+      }
 
       // Build initial chat history from versions
       const versions = data.landingPage.versions as Version[];
@@ -883,6 +902,26 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
           <button onClick={() => setShowSaveTemplate(true)} style={toolbarBtn} title="Save as template">
             <Sparkles style={{ width: 14, height: 14 }} />
           </button>
+
+          <button
+            onClick={() => { setAnalyticsSaved(false); setShowTrackingSettings(true); }}
+            style={toolbarBtn}
+            title="Tracking & conversions"
+          >
+            <Settings style={{ width: 14, height: 14 }} />
+          </button>
+
+          {lp.shareToken && (
+            <a
+              href={`/api/share/landing-page/${lp.shareToken}?test=1`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ ...toolbarBtn, textDecoration: "none" }}
+              title="Open in test mode (simulates conversion firing without sending real events)"
+            >
+              <Bug style={{ width: 14, height: 14 }} />
+            </a>
+          )}
 
           <button onClick={handleDownload} style={toolbarBtn} title="Download HTML">
             <Download style={{ width: 14, height: 14 }} />
@@ -1500,6 +1539,72 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
               >
                 {savingTemplate ? <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} /> : <Save style={{ width: 16, height: 16 }} />}
                 Save Template
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tracking & conversions modal */}
+      {showTrackingSettings && lp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", padding: 16 }}>
+          <div className="card" style={{ width: "100%", maxWidth: 640, maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+            <div className="card-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <span className="card-title">Tracking &amp; conversions</span>
+              <button onClick={() => setShowTrackingSettings(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-4)", padding: 2 }}>
+                <X style={{ width: 16, height: 16 }} />
+              </button>
+            </div>
+            <div className="card-body" style={{ overflowY: "auto", flex: 1 }}>
+              <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 0, marginBottom: 14 }}>
+                Tags are injected into the public share URL. Use the bug icon in the toolbar to open the page in test mode &mdash; calls to gtag/fbq/lintrk/ttq/uetq are intercepted and shown in an overlay so you can verify wiring without firing real events.
+              </p>
+              <AnalyticsConfigForm
+                value={analyticsConfig}
+                onChange={setAnalyticsConfig}
+                startExpanded
+                noWrapper
+              />
+            </div>
+            <div className="card-body" style={{ flexShrink: 0, borderTop: "1px solid var(--border)", display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
+              {analyticsSaved && (
+                <span style={{ fontSize: 12, color: "var(--success-text)", display: "inline-flex", alignItems: "center", gap: 4, marginRight: "auto" }}>
+                  <Check style={{ width: 13, height: 13 }} /> Saved
+                </span>
+              )}
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowTrackingSettings(false)}
+                style={{ fontSize: 13 }}
+              >
+                Close
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={savingAnalytics}
+                onClick={async () => {
+                  if (!lp) return;
+                  setSavingAnalytics(true);
+                  setAnalyticsSaved(false);
+                  try {
+                    const res = await fetch(`/api/tools/landing-pages/${lp.id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ analyticsConfig }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setLp((prev) => prev ? { ...prev, analyticsConfig: data.landingPage.analyticsConfig } : prev);
+                      setAnalyticsSaved(true);
+                    }
+                  } finally {
+                    setSavingAnalytics(false);
+                  }
+                }}
+                style={{ fontSize: 13 }}
+              >
+                {savingAnalytics ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <Save style={{ width: 14, height: 14 }} />}
+                Save tracking config
               </button>
             </div>
           </div>

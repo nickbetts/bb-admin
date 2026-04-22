@@ -6,6 +6,8 @@ import { Save, Loader2, Upload, X, Plus, Trash2, Shield, Copy, Check, RefreshCw 
 import Image from "next/image";
 import { getAppUrl, buildClickProtectionSnippet } from "@/lib/utils";
 import { SignalConfigEditor } from "./SignalConfigEditor";
+import { AnalyticsConfigForm } from "@/components/landing-pages/AnalyticsConfigForm";
+import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
 import type { SignalConfig } from "@/lib/signals/types";
 
 interface Client {
@@ -55,6 +57,7 @@ interface Client {
   contactEmails?: string | null; // JSON: string[]
   clickFraudToken?: string | null; // Click fraud protection snippet token
   signalConfig?: string | null; // JSON — see SignalConfig in src/lib/signals/types.ts
+  defaultAnalyticsConfig?: string | null; // JSON — default LP analytics/conversion tags
 }
 
 interface ClientSettingsFormProps {
@@ -204,6 +207,15 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
     try { return JSON.parse(client.signalConfig) as SignalConfig; } catch { return {}; }
   });
 
+  // Per-client default landing-page analytics/conversion tags
+  const [defaultAnalyticsConfig, setDefaultAnalyticsConfig] = useState<LpAnalyticsConfig>(() => {
+    if (!client.defaultAnalyticsConfig) return {};
+    try {
+      const parsed = JSON.parse(client.defaultAnalyticsConfig);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch { return {}; }
+  });
+
   useEffect(() => {
     fetch("/api/ga4/properties")
       .then((r) => r.json())
@@ -331,6 +343,8 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
             : null,
           // Per-client signals config (omit empty object so DB column stays NULL)
           signalConfig: Object.keys(signalConfig).length > 0 ? JSON.stringify(signalConfig) : null,
+          // Per-client default landing-page analytics tags
+          defaultAnalyticsConfig: JSON.stringify(defaultAnalyticsConfig ?? {}),
         }),
       });
 
@@ -822,6 +836,27 @@ export function ClientSettingsForm({ client }: ClientSettingsFormProps) {
 
       {/* Signals & Alerts — per-client config */}
       <SignalConfigEditor value={signalConfig} onChange={setSignalConfig} />
+
+      {/* Landing-page tracking defaults */}
+      <div className="card">
+        <div className="card-header">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-xs font-bold text-emerald-700">LP</span>
+            <h2 className="card-title">Landing-page tracking defaults</h2>
+          </div>
+        </div>
+        <div className="card-body">
+          <p className="text-xs text-slate-500" style={{ marginTop: 0, marginBottom: 12 }}>
+            These tags are pre-filled into every new landing page generated for this client. Each landing page can override individual fields.
+          </p>
+          <AnalyticsConfigForm
+            value={defaultAnalyticsConfig}
+            onChange={setDefaultAnalyticsConfig}
+            startExpanded
+            noWrapper
+          />
+        </div>
+      </div>
 
       {/* WooCommerce */}
       <div className="card">

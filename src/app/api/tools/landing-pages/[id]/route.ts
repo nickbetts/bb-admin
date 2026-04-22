@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sanitiseAnalyticsConfig } from "@/lib/lp-analytics";
 import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +56,7 @@ export async function PUT(
     slug?: string;
     status?: string;
     formConfig?: Record<string, unknown>;
+    analyticsConfig?: Record<string, unknown>;
     html?: string;       // Direct HTML update (text editing, code editor, etc.)
     publicSlug?: string;
   };
@@ -64,6 +66,9 @@ export async function PUT(
   if (body.slug !== undefined) data.slug = body.slug;
   if (body.status !== undefined) data.status = body.status;
   if (body.formConfig !== undefined) data.formConfig = JSON.stringify(body.formConfig);
+  if (body.analyticsConfig !== undefined) {
+    data.analyticsConfig = JSON.stringify(sanitiseAnalyticsConfig(body.analyticsConfig));
+  }
   if (body.html !== undefined) data.currentHtml = body.html;
   if (body.publicSlug !== undefined) data.publicSlug = body.publicSlug;
 

@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { extractBrandContext } from "@/lib/brand-extractor";
 import { generateLandingPage } from "@/lib/lp-generator";
+import { sanitiseAnalyticsConfig } from "@/lib/lp-analytics";
 import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
@@ -63,10 +64,11 @@ export async function POST(request: NextRequest) {
       targetAudience?: string;
       templateId?: string;
       formConfig?: Record<string, unknown>;
+      analyticsConfig?: Record<string, unknown>;
       additionalImageUrls?: string[];
     };
 
-    const { clientId, title, url, brief, campaignType, targetAudience, templateId, formConfig, additionalImageUrls } = body;
+    const { clientId, title, url, brief, campaignType, targetAudience, templateId, formConfig, analyticsConfig, additionalImageUrls } = body;
 
     if (!title || !url || !brief || !campaignType) {
       return NextResponse.json({ error: "title, url, brief, and campaignType are required" }, { status: 400 });
@@ -106,6 +108,9 @@ export async function POST(request: NextRequest) {
         briefJson: JSON.stringify({ url, brief, campaignType, targetAudience }),
         brandContextJson: JSON.stringify(brandContext),
         formConfig: JSON.stringify(formConfig ?? {}),
+        analyticsConfig: JSON.stringify(
+          analyticsConfig ? sanitiseAnalyticsConfig(analyticsConfig) : {},
+        ),
         templateId: templateId || null,
         versions: {
           create: {

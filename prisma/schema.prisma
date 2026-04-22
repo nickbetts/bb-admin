@@ -105,6 +105,9 @@ model Client {
   // Microsoft 365 email sync
   contactEmails         String?   // JSON: string[] — client contact email addresses for email sync
   contentStrategyLimits String?   // JSON: { pageOptimisations?: number, landingPages?: number, blogPosts?: number, linkTargets?: number }
+  // Default analytics/conversion tracking config inherited by new landing pages for this client.
+  // JSON shape: see LpAnalyticsConfig in src/lib/lp-analytics.ts
+  defaultAnalyticsConfig String   @default("{}")
   // Per-client signal/AI configuration. Drives which alerts fire and how the AI frames recommendations.
   // JSON shape: {
   //   primaryKpi?: "roas" | "cpa" | "leads" | "calls" | "awareness" | "engagement",
@@ -642,6 +645,8 @@ model LandingPage {
   briefJson        String               // JSON: { url, brief, campaignType, targetAudience }
   brandContextJson String               // JSON: extracted brand data (colours, fonts, logo, imagery)
   formConfig       String               @default("{}") // JSON: { builtInFields?: string[], externalFormUrl?: string }
+  // Per-landing-page analytics/conversion tracking override. Merged on top of Client.defaultAnalyticsConfig at serve time.
+  analyticsConfig  String               @default("{}")
   shareToken       String?              @unique
   publicSlug       String?              @unique   // Pretty URL slug for /lp/{slug}
   viewCount        Int                  @default(0)
