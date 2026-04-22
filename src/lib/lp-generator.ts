@@ -577,10 +577,12 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
   let userContent = `Here is the current landing page HTML:\n\n${opts.currentHtml}\n\nBrand colours: ${colourSummary}`;
 
   if (opts.brandContext.rawHtml) {
-    // Refines re-send the entire current HTML on every turn, so keep the raw
-    // brand reference compact to leave headroom for output tokens within the
-    // 300 s Vercel function ceiling.
-    userContent += `\n\n## Original scraped website HTML (brand and copy reference):\n${opts.brandContext.rawHtml.slice(0, 8000)}`;
+    // The current LP HTML is sent in full above; this is the SCRAPED ORIGINAL
+    // website kept as a brand/copy reference so Claude can pull more authentic
+    // wording when adding new sections. 20 KB is a safe middle ground —
+    // enough to retain hero + several inner sections without burning the
+    // function-duration budget on a refine.
+    userContent += `\n\n## Original scraped website HTML (brand and copy reference):\n${opts.brandContext.rawHtml.slice(0, 20000)}`;
   }
 
   userContent += `\n\nPlease make the following changes:\n${opts.prompt}`;
