@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get("clientId");
 
-  const where: Record<string, unknown> = { userId: session.user.id };
+  const where: Record<string, unknown> = {};
   if (clientId) where.clientId = clientId;
 
   try {
@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
         createdAt: true,
         updatedAt: true,
         client: { select: { id: true, name: true } },
+        user: { select: { id: true, name: true, email: true } },
         _count: { select: { leads: true, versions: true } },
       },
     });
@@ -62,9 +63,10 @@ export async function POST(request: NextRequest) {
       targetAudience?: string;
       templateId?: string;
       formConfig?: Record<string, unknown>;
+      additionalImageUrls?: string[];
     };
 
-    const { clientId, title, url, brief, campaignType, targetAudience, templateId, formConfig } = body;
+    const { clientId, title, url, brief, campaignType, targetAudience, templateId, formConfig, additionalImageUrls } = body;
 
     if (!title || !url || !brief || !campaignType) {
       return NextResponse.json({ error: "title, url, brief, and campaignType are required" }, { status: 400 });
@@ -87,6 +89,7 @@ export async function POST(request: NextRequest) {
       brandContext,
       targetAudience,
       templateHtml,
+      uploadedImageUrls: additionalImageUrls && additionalImageUrls.length > 0 ? additionalImageUrls : undefined,
     });
 
     // 4. Generate a URL-safe slug from the title

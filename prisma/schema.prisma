@@ -36,6 +36,7 @@ model User {
   notifications       Notification[]
   conversations       ClientConversation[]
   timeEntries         AgencyTimeEntry[]
+  landingPages        LandingPage[]
 }
 
 model Session {
@@ -650,6 +651,7 @@ model LandingPage {
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
   client           Client?              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   versions         LandingPageVersion[]
   leads            LandingPageLead[]
 

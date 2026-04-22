@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ClientBackLink } from "@/components/ui/ClientBackLink";
@@ -8,6 +8,7 @@ import { GenerationProgress } from "@/components/ui/GenerationProgress";
 import {
   ArrowLeft,
   Globe,
+  ImageIcon,
   Loader2,
   Sparkles,
   FileText,
@@ -16,6 +17,7 @@ import {
   X,
   Plus,
   Check,
+  Upload,
 } from "lucide-react";
 
 interface Client {
@@ -66,6 +68,12 @@ export default function NewLandingPage() {
   const [campaignType, setCampaignType] = useState("lead-gen");
   const [targetAudience, setTargetAudience] = useState("");
   const [templateId, setTemplateId] = useState("");
+
+  // Uploaded reference images
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedImages, setUploadedImages] = useState<{ url: string; filename: string }[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
 
   // Inline new-client form
   const [showNewClient, setShowNewClient] = useState(false);
@@ -130,6 +138,33 @@ export default function NewLandingPage() {
     }
   };
 
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setImageUploadError(null);
+    setUploadingImage(true);
+    try {
+      const uploads = Array.from(files);
+      const results: { url: string; filename: string }[] = [];
+      for (const file of uploads) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/api/tools/landing-pages/upload-image", { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) {
+          setImageUploadError(data.error ?? "Upload failed");
+          break;
+        }
+        results.push({ url: data.url, filename: file.name });
+      }
+      setUploadedImages((prev) => [...prev, ...results]);
+    } catch {
+      setImageUploadError("Network error — please try again.");
+    } finally {
+      setUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  };
+
   const handleGenerate = async () => {
     if (!title || !url || !brief) {
       setError("Please fill in the title, website URL, and brief.");
@@ -150,6 +185,7 @@ export default function NewLandingPage() {
           campaignType,
           targetAudience: targetAudience || undefined,
           templateId: templateId || undefined,
+          additionalImageUrls: uploadedImages.length > 0 ? uploadedImages.map((i) => i.url) : undefined,
         }),
       });
 
@@ -348,6 +384,80 @@ export default function NewLandingPage() {
               placeholder="e.g. Parents of children aged 14-19 in the UK"
               style={inputStyle}
             />
+          </div>
+
+          {/* Reference images */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <label style={{ ...labelStyle, marginBottom: 0 }}>
+                Reference Images <span style={{ fontWeight: 400, color: "var(--text-4)" }}>(optional)</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={uploadingImage}
+                style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--accent)", background: "none", border: "none", cursor: uploadingImage ? "not-allowed" : "pointer", padding: 0, fontWeight: 600, fontFamily: "inherit", opacity: uploadingImage ? 0.6 : 1 }}
+              >
+                {uploadingImage ? <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} /> : <Plus style={{ width: 13, height: 13 }} />}
+                {uploadingImage ? "Uploading…" : "Add images"}
+              </button>
+            </div>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              multiple
+              style={{ display: "none" }}
+              onChange={(e) => handleImageUpload(e.target.files)}
+            />
+            {uploadedImages.length > 0 ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))", gap: 8, marginBottom: 8 }}>
+                {uploadedImages.map((img, i) => (
+                  <div
+                    key={i}
+                    style={{ position: "relative", borderRadius: "var(--r)", overflow: "hidden", border: "1px solid var(--border)", aspectRatio: "1", background: "var(--bg)" }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={img.url}
+                      alt={img.filename}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setUploadedImages((prev) => prev.filter((_, j) => j !== i))}
+                      style={{ position: "absolute", top: 4, right: 4, width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}
+                      title="Remove image"
+                    >
+                      <X style={{ width: 11, height: 11 }} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={uploadingImage}
+                  style={{ border: "1.5px dashed var(--border)", borderRadius: "var(--r)", background: "transparent", cursor: uploadingImage ? "not-allowed" : "pointer", aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "var(--text-3)" }}
+                >
+                  {uploadingImage ? <Loader2 style={{ width: 18, height: 18, animation: "spin 1s linear infinite" }} /> : <Upload style={{ width: 18, height: 18 }} />}
+                  <span style={{ fontSize: 10 }}>Add more</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={uploadingImage}
+                style={{ width: "100%", padding: "18px 16px", border: "1.5px dashed var(--border)", borderRadius: "var(--r)", background: "transparent", cursor: uploadingImage ? "not-allowed" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: "var(--text-3)", transition: "border-color 0.15s" }}
+              >
+                <ImageIcon style={{ width: 22, height: 22 }} />
+                <span style={{ fontSize: 13, fontWeight: 500 }}>{uploadingImage ? "Uploading…" : "Upload images for Claude to use"}</span>
+                <span style={{ fontSize: 11, color: "var(--text-4)" }}>Product photos, team shots, campaign imagery — supplements scraped site images</span>
+              </button>
+            )}
+            {imageUploadError && (
+              <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 6 }}>{imageUploadError}</p>
+            )}
           </div>
 
           {/* Template selection */}

@@ -24,6 +24,7 @@ export interface GenerateLPOptions {
   targetAudience?: string;
   templateHtml?: string; // If generating from a saved template
   additionalInstructions?: string;
+  uploadedImageUrls?: string[]; // User-provided images uploaded in the wizard
 }
 
 export interface RefineLPOptions {
@@ -50,7 +51,7 @@ export interface ChatLPResponse {
 
 // ── System prompts ───────────────────────────────────────────────────────────
 
-function buildGenerateSystemPrompt(brandContext: BrandContext): string {
+function buildGenerateSystemPrompt(brandContext: BrandContext, uploadedImageUrls?: string[]): string {
   const colourBlock = brandContext.colors
     .filter((c) => c.role !== "unknown")
     .slice(0, 6)
@@ -106,7 +107,7 @@ ${brandContext.contactInfo.email ? `Email: ${brandContext.contactInfo.email}` : 
 Social links: ${brandContext.socialLinks.slice(0, 4).join(", ") || "None provided"}
 ${pageCopyBlock}${rawHtmlBlock}
 ## Available imagery
-${brandContext.imageryUrls.length ? brandContext.imageryUrls.slice(0, 6).map((u) => `- ${u}`).join("\n") : "No images available — use CSS gradients, patterns and emoji/icons for visual interest."}
+${uploadedImageUrls && uploadedImageUrls.length > 0 ? `### User-uploaded reference images — YOU MUST use these as <img src="..."> tags in the page\n${uploadedImageUrls.map((u) => `- ${u}`).join("\n")}\n\n` : ""}${brandContext.imageryUrls.length ? `### Scraped website imagery\n${brandContext.imageryUrls.slice(0, 6).map((u) => `- ${u}`).join("\n")}` : uploadedImageUrls && uploadedImageUrls.length > 0 ? "" : "No images available — use CSS gradients, patterns and emoji/icons for visual interest."}
 
 ## Post-Click Landing Page Principles
 
@@ -265,7 +266,7 @@ export function injectFormScript(html: string, shareToken: string): string {
 export async function generateLandingPage(opts: GenerateLPOptions): Promise<string> {
   const anthropic = await getAnthropicClient();
 
-  const systemPrompt = buildGenerateSystemPrompt(opts.brandContext);
+  const systemPrompt = buildGenerateSystemPrompt(opts.brandContext, opts.uploadedImageUrls);
 
   let userPrompt = `Generate a complete, high-converting post-click landing page for a paid advertising campaign. This page is the destination someone lands on after clicking a Google/Meta/LinkedIn ad. It must message-match the ad, have ONE conversion goal, no escape routes, and look like it was designed by a premium creative agency.\n\nStudy every piece of scraped website content in the system prompt and use ALL of it — real services, real stats, real testimonials, real process steps. Every section must be fully populated with real, specific content. Do not leave any section sparse.\n\nBe bold and creative with the design. Make it visually stunning.\n\n`;
   userPrompt += `Campaign type: ${opts.campaignType}\n`;

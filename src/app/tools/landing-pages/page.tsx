@@ -33,6 +33,7 @@ interface LandingPageItem {
   createdAt: string;
   updatedAt: string;
   client: { id: string; name: string } | null;
+  user: { id: string; name: string | null; email: string };
   _count: { leads: number; versions: number };
 }
 
@@ -171,6 +172,10 @@ export default function LandingPagesPage() {
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-4)" }}>
                       <Clock style={{ width: 10, height: 10 }} />
                       {new Date(p.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                    </span>
+                    <span style={{ color: "var(--text-4)" }}>·</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-4)" }}>
+                      {p.user.name ?? p.user.email.split("@")[0]}
                     </span>
                     <span style={{ color: "var(--text-4)" }}>·</span>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-4)" }}>
