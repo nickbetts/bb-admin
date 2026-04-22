@@ -88,6 +88,10 @@ interface MetaCampaign {
   }[];
   captionCopyBank: string[];
   contentPillars: string[];
+  /** True when this campaign was synthesised deterministically because the
+   * AI returned no usable structures. The renderer surfaces an amber chip so
+   * the strategist knows to regenerate the section. */
+  isFallback?: boolean;
 }
 
 interface ContentCalendarMonth {
@@ -117,6 +121,8 @@ interface LinkedInCampaign {
   format: string;
   audienceTargeting: { jobTitles: string[]; industries: string[]; companySize: string; seniority: string[] };
   adCreatives: { headline: string; introText: string; description?: string; cta: string }[];
+  /** True when synthesised deterministically because the AI returned nothing. */
+  isFallback?: boolean;
 }
 
 interface CompetitorInsight {
@@ -235,6 +241,10 @@ export interface GrandPlanSources {
   clientBrief?: string;
   targetAudiences?: string;
   sector?: string;
+  /** Optional override list of enabled section keys used to derive paid/owned
+   * platforms when regenerating a single section. When omitted the generator
+   * falls back to the active `enabledSections` argument. */
+  enabledPlatforms?: string[];
   clientName: string;
   purpose: string;
   campaignFocusPeriods: CampaignFocusPeriod[];
@@ -276,6 +286,22 @@ export async function generateGrandPlan(
 
   // Build context summary for AI prompts
   const contextSummary = buildContextSummary(sources, adGroups, contentData, services);
+
+  // Pre-compute Google Ads forecast (deterministic, no AI). The media plan AI
+  // needs this in its prompt so the budget allocation is grounded in real
+  // CPC/conversion economics rather than vibes.
+  const googleAdsForecast = isEnabled("googleAdsForecast") && sources.keywordResearch && adGroups.length > 0
+    ? buildGoogleAdsForecast(adGroups, sources)
+    : undefined;
+
+  // Derive which paid/organic platforms the strategist actually selected.
+  // Prefer an explicit list on `sources.enabledPlatforms` (used by single
+  // section regeneration so the original platform mix isn't lost), else
+  // derive from the active `enabledSections` argument.
+  const enabledPlatforms = sources.enabledPlatforms?.length
+    ? sources.enabledPlatforms.filter((k) => k in PLATFORM_CHANNEL_MAP)
+    : deriveEnabledPlatforms(enabledSections);
+  const paidOnly = enabledPlatforms.length > 0 && enabledPlatforms.every((p) => PAID_PLATFORM_IDS.includes(p as typeof PAID_PLATFORM_IDS[number]));
 
   // Generate sections in parallel where possible, with per-section progress tracking
   const sectionNames: string[] = [];
@@ -336,7 +362,7 @@ export async function generateGrandPlan(
         ? runSection("Example Articles", "exampleArticles", () => generateExampleArticles(anthropic, contextSummary, contentData, sources))
         : Promise.resolve(undefined),
       isEnabled("mediaPlan") && sources.mediaPlan && mediaChannels.length === 0
-        ? runSection("Media Plan", "mediaPlan", () => generateMediaPlanChannels(anthropic, contextSummary, sources))
+        ? runSection("Media Plan", "mediaPlan", () => generateMediaPlanChannels(anthropic, contextSummary, sources, { enabledPlatforms, paidOnly, googleAdsForecast }))
         : Promise.resolve(undefined),
       isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
         ? runSection("Ad Copy", "googleAdsAdCopy", () => generateGoogleAdsAdCopy(anthropic, adGroups, contextSummary, sources))
@@ -392,11 +418,6 @@ export async function generateGrandPlan(
           strategy: ch.strategy ?? "",
         })),
       }
-    : undefined;
-
-  // Build Google Ads forecast from keyword data (no AI needed — pure maths)
-  const googleAdsForecast = isEnabled("googleAdsForecast") && sources.keywordResearch && adGroups.length > 0
-    ? buildGoogleAdsForecast(adGroups, sources)
     : undefined;
 
   if (onProgress) await onProgress("Assembling final document...");
@@ -586,7 +607,14 @@ ${context}${buildSharedContextBlocks(sources)}`,
 }
 
 async function generateMetaCampaigns(anthropic: Anthropic, context: string, adGroups: AdGroup[], sources: GrandPlanSources): Promise<MetaCampaign[]> {
-  const topThemes = adGroups.slice(0, 4).map((g) => g.name).join(", ");
+  // Rank ad groups by total search volume so themes reflect commercial weight,
+  // not arbitrary storage order.
+  const ranked = [...adGroups].sort((a, b) => {
+    const va = a.keywords.reduce((s, k) => s + (k.volume ?? 0), 0);
+    const vb = b.keywords.reduce((s, k) => s + (k.volume ?? 0), 0);
+    return vb - va;
+  });
+  const topThemes = ranked.slice(0, 4).map((g) => g.name).join(", ");
 
   const res = await withAnthropicRetry("metaCampaigns", () => anthropic.messages.create({
     model: MODEL,
@@ -627,7 +655,45 @@ ${context}${buildSharedContextBlocks(sources)}`,
 
   const raw = extractText(res);
   const parsed = safeJsonParse(raw, { campaigns: [] });
-  return parsed.campaigns ?? parsed ?? [];
+  const campaigns = (parsed.campaigns ?? parsed ?? []) as MetaCampaign[];
+  // If the model returned nothing usable, synthesise a deterministic fallback
+  // so the Paid Social chapter still renders — with an amber 'AI fallback'
+  // chip telling the strategist to regenerate.
+  if (!Array.isArray(campaigns) || campaigns.length === 0) {
+    return buildFallbackMetaCampaigns(sources, ranked.slice(0, 3));
+  }
+  return campaigns;
+}
+
+function buildFallbackMetaCampaigns(sources: GrandPlanSources, topGroups: AdGroup[]): MetaCampaign[] {
+  const client = sources.clientName;
+  const themes = topGroups.length ? topGroups : [{ name: "General awareness", keywords: [] } as AdGroup];
+  return themes.slice(0, 2).map((g, i) => ({
+    campaignName: `${client} — ${g.name}${i === 0 ? " (Lead Gen)" : " (Awareness)"}`,
+    objective: i === 0 ? "leads" : "awareness",
+    budget: "£500–£1,000/month",
+    placements: "Facebook Feed, Instagram Feed, Instagram Reels, Stories",
+    bidding: "Lowest Cost",
+    audienceTargeting: {
+      interests: [g.name, `${client} customers`, "UK audience"],
+      customAudiences: ["Website visitors (90 days)", "Email list"],
+      lookalikes: ["1% lookalike of converters"],
+    },
+    adCreatives: [
+      {
+        format: "feed",
+        headline: `${g.name} — ${client}`,
+        primaryText: `Find out how ${client} can help with ${g.name.toLowerCase()}. Trusted by UK customers.`,
+        cta: i === 0 ? "Learn More" : "Sign Up",
+      },
+    ],
+    captionCopyBank: [
+      `Looking for ${g.name.toLowerCase()}? ${client} can help.`,
+      `${client} — trusted experts in ${g.name.toLowerCase()}.`,
+    ],
+    contentPillars: [g.name, `${client} story`, "Customer wins", "Behind the scenes"],
+    isFallback: true,
+  }));
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -792,9 +858,22 @@ async function generateGoogleAdsAdCopy(
   adGroups: AdGroup[],
   context: string,
   sources: GrandPlanSources,
-): Promise<{ name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[] } }[]> {
+): Promise<{ name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; isFallback?: boolean } }[]> {
+  // Pick the highest-volume keywords per group so the AI gets meaningful
+  // commercial intent signals rather than whatever was stored first.
   const groupList = adGroups
-    .map((g) => `${g.name}: ${g.keywords.slice(0, 5).map((k) => k.keyword).join(", ")}`)
+    .map((g) => {
+      const top = [...g.keywords]
+        .filter((k) => (k.volume ?? 0) > 0)
+        .sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0))
+        .slice(0, 8);
+      // Fallback to whatever exists if every keyword is zero-volume
+      const list = top.length > 0 ? top : g.keywords.slice(0, 5);
+      const formatted = list
+        .map((k) => k.volume ? `${k.keyword} (${k.volume.toLocaleString()}/mo${k.cpc ? `, £${k.cpc.toFixed(2)} CPC` : ""})` : k.keyword)
+        .join(", ");
+      return `${g.name}: ${formatted}`;
+    })
     .join("\n");
 
   const HEADLINE_LIMIT = 30;
@@ -882,51 +961,197 @@ ${context}${buildSharedContextBlocks(sources)}`;
     console.warn(`[grand-plan] Ad copy attempt ${attempt + 1} had ${violations.length} validation issue(s); retrying.`);
   }
 
-  // Final safety net: hard-truncate anything still over limit
-  return lastNormalised.map((g) => ({
-    name: g.name,
-    adCopy: {
-      headlines: g.headlines.map((h) => h.slice(0, HEADLINE_LIMIT)),
-      descriptions: g.descriptions.map((d) => d.slice(0, DESC_LIMIT)),
-      sitelinks: g.sitelinks.map((s) => s.slice(0, SITELINK_LIMIT)),
-    },
-  }));
+  // Final safety net: hard-truncate anything still over limit. If a group
+  // came back with no headlines/descriptions at all (AI returned empty), fall
+  // back to a deterministic scaffold so the preview block still renders.
+  const requested = adGroups.map((g) => g.name);
+  const byName = new Map(lastNormalised.map((g) => [g.name, g] as const));
+  return requested.map((name) => {
+    const g = byName.get(name);
+    if (g && g.headlines.length > 0 && g.descriptions.length > 0) {
+      return {
+        name,
+        adCopy: {
+          headlines: g.headlines.map((h) => h.slice(0, HEADLINE_LIMIT)),
+          descriptions: g.descriptions.map((d) => d.slice(0, DESC_LIMIT)),
+          sitelinks: g.sitelinks.map((s) => s.slice(0, SITELINK_LIMIT)),
+        },
+      };
+    }
+    // Fallback: build placeholder copy from the ad group name and top keyword
+    const adGroup = adGroups.find((ag) => ag.name === name);
+    const topKw = adGroup?.keywords.find((k) => (k.volume ?? 0) > 0)?.keyword ?? adGroup?.keywords[0]?.keyword ?? name;
+    const client = sources.clientName;
+    const fallback = buildFallbackAdCopy(name, topKw, client);
+    return {
+      name,
+      adCopy: {
+        ...fallback,
+        isFallback: true,
+      },
+    };
+  });
+}
+
+/** Deterministic ad copy scaffold used when the AI returns nothing usable. */
+function buildFallbackAdCopy(adGroupName: string, topKeyword: string, clientName: string): { headlines: string[]; descriptions: string[]; sitelinks: string[] } {
+  const cap = (s: string, n: number) => s.length <= n ? s : s.slice(0, n - 1).trimEnd() + "…";
+  const kw = cap(topKeyword, 24);
+  const brand = cap(clientName, 18);
+  const headlines = [
+    cap(kw, 30),
+    cap(`${kw} — Get a Quote`, 30),
+    cap(`Trusted ${brand} Service`, 30),
+    cap(`Book ${kw} Today`, 30),
+    cap(`UK ${kw} Specialists`, 30),
+    cap(`Speak To Our Team`, 30),
+    cap(`Free, No-Obligation Quote`, 30),
+    cap(`Rated By Real Customers`, 30),
+    cap(`${brand} — UK Wide`, 30),
+    cap(`Same-Day Response`, 30),
+    cap(`Fast & Friendly Service`, 30),
+    cap(`Local Experts You Can Trust`, 30),
+    cap(`Get Started Online`, 30),
+    cap(`Tailored To Your Brief`, 30),
+    cap(`Talk To A Specialist`, 30),
+  ];
+  const descriptions = [
+    cap(`Looking for ${kw}? ${brand} delivers a clear, professional service. Get in touch today for a free quote.`, 90),
+    cap(`Friendly, expert ${kw} from ${brand}. UK customers trust us for quality work and clear pricing.`, 90),
+    cap(`Need help with ${kw}? Our team is ready to talk. Quick response, no pressure, honest advice.`, 90),
+    cap(`${brand} makes ${kw} simple. Tell us what you need and we will come back with a tailored plan.`, 90),
+  ];
+  const sitelinks = [cap("Get a Quote", 25), cap("About Us", 25), cap("Contact", 25), cap("How It Works", 25)];
+  return { headlines, descriptions, sitelinks };
 }
 
 // ─── Media plan AI generator ────────────────────────────────────────────────
+
+/** Map an enabledSections key to the canonical media-plan channel name. */
+const PLATFORM_CHANNEL_MAP: Record<string, string> = {
+  googleAdsCampaigns: "Google Ads",
+  metaCampaigns: "Meta Ads",
+  linkedInAds: "LinkedIn Ads",
+  organicSocial: "Organic Social",
+  emailMarketing: "Email Marketing",
+};
+
+/** Platform IDs considered "paid". Anything else is owned/earned. */
+const PAID_PLATFORM_IDS = ["googleAdsCampaigns", "metaCampaigns", "linkedInAds"] as const;
+
+/** UK-market CPL benchmarks used to ground media-plan AI suggestions. */
+const SECTOR_CHANNEL_BENCHMARKS: Record<string, string> = {
+  dental:                "Google Search CPL £25-£60, Meta CPL £15-£40, LinkedIn limited reach for consumer dental",
+  ecommerce:             "Google Shopping/Search ROAS 3-6x, Meta CPA £20-£60, TikTok CPA £15-£45 for younger SKUs",
+  industrial:            "Google Search CPL £40-£120, LinkedIn CPL £80-£250, Meta less effective for B2B specs",
+  charities:             "Meta CPL £8-£25 for donor acquisition, Google Grants for free search where eligible",
+  healthcare:            "Google Search CPL £35-£90, Meta CPL £20-£50, regulated copy required",
+  hospitality:           "Meta CPA £8-£25 for bookings, Google Search strong for branded + intent terms",
+  professional_services: "LinkedIn CPL £100-£300, Google Search CPL £40-£150",
+  saas:                  "LinkedIn CPL £80-£250, Google Search CPL £30-£120, retargeting essential",
+  education:             "Meta CPL £10-£40, Google Search CPL £20-£70 for course terms",
+};
+
+/** Derive the list of enabled platform section keys from the user's selection. */
+function deriveEnabledPlatforms(enabledSections?: string[]): string[] {
+  if (!enabledSections) return Object.keys(PLATFORM_CHANNEL_MAP);
+  return Object.keys(PLATFORM_CHANNEL_MAP).filter((k) => enabledSections.includes(k));
+}
+
+/** Deterministic budget split used when the AI returns nothing usable. */
+function buildFallbackMediaPlan(
+  totalBudget: number,
+  enabledPlatforms: string[],
+  forecast?: { cost: number; conversions: number; avgCpa: number; monthlyBudget: number },
+): { name: string; budget: number; percentage: number; strategy: string }[] {
+  const platforms = enabledPlatforms.length > 0 ? enabledPlatforms : Object.keys(PLATFORM_CHANNEL_MAP);
+  // Default weights — Google Ads gets the largest share when available because
+  // it's the only channel we have a real forecast for.
+  const WEIGHTS: Record<string, number> = {
+    googleAdsCampaigns: forecast && forecast.cost > 0 ? 5 : 4,
+    metaCampaigns: 3,
+    linkedInAds: 2,
+    organicSocial: 1,
+    emailMarketing: 1,
+  };
+  const totalWeight = platforms.reduce((s, p) => s + (WEIGHTS[p] ?? 1), 0);
+  const channels = platforms.map((p) => {
+    const w = WEIGHTS[p] ?? 1;
+    const budget = Math.round((w / totalWeight) * totalBudget);
+    return {
+      name: PLATFORM_CHANNEL_MAP[p],
+      budget,
+      percentage: Math.round((w / totalWeight) * 100),
+      strategy: p === "googleAdsCampaigns" && forecast && forecast.cost > 0
+        ? `Anchored on the keyword forecast: ~${forecast.conversions} conversions/month at ~£${Math.round(forecast.avgCpa)} CPA on a £${forecast.monthlyBudget.toLocaleString()} budget. Capture in-market demand first.`
+        : "Allocation derived from default weighting. Review with a strategist before committing budget.",
+    };
+  });
+  return channels;
+}
 
 async function generateMediaPlanChannels(
   anthropic: Anthropic,
   context: string,
   sources: GrandPlanSources,
+  options: {
+    enabledPlatforms: string[];
+    paidOnly: boolean;
+    googleAdsForecast?: { cost: number; conversions: number; avgCpa: number; monthlyBudget: number; clicks: number; ctr: number; avgCpc: number };
+  },
 ): Promise<{ name: string; budget: number; percentage: number; strategy: string }[]> {
   const totalBudget = sources.mediaPlan?.totalBudget ?? 10000;
   const objective = sources.mediaPlan?.objective ?? "lead_gen";
+  const { enabledPlatforms, paidOnly, googleAdsForecast } = options;
+
+  const allowedChannelNames = enabledPlatforms.map((p) => PLATFORM_CHANNEL_MAP[p]).filter(Boolean);
+  const benchmarks = SECTOR_CHANNEL_BENCHMARKS[sources.sector ?? ""] ?? "Use prevailing UK market benchmarks for the objective.";
+
+  const forecastBlock = googleAdsForecast && googleAdsForecast.cost > 0 ? `
+
+Google Ads forecast (already computed from the keyword research — use this to anchor the Google Ads line):
+- Modelled monthly spend: £${googleAdsForecast.cost.toLocaleString()}
+- Modelled clicks: ${googleAdsForecast.clicks.toLocaleString()}
+- Modelled conversions: ${googleAdsForecast.conversions.toLocaleString()}
+- Modelled CPA: £${Math.round(googleAdsForecast.avgCpa).toLocaleString()}
+- Avg CPC: £${googleAdsForecast.avgCpc.toFixed(2)}
+- Forecast budget cap: £${googleAdsForecast.monthlyBudget.toLocaleString()}/month
+The Google Ads line MUST sit between £${Math.round(googleAdsForecast.cost * 0.85).toLocaleString()} and £${Math.round(googleAdsForecast.monthlyBudget * 1.1).toLocaleString()} unless you justify deviating in the strategy text.` : "";
+
+  const modeBlock = paidOnly
+    ? "\n\nMODE: paid-only. The strategist has explicitly requested PAID channels only. Do NOT include SEO, organic social, email, content marketing or any other earned/owned line."
+    : "\n\nMODE: blended. Include the requested mix of paid + owned channels.";
+
+  const channelConstraint = `
+
+Allowed channels (you MUST choose ONLY from this list — the strategist has unticked anything not listed):
+${allowedChannelNames.map((c) => `- ${c}`).join("\n")}`;
 
   const res = await withAnthropicRetry("mediaPlanChannels", () => anthropic.messages.create({
     model: MODEL_LIGHT,
-    max_tokens: 1800,
+    max_tokens: 2200,
     messages: [
       {
         role: "user",
         content: `You are a senior media planner at i3media. Generate a channel allocation for a digital marketing media plan.
 
-Total budget: £${totalBudget.toLocaleString()}
+Total monthly budget: £${totalBudget.toLocaleString()}
 Objective: ${objective.replace(/_/g, " ")}
+Sector benchmarks: ${benchmarks}${modeBlock}${channelConstraint}${forecastBlock}
 
 Return a JSON object with key "channels" containing an array. Each channel:
-- name: string (e.g. "Google Ads", "Meta Ads", "LinkedIn Ads", "SEO & Content", "Email Marketing", "TikTok Ads")
-- budget: number (in £, must sum to total budget)
-- percentage: number (0-100, must sum to 100)
-- strategy: string (2-3 sentence strategy for this channel — explicitly link to which audiences this channel reaches and why)
+- name: string (must match one of the allowed channel names exactly)
+- budget: number (in £, must sum to the total budget — round to whole pounds)
+- percentage: number (0-100, must sum to 100, integer)
+- strategy: string (2-3 sentences — must reference (a) which named audience this channel reaches, (b) why this share of budget is right given the forecast / benchmarks, (c) the primary KPI for the channel)
 
 Rules:
-- Allocate across 4-7 channels appropriate for the objective
-- Channel choice MUST be justified by audience fit (e.g. "LinkedIn for Practice Managers, Meta for Decision-Maker partners")
-- Reserve a small test budget if there are emerging channels worth validating
-- British English, no AI jargon
-- Be realistic about channel suitability for the objective
-- Return ONLY valid JSON, no markdown fences
+- Use ONLY the allowed channels listed above. Do not invent additional channels. Do not split a single platform into multiple lines.
+- Budgets MUST sum to £${totalBudget.toLocaleString()} exactly. Percentages MUST sum to 100.
+- Anchor the Google Ads line on the forecast above when present. If the forecast cost is below the total budget, the surplus goes to other allowed channels in priority order.
+- The strategy text MUST cite the forecast numbers (CPA, conversions) for Google Ads, and cite UK CPL/CPA benchmarks for other paid channels.
+- British English. No AI jargon. No em dashes. No semicolons.
+- Return ONLY valid JSON, no markdown fences.
 
 Context:
 ${context}${buildSharedContextBlocks(sources)}`,
@@ -936,14 +1161,26 @@ ${context}${buildSharedContextBlocks(sources)}`,
 
   try {
     const parsed = JSON.parse(extractText(res));
-    return (parsed.channels ?? []).map((ch: { name?: string; budget?: number; percentage?: number; strategy?: string }) => ({
-      name: ch.name ?? "Unknown",
-      budget: ch.budget ?? 0,
-      percentage: ch.percentage ?? 0,
-      strategy: ch.strategy ?? "",
-    }));
+    const allowed = new Set(allowedChannelNames);
+    const channels = (parsed.channels ?? [])
+      .map((ch: { name?: string; budget?: number; percentage?: number; strategy?: string }) => ({
+        name: ch.name ?? "Unknown",
+        budget: ch.budget ?? 0,
+        percentage: ch.percentage ?? 0,
+        strategy: ch.strategy ?? "",
+      }))
+      // Strip anything outside the allowed list — protects against the AI
+      // sneaking in SEO/Email when paid-only was requested.
+      .filter((ch: { name: string }) => allowed.size === 0 || allowed.has(ch.name));
+
+    if (channels.length === 0) {
+      console.warn("[grand-plan] Media plan AI returned no usable channels; using deterministic fallback.");
+      return buildFallbackMediaPlan(totalBudget, enabledPlatforms, googleAdsForecast);
+    }
+    return channels;
   } catch {
-    return [];
+    console.warn("[grand-plan] Media plan AI JSON parse failed; using deterministic fallback.");
+    return buildFallbackMediaPlan(totalBudget, enabledPlatforms, googleAdsForecast);
   }
 }
 
@@ -986,7 +1223,7 @@ const SECTOR_AD_SCHEDULE: Record<string, string> = {
 
 const BASE_NEGATIVES = ["free", "cheap", "DIY", "job", "jobs", "career", "salary", "reddit", "forum", "template", "download"];
 
-function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources, adCopyData: { name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[] } }[]) {
+function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources, adCopyData: { name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; isFallback?: boolean } }[]) {
   const adCopyMap = new Map(adCopyData.map((d) => [d.name, d.adCopy]));
   const sector = sources.sector ?? "";
   const sectorNegs = SECTOR_NEGATIVES[sector] ?? [];
@@ -1008,29 +1245,48 @@ function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources,
       "Max CPC": sources.keywordResearch?.maxCpc ? `£${sources.keywordResearch.maxCpc}` : "Auto",
     },
     negativeKeywords: allNegatives,
-    adGroups: adGroups.map((g) => ({
-      name: g.name,
-      keywords: g.keywords.map((k) => ({
-        keyword: k.keyword,
-        matchType: k.matchType || "broad" as const,
-        volume: k.volume,
-        cpc: k.cpc,
-      })),
-      adCopy: adCopyMap.get(g.name),
-    })),
+    adGroups: adGroups.map((g) => {
+      // Drop zero/null-volume keywords — they don't deserve real estate in the
+      // ad group breakdown. If everything is zero (rare), keep the original
+      // list so the strategist still sees something. Sort by volume desc.
+      const filtered = g.keywords
+        .filter((k) => (k.volume ?? 0) > 0)
+        .sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0));
+      const hiddenCount = g.keywords.length - filtered.length;
+      const visible = filtered.length > 0 ? filtered : g.keywords;
+      return {
+        name: g.name,
+        keywords: visible.map((k) => ({
+          keyword: k.keyword,
+          matchType: k.matchType || "broad" as const,
+          volume: k.volume,
+          cpc: k.cpc,
+        })),
+        hiddenLowVolumeCount: filtered.length > 0 ? hiddenCount : 0,
+        adCopy: adCopyMap.get(g.name),
+      };
+    }),
   };
 }
 
 function buildKeywordResearchSection(adGroups: AdGroup[]) {
   return {
-    adGroups: adGroups.map((g) => ({
-      name: g.name,
-      keywords: g.keywords.map((k) => ({
-        keyword: k.keyword,
-        volume: k.volume,
-        cpc: k.cpc,
-      })),
-    })),
+    adGroups: adGroups.map((g) => {
+      const filtered = g.keywords
+        .filter((k) => (k.volume ?? 0) > 0)
+        .sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0));
+      const hiddenCount = g.keywords.length - filtered.length;
+      const visible = filtered.length > 0 ? filtered : g.keywords;
+      return {
+        name: g.name,
+        keywords: visible.map((k) => ({
+          keyword: k.keyword,
+          volume: k.volume,
+          cpc: k.cpc,
+        })),
+        hiddenLowVolumeCount: filtered.length > 0 ? hiddenCount : 0,
+      };
+    }),
   };
 }
 
@@ -1119,6 +1375,9 @@ ${context}${buildSharedContextBlocks(sources)}`,
 
   const parsed = safeJsonParse(extractText(res), { campaigns: [] });
   const campaigns = (parsed.campaigns ?? []) as LinkedInCampaign[];
+  if (!Array.isArray(campaigns) || campaigns.length === 0) {
+    return buildFallbackLinkedInCampaigns(sources);
+  }
   // Hard truncate as a safety net (LinkedIn rejects over-length copy)
   return campaigns.map((c) => ({
     ...c,
@@ -1129,6 +1388,52 @@ ${context}${buildSharedContextBlocks(sources)}`,
       description: ad.description ? ad.description.slice(0, 100) : undefined,
     })),
   }));
+}
+
+function buildFallbackLinkedInCampaigns(sources: GrandPlanSources): LinkedInCampaign[] {
+  const client = sources.clientName;
+  return [
+    {
+      campaignName: `${client} — Lead Gen`,
+      objective: "lead generation",
+      budget: "£1,000–£2,000/month",
+      format: "single image",
+      audienceTargeting: {
+        jobTitles: ["Marketing Manager", "Director", "Head of Marketing"],
+        industries: ["Marketing & Advertising", "Professional Services"],
+        companySize: "11–500 employees",
+        seniority: ["Manager", "Director", "VP"],
+      },
+      adCreatives: [
+        {
+          headline: `${client} — trusted UK partner`.slice(0, 70),
+          introText: `See how ${client} helps teams like yours achieve more.`.slice(0, 150),
+          cta: "Learn More",
+        },
+      ],
+      isFallback: true,
+    },
+    {
+      campaignName: `${client} — Thought Leadership`,
+      objective: "brand awareness",
+      budget: "£500–£1,000/month",
+      format: "document",
+      audienceTargeting: {
+        jobTitles: ["Founder", "Owner", "CEO"],
+        industries: ["Marketing & Advertising"],
+        companySize: "1–200 employees",
+        seniority: ["Owner", "Founder", "C-Level"],
+      },
+      adCreatives: [
+        {
+          headline: `Insights from ${client}`.slice(0, 70),
+          introText: "Practical guidance from our team — download the latest report.".slice(0, 150),
+          cta: "Download",
+        },
+      ],
+      isFallback: true,
+    },
+  ];
 }
 
 // ─── Competitor Intelligence generator ──────────────────────────────────────
@@ -1186,13 +1491,18 @@ async function generateAudiences(
 ): Promise<{ name: string; description: string; painPoints: string[]; channels: string[] }[]> {
   if (sources.targetAudiences) {
     // Strategist has provided audiences — parse them rather than regenerate from scratch.
+    // Split only on colons / en-dash / em-dash. Hyphens are preserved as part of
+    // the name (so "parents of kids aged 14-19" stays intact).
     const lines = sources.targetAudiences.split(/\n+/).map((l) => l.trim()).filter(Boolean);
     if (lines.length) {
       return lines.slice(0, 6).map((line) => {
-        const [namePart, ...rest] = line.split(/[:–—\-]/);
+        const sepMatch = line.match(/[:–—]/);
+        const sepIdx = sepMatch?.index ?? -1;
+        const namePart = sepIdx >= 0 ? line.slice(0, sepIdx) : line;
+        const descPart = sepIdx >= 0 ? line.slice(sepIdx + 1).trim() : "";
         return {
-          name: (namePart ?? line).trim().slice(0, 80),
-          description: rest.join(":").trim() || "Provided by client strategist.",
+          name: namePart.trim().slice(0, 120),
+          description: descPart || "Provided by client strategist.",
           painPoints: [],
           channels: [],
         };

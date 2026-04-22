@@ -278,6 +278,7 @@ export async function POST(
         clientBrief: brief || undefined,
         targetAudiences: targetAudiences || undefined,
         sector: config.sector || undefined,
+        enabledPlatforms: enabledSections,
         campaignFocusPeriods: focusPeriods,
         proposal: plan.proposal
           ? {

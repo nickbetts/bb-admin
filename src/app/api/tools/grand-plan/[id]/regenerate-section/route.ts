@@ -66,7 +66,7 @@ export async function POST(
 
   try {
     const existingPlanData: GrandPlanData = JSON.parse(plan.planDataJson);
-    const config = safeJsonParse<{ sector?: string }>(plan.configJson, {});
+    const config = safeJsonParse<{ sector?: string; sections?: string[] }>(plan.configJson, {});
     const clientName = plan.client?.name || plan.proposal?.clientName || "Client";
 
     // Rebuild sources from linked records (same pattern as generate route)
@@ -76,6 +76,7 @@ export async function POST(
       clientBrief: plan.clientBrief || undefined,
       targetAudiences: plan.targetAudiences || undefined,
       sector: config.sector || undefined,
+      enabledPlatforms: config.sections,
       campaignFocusPeriods: safeJsonParse(plan.campaignFocusPeriodsJson, []),
       proposal: plan.proposal
         ? {

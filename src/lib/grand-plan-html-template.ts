@@ -153,7 +153,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
 </div>
 
 <!-- Main Content -->
-${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods)}
+${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods, plan.generationReport)}
 
 <!-- Closing CTA -->
 ${renderCtaClose(plan.clientName)}
@@ -182,7 +182,14 @@ ${renderCtaClose(plan.clientName)}
 // ─── Chapter layout builder ─────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildChapteredSections(s: any, clientName: string, brief?: string, campaignPeriods?: { label: string; startMonth: number; endMonth: number; description?: string }[]): string {
+function buildChapteredSections(s: any, clientName: string, brief?: string, campaignPeriods?: { label: string; startMonth: number; endMonth: number; description?: string }[], generationReport?: Record<string, { status: string; error?: string }>): string {
+  // Stash the LP report on the section data so the Creative-chapter logic
+  // below can decide whether to render the placeholder card. Avoids threading
+  // generationReport through every helper.
+  if (generationReport?.landingPage) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (s as any).__lpReport = generationReport.landingPage;
+  }
   let chapterNum = 0;
   const ch = (title: string, sub: string) => {
     chapterNum++;
@@ -246,7 +253,14 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
 
   if (hasCreative) {
     parts.push(ch("Creative", "An AI-generated example landing page built from your website content and branding."));
-    parts.push(renderLandingPage(s.landingPage));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const lpReport = (s as any).__lpReport as { status: string; error?: string } | undefined;
+    const lpFailed = lpReport && lpReport.status !== "ok";
+    if (s.landingPage) {
+      parts.push(renderLandingPage(s.landingPage));
+    } else if (lpFailed) {
+      parts.push(renderLandingPagePlaceholder(lpReport?.error));
+    }
   }
 
   return parts.join("\n");
@@ -383,7 +397,7 @@ function renderGoogleAdsCampaigns(data: any): string {
     .map((k: string) => `<span class="neg-chip">${esc(k)}</span>`)
     .join(" ");
 
-  const adGroupsHtml = (data.adGroups as { name: string; keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[]; adCopy?: { headlines: string[]; descriptions: string[]; sitelinks?: string[] } }[])
+  const adGroupsHtml = (data.adGroups as { name: string; keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number; adCopy?: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; isFallback?: boolean } }[])
     .map((g, i) => {
       const kwRows = g.keywords
         .map((k) => {
@@ -393,6 +407,10 @@ function renderGoogleAdsCampaigns(data: any): string {
           return `<tr><td class="kw-text">${esc(display)}</td><td><span class="match-badge ${badge}">${badgeLabel}</span></td>${k.volume != null ? `<td class="kw-vol">${k.volume.toLocaleString()}</td>` : ""}</tr>`;
         })
         .join("\n");
+
+      const hiddenNote = g.hiddenLowVolumeCount && g.hiddenLowVolumeCount > 0
+        ? `<p class="kw-hidden-note" style="font-size:12px;color:var(--mid);margin:.5rem 0 0">${g.hiddenLowVolumeCount} low/zero-volume keyword${g.hiddenLowVolumeCount === 1 ? "" : "s"} hidden from this view.</p>`
+        : "";
 
       const adCopyHtml = g.adCopy ? (() => {
         const charBadge = (len: number, max: number) => {
@@ -432,7 +450,7 @@ function renderGoogleAdsCampaigns(data: any): string {
 
         return `
         <div class="ad-copy-section">
-          <div class="ad-copy-title">Ad Copy</div>
+          <div class="ad-copy-title">Ad Copy${g.adCopy!.isFallback ? ` <span class="char-badge char-warn" style="margin-left:.5rem" title="AI generation didn't return usable copy. Placeholder shown — regenerate from the dashboard.">AI fallback</span>` : ""}</div>
           <div class="ad-copy-cols">
             <div class="ad-copy-col">
               <div class="ad-copy-label">Headlines <span class="ad-copy-count">${g.adCopy!.headlines.length}</span></div>
@@ -463,6 +481,7 @@ function renderGoogleAdsCampaigns(data: any): string {
             <thead><tr><th>Keyword</th><th>Match Type</th>${g.keywords[0]?.volume != null ? "<th>Volume</th>" : ""}</tr></thead>
             <tbody>${kwRows}</tbody>
           </table>
+          ${hiddenNote}
           <button class="copy-btn" onclick="copyAgKeywords(this)">Copy Keywords</button>
           ${adCopyHtml}
         </div>
@@ -533,7 +552,7 @@ function renderMetaCampaigns(campaigns: any[]): string {
         <div class="meta-campaign-header">
           <span class="meta-num">${idx + 1}</span>
           <div>
-            <h4>${esc(c.campaignName)}</h4>
+            <h4>${esc(c.campaignName)}${c.isFallback ? ` <span class="char-badge char-warn" style="margin-left:.5rem;vertical-align:middle" title="AI generation didn't return usable Meta campaigns. Placeholder shown — regenerate from the dashboard.">AI fallback</span>` : ""}</h4>
             <p class="meta-obj">${esc(c.objective)} · ${esc(c.budget)} · ${esc(c.placements)}</p>
           </div>
         </div>
@@ -563,12 +582,16 @@ function renderMetaCampaigns(campaigns: any[]): string {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderKeywordResearch(data: any): string {
-  const groupsHtml = (data.adGroups as { name: string; keywords: { keyword: string; volume?: number; cpc?: number }[] }[])
+  const groupsHtml = (data.adGroups as { name: string; keywords: { keyword: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number }[])
     .map((g) => {
       const kwLines = g.keywords.map((k) => {
         const vol = k.volume != null ? ` <span class="kw-meta">${k.volume.toLocaleString()}/mo</span>` : "";
         return `<div class="kw-line"><span class="kw-word">${esc(k.keyword)}</span>${vol}<button class="copy-btn-sm" onclick="copySingle(this,'${escAttr(k.keyword)}')">Copy</button></div>`;
       }).join("\n");
+
+      const hiddenNote = g.hiddenLowVolumeCount && g.hiddenLowVolumeCount > 0
+        ? `<p class="kw-hidden-note" style="font-size:12px;color:var(--mid);margin:.5rem 0 0">${g.hiddenLowVolumeCount} low/zero-volume keyword${g.hiddenLowVolumeCount === 1 ? "" : "s"} hidden from this view.</p>`
+        : "";
 
       return `
       <div class="kw-group">
@@ -577,6 +600,7 @@ function renderKeywordResearch(data: any): string {
           <button class="copy-btn" onclick="copyGroupKws(this)">Copy All</button>
         </div>
         <div class="kw-line-list">${kwLines}</div>
+        ${hiddenNote}
       </div>`;
     })
     .join("\n");
@@ -926,7 +950,7 @@ function renderLinkedInAds(campaigns: any[]): string {
 
       return `
       <div class="li-campaign">
-        <h3>${esc(c.campaignName ?? `Campaign ${idx + 1}`)}</h3>
+        <h3>${esc(c.campaignName ?? `Campaign ${idx + 1}`)}${c.isFallback ? ` <span class="char-badge char-warn" style="margin-left:.5rem;vertical-align:middle" title="AI generation didn't return usable LinkedIn campaigns. Placeholder shown — regenerate from the dashboard.">AI fallback</span>` : ""}</h3>
         <div class="overview-grid">
           <div class="ov-item"><span class="ov-label">Objective</span><span class="ov-value">${esc(c.objective ?? "")}</span></div>
           <div class="ov-item"><span class="ov-label">Budget</span><span class="ov-value">${esc(c.budget ?? "")}</span></div>
@@ -1054,6 +1078,26 @@ function renderLandingPage(data: { html: string; campaignType: string }): string
         </div>
         <iframe class="lp-iframe" srcdoc="" data-lp-html="${encoded}" sandbox="allow-scripts allow-same-origin" loading="lazy"></iframe>
       </div>
+      </div>
+    </section>`;
+}
+
+// Rendered in the Creative chapter when the AI landing-page pipeline failed.
+// Surfaces the failure reason in-document (instead of silently dropping the
+// chapter) so the strategist knows to regenerate or check brand-extraction
+// inputs before sharing the plan with the client.
+function renderLandingPagePlaceholder(error?: string): string {
+  return `
+    <section id="landing-page" class="section">
+      <div class="section-inner">
+        <div class="section-kicker">Creative</div>
+        <h2>Example Landing Page</h2>
+        <div class="lp-placeholder">
+          <div class="lp-placeholder-icon">⚠</div>
+          <h3>Landing page not generated</h3>
+          <p>The AI landing page pipeline failed for this plan${error ? ` — <em>${esc(error)}</em>` : ""}.</p>
+          <p class="lp-placeholder-hint">Common causes: the client's website blocked the brand-context scraper, Claude Opus timed out on a long page, or the LP generation toggle was off when this plan was created. Open the plan in the editor and use <strong>Regenerate → Landing Page</strong> to retry, or generate a landing page directly with the Page Builder tool.</p>
+        </div>
       </div>
     </section>`;
 }
@@ -1381,6 +1425,12 @@ a{color:var(--blue);text-decoration:none}
 .lp-expand-btn:hover,.lp-open-btn:hover{color:#fff;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3)}
 .lp-iframe{width:100%;height:1100px;border:none;background:#fff;display:block}
 .lp-frame-wrap.lp-expanded .lp-iframe{height:calc(100vh - 42px)}
+.lp-placeholder{background:rgba(245,158,11,.06);border:1px dashed rgba(245,158,11,.4);border-radius:14px;padding:3rem 2.5rem;text-align:center;margin:1rem 0}
+.lp-placeholder-icon{font-size:2.4rem;margin-bottom:1rem;opacity:.7}
+.lp-placeholder h3{font-size:1.25rem;font-weight:700;color:#92400e;margin-bottom:.75rem}
+.lp-placeholder p{font-size:14px;color:#78350f;line-height:1.7;max-width:640px;margin:0 auto .75rem}
+.lp-placeholder p em{font-style:normal;background:rgba(245,158,11,.12);padding:1px 6px;border-radius:4px;color:#92400e}
+.lp-placeholder-hint{font-size:13px !important;color:#a16207 !important;margin-top:1rem !important;opacity:.85}
 /* Email marketing */
 .em-flow{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:8px;background:var(--white)}
 .em-flow .em-flow-body{display:none;padding:1.25rem}
