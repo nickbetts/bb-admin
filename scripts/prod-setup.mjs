@@ -1069,6 +1069,21 @@ async function main() {
     console.log("✓ LandingPage_userId_createdAt_idx skipped:", e.message);
   }
 
+  // ── Landing-page analytics config columns (added 2026-04-22) ──────────────
+  if (!(await columnExists("Client", "defaultAnalyticsConfig"))) {
+    await db.execute(`ALTER TABLE "Client" ADD COLUMN "defaultAnalyticsConfig" TEXT NOT NULL DEFAULT '{}'`);
+    console.log("✓ Added Client.defaultAnalyticsConfig");
+  } else {
+    console.log("✓ Client.defaultAnalyticsConfig already present");
+  }
+
+  if (!(await columnExists("LandingPage", "analyticsConfig"))) {
+    await db.execute(`ALTER TABLE "LandingPage" ADD COLUMN "analyticsConfig" TEXT NOT NULL DEFAULT '{}'`);
+    console.log("✓ Added LandingPage.analyticsConfig");
+  } else {
+    console.log("✓ LandingPage.analyticsConfig already present");
+  }
+
   await db.close();
   console.log("✅ Schema migration complete");
 }
