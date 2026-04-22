@@ -43,12 +43,6 @@ const STATUS_COLUMNS: { key: string; label: string; tone: string }[] = [
 ];
 
 const PRIORITIES = ["urgent", "high", "medium", "low"];
-const PRIORITY_BADGE: Record<string, string> = {
-  low: "badge badge-slate",
-  medium: "badge badge-blue",
-  high: "badge badge-orange",
-  urgent: "badge badge-red",
-};
 
 function initials(user: { name: string | null; email: string }) {
   if (user.name) {
@@ -266,41 +260,41 @@ export default function TaskOverviewPage() {
   const drawerCategoryName = openTask?.category?.name ?? "Uncategorised";
 
   return (
-    <div className="page" style={{ maxWidth: 1500 }}>
+    <div style={{ padding: "28px 32px", maxWidth: "none", minHeight: "100vh" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, gap: 16, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <CheckSquare style={{ width: 20, height: 20, color: "white" }} />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, gap: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 14, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 4px 14px rgba(99,102,241,0.35)" }}>
+            <CheckSquare style={{ width: 22, height: 22, color: "white" }} />
           </div>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Task Overview</h1>
-            <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
-              See who&rsquo;s on what task across every client, board, and status.
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", lineHeight: 1, margin: 0 }}>Task Overview</h1>
+            <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 5, margin: 0 }}>
+              See who&rsquo;s on what across every client, board, and status.
             </p>
           </div>
         </div>
         <button
-          className="btn btn-primary btn-sm"
-          style={{ gap: 6, display: "inline-flex", alignItems: "center" }}
+          className="btn btn-primary"
+          style={{ gap: 8, display: "inline-flex", alignItems: "center", padding: "9px 18px", fontSize: 14, fontWeight: 600, borderRadius: 10 }}
           onClick={() => { setShowNew(true); setNewDraft((d) => ({ ...d, clientId: filterClientIds[0] ?? d.clientId, categoryId: filterCategoryIds[0] ?? d.categoryId })); }}
         >
-          <Plus style={{ width: 14, height: 14 }} /> New task
+          <Plus style={{ width: 15, height: 15 }} /> New task
         </button>
       </div>
 
       {/* KPI strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 18 }}>
-        <KpiTile label="Total tasks" value={kpis.total} />
-        <KpiTile label="In progress" value={kpis.inProgress} tone="#0ea5e9" />
-        <KpiTile label="For approval" value={kpis.forApproval} tone="#f59e0b" />
-        <KpiTile label="Overdue" value={kpis.overdue} tone="#ef4444" icon={<AlertCircle style={{ width: 12, height: 12 }} />} />
-        <KpiTile label="Active timers" value={kpis.activeTimers} tone="#ef4444" icon={<Clock style={{ width: 12, height: 12 }} />} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 20 }}>
+        <KpiTile label="Total tasks" value={kpis.total} accentColor="var(--accent)" />
+        <KpiTile label="In progress" value={kpis.inProgress} accentColor="#0ea5e9" />
+        <KpiTile label="For approval" value={kpis.forApproval} accentColor="#f59e0b" />
+        <KpiTile label="Overdue" value={kpis.overdue} accentColor="#ef4444" icon={<AlertCircle style={{ width: 13, height: 13 }} />} />
+        <KpiTile label="Active timers" value={kpis.activeTimers} accentColor="#ef4444" icon={<Clock style={{ width: 13, height: 13 }} />} />
       </div>
 
       {/* Filter bar */}
-      <div className="card" style={{ padding: 12, marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-        <Filter style={{ width: 14, height: 14, color: "var(--text-3)" }} />
+      <div style={{ background: "var(--bg-2)", borderRadius: 12, padding: "10px 14px", marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", border: "1px solid var(--border-subtle)" }}>
+        <Filter style={{ width: 13, height: 13, color: "var(--text-4)" }} />
 
         <MultiPicker
           label="Clients"
@@ -352,25 +346,33 @@ export default function TaskOverviewPage() {
 
       {/* Group tabs */}
       <div style={{
-        display: "flex", gap: 4, borderBottom: "1px solid var(--border-subtle)", marginBottom: 16, overflowX: "auto", paddingBottom: 1,
+        display: "flex", gap: 6, marginBottom: 16, overflowX: "auto", paddingBottom: 2, alignItems: "center",
       }}>
         {groups.map((g) => {
           const isActive = g.key === activeGroupKey;
+          const dotColor = g.color ?? (isActive ? "var(--accent)" : "var(--text-4)");
           return (
             <button
               key={g.key}
               onClick={() => setActiveGroupKey(g.key)}
               style={{
-                padding: "10px 14px", fontSize: 13, fontWeight: 600,
-                background: "transparent", border: "none",
-                borderBottom: `2px solid ${isActive ? (g.color ?? "var(--accent)") : "transparent"}`,
-                color: isActive ? "var(--text)" : "var(--text-3)",
-                cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
+                padding: "6px 14px", fontSize: 13, fontWeight: 600,
+                background: isActive ? "var(--accent)" : "var(--bg-2)",
+                border: `1px solid ${isActive ? "var(--accent)" : "var(--border-subtle)"}`,
+                borderRadius: 99,
+                color: isActive ? "white" : "var(--text-2)",
+                cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7, whiteSpace: "nowrap",
+                transition: "all 0.15s",
               }}
             >
-              {g.color !== undefined && <span style={{ width: 8, height: 8, borderRadius: "50%", background: g.color ?? "var(--text-3)" }} />}
+              {g.color !== undefined && !isActive && <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />}
               {g.label}
-              <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--bg-2)", borderRadius: 99, padding: "1px 7px" }}>{g.count}</span>
+              <span style={{
+                fontSize: 11, fontWeight: 700,
+                background: isActive ? "rgba(255,255,255,0.25)" : "var(--bg-1)",
+                color: isActive ? "white" : "var(--text-3)",
+                borderRadius: 99, padding: "1px 7px",
+              }}>{g.count}</span>
             </button>
           );
         })}
@@ -384,32 +386,39 @@ export default function TaskOverviewPage() {
       ) : (
         <div style={{
           display: "grid",
-          gridTemplateColumns: "repeat(6, minmax(240px, 1fr))",
-          gap: 12,
+          gridTemplateColumns: "repeat(6, minmax(270px, 1fr))",
+          gap: 14,
           overflowX: "auto",
-          paddingBottom: 12,
+          paddingBottom: 16,
         }}>
           {STATUS_COLUMNS.map((col) => {
             const colTasks = tasksByStatus[col.key] ?? [];
             return (
-              <div key={col.key} style={{ background: "var(--bg-2)", borderRadius: "var(--r-md)", padding: 12, display: "flex", flexDirection: "column", minWidth: 240 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div key={col.key} style={{ background: "var(--bg-2)", borderRadius: 14, padding: "12px 10px", display: "flex", flexDirection: "column", minWidth: 270, border: "1px solid var(--border-subtle)" }}>
+                {/* Column header */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, padding: "0 4px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: col.tone }} />
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", textTransform: "uppercase", letterSpacing: 0.4 }}>
+                    <span style={{ width: 9, height: 9, borderRadius: "50%", background: col.tone, boxShadow: `0 0 0 3px ${col.tone}28` }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: 0.6 }}>
                       {col.label}
                     </span>
-                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>{colTasks.length}</span>
                   </div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700,
+                    background: colTasks.length > 0 ? `${col.tone}20` : "var(--bg-1)",
+                    color: colTasks.length > 0 ? col.tone : "var(--text-4)",
+                    borderRadius: 99, padding: "2px 8px", minWidth: 22, textAlign: "center",
+                  }}>{colTasks.length}</span>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {/* Cards */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
                   {colTasks.length === 0 ? (
                     <div style={{
-                      minHeight: 50, borderRadius: "var(--r-sm)", border: "1px dashed var(--border-subtle)",
+                      minHeight: 60, borderRadius: 10, border: "1.5px dashed var(--border-subtle)",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 11, color: "var(--text-4)",
+                      fontSize: 12, color: "var(--text-4)",
                     }}>
-                      No tasks
+                      Empty
                     </div>
                   ) : colTasks.map((t) => <OverviewCard key={t.id} task={t} now={now} onClick={() => setOpenTask(t)} />)}
                 </div>
@@ -455,14 +464,19 @@ export default function TaskOverviewPage() {
   );
 }
 
-function KpiTile({ label, value, tone, icon }: { label: string; value: number; tone?: string; icon?: React.ReactNode }) {
+function KpiTile({ label, value, accentColor, icon }: { label: string; value: number; accentColor?: string; icon?: React.ReactNode }) {
   return (
-    <div className="card" style={{ padding: 12, display: "flex", flexDirection: "column", gap: 4 }}>
-      <div style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: 0.4, display: "inline-flex", alignItems: "center", gap: 4 }}>
-        {icon}
+    <div style={{
+      background: "var(--bg-1)", borderRadius: 14, padding: "16px 18px",
+      border: "1px solid var(--border-subtle)",
+      borderLeft: `3px solid ${accentColor ?? "var(--accent)"}`,
+      display: "flex", flexDirection: "column", gap: 6,
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: 0.6, display: "inline-flex", alignItems: "center", gap: 5 }}>
+        {icon && <span style={{ color: accentColor ?? "var(--accent)" }}>{icon}</span>}
         {label}
       </div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: tone ?? "var(--text)" }}>{value}</div>
+      <div style={{ fontSize: 28, fontWeight: 800, color: accentColor ?? "var(--text)", lineHeight: 1 }}>{value}</div>
     </div>
   );
 }
@@ -475,55 +489,89 @@ function OverviewCard({ task, now, onClick }: { task: OverviewTask; now: number;
   const liveMs = task.activeTimer
     ? task.totalMs + Math.max(0, now - new Date(task.activeTimer.startedAt).getTime())
     : task.totalMs;
+
+  const priorityColors: Record<string, { bg: string; text: string }> = {
+    urgent: { bg: "rgba(239,68,68,0.12)", text: "#ef4444" },
+    high:   { bg: "rgba(249,115,22,0.12)", text: "#f97316" },
+    medium: { bg: "rgba(99,102,241,0.12)",  text: "var(--accent)" },
+    low:    { bg: "rgba(100,116,139,0.12)", text: "var(--text-3)" },
+  };
+  const pColor = priorityColors[task.priority] ?? priorityColors.medium!;
+
   return (
-    <div className="card" onClick={onClick} style={{ cursor: "pointer", padding: 12, display: "flex", flexDirection: "column", gap: 8, ...(isOverdue ? { borderColor: "rgba(239,68,68,0.45)" } : {}) }}>
+    <div
+      onClick={onClick}
+      style={{
+        cursor: "pointer",
+        background: "var(--bg-1)",
+        borderRadius: 10,
+        padding: "11px 12px",
+        display: "flex", flexDirection: "column", gap: 9,
+        border: isOverdue ? "1px solid rgba(239,68,68,0.4)" : "1px solid var(--border-subtle)",
+        transition: "box-shadow 0.15s, transform 0.1s",
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 4px 16px rgba(0,0,0,0.2)"; (e.currentTarget as HTMLDivElement).style.transform = "translateY(-1px)"; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; (e.currentTarget as HTMLDivElement).style.transform = "none"; }}
+    >
+      {/* Title + priority */}
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", margin: 0, lineHeight: 1.35 }}>{task.title}</p>
+        <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", margin: 0, lineHeight: 1.4, flex: 1 }}>{task.title}</p>
         {task.priority !== "medium" && (
-          <span className={PRIORITY_BADGE[task.priority] ?? "badge badge-slate"} style={{ fontSize: 10, flexShrink: 0 }}>
+          <span style={{
+            fontSize: 10, fontWeight: 700, borderRadius: 6, padding: "2px 7px", flexShrink: 0,
+            background: pColor.bg, color: pColor.text, textTransform: "uppercase", letterSpacing: 0.4,
+          }}>
             {task.priority}
           </span>
         )}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--text-3)", flexWrap: "wrap" }}>
-        <span style={{ background: "var(--bg-1)", border: "1px solid var(--border-subtle)", borderRadius: 99, padding: "2px 8px", fontWeight: 600, color: "var(--text-2)" }}>
+      {/* Client + board */}
+      <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+        <span style={{
+          fontSize: 11, fontWeight: 600, borderRadius: 6, padding: "2px 8px",
+          background: "var(--accent-subtle, rgba(99,102,241,0.1))", color: "var(--accent)",
+        }}>
           {task.client.name}
         </span>
         {task.category && (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: task.category.color ?? "var(--text-3)" }} />
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-3)" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: task.category.color ?? "var(--text-3)", flexShrink: 0 }} />
             {task.category.name}
           </span>
         )}
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
+      {/* Footer row */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        {/* Avatars */}
         <div style={{ display: "flex" }}>
           {task.assignees.slice(0, 4).map((a, i) => (
             <span
               key={a.user.id}
               title={a.user.name ?? a.user.email}
               style={{
-                width: 22, height: 22, borderRadius: "50%",
-                background: avatarBg(a.user.id), color: "white", fontSize: 10, fontWeight: 600,
+                width: 24, height: 24, borderRadius: "50%",
+                background: avatarBg(a.user.id), color: "white", fontSize: 10, fontWeight: 700,
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
-                marginLeft: i === 0 ? 0 : -6, border: "2px solid var(--bg-2)",
+                marginLeft: i === 0 ? 0 : -8, border: "2px solid var(--bg-2)",
+                flexShrink: 0,
               }}
             >
               {initials(a.user)}
             </span>
           ))}
           {task.assignees.length > 4 && (
-            <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--bg-1)", color: "var(--text-2)", fontSize: 10, fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: -6, border: "2px solid var(--bg-2)" }}>
+            <span style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--bg-2)", color: "var(--text-2)", fontSize: 10, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: -8, border: "2px solid var(--bg-2)" }}>
               +{task.assignees.length - 4}
             </span>
           )}
           {task.assignees.length === 0 && (
-            <span style={{ fontSize: 10, color: "var(--text-4)" }}>Unassigned</span>
+            <span style={{ fontSize: 10, color: "var(--text-4)", fontStyle: "italic" }}>Unassigned</span>
           )}
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 11, color: "var(--text-3)" }}>
+        {/* Meta icons */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 11, color: "var(--text-4)" }}>
           {task._count.comments > 0 && (
             <span title={`${task._count.comments} comment${task._count.comments === 1 ? "" : "s"}`} style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
               <MessageSquare style={{ width: 11, height: 11 }} /> {task._count.comments}
@@ -532,14 +580,14 @@ function OverviewCard({ task, now, onClick }: { task: OverviewTask; now: number;
           {(liveMs > 0 || task.activeTimer) && (
             <span
               title={task.activeTimer ? "Timer running" : "Total time logged"}
-              style={{ display: "inline-flex", alignItems: "center", gap: 3, color: task.activeTimer ? "#ef4444" : "var(--text-3)" }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 3, color: task.activeTimer ? "#ef4444" : "var(--text-4)" }}
             >
               <Clock style={{ width: 11, height: 11 }} /> {formatDuration(liveMs)}
             </span>
           )}
           {task.dueDate && (
-            <span style={{ color: isOverdue ? "#ef4444" : "var(--text-3)", fontWeight: isOverdue ? 600 : 400 }}>
-              {isOverdue ? "Overdue " : "Due "}{new Date(task.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+            <span style={{ color: isOverdue ? "#ef4444" : "var(--text-4)", fontWeight: isOverdue ? 700 : 400 }}>
+              {isOverdue ? "⚠ " : ""}{new Date(task.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
             </span>
           )}
         </div>
@@ -617,22 +665,38 @@ function NewTaskModal({
 }) {
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 60 }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 60, backdropFilter: "blur(2px)" }} />
       <div style={{
-        position: "fixed", top: "10vh", left: "50%", transform: "translateX(-50%)",
-        width: "min(540px, 92vw)", background: "var(--bg-1)", border: "1px solid var(--border-subtle)",
-        borderRadius: "var(--r)", padding: 20, zIndex: 61, boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+        width: "min(580px, 94vw)", background: "var(--bg-1)",
+        border: "1px solid var(--border-subtle)",
+        borderRadius: 18, padding: "24px 24px 20px", zIndex: 61,
+        boxShadow: "0 32px 80px rgba(0,0,0,0.4)",
       }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--text)", margin: 0 }}>New task</h3>
-          <button onClick={onClose} className="btn btn-ghost btn-sm"><X style={{ width: 14, height: 14 }} /></button>
+        {/* Modal header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Plus style={{ width: 16, height: 16, color: "white" }} />
+            </div>
+            <h3 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", margin: 0 }}>New task</h3>
+          </div>
+          <button onClick={onClose} className="btn btn-ghost btn-sm" style={{ borderRadius: 8 }}><X style={{ width: 15, height: 15 }} /></button>
+        </div>
+
+        {/* Title */}
+        <div style={{ marginBottom: 16 }}>
+          <input
+            className="form-input"
+            autoFocus
+            value={draft.title}
+            onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+            placeholder="What needs doing?"
+            style={{ fontSize: 15, fontWeight: 600, padding: "10px 14px" }}
+          />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label className="form-label">Title *</label>
-            <input className="form-input" autoFocus value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} placeholder="What needs doing?" />
-          </div>
           <div>
             <label className="form-label">Client *</label>
             <select className="form-input" value={draft.clientId} onChange={(e) => setDraft((d) => ({ ...d, clientId: e.target.value }))}>
@@ -663,9 +727,10 @@ function NewTaskModal({
             <label className="form-label">Due date</label>
             <input type="date" className="form-input" value={draft.dueDate} onChange={(e) => setDraft((d) => ({ ...d, dueDate: e.target.value }))} />
           </div>
+          <div />
           <div style={{ gridColumn: "1 / -1" }}>
             <label className="form-label">Assignees</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
               {users.map((u) => {
                 const on = draft.assigneeIds.includes(u.id);
                 return (
@@ -673,9 +738,21 @@ function NewTaskModal({
                     key={u.id}
                     type="button"
                     onClick={() => setDraft((d) => ({ ...d, assigneeIds: on ? d.assigneeIds.filter((x) => x !== u.id) : [...d.assigneeIds, u.id] }))}
-                    className={on ? "badge badge-blue" : "badge badge-slate"}
-                    style={{ cursor: "pointer", border: "none", padding: "4px 10px", fontSize: 12 }}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      padding: "5px 10px", borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "none",
+                      background: on ? "var(--accent)" : "var(--bg-2)",
+                      color: on ? "white" : "var(--text-2)",
+                      transition: "all 0.12s",
+                    }}
                   >
+                    <span style={{
+                      width: 20, height: 20, borderRadius: "50%",
+                      background: on ? "rgba(255,255,255,0.25)" : avatarBg(u.id), color: "white",
+                      fontSize: 9, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    }}>
+                      {initials(u)}
+                    </span>
                     {u.name ?? u.email}
                   </button>
                 );
@@ -684,10 +761,15 @@ function NewTaskModal({
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 18, justifyContent: "flex-end" }}>
-          <button onClick={onClose} className="btn btn-secondary btn-sm">Cancel</button>
-          <button onClick={onSubmit} disabled={creating || !draft.title.trim() || !draft.clientId} className="btn btn-primary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            {creating && <Loader2 className="animate-spin" style={{ width: 12, height: 12 }} />}
+        <div style={{ display: "flex", gap: 10, marginTop: 22, justifyContent: "flex-end", borderTop: "1px solid var(--border-subtle)", paddingTop: 16 }}>
+          <button onClick={onClose} className="btn btn-secondary">Cancel</button>
+          <button
+            onClick={onSubmit}
+            disabled={creating || !draft.title.trim() || !draft.clientId}
+            className="btn btn-primary"
+            style={{ display: "inline-flex", alignItems: "center", gap: 7, minWidth: 120, justifyContent: "center" }}
+          >
+            {creating ? <Loader2 className="animate-spin" style={{ width: 13, height: 13 }} /> : <Plus style={{ width: 13, height: 13 }} />}
             Create task
           </button>
         </div>

@@ -271,51 +271,62 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
       />
       {/* Drawer */}
       <aside style={{
-        position: "fixed", top: 0, right: 0, bottom: 0, width: "min(520px, 100vw)",
-        background: "var(--bg-1)", zIndex: 51, boxShadow: "-12px 0 40px rgba(0,0,0,0.25)",
+        position: "fixed", top: 0, right: 0, bottom: 0, width: "min(680px, 100vw)",
+        background: "var(--bg-1)", zIndex: 51, boxShadow: "-16px 0 60px rgba(0,0,0,0.3)",
         display: "flex", flexDirection: "column",
       }}>
-        <header style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span className="badge badge-slate" style={{ fontSize: 11 }}>{categoryName}</span>
-            {savedAt && Date.now() - savedAt < 2500 && (
+        {/* Header */}
+        <header style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <span style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase",
+              background: "var(--bg-2)", color: "var(--text-3)", borderRadius: 6, padding: "3px 8px", flexShrink: 0,
+            }}>{categoryName}</span>
+            {saving && <Loader2 style={{ width: 13, height: 13, color: "var(--text-4)" }} className="animate-spin" />}
+            {savedAt && !saving && Date.now() - savedAt < 2500 && (
               <span style={{ fontSize: 11, color: "var(--success)", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                <Check style={{ width: 12, height: 12 }} /> saved
+                <Check style={{ width: 12, height: 12 }} /> Saved
               </span>
             )}
-            {saving && <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" />}
           </div>
-          <button onClick={onClose} className="btn btn-ghost btn-sm" title="Close">
+          <button onClick={onClose} className="btn btn-ghost btn-sm" title="Close" style={{ borderRadius: 8, flexShrink: 0 }}>
             <X style={{ width: 16, height: 16 }} />
           </button>
         </header>
 
-        <div style={{ overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 18 }}>
+        <div style={{ overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20, flex: 1 }}>
           {/* Title */}
           <div>
-            <label className="form-label">Title</label>
-            <input
-              type="text"
+            <textarea
               value={draft.title}
-              onChange={(e) => update("title", e.target.value)}
+              onChange={(e) => { update("title", e.target.value); e.target.style.height = "auto"; e.target.style.height = `${e.target.scrollHeight}px`; }}
               onBlur={() => draft.title !== task.title && void save({ title: draft.title })}
-              className="form-input"
+              rows={1}
+              style={{
+                width: "100%", fontSize: 20, fontWeight: 700, color: "var(--text)",
+                background: "transparent", border: "none", outline: "none", resize: "none",
+                padding: 0, lineHeight: 1.35, fontFamily: "inherit",
+                overflowY: "hidden",
+              }}
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="form-label">Description</label>
+            <label className="form-label" style={{ marginBottom: 6 }}>Description</label>
             <textarea
               value={draft.description ?? ""}
               onChange={(e) => update("description", e.target.value)}
               onBlur={() => draft.description !== task.description && void save({ description: draft.description })}
               className="form-input"
-              rows={4}
+              rows={3}
+              placeholder="Add a description…"
+              style={{ resize: "vertical" }}
             />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {/* Status / Priority / Due date */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
             <div>
               <label className="form-label">Status</label>
               <select
@@ -345,26 +356,26 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
                 className="form-input"
               />
             </div>
-            <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-              {(draft.status === "for_approval" || draft.status === "signed_off_internal") && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {draft.status === "for_approval" && (
-                    <button onClick={() => void save({ status: "signed_off_internal" })} className="btn btn-secondary btn-sm">
-                      Mark internally signed off
-                    </button>
-                  )}
-                  <button onClick={() => void save({ status: "signed_off_client" })} className="btn btn-primary btn-sm">
-                    Mark signed off by client (manual)
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
+
+          {/* Quick sign-off actions */}
+          {(draft.status === "for_approval" || draft.status === "signed_off_internal") && (
+            <div style={{ display: "flex", gap: 8, padding: "10px 14px", background: "rgba(99,102,241,0.06)", borderRadius: 10, border: "1px solid rgba(99,102,241,0.2)", flexWrap: "wrap" }}>
+              {draft.status === "for_approval" && (
+                <button onClick={() => void save({ status: "signed_off_internal" })} className="btn btn-secondary btn-sm">
+                  Mark internally signed off
+                </button>
+              )}
+              <button onClick={() => void save({ status: "signed_off_client" })} className="btn btn-primary btn-sm">
+                Mark signed off by client (manual)
+              </button>
+            </div>
+          )}
 
           {/* Assignees */}
           <div>
-            <label className="form-label">Assignees</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <label className="form-label" style={{ marginBottom: 8 }}>Assignees</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {users.map((u) => {
                 const isOn = draft.assignees.some((a) => a.user.id === u.id);
                 return (
@@ -372,11 +383,28 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
                     key={u.id}
                     type="button"
                     onClick={() => toggleAssignee(u.id)}
-                    className={isOn ? "badge badge-blue" : "badge badge-slate"}
-                    style={{ cursor: "pointer", border: "none", padding: "4px 10px", fontSize: 12 }}
                     title={u.email}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 7,
+                      padding: "5px 12px 5px 6px", borderRadius: 99, fontSize: 12, fontWeight: 600,
+                      cursor: "pointer", border: "2px solid",
+                      borderColor: isOn ? "var(--accent)" : "var(--border-subtle)",
+                      background: isOn ? "rgba(99,102,241,0.1)" : "var(--bg-2)",
+                      color: isOn ? "var(--accent)" : "var(--text-2)",
+                      transition: "all 0.12s",
+                    }}
                   >
-                    {u.name ?? u.email}
+                    <span style={{
+                      width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                      background: isOn ? "var(--accent)" : "var(--bg-1)",
+                      color: isOn ? "white" : "var(--text-3)",
+                      fontSize: 9, fontWeight: 800,
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      border: "1px solid var(--border-subtle)",
+                    }}>
+                      {(u.name ? u.name.trim().split(/\s+/).map((p) => p[0]).join("").toUpperCase().slice(0, 2) : u.email[0]!.toUpperCase())}
+                    </span>
+                    {u.name ?? u.email.split("@")[0]}
                   </button>
                 );
               })}
@@ -456,21 +484,21 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
 
           {/* Time tracking */}
           <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <label className="form-label" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 0 }}>
                 <Clock style={{ width: 13, height: 13 }} /> Time tracking
               </label>
-              <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+              <span style={{ fontSize: 12, color: "var(--text-3)", fontWeight: 500 }}>
                 Total <strong style={{ color: "var(--text)" }}>{formatDuration(liveTotalMs)}</strong>
               </span>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 10, background: "var(--bg-2)", borderRadius: "var(--r-sm)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "var(--bg-2)", borderRadius: 12, border: "1px solid var(--border-subtle)" }}>
               {timeData.activeForUser ? (
                 <>
-                  <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 0 4px rgba(239,68,68,0.18)" }} />
-                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 0 4px rgba(239,68,68,0.2)" }} />
+                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 16, fontWeight: 700, color: "var(--text)" }}>
                       {formatTimer(Date.now() - new Date(timeData.activeForUser.startedAt).getTime())}
                     </span>
                     <span style={{ fontSize: 11, color: "var(--text-3)" }}>running</span>
@@ -494,20 +522,20 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
             </div>
 
             {timeData.logs.length > 0 && (
-              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                 {timeData.logs.map((l) => (
-                  <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, padding: "6px 8px", borderRadius: 6, background: "var(--bg-1)", border: "1px solid var(--border-subtle)" }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: l.endedAt ? "var(--text-4)" : "#ef4444" }} />
-                    <span style={{ color: "var(--text-2)", flexShrink: 0 }}>{l.user.name ?? l.user.email}</span>
-                    <span style={{ color: "var(--text-3)", flex: 1 }}>
+                  <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, padding: "7px 10px", borderRadius: 8, background: "var(--bg-2)", border: "1px solid var(--border-subtle)" }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: l.endedAt ? "var(--text-4)" : "#ef4444", flexShrink: 0 }} />
+                    <span style={{ color: "var(--text-2)", flexShrink: 0, fontWeight: 600 }}>{l.user.name ?? l.user.email}</span>
+                    <span style={{ color: "var(--text-4)", flex: 1 }}>
                       {new Date(l.startedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                     </span>
-                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "var(--text)", fontWeight: 600 }}>
+                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "var(--text)", fontWeight: 700 }}>
                       {l.endedAt
                         ? formatDuration(l.durationMs ?? 0)
                         : formatDuration(Math.max(0, Date.now() - new Date(l.startedAt).getTime()))}
                     </span>
-                    <button onClick={() => void deleteTimeLog(l.id)} className="btn btn-ghost btn-sm" style={{ padding: 2, color: "var(--text-3)" }} title="Delete entry">
+                    <button onClick={() => void deleteTimeLog(l.id)} className="btn btn-ghost btn-sm" style={{ padding: 2, color: "var(--text-4)" }} title="Delete entry">
                       <Trash2 style={{ width: 11, height: 11 }} />
                     </button>
                   </div>
@@ -518,33 +546,43 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
 
           {/* Comments */}
           <div>
-            <label className="form-label" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <label className="form-label" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
               <MessageSquare style={{ width: 13, height: 13 }} /> Comments {comments.length > 0 && <span style={{ color: "var(--text-3)", fontWeight: 400 }}>({comments.length})</span>}
             </label>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
               {comments.length === 0 && (
-                <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>No comments yet — start the conversation.</p>
+                <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0, fontStyle: "italic" }}>No comments yet — start the conversation.</p>
               )}
               {comments.map((c) => (
-                <div key={c.id} style={{ background: "var(--bg-2)", borderRadius: "var(--r-sm)", padding: "8px 10px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{c.user.name ?? c.user.email}</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontSize: 11, color: "var(--text-3)" }}>
-                        {new Date(c.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                      <button onClick={() => void deleteComment(c.id)} className="btn btn-ghost btn-sm" style={{ padding: 2, color: "var(--text-3)" }} title="Delete comment">
-                        <Trash2 style={{ width: 11, height: 11 }} />
-                      </button>
-                    </div>
+                <div key={c.id} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                  <div style={{
+                    width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
+                    background: `hsl(${(c.user.id.charCodeAt(0) * 31 + c.user.id.charCodeAt(1)) % 360}, 55%, 45%)`,
+                    color: "white", fontSize: 11, fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    {(c.user.name ? c.user.name[0] : c.user.email[0])?.toUpperCase()}
                   </div>
-                  <p style={{ fontSize: 13, color: "var(--text-2)", margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{c.body}</p>
+                  <div style={{ flex: 1, background: "var(--bg-2)", borderRadius: "0 10px 10px 10px", padding: "8px 12px", border: "1px solid var(--border-subtle)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{c.user.name ?? c.user.email}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 11, color: "var(--text-4)" }}>
+                          {new Date(c.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        <button onClick={() => void deleteComment(c.id)} className="btn btn-ghost btn-sm" style={{ padding: 2, color: "var(--text-4)" }} title="Delete">
+                          <Trash2 style={{ width: 11, height: 11 }} />
+                        </button>
+                      </div>
+                    </div>
+                    <p style={{ fontSize: 13, color: "var(--text-2)", margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{c.body}</p>
+                  </div>
                 </div>
               ))}
             </div>
 
-            <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
               <textarea
                 value={commentDraft}
                 onChange={(e) => setCommentDraft(e.target.value)}
@@ -559,21 +597,21 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
               <button
                 onClick={() => void submitComment()}
                 disabled={commentSubmitting || !commentDraft.trim()}
-                className="btn btn-primary btn-sm"
-                style={{ display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "stretch" }}
+                className="btn btn-primary"
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 14px", alignSelf: "stretch" }}
                 title="Send comment"
               >
-                {commentSubmitting ? <Loader2 style={{ width: 12, height: 12 }} className="animate-spin" /> : <Send style={{ width: 12, height: 12 }} />}
+                {commentSubmitting ? <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" /> : <Send style={{ width: 13, height: 13 }} />}
               </button>
             </div>
           </div>
         </div>
 
-        <footer style={{ padding: "12px 20px", borderTop: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <footer style={{ padding: "14px 24px", borderTop: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
           <button onClick={handleDelete} className="btn btn-ghost btn-sm" style={{ color: "var(--danger)", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <Trash2 style={{ width: 13, height: 13 }} /> Delete
+            <Trash2 style={{ width: 13, height: 13 }} /> Delete task
           </button>
-          <button onClick={onClose} className="btn btn-secondary btn-sm">Done</button>
+          <button onClick={onClose} className="btn btn-secondary" style={{ minWidth: 80 }}>Done</button>
         </footer>
       </aside>
     </>
