@@ -128,7 +128,12 @@ export async function getSession(): Promise<Session | null> {
       if (!user) return null;
 
       let permissions: string[];
-      if (user.userRole) {
+      if (user.role === "admin") {
+        // Admin always has all permissions, regardless of any assigned userRole.
+        // This keeps newly-added permissions accessible to admins without needing
+        // to re-seed or update existing admin role records.
+        permissions = [...ALL_PERMISSIONS];
+      } else if (user.userRole) {
         try {
           permissions = JSON.parse(user.userRole.permissions) as string[];
         } catch {
