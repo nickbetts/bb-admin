@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { PREVIEW_PORTAL_EMAIL_PREFIX } from "@/app/api/clients/[id]/portal-preview/route";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export async function GET() {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const users = await prisma.clientPortalUser.findMany({
+      where: { NOT: { email: { startsWith: PREVIEW_PORTAL_EMAIL_PREFIX } } },
       orderBy: { createdAt: "desc" },
       include: {
         client: { select: { id: true, name: true, slug: true } },

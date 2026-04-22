@@ -7,6 +7,15 @@ export const dynamic = "force-dynamic";
 
 const PORTAL_SECRET = process.env.SESSION_SECRET ?? "i3media-session-secret";
 
+// Email pattern reserved for synthetic preview-only portal users.
+// These are auto-created so internal staff can preview a client's portal
+// even when the client has no real portal user yet. They are filtered out
+// of the portal users list so they never appear in the UI.
+export const PREVIEW_PORTAL_EMAIL_PREFIX = "__preview__+";
+function previewPortalEmail(clientId: string) {
+  return `${PREVIEW_PORTAL_EMAIL_PREFIX}${clientId}@i3media.internal`;
+}
+
 function createPortalToken(userId: string, ttlMs: number): string {
   const expiresAt = Date.now() + ttlMs;
   const nonce = Math.random().toString(36).slice(2);
@@ -23,17 +32,50 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const { searchParams } = new URL(request.url);
   const portalUserId = searchParams.get("userId");
 
-  const portalUser = portalUserId
+  // Confirm the client exists so we can fall back gracefully.
+  const client = await prisma.client.findUnique({
+    where: { id: clientId },
+    select: { id: true, slug: true, name: true },
+  });
+  if (!client) {
+    return NextResponse.redirect(new URL("/clients?error=client-not-found", request.url));
+  }
+
+  let portalUser = portalUserId
     ? await prisma.clientPortalUser.findFirst({ where: { id: portalUserId, clientId, isActive: true } })
     : await prisma.clientPortalUser.findFirst({
-        where: { clientId, isActive: true },
+        where: {
+          clientId,
+          isActive: true,
+          // Prefer a real portal user over the synthetic preview user.
+          NOT: { email: { startsWith: PREVIEW_PORTAL_EMAIL_PREFIX } },
+        },
         orderBy: [{ lastLoginAt: "desc" }, { createdAt: "desc" }],
       });
 
+  // No real portal user available — upsert a synthetic preview user so
+  // internal staff can still preview the portal experience.
   if (!portalUser) {
-    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { slug: true } });
-    const back = client ? `/clients/${client.slug}/settings` : "/clients";
-    return NextResponse.redirect(new URL(`${back}?error=no-portal-user`, request.url));
+    const previewEmail = previewPortalEmail(clientId);
+    portalUser = await prisma.clientPortalUser.upsert({
+      where: { email: previewEmail },
+      update: { isActive: true, clientId },
+      create: {
+        clientId,
+        email: previewEmail,
+        name: `${client.name} (preview)`,
+        isActive: true,
+        // Grant all known permissions so the preview shows the full portal.
+        permissions: JSON.stringify([
+          "reports",
+          "goals",
+          "communications",
+          "tasks",
+          "assets",
+          "messages",
+        ]),
+      },
+    });
   }
 
   // 1 hour preview session
