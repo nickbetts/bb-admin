@@ -180,7 +180,7 @@ export async function GET(
       // Padding (in CSS pixels) to add above and below each cropped section page.
       // We cap each side to the actual gap between adjacent regions so we never
       // bleed content from a neighbouring section onto this page.
-      const DESIRED_PAD_PX = 40;
+      const DESIRED_PAD_PX = 64;
 
       const outputDoc = await PDFDocument.create();
 
