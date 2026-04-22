@@ -4,6 +4,7 @@ import { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { PortalPublishToggle } from "@/components/portal/PortalPublishToggle";
 import {
   ArrowLeft,
   Download,
@@ -53,6 +54,7 @@ interface GrandPlanFull {
   shareToken: string | null;
   sharePassword: string | null;
   shareExpiresAt: string | null;
+  portalPublishedAt: string | null;
   viewCount: number;
   lastViewedAt: string | null;
   generationMs: number | null;
@@ -750,6 +752,16 @@ export default function GrandPlanViewPage({ params }: Props) {
                 <X style={{ width: 12, height: 12 }} /> Unshare
               </button>
             </div>
+          )}
+
+          {/* Publish to client portal */}
+          {isComplete && plan.shareToken && (
+            <PortalPublishToggle
+              resourceType="grand_plan"
+              resourceId={plan.id}
+              initialPublishedAt={plan.portalPublishedAt}
+              onChange={(at) => setPlan((prev) => (prev ? { ...prev, portalPublishedAt: at } : prev))}
+            />
           )}
 
           {/* Clone */}

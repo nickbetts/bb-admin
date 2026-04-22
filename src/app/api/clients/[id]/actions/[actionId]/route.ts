@@ -81,6 +81,7 @@ export async function PATCH(
       dueDate?: string | null;
       outcome?: string | null;
       approvalNotes?: string | null;
+      clientPortalUserId?: string | null;
     };
 
     if (data.status && !VALID_STATUSES.includes(data.status as typeof VALID_STATUSES[number])) {
@@ -108,6 +109,7 @@ export async function PATCH(
         ...(data.dueDate !== undefined && { dueDate: data.dueDate }),
         ...(data.outcome !== undefined && { outcome: data.outcome }),
         ...(data.approvalNotes !== undefined && { approvalNotes: data.approvalNotes }),
+        ...(data.clientPortalUserId !== undefined && { clientPortalUserId: data.clientPortalUserId }),
         ...stampExtras,
         ...(data.assigneeIds !== undefined && {
           assignees: {

@@ -53,6 +53,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { injectEditorScript, removeEditorScript, applyTextEdit } from "@/lib/lp-editor-inject";
 import { parseSections, reorderSections, duplicateSection, deleteSection, setSectionAnimation, type LPSection } from "@/lib/lp-section-parser";
 import { ANIMATION_PRESETS, injectAnimations } from "@/lib/lp-animations";
+import { PortalPublishToggle } from "@/components/portal/PortalPublishToggle";
 import { parseCSSVariables, updateCSSVariable, type CSSVariable } from "@/lib/lp-css-parser";
 import { AnalyticsConfigForm } from "@/components/landing-pages/AnalyticsConfigForm";
 import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
@@ -96,6 +97,7 @@ interface LandingPage {
   status: string;
   shareToken: string | null;
   publicSlug: string | null;
+  portalPublishedAt: string | null;
   viewCount: number;
   briefJson: string;
   brandContextJson: string;
@@ -1016,6 +1018,15 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
             >
               <ExternalLink style={{ width: 14, height: 14 }} />
             </a>
+          )}
+
+          {lp.shareToken && (
+            <PortalPublishToggle
+              resourceType="landing_page"
+              resourceId={lp.id}
+              initialPublishedAt={lp.portalPublishedAt}
+              onChange={(at) => setLp((prev) => (prev ? { ...prev, portalPublishedAt: at } : prev))}
+            />
           )}
         </div>
       </div>

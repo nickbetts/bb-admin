@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Target, MessageSquare, LogOut, Loader2, ExternalLink, Globe, BookOpen, Layers, Map, ClipboardCheck } from "lucide-react";
-import Link from "next/link";
+import {
+  FileText, Globe, BookOpen, Map, ClipboardCheck,
+  LogOut, Loader2, ArrowRight, CheckCircle2, Circle,
+} from "lucide-react";
 
 interface PortalUser {
   id: string;
@@ -13,85 +15,54 @@ interface PortalUser {
   client: { id: string; name: string; slug: string; website: string | null; logoUrl: string | null };
 }
 
-interface Report {
+interface ReportItem {
   id: string;
   title: string;
   period: string;
-  status: string;
   shareToken: string | null;
-  createdAt: string;
+  portalPublishedAt: string | null;
 }
 
-interface Goal {
-  id: string;
-  title: string;
-  metric: string;
-  targetValue: number;
-  currentValue: number | null;
-  unit: string | null;
-  targetDate: string;
-  status: string;
-}
-
-interface Communication {
-  id: string;
-  type: string;
-  subject: string;
-  createdAt: string;
-  status: string;
-}
-
-interface AssetReport {
-  id: string;
-  title: string;
-  period: string;
-  shareToken: string;
-  createdAt: string;
-}
-
-interface AssetLandingPage {
-  id: string;
-  title: string;
-  shareToken: string;
-  updatedAt: string;
-}
-
-interface AssetContentStrategy {
-  id: string;
-  title: string;
-  period: string;
-  shareToken: string;
-  createdAt: string;
-}
-
-interface AssetProposal {
-  id: string;
-  title: string;
-  clientName: string;
-  shareToken: string;
-  createdAt: string;
-}
-
-interface AssetGrandPlan {
+interface GrandPlanItem {
   id: string;
   title: string;
   purpose: string;
-  shareToken: string;
-  createdAt: string;
+  shareToken: string | null;
+  portalPublishedAt: string | null;
 }
 
-interface PortalAssets {
-  reports: AssetReport[];
-  landingPages: AssetLandingPage[];
-  contentStrategies: AssetContentStrategy[];
-  proposals: AssetProposal[];
-  grandPlans: AssetGrandPlan[];
+interface ContentStrategyItem {
+  id: string;
+  title: string;
+  period: string;
+  shareToken: string | null;
+  portalPublishedAt: string | null;
+}
+
+interface LandingPageItem {
+  id: string;
+  title: string;
+  shareToken: string | null;
+  publicSlug: string | null;
+  portalPublishedAt: string | null;
+}
+
+interface TaskItem {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  dueDate: string | null;
+  clientCompletedAt: string | null;
+  category: { name: string; color: string | null; icon: string | null } | null;
 }
 
 interface PortalData {
-  reports: Report[];
-  goals: Goal[];
-  communications: Communication[];
+  reports: ReportItem[];
+  grandPlans: GrandPlanItem[];
+  contentStrategies: ContentStrategyItem[];
+  landingPages: LandingPageItem[];
 }
 
 function timeAgo(dateStr: string): string {
@@ -102,13 +73,23 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
+function landingPageUrl(p: LandingPageItem): string | null {
+  if (p.shareToken) return `/api/share/landing-page/${p.shareToken}`;
+  return null;
+}
+
 export default function PortalDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<PortalUser | null>(null);
   const [data, setData] = useState<PortalData | null>(null);
-  const [assets, setAssets] = useState<PortalAssets | null>(null);
-  const [pendingTaskCount, setPendingTaskCount] = useState<number>(0);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingTask, setUpdatingTask] = useState<string | null>(null);
+
+  const loadTasks = useCallback(async () => {
+    const res = await fetch("/api/portal/me/tasks");
+    if (res.ok) setTasks(await res.json());
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -119,28 +100,33 @@ export default function PortalDashboardPage() {
         if (!me) { router.push("/portal/login"); return; }
         setUser(me);
         setData(portalData);
-        // Fetch assets if user has permission
         const perms: string[] = (() => { try { return JSON.parse(me.permissions) as string[]; } catch { return []; } })();
-        if (perms.includes("assets")) {
-          fetch("/api/portal/assets")
-            .then((r) => r.ok ? r.json() : null)
-            .then((a: PortalAssets | null) => setAssets(a))
-            .catch(() => null);
-        }
-        if (perms.includes("task_approvals")) {
-          fetch("/api/portal/tasks")
-            .then((r) => r.ok ? r.json() : [])
-            .then((tasks: unknown[]) => setPendingTaskCount(Array.isArray(tasks) ? tasks.length : 0))
-            .catch(() => null);
+        if (perms.includes("tasks")) {
+          void loadTasks();
         }
       })
       .catch(() => router.push("/portal/login"))
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [router, loadTasks]);
 
   async function handleLogout() {
     await fetch("/api/portal/auth", { method: "DELETE" }).catch(() => null);
     router.push("/portal/login");
+  }
+
+  async function toggleTask(task: TaskItem) {
+    setUpdatingTask(task.id);
+    try {
+      const done = !task.clientCompletedAt;
+      await fetch("/api/portal/me/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: task.id, done }),
+      });
+      await loadTasks();
+    } finally {
+      setUpdatingTask(null);
+    }
   }
 
   if (loading) {
@@ -154,13 +140,83 @@ export default function PortalDashboardPage() {
   if (!user) return null;
 
   const permissions: string[] = (() => { try { return JSON.parse(user.permissions) as string[]; } catch { return []; } })();
-  const isLeadPortal = permissions.length === 1 && permissions.includes("assets");
+  const openTasks = tasks.filter((t) => !t.clientCompletedAt);
+  const doneTasks = tasks.filter((t) => t.clientCompletedAt);
+
+  const sectionConfigs: Array<{
+    key: string;
+    perm: string;
+    icon: typeof FileText;
+    iconColor: string;
+    title: string;
+    items: Array<{ id: string; title: string; subtitle: string; href: string | null; published: string | null }>;
+  }> = [
+    {
+      key: "reports",
+      perm: "reports",
+      icon: FileText,
+      iconColor: "var(--accent)",
+      title: "Reports",
+      items: (data?.reports ?? []).map((r) => ({
+        id: r.id,
+        title: r.title,
+        subtitle: r.period,
+        href: r.shareToken ? `/share/report/${r.shareToken}` : null,
+        published: r.portalPublishedAt,
+      })),
+    },
+    {
+      key: "grandPlans",
+      perm: "grand_plans",
+      icon: Map,
+      iconColor: "#0f172a",
+      title: "Grand Plans",
+      items: (data?.grandPlans ?? []).map((gp) => ({
+        id: gp.id,
+        title: gp.title,
+        subtitle: gp.purpose === "pitch" ? "Pitch" : gp.purpose === "onboarding" ? "Onboarding" : "Strategy refresh",
+        href: gp.shareToken ? `/share/grand-plan/${gp.shareToken}` : null,
+        published: gp.portalPublishedAt,
+      })),
+    },
+    {
+      key: "contentStrategies",
+      perm: "content_strategies",
+      icon: BookOpen,
+      iconColor: "#f59e0b",
+      title: "Content Strategies",
+      items: (data?.contentStrategies ?? []).map((s) => ({
+        id: s.id,
+        title: s.title,
+        subtitle: s.period,
+        href: s.shareToken ? `/share/content-strategy/${s.shareToken}` : null,
+        published: s.portalPublishedAt,
+      })),
+    },
+    {
+      key: "landingPages",
+      perm: "landing_pages",
+      icon: Globe,
+      iconColor: "#22c55e",
+      title: "Landing Pages",
+      items: (data?.landingPages ?? []).map((p) => ({
+        id: p.id,
+        title: p.title,
+        subtitle: p.publicSlug ? `/lp/${p.publicSlug}` : "Live preview",
+        href: landingPageUrl(p),
+        published: p.portalPublishedAt,
+      })),
+    },
+  ];
+
+  const visibleSections = sectionConfigs.filter((s) => permissions.includes(s.perm));
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
       {/* Header */}
       <header style={{ background: "var(--card)", borderBottom: "1px solid var(--border)", padding: "0 32px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/primary-logo-dark.svg" style={{ height: 22, width: "auto" }} alt="i3media" />
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{user.client.name}</span>
         </div>
@@ -172,236 +228,129 @@ export default function PortalDashboardPage() {
         </div>
       </header>
 
-      <main style={{ padding: "32px 48px", maxWidth: 1000, margin: "0 auto" }}>
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)" }}>Welcome back{user.name ? `, ${user.name.split(" ")[0]}` : ""}</h1>
-          <p style={{ fontSize: 14, color: "var(--text-3)", marginTop: 4 }}>{isLeadPortal ? "Here\u2019s what we\u2019ve prepared for you" : "Here\u2019s an overview of your marketing performance"}</p>
+      <main style={{ padding: "32px 48px", maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ marginBottom: 32 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)" }}>
+            Welcome back{user.name ? `, ${user.name.split(" ")[0]}` : ""}
+          </h1>
+          <p style={{ fontSize: 14, color: "var(--text-3)", marginTop: 6 }}>
+            Everything we&rsquo;ve published for you, in one place.
+          </p>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
-          {/* Tasks awaiting approval */}
-          {permissions.includes("task_approvals") && (
-            <Link href="/portal/tasks" className="card" style={{ padding: 20, textDecoration: "none", display: "block" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                <ClipboardCheck style={{ width: 16, height: 16, color: "var(--accent)" }} />
-                <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Tasks awaiting your review</h2>
-              </div>
-              <p style={{ fontSize: 28, fontWeight: 700, color: pendingTaskCount > 0 ? "var(--accent)" : "var(--text-3)", margin: 0 }}>
-                {pendingTaskCount}
-              </p>
-              <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>
-                {pendingTaskCount === 0 ? "All caught up." : pendingTaskCount === 1 ? "1 task to review →" : `${pendingTaskCount} tasks to review →`}
-              </p>
-            </Link>
-          )}
-
-          {/* Reports */}
-          {permissions.includes("reports") && (
-            <div className="card" style={{ padding: 20 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                <FileText style={{ width: 16, height: 16, color: "var(--accent)" }} />
-                <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Recent Reports</h2>
-              </div>
-              {!data?.reports?.length ? (
-                <p style={{ fontSize: 13, color: "var(--text-3)" }}>No reports available yet.</p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {data.reports.slice(0, 4).map((r) => (
-                    <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div>
-                        <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{r.title}</p>
-                        <p style={{ fontSize: 11, color: "var(--text-3)" }}>{r.period} · {timeAgo(r.createdAt)}</p>
+        {/* Tasks for the client */}
+        {permissions.includes("tasks") && (
+          <section className="card" style={{ padding: 24, marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+              <ClipboardCheck style={{ width: 16, height: 16, color: "var(--accent)" }} />
+              <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Your tasks</h2>
+              {openTasks.length > 0 && (
+                <span className="badge badge-orange" style={{ fontSize: 11 }}>{openTasks.length} to do</span>
+              )}
+            </div>
+            {tasks.length === 0 ? (
+              <p style={{ fontSize: 13, color: "var(--text-3)" }}>No tasks for you right now.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {[...openTasks, ...doneTasks].map((t) => {
+                  const done = !!t.clientCompletedAt;
+                  return (
+                    <div key={t.id} style={{
+                      display: "flex", alignItems: "flex-start", gap: 12,
+                      padding: "10px 12px", borderRadius: 10,
+                      background: done ? "transparent" : "var(--bg)",
+                      border: "1px solid var(--border)",
+                      opacity: done ? 0.55 : 1,
+                    }}>
+                      <button
+                        onClick={() => toggleTask(t)}
+                        disabled={updatingTask === t.id}
+                        style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0, marginTop: 2 }}
+                        aria-label={done ? "Mark as not done" : "Mark as done"}
+                      >
+                        {updatingTask === t.id ? (
+                          <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
+                        ) : done ? (
+                          <CheckCircle2 style={{ width: 16, height: 16, color: "var(--success)" }} />
+                        ) : (
+                          <Circle style={{ width: 16, height: 16, color: "var(--text-3)" }} />
+                        )}
+                      </button>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", textDecoration: done ? "line-through" : "none" }}>{t.title}</p>
+                        {t.description && (
+                          <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>{t.description}</p>
+                        )}
+                        <div style={{ display: "flex", gap: 8, marginTop: 4, alignItems: "center" }}>
+                          {t.category && (
+                            <span style={{ fontSize: 11, color: t.category.color ?? "var(--text-3)" }}>{t.category.name}</span>
+                          )}
+                          {t.dueDate && (
+                            <span style={{ fontSize: 11, color: "var(--text-3)" }}>Due {new Date(t.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+                          )}
+                        </div>
                       </div>
-                      {r.shareToken && (
-                        <a href={`/share/report/${r.shareToken}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ padding: 5 }}>
-                          <ExternalLink style={{ width: 12, height: 12 }} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Deliverable sections */}
+        {visibleSections.length === 0 && (
+          <div className="card" style={{ padding: 32, textAlign: "center" }}>
+            <p style={{ fontSize: 14, color: "var(--text-3)" }}>
+              We haven&rsquo;t published anything to your portal yet. Your account manager will let you know when something is ready.
+            </p>
+          </div>
+        )}
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 20 }}>
+          {visibleSections.map((section) => {
+            const Icon = section.icon;
+            return (
+              <div key={section.key} className="card" style={{ padding: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                  <Icon style={{ width: 16, height: 16, color: section.iconColor }} />
+                  <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{section.title}</h2>
+                </div>
+                {section.items.length === 0 ? (
+                  <p style={{ fontSize: 13, color: "var(--text-3)" }}>Nothing published yet.</p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {section.items.map((item) => {
+                      const inner = (
+                        <div style={{
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          padding: "10px 12px", borderRadius: 8,
+                          background: "var(--bg)", border: "1px solid var(--border)",
+                          gap: 12,
+                        }}>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</p>
+                            <p style={{ fontSize: 11, color: "var(--text-3)" }}>
+                              {item.subtitle}
+                              {item.published ? ` · published ${timeAgo(item.published)}` : ""}
+                            </p>
+                          </div>
+                          {item.href && <ArrowRight style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0 }} />}
+                        </div>
+                      );
+                      return item.href ? (
+                        <a key={item.id} href={item.href} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                          {inner}
                         </a>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Goals */}
-          {permissions.includes("goals") && (
-            <div className="card" style={{ padding: 20 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                <Target style={{ width: 16, height: 16, color: "var(--success)" }} />
-                <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Active Goals</h2>
+                      ) : (
+                        <div key={item.id}>{inner}</div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              {!data?.goals?.length ? (
-                <p style={{ fontSize: 13, color: "var(--text-3)" }}>No goals set yet.</p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {data.goals.filter((g) => g.status === "active").slice(0, 4).map((g) => {
-                    const pct = g.currentValue != null && g.targetValue > 0
-                      ? Math.min(100, Math.round((g.currentValue / g.targetValue) * 100))
-                      : 0;
-                    const color = pct >= 80 ? "#22c55e" : pct >= 50 ? "#f59e0b" : "#6366f1";
-                    return (
-                      <div key={g.id}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{g.title}</span>
-                          <span style={{ fontSize: 13, fontWeight: 700, color }}>{pct}%</span>
-                        </div>
-                        <div style={{ height: 5, background: "var(--border)", borderRadius: 99 }}>
-                          <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 99 }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Communications */}
-          {permissions.includes("communications") && (
-            <div className="card" style={{ padding: 20 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                <MessageSquare style={{ width: 16, height: 16, color: "var(--warning)" }} />
-                <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Recent Updates</h2>
-              </div>
-              {!data?.communications?.length ? (
-                <p style={{ fontSize: 13, color: "var(--text-3)" }}>No communications logged yet.</p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {data.communications.slice(0, 5).map((c) => (
-                    <div key={c.id}>
-                      <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{c.subject}</p>
-                      <p style={{ fontSize: 11, color: "var(--text-3)" }}>{c.type} · {timeAgo(c.createdAt)}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Assets */}
-          {permissions.includes("assets") && (
-            <div className="card" style={{ padding: 20, gridColumn: "1 / -1" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                <Layers style={{ width: 16, height: 16, color: "var(--accent)" }} />
-                <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Your Assets</h2>
-              </div>
-              {!assets || (!assets.reports.length && !assets.landingPages.length && !assets.contentStrategies.length && !assets.proposals.length && !assets.grandPlans?.length) ? (
-                <p style={{ fontSize: 13, color: "var(--text-3)" }}>No shared assets available yet.</p>
-              ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
-                  {/* Published Reports */}
-                  {assets.reports.length > 0 && (
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                        <FileText style={{ width: 13, height: 13, color: "var(--accent)" }} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Reports</span>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {assets.reports.map((r) => (
-                          <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <div style={{ minWidth: 0 }}>
-                              <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</p>
-                              <p style={{ fontSize: 11, color: "var(--text-3)" }}>{r.period}</p>
-                            </div>
-                            <a href={`/share/report/${r.shareToken}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ padding: 5, flexShrink: 0 }}>
-                              <ExternalLink style={{ width: 12, height: 12 }} />
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Landing Pages */}
-                  {assets.landingPages.length > 0 && (
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                        <Globe style={{ width: 13, height: 13, color: "#22c55e" }} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Landing Pages</span>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {assets.landingPages.map((p) => (
-                          <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.title}</p>
-                            <a href={`/api/share/landing-page/${p.shareToken}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ padding: 5, flexShrink: 0 }}>
-                              <ExternalLink style={{ width: 12, height: 12 }} />
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Content Strategies */}
-                  {assets.contentStrategies.length > 0 && (
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                        <BookOpen style={{ width: 13, height: 13, color: "#f59e0b" }} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Content Strategies</span>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {assets.contentStrategies.map((s) => (
-                          <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <div style={{ minWidth: 0 }}>
-                              <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</p>
-                              <p style={{ fontSize: 11, color: "var(--text-3)" }}>{s.period}</p>
-                            </div>
-                            <a href={`/share/content-strategy/${s.shareToken}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ padding: 5, flexShrink: 0 }}>
-                              <ExternalLink style={{ width: 12, height: 12 }} />
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Proposals */}
-                  {assets.proposals.length > 0 && (
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                        <FileText style={{ width: 13, height: 13, color: "#6366f1" }} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Proposals</span>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {assets.proposals.map((p) => (
-                          <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.title}</p>
-                            <a href={`/share/proposal/${p.shareToken}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ padding: 5, flexShrink: 0 }}>
-                              <ExternalLink style={{ width: 12, height: 12 }} />
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Grand Plans */}
-                  {assets.grandPlans?.length > 0 && (
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                        <Map style={{ width: 13, height: 13, color: "#0f172a" }} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Grand Plans</span>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {assets.grandPlans.map((gp) => (
-                          <div key={gp.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <div style={{ minWidth: 0 }}>
-                              <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{gp.title}</p>
-                              <p style={{ fontSize: 11, color: "var(--text-3)" }}>{gp.purpose === "pitch" ? "Pitch" : gp.purpose === "onboarding" ? "Onboarding" : "Strategy"}</p>
-                            </div>
-                            <a href={`/share/grand-plan/${gp.shareToken}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ padding: 5, flexShrink: 0 }}>
-                              <ExternalLink style={{ width: 12, height: 12 }} />
-                            </a>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+            );
+          })}
         </div>
       </main>
     </div>

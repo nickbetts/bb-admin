@@ -71,6 +71,7 @@ export async function POST(
       dueDate?: string;
       sourceType?: string;
       sourceRef?: string;
+      clientPortalUserId?: string | null;
     };
 
     if (!data.title) {
@@ -106,6 +107,7 @@ export async function POST(
         dueDate: data.dueDate ?? null,
         sourceType: data.sourceType ?? "manual",
         sourceRef: data.sourceRef ?? null,
+        clientPortalUserId: data.clientPortalUserId ?? null,
         ...(data.assigneeIds && data.assigneeIds.length > 0
           ? {
               assignees: {

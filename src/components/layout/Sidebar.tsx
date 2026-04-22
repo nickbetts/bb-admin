@@ -60,7 +60,7 @@ const navItems: NavItem[] = [
 
 const opsNavItems: NavItem[] = [
   { href: "/portfolio", label: "Portfolio Health", icon: <Activity className="h-4 w-4" />, permission: "portfolio" },
-  { href: "/tools/actions", label: "Actions", icon: <CheckSquare className="h-4 w-4" />, permission: "actions" },
+  { href: "/tools/actions", label: "Task Overview", icon: <CheckSquare className="h-4 w-4" />, permission: "actions" },
   { href: "/tools/communications", label: "Communications", icon: <MessageSquare className="h-4 w-4" />, permission: "communications" },
 ];
 

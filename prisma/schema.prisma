@@ -38,6 +38,8 @@ model User {
   timeEntries         AgencyTimeEntry[]
   landingPages        LandingPage[]
   taskAssignments     TaskAssignee[]
+  taskComments        TaskComment[]
+  taskTimeLogs        TaskTimeLog[]
 }
 
 model Session {
@@ -209,6 +211,9 @@ model Report {
   approvalNotes    String?
   approvedBy       String?
   approvedAt       DateTime?
+  // Client-portal publish flag — only items with portalPublishedAt set are visible in the client portal
+  portalPublishedAt DateTime?
+  portalPublishedBy String?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
   client           Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -464,13 +469,20 @@ model ActionItem {
   clientApprovedAt     DateTime?
   clientApprovalSource String?              // "portal" | "agency"
   approvalNotes        String?
+  // Client-side ownership — when set, this task is something the client portal user is asked to do.
+  // Such tasks appear in the client portal's "Your tasks" list and the client can mark them done.
+  clientPortalUserId   String?
+  clientCompletedAt    DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   category    TaskCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   assignees   TaskAssignee[]
+  comments    TaskComment[]
+  timeLogs    TaskTimeLog[]
 
   @@index([clientId, categoryId, status, boardOrder])
+  @@index([clientPortalUserId, status])
 }
 
 // Admin-managed global list of task categories. Each client picks which to display via ClientTaskCategory.
@@ -515,6 +527,39 @@ model TaskAssignee {
 
   @@unique([actionItemId, userId])
   @@index([userId])
+}
+
+// Threaded comments on tasks. Authored by an agency User.
+model TaskComment {
+  id           String     @id @default(cuid())
+  actionItemId String
+  userId       String     // Author
+  body         String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  actionItem   ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([actionItemId, createdAt])
+}
+
+// Time log entries on tasks. An entry with endedAt = null is the user's currently-running timer.
+// Total elapsed = sum(durationMs) for ended entries + (now - startedAt) for any active entry.
+model TaskTimeLog {
+  id           String     @id @default(cuid())
+  actionItemId String
+  userId       String     // Owner of the timer entry
+  startedAt    DateTime   @default(now())
+  endedAt      DateTime?
+  durationMs   Int?       // Stamped on stop = endedAt - startedAt (ms)
+  note         String?    // Optional note on what was worked on
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  actionItem   ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([actionItemId, startedAt])
+  @@index([userId, endedAt])
 }
 
 // Phase 3: Client Communication Hub — centralised communication log
@@ -653,6 +698,9 @@ model ContentStrategy {
   generatedHtml    String    // Full standalone HTML output
   shareToken       String?   @unique
   sharePassword    String?   // bcrypt hash of password for share link
+  // Client-portal publish flag — only items with portalPublishedAt set are visible in the client portal
+  portalPublishedAt DateTime?
+  portalPublishedBy String?
   viewCount        Int       @default(0)
   lastViewedAt     DateTime?
   createdAt        DateTime  @default(now())
@@ -714,6 +762,9 @@ model LandingPage {
   viewCount        Int                  @default(0)
   lastViewedAt     DateTime?
   status           String               @default("draft") // draft | published | archived
+  // Client-portal publish flag — only items with portalPublishedAt set are visible in the client portal
+  portalPublishedAt DateTime?
+  portalPublishedBy String?
   templateId       String?              // LandingPageTemplate.id if created from template
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
@@ -805,6 +856,9 @@ model GrandPlan {
   shareToken              String?   @unique
   sharePassword           String?             // SHA256 hash of password for share link
   shareExpiresAt          DateTime?           // Optional expiry for share link
+  // Client-portal publish flag — only items with portalPublishedAt set are visible in the client portal
+  portalPublishedAt       DateTime?
+  portalPublishedBy       String?
   viewCount               Int       @default(0)
   lastViewedAt            DateTime?
   createdAt               DateTime  @default(now())
@@ -923,4 +977,30 @@ model PortalMessage {
   thread      PortalThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@index([threadId, createdAt])
+}
+
+// ─── Subscription Manager ───────────────────────────────────────────────────
+// Internal log of the agency's own SaaS / platform subscriptions
+// (Claude, Vercel, Figma, etc.) so managers can see what we're paying
+// for and where the credentials are stored. Passwords are encrypted at
+// rest using AES-256-GCM with the SESSION_SECRET.
+model AgencySubscription {
+  id            String   @id @default(cuid())
+  platform      String   // e.g. "Claude", "Vercel", "Figma"
+  category      String?  // e.g. "AI", "Hosting", "Design", "Marketing"
+  url           String?  // login URL
+  email         String?  // login email / username
+  passwordEnc   String?  // AES-256-GCM ciphertext (format: iv:tag:cipher, hex)
+  cost          Float    @default(0)     // amount in chosen currency
+  currency      String   @default("GBP") // ISO code
+  billingCycle  String   @default("monthly") // monthly|yearly
+  renewalDate   String?  // ISO date (next renewal/billing date)
+  owner         String?  // person/team responsible internally
+  notes         String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([platform])
+  @@index([active])
 }

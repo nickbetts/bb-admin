@@ -1,547 +1,697 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { CheckSquare, Plus, Loader2, Trash2, Pencil, Filter, Square, CheckCheck } from "lucide-react";
-import { useConfirm } from "@/components/ui/ConfirmDialog";
-import { useToast } from "@/components/ui/Toast";
+/**
+ * Task Overview — cross-client task command centre for agency management.
+ *
+ * Mirrors the per-client kanban layout (status columns) but spans every client.
+ * Use the "Group by" switcher to slice the same data by Board (TaskCategory),
+ * Client, or Assignee — each value becomes a horizontal tab; the active tab
+ * shows the canonical 6-column kanban (To do → Done) for the matching subset.
+ *
+ * Filters narrow the dataset: client, board, assignee, priority, status.
+ * Cards open the existing TaskDrawer (with comments + timer support).
+ */
 
-interface ActionItem {
-  id: string;
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  CheckSquare, Plus, Loader2, Filter, X, MessageSquare, Clock, AlertCircle,
+} from "lucide-react";
+import { TaskDrawer, type TaskRecord } from "@/components/tasks/TaskDrawer";
+
+// We extend TaskRecord with the cross-client extras returned by /api/tasks.
+interface OverviewTask extends TaskRecord {
   clientId: string;
-  title: string;
-  description: string | null;
-  status: string;
-  priority: string;
-  assignedTo: string | null;
-  dueDate: string | null;
-  completedAt: string | null;
-  outcome: string | null;
-  sourceType: string | null;
-  createdAt: string;
+  client: { id: string; name: string; slug: string };
+  totalMs: number;
+  activeTimer: { userId: string; startedAt: string } | null;
+  _count: { comments: number; timeLogs: number };
 }
 
-interface Client {
-  id: string;
-  name: string;
-  slug: string;
-}
+interface ClientLite { id: string; name: string; slug: string }
+interface UserLite { id: string; name: string | null; email: string }
+interface CategoryLite { id: string; name: string; color: string | null }
 
-interface ActionWithClient extends ActionItem {
-  clientName?: string;
-}
+type GroupBy = "category" | "client" | "assignee";
 
-const STATUSES = ["open", "in_progress", "completed", "cancelled"];
+const STATUS_COLUMNS: { key: string; label: string; tone: string }[] = [
+  { key: "to_do",                label: "To do",                  tone: "var(--text-3)" },
+  { key: "in_progress",          label: "In progress",            tone: "#0ea5e9" },
+  { key: "for_approval",         label: "For approval",           tone: "#f59e0b" },
+  { key: "signed_off_internal",  label: "Signed off internally",  tone: "#8b5cf6" },
+  { key: "signed_off_client",    label: "Signed off by client",   tone: "#10b981" },
+  { key: "done",                 label: "Done",                   tone: "#16a34a" },
+];
 
-// Sources used by ActionItem.sourceType across the platform
-const SOURCE_LABELS: Record<string, string> = {
-  manual: "Manual",
-  ai_recommendation: "AI",
-  content_strategy: "Content strategy",
-  anomaly: "Anomaly",
-};
-const SOURCE_COLORS: Record<string, string> = {
-  manual: "#6b7280",
-  ai_recommendation: "#8b5cf6",
-  content_strategy: "#0ea5e9",
-  anomaly: "#f59e0b",
-};
 const PRIORITIES = ["urgent", "high", "medium", "low"];
-
-const statusColors: Record<string, string> = {
-  open: "#6366f1",
-  in_progress: "#f59e0b",
-  completed: "#22c55e",
-  cancelled: "#9ca3af",
+const PRIORITY_BADGE: Record<string, string> = {
+  low: "badge badge-slate",
+  medium: "badge badge-blue",
+  high: "badge badge-orange",
+  urgent: "badge badge-red",
 };
 
-const priorityColors: Record<string, string> = {
-  urgent: "#ef4444",
-  high: "#f97316",
-  medium: "#6366f1",
-  low: "#9ca3af",
-};
+function initials(user: { name: string | null; email: string }) {
+  if (user.name) {
+    const parts = user.name.trim().split(/\s+/);
+    return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || user.name[0]!.toUpperCase();
+  }
+  return user.email[0]?.toUpperCase() ?? "?";
+}
 
-const statusLabels: Record<string, string> = {
-  open: "Open",
-  in_progress: "In Progress",
-  completed: "Completed",
-  cancelled: "Cancelled",
-};
+function avatarBg(seed: string) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return `hsl(${h % 360}, 60%, 45%)`;
+}
 
-export default function ActionsPage() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const confirm = useConfirm();
-  const { toast } = useToast();
+function formatDuration(ms: number) {
+  if (ms <= 0) return "0m";
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
 
-  const [actions, setActions] = useState<ActionWithClient[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+const UNCATEGORISED_KEY = "__uncategorised__";
+const UNASSIGNED_KEY = "__unassigned__";
+
+export default function TaskOverviewPage() {
+  const [tasks, setTasks] = useState<OverviewTask[]>([]);
+  const [clients, setClients] = useState<ClientLite[]>([]);
+  const [users, setUsers] = useState<UserLite[]>([]);
+  const [categories, setCategories] = useState<CategoryLite[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState(() => searchParams?.get("status") ?? "all");
-  const [filterClient, setFilterClient] = useState(() => searchParams?.get("client") ?? "all");
-  const [filterPriority, setFilterPriority] = useState(() => searchParams?.get("priority") ?? "all");
-  const [filterSource, setFilterSource] = useState(() => searchParams?.get("source") ?? "all");
-  const [showForm, setShowForm] = useState(false);
-  const [editingAction, setEditingAction] = useState<ActionWithClient | null>(null);
-  const [form, setForm] = useState({ clientId: "", title: "", description: "", priority: "medium", assignedTo: "", dueDate: "" });
-  const [saving, setSaving] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkWorking, setBulkWorking] = useState(false);
-  const [defaultAssignee, setDefaultAssignee] = useState("");
 
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.ok ? r.json() : {})
-      .then((s: Record<string, string>) => { if (s.defaultActionAssignee) setDefaultAssignee(s.defaultActionAssignee); })
-      .catch(() => {});
-  }, []);
+  // Filters
+  const [filterClientIds, setFilterClientIds] = useState<string[]>([]);
+  const [filterCategoryIds, setFilterCategoryIds] = useState<string[]>([]);
+  const [filterAssigneeIds, setFilterAssigneeIds] = useState<string[]>([]);
+  const [filterPriorities, setFilterPriorities] = useState<string[]>([]);
+  const [includeArchived, setIncludeArchived] = useState(false);
 
-  // Mirror filter state → URL so refresh + back/forward preserve choices.
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams?.toString() ?? "");
-    if (filterStatus === "all") params.delete("status"); else params.set("status", filterStatus);
-    if (filterClient === "all") params.delete("client"); else params.set("client", filterClient);
-    if (filterPriority === "all") params.delete("priority"); else params.set("priority", filterPriority);
-    if (filterSource === "all") params.delete("source"); else params.set("source", filterSource);
-    const next = params.toString();
-    const current = searchParams?.toString() ?? "";
-    if (next !== current) {
-      router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterStatus, filterClient, filterPriority, filterSource]);
+  // Grouping (which dimension drives the tab strip)
+  const [groupBy, setGroupBy] = useState<GroupBy>("category");
+  const [activeGroupKey, setActiveGroupKey] = useState<string>("__all__");
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const clientsRes = await fetch("/api/clients");
-      if (clientsRes.ok) {
-        const data = await clientsRes.json() as { clients: Client[] };
-        setClients(data.clients ?? []);
+  // Drawer
+  const [openTask, setOpenTask] = useState<OverviewTask | null>(null);
 
-        const allActions: ActionWithClient[] = [];
-        await Promise.all(
-          (data.clients ?? []).map(async (client) => {
-            const res = await fetch(`/api/clients/${client.id}/actions`);
-            if (res.ok) {
-              const clientActions = await res.json() as ActionItem[];
-              allActions.push(...clientActions.map((a) => ({ ...a, clientName: client.name })));
-            }
-          })
-        );
-        allActions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setActions(allActions);
-      }
-    } catch { /* ignore */ } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
-
-  async function handleSave() {
-    if (!form.clientId || !form.title) return;
-    setSaving(true);
-    try {
-      const url = editingAction
-        ? `/api/clients/${editingAction.clientId}/actions/${editingAction.id}`
-        : `/api/clients/${form.clientId}/actions`;
-      const method = editingAction ? "PATCH" : "POST";
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      if (res.ok) {
-        setShowForm(false);
-        setEditingAction(null);
-        setForm({ clientId: "", title: "", description: "", priority: "medium", assignedTo: "", dueDate: "" });
-        await loadData();
-      }
-    } catch { /* ignore */ } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleStatusChange(action: ActionWithClient, newStatus: string) {
-    await fetch(`/api/clients/${action.clientId}/actions/${action.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
-    await loadData();
-  }
-
-  async function handleDelete(action: ActionWithClient) {
-    if (!(await confirm({ title: "Delete this action?", confirmLabel: "Delete", danger: true }))) return;
-    await fetch(`/api/clients/${action.clientId}/actions/${action.id}`, { method: "DELETE" });
-    setSelectedIds((prev) => { const next = new Set(prev); next.delete(action.id); return next; });
-    await loadData();
-  }
-
-  async function handleBulkComplete() {
-    const toComplete = filtered.filter((a) => selectedIds.has(a.id) && a.status !== "completed");
-    if (toComplete.length === 0) return;
-    setBulkWorking(true);
-    try {
-      await Promise.all(toComplete.map((a) => fetch(`/api/clients/${a.clientId}/actions/${a.id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "completed" }),
-      })));
-      setSelectedIds(new Set());
-      toast(`Marked ${toComplete.length} action${toComplete.length === 1 ? "" : "s"} as completed`, "success");
-      await loadData();
-    } finally { setBulkWorking(false); }
-  }
-
-  async function handleBulkDelete() {
-    const targets = filtered.filter((a) => selectedIds.has(a.id));
-    if (targets.length === 0) return;
-    if (!(await confirm({ title: `Delete ${targets.length} action${targets.length === 1 ? "" : "s"}?`, description: "This cannot be undone.", confirmLabel: "Delete", danger: true }))) return;
-    setBulkWorking(true);
-    try {
-      await Promise.all(targets.map((a) => fetch(`/api/clients/${a.clientId}/actions/${a.id}`, { method: "DELETE" })));
-      setSelectedIds(new Set());
-      toast(`Deleted ${targets.length} action${targets.length === 1 ? "" : "s"}`, "success");
-      await loadData();
-    } finally { setBulkWorking(false); }
-  }
-
-  function startEdit(action: ActionWithClient) {
-    setForm({
-      clientId: action.clientId,
-      title: action.title,
-      description: action.description ?? "",
-      priority: action.priority,
-      assignedTo: action.assignedTo ?? "",
-      dueDate: action.dueDate ?? "",
-    });
-    setEditingAction(action);
-    setShowForm(true);
-  }
-
-  const filtered = actions.filter((a) => {
-    if (filterStatus !== "all" && a.status !== filterStatus) return false;
-    if (filterClient !== "all" && a.clientId !== filterClient) return false;
-    if (filterPriority !== "all" && a.priority !== filterPriority) return false;
-    if (filterSource !== "all") {
-      const src = a.sourceType ?? "manual";
-      if (src !== filterSource) return false;
-    }
-    return true;
+  // New task modal
+  const [showNew, setShowNew] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newDraft, setNewDraft] = useState({
+    clientId: "", title: "", categoryId: "", priority: "medium", status: "to_do", assigneeIds: [] as string[], dueDate: "",
   });
 
-  // Sources actually present on the loaded actions — used to populate the dropdown.
-  const availableSources = Array.from(new Set(actions.map((a) => a.sourceType ?? "manual"))).sort();
+  // Live tick for active timer chips on cards.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const anyActive = tasks.some((t) => t.activeTimer);
+    if (!anyActive) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [tasks]);
 
-  const grouped = STATUSES.reduce<Record<string, ActionWithClient[]>>((acc, s) => {
-    acc[s] = filtered.filter((a) => a.status === s);
-    return acc;
-  }, {});
+  const loadFilters = useCallback(async () => {
+    const [cRes, uRes, catRes] = await Promise.all([
+      fetch("/api/clients"),
+      fetch("/api/users"),
+      fetch("/api/task-categories"),
+    ]);
+    if (cRes.ok) {
+      const data = await cRes.json() as ClientLite[] | { clients: ClientLite[] };
+      setClients(Array.isArray(data) ? data : (data.clients ?? []));
+    }
+    if (uRes.ok) setUsers(await uRes.json() as UserLite[]);
+    if (catRes.ok) setCategories(await catRes.json() as CategoryLite[]);
+  }, []);
+
+  const loadTasks = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      filterClientIds.forEach((v) => params.append("clientId", v));
+      filterCategoryIds.forEach((v) => params.append("categoryId", v));
+      filterAssigneeIds.forEach((v) => params.append("assigneeId", v));
+      filterPriorities.forEach((v) => params.append("priority", v));
+      if (includeArchived) params.set("includeArchived", "1");
+      const res = await fetch(`/api/tasks?${params.toString()}`, { cache: "no-store" });
+      if (res.ok) setTasks(await res.json() as OverviewTask[]);
+    } finally {
+      setLoading(false);
+    }
+  }, [filterClientIds, filterCategoryIds, filterAssigneeIds, filterPriorities, includeArchived]);
+
+  useEffect(() => { void loadFilters(); }, [loadFilters]);
+  useEffect(() => { void loadTasks(); }, [loadTasks]);
+
+  // Build group buckets from current task set.
+  const groups = useMemo(() => {
+    const map = new Map<string, { key: string; label: string; color?: string | null; count: number }>();
+    map.set("__all__", { key: "__all__", label: "All tasks", count: tasks.length });
+    for (const t of tasks) {
+      if (groupBy === "category") {
+        const k = t.category?.id ?? UNCATEGORISED_KEY;
+        const existing = map.get(k);
+        if (existing) existing.count += 1;
+        else map.set(k, { key: k, label: t.category?.name ?? "Uncategorised", color: t.category?.color ?? null, count: 1 });
+      } else if (groupBy === "client") {
+        const k = t.client.id;
+        const existing = map.get(k);
+        if (existing) existing.count += 1;
+        else map.set(k, { key: k, label: t.client.name, count: 1 });
+      } else {
+        if (t.assignees.length === 0) {
+          const k = UNASSIGNED_KEY;
+          const existing = map.get(k);
+          if (existing) existing.count += 1;
+          else map.set(k, { key: k, label: "Unassigned", count: 1 });
+        } else {
+          for (const a of t.assignees) {
+            const k = a.user.id;
+            const existing = map.get(k);
+            if (existing) existing.count += 1;
+            else map.set(k, { key: k, label: a.user.name ?? a.user.email, count: 1 });
+          }
+        }
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.key === "__all__") return -1;
+      if (b.key === "__all__") return 1;
+      return b.count - a.count || a.label.localeCompare(b.label);
+    });
+  }, [tasks, groupBy]);
+
+  // Reset active group if it disappears (e.g. after filter change).
+  useEffect(() => {
+    if (!groups.some((g) => g.key === activeGroupKey)) setActiveGroupKey("__all__");
+  }, [groups, activeGroupKey]);
+
+  // Tasks visible in active tab.
+  const visibleTasks = useMemo(() => {
+    if (activeGroupKey === "__all__") return tasks;
+    if (groupBy === "category") {
+      return tasks.filter((t) => (t.category?.id ?? UNCATEGORISED_KEY) === activeGroupKey);
+    }
+    if (groupBy === "client") {
+      return tasks.filter((t) => t.client.id === activeGroupKey);
+    }
+    // assignee
+    if (activeGroupKey === UNASSIGNED_KEY) return tasks.filter((t) => t.assignees.length === 0);
+    return tasks.filter((t) => t.assignees.some((a) => a.user.id === activeGroupKey));
+  }, [tasks, activeGroupKey, groupBy]);
+
+  const tasksByStatus = useMemo(() => {
+    const map: Record<string, OverviewTask[]> = {};
+    for (const col of STATUS_COLUMNS) map[col.key] = [];
+    for (const t of visibleTasks) {
+      if (map[t.status]) map[t.status]!.push(t);
+    }
+    for (const k of Object.keys(map)) {
+      map[k]!.sort((a, b) => a.boardOrder - b.boardOrder);
+    }
+    return map;
+  }, [visibleTasks]);
+
+  // Header KPIs
+  const kpis = useMemo(() => {
+    const overdue = tasks.filter((t) => {
+      if (!t.dueDate) return false;
+      if (t.status === "done" || t.status === "cancelled") return false;
+      return new Date(t.dueDate) < new Date(new Date().toDateString());
+    }).length;
+    const inProgress = tasks.filter((t) => t.status === "in_progress").length;
+    const forApproval = tasks.filter((t) => t.status === "for_approval").length;
+    const activeTimers = tasks.filter((t) => t.activeTimer).length;
+    return { total: tasks.length, overdue, inProgress, forApproval, activeTimers };
+  }, [tasks]);
+
+  async function createTask() {
+    if (!newDraft.title.trim() || !newDraft.clientId) return;
+    setCreating(true);
+    try {
+      const res = await fetch(`/api/clients/${newDraft.clientId}/actions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newDraft.title.trim(),
+          status: newDraft.status,
+          priority: newDraft.priority,
+          categoryId: newDraft.categoryId || null,
+          assigneeIds: newDraft.assigneeIds,
+          dueDate: newDraft.dueDate || undefined,
+          sourceType: "manual",
+        }),
+      });
+      if (res.ok) {
+        setShowNew(false);
+        setNewDraft({ clientId: "", title: "", categoryId: "", priority: "medium", status: "to_do", assigneeIds: [], dueDate: "" });
+        await loadTasks();
+      }
+    } finally { setCreating(false); }
+  }
+
+  function clearFilters() {
+    setFilterClientIds([]);
+    setFilterCategoryIds([]);
+    setFilterAssigneeIds([]);
+    setFilterPriorities([]);
+    setIncludeArchived(false);
+  }
+
+  const hasFilters = filterClientIds.length + filterCategoryIds.length + filterAssigneeIds.length + filterPriorities.length > 0 || includeArchived;
+
+  const drawerCategoryName = openTask?.category?.name ?? "Uncategorised";
 
   return (
-    <div className="page" style={{ maxWidth: 1200 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
+    <div className="page" style={{ maxWidth: 1500 }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, gap: 16, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CheckSquare style={{ width: 20, height: 20, color: "white" }} />
           </div>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Action Board</h1>
-            <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>Track actions and tasks across all clients</p>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", lineHeight: 1 }}>Task Overview</h1>
+            <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 4 }}>
+              See who&rsquo;s on what task across every client, board, and status.
+            </p>
           </div>
         </div>
         <button
           className="btn btn-primary btn-sm"
           style={{ gap: 6, display: "inline-flex", alignItems: "center" }}
-          onClick={() => { setShowForm(true); setEditingAction(null); setForm({ clientId: "", title: "", description: "", priority: "medium", assignedTo: defaultAssignee, dueDate: "" }); }}
+          onClick={() => { setShowNew(true); setNewDraft((d) => ({ ...d, clientId: filterClientIds[0] ?? d.clientId, categoryId: filterCategoryIds[0] ?? d.categoryId })); }}
         >
-          <Plus style={{ width: 14, height: 14 }} /> New Action
+          <Plus style={{ width: 14, height: 14 }} /> New task
         </button>
       </div>
 
-      {/* Filters */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 24, flexWrap: "wrap", alignItems: "center" }}>
+      {/* KPI strip */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 18 }}>
+        <KpiTile label="Total tasks" value={kpis.total} />
+        <KpiTile label="In progress" value={kpis.inProgress} tone="#0ea5e9" />
+        <KpiTile label="For approval" value={kpis.forApproval} tone="#f59e0b" />
+        <KpiTile label="Overdue" value={kpis.overdue} tone="#ef4444" icon={<AlertCircle style={{ width: 12, height: 12 }} />} />
+        <KpiTile label="Active timers" value={kpis.activeTimers} tone="#ef4444" icon={<Clock style={{ width: 12, height: 12 }} />} />
+      </div>
+
+      {/* Filter bar */}
+      <div className="card" style={{ padding: 12, marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
         <Filter style={{ width: 14, height: 14, color: "var(--text-3)" }} />
-        <select className="form-input" style={{ width: "auto", fontSize: 13 }} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-          <option value="all">All Statuses</option>
-          {STATUSES.map((s) => <option key={s} value={s}>{statusLabels[s]}</option>)}
-        </select>
-        <select className="form-input" style={{ width: "auto", fontSize: 13 }} value={filterClient} onChange={(e) => setFilterClient(e.target.value)}>
-          <option value="all">All Clients</option>
-          {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <select className="form-input" style={{ width: "auto", fontSize: 13 }} value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
-          <option value="all">All Priorities</option>
-          {PRIORITIES.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
-        </select>
-        {availableSources.length > 1 && (
-          <select className="form-input" style={{ width: "auto", fontSize: 13 }} value={filterSource} onChange={(e) => setFilterSource(e.target.value)}>
-            <option value="all">All Sources</option>
-            {availableSources.map((s) => <option key={s} value={s}>{SOURCE_LABELS[s] ?? s}</option>)}
+
+        <MultiPicker
+          label="Clients"
+          values={filterClientIds}
+          options={clients.map((c) => ({ value: c.id, label: c.name }))}
+          onChange={setFilterClientIds}
+        />
+        <MultiPicker
+          label="Boards"
+          values={filterCategoryIds}
+          options={categories.map((c) => ({ value: c.id, label: c.name, color: c.color ?? undefined }))}
+          onChange={setFilterCategoryIds}
+        />
+        <MultiPicker
+          label="Assignees"
+          values={filterAssigneeIds}
+          options={users.map((u) => ({ value: u.id, label: u.name ?? u.email }))}
+          onChange={setFilterAssigneeIds}
+        />
+        <MultiPicker
+          label="Priority"
+          values={filterPriorities}
+          options={PRIORITIES.map((p) => ({ value: p, label: p[0]!.toUpperCase() + p.slice(1) }))}
+          onChange={setFilterPriorities}
+        />
+
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-2)" }}>
+          <input type="checkbox" checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} />
+          Include cancelled
+        </label>
+
+        <div style={{ flex: 1 }} />
+
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-3)" }}>
+          Group by
+          <select className="form-input" style={{ width: "auto", fontSize: 12, padding: "4px 8px" }} value={groupBy} onChange={(e) => { setGroupBy(e.target.value as GroupBy); setActiveGroupKey("__all__"); }}>
+            <option value="category">Board</option>
+            <option value="client">Client</option>
+            <option value="assignee">Assignee</option>
           </select>
+        </div>
+
+        {hasFilters && (
+          <button onClick={clearFilters} className="btn btn-ghost btn-sm" style={{ fontSize: 12, gap: 4, display: "inline-flex", alignItems: "center" }}>
+            <X style={{ width: 12, height: 12 }} /> Clear
+          </button>
         )}
       </div>
 
-      {/* Create/Edit Form */}
-      {showForm && (
-        <div className="card" style={{ padding: 20, marginBottom: 24 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", marginBottom: 16 }}>
-            {editingAction ? "Edit Action" : "New Action"}
-          </h3>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Client *</label>
-              <select className="form-input" value={form.clientId} onChange={(e) => setForm((f) => ({ ...f, clientId: e.target.value }))} disabled={!!editingAction}>
-                <option value="">Select client…</option>
-                {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Priority</label>
-              <select className="form-input" value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}>
-                {PRIORITIES.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
-              </select>
-            </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Title *</label>
-              <input className="form-input" placeholder="Action title…" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
-            </div>
-            <div>
-              <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Assigned To</label>
-              <input className="form-input" placeholder="Name or email" value={form.assignedTo} onChange={(e) => setForm((f) => ({ ...f, assignedTo: e.target.value }))} />
-            </div>
-            <div>
-              <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Due Date</label>
-              <input className="form-input" type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} />
-            </div>
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label style={{ fontSize: 12, color: "var(--text-2)", display: "block", marginBottom: 4 }}>Description</label>
-              <textarea className="form-input" rows={2} placeholder="Optional details…" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-            <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving || !form.title || !form.clientId}>
-              {saving ? <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> : null}
-              {saving ? "Saving…" : "Save"}
+      {/* Group tabs */}
+      <div style={{
+        display: "flex", gap: 4, borderBottom: "1px solid var(--border-subtle)", marginBottom: 16, overflowX: "auto", paddingBottom: 1,
+      }}>
+        {groups.map((g) => {
+          const isActive = g.key === activeGroupKey;
+          return (
+            <button
+              key={g.key}
+              onClick={() => setActiveGroupKey(g.key)}
+              style={{
+                padding: "10px 14px", fontSize: 13, fontWeight: 600,
+                background: "transparent", border: "none",
+                borderBottom: `2px solid ${isActive ? (g.color ?? "var(--accent)") : "transparent"}`,
+                color: isActive ? "var(--text)" : "var(--text-3)",
+                cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
+              }}
+            >
+              {g.color !== undefined && <span style={{ width: 8, height: 8, borderRadius: "50%", background: g.color ?? "var(--text-3)" }} />}
+              {g.label}
+              <span style={{ fontSize: 11, color: "var(--text-3)", background: "var(--bg-2)", borderRadius: 99, padding: "1px 7px" }}>{g.count}</span>
             </button>
-            <button className="btn btn-secondary btn-sm" onClick={() => { setShowForm(false); setEditingAction(null); }}>Cancel</button>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </div>
 
-      {/* Bulk action bar — shown when items are selected */}
-      {selectedIds.size > 0 && (
-        <div style={{
-          position: "sticky", top: 60, zIndex: 50,
-          background: "var(--accent)", color: "#fff",
-          borderRadius: "var(--r)",
-          padding: "10px 16px",
-          marginBottom: 16,
-          display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
-          boxShadow: "0 4px 16px rgba(99,102,241,0.35)",
-        }}>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>{selectedIds.size} selected</span>
-          <div style={{ flex: 1 }} />
-          <button
-            className="btn btn-sm"
-            disabled={bulkWorking}
-            onClick={handleBulkComplete}
-            style={{ background: "rgba(255,255,255,0.2)", color: "#fff", border: "1px solid rgba(255,255,255,0.3)", gap: 5, display: "inline-flex", alignItems: "center" }}
-          >
-            <CheckCheck style={{ width: 13, height: 13 }} />
-            Mark complete
-          </button>
-          <button
-            className="btn btn-sm"
-            disabled={bulkWorking}
-            onClick={handleBulkDelete}
-            style={{ background: "rgba(239,68,68,0.25)", color: "#fff", border: "1px solid rgba(239,68,68,0.4)", gap: 5, display: "inline-flex", alignItems: "center" }}
-          >
-            <Trash2 style={{ width: 13, height: 13 }} />
-            Delete
-          </button>
-          <button
-            className="btn btn-sm"
-            onClick={() => setSelectedIds(new Set())}
-            style={{ background: "transparent", color: "rgba(255,255,255,0.75)", border: "none", fontSize: 12 }}
-          >
-            Clear
-          </button>
-        </div>
-      )}
-
+      {/* Kanban */}
       {loading ? (
-        <div style={{ textAlign: "center", padding: 60, color: "var(--text-3)", fontSize: 14 }}>
-          <Loader2 style={{ width: 20, height: 20, animation: "spin 1s linear infinite", margin: "0 auto 8px", display: "block" }} />
-          Loading actions…
+        <div style={{ padding: 60, textAlign: "center", color: "var(--text-3)" }}>
+          <Loader2 className="animate-spin" style={{ width: 20, height: 20, display: "inline-block" }} />
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
-          {STATUSES.map((status) => {
-            const colActions = grouped[status] ?? [];
-            const allInColSelected = colActions.length > 0 && colActions.every((a) => selectedIds.has(a.id));
-            const someInColSelected = colActions.some((a) => selectedIds.has(a.id));
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(6, minmax(240px, 1fr))",
+          gap: 12,
+          overflowX: "auto",
+          paddingBottom: 12,
+        }}>
+          {STATUS_COLUMNS.map((col) => {
+            const colTasks = tasksByStatus[col.key] ?? [];
             return (
-            <div key={status}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                {/* Select-all for this column */}
-                <button
-                  type="button"
-                  aria-label={allInColSelected ? `Deselect all ${statusLabels[status]}` : `Select all ${statusLabels[status]}`}
-                  onClick={() => {
-                    if (allInColSelected) {
-                      setSelectedIds((prev) => { const next = new Set(prev); colActions.forEach((a) => next.delete(a.id)); return next; });
-                    } else {
-                      setSelectedIds((prev) => { const next = new Set(prev); colActions.forEach((a) => next.add(a.id)); return next; });
-                    }
-                  }}
-                  style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", color: someInColSelected ? "var(--accent)" : "var(--text-4)" }}
-                >
-                  {allInColSelected
-                    ? <CheckCheck style={{ width: 14, height: 14 }} />
-                    : <Square style={{ width: 14, height: 14 }} />
-                  }
-                </button>
-                <span style={{ width: 10, height: 10, borderRadius: "50%", background: statusColors[status], flexShrink: 0 }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{statusLabels[status]}</span>
-                <span style={{ fontSize: 11, color: "var(--text-4)", background: "var(--bg-2)", borderRadius: 99, padding: "2px 7px" }}>
-                  {colActions.length}
-                </span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {(grouped[status] ?? []).length === 0 ? (
-                  <div style={{ border: "1px dashed var(--border)", borderRadius: 8, padding: "16px 12px", textAlign: "center", fontSize: 12, color: "var(--text-4)" }}>
-                    No actions
+              <div key={col.key} style={{ background: "var(--bg-2)", borderRadius: "var(--r-md)", padding: 12, display: "flex", flexDirection: "column", minWidth: 240 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: col.tone }} />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", textTransform: "uppercase", letterSpacing: 0.4 }}>
+                      {col.label}
+                    </span>
+                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>{colTasks.length}</span>
                   </div>
-                ) : (
-                  (grouped[status] ?? []).map((action) => {
-                    const isOverdue = !!action.dueDate
-                      && action.status !== "completed"
-                      && action.status !== "cancelled"
-                      && new Date(action.dueDate) < new Date(new Date().toDateString());
-                    const isSelected = selectedIds.has(action.id);
-                    return (
-                    <div
-                      key={action.id}
-                      className="card"
-                      style={{
-                        padding: 14,
-                        ...(isSelected ? { borderColor: "var(--accent)", boxShadow: "0 0 0 2px rgba(99,102,241,0.15)" } : {}),
-                        ...(isOverdue && !isSelected ? { borderColor: "rgba(239,68,68,0.45)", background: "rgba(239,68,68,0.04)" } : {}),
-                      }}
-                    >
-                      {/* Selection checkbox row */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                        <button
-                          type="button"
-                          aria-label={isSelected ? "Deselect action" : "Select action"}
-                          onClick={() => setSelectedIds((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(action.id)) next.delete(action.id); else next.add(action.id);
-                            return next;
-                          })}
-                          style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", color: isSelected ? "var(--accent)" : "var(--text-4)", flexShrink: 0 }}
-                        >
-                          {isSelected ? <CheckSquare style={{ width: 14, height: 14 }} /> : <Square style={{ width: 14, height: 14 }} />}
-                        </button>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                        <div style={{ flex: 1, display: "flex", gap: 10, alignItems: "flex-start" }}>
-                          <button
-                            type="button"
-                            onClick={() => handleStatusChange(action, action.status === "completed" ? "open" : "completed")}
-                            title={action.status === "completed" ? "Mark as open" : "Mark as completed"}
-                            aria-label={action.status === "completed" ? "Mark as open" : "Mark as completed"}
-                            style={{
-                              width: 18,
-                              height: 18,
-                              borderRadius: "50%",
-                              border: `1.5px solid ${action.status === "completed" ? "#22c55e" : "var(--border)"}`,
-                              background: action.status === "completed" ? "#22c55e" : "transparent",
-                              cursor: "pointer",
-                              padding: 0,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              flexShrink: 0,
-                              marginTop: 1,
-                              transition: "all 0.15s",
-                            }}
-                          >
-                            {action.status === "completed" && (
-                              <svg width="10" height="10" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M2 6.5L4.5 9L10 3" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            )}
-                          </button>
-                          <div style={{ flex: 1 }}>
-                            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 4, textDecoration: action.status === "completed" ? "line-through" : "none", opacity: action.status === "completed" ? 0.6 : 1 }}>{action.title}</p>
-                            <p style={{ fontSize: 11, color: "var(--text-3)", marginBottom: 6 }}>{action.clientName}</p>
-                            <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                              <span style={{ fontSize: 10, fontWeight: 600, color: priorityColors[action.priority], background: `${priorityColors[action.priority]}18`, padding: "2px 6px", borderRadius: 99 }}>
-                                {action.priority}
-                              </span>
-                              {action.sourceType && action.sourceType !== "manual" && (
-                                <span
-                                  title={`Created from ${SOURCE_LABELS[action.sourceType] ?? action.sourceType}`}
-                                  style={{
-                                    fontSize: 10,
-                                    fontWeight: 600,
-                                    color: SOURCE_COLORS[action.sourceType] ?? "var(--text-3)",
-                                    background: `${SOURCE_COLORS[action.sourceType] ?? "#6b7280"}18`,
-                                    padding: "2px 6px",
-                                    borderRadius: 99,
-                                  }}
-                                >
-                                  {SOURCE_LABELS[action.sourceType] ?? action.sourceType}
-                                </span>
-                              )}
-                              {action.dueDate && (
-                                <span style={{ fontSize: 10, color: isOverdue ? "#ef4444" : "var(--text-3)", background: isOverdue ? "rgba(239,68,68,0.12)" : "var(--bg-2)", padding: "2px 6px", borderRadius: 99, fontWeight: isOverdue ? 600 : 400 }}>
-                                  {isOverdue ? "Overdue " : "Due "}{new Date(action.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                                </span>
-                              )}
-                              {action.assignedTo && (
-                                <span style={{ fontSize: 10, color: "var(--text-3)", background: "var(--bg-2)", padding: "2px 6px", borderRadius: 99 }}>
-                                  → {action.assignedTo}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
-                          <button className="btn btn-ghost btn-sm" style={{ padding: 4 }} onClick={() => startEdit(action)}>
-                            <Pencil style={{ width: 11, height: 11 }} />
-                          </button>
-                          <button className="btn btn-ghost btn-sm" style={{ padding: 4, color: "var(--danger)" }} onClick={() => handleDelete(action)}>
-                            <Trash2 style={{ width: 11, height: 11 }} />
-                          </button>
-                        </div>
-                      </div>
-                      {action.description && (
-                        <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 8, lineHeight: 1.5 }}>{action.description}</p>
-                      )}
-                      <select
-                        className="form-input"
-                        style={{ fontSize: 11, marginTop: 10, padding: "4px 8px" }}
-                        value={action.status}
-                        onChange={(e) => handleStatusChange(action, e.target.value)}
-                      >
-                        {STATUSES.map((s) => <option key={s} value={s}>{statusLabels[s]}</option>)}
-                      </select>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {colTasks.length === 0 ? (
+                    <div style={{
+                      minHeight: 50, borderRadius: "var(--r-sm)", border: "1px dashed var(--border-subtle)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 11, color: "var(--text-4)",
+                    }}>
+                      No tasks
                     </div>
-                    );
-                  })
-                )}
+                  ) : colTasks.map((t) => <OverviewCard key={t.id} task={t} now={now} onClick={() => setOpenTask(t)} />)}
+                </div>
               </div>
-            </div>
-          );
+            );
           })}
         </div>
       )}
+
+      {/* Drawer */}
+      {openTask && (
+        <TaskDrawer
+          clientId={openTask.clientId}
+          task={openTask}
+          users={users}
+          categoryName={drawerCategoryName}
+          onClose={() => setOpenTask(null)}
+          onChange={(updated) => {
+            if (!updated) {
+              setTasks((curr) => curr.filter((t) => t.id !== openTask.id));
+              setOpenTask(null);
+            } else {
+              setTasks((curr) => curr.map((t) => t.id === updated.id ? { ...t, ...updated } : t));
+            }
+          }}
+        />
+      )}
+
+      {/* New task modal */}
+      {showNew && (
+        <NewTaskModal
+          clients={clients}
+          categories={categories}
+          users={users}
+          draft={newDraft}
+          setDraft={setNewDraft}
+          creating={creating}
+          onClose={() => setShowNew(false)}
+          onSubmit={() => void createTask()}
+        />
+      )}
     </div>
+  );
+}
+
+function KpiTile({ label, value, tone, icon }: { label: string; value: number; tone?: string; icon?: React.ReactNode }) {
+  return (
+    <div className="card" style={{ padding: 12, display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ fontSize: 11, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: 0.4, display: "inline-flex", alignItems: "center", gap: 4 }}>
+        {icon}
+        {label}
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: tone ?? "var(--text)" }}>{value}</div>
+    </div>
+  );
+}
+
+function OverviewCard({ task, now, onClick }: { task: OverviewTask; now: number; onClick: () => void }) {
+  const isOverdue = !!task.dueDate
+    && task.status !== "done"
+    && task.status !== "cancelled"
+    && new Date(task.dueDate) < new Date(new Date(now).toDateString());
+  const liveMs = task.activeTimer
+    ? task.totalMs + Math.max(0, now - new Date(task.activeTimer.startedAt).getTime())
+    : task.totalMs;
+  return (
+    <div className="card" onClick={onClick} style={{ cursor: "pointer", padding: 12, display: "flex", flexDirection: "column", gap: 8, ...(isOverdue ? { borderColor: "rgba(239,68,68,0.45)" } : {}) }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", margin: 0, lineHeight: 1.35 }}>{task.title}</p>
+        {task.priority !== "medium" && (
+          <span className={PRIORITY_BADGE[task.priority] ?? "badge badge-slate"} style={{ fontSize: 10, flexShrink: 0 }}>
+            {task.priority}
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--text-3)", flexWrap: "wrap" }}>
+        <span style={{ background: "var(--bg-1)", border: "1px solid var(--border-subtle)", borderRadius: 99, padding: "2px 8px", fontWeight: 600, color: "var(--text-2)" }}>
+          {task.client.name}
+        </span>
+        {task.category && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: task.category.color ?? "var(--text-3)" }} />
+            {task.category.name}
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
+        <div style={{ display: "flex" }}>
+          {task.assignees.slice(0, 4).map((a, i) => (
+            <span
+              key={a.user.id}
+              title={a.user.name ?? a.user.email}
+              style={{
+                width: 22, height: 22, borderRadius: "50%",
+                background: avatarBg(a.user.id), color: "white", fontSize: 10, fontWeight: 600,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                marginLeft: i === 0 ? 0 : -6, border: "2px solid var(--bg-2)",
+              }}
+            >
+              {initials(a.user)}
+            </span>
+          ))}
+          {task.assignees.length > 4 && (
+            <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--bg-1)", color: "var(--text-2)", fontSize: 10, fontWeight: 600, display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: -6, border: "2px solid var(--bg-2)" }}>
+              +{task.assignees.length - 4}
+            </span>
+          )}
+          {task.assignees.length === 0 && (
+            <span style={{ fontSize: 10, color: "var(--text-4)" }}>Unassigned</span>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 11, color: "var(--text-3)" }}>
+          {task._count.comments > 0 && (
+            <span title={`${task._count.comments} comment${task._count.comments === 1 ? "" : "s"}`} style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+              <MessageSquare style={{ width: 11, height: 11 }} /> {task._count.comments}
+            </span>
+          )}
+          {(liveMs > 0 || task.activeTimer) && (
+            <span
+              title={task.activeTimer ? "Timer running" : "Total time logged"}
+              style={{ display: "inline-flex", alignItems: "center", gap: 3, color: task.activeTimer ? "#ef4444" : "var(--text-3)" }}
+            >
+              <Clock style={{ width: 11, height: 11 }} /> {formatDuration(liveMs)}
+            </span>
+          )}
+          {task.dueDate && (
+            <span style={{ color: isOverdue ? "#ef4444" : "var(--text-3)", fontWeight: isOverdue ? 600 : 400 }}>
+              {isOverdue ? "Overdue " : "Due "}{new Date(task.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface MultiOpt { value: string; label: string; color?: string }
+
+function MultiPicker({ label, values, options, onChange }: { label: string; values: string[]; options: MultiOpt[]; onChange: (v: string[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const summary = values.length === 0 ? "All" : values.length === 1
+    ? options.find((o) => o.value === values[0])?.label ?? "1 selected"
+    : `${values.length} selected`;
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="btn btn-secondary btn-sm"
+        style={{ fontSize: 12, gap: 6, display: "inline-flex", alignItems: "center" }}
+      >
+        <span style={{ color: "var(--text-3)" }}>{label}:</span> <span style={{ color: "var(--text)" }}>{summary}</span>
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 30 }} />
+          <div style={{
+            position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 31,
+            background: "var(--bg-1)", border: "1px solid var(--border-subtle)", borderRadius: "var(--r-sm)",
+            minWidth: 220, maxHeight: 280, overflowY: "auto", padding: 6, boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+          }}>
+            {options.length === 0 && (
+              <div style={{ padding: 8, fontSize: 12, color: "var(--text-3)" }}>No options</div>
+            )}
+            {options.map((opt) => {
+              const checked = values.includes(opt.value);
+              return (
+                <label key={opt.value} style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 4,
+                  cursor: "pointer", fontSize: 12, color: "var(--text-2)",
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => {
+                      if (checked) onChange(values.filter((v) => v !== opt.value));
+                      else onChange([...values, opt.value]);
+                    }}
+                  />
+                  {opt.color && <span style={{ width: 8, height: 8, borderRadius: "50%", background: opt.color }} />}
+                  <span style={{ flex: 1 }}>{opt.label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function NewTaskModal({
+  clients, categories, users, draft, setDraft, creating, onClose, onSubmit,
+}: {
+  clients: ClientLite[];
+  categories: CategoryLite[];
+  users: UserLite[];
+  draft: { clientId: string; title: string; categoryId: string; priority: string; status: string; assigneeIds: string[]; dueDate: string };
+  setDraft: React.Dispatch<React.SetStateAction<{ clientId: string; title: string; categoryId: string; priority: string; status: string; assigneeIds: string[]; dueDate: string }>>;
+  creating: boolean;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 60 }} />
+      <div style={{
+        position: "fixed", top: "10vh", left: "50%", transform: "translateX(-50%)",
+        width: "min(540px, 92vw)", background: "var(--bg-1)", border: "1px solid var(--border-subtle)",
+        borderRadius: "var(--r)", padding: 20, zIndex: 61, boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--text)", margin: 0 }}>New task</h3>
+          <button onClick={onClose} className="btn btn-ghost btn-sm"><X style={{ width: 14, height: 14 }} /></button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label className="form-label">Title *</label>
+            <input className="form-input" autoFocus value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} placeholder="What needs doing?" />
+          </div>
+          <div>
+            <label className="form-label">Client *</label>
+            <select className="form-input" value={draft.clientId} onChange={(e) => setDraft((d) => ({ ...d, clientId: e.target.value }))}>
+              <option value="">Select client…</option>
+              {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Board</label>
+            <select className="form-input" value={draft.categoryId} onChange={(e) => setDraft((d) => ({ ...d, categoryId: e.target.value }))}>
+              <option value="">Uncategorised</option>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Status</label>
+            <select className="form-input" value={draft.status} onChange={(e) => setDraft((d) => ({ ...d, status: e.target.value }))}>
+              {STATUS_COLUMNS.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Priority</label>
+            <select className="form-input" value={draft.priority} onChange={(e) => setDraft((d) => ({ ...d, priority: e.target.value }))}>
+              {PRIORITIES.map((p) => <option key={p} value={p}>{p[0]!.toUpperCase() + p.slice(1)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Due date</label>
+            <input type="date" className="form-input" value={draft.dueDate} onChange={(e) => setDraft((d) => ({ ...d, dueDate: e.target.value }))} />
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label className="form-label">Assignees</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {users.map((u) => {
+                const on = draft.assigneeIds.includes(u.id);
+                return (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => setDraft((d) => ({ ...d, assigneeIds: on ? d.assigneeIds.filter((x) => x !== u.id) : [...d.assigneeIds, u.id] }))}
+                    className={on ? "badge badge-blue" : "badge badge-slate"}
+                    style={{ cursor: "pointer", border: "none", padding: "4px 10px", fontSize: 12 }}
+                  >
+                    {u.name ?? u.email}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, marginTop: 18, justifyContent: "flex-end" }}>
+          <button onClick={onClose} className="btn btn-secondary btn-sm">Cancel</button>
+          <button onClick={onSubmit} disabled={creating || !draft.title.trim() || !draft.clientId} className="btn btn-primary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            {creating && <Loader2 className="animate-spin" style={{ width: 12, height: 12 }} />}
+            Create task
+          </button>
+        </div>
+      </div>
+    </>
   );
 }

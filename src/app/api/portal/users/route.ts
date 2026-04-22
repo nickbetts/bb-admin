@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         clientId: data.clientId,
         email: data.email,
         name: data.name ?? null,
-        permissions: JSON.stringify(data.permissions ?? ["reports", "goals", "communications"]),
+        permissions: JSON.stringify(data.permissions ?? ["reports", "grand_plans", "content_strategies", "landing_pages", "tasks"]),
         isActive: true,
       },
     });

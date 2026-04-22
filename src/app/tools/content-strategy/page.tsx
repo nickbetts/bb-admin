@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { ClientBackLink } from "@/components/ui/ClientBackLink";
 import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
+import { PortalPublishToggle } from "@/components/portal/PortalPublishToggle";
 
 interface ContentStrategyItem {
   id: string;
@@ -40,6 +41,7 @@ interface ContentStrategyItem {
   createdBy: string | null;
   status: string;
   shareToken: string | null;
+  portalPublishedAt: string | null;
   viewCount: number;
   createdAt: string;
   generationMs: number | null;
@@ -1961,6 +1963,13 @@ export default function ContentStrategyPage() {
                   <button onClick={() => handleShare(s.id)} className="btn btn-ghost btn-sm" title="Share" style={{ padding: 8 }} disabled={s.generationStatus === "generating"}>
                     <Share2 style={{ width: 15, height: 15 }} />
                   </button>
+                  {s.shareToken && (
+                    <PortalPublishToggle
+                      resourceType="content_strategy"
+                      resourceId={s.id}
+                      initialPublishedAt={s.portalPublishedAt}
+                    />
+                  )}
                   <button
                     onClick={() => handleExportToActions(s.id, s.title, Boolean(s.client))}
                     className="btn btn-ghost btn-sm"

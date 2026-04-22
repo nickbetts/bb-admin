@@ -28,6 +28,9 @@ export const ALL_PERMISSIONS = [
   "qa_checklist",
   "meridian_architecture",
   "grand_plan",
+  // Portal publishing — gates the "Publish to client portal" action on
+  // reports, grand plans, content strategies and landing pages.
+  "publish_to_portal",
 ] as const;
 
 export type Permission = typeof ALL_PERMISSIONS[number];

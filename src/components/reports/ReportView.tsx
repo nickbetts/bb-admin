@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/ui/Toast";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { PortalPublishToggle } from "@/components/portal/PortalPublishToggle";
 
 const SECTION_LABEL_MAP: Record<string, string> = {
   seo: "SEO", web: "Web", ga4: "GA4", paid_social: "Paid Social", meta: "Meta",
@@ -148,6 +149,7 @@ interface Report {
   period: string;
   status: string;
   shareToken?: string | null;
+  portalPublishedAt?: string | null;
   customStartDate?: string | null;
   customEndDate?: string | null;
   compareStartDate?: string | null;
@@ -1598,6 +1600,14 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
               {shareLoading ? "…" : "Share"}
             </button>
           )}
+
+          {/* Publish to client portal */}
+          <PortalPublishToggle
+            resourceType="report"
+            resourceId={report.id}
+            initialPublishedAt={report.portalPublishedAt ?? null}
+            onChange={(at) => setReport((prev) => ({ ...prev, portalPublishedAt: at }))}
+          />
 
           {/* Date range picker */}
           <div style={{ position: "relative" }}>

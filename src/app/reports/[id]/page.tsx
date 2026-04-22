@@ -24,5 +24,10 @@ export default async function ReportPage({ params }: Props) {
 
   if (!report) notFound();
 
-  return <ReportView report={report} />;
+  const reportForView = {
+    ...report,
+    portalPublishedAt: report.portalPublishedAt ? report.portalPublishedAt.toISOString() : null,
+  };
+
+  return <ReportView report={reportForView} />;
 }

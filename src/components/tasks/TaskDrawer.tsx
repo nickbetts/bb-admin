@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Trash2, Loader2, Check } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, Trash2, Loader2, Check, Play, Pause, Clock, MessageSquare, Send } from "lucide-react";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { UserOption } from "./TaskKanbanBoard";
 
@@ -22,6 +22,8 @@ export interface TaskRecord {
   internalApprovedAt: string | null;
   clientApprovedAt: string | null;
   clientApprovalSource: string | null;
+  clientPortalUserId: string | null;
+  clientCompletedAt: string | null;
 }
 
 interface Props {
@@ -46,20 +48,126 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
 
 const PRIORITY_OPTIONS = ["low", "medium", "high", "urgent"];
 
+interface TaskCommentRecord {
+  id: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+  user: { id: string; name: string | null; email: string };
+}
+
+interface TaskTimeLogRecord {
+  id: string;
+  startedAt: string;
+  endedAt: string | null;
+  durationMs: number | null;
+  note: string | null;
+  user: { id: string; name: string | null; email: string };
+}
+
+interface TimeApiResponse {
+  logs: TaskTimeLogRecord[];
+  totalMs: number;
+  activeForUser: TaskTimeLogRecord | null;
+}
+
+function formatDuration(ms: number) {
+  if (ms <= 0) return "0m";
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+function formatTimer(ms: number) {
+  if (ms < 0) ms = 0;
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
 export function TaskDrawer({ clientId, task, users, categoryName, onClose, onChange }: Props) {
   const [draft, setDraft] = useState<TaskRecord>(task);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const confirm = useConfirm();
 
+  // Comments
+  const [comments, setComments] = useState<TaskCommentRecord[]>([]);
+  const [commentDraft, setCommentDraft] = useState("");
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+
+  // Time logs / timer
+  const [timeData, setTimeData] = useState<TimeApiResponse>({ logs: [], totalMs: 0, activeForUser: null });
+  const [timerWorking, setTimerWorking] = useState(false);
+  const [tick, setTick] = useState(0); // forces re-render every second when a timer is active
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Client portal users (for "send to client" assignment)
+  const [portalUsers, setPortalUsers] = useState<{ id: string; email: string; name: string | null }[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const res = await fetch(`/api/portal/users`, { cache: "no-store" });
+      if (!res.ok || cancelled) return;
+      const all = await res.json() as { id: string; email: string; name: string | null; client: { id: string } }[];
+      if (cancelled) return;
+      setPortalUsers(all.filter((u) => u.client?.id === clientId).map((u) => ({ id: u.id, email: u.email, name: u.name })));
+    })();
+    return () => { cancelled = true; };
+  }, [clientId]);
+
   useEffect(() => { setDraft(task); }, [task.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load comments + time logs whenever the open task changes.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const [cRes, tRes] = await Promise.all([
+        fetch(`/api/clients/${clientId}/actions/${task.id}/comments`, { cache: "no-store" }),
+        fetch(`/api/clients/${clientId}/actions/${task.id}/time`, { cache: "no-store" }),
+      ]);
+      if (cancelled) return;
+      if (cRes.ok) setComments(await cRes.json() as TaskCommentRecord[]);
+      if (tRes.ok) setTimeData(await tRes.json() as TimeApiResponse);
+    })();
+    return () => { cancelled = true; };
+  }, [clientId, task.id]);
+
+  // Tick every second only while a timer is active anywhere on this task.
+  const hasActiveTimer = timeData.logs.some((l) => !l.endedAt);
+  useEffect(() => {
+    if (!hasActiveTimer) {
+      if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
+      return;
+    }
+    tickRef.current = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => { if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; } };
+  }, [hasActiveTimer]);
+
+  const liveTotalMs = (() => {
+    const now = Date.now();
+    let total = 0;
+    for (const l of timeData.logs) {
+      if (l.endedAt) total += l.durationMs ?? 0;
+      else total += Math.max(0, now - new Date(l.startedAt).getTime());
+    }
+    return total;
+  })();
+  // Reference `tick` so the linter doesn't complain about an unused dep when re-rendering.
+  void tick;
 
   function update<K extends keyof TaskRecord>(key: K, value: TaskRecord[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
   }
 
-  async function save(patch: Partial<TaskRecord> & { assigneeIds?: string[] }) {
-    setSaving(true);
+  async function save(patch: Partial<TaskRecord> & { assigneeIds?: string[]; clientPortalUserId?: string | null }) {    setSaving(true);
     try {
       const res = await fetch(`/api/clients/${clientId}/actions/${task.id}`, {
         method: "PATCH",
@@ -88,6 +196,68 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
     if (current.has(userId)) current.delete(userId);
     else current.add(userId);
     void save({ assigneeIds: Array.from(current) });
+  }
+
+  async function submitComment() {
+    const body = commentDraft.trim();
+    if (!body) return;
+    setCommentSubmitting(true);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/actions/${task.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body }),
+      });
+      if (res.ok) {
+        const created = await res.json() as TaskCommentRecord;
+        setComments((c) => [...c, created]);
+        setCommentDraft("");
+      }
+    } finally {
+      setCommentSubmitting(false);
+    }
+  }
+
+  async function deleteComment(id: string) {
+    if (!(await confirm({ title: "Delete this comment?", confirmLabel: "Delete", danger: true }))) return;
+    const res = await fetch(`/api/clients/${clientId}/actions/${task.id}/comments/${id}`, { method: "DELETE" });
+    if (res.ok) setComments((c) => c.filter((x) => x.id !== id));
+  }
+
+  async function startTimer() {
+    setTimerWorking(true);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/actions/${task.id}/time`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        const created = await res.json() as TaskTimeLogRecord;
+        setTimeData((d) => ({ logs: [created, ...d.logs], totalMs: d.totalMs, activeForUser: created }));
+      }
+    } finally { setTimerWorking(false); }
+  }
+
+  async function stopTimer() {
+    setTimerWorking(true);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/actions/${task.id}/time/stop`, { method: "POST" });
+      if (res.ok) {
+        const stopped = await res.json() as TaskTimeLogRecord;
+        setTimeData((d) => ({
+          logs: d.logs.map((l) => l.id === stopped.id ? stopped : l),
+          totalMs: d.totalMs + (stopped.durationMs ?? 0),
+          activeForUser: null,
+        }));
+      }
+    } finally { setTimerWorking(false); }
+  }
+
+  async function deleteTimeLog(id: string) {
+    if (!(await confirm({ title: "Delete this time entry?", confirmLabel: "Delete", danger: true }))) return;
+    const res = await fetch(`/api/clients/${clientId}/actions/${task.id}/time/${id}`, { method: "DELETE" });
+    if (res.ok) setTimeData((d) => ({ ...d, logs: d.logs.filter((l) => l.id !== id) }));
   }
 
   return (
@@ -214,6 +384,35 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
             </div>
           </div>
 
+          {/* Send to client portal */}
+          <div>
+            <label className="form-label">Send to client (portal)</label>
+            <select
+              value={draft.clientPortalUserId ?? ""}
+              onChange={(e) => {
+                const value = e.target.value || null;
+                update("clientPortalUserId", value);
+                void save({ clientPortalUserId: value });
+              }}
+              className="form-input"
+            >
+              <option value="">— Internal only —</option>
+              {portalUsers.map((u) => (
+                <option key={u.id} value={u.id}>{u.name ?? u.email}</option>
+              ))}
+            </select>
+            {portalUsers.length === 0 && (
+              <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
+                No portal users for this client. Add one from the client settings to enable client tasks.
+              </p>
+            )}
+            {draft.clientPortalUserId && draft.clientCompletedAt && (
+              <p style={{ fontSize: 11, color: "var(--success)", marginTop: 4 }}>
+                Client marked done: {new Date(draft.clientCompletedAt).toLocaleString("en-GB")}
+              </p>
+            )}
+          </div>
+
           {/* Approval audit */}
           {(draft.internalApprovedAt || draft.clientApprovedAt) && (
             <div style={{ background: "var(--bg-2)", borderRadius: "var(--r-sm)", padding: 12, fontSize: 12, color: "var(--text-3)", display: "flex", flexDirection: "column", gap: 4 }}>
@@ -253,6 +452,120 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
               rows={3}
               placeholder="What happened once this was done?"
             />
+          </div>
+
+          {/* Time tracking */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <label className="form-label" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 0 }}>
+                <Clock style={{ width: 13, height: 13 }} /> Time tracking
+              </label>
+              <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                Total <strong style={{ color: "var(--text)" }}>{formatDuration(liveTotalMs)}</strong>
+              </span>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 10, background: "var(--bg-2)", borderRadius: "var(--r-sm)" }}>
+              {timeData.activeForUser ? (
+                <>
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 0 4px rgba(239,68,68,0.18)" }} />
+                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
+                      {formatTimer(Date.now() - new Date(timeData.activeForUser.startedAt).getTime())}
+                    </span>
+                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>running</span>
+                  </div>
+                  <button onClick={() => void stopTimer()} disabled={timerWorking} className="btn btn-secondary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <Pause style={{ width: 12, height: 12 }} /> Stop
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div style={{ flex: 1, fontSize: 12, color: "var(--text-3)" }}>
+                    {hasActiveTimer
+                      ? "Another teammate has a timer running on this task."
+                      : "Start a timer to log time spent on this task."}
+                  </div>
+                  <button onClick={() => void startTimer()} disabled={timerWorking} className="btn btn-primary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <Play style={{ width: 12, height: 12 }} /> Start
+                  </button>
+                </>
+              )}
+            </div>
+
+            {timeData.logs.length > 0 && (
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                {timeData.logs.map((l) => (
+                  <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, padding: "6px 8px", borderRadius: 6, background: "var(--bg-1)", border: "1px solid var(--border-subtle)" }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: l.endedAt ? "var(--text-4)" : "#ef4444" }} />
+                    <span style={{ color: "var(--text-2)", flexShrink: 0 }}>{l.user.name ?? l.user.email}</span>
+                    <span style={{ color: "var(--text-3)", flex: 1 }}>
+                      {new Date(l.startedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "var(--text)", fontWeight: 600 }}>
+                      {l.endedAt
+                        ? formatDuration(l.durationMs ?? 0)
+                        : formatDuration(Math.max(0, Date.now() - new Date(l.startedAt).getTime()))}
+                    </span>
+                    <button onClick={() => void deleteTimeLog(l.id)} className="btn btn-ghost btn-sm" style={{ padding: 2, color: "var(--text-3)" }} title="Delete entry">
+                      <Trash2 style={{ width: 11, height: 11 }} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Comments */}
+          <div>
+            <label className="form-label" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <MessageSquare style={{ width: 13, height: 13 }} /> Comments {comments.length > 0 && <span style={{ color: "var(--text-3)", fontWeight: 400 }}>({comments.length})</span>}
+            </label>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+              {comments.length === 0 && (
+                <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0 }}>No comments yet — start the conversation.</p>
+              )}
+              {comments.map((c) => (
+                <div key={c.id} style={{ background: "var(--bg-2)", borderRadius: "var(--r-sm)", padding: "8px 10px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{c.user.name ?? c.user.email}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                        {new Date(c.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                      <button onClick={() => void deleteComment(c.id)} className="btn btn-ghost btn-sm" style={{ padding: 2, color: "var(--text-3)" }} title="Delete comment">
+                        <Trash2 style={{ width: 11, height: 11 }} />
+                      </button>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 13, color: "var(--text-2)", margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{c.body}</p>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+              <textarea
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void submitComment(); }
+                }}
+                placeholder="Write a comment… (⌘/Ctrl+Enter to send)"
+                className="form-input"
+                rows={2}
+                style={{ flex: 1, resize: "vertical" }}
+              />
+              <button
+                onClick={() => void submitComment()}
+                disabled={commentSubmitting || !commentDraft.trim()}
+                className="btn btn-primary btn-sm"
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "stretch" }}
+                title="Send comment"
+              >
+                {commentSubmitting ? <Loader2 style={{ width: 12, height: 12 }} className="animate-spin" /> : <Send style={{ width: 12, height: 12 }} />}
+              </button>
+            </div>
           </div>
         </div>
 
