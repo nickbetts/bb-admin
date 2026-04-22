@@ -45,7 +45,7 @@ export function proxy(request: NextRequest) {
       const lpPath = pathname === "/" ? "" : pathname;
       const url = request.nextUrl.clone();
       url.pathname = `/lp/${sub}${lpPath}`;
-      // Hand off to the [clientSlug]/[lpSlug] route handler
+      // Hand off to the [slug]/[lpSlug] route handler
       return NextResponse.rewrite(url);
     }
   }

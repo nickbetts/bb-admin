@@ -5,15 +5,15 @@ import { assemblePublicHtml } from "@/lib/lp-publish";
 
 export const dynamic = "force-dynamic";
 
-// GET /lp/[clientSlug]/[lpSlug]
+// GET /lp/[slug]/[lpSlug]
 //
 // Internal route hit by the middleware rewrite for {client}.clickr.marketing/{slug}.
-// Also directly addressable for testing.
+// Also directly addressable for testing. The first segment is the client slug.
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ clientSlug: string; lpSlug: string }> }
+  { params }: { params: Promise<{ slug: string; lpSlug: string }> }
 ) {
-  const { clientSlug, lpSlug } = await params;
+  const { slug: clientSlug, lpSlug } = await params;
 
   if (!clientSlug || !lpSlug) {
     return new NextResponse("Not found", { status: 404 });

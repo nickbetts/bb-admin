@@ -2,7 +2,7 @@
 // Used by:
 //   • /api/share/landing-page/[token]      — magic-link previews
 //   • /lp/[slug]                           — public pretty URL (publicSlug)
-//   • /lp/[clientSlug]/[lpSlug]            — clickr.marketing subdomain serve
+//   • /lp/[slug]/[lpSlug]                  — clickr.marketing subdomain serve
 //
 // Centralising this guarantees analytics, conversion firing, test mode
 // (?test=1) and Lucide icon rendering all behave identically regardless of
