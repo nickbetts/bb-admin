@@ -7,7 +7,7 @@ import { sanitiseAnalyticsConfig } from "@/lib/lp-analytics";
 import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 800; // AI generation: up to ~60 s + brand extraction (Vercel Pro cap)
+export const maxDuration = 300; // AI generation: up to ~60 s + brand extraction
 
 // GET /api/tools/landing-pages — list all LPs for current user
 export async function GET(request: NextRequest) {
