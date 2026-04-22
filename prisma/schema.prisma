@@ -990,7 +990,8 @@ model AgencySubscription {
   category      String?  // e.g. "AI", "Hosting", "Design", "Marketing"
   url           String?  // login URL
   email         String?  // login email / username
-  passwordEnc   String?  // AES-256-GCM ciphertext (format: iv:tag:cipher, hex)
+  loginMethod   String   @default("password") // password|magic_link|email_code|google_sso|sso_saml|api_key|other
+  passwordEnc   String?  // AES-256-GCM ciphertext — only used when loginMethod="password"
   cost          Float    @default(0)     // amount in chosen currency
   currency      String   @default("GBP") // ISO code
   billingCycle  String   @default("monthly") // monthly|yearly

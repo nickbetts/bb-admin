@@ -10,6 +10,7 @@ interface SubscriptionPatch {
   category?: string | null;
   url?: string | null;
   email?: string | null;
+  loginMethod?: string;
   password?: string | null;   // when present (even ""), updates ciphertext
   cost?: number;
   currency?: string;
@@ -41,6 +42,7 @@ export async function GET(
       category: sub.category,
       url: sub.url,
       email: sub.email,
+      loginMethod: sub.loginMethod,
       password: reveal ? decryptSecret(sub.passwordEnc) : "",
       hasPassword: Boolean(sub.passwordEnc),
       cost: sub.cost,
@@ -81,6 +83,7 @@ export async function PATCH(
         ...(data.category !== undefined && { category: data.category?.trim() || null }),
         ...(data.url !== undefined && { url: data.url?.trim() || null }),
         ...(data.email !== undefined && { email: data.email?.trim() || null }),
+        ...(data.loginMethod !== undefined && { loginMethod: data.loginMethod }),
         ...(data.password !== undefined && {
           passwordEnc: data.password ? encryptSecret(data.password) : null,
         }),
@@ -102,6 +105,7 @@ export async function PATCH(
       category: updated.category,
       url: updated.url,
       email: updated.email,
+      loginMethod: updated.loginMethod,
       hasPassword: Boolean(updated.passwordEnc),
       cost: updated.cost,
       currency: updated.currency,

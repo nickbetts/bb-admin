@@ -5,11 +5,15 @@ import { encryptSecret, decryptSecret } from "@/lib/secret-crypto";
 
 export const dynamic = "force-dynamic";
 
+const VALID_LOGIN_METHODS = ["password", "magic_link", "email_code", "google_sso", "sso_saml", "api_key", "other"] as const;
+type LoginMethod = typeof VALID_LOGIN_METHODS[number];
+
 interface SubscriptionInput {
   platform?: string;
   category?: string | null;
   url?: string | null;
   email?: string | null;
+  loginMethod?: LoginMethod;
   password?: string | null;   // plaintext from client; encrypted before save
   cost?: number;
   currency?: string;
@@ -22,7 +26,7 @@ interface SubscriptionInput {
 
 function serialise(sub: {
   id: string; platform: string; category: string | null; url: string | null;
-  email: string | null; passwordEnc: string | null; cost: number; currency: string;
+  email: string | null; loginMethod: string; passwordEnc: string | null; cost: number; currency: string;
   billingCycle: string; renewalDate: string | null; owner: string | null;
   notes: string | null; active: boolean; createdAt: Date; updatedAt: Date;
 }, revealPassword: boolean) {
@@ -32,6 +36,7 @@ function serialise(sub: {
     category: sub.category,
     url: sub.url,
     email: sub.email,
+    loginMethod: sub.loginMethod,
     password: revealPassword ? decryptSecret(sub.passwordEnc) : "",
     hasPassword: Boolean(sub.passwordEnc),
     cost: sub.cost,
@@ -83,6 +88,7 @@ export async function POST(request: NextRequest) {
         category: data.category?.trim() || null,
         url: data.url?.trim() || null,
         email: data.email?.trim() || null,
+        loginMethod: VALID_LOGIN_METHODS.includes(data.loginMethod as LoginMethod) ? data.loginMethod! : "password",
         passwordEnc: data.password ? encryptSecret(data.password) : null,
         cost: typeof data.cost === "number" && Number.isFinite(data.cost) ? data.cost : 0,
         currency: data.currency?.trim() || "GBP",

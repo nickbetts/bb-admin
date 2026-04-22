@@ -1110,6 +1110,14 @@ async function main() {
     console.log("✓ AgencySubscription table already present");
   }
 
+  // ── AgencySubscription.loginMethod column (added 2026-04-22) ──────────────
+  if (!(await columnExists("AgencySubscription", "loginMethod"))) {
+    await db.execute(`ALTER TABLE "AgencySubscription" ADD COLUMN "loginMethod" TEXT NOT NULL DEFAULT 'password'`);
+    console.log("✓ Added AgencySubscription.loginMethod");
+  } else {
+    console.log("✓ AgencySubscription.loginMethod already present");
+  }
+
   await db.close();
   console.log("✅ Schema migration complete");
 }
