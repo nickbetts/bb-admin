@@ -217,6 +217,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
   const [error, setError] = useState("");
   const [data, setData] = useState<PlatformData>({});
   const [prevData, setPrevData] = useState<PlatformData>({});
+  const [yoyData, setYoyData] = useState<PlatformData>({});
   const [campaigns, setCampaigns] = useState<CampaignHighlight[]>([]);
 
   // AI state
@@ -252,14 +253,28 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
       setError("");
       setData({});
       setPrevData({});
+      setYoyData({});
       setCampaigns([]);
       setAiResult(null);
 
       const prev = (compareStartDate && compareEndDate)
         ? { startDate: compareStartDate, endDate: compareEndDate }
         : getPreviousPeriod(startDate, endDate);
+      // YoY: same date range shifted back exactly 1 year, independent of any comparison period
+      const yoyDates = (() => {
+        const s = new Date(startDate);
+        const sMonth = s.getMonth();
+        s.setFullYear(s.getFullYear() - 1);
+        if (s.getMonth() !== sMonth) s.setDate(0); // clamp Feb 29 → Feb 28
+        const e = new Date(endDate);
+        const eMonth = e.getMonth();
+        e.setFullYear(e.getFullYear() - 1);
+        if (e.getMonth() !== eMonth) e.setDate(0);
+        return { startDate: s.toISOString().split("T")[0], endDate: e.toISOString().split("T")[0] };
+      })();
       const result: PlatformData = {};
       const prevResult: PlatformData = {};
+      const yoyResult: PlatformData = {};
       const campaignList: CampaignHighlight[] = [];
       const failedPlatforms: string[] = [];
 
@@ -272,9 +287,11 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             try {
               const params = new URLSearchParams({ customerId: client.googleAdsCustomerId!, startDate, endDate });
               const prevParams = new URLSearchParams({ customerId: client.googleAdsCustomerId!, startDate: prev.startDate, endDate: prev.endDate });
-              const [res, prevRes] = await Promise.all([
+              const yoyGadsParams = new URLSearchParams({ customerId: client.googleAdsCustomerId!, startDate: yoyDates.startDate, endDate: yoyDates.endDate });
+              const [res, prevRes, yoyGadsRes] = await Promise.all([
                 fetch(`/api/google-ads?${params}`, { signal, cache: "no-store" }),
                 fetch(`/api/google-ads?${prevParams}`, { signal, cache: "no-store" }),
+                fetch(`/api/google-ads?${yoyGadsParams}`, { signal, cache: "no-store" }),
               ]);
               const json = await res.json();
               if (json.overview) result.googleads = json.overview;
@@ -293,6 +310,8 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
               }
               const prevJson = await prevRes.json();
               if (prevJson?.overview) prevResult.googleads = prevJson.overview;
+              const yoyGadsJson = await yoyGadsRes.json();
+              if (yoyGadsJson?.overview) yoyResult.googleads = yoyGadsJson.overview;
             } catch (e) {
               if (e instanceof Error && e.name === "AbortError") throw e;
               failedPlatforms.push("Google Ads");
@@ -308,10 +327,12 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             try {
               const base = `/api/meta?clientId=${encodeURIComponent(client.id)}&startDate=${startDate}&endDate=${endDate}`;
               const prevBase = `/api/meta?clientId=${encodeURIComponent(client.id)}&startDate=${prev.startDate}&endDate=${prev.endDate}`;
-              const [ovRes, enrichedRes, prevOvRes] = await Promise.all([
+              const yoyMetaBase = `/api/meta?clientId=${encodeURIComponent(client.id)}&startDate=${yoyDates.startDate}&endDate=${yoyDates.endDate}`;
+              const [ovRes, enrichedRes, prevOvRes, yoyMetaOvRes] = await Promise.all([
                 fetch(`${base}&type=overview`, { signal }),
                 fetch(`${base}&type=campaigns-enriched`, { signal }),
                 fetch(`${prevBase}&type=overview`, { signal }),
+                fetch(`${yoyMetaBase}&type=overview`, { signal }),
               ]);
               if (ovRes.ok) {
                 const ov = await ovRes.json();
@@ -336,6 +357,10 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
                 const prevOv = await prevOvRes.json();
                 if (prevOv?.totalSpend != null) prevResult.meta = prevOv;
               }
+              if (yoyMetaOvRes.ok) {
+                const yoyMetaOv = await yoyMetaOvRes.json();
+                if (yoyMetaOv?.totalSpend != null) yoyResult.meta = yoyMetaOv;
+              }
             } catch (e) {
               if (e instanceof Error && e.name === "AbortError") throw e;
               failedPlatforms.push("Meta");
@@ -351,14 +376,18 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             try {
               const params = new URLSearchParams({ propertyId: client.ga4PropertyId!, startDate, endDate });
               const prevParams = new URLSearchParams({ propertyId: client.ga4PropertyId!, startDate: prev.startDate, endDate: prev.endDate });
-              const [res, prevRes] = await Promise.all([
+              const yoyGa4Params = new URLSearchParams({ propertyId: client.ga4PropertyId!, startDate: yoyDates.startDate, endDate: yoyDates.endDate });
+              const [res, prevRes, yoyGa4Res] = await Promise.all([
                 fetch(`/api/ga4?${params}`, { signal }),
                 fetch(`/api/ga4?${prevParams}`, { signal }),
+                fetch(`/api/ga4?${yoyGa4Params}`, { signal }),
               ]);
               const json = await res.json();
               if (json.sessions != null) result.ga4 = json;
               const prevJson = await prevRes.json();
               if (prevJson?.sessions != null) prevResult.ga4 = prevJson;
+              const yoyGa4Json = await yoyGa4Res.json();
+              if (yoyGa4Json?.sessions != null) yoyResult.ga4 = yoyGa4Json;
             } catch (e) {
               if (e instanceof Error && e.name === "AbortError") throw e;
               failedPlatforms.push("GA4");
@@ -391,14 +420,18 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
             try {
               const params = new URLSearchParams({ siteUrl: client.searchConsoleSiteUrl!, type: "overview", startDate, endDate });
               const prevParams = new URLSearchParams({ siteUrl: client.searchConsoleSiteUrl!, type: "overview", startDate: prev.startDate, endDate: prev.endDate });
-              const [res, prevRes] = await Promise.all([
+              const yoySCParams = new URLSearchParams({ siteUrl: client.searchConsoleSiteUrl!, type: "overview", startDate: yoyDates.startDate, endDate: yoyDates.endDate });
+              const [res, prevRes, yoySCRes] = await Promise.all([
                 fetch(`/api/search-console?${params}`, { signal }),
                 fetch(`/api/search-console?${prevParams}`, { signal }),
+                fetch(`/api/search-console?${yoySCParams}`, { signal }),
               ]);
               const json = await res.json();
               if (json.clicks != null) result.searchconsole = json;
               const prevJson = await prevRes.json();
               if (prevJson?.clicks != null) prevResult.searchconsole = prevJson;
+              const yoySCJson = await yoySCRes.json();
+              if (yoySCJson?.clicks != null) yoyResult.searchconsole = yoySCJson;
             } catch (e) {
               if (e instanceof Error && e.name === "AbortError") throw e;
               failedPlatforms.push("Search Console");
@@ -419,6 +452,7 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
 
       setData(result);
       setPrevData(prevResult);
+      setYoyData(yoyResult);
       setCampaigns(campaignList);
       setLoading(false);
     }
@@ -467,6 +501,27 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
 
   const hasPaidData = !!(data.googleads || data.meta);
   const hasPrevPaid = !!(prevData.googleads || prevData.meta);
+
+  // ─── YoY aggregation (same period last year, always independent of comparison setting) ──
+
+  const yoyGaCost = yoyData.googleads ? micros(yoyData.googleads.costMicros) : 0;
+  const yoyMetaSpend = yoyData.meta?.totalSpend ?? 0;
+  const yoyTotalAdSpend = yoyGaCost + yoyMetaSpend;
+
+  const yoyGaConv = yoyData.googleads?.conversions ?? 0;
+  const yoyMetaConv = yoyData.meta?.totalConversions ?? 0;
+  const yoyTotalConversions = yoyGaConv + yoyMetaConv;
+
+  const yoyGaRev = yoyData.googleads?.conversionsValue ?? 0;
+  const yoyMetaRev = yoyData.meta?.totalConversionValue ?? 0;
+  const yoyTotalRevenue = yoyGaRev + yoyMetaRev;
+
+  const yoyBlendedRoas = safe(yoyTotalAdSpend > 0 ? yoyTotalRevenue / yoyTotalAdSpend : 0);
+  const yoyTotalPaidClicks = (yoyData.googleads?.clicks ?? 0) + (yoyData.meta?.totalClicks ?? 0);
+  const hasYoyPaid = !!(yoyData.googleads || yoyData.meta);
+  const hasYoyAny = hasYoyPaid || !!yoyData.ga4 || !!yoyData.searchconsole;
+
+  const yoyYear = new Date(startDate).getFullYear() - 1;
 
   // ─── Cross-platform alerts ────────────────────────────────────────────
 
@@ -997,6 +1052,29 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
           </SectionCard>
         )}
 
+        {/* Year-on-Year Overview — always vs same period last year regardless of report date range */}
+        {hasYoyAny && (
+          <SectionCard title={`Year-on-Year Overview`} subtitle={`Current period vs same period in ${yoyYear} — fixed comparison, independent of report date range`}>
+            <div className="grid-3" style={{ gap: 16 }}>
+              {hasYoyPaid && (
+                <>
+                  <MetricCard title="Ad Spend" value={formatCurrency(totalAdSpend)} icon={<DollarSign className="h-5 w-5" />} color="purple" change={yoyTotalAdSpend > 0 ? (pctChange(totalAdSpend, yoyTotalAdSpend) ?? undefined) : undefined} changeDiff={yoyTotalAdSpend > 0 ? diffStr(totalAdSpend, yoyTotalAdSpend, "currency") : undefined} changeLabel={`vs same period ${yoyYear}`} />
+                  <MetricCard title="Conversions" value={formatNumber(totalConversions)} icon={<ShoppingCart className="h-5 w-5" />} color="green" change={yoyTotalConversions > 0 ? (pctChange(totalConversions, yoyTotalConversions) ?? undefined) : undefined} changeDiff={yoyTotalConversions > 0 ? diffStr(totalConversions, yoyTotalConversions, "count") : undefined} changeLabel={`vs same period ${yoyYear}`} />
+                  <MetricCard title="Revenue" value={formatCurrency(totalRevenue)} icon={<TrendingUp className="h-5 w-5" />} color="green" change={yoyTotalRevenue > 0 ? (pctChange(totalRevenue, yoyTotalRevenue) ?? undefined) : undefined} changeDiff={yoyTotalRevenue > 0 ? diffStr(totalRevenue, yoyTotalRevenue, "currency") : undefined} changeLabel={`vs same period ${yoyYear}`} />
+                  <MetricCard title="Blended ROAS" value={`${blendedRoas.toFixed(2)}x`} icon={<TrendingUp className="h-5 w-5" />} color="blue" change={yoyBlendedRoas > 0 ? (pctChange(blendedRoas, yoyBlendedRoas) ?? undefined) : undefined} changeLabel={`vs same period ${yoyYear}`} />
+                  <MetricCard title="Paid Clicks" value={formatNumber(totalPaidClicks)} icon={<MousePointer className="h-5 w-5" />} color="blue" change={yoyTotalPaidClicks > 0 ? (pctChange(totalPaidClicks, yoyTotalPaidClicks) ?? undefined) : undefined} changeDiff={yoyTotalPaidClicks > 0 ? diffStr(totalPaidClicks, yoyTotalPaidClicks, "count") : undefined} changeLabel={`vs same period ${yoyYear}`} />
+                </>
+              )}
+              {data.ga4 && yoyData.ga4 && (
+                <MetricCard title="Sessions" value={formatNumber(data.ga4.sessions)} icon={<Users className="h-5 w-5" />} color="orange" change={pctChange(data.ga4.sessions, yoyData.ga4.sessions) ?? undefined} changeDiff={diffStr(data.ga4.sessions, yoyData.ga4.sessions, "count")} changeLabel={`vs same period ${yoyYear}`} />
+              )}
+              {data.searchconsole && yoyData.searchconsole && (
+                <MetricCard title="Search Clicks" value={formatNumber(data.searchconsole.clicks)} icon={<Search className="h-5 w-5" />} color="purple" change={pctChange(data.searchconsole.clicks, yoyData.searchconsole.clicks) ?? undefined} changeDiff={diffStr(data.searchconsole.clicks, yoyData.searchconsole.clicks, "count")} changeLabel={`vs same period ${yoyYear}`} />
+              )}
+            </div>
+          </SectionCard>
+        )}
+
         {/* Channel Efficiency Matrix */}
         {show("channel_matrix") && channelRows.length > 0 && (
           <SectionCard title="Channel Efficiency Matrix" subtitle="Investment, traffic, and performance by platform">
@@ -1515,6 +1593,90 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
                 color="purple"
                 change={prevData.searchconsole ? pctChange(data.searchconsole.ctr, prevData.searchconsole.ctr) : undefined}
                 changeLabel="vs prev period"
+              />
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── Year-on-Year Overview ─────────────────────────────────────────── */}
+      {hasYoyAny && (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0 0" }}>
+            <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", marginBottom: -16 }}>
+              Year-on-Year Overview
+            </p>
+            <span style={{ fontSize: 11, color: "var(--text-3)", marginBottom: -16, marginLeft: 4 }}>— vs same period in {yoyYear}, independent of date range</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-5">
+            {hasYoyPaid && (
+              <>
+                <MetricCard
+                  title="Ad Spend"
+                  value={formatCurrency(totalAdSpend)}
+                  icon={<DollarSign className="h-5 w-5" />}
+                  color="purple"
+                  change={yoyTotalAdSpend > 0 ? (pctChange(totalAdSpend, yoyTotalAdSpend) ?? undefined) : undefined}
+                  changeDiff={yoyTotalAdSpend > 0 ? diffStr(totalAdSpend, yoyTotalAdSpend, "currency") : undefined}
+                  changeLabel={`vs same period ${yoyYear}`}
+                />
+                <MetricCard
+                  title="Conversions"
+                  value={formatNumber(totalConversions)}
+                  icon={<ShoppingCart className="h-5 w-5" />}
+                  color="green"
+                  change={yoyTotalConversions > 0 ? (pctChange(totalConversions, yoyTotalConversions) ?? undefined) : undefined}
+                  changeDiff={yoyTotalConversions > 0 ? diffStr(totalConversions, yoyTotalConversions, "count") : undefined}
+                  changeLabel={`vs same period ${yoyYear}`}
+                />
+                <MetricCard
+                  title="Revenue"
+                  value={formatCurrency(totalRevenue)}
+                  icon={<TrendingUp className="h-5 w-5" />}
+                  color="green"
+                  change={yoyTotalRevenue > 0 ? (pctChange(totalRevenue, yoyTotalRevenue) ?? undefined) : undefined}
+                  changeDiff={yoyTotalRevenue > 0 ? diffStr(totalRevenue, yoyTotalRevenue, "currency") : undefined}
+                  changeLabel={`vs same period ${yoyYear}`}
+                />
+                <MetricCard
+                  title="Blended ROAS"
+                  value={`${blendedRoas.toFixed(2)}x`}
+                  icon={<TrendingUp className="h-5 w-5" />}
+                  color="blue"
+                  change={yoyBlendedRoas > 0 ? (pctChange(blendedRoas, yoyBlendedRoas) ?? undefined) : undefined}
+                  changeLabel={`vs same period ${yoyYear}`}
+                />
+                <MetricCard
+                  title="Paid Clicks"
+                  value={formatNumber(totalPaidClicks)}
+                  icon={<MousePointer className="h-5 w-5" />}
+                  color="blue"
+                  change={yoyTotalPaidClicks > 0 ? (pctChange(totalPaidClicks, yoyTotalPaidClicks) ?? undefined) : undefined}
+                  changeDiff={yoyTotalPaidClicks > 0 ? diffStr(totalPaidClicks, yoyTotalPaidClicks, "count") : undefined}
+                  changeLabel={`vs same period ${yoyYear}`}
+                />
+              </>
+            )}
+            {data.ga4 && yoyData.ga4 && (
+              <MetricCard
+                title="Sessions"
+                value={formatNumber(data.ga4.sessions)}
+                icon={<Users className="h-5 w-5" />}
+                color="orange"
+                change={pctChange(data.ga4.sessions, yoyData.ga4.sessions) ?? undefined}
+                changeDiff={diffStr(data.ga4.sessions, yoyData.ga4.sessions, "count")}
+                changeLabel={`vs same period ${yoyYear}`}
+              />
+            )}
+            {data.searchconsole && yoyData.searchconsole && (
+              <MetricCard
+                title="Search Clicks"
+                value={formatNumber(data.searchconsole.clicks)}
+                icon={<Search className="h-5 w-5" />}
+                color="purple"
+                change={pctChange(data.searchconsole.clicks, yoyData.searchconsole.clicks) ?? undefined}
+                changeDiff={diffStr(data.searchconsole.clicks, yoyData.searchconsole.clicks, "count")}
+                changeLabel={`vs same period ${yoyYear}`}
               />
             )}
           </div>
