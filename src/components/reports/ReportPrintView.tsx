@@ -293,7 +293,7 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
       </div>
 
       {/* Sections */}
-      {enabledSections.map((section, sectionIndex) => {
+      {enabledSections.map((section) => {
         const sectionScreenshots = report.screenshots.filter(
           (s) => s.sectionId === section.id
         );
@@ -378,25 +378,6 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
             })()
           : undefined;
 
-        const pageHeader = sectionIndex > 0 ? (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 16, marginBottom: 24, borderBottom: "1px solid #e2e8f0" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/primary-logo.svg" alt="i3media" style={{ height: 20, filter: "brightness(0)", opacity: 0.25 }} />
-            <div style={{ textAlign: "right" }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: "#64748b", lineHeight: 1.3 }}>{report.title}</p>
-              <p style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{formatDateDisplay(startDate)} – {formatDateDisplay(endDate)}</p>
-            </div>
-          </div>
-        ) : null;
-
-        const pageFooter = (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 24, paddingTop: 16, borderTop: "1px solid #e2e8f0" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/primary-logo.svg" alt="i3media" style={{ height: 18, filter: "brightness(0)", opacity: 0.2 }} />
-            <p style={{ fontSize: 10, color: "#94a3b8" }}>{report.title} · {report.period}</p>
-          </div>
-        );
-
         // Executive summary
         if (section.sectionType === "executive_summary") {
           return (
@@ -406,7 +387,6 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
               data-section-type={section.sectionType}
               style={{ marginBottom: 64, pageBreakInside: "avoid" }}
             >
-              {pageHeader}
               <div
                 style={{
                   border: "1px solid var(--border)",
@@ -450,7 +430,6 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                   )}
                 </div>
               </div>
-              {pageFooter}
             </div>
           );
         }
@@ -460,19 +439,16 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
           if (section.sectionType === "text_screenshots") {
             return (
               <div key={section.id} id={`section-${section.id}`} data-section-type={section.sectionType} style={{ marginBottom: 64 }}>
-                {pageHeader}
                 <ScreenshotsSection
                   screenshots={report.screenshots.filter((s) => !s.sectionId)}
                   title={TEXT_SECTION_LABELS[section.sectionType as TextSectionType] ?? section.title}
                   onDelete={async () => {}}
                 />
-                {pageFooter}
               </div>
             );
           }
           return (
             <div key={section.id} id={`section-${section.id}`} data-section-type={section.sectionType} style={{ marginBottom: 64 }}>
-              {pageHeader}
               <TextSection
                 sectionId={section.id}
                 reportId={report.id}
@@ -480,7 +456,6 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                 title={section.title}
                 contentText={section.contentText ?? null}
               />
-              {pageFooter}
             </div>
           );
         }
@@ -502,7 +477,6 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
 
         return (
           <div key={section.id} id={`section-${section.id}`} data-section-type={section.sectionType} style={{ marginBottom: 64 }}>
-            {pageHeader}
             {section.sectionType === "overview" && (
               <OverviewSection
                 client={report.client}
@@ -635,7 +609,6 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                   {unconfiguredNotice("No WooCommerce or Shopify store connected.")}
                 </>
               ))}
-            {pageFooter}
           </div>
         );
       })}

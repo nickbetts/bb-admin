@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getBrowser } from "@/lib/puppeteer";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 export const maxDuration = 60;
 
@@ -183,6 +183,13 @@ export async function GET(
       const DESIRED_PAD_PX = 64;
 
       const outputDoc = await PDFDocument.create();
+      const helvetica = await outputDoc.embedFont(StandardFonts.Helvetica);
+      const FONT_SIZE = 9;
+      const H_MARGIN = 40 * scale; // horizontal margin in points
+      const V_MARGIN = 18;         // vertical clearance from page edge in points
+      const LINE_COLOR = rgb(0.88, 0.88, 0.88);
+      const TEXT_COLOR = rgb(0.58, 0.58, 0.58);
+      const reportLabel = `${report.title}  ·  ${report.period}`;
 
       for (let idx = 0; idx < regions.length; idx++) {
         const region = regions[idx];
@@ -206,6 +213,57 @@ export async function GET(
 
         const newPage = outputDoc.addPage([pdfWidth, regionHeightPt]);
         newPage.drawPage(embedded, { x: 0, y: 0, width: pdfWidth, height: regionHeightPt });
+
+        // Draw header and footer on every page except the cover (idx 0)
+        if (idx > 0) {
+          // ── Header (top of page) ──────────────────────────────────────────
+          const headerY = regionHeightPt - V_MARGIN - FONT_SIZE;
+          newPage.drawLine({
+            start: { x: H_MARGIN, y: headerY - 6 },
+            end: { x: pdfWidth - H_MARGIN, y: headerY - 6 },
+            thickness: 0.5,
+            color: LINE_COLOR,
+          });
+          newPage.drawText("i3media", {
+            x: H_MARGIN,
+            y: headerY,
+            size: FONT_SIZE,
+            font: helvetica,
+            color: TEXT_COLOR,
+          });
+          const labelWidth = helvetica.widthOfTextAtSize(reportLabel, FONT_SIZE);
+          newPage.drawText(reportLabel, {
+            x: pdfWidth - H_MARGIN - labelWidth,
+            y: headerY,
+            size: FONT_SIZE,
+            font: helvetica,
+            color: TEXT_COLOR,
+          });
+
+          // ── Footer (bottom of page) ───────────────────────────────────────
+          const footerY = V_MARGIN;
+          newPage.drawLine({
+            start: { x: H_MARGIN, y: footerY + FONT_SIZE + 5 },
+            end: { x: pdfWidth - H_MARGIN, y: footerY + FONT_SIZE + 5 },
+            thickness: 0.5,
+            color: LINE_COLOR,
+          });
+          newPage.drawText("i3media", {
+            x: H_MARGIN,
+            y: footerY,
+            size: FONT_SIZE,
+            font: helvetica,
+            color: TEXT_COLOR,
+          });
+          const periodWidth = helvetica.widthOfTextAtSize(report.period, FONT_SIZE);
+          newPage.drawText(report.period, {
+            x: pdfWidth - H_MARGIN - periodWidth,
+            y: footerY,
+            size: FONT_SIZE,
+            font: helvetica,
+            color: TEXT_COLOR,
+          });
+        }
       }
 
       const finalPdfBuffer = await outputDoc.save();
