@@ -5,31 +5,39 @@ import { assemblePublicHtml } from "@/lib/lp-publish";
 
 export const dynamic = "force-dynamic";
 
-// GET /lp/[slug] — serve the landing page by its pretty public slug (no auth)
+// GET /lp/[clientSlug]/[lpSlug]
+//
+// Internal route hit by the middleware rewrite for {client}.clickr.marketing/{slug}.
+// Also directly addressable for testing.
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ clientSlug: string; lpSlug: string }> }
 ) {
-  const { slug } = await params;
+  const { clientSlug, lpSlug } = await params;
 
-  if (!slug || slug.length < 2) {
-    return NextResponse.json({ error: "Invalid slug" }, { status: 400 });
+  if (!clientSlug || !lpSlug) {
+    return new NextResponse("Not found", { status: 404 });
   }
 
   const { searchParams } = new URL(request.url);
   const testMode = searchParams.get("test") === "1";
 
-  const landingPage = await prisma.landingPage.findUnique({
-    where: { publicSlug: slug },
+  const client = await prisma.client.findUnique({
+    where: { slug: clientSlug },
+    select: { id: true, defaultAnalyticsConfig: true },
+  });
+
+  if (!client) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+
+  const landingPage = await prisma.landingPage.findFirst({
+    where: { clientId: client.id, slug: lpSlug, status: "published" },
     select: {
       id: true,
-      title: true,
       currentHtml: true,
       shareToken: true,
-      status: true,
-      formConfig: true,
       analyticsConfig: true,
-      client: { select: { defaultAnalyticsConfig: true } },
     },
   });
 
@@ -37,7 +45,6 @@ export async function GET(
     return new NextResponse("Not found", { status: 404 });
   }
 
-  // Track views (fire-and-forget); skip in test mode
   if (!testMode) {
     prisma.landingPage
       .update({
@@ -48,7 +55,7 @@ export async function GET(
   }
 
   const analytics = mergeAnalyticsConfig(
-    parseAnalyticsConfig(landingPage.client?.defaultAnalyticsConfig),
+    parseAnalyticsConfig(client.defaultAnalyticsConfig),
     parseAnalyticsConfig(landingPage.analyticsConfig),
   );
 

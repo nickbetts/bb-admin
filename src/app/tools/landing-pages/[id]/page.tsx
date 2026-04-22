@@ -57,6 +57,37 @@ import { parseCSSVariables, updateCSSVariable, type CSSVariable } from "@/lib/lp
 import { AnalyticsConfigForm } from "@/components/landing-pages/AnalyticsConfigForm";
 import type { LpAnalyticsConfig } from "@/lib/lp-analytics";
 
+// Public hosting domain for landing pages. Set via NEXT_PUBLIC_LP_DOMAIN at
+// build time; falls back to clickr.marketing.
+const LP_DOMAIN = process.env.NEXT_PUBLIC_LP_DOMAIN || "clickr.marketing";
+
+function toSubLabel(input: string | null | undefined): string {
+  return (input || "demo")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 63) || "demo";
+}
+
+/** Best public URL for a landing page — prefers the clickr.marketing host. */
+function buildLpUrl(opts: {
+  clientSlug?: string | null;
+  lpSlug?: string | null;
+  publicSlug?: string | null;
+  shareToken?: string | null;
+  testMode?: boolean;
+}): string {
+  const qs = opts.testMode ? "?test=1" : "";
+  if (opts.lpSlug) {
+    return `https://${toSubLabel(opts.clientSlug)}.${LP_DOMAIN}/${opts.lpSlug}${qs}`;
+  }
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  if (opts.publicSlug) return `${origin}/lp/${opts.publicSlug}${qs}`;
+  if (opts.shareToken) return `${origin}/api/share/landing-page/${opts.shareToken}${qs}`;
+  return "";
+}
+
 interface LandingPage {
   id: string;
   title: string;
@@ -738,10 +769,12 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
     const res = await fetch(`/api/tools/landing-pages/${id}/share`, { method: "POST" });
     if (res.ok) {
       const data = await res.json();
-      // Copy pretty URL if we have a public slug, otherwise share token URL
-      const url = data.publicSlug
-        ? `${window.location.origin}/lp/${data.publicSlug}`
-        : `${window.location.origin}/api/share/landing-page/${data.shareToken}`;
+      const url = buildLpUrl({
+        clientSlug: lp?.client?.slug,
+        lpSlug: lp?.status === "published" ? lp.slug : null,
+        publicSlug: data.publicSlug ?? lp?.publicSlug ?? null,
+        shareToken: data.shareToken,
+      });
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -838,7 +871,23 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
         <div style={{ flex: 1, minWidth: 0 }}>
           <h1 style={{ fontSize: 14, fontWeight: 650, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lp.title}</h1>
           {lp.client && (
-            <p style={{ fontSize: 12, color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lp.client.name}</p>
+            <p style={{ fontSize: 12, color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {lp.client.name}
+              {lp.status === "published" && lp.client.slug && (
+                <>
+                  {" · "}
+                  <a
+                    href={buildLpUrl({ clientSlug: lp.client.slug, lpSlug: lp.slug })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "var(--accent)", textDecoration: "none" }}
+                    title="Open live URL"
+                  >
+                    {toSubLabel(lp.client.slug)}.{LP_DOMAIN}/{lp.slug}
+                  </a>
+                </>
+              )}
+            </p>
           )}
         </div>
 
@@ -950,11 +999,20 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
 
           {lp.shareToken && (
             <a
-              href={lp.publicSlug ? `/lp/${lp.publicSlug}` : `/api/share/landing-page/${lp.shareToken}`}
+              href={buildLpUrl({
+                clientSlug: lp.client?.slug,
+                lpSlug: lp.status === "published" ? lp.slug : null,
+                publicSlug: lp.publicSlug,
+                shareToken: lp.shareToken,
+              })}
               target="_blank"
               rel="noopener noreferrer"
               style={{ ...toolbarBtn, textDecoration: "none" }}
-              title="Open preview"
+              title={
+                lp.status === "published" && lp.client?.slug
+                  ? `Open live: ${toSubLabel(lp.client.slug)}.${LP_DOMAIN}/${lp.slug}`
+                  : "Open preview"
+              }
             >
               <ExternalLink style={{ width: 14, height: 14 }} />
             </a>
