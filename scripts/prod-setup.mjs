@@ -1084,6 +1084,32 @@ async function main() {
     console.log("✓ LandingPage.analyticsConfig already present");
   }
 
+  // ── AgencySubscription table (added 2026-04-22) ───────────────────────────
+  if (!(await tableExists("AgencySubscription"))) {
+    await db.execute(`CREATE TABLE "AgencySubscription" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "platform" TEXT NOT NULL,
+      "category" TEXT,
+      "url" TEXT,
+      "email" TEXT,
+      "passwordEnc" TEXT,
+      "cost" REAL NOT NULL DEFAULT 0,
+      "currency" TEXT NOT NULL DEFAULT 'GBP',
+      "billingCycle" TEXT NOT NULL DEFAULT 'monthly',
+      "renewalDate" TEXT,
+      "owner" TEXT,
+      "notes" TEXT,
+      "active" INTEGER NOT NULL DEFAULT 1,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "AgencySubscription_platform_idx" ON "AgencySubscription"("platform")`);
+    await db.execute(`CREATE INDEX IF NOT EXISTS "AgencySubscription_active_idx" ON "AgencySubscription"("active")`);
+    console.log("✓ Created AgencySubscription table");
+  } else {
+    console.log("✓ AgencySubscription table already present");
+  }
+
   await db.close();
   console.log("✅ Schema migration complete");
 }
