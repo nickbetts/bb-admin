@@ -6,7 +6,7 @@ import {
   Search, LayoutDashboard, Users, FileText, Settings,
   Activity, CheckSquare, MessageSquare, LayoutGrid, TrendingUp,
   PieChart, Tag, Bot, FileSpreadsheet, ScanSearch, Sparkles,
-  ArrowRight, LayoutTemplate, KeyRound, Globe, Map,
+  ArrowRight, LayoutTemplate, KeyRound, Globe, Map, CreditCard,
 } from "lucide-react";
 
 // ── Static nav items ────────────────────────────────────────────────────────
@@ -31,6 +31,7 @@ const STATIC_ITEMS = [
   { label: "Access Requester",   href: "/tools/access-requester",       icon: <KeyRound size={14} />,         group: "Agency Tools" },
   { label: "LP Generator",       href: "/tools/landing-pages",          icon: <Globe size={14} />,            group: "Agency Tools" },
   { label: "Grand Plan",         href: "/tools/grand-plan",             icon: <Map size={14} />,              group: "Agency Tools" },
+  { label: "Subscriptions",      href: "/tools/subscriptions",          icon: <CreditCard size={14} />,       group: "Agency Tools" },
 ];
 
 interface ClientItem {

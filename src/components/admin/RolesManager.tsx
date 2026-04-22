@@ -37,6 +37,7 @@ const PERMISSION_GROUPS = [
       { key: "landing_page_generator", label: "LP Generator" },
       { key: "grand_plan", label: "Grand Plan" },
       { key: "qa_checklist", label: "Client QA" },
+      { key: "subscriptions", label: "Subscriptions" },
     ],
   },
   {

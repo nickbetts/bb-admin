@@ -26,6 +26,7 @@ export const ALL_PERMISSIONS = [
   "media_plan",
   "landing_page_generator",
   "qa_checklist",
+  "subscriptions",
   "meridian_architecture",
   "grand_plan",
   // Portal publishing — gates the "Publish to client portal" action on

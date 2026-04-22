@@ -36,6 +36,7 @@ import {
   ClipboardCheck,
   Brain,
   Map,
+  CreditCard,
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { KeyboardShortcutsHelp } from "@/components/ui/KeyboardShortcutsHelp";
@@ -78,6 +79,7 @@ const toolsNavItems: NavItem[] = [
   { href: "/tools/landing-pages", label: "LP Generator", icon: <Globe className="h-4 w-4" />, permission: "landing_page_generator" },
   { href: "/tools/grand-plan", label: "Grand Plan", icon: <Map className="h-4 w-4" />, permission: "grand_plan" },
   { href: "/tools/qa-checklist", label: "Client QA", icon: <ClipboardCheck className="h-4 w-4" />, permission: "qa_checklist" },
+  { href: "/tools/subscriptions", label: "Subscriptions", icon: <CreditCard className="h-4 w-4" />, permission: "subscriptions" },
 ];
 
 interface SidebarProps {
