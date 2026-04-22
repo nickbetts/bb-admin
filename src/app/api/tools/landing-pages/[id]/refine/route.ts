@@ -6,7 +6,8 @@ import type { BrandContext } from "@/lib/brand-extractor";
 import { logActivity } from "@/lib/activity-logger";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+// Vercel Pro caps function duration at 800 s; fall back to 300 s on Hobby.
+export const maxDuration = 800;
 
 // POST /api/tools/landing-pages/[id]/refine — iterative AI refinement
 export async function POST(

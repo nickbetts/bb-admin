@@ -21,7 +21,11 @@ function createPrismaClient() {
   }
 
   const authToken = process.env.TURSO_AUTH_TOKEN;
-  const adapter = new PrismaLibSql({ url, ...(authToken ? { authToken } : {}) });
+  // Bump libsql concurrency: default is 20 in-flight requests per client which is
+  // too low for dashboards that fan out to ~15 channel queries in parallel
+  // ("Database connections limit exceeded, try to reduce concurrency" errors).
+  // 100 is comfortable for our usage and well within Turso's per-database limit.
+  const adapter = new PrismaLibSql({ url, concurrency: 100, ...(authToken ? { authToken } : {}) });
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],

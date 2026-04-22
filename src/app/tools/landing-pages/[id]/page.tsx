@@ -593,8 +593,19 @@ export default function LandingPageEditor({ params }: { params: Promise<{ id: st
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${data.error ?? "Refinement failed"}`, type: "refine" as const }]);
+        // The Vercel runtime returns a non-JSON HTML page when a function times
+        // out (504 / "An error occurred"). Read as text first so we never crash
+        // on `JSON.parse` and surface a useful message either way.
+        const raw = await res.text();
+        let errorMessage: string;
+        try {
+          errorMessage = (JSON.parse(raw) as { error?: string }).error ?? "Refinement failed";
+        } catch {
+          errorMessage = res.status === 504
+            ? "The model took too long to respond. Try a smaller change or split the prompt into a few separate refinements."
+            : `Refinement failed (HTTP ${res.status}). Please try again.`;
+        }
+        setChatHistory((prev) => [...prev, { role: "assistant", content: `Error: ${errorMessage}`, type: "refine" as const }]);
         setRefining(false);
         return;
       }

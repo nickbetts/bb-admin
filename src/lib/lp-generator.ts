@@ -577,7 +577,10 @@ export async function refineLandingPage(opts: RefineLPOptions): Promise<string> 
   let userContent = `Here is the current landing page HTML:\n\n${opts.currentHtml}\n\nBrand colours: ${colourSummary}`;
 
   if (opts.brandContext.rawHtml) {
-    userContent += `\n\n## Original scraped website HTML (brand and copy reference):\n${opts.brandContext.rawHtml.slice(0, 40000)}`;
+    // Refines re-send the entire current HTML on every turn, so keep the raw
+    // brand reference compact to leave headroom for output tokens within the
+    // 300 s Vercel function ceiling.
+    userContent += `\n\n## Original scraped website HTML (brand and copy reference):\n${opts.brandContext.rawHtml.slice(0, 8000)}`;
   }
 
   userContent += `\n\nPlease make the following changes:\n${opts.prompt}`;
