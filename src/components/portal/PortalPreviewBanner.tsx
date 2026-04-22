@@ -26,16 +26,20 @@ function readMarker(): PreviewMarker | null {
 
 export function PortalPreviewBanner() {
   const [marker, setMarker] = useState<PreviewMarker | null>(null);
+  const [minutesLeft, setMinutesLeft] = useState(0);
 
   useEffect(() => {
-    setMarker(readMarker());
-    const id = setInterval(() => setMarker(readMarker()), 30_000);
+    const tick = () => {
+      const m = readMarker();
+      setMarker(m);
+      setMinutesLeft(m ? Math.max(0, Math.round((m.expiresAt - Date.now()) / 60000)) : 0);
+    };
+    tick();
+    const id = setInterval(tick, 30_000);
     return () => clearInterval(id);
   }, []);
 
   if (!marker) return null;
-
-  const minutesLeft = Math.max(0, Math.round((marker.expiresAt - Date.now()) / 60000));
 
   return (
     <div style={{

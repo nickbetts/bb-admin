@@ -56,7 +56,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     maxAge: ttlMs / 1000,
     path: "/",
   });
-  response.cookies.set("portal_preview", previewMarker, {
+  response.cookies.set("portal_preview", encodeURIComponent(previewMarker), {
     httpOnly: false, // readable by client banner
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
