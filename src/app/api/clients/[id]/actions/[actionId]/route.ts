@@ -4,6 +4,62 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+const VALID_STATUSES = [
+  "to_do",
+  "in_progress",
+  "for_approval",
+  "signed_off_internal",
+  "signed_off_client",
+  "done",
+  "cancelled",
+] as const;
+
+const actionInclude = {
+  category: { select: { id: true, name: true, slug: true, color: true, icon: true } },
+  assignees: {
+    include: { user: { select: { id: true, email: true, name: true } } },
+  },
+} as const;
+
+type StatusUpdateExtras = {
+  completedAt?: Date | null;
+  internalApprovedBy?: string | null;
+  internalApprovedAt?: Date | null;
+  clientApprovedBy?: string | null;
+  clientApprovedAt?: Date | null;
+  clientApprovalSource?: string | null;
+};
+
+/**
+ * Stamp approval/completion timestamps when status transitions through approval stages.
+ * Source defaults to "agency" — the portal endpoint passes "portal" instead.
+ */
+function buildStatusStampExtras(
+  prevStatus: string,
+  nextStatus: string,
+  userId: string,
+  source: "agency" | "portal" = "agency"
+): StatusUpdateExtras {
+  if (prevStatus === nextStatus) return {};
+  const extras: StatusUpdateExtras = {};
+
+  if (nextStatus === "signed_off_internal") {
+    extras.internalApprovedBy = userId;
+    extras.internalApprovedAt = new Date();
+  }
+  if (nextStatus === "signed_off_client") {
+    extras.clientApprovedBy = userId;
+    extras.clientApprovedAt = new Date();
+    extras.clientApprovalSource = source;
+  }
+  if (nextStatus === "done") {
+    extras.completedAt = new Date();
+  } else if (prevStatus === "done") {
+    extras.completedAt = null;
+  }
+  return extras;
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; actionId: string }> }
@@ -18,20 +74,26 @@ export async function PATCH(
       description?: string;
       status?: string;
       priority?: string;
-      assignedTo?: string;
-      dueDate?: string;
-      outcome?: string;
+      categoryId?: string | null;
+      assignedTo?: string | null;
+      assigneeIds?: string[];
+      boardOrder?: number;
+      dueDate?: string | null;
+      outcome?: string | null;
+      approvalNotes?: string | null;
     };
+
+    if (data.status && !VALID_STATUSES.includes(data.status as typeof VALID_STATUSES[number])) {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    }
 
     const existing = await prisma.actionItem.findFirst({ where: { id: actionId, clientId: id } });
     if (!existing) return NextResponse.json({ error: "Action not found" }, { status: 404 });
 
-    const completedAt =
-      data.status === "completed" && existing.status !== "completed"
-        ? new Date()
-        : data.status && data.status !== "completed"
-        ? null
-        : undefined;
+    const stampExtras =
+      data.status !== undefined
+        ? buildStatusStampExtras(existing.status, data.status, session.user.id, "agency")
+        : {};
 
     const action = await prisma.actionItem.update({
       where: { id: actionId },
@@ -40,11 +102,24 @@ export async function PATCH(
         ...(data.description !== undefined && { description: data.description }),
         ...(data.status !== undefined && { status: data.status }),
         ...(data.priority !== undefined && { priority: data.priority }),
+        ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
         ...(data.assignedTo !== undefined && { assignedTo: data.assignedTo }),
+        ...(data.boardOrder !== undefined && { boardOrder: data.boardOrder }),
         ...(data.dueDate !== undefined && { dueDate: data.dueDate }),
         ...(data.outcome !== undefined && { outcome: data.outcome }),
-        ...(completedAt !== undefined && { completedAt }),
+        ...(data.approvalNotes !== undefined && { approvalNotes: data.approvalNotes }),
+        ...stampExtras,
+        ...(data.assigneeIds !== undefined && {
+          assignees: {
+            deleteMany: {},
+            create: data.assigneeIds.map((userId) => ({
+              userId,
+              assignedBy: session.user.id,
+            })),
+          },
+        }),
       },
+      include: actionInclude,
     });
 
     return NextResponse.json(action);

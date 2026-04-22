@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { Plus, ExternalLink, Settings, Shield } from "lucide-react";
+import { Plus, ExternalLink, Settings, Shield, KanbanSquare, Eye } from "lucide-react";
 import { ClientDashboard } from "@/components/dashboard/ClientDashboard";
 import { ClientStatusControl } from "@/components/clients/ClientStatusControl";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -80,6 +80,10 @@ export default async function ClientPage({ params, searchParams }: Props) {
               <Plus style={{ width: 16, height: 16 }} />
               New Report
             </Link>
+            <Link href={`/clients/${slug}/tasks`} className="btn btn-secondary">
+              <KanbanSquare style={{ width: 15, height: 15 }} />
+              Tasks
+            </Link>
             <Link href={`/clients/${slug}/settings`} className="btn btn-secondary">
               <Settings style={{ width: 15, height: 15 }} />
               Settings
@@ -88,6 +92,16 @@ export default async function ClientPage({ params, searchParams }: Props) {
               <Shield style={{ width: 15, height: 15 }} />
               Portal
             </Link>
+            <a
+              href={`/api/clients/${client.id}/portal-preview`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-secondary"
+              title="Open the client's portal in a new tab as one of their portal users"
+            >
+              <Eye style={{ width: 15, height: 15 }} />
+              Preview portal
+            </a>
           </div>
         </div>
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Target, MessageSquare, LogOut, Loader2, ExternalLink, Globe, BookOpen, Layers, Map } from "lucide-react";
+import { FileText, Target, MessageSquare, LogOut, Loader2, ExternalLink, Globe, BookOpen, Layers, Map, ClipboardCheck } from "lucide-react";
 import Link from "next/link";
 
 interface PortalUser {
@@ -107,6 +107,7 @@ export default function PortalDashboardPage() {
   const [user, setUser] = useState<PortalUser | null>(null);
   const [data, setData] = useState<PortalData | null>(null);
   const [assets, setAssets] = useState<PortalAssets | null>(null);
+  const [pendingTaskCount, setPendingTaskCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -124,6 +125,12 @@ export default function PortalDashboardPage() {
           fetch("/api/portal/assets")
             .then((r) => r.ok ? r.json() : null)
             .then((a: PortalAssets | null) => setAssets(a))
+            .catch(() => null);
+        }
+        if (perms.includes("task_approvals")) {
+          fetch("/api/portal/tasks")
+            .then((r) => r.ok ? r.json() : [])
+            .then((tasks: unknown[]) => setPendingTaskCount(Array.isArray(tasks) ? tasks.length : 0))
             .catch(() => null);
         }
       })
@@ -172,6 +179,22 @@ export default function PortalDashboardPage() {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
+          {/* Tasks awaiting approval */}
+          {permissions.includes("task_approvals") && (
+            <Link href="/portal/tasks" className="card" style={{ padding: 20, textDecoration: "none", display: "block" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <ClipboardCheck style={{ width: 16, height: 16, color: "var(--accent)" }} />
+                <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Tasks awaiting your review</h2>
+              </div>
+              <p style={{ fontSize: 28, fontWeight: 700, color: pendingTaskCount > 0 ? "var(--accent)" : "var(--text-3)", margin: 0 }}>
+                {pendingTaskCount}
+              </p>
+              <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>
+                {pendingTaskCount === 0 ? "All caught up." : pendingTaskCount === 1 ? "1 task to review →" : `${pendingTaskCount} tasks to review →`}
+              </p>
+            </Link>
+          )}
+
           {/* Reports */}
           {permissions.includes("reports") && (
             <div className="card" style={{ padding: 20 }}>

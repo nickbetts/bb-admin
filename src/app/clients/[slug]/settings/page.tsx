@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ClientSettingsForm } from "@/components/clients/ClientSettingsForm";
+import { ClientTaskCategorySettings } from "@/components/clients/ClientTaskCategorySettings";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -33,6 +34,9 @@ export default async function ClientSettingsPage({ params }: Props) {
           <ArrowLeft className="h-4 w-4" />
           Back to client
         </Link>
+      </div>
+      <div style={{ marginTop: 24 }}>
+        <ClientTaskCategorySettings clientId={client.id} />
       </div>
       <ClientSettingsForm client={client} />
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { UserPlus, Trash2, Link as LinkIcon, Check, X, Shield, Loader2 } from "lucide-react";
+import { UserPlus, Trash2, Link as LinkIcon, Check, X, Shield, Loader2, Eye } from "lucide-react";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 interface PortalUser {
@@ -19,7 +19,7 @@ interface ClientPortalManagerProps {
   clientName: string;
 }
 
-const PERMISSIONS = ["reports", "goals", "communications", "assets"];
+const PERMISSIONS = ["reports", "goals", "communications", "assets", "task_approvals"];
 
 function timeAgo(dateStr: string): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -262,6 +262,16 @@ export function ClientPortalManager({ clientId, clientName }: ClientPortalManage
                     )}
                     {copiedLink === user.id ? "Copied!" : "Magic Link"}
                   </button>
+                  <a
+                    href={`/api/clients/${clientId}/portal-preview?userId=${user.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={!user.isActive ? "Enable user first" : "Preview portal as this user"}
+                    className="btn btn-secondary btn-sm"
+                    style={{ gap: 5, display: "inline-flex", alignItems: "center", pointerEvents: user.isActive ? "auto" : "none", opacity: user.isActive ? 1 : 0.4 }}
+                  >
+                    <Eye style={{ width: 12, height: 12 }} /> Preview
+                  </a>
                   <button
                     onClick={() => void toggleActive(user)}
                     title={user.isActive ? "Disable access" : "Enable access"}
