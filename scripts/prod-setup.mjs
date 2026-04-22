@@ -1052,6 +1052,23 @@ async function main() {
     console.log("✓ Client.signalConfig already present");
   }
 
+  // ── ContentStrategy.status column (added 2026-04-21) ─────────────────────
+  if (!(await columnExists("ContentStrategy", "status"))) {
+    await db.execute(`ALTER TABLE "ContentStrategy" ADD COLUMN "status" TEXT NOT NULL DEFAULT 'live'`);
+    console.log("✓ Added ContentStrategy.status");
+  } else {
+    console.log("✓ ContentStrategy.status already present");
+  }
+
+  // ── LandingPage userId index (added 2026-04-22) ───────────────────────────
+  // The userId column already exists; just ensure the index is present.
+  try {
+    await db.execute(`CREATE INDEX IF NOT EXISTS "LandingPage_userId_createdAt_idx" ON "LandingPage"("userId", "createdAt")`);
+    console.log("✓ LandingPage_userId_createdAt_idx ensured");
+  } catch (e) {
+    console.log("✓ LandingPage_userId_createdAt_idx skipped:", e.message);
+  }
+
   await db.close();
   console.log("✅ Schema migration complete");
 }
