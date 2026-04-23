@@ -77,7 +77,7 @@ export function CompetitorIntelligenceSection({ clientId, visibleBlocks }: Compe
           No competitor data yet.{" "}
           <Link href="/tools/competitor-intelligence" style={{ color: "var(--accent)" }}>Run analysis →</Link>
         </div>
-      ) : (
+      ) : show("snapshots") ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {topDomains.map((snap) => {
             let metrics: ParsedMetrics = {};
@@ -108,7 +108,7 @@ export function CompetitorIntelligenceSection({ clientId, visibleBlocks }: Compe
             );
           })}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Trash2, Loader2, Check, Play, Pause, Clock, MessageSquare, Send } from "lucide-react";
+import { X, Trash2, Loader2, Check, Play, Pause, Clock, MessageSquare, Send, AlertCircle } from "lucide-react";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { UserOption } from "./TaskKanbanBoard";
 
@@ -106,6 +106,7 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
   // Time logs / timer
   const [timeData, setTimeData] = useState<TimeApiResponse>({ logs: [], totalMs: 0, activeForUser: null });
   const [timerWorking, setTimerWorking] = useState(false);
+  const [timerError, setTimerError] = useState<string | null>(null);
   const [tick, setTick] = useState(0); // forces re-render every second when a timer is active
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -226,6 +227,7 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
 
   async function startTimer() {
     setTimerWorking(true);
+    setTimerError(null);
     try {
       const res = await fetch(`/api/clients/${clientId}/actions/${task.id}/time`, {
         method: "POST",
@@ -235,12 +237,18 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
       if (res.ok) {
         const created = await res.json() as TaskTimeLogRecord;
         setTimeData((d) => ({ logs: [created, ...d.logs], totalMs: d.totalMs, activeForUser: created }));
+      } else {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        setTimerError(err.error ?? "Failed to start timer");
       }
+    } catch {
+      setTimerError("Failed to start timer — please try again");
     } finally { setTimerWorking(false); }
   }
 
   async function stopTimer() {
     setTimerWorking(true);
+    setTimerError(null);
     try {
       const res = await fetch(`/api/clients/${clientId}/actions/${task.id}/time/stop`, { method: "POST" });
       if (res.ok) {
@@ -250,7 +258,11 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
           totalMs: d.totalMs + (stopped.durationMs ?? 0),
           activeForUser: null,
         }));
+      } else {
+        setTimerError("Failed to stop timer — please try again");
       }
+    } catch {
+      setTimerError("Failed to stop timer — please try again");
     } finally { setTimerWorking(false); }
   }
 
@@ -288,6 +300,17 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
     urgent: { tone: "#ef4444", bg: "rgba(239,68,68,0.14)" },
   };
   const currentStatus = statusMeta[draft.status] ?? statusMeta.to_do!;
+
+  // Merged chronological activity feed shown in the History panel.
+  const activityFeed: { at: string; label: string; sub?: string; tone: string }[] = [
+    ...(draft.internalApprovedAt ? [{ at: draft.internalApprovedAt, label: "Signed off internally", tone: "#8b5cf6" }] : []),
+    ...(draft.clientApprovedAt ? [{ at: draft.clientApprovedAt, label: "Signed off by client", sub: draft.clientApprovalSource ?? undefined, tone: "#10b981" }] : []),
+    ...timeData.logs.filter((l) => l.endedAt).map((l) => ({
+      at: l.endedAt!,
+      label: `${(l.user.name ?? l.user.email).split(" ")[0]} logged ${formatDuration(l.durationMs ?? 0)}`,
+      tone: "#0ea5e9",
+    })),
+  ].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
 
   return (
     <div
@@ -446,12 +469,29 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
             </Field>
 
             {/* Comments */}
-            <div>
-              <SectionHeading icon={<MessageSquare style={{ width: 14, height: 14 }} />}>
-                Comments {comments.length > 0 && <span style={{ color: "var(--text-3)", fontWeight: 500, marginLeft: 4 }}>· {comments.length}</span>}
-              </SectionHeading>
+            <div style={{
+              borderTop: "1px solid var(--border-subtle)", paddingTop: 24, marginTop: 4,
+            }}>
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16,
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <MessageSquare style={{ width: 15, height: 15, color: "var(--accent)" }} />
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Comments</span>
+                  {comments.length > 0 && (
+                    <span style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      width: 20, height: 20, borderRadius: "50%",
+                      background: "var(--accent)", color: "white",
+                      fontSize: 10, fontWeight: 800,
+                    }}>
+                      {comments.length}
+                    </span>
+                  )}
+                </div>
+              </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {comments.length === 0 && (
                   <p style={{ fontSize: 13, color: "var(--text-3)", margin: 0 }}>No comments yet — start the conversation.</p>
                 )}
@@ -550,7 +590,7 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
 
             {/* Priority */}
             <SideField label="Priority">
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+              <div style={{ display: "flex", gap: 4 }}>
                 {PRIORITY_OPTIONS.map((p) => {
                   const isOn = draft.priority === p;
                   const meta = priorityMeta[p]!;
@@ -560,16 +600,15 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
                       type="button"
                       onClick={() => { update("priority", p); void save({ priority: p }); }}
                       style={{
-                        display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center",
-                        padding: "7px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        cursor: "pointer", textTransform: "capitalize",
-                        background: isOn ? meta.bg : "var(--bg)",
-                        color: isOn ? meta.tone : "var(--text-2)",
-                        border: `1px solid ${isOn ? meta.tone : "var(--border-subtle)"}`,
+                        flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        padding: "8px 4px", borderRadius: 8, fontSize: 11, fontWeight: 700,
+                        cursor: "pointer", textTransform: "capitalize", letterSpacing: 0.2,
+                        background: isOn ? meta.tone : "var(--bg)",
+                        color: isOn ? "white" : "var(--text-3)",
+                        border: `1.5px solid ${isOn ? meta.tone : "var(--border-subtle)"}`,
                         transition: "all 0.12s",
                       }}
                     >
-                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: meta.tone }} />
                       {p}
                     </button>
                   );
@@ -659,50 +698,89 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
             {/* Time tracking */}
             <SideField
               label="Time tracking"
-              right={<span style={{ fontSize: 11, color: "var(--text-3)" }}>Total <strong style={{ color: "var(--text)" }}>{formatDuration(liveTotalMs)}</strong></span>}
+              right={liveTotalMs > 0 ? (
+                <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12, fontWeight: 700, color: "var(--text)" }}>
+                  {formatDuration(liveTotalMs)} total
+                </span>
+              ) : undefined}
             >
-              <div style={{
-                display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
-                background: "var(--bg)", borderRadius: 10, border: "1px solid var(--border-subtle)",
-              }}>
-                {timeData.activeForUser ? (
-                  <>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 0 4px rgba(239,68,68,0.18)", flexShrink: 0 }} />
-                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 15, fontWeight: 700, color: "var(--text)", flex: 1 }}>
+              {timerError && (
+                <div style={{
+                  background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)",
+                  borderRadius: 8, padding: "8px 12px", marginBottom: 8, fontSize: 12, color: "#ef4444",
+                  display: "flex", alignItems: "center", gap: 6,
+                }}>
+                  <AlertCircle style={{ width: 13, height: 13, flexShrink: 0 }} />
+                  {timerError}
+                </div>
+              )}
+
+              {timeData.activeForUser ? (
+                <div style={{
+                  background: "rgba(239,68,68,0.05)", border: "1.5px solid rgba(239,68,68,0.2)",
+                  borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{
+                      width: 8, height: 8, borderRadius: "50%", background: "#ef4444",
+                      boxShadow: "0 0 0 4px rgba(239,68,68,0.18)", flexShrink: 0,
+                    }} />
+                    <span style={{
+                      fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                      fontSize: 22, fontWeight: 800, color: "#ef4444", flex: 1, letterSpacing: 1,
+                    }}>
                       {formatTimer(Date.now() - new Date(timeData.activeForUser.startedAt).getTime())}
                     </span>
-                    <button onClick={() => void stopTimer()} disabled={timerWorking} className="btn btn-secondary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                      <Pause style={{ width: 11, height: 11 }} /> Stop
+                    <button
+                      onClick={() => void stopTimer()}
+                      disabled={timerWorking}
+                      className="btn btn-secondary btn-sm"
+                      style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0 }}
+                    >
+                      {timerWorking ? <Loader2 className="animate-spin" style={{ width: 11, height: 11 }} /> : <Pause style={{ width: 11, height: 11 }} />}
+                      Stop
                     </button>
-                  </>
-                ) : (
-                  <>
-                    <Clock style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0 }} />
-                    <span style={{ flex: 1, fontSize: 12, color: "var(--text-3)" }}>
-                      {hasActiveTimer ? "Teammate has a timer running" : "Not started"}
-                    </span>
-                    <button onClick={() => void startTimer()} disabled={timerWorking} className="btn btn-primary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                      <Play style={{ width: 11, height: 11 }} /> Start
-                    </button>
-                  </>
-                )}
-              </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: "rgba(239,68,68,0.7)" }}>
+                    Running since {new Date(timeData.activeForUser.startedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => void startTimer()}
+                  disabled={timerWorking}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    padding: "13px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600,
+                    cursor: timerWorking ? "wait" : "pointer",
+                    background: "var(--bg)", border: "1.5px dashed var(--border)",
+                    color: "var(--text-2)", transition: "all 0.15s",
+                  }}
+                >
+                  {timerWorking
+                    ? <><Loader2 className="animate-spin" style={{ width: 14, height: 14, color: "var(--accent)" }} /> Starting…</>
+                    : hasActiveTimer
+                    ? <><Clock style={{ width: 14, height: 14, color: "var(--text-3)" }} /> Teammate&apos;s timer running</>
+                    : <><Play style={{ width: 14, height: 14, color: "var(--accent)" }} /> Start timer</>
+                  }
+                </button>
+              )}
 
               {timeData.logs.length > 0 && (
-                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 2 }}>
-                  {timeData.logs.slice(0, 6).map((l) => (
+                <div style={{ marginTop: 8, display: "flex", flexDirection: "column" }}>
+                  {timeData.logs.slice(0, 5).map((l) => (
                     <div key={l.id} style={{
                       display: "flex", alignItems: "center", gap: 8, fontSize: 11,
-                      padding: "6px 8px", borderRadius: 6,
+                      padding: "6px 0", borderBottom: "1px solid var(--border-subtle)",
                     }}>
-                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: l.endedAt ? "var(--text-4)" : "#ef4444", flexShrink: 0 }} />
-                      <span style={{ color: "var(--text-2)", fontWeight: 600, flexShrink: 0, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: l.endedAt ? "var(--text-4)" : "#ef4444" }} />
+                      <span style={{ color: "var(--text-2)", fontWeight: 600, flexShrink: 0 }}>
                         {(l.user.name ?? l.user.email).split(" ")[0]}
                       </span>
                       <span style={{ color: "var(--text-4)", flex: 1, fontSize: 10 }}>
                         {new Date(l.startedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                       </span>
-                      <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "var(--text)", fontWeight: 700, fontSize: 11 }}>
+                      <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "var(--text)", fontWeight: 700 }}>
                         {l.endedAt
                           ? formatDuration(l.durationMs ?? 0)
                           : formatDuration(Math.max(0, Date.now() - new Date(l.startedAt).getTime()))}
@@ -710,38 +788,47 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
                       <button
                         onClick={() => void deleteTimeLog(l.id)}
                         aria-label="Delete entry"
-                        style={{ background: "transparent", border: "none", color: "var(--text-4)", cursor: "pointer", padding: 2, borderRadius: 3, display: "flex" }}
+                        style={{ background: "transparent", border: "none", color: "var(--text-4)", cursor: "pointer", padding: 2, display: "flex" }}
                       >
                         <Trash2 style={{ width: 10, height: 10 }} />
                       </button>
                     </div>
                   ))}
-                  {timeData.logs.length > 6 && (
-                    <span style={{ fontSize: 11, color: "var(--text-4)", padding: "4px 8px" }}>+ {timeData.logs.length - 6} earlier entries</span>
+                  {timeData.logs.length > 5 && (
+                    <span style={{ fontSize: 11, color: "var(--text-4)", paddingTop: 6 }}>+ {timeData.logs.length - 5} earlier entries</span>
                   )}
                 </div>
               )}
             </SideField>
 
-            {/* Approval audit */}
-            {(draft.internalApprovedAt || draft.clientApprovedAt) && (
-              <SideField label="History">
-                <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 11, color: "var(--text-3)" }}>
-                  {draft.internalApprovedAt && (
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#8b5cf6", marginTop: 5, flexShrink: 0 }} />
-                      <span>Signed off internally · {new Date(draft.internalApprovedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-                    </div>
-                  )}
-                  {draft.clientApprovedAt && (
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", marginTop: 5, flexShrink: 0 }} />
-                      <span>
-                        Signed off by client · {new Date(draft.clientApprovedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                        {draft.clientApprovalSource && <span style={{ color: "var(--text-4)" }}> ({draft.clientApprovalSource})</span>}
-                      </span>
-                    </div>
-                  )}
+            {/* Activity / History */}
+            {activityFeed.length > 0 && (
+              <SideField label="Activity">
+                <div style={{ position: "relative", paddingLeft: 16 }}>
+                  {/* Vertical connector line */}
+                  <div style={{
+                    position: "absolute", left: 3, top: 6, bottom: 6, width: 1,
+                    background: "var(--border-subtle)",
+                  }} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    {activityFeed.map((item, i) => (
+                      <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", position: "relative" }}>
+                        <span style={{
+                          position: "absolute", left: -18, top: 3,
+                          width: 8, height: 8, borderRadius: "50%",
+                          background: item.tone, border: "2px solid var(--bg-2)",
+                          flexShrink: 0,
+                        }} />
+                        <div>
+                          <div style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 500, lineHeight: 1.4 }}>{item.label}</div>
+                          {item.sub && <div style={{ fontSize: 11, color: "var(--text-4)" }}>via {item.sub}</div>}
+                          <div style={{ fontSize: 10, color: "var(--text-4)", marginTop: 2 }}>
+                            {new Date(item.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </SideField>
             )}
@@ -795,18 +882,6 @@ function SideField({ label, right, children }: { label: string; right?: React.Re
         }}>{label}</span>
         {right}
       </div>
-      {children}
-    </div>
-  );
-}
-
-function SectionHeading({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div style={{
-      display: "inline-flex", alignItems: "center", gap: 8,
-      fontSize: 13, fontWeight: 600, color: "var(--text)",
-    }}>
-      <span style={{ color: "var(--text-3)", display: "inline-flex" }}>{icon}</span>
       {children}
     </div>
   );

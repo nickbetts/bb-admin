@@ -53,6 +53,18 @@ interface KlaviyoSmsCampaign {
   revenue: number;
 }
 
+interface KlaviyoFlow {
+  id: string;
+  name: string;
+  status: string;
+  sends: number;
+  opens: number;
+  clicks: number;
+  revenue: number;
+  openRate: number;
+  clickRate: number;
+}
+
 interface KlaviyoSectionProps {
   clientId: string;
   clientName?: string;
@@ -70,6 +82,7 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
   const [subscriberHealth, setSubscriberHealth] = useState<KlaviyoSubscriberHealth | null>(null);
   const [segments, setSegments] = useState<KlaviyoSegment[]>([]);
   const [smsCampaigns, setSmsCampaigns] = useState<KlaviyoSmsCampaign[]>([]);
+  const [flows, setFlows] = useState<KlaviyoFlow[]>([]);
   const [error, setError] = useState("");
 
   const fetchData = useCallback(async () => {
@@ -80,13 +93,14 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
       if (_startDate) params.set("startDate", _startDate);
       if (_endDate) params.set("endDate", _endDate);
       const res = await fetch(`/api/klaviyo?${params}`);
-      const data = await res.json() as { overview?: KlaviyoOverview; campaigns?: KlaviyoCampaign[]; subscriberHealth?: KlaviyoSubscriberHealth; segments?: KlaviyoSegment[]; smsCampaigns?: KlaviyoSmsCampaign[]; error?: string };
+      const data = await res.json() as { overview?: KlaviyoOverview; campaigns?: KlaviyoCampaign[]; subscriberHealth?: KlaviyoSubscriberHealth; segments?: KlaviyoSegment[]; smsCampaigns?: KlaviyoSmsCampaign[]; flows?: KlaviyoFlow[]; error?: string };
       if (!res.ok) { setError(data.error ?? "Failed to load Klaviyo data"); return; }
       setOverview(data.overview ?? null);
       setCampaigns(data.campaigns ?? []);
       setSubscriberHealth(data.subscriberHealth ?? null);
       setSegments(data.segments ?? []);
       setSmsCampaigns(data.smsCampaigns ?? []);
+      setFlows(data.flows ?? []);
     } catch {
       setError("Network error loading Klaviyo data.");
     } finally {
@@ -173,6 +187,29 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
                 { key: "revenue", label: "Revenue", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.revenue > 0 ? `£${row.revenue.toFixed(0)}` : "—"}</span> },
               ]}
               pageSize={0}
+              className="mt-5"
+            />
+          )}
+
+          {/* Automated Flows */}
+          {show("flows") && flows.length > 0 && (
+            <DataTable<KlaviyoFlow>
+              data={flows}
+              columns={[
+                { key: "name", label: "Flow", render: (_v, row) => (
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{row.name}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-3)", textTransform: "capitalize" }}>{row.status}</div>
+                  </div>
+                ) },
+                { key: "sends", label: "Sends", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.sends.toLocaleString()}</span> },
+                { key: "openRate", label: "Open Rate", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{(row.openRate * 100).toFixed(1)}%</span> },
+                { key: "clickRate", label: "Click Rate", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{(row.clickRate * 100).toFixed(1)}%</span> },
+                { key: "revenue", label: "Revenue", align: "right", sortable: true, render: (_v, row) => <span style={{ color: "var(--text-2)", fontWeight: 600 }}>{row.revenue > 0 ? `£${row.revenue.toFixed(0)}` : "—"}</span> },
+              ]}
+              pageSize={0}
+              exportable
+              exportFilename="klaviyo-flows"
               className="mt-5"
             />
           )}

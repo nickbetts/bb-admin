@@ -20,7 +20,7 @@ import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { formatCurrency, formatNumber, formatDateDisplay } from "@/lib/utils";
-import { ShoppingCart, TrendingUp, Package } from "lucide-react";
+import { ShoppingCart, TrendingUp, Package, Users } from "lucide-react";
 import { BlendedRevenuePanel } from "./BlendedRevenuePanel";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
@@ -277,6 +277,36 @@ export function EcommerceSection({ clientId, clientName, platform, startDate, en
                   exportFilename="top-customers"
                 />
               )}
+            </SectionCard>
+          )}
+
+          {/* Repeat Purchase Rate */}
+          {show("repeat_purchase") && customers && customers.totalCustomers > 0 && (
+            <SectionCard title="Repeat Purchase Rate" subtitle="Customer loyalty and retention indicator">
+              <div className="grid grid-cols-3 gap-5">
+                <MetricCard
+                  title="Repeat Purchase Rate"
+                  value={`${Math.round((customers.returningCustomers / customers.totalCustomers) * 100)}%`}
+                  subtitle={`${formatNumber(customers.returningCustomers)} of ${formatNumber(customers.totalCustomers)} customers`}
+                  icon={<TrendingUp className="h-5 w-5" />}
+                  color="green"
+                />
+                <MetricCard
+                  title="Returning Customers"
+                  value={formatNumber(customers.returningCustomers)}
+                  subtitle={`${formatNumber(customers.newCustomers)} new acquired`}
+                  icon={<Users className="h-5 w-5" />}
+                  color="blue"
+                />
+                <MetricCard
+                  title="Avg Orders / Customer"
+                  value={customers.averageOrdersPerCustomer.toFixed(2)}
+                  subtitle="Across all customers"
+                  icon={<Package className="h-5 w-5" />}
+                  color="purple"
+                />
+              </div>
+              <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 12 }}>A repeat purchase rate above 27% is generally considered healthy for ecommerce. Below 20% indicates a customer retention opportunity.</p>
             </SectionCard>
           )}
 

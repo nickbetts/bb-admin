@@ -1075,6 +1075,39 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         </SectionCard>
       )}
 
+      {/* Engagement Depth */}
+      {show("engagement_depth") && overview && overview.sessions > 0 && (
+        <SectionCard title="Engagement Depth" subtitle="How deeply users are engaging with your site">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+            <MetricCard
+              title="Engaged Sessions"
+              value={formatNumber(overview.engagedSessions)}
+              subtitle={`${formatPercent(overview.engagementRate / 100)} of all sessions`}
+              color="green"
+            />
+            <MetricCard
+              title="Engagement Rate"
+              value={formatPercent(overview.engagementRate / 100)}
+              subtitle="GA4 engagement threshold"
+              color="blue"
+            />
+            <MetricCard
+              title="Avg Session Duration"
+              value={formatDuration(overview.avgSessionDuration)}
+              subtitle="Per session across all users"
+              color="purple"
+            />
+            <MetricCard
+              title="Engaged Sessions / User"
+              value={overview.users > 0 ? (overview.engagedSessions / overview.users).toFixed(2) : "—"}
+              subtitle="Higher = stickier audience"
+              color="orange"
+            />
+          </div>
+          <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 12 }}>An engagement rate above 60% is generally healthy. Below 40% suggests landing pages or audience targeting may need review.</p>
+        </SectionCard>
+      )}
+
       {/* Scroll Depth */}
       {show("scroll_depth") && scrollDepth.length > 0 && (
         <SectionCard title="Scroll Depth" subtitle="How far users scroll on pages">

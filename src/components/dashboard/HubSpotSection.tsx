@@ -105,13 +105,30 @@ export function HubSpotSection({ clientId, clientName, crossPlatformContext, vis
 
   return (
     <div>
-      {summary && (
+      {summary && show("kpis") && (
         <MetricGrid cols={4} className="mb-5">
           <MetricCard title="Total Contacts" value={summary.totalContacts} icon={<Users style={{ width: 14, height: 14 }} />} channel="hubspot" />
           <MetricCard title="Open Deals" value={summary.openDeals} icon={<TrendingUp style={{ width: 14, height: 14 }} />} channel="hubspot" />
           <MetricCard title="Pipeline Value" value={formatCurrency(summary.pipelineValue)} icon={<DollarSign style={{ width: 14, height: 14 }} />} channel="hubspot" />
           <MetricCard title="Closed Won" value={formatCurrency(summary.closedWonValue)} icon={<DollarSign style={{ width: 14, height: 14 }} />} channel="hubspot" />
         </MetricGrid>
+      )}
+
+      {show("contacts") && data.contacts && data.contacts.length > 0 && (
+        <DataTable<HubSpotContact>
+          data={data.contacts}
+          columns={[
+            { key: "firstName", label: "Name", render: (_v, row) => <span style={{ fontWeight: 500 }}>{`${row.firstName ?? ""} ${row.lastName ?? ""}`.trim() || "—"}</span> },
+            { key: "email", label: "Email", render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.email || "—"}</span> },
+            { key: "company", label: "Company", render: (_v, row) => <span style={{ color: "var(--text-2)" }}>{row.company || "—"}</span> },
+            { key: "lifecycleStage", label: "Lifecycle Stage", render: (_v, row) => <span style={{ color: "var(--text-3)", textTransform: "capitalize" }}>{(row.lifecycleStage || "—").replace(/_/g, " ")}</span> },
+          ]}
+          pageSize={20}
+          searchable
+          exportable
+          exportFilename="hubspot-contacts"
+          className="mb-5"
+        />
       )}
 
       {show("deals") && data.deals && data.deals.length > 0 && (

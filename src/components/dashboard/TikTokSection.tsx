@@ -2,15 +2,18 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { RefreshCw, Video } from "lucide-react";
+import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
 import { formatCurrency, formatNumber, formatDateDisplay } from "@/lib/utils";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
+import { SectionCard } from "@/components/ui/index";
 import { DataTable } from "@/components/ui/DataTable";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
 import { SuperSummary } from "@/components/ai/SuperSummary";
+import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE } from "@/lib/chart-config";
 
 interface TikTokSectionProps {
   clientId: string;
@@ -82,9 +85,26 @@ interface TikTokCreative {
   videoWatched2s: number;
 }
 
+interface TikTokAdGroupRow {
+  adGroupId: string;
+  adGroupName: string;
+  campaignId: string;
+  status: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  conversions: number;
+  costPerConversion: number;
+  videoViews: number;
+  reach: number;
+  frequency: number;
+}
+
 export function TikTokSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks }: TikTokSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
-  const [data, setData] = useState<{ overview: TikTokOverview; campaigns: TikTokCampaign[]; daily: TikTokDaily[]; demographics?: TikTokDemo[]; creatives?: TikTokCreative[] } | null>(null);
+  const [data, setData] = useState<{ overview: TikTokOverview; campaigns: TikTokCampaign[]; daily: TikTokDaily[]; adGroups?: TikTokAdGroupRow[]; demographics?: TikTokDemo[]; creatives?: TikTokCreative[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -143,6 +163,24 @@ export function TikTokSection({ clientId, clientName, startDate, endDate, crossP
         </MetricGrid>
       )}
 
+      {/* Performance Trend chart */}
+      {show("chart") && data.daily.length > 0 && (
+        <SectionCard title="Performance Trend" subtitle="Spend, clicks and conversions over time">
+          <ResponsiveContainer width="100%" height={260}>
+            <AreaChart data={data.daily.map(d => ({ date: d.date.slice(5), spend: d.spend, clicks: d.clicks, conversions: d.conversions }))}>
+              <CartesianGrid {...CHART_GRID_STYLE} />
+              <XAxis dataKey="date" {...CHART_AXIS_STYLE} interval="preserveStartEnd" />
+              <YAxis yAxisId="left" {...CHART_AXIS_STYLE} tickFormatter={(v) => `£${v}`} width={50} />
+              <YAxis yAxisId="right" orientation="right" {...CHART_AXIS_STYLE} width={48} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE.contentStyle} />
+              <Area {...CHART_AREA_STYLE} yAxisId="left" type="monotone" dataKey="spend" name="Spend" stroke="#fe2c55" fill="#fe2c55" fillOpacity={0.18} />
+              <Area {...CHART_AREA_STYLE} yAxisId="right" type="monotone" dataKey="clicks" name="Clicks" stroke="#25f4ee" fill="#25f4ee" fillOpacity={0.12} />
+              <Area {...CHART_AREA_STYLE} yAxisId="right" type="monotone" dataKey="conversions" name="Conversions" stroke="#10b981" fill="#10b981" fillOpacity={0.18} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </SectionCard>
+      )}
+
       {/* Campaigns table */}
       {show("campaigns") && campaigns.length > 0 && (
         <DataTable<TikTokCampaign>
@@ -159,6 +197,29 @@ export function TikTokSection({ clientId, clientName, startDate, endDate, crossP
           pageSize={20}
           exportable
           exportFilename="tiktok-campaigns"
+        />
+      )}
+
+      {/* Ad Groups breakdown */}
+      {show("ad_groups") && data.adGroups && data.adGroups.length > 0 && (
+        <DataTable<TikTokAdGroupRow>
+          data={data.adGroups}
+          columns={[
+            { key: "adGroupName", label: "Ad Group", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.adGroupName}</span> },
+            { key: "status", label: "Status", render: (_v, row) => <span style={{ color: "var(--text-3)", textTransform: "capitalize" }}>{row.status.toLowerCase()}</span> },
+            { key: "spend", label: "Spend", align: "right", sortable: true, render: (_v, row) => formatCurrency(row.spend) },
+            { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => formatNumber(row.impressions) },
+            { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (_v, row) => formatNumber(row.clicks) },
+            { key: "ctr", label: "CTR", align: "right", sortable: true, render: (_v, row) => `${row.ctr.toFixed(2)}%` },
+            { key: "cpc", label: "CPC", align: "right", sortable: true, render: (_v, row) => formatCurrency(row.cpc) },
+            { key: "conversions", label: "Conv", align: "right", sortable: true, render: (_v, row) => formatNumber(row.conversions) },
+            { key: "costPerConversion", label: "Cost/Conv", align: "right", sortable: true, render: (_v, row) => formatCurrency(row.costPerConversion) },
+            { key: "frequency", label: "Frequency", align: "right", sortable: true, render: (_v, row) => row.frequency.toFixed(2) },
+          ]}
+          pageSize={20}
+          exportable
+          exportFilename="tiktok-ad-groups"
+          className="mt-5"
         />
       )}
 

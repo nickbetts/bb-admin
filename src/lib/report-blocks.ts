@@ -236,17 +236,4 @@ export const SECTION_BLOCKS: Record<string, BlockDef[]> = {
   competitor_intelligence: [
     { id: "snapshots", label: "Competitor Snapshots" },
   ],
-  actions: [
-    { id: "pending_actions", label: "Pending Actions" },
-    { id: "completed_actions", label: "Completed Actions" },
-    { id: "impact_summary", label: "Impact Summary" },
-  ],
-  forecast: [
-    { id: "blended_forecast", label: "Blended Forecast" },
-    { id: "channel_forecast", label: "Per-Channel Forecast" },
-  ],
-  signals: [
-    { id: "active_signals", label: "Active Signals" },
-    { id: "platform_breakdown", label: "Platform Breakdown" },
-  ],
 };

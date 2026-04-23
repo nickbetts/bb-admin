@@ -183,14 +183,16 @@ export function CoreWebVitalsSection({ url, visibleBlocks }: CoreWebVitalsSectio
       </div>
 
       {/* Core metrics grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-        <MetricCard name="lcp" data={data.lcp} />
-        <MetricCard name="cls" data={data.cls} />
-        <MetricCard name="inp" data={data.inp} />
-        <MetricCard name="ttfb" data={data.ttfb} />
-        <MetricCard name="fcp" data={data.fcp} />
-        {data.fid && <MetricCard name="fid" data={data.fid} />}
-      </div>
+      {show("metrics") && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+          <MetricCard name="lcp" data={data.lcp} />
+          <MetricCard name="cls" data={data.cls} />
+          <MetricCard name="inp" data={data.inp} />
+          <MetricCard name="ttfb" data={data.ttfb} />
+          <MetricCard name="fcp" data={data.fcp} />
+          {data.fid && <MetricCard name="fid" data={data.fid} />}
+        </div>
+      )}
 
       <div style={{ fontSize: 12, color: "var(--text-3, #888)", textAlign: "right" }}>
         Last fetched: {new Date(data.fetchedAt).toLocaleString("en-GB")}

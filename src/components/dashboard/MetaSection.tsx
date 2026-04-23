@@ -1477,6 +1477,29 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
         </SectionCard>
       )}
 
+      {/* Reach Estimate — top ad sets by unique users with frequency cap analysis */}
+      {show("reach_estimate") && adSets.length > 0 && (
+        <SectionCard title="Reach Estimate" subtitle="Top ad sets by unique reach with frequency analysis">
+          <DataTable<MetaAdSet>
+            data={[...adSets].sort((a, b) => b.reach - a.reach).slice(0, 15)}
+            columns={[
+              { key: "name", label: "Ad Set", render: (_v, row) => <span style={{ fontWeight: 500 }}>{row.name}</span> },
+              { key: "campaignName", label: "Campaign", render: (_v, row) => <span style={{ color: "var(--text-3)" }}>{row.campaignName}</span> },
+              { key: "reach", label: "Reach", align: "right", sortable: true, render: (_v, row) => formatNumber(row.reach) },
+              { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (_v, row) => formatNumber(row.impressions) },
+              { key: "frequency", label: "Frequency", align: "right", sortable: true, render: (_v, row) => (
+                <span style={{ color: row.frequency > 4 ? "var(--danger)" : row.frequency > 2.5 ? "var(--warning)" : "var(--text-2)", fontWeight: row.frequency > 2.5 ? 600 : 400 }}>{row.frequency.toFixed(2)}</span>
+              ) },
+              { key: "spend", label: "Spend", align: "right", sortable: true, render: (_v, row) => formatCurrency(row.spend) },
+            ]}
+            pageSize={0}
+            exportable
+            exportFilename="meta-reach-estimate"
+          />
+          <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 10 }}>Frequency above 2.5 may indicate audience fatigue; above 4 strongly suggests creative refresh or audience expansion.</p>
+        </SectionCard>
+      )}
+
       {/* Cost Per Action */}
       {show("cost_per_action") && costPerAction.length > 0 && (
         <SectionCard title="Cost Per Action" subtitle="Breakdown by action type">

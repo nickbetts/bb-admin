@@ -119,13 +119,15 @@ export function LinkedInSection({ clientId, clientName, accountId, accessToken, 
 
       {overview && (
         <>
-          <MetricGrid cols={5}>
-            <MetricCard title="Impressions" value={overview.impressions.toLocaleString()} channel="linkedin" />
-            <MetricCard title="Clicks" value={overview.clicks.toLocaleString()} subtitle={`CTR: ${overview.ctr.toFixed(2)}%`} channel="linkedin" />
-            <MetricCard title="Spend" value={`£${overview.spend.toFixed(2)}`} subtitle={`CPC: £${overview.cpc.toFixed(2)}`} channel="linkedin" />
-            <MetricCard title="Conversions / Leads" value={overview.conversions.toLocaleString()} subtitle={overview.conversions > 0 ? `CPL: £${overview.cpl.toFixed(2)}` : undefined} channel="linkedin" />
-            <MetricCard title="Reach" value={overview.reach.toLocaleString()} channel="linkedin" />
-          </MetricGrid>
+          {show("kpis") && (
+            <MetricGrid cols={5}>
+              <MetricCard title="Impressions" value={overview.impressions.toLocaleString()} channel="linkedin" />
+              <MetricCard title="Clicks" value={overview.clicks.toLocaleString()} subtitle={`CTR: ${overview.ctr.toFixed(2)}%`} channel="linkedin" />
+              <MetricCard title="Spend" value={`£${overview.spend.toFixed(2)}`} subtitle={`CPC: £${overview.cpc.toFixed(2)}`} channel="linkedin" />
+              <MetricCard title="Conversions / Leads" value={overview.conversions.toLocaleString()} subtitle={overview.conversions > 0 ? `CPL: £${overview.cpl.toFixed(2)}` : undefined} channel="linkedin" />
+              <MetricCard title="Reach" value={overview.reach.toLocaleString()} channel="linkedin" />
+            </MetricGrid>
+          )}
 
           {show("campaigns") && campaigns.length > 0 && (
             <DataTable<LinkedInCampaign>

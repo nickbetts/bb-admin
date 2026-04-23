@@ -383,7 +383,7 @@ export function GoalsSection({ clientId, visibleBlocks }: GoalsSectionProps) {
           <div style={{ textAlign: "center", padding: "32px 0", color: "var(--text-3)", fontSize: 13 }}>
             {goals.length === 0 ? "No goals set yet. Click \"Add Goal\" to create your first KPI target." : "No goals match this filter."}
           </div>
-        ) : (
+        ) : show("goals_list") ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {filtered.map(goal => (
               <div key={goal.id} style={{ position: "relative" }}>
@@ -409,7 +409,7 @@ export function GoalsSection({ clientId, visibleBlocks }: GoalsSectionProps) {
               </div>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

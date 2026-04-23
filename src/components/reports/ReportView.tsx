@@ -2295,49 +2295,49 @@ export function ReportView({ report: initialReport }: ReportViewProps) {
                   )}
                   {section.sectionType === "tiktok" && (
                     report.client.tiktokAdvertiserId
-                      ? <>{commentaryCard}<TikTokSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} /></>
+                      ? <>{commentaryCard}<TikTokSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No TikTok advertiser account connected — configure it in client settings to enable TikTok Ads data.")}</>
                   )}
                   {section.sectionType === "microsoft_ads" && (
                     report.client.microsoftAdsAccountId
-                      ? <>{commentaryCard}<MicrosoftAdsSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} /></>
+                      ? <>{commentaryCard}<MicrosoftAdsSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No Microsoft Ads account connected — configure it in client settings to enable Microsoft Advertising data.")}</>
                   )}
                   {section.sectionType === "linkedin" && (
                     report.client.linkedinAccountId
-                      ? <>{commentaryCard}<LinkedInSection clientId={report.client.id} clientName={report.client.name} accountId={report.client.linkedinAccountId} accessToken={report.client.linkedinAccessToken} startDate={startDate} endDate={endDate} /></>
+                      ? <>{commentaryCard}<LinkedInSection clientId={report.client.id} clientName={report.client.name} accountId={report.client.linkedinAccountId} accessToken={report.client.linkedinAccessToken} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No LinkedIn ad account connected — configure it in client settings to enable LinkedIn Ads data.")}</>
                   )}
                   {section.sectionType === "klaviyo" && (
                     report.client.klaviyoApiKey
-                      ? <>{commentaryCard}<KlaviyoSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} /></>
+                      ? <>{commentaryCard}<KlaviyoSection clientId={report.client.id} clientName={report.client.name} startDate={startDate} endDate={endDate} visibleBlocks={visibleBlocks} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No Klaviyo account connected — configure it in client settings to enable email marketing data.")}</>
                   )}
                   {section.sectionType === "goals" && (
-                    <>{commentaryCard}<GoalsSection clientId={report.client.id} /></>
+                    <>{commentaryCard}<GoalsSection clientId={report.client.id} visibleBlocks={visibleBlocks} /></>
                   )}
                   {section.sectionType === "youtube" && (
                     report.client.youtubeChannelId
-                      ? <>{commentaryCard}<YouTubeSection clientId={report.client.id} clientName={report.client.name} /></>
+                      ? <>{commentaryCard}<YouTubeSection clientId={report.client.id} clientName={report.client.name} visibleBlocks={visibleBlocks} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No YouTube channel connected — configure it in client settings to enable YouTube analytics data.")}</>
                   )}
                   {section.sectionType === "hubspot" && (
                     report.client.hubspotPortalId
-                      ? <>{commentaryCard}<HubSpotSection clientId={report.client.id} clientName={report.client.name} /></>
+                      ? <>{commentaryCard}<HubSpotSection clientId={report.client.id} clientName={report.client.name} visibleBlocks={visibleBlocks} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No HubSpot portal connected — configure it in client settings to enable CRM data.")}</>
                   )}
                   {section.sectionType === "callrail" && (
                     report.client.callrailAccountId
-                      ? <>{commentaryCard}<CallRailSection clientId={report.client.id} clientName={report.client.name} /></>
+                      ? <>{commentaryCard}<CallRailSection clientId={report.client.id} clientName={report.client.name} visibleBlocks={visibleBlocks} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No CallRail account connected — configure it in client settings to enable call tracking data.")}</>
                   )}
                   {section.sectionType === "core_web_vitals" && (
                     report.client.website
-                      ? <>{commentaryCard}<CoreWebVitalsSection url={report.client.website} /></>
+                      ? <>{commentaryCard}<CoreWebVitalsSection url={report.client.website} visibleBlocks={visibleBlocks} /></>
                       : <>{commentaryCard}{unconfiguredNotice("No website URL set for this client — configure it in client settings to enable Core Web Vitals data.")}</>
                   )}
                   {section.sectionType === "competitor_intelligence" && (
-                    <>{commentaryCard}<CompetitorIntelligenceSection clientId={report.client.id} semrushDomain={report.client.semrushDomain} /></>
+                    <>{commentaryCard}<CompetitorIntelligenceSection clientId={report.client.id} semrushDomain={report.client.semrushDomain} visibleBlocks={visibleBlocks} /></>
                   )}
                 </div>
               </SortableMainSectionWrapper>
