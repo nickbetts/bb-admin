@@ -1660,3 +1660,215 @@ export async function generateContentStrategy(
 
   return { data: strategyData, collectedData, autoCompetitors };
 }
+
+// ─── Section-by-section generation ─────────────────────────────────────────
+// Used by the Grand Plan pipeline to split strategy generation into 3 steps,
+// each targeting ~5 000 output tokens, to stay well within Vercel's 800 s budget.
+
+export type ContentStrategySection = "pageOptimisations" | "landingPages" | "blogPosts";
+
+/**
+ * Generate a single section of the content strategy.
+ *
+ * Step 1 → "pageOptimisations"   → generates pageOptimisations
+ * Step 2 → "landingPages"        → generates landingPages + linkTargets
+ * Step 3 → "blogPosts"           → generates blogPosts + roadmap
+ *
+ * Each call collects fresh data (instant cache hit from prepare-content-data),
+ * builds the shared analysis prompt, then calls Claude with a focused output
+ * schema for just that section (~5k tokens, ~120 s worst case).
+ *
+ * Returns the partial ContentStrategyData so the caller can merge it.
+ */
+export async function generateContentStrategySection(
+  section: ContentStrategySection,
+  domain: string,
+  clientName: string,
+  brief: string,
+  competitors: string[],
+  database: string = "uk",
+  searchConsoleSiteUrl?: string | null,
+  limits?: ContentStrategyLimits,
+  competitorContexts?: { domain: string; pageContext: CompetitorPageContext }[],
+): Promise<Partial<ContentStrategyData>> {
+  const collectedData = await collectSemrushData(domain, competitors, database, searchConsoleSiteUrl, brief);
+  const basePrompt = buildAnalysisPrompt(domain, clientName, brief, collectedData, competitorContexts, limits);
+
+  const SECTION_SCHEMAS: Record<ContentStrategySection, string> = {
+    pageOptimisations: `Return ONLY a JSON object with a single key "pageOptimisations". Follow all keyword rules.
+{
+  "pageOptimisations": [
+    {
+      "url": "domain.com/page/",
+      "intent": "commercial",
+      "suggestedSchema": "Service",
+      "keywords": [{"keyword": "...", "volume": 0, "type": "primary"}],
+      "notes": "We will...",
+      "impact": 4,
+      "effort": 2,
+      "contextLinks": [{"url": "domain.com/page/", "anchorText": "..."}]
+    }
+  ]
+}`,
+    landingPages: `Return ONLY a JSON object with keys "landingPages" and "linkTargets". Follow all keyword rules.
+{
+  "landingPages": [
+    {
+      "title": "...",
+      "intent": "transactional",
+      "suggestedSchema": "Service",
+      "keywords": [{"keyword": "...", "volume": 0, "type": "primary"}],
+      "notes": "We will...",
+      "impact": 4,
+      "effort": 3,
+      "internalLinks": [{"url": "domain.com/page/", "anchorText": "..."}]
+    }
+  ],
+  "linkTargets": [
+    {"url": "domain.com/page/", "anchorKeyword": "...", "anchorType": "Exact", "impact": 4, "effort": 2}
+  ]
+}`,
+    blogPosts: `Return ONLY a JSON object with keys "blogPosts" and "roadmap". Follow all keyword rules.
+{
+  "blogPosts": [
+    {
+      "title": "...",
+      "intent": "informational",
+      "suggestedSchema": "Article",
+      "keywords": [{"keyword": "...", "volume": 0, "type": "primary"}],
+      "notes": "We will...",
+      "cluster": "...",
+      "impact": 3,
+      "effort": 2,
+      "internalLinks": [{"url": "domain.com/page/", "anchorText": "..."}]
+    }
+  ],
+  "roadmap": {
+    "month1": ["Quick win action 1"],
+    "months2to3": ["Core build action"],
+    "months4plus": ["Long-term action"]
+  }
+}`,
+  };
+
+  const sectionPrompt = `${basePrompt}
+
+IMPORTANT: You are generating ONLY the "${section}" section of the strategy. The other sections will be generated in separate calls.
+${SECTION_SCHEMAS[section]}`;
+
+  const anthropic = await getAnthropicClient();
+  const stream = anthropic.messages.stream({
+    model: "claude-opus-4-6",
+    max_tokens: 8000,
+    system: STRATEGY_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: sectionPrompt }],
+  });
+  const response = await stream.finalMessage();
+  const block = response.content[0];
+  const rawText = block.type === "text" ? block.text.trim() : "";
+  const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]+?)```/) ?? rawText.match(/(\{[\s\S]+\})/);
+  const jsonText = jsonMatch ? jsonMatch[1].trim() : rawText;
+
+  let raw: Record<string, unknown>;
+  try {
+    raw = JSON.parse(jsonText) as Record<string, unknown>;
+  } catch {
+    // Last-resort: trim and re-try with bracket closure
+    const repaired = jsonText.trimEnd().replace(/,\s*$/, "") + (jsonText.split("{").length > jsonText.split("}").length ? "}" : "");
+    raw = JSON.parse(repaired) as Record<string, unknown>;
+  }
+
+  // ── Parse helpers (duplicated from generateContentStrategy for locality) ──
+  function parseScore(val: unknown): number | undefined {
+    const n = Number(val);
+    return n >= 1 && n <= 5 ? Math.round(n) : undefined;
+  }
+  function parseLinks(val: unknown): { url: string; anchorText: string }[] | undefined {
+    if (!Array.isArray(val) || val.length === 0) return undefined;
+    const parsed = (val as Record<string, unknown>[])
+      .filter((l) => typeof l.url === "string" && typeof l.anchorText === "string")
+      .map((l) => ({
+        url: (l.url as string).replace(/^https?:\/\//, "").replace(/^www\./, ""),
+        anchorText: String(l.anchorText).trim(),
+      }))
+      .filter((l) => l.url && l.anchorText);
+    return parsed.length > 0 ? parsed : undefined;
+  }
+  function parseKeywords(arr: unknown[]): ParsedKeyword[] {
+    return (arr as Record<string, unknown>[])
+      .filter((k) => k.keyword && typeof k.keyword === "string")
+      .map((k) => ({
+        keyword: k.keyword as string,
+        volume: Math.max(0, Math.round(Number(k.volume) || 0)),
+        type: (["primary", "secondary", "long-tail"].includes(k.type as string) ? k.type : undefined) as ParsedKeyword["type"],
+      }));
+  }
+
+  const result: Partial<ContentStrategyData> = {};
+
+  if (section === "pageOptimisations") {
+    result.pageOptimisations = (Array.isArray(raw.pageOptimisations) ? raw.pageOptimisations : [])
+      .filter((p: Record<string, unknown>) => p && typeof p.url === "string" && Array.isArray(p.keywords) && p.keywords.length > 0)
+      .map((p: Record<string, unknown>) => ({
+        url: (p.url as string).replace(/^https?:\/\//, "").replace(/^www\./, ""),
+        keywords: parseKeywords(p.keywords as unknown[]),
+        notes: String(p.notes || ""),
+        priority: false,
+        impact: parseScore(p.impact),
+        effort: parseScore(p.effort),
+        intent: typeof p.intent === "string" ? p.intent : undefined,
+        suggestedSchema: typeof p.suggestedSchema === "string" ? p.suggestedSchema : undefined,
+        contextLinks: parseLinks(p.contextLinks),
+      }));
+  }
+
+  if (section === "landingPages") {
+    result.landingPages = (Array.isArray(raw.landingPages) ? raw.landingPages : [])
+      .filter((p: Record<string, unknown>) => p && typeof p.title === "string" && Array.isArray(p.keywords) && p.keywords.length > 0)
+      .map((p: Record<string, unknown>) => ({
+        title: String(p.title),
+        keywords: parseKeywords(p.keywords as unknown[]),
+        notes: String(p.notes || ""),
+        priority: false,
+        impact: parseScore(p.impact),
+        effort: parseScore(p.effort),
+        intent: typeof p.intent === "string" ? p.intent : undefined,
+        suggestedSchema: typeof p.suggestedSchema === "string" ? p.suggestedSchema : undefined,
+        internalLinks: parseLinks(p.internalLinks),
+      }));
+    result.linkTargets = (Array.isArray(raw.linkTargets) ? raw.linkTargets : [])
+      .filter((t: Record<string, unknown>) => t && typeof t.url === "string" && typeof t.anchorKeyword === "string")
+      .map((t: Record<string, unknown>) => ({
+        url: (t.url as string).replace(/^https?:\/\//, "").replace(/^www\./, ""),
+        anchorKeyword: String(t.anchorKeyword),
+        anchorType: ["Exact", "Broad", "Brand"].includes(String(t.anchorType)) ? String(t.anchorType) : "Broad",
+        impact: parseScore(t.impact),
+        effort: parseScore(t.effort),
+      }));
+  }
+
+  if (section === "blogPosts") {
+    result.blogPosts = (Array.isArray(raw.blogPosts) ? raw.blogPosts : [])
+      .filter((p: Record<string, unknown>) => p && typeof p.title === "string" && Array.isArray(p.keywords) && p.keywords.length > 0)
+      .map((p: Record<string, unknown>) => ({
+        title: String(p.title),
+        keywords: parseKeywords(p.keywords as unknown[]),
+        notes: String(p.notes || ""),
+        priority: false,
+        impact: parseScore(p.impact),
+        effort: parseScore(p.effort),
+        cluster: typeof p.cluster === "string" && p.cluster.trim() ? p.cluster.trim() : undefined,
+        intent: typeof p.intent === "string" ? p.intent : undefined,
+        suggestedSchema: typeof p.suggestedSchema === "string" ? p.suggestedSchema : undefined,
+        internalLinks: parseLinks(p.internalLinks),
+      }));
+    const rawRoadmap = raw.roadmap as Record<string, unknown> | undefined;
+    result.roadmap = {
+      month1: Array.isArray(rawRoadmap?.month1) ? rawRoadmap!.month1.map(String) : [],
+      months2to3: Array.isArray(rawRoadmap?.months2to3) ? rawRoadmap!.months2to3.map(String) : [],
+      months4plus: Array.isArray(rawRoadmap?.months4plus) ? rawRoadmap!.months4plus.map(String) : [],
+    };
+  }
+
+  return result;
+}

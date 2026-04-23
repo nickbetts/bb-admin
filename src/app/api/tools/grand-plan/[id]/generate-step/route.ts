@@ -5,7 +5,7 @@ import { logActivity } from "@/lib/activity-logger";
 import { generateGrandPlan, type GrandPlanSources, type GrandPlanData, type CampaignFocusPeriod } from "@/lib/grand-plan-generator";
 import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import { suggestAdGroups, researchKeywords } from "@/lib/keyword-planner-pipeline";
-import { generateContentStrategy, collectSemrushData, runOnPageAudit } from "@/lib/content-strategy-generator";
+import { generateContentStrategy, generateContentStrategySection, collectSemrushData, runOnPageAudit, type ContentStrategyData } from "@/lib/content-strategy-generator";
 import { extractBrandContext, type BrandContext } from "@/lib/brand-extractor";
 import {
   generateLandingPage,
@@ -229,17 +229,30 @@ export async function POST(
       return NextResponse.json({ ok: true, step });
     }
 
-    // ─── STEP: prepare-content ───────────────────────────────────────────────
-    // All SEMrush data is already in the DB cache from prepare-content-data, so
-    // this step's full 300 s budget is available for the Claude Opus generation.
-    if (step === "prepare-content") {
-      // Reload plan to pick up keyword research from previous step
+    // ─── STEP: prepare-content-1 / -2 / -3 ──────────────────────────────────
+    // The content strategy generation is split across three steps so each Claude
+    // call targets ~8k output tokens (~160s worst case) and never approaches the
+    // 800s Vercel limit. All three share the same SEMrush cache primed by
+    // prepare-content-data.
+    //
+    //  prepare-content-1  →  pageOptimisations
+    //  prepare-content-2  →  landingPages + linkTargets  (merges into strategy)
+    //  prepare-content-3  →  blogPosts + roadmap          (merges into strategy)
+    //
+    // Legacy "prepare-content" is still handled below for any plans generated
+    // before this change (it will be skipped if a strategy is already linked).
+    if (step === "prepare-content-1" || step === "prepare-content-2" || step === "prepare-content-3" || step === "prepare-content") {
       const freshPlan = await prisma.grandPlan.findUnique({
         where: { id },
         include: { contentStrategy: { select: { id: true } } },
       });
 
-      if (freshPlan?.contentStrategy) {
+      // If it's the legacy single-shot step and a strategy already exists, skip.
+      if (step === "prepare-content" && freshPlan?.contentStrategy) {
+        return NextResponse.json({ ok: true, step, skipped: true });
+      }
+      // If step 1 and strategy already exists, all three are already done — skip.
+      if (step === "prepare-content-1" && freshPlan?.contentStrategy) {
         return NextResponse.json({ ok: true, step, skipped: true });
       }
 
@@ -255,46 +268,134 @@ export async function POST(
         : [];
       const searchConsoleSiteUrl = plan.client?.searchConsoleSiteUrl ?? undefined;
 
-      await setStatus(id, "Generating content strategy with Claude Opus...");
+      // ── Legacy single-shot step (kept for backwards compatibility) ──────────
+      if (step === "prepare-content") {
+        await setStatus(id, "Generating content strategy with Claude Opus...");
+        const strategyResult = await generateContentStrategy(
+          csDomain, clientName, csBrief, csCompetitors, csDatabase,
+          searchConsoleSiteUrl ?? null, "claude-opus-4-6", undefined, undefined, true,
+        );
+        const now = new Date();
+        const period = `${now.toLocaleString("en-GB", { month: "long", year: "numeric" })} — Auto-generated`;
+        const savedStrategy = await withDbRetry(() =>
+          prisma.contentStrategy.create({
+            data: {
+              clientId: plan.clientId ?? undefined,
+              createdBy: "Grand Plan Auto-Pipeline",
+              title: `${clientName} — Content & SEO Strategy`,
+              period,
+              spreadsheetData: JSON.stringify(strategyResult.data),
+              generatedHtml: "",
+            },
+          })
+        );
+        await withDbRetry(() => prisma.grandPlan.update({ where: { id }, data: { contentStrategyId: savedStrategy.id } }));
+        return NextResponse.json({ ok: true, step });
+      }
 
-      const strategyResult = await generateContentStrategy(
-        csDomain,
-        clientName,
-        csBrief,
-        csCompetitors,
-        csDatabase,
-        searchConsoleSiteUrl ?? null,
-        "claude-opus-4-6",
-        undefined,
-        undefined,
-        true, // skipAudit — runs as a separate step (prepare-content-audit) so each
-              // Claude/SEMrush phase gets its own 300 s budget.
-      );
-
-      const now = new Date();
-      const period = `${now.toLocaleString("en-GB", { month: "long", year: "numeric" })} — Auto-generated`;
-
-      const savedStrategy = await withDbRetry(() =>
-        prisma.contentStrategy.create({
-          data: {
-            clientId: plan.clientId ?? undefined,
-            createdBy: "Grand Plan Auto-Pipeline",
-            title: `${clientName} — Content & SEO Strategy`,
-            period,
-            spreadsheetData: JSON.stringify(strategyResult.data),
-            generatedHtml: "",
+      // ── Step 1: generate pageOptimisations, create the ContentStrategy row ──
+      if (step === "prepare-content-1") {
+        await setStatus(id, "Generating page optimisations (1/3)...");
+        const partial = await generateContentStrategySection(
+          "pageOptimisations", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null,
+        );
+        const now = new Date();
+        const period = `${now.toLocaleString("en-GB", { month: "long", year: "numeric" })} — Auto-generated`;
+        const initialData: ContentStrategyData = {
+          clientName,
+          period,
+          pageOptimisations: partial.pageOptimisations ?? [],
+          landingPages: [],
+          categoryPages: [],
+          blogPosts: [],
+          linkTargets: [],
+          quickWins: [],
+          roadmap: { month1: [], months2to3: [], months4plus: [] },
+          stats: {
+            totalPageOptimisations: partial.pageOptimisations?.length ?? 0,
+            totalLandingPages: 0,
+            totalBlogPosts: 0,
+            totalLinkTargets: 0,
           },
-        })
-      );
+        };
+        const savedStrategy = await withDbRetry(() =>
+          prisma.contentStrategy.create({
+            data: {
+              clientId: plan.clientId ?? undefined,
+              createdBy: "Grand Plan Auto-Pipeline",
+              title: `${clientName} — Content & SEO Strategy`,
+              period,
+              spreadsheetData: JSON.stringify(initialData),
+              generatedHtml: "",
+            },
+          })
+        );
+        await withDbRetry(() => prisma.grandPlan.update({ where: { id }, data: { contentStrategyId: savedStrategy.id } }));
+        return NextResponse.json({ ok: true, step });
+      }
 
-      await withDbRetry(() =>
-        prisma.grandPlan.update({
-          where: { id },
-          data: { contentStrategyId: savedStrategy.id },
-        })
-      );
+      // ── Steps 2 & 3: merge sections into the existing ContentStrategy row ──
+      const reloadedPlan = await prisma.grandPlan.findUnique({
+        where: { id },
+        include: { contentStrategy: { select: { id: true, spreadsheetData: true } } },
+      });
+      if (!reloadedPlan?.contentStrategy) {
+        // Step 1 hasn't run yet — abort gracefully
+        return NextResponse.json({ error: "prepare-content-1 must run before this step" }, { status: 400 });
+      }
 
-      return NextResponse.json({ ok: true, step });
+      type SafeStrategyData = Omit<ContentStrategyData, "stats"> & { stats?: ContentStrategyData["stats"] };
+      const existing = JSON.parse(reloadedPlan.contentStrategy.spreadsheetData || "{}") as SafeStrategyData;
+
+      if (step === "prepare-content-2") {
+        await setStatus(id, "Generating landing pages (2/3)...");
+        const partial = await generateContentStrategySection(
+          "landingPages", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null,
+        );
+        const merged: ContentStrategyData = {
+          ...existing,
+          landingPages: partial.landingPages ?? [],
+          linkTargets: partial.linkTargets ?? [],
+          stats: {
+            totalPageOptimisations: existing.pageOptimisations?.length ?? 0,
+            totalLandingPages: partial.landingPages?.length ?? 0,
+            totalBlogPosts: existing.blogPosts?.length ?? 0,
+            totalLinkTargets: new Set((partial.linkTargets ?? []).map((t) => t.url)).size,
+          },
+        };
+        await withDbRetry(() =>
+          prisma.contentStrategy.update({
+            where: { id: reloadedPlan.contentStrategy!.id },
+            data: { spreadsheetData: JSON.stringify(merged) },
+          })
+        );
+        return NextResponse.json({ ok: true, step });
+      }
+
+      if (step === "prepare-content-3") {
+        await setStatus(id, "Generating blog posts & roadmap (3/3)...");
+        const partial = await generateContentStrategySection(
+          "blogPosts", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null,
+        );
+        const merged: ContentStrategyData = {
+          ...existing,
+          blogPosts: partial.blogPosts ?? [],
+          roadmap: partial.roadmap ?? existing.roadmap ?? { month1: [], months2to3: [], months4plus: [] },
+          stats: {
+            totalPageOptimisations: existing.pageOptimisations?.length ?? 0,
+            totalLandingPages: existing.landingPages?.length ?? 0,
+            totalBlogPosts: partial.blogPosts?.length ?? 0,
+            totalLinkTargets: new Set((existing.linkTargets ?? []).map((t) => t.url)).size,
+          },
+        };
+        await withDbRetry(() =>
+          prisma.contentStrategy.update({
+            where: { id: reloadedPlan.contentStrategy!.id },
+            data: { spreadsheetData: JSON.stringify(merged) },
+          })
+        );
+        return NextResponse.json({ ok: true, step });
+      }
     }
 
     // ─── STEP: prepare-content-audit ─────────────────────────────────────────
