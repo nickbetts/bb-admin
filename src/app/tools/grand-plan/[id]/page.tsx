@@ -316,9 +316,9 @@ export default function GrandPlanViewPage({ params }: Props) {
       setCurrentStepLabel(label);
       setStepStatus((prev) => ({ ...prev, [sk]: "running" }));
 
-      // Vercel functions cap at 300s. Give the client a slightly longer leash
-      // so we still surface a clean error if the function silently dies.
-      const STEP_TIMEOUT_MS = 320_000;
+      // Vercel Pro functions cap at 800s. Give the client a slightly longer
+      // leash so we still surface a clean error if the function silently dies.
+      const STEP_TIMEOUT_MS = 820_000;
       const timeoutId = setTimeout(() => {
         try { abortRef.current?.abort(); } catch { /* noop */ }
       }, STEP_TIMEOUT_MS);
@@ -331,9 +331,19 @@ export default function GrandPlanViewPage({ params }: Props) {
           signal: abortRef.current?.signal,
         });
         if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: "Unknown error" }));
+          // Vercel returns HTML (not JSON) for 504/502 — handle that cleanly so
+          // the user sees a useful message instead of "Unknown error".
+          let errMsg: string;
+          if (res.status === 504) {
+            errMsg = `Step "${label}" timed out (Vercel 504). The function exceeded its time budget — try again, the pipeline will resume from this step.`;
+          } else if (res.status === 502 || res.status === 503) {
+            errMsg = `Step "${label}" failed with a gateway error (${res.status}). Try again in a moment.`;
+          } else {
+            const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+            errMsg = err.error || `Step "${stepKey}" failed (HTTP ${res.status})`;
+          }
           setStepStatus((prev) => ({ ...prev, [sk]: "failed" }));
-          throw new Error(err.error || `Step "${stepKey}" failed`);
+          throw new Error(errMsg);
         }
         const data = await res.json();
         const skipped = !!data.skipped;

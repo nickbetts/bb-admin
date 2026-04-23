@@ -6,7 +6,7 @@ import { generateGrandPlan, type GrandPlanSources, type GrandPlanData } from "@/
 import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 800;
 
 const VALID_SECTIONS = [
   "executiveSummary", "strategyPlan", "googleAdsCampaigns", "metaCampaigns",

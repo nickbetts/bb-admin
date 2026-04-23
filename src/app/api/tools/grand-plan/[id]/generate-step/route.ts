@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, withDbRetry } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
 import { generateGrandPlan, type GrandPlanSources, type GrandPlanData, type CampaignFocusPeriod } from "@/lib/grand-plan-generator";
 import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
@@ -14,7 +14,11 @@ import {
   type LPCritiqueItem,
 } from "@/lib/lp-generator";
 
-export const maxDuration = 300;
+// 800s = Vercel Pro maximum. The heaviest steps (prepare-content with Claude
+// Opus 32k tokens, prepare-lp-refine with multi-pass critique) can exceed
+// 300s on large sites; bumping this to the max ensures we don't 504 on those
+// steps. Lighter steps return well within the budget.
+export const maxDuration = 800;
 export const dynamic = "force-dynamic";
 
 // Valid AI/computed section keys that can be generated individually
@@ -270,21 +274,25 @@ export async function POST(
       const now = new Date();
       const period = `${now.toLocaleString("en-GB", { month: "long", year: "numeric" })} — Auto-generated`;
 
-      const savedStrategy = await prisma.contentStrategy.create({
-        data: {
-          clientId: plan.clientId ?? undefined,
-          createdBy: "Grand Plan Auto-Pipeline",
-          title: `${clientName} — Content & SEO Strategy`,
-          period,
-          spreadsheetData: JSON.stringify(strategyResult.data),
-          generatedHtml: "",
-        },
-      });
+      const savedStrategy = await withDbRetry(() =>
+        prisma.contentStrategy.create({
+          data: {
+            clientId: plan.clientId ?? undefined,
+            createdBy: "Grand Plan Auto-Pipeline",
+            title: `${clientName} — Content & SEO Strategy`,
+            period,
+            spreadsheetData: JSON.stringify(strategyResult.data),
+            generatedHtml: "",
+          },
+        })
+      );
 
-      await prisma.grandPlan.update({
-        where: { id },
-        data: { contentStrategyId: savedStrategy.id },
-      });
+      await withDbRetry(() =>
+        prisma.grandPlan.update({
+          where: { id },
+          data: { contentStrategyId: savedStrategy.id },
+        })
+      );
 
       return NextResponse.json({ ok: true, step });
     }
@@ -696,10 +704,12 @@ export async function POST(
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function setStatus(id: string, message: string) {
-  await prisma.grandPlan.update({
-    where: { id },
-    data: { statusMessage: message },
-  });
+  await withDbRetry(() =>
+    prisma.grandPlan.update({
+      where: { id },
+      data: { statusMessage: message },
+    })
+  );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

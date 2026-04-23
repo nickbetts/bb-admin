@@ -7,7 +7,7 @@ import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import type { GrandPlanData } from "@/lib/grand-plan-generator";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 // POST /api/tools/grand-plan/[id]/refine — iterative AI refinement of a grand plan
 export async function POST(

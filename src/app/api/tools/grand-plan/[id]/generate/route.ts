@@ -10,7 +10,7 @@ import { generateContentStrategy } from "@/lib/content-strategy-generator";
 import { extractBrandContext } from "@/lib/brand-extractor";
 import { generateLandingPageWithCritique } from "@/lib/lp-generator";
 
-export const maxDuration = 300;
+export const maxDuration = 800;
 export const dynamic = "force-dynamic";
 
 // POST /api/tools/grand-plan/[id]/generate — trigger generation

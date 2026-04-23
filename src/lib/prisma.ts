@@ -39,3 +39,36 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+/**
+ * Retry a Prisma operation when the underlying libSQL/Turso connection drops
+ * with a transient network error (ECONNRESET / ETIMEDOUT / EPIPE / socket
+ * hang up). This commonly happens when a serverless function holds the client
+ * idle for several minutes during a long AI generation and the libSQL HTTP
+ * connection times out before the next query.
+ *
+ * Attempts up to `attempts` times with exponential backoff (250ms, 500ms, 1s).
+ */
+export async function withDbRetry<T>(
+  fn: () => Promise<T>,
+  attempts = 3,
+): Promise<T> {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      const isTransient =
+        /ECONNRESET|ETIMEDOUT|EPIPE|socket hang up|fetch failed|network|read ECONNRESET/i.test(msg);
+      if (!isTransient || i === attempts - 1) throw err;
+      const delay = 250 * Math.pow(2, i);
+      console.warn(
+        `[prisma] transient DB error on attempt ${i + 1}/${attempts}: ${msg} — retrying in ${delay}ms`,
+      );
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw lastError;
+}
