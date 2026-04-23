@@ -4,11 +4,12 @@ import { useState, useRef, useEffect } from "react";
 import {
   Monitor, Radar, FileText, Brain, FileSignature,
   BookOpen, Search, ScanLine, Users, TrendingUp,
-  Coins, Bot, ChevronDown,
+  Coins, Bot, ChevronDown, MousePointerClick,
 } from "lucide-react";
 
 const featurePages = [
   { href: "/client-dashboard", label: "Client Dashboard", icon: <Monitor size={14} />, color: "#6366f1" },
+  { href: "/clickr", label: "clickr — Landing Pages", icon: <MousePointerClick size={14} />, color: "#f97316" },
   { href: "/signals", label: "Signals", icon: <Radar size={14} />, color: "#ec4899" },
   { href: "/reports-feature", label: "Reports", icon: <FileText size={14} />, color: "#10b981" },
   { href: "/ai-analyst", label: "AI Analyst", icon: <Brain size={14} />, color: "#818cf8" },
