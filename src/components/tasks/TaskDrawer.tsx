@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Trash2, Loader2, Check, Play, Pause, Clock, MessageSquare, Send, AlertCircle, Paperclip, FileText, Download } from "lucide-react";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
-import type { UserOption } from "./TaskKanbanBoard";
+
+export interface UserOption { id: string; name: string | null; email: string }
 
 export interface TaskRecord {
   id: string;
