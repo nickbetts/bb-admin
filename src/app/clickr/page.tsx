@@ -17,6 +17,10 @@ import {
   SlidersHorizontal,
   Share2,
   Users,
+  Bell,
+  Mail,
+  Database,
+  Link2,
 } from "lucide-react";
 
 function useCountUp(end: number, duration = 1800, shouldStart = false) {
@@ -41,7 +45,7 @@ const features = [
   {
     icon: <Zap size={20} />,
     title: "Scrape-to-page in 60 seconds",
-    desc: "Paste your client's URL and clickr scrapes brand colours, copy, services, and imagery. Every generated page is full of real content — not lorem ipsum.",
+    desc: "Paste your client's URL and clickr scrapes brand colours, copy, services, and imagery. Every generated page is full of real content, not placeholder copy.",
   },
   {
     icon: <MessageSquare size={20} />,
@@ -61,7 +65,7 @@ const features = [
   {
     icon: <Layers size={20} />,
     title: "Version history",
-    desc: "Every edit is saved as a version. Restore any previous iteration in one click — nothing is ever lost, and clients can always go back.",
+    desc: "Every edit is saved as a version. Restore any previous iteration in one click. Nothing is ever lost, and clients can always roll back.",
   },
   {
     icon: <LayoutTemplate size={20} />,
@@ -71,12 +75,27 @@ const features = [
   {
     icon: <FileCode2 size={20} />,
     title: "Full HTML control",
-    desc: "Drop into the code editor to make surgical changes. Every page is clean, semantic HTML — no build tools, no frameworks, no dependencies.",
+    desc: "Drop into the code editor to make surgical changes. Every page is clean, semantic HTML with no build tools, no frameworks, and no dependencies.",
   },
   {
     icon: <Users size={20} />,
-    title: "Lead capture",
-    desc: "Form submissions are captured in StratOS and forwarded to your CRM or email. Every lead tied to the landing page that converted them.",
+    title: "Lead capture and attribution",
+    desc: "Every form submission is stored in StratOS with full attribution data. See which page, campaign, and creative generated each lead, then route it wherever it needs to go.",
+  },
+  {
+    icon: <Database size={20} />,
+    title: "CRM integrations",
+    desc: "Route leads directly into HubSpot, Salesforce, Zoho, Pipedrive, or any CRM your clients use. Data flows in the moment a form is submitted, no manual exports required.",
+  },
+  {
+    icon: <Bell size={20} />,
+    title: "Notifications via Teams, Slack and email",
+    desc: "clickr fires a real-time alert the moment a conversion happens. Your team gets notified via Microsoft Teams, Slack, or any email address you configure.",
+  },
+  {
+    icon: <Link2 size={20} />,
+    title: "Custom webhooks",
+    desc: "Send lead and event data to any endpoint that accepts an HTTP POST. Connect to Zapier, Make, your own backend, or any custom workflow in your stack.",
   },
   {
     icon: <Share2 size={20} />,
@@ -90,13 +109,13 @@ const steps = [
     n: "01",
     icon: <Globe size={22} />,
     title: "Scrape",
-    desc: "Paste the client's website URL. clickr pulls brand colours, typography, real services, testimonials, team bios — everything needed to build an authentic page.",
+    desc: "Paste the client's website URL. clickr pulls brand colours, typography, real services, testimonials, team bios, and everything needed to build an authentic page.",
   },
   {
     n: "02",
     icon: <Zap size={22} />,
     title: "Generate",
-    desc: "Claude AI builds a complete, conversion-optimised landing page. Hero, social proof, benefits, CTA — all populated with real brand content. Ready in under a minute.",
+    desc: "Meridian, i3MEDIA's proprietary marketing intelligence, builds a complete, conversion-optimised landing page. Hero, social proof, benefits, CTA, all populated with real brand content. Ready in under a minute.",
   },
   {
     n: "03",
@@ -279,13 +298,13 @@ export default function ClickrPage() {
             </h1>
 
             <p style={{ fontSize: 19, color: "rgba(255,255,255,0.58)", lineHeight: 1.78, maxWidth: 500, marginBottom: 36, fontWeight: 400 }}>
-              AI-generated, chat-refined, published in under a minute. Scrape any website, generate a fully branded post-click page, and go live at <span style={{ color: accentLight, fontWeight: 600 }}>clickr.marketing</span> — all without touching a line of code.
+              Powered by Meridian, i3MEDIA's proprietary marketing intelligence. Scrape any website, generate a fully branded post-click page, and go live at <span style={{ color: accentLight, fontWeight: 600 }}>clickr.marketing</span>. Integrates with your existing CRM, notification stack, and any tool that accepts a webhook.
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 11, marginBottom: 38 }}>
               {[
                 "Full page generated from your client's website in under 60 seconds",
-                "Chat editor — describe the change, clickr rewrites it",
+                "Chat editor: describe the change, clickr rewrites it",
                 "Conversion tracking: Google Ads, Meta, GA4, TikTok, LinkedIn",
                 "Publishes to {client}.clickr.marketing/{slug} instantly",
               ].map((item, i) => (
@@ -338,9 +357,9 @@ export default function ClickrPage() {
                     <p style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", lineHeight: 1.5, margin: 0 }}>Make the hero headline bigger and more urgent</p>
                   </div>
 
-                  {/* AI response */}
+                  {/* clickr response */}
                   <div style={{ alignSelf: "flex-start", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "10px 10px 10px 2px", padding: "7px 10px", maxWidth: "90%" }}>
-                    <p style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", lineHeight: 1.5, margin: 0 }}>Done — updated hero to 64px with urgency-driven copy and a countdown element.</p>
+                    <p style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", lineHeight: 1.5, margin: 0 }}>Done. Updated hero to 64px with urgency-driven copy and a countdown element.</p>
                   </div>
 
                   {/* User message 2 */}
@@ -348,7 +367,7 @@ export default function ClickrPage() {
                     <p style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", lineHeight: 1.5, margin: 0 }}>Change CTA button to orange</p>
                   </div>
 
-                  {/* AI response 2 */}
+                  {/* clickr response 2 */}
                   <div style={{ alignSelf: "flex-start", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "10px 10px 10px 2px", padding: "7px 10px", maxWidth: "90%" }}>
                     <p style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", lineHeight: 1.5, margin: 0 }}>CTA updated to #f97316 with hover state.</p>
                   </div>
@@ -378,7 +397,7 @@ export default function ClickrPage() {
                         Elite coaching, 5-a-side tournaments,<br />and UEFA Pro licence coaches.
                       </div>
                       <div style={{ display: "inline-block", padding: "6px 14px", borderRadius: 6, background: "#f97316", fontSize: 9, fontWeight: 800, color: "white", letterSpacing: "0.04em", boxShadow: "0 4px 12px rgba(249,115,22,0.5)" }}>
-                        Enrol Now — Limited Spaces
+                        Enrol Now. Limited Spaces
                       </div>
                     </div>
                     {/* Social proof strip */}
@@ -412,7 +431,7 @@ export default function ClickrPage() {
                     {typingDone && (
                       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)", padding: "6px 12px", display: "flex", alignItems: "center", gap: 6 }}>
                         <CheckCircle2 size={10} color="#86efac" />
-                        <span style={{ fontSize: 9, color: "#86efac", fontWeight: 600 }}>Page ready — 47 seconds</span>
+                        <span style={{ fontSize: 9, color: "#86efac", fontWeight: 600 }}>Page ready. 47 seconds</span>
                       </div>
                     )}
                   </div>
@@ -446,9 +465,9 @@ export default function ClickrPage() {
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }} className="stats-grid">
             {[
-              { val: s1, suffix: "s", prefix: "~", label: "Average time from brief to first published draft", note: "Including AI generation + scrape", color: accent },
-              { val: s2, suffix: "+", label: "Campaign types supported — lead gen, e-commerce, events, trials, donations, and more", note: "Any paid campaign goal", color: "#ef4444" },
-              { val: s3, suffix: "%", label: "Of generated pages built with real brand content — not placeholder copy or lorem ipsum", note: "Full brand context from scrape", color: "#f59e0b", isText: false },
+              { val: s1, suffix: "s", prefix: "~", label: "Average time from brief to first published draft", note: "Including Meridian generation + scrape", color: accent },
+              { val: s2, suffix: "+", label: "Campaign types supported: lead gen, e-commerce, events, trials, donations, and more", note: "Any paid campaign goal", color: "#ef4444" },
+              { val: s3, suffix: "%", label: "Of generated pages built with real brand content, not placeholder copy or lorem ipsum", note: "Full brand context from scrape", color: "#f59e0b", isText: false },
             ].map((s, i) => (
               <div key={i} className="stat-card stagger-in" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: "36px 28px", textAlign: "center", position: "relative", overflow: "hidden", animationDelay: `${i * 0.1}s` }}>
                 <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${s.color}, transparent)` }} />
@@ -473,7 +492,7 @@ export default function ClickrPage() {
               <span style={{ background: `linear-gradient(90deg, ${accentLight}, ${accent}, #ef4444)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>in four steps.</span>
             </h2>
             <p style={{ fontSize: 16, color: "rgba(255,255,255,0.4)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>
-              No design briefs. No dev sprints. No agency back-and-forth. Just a URL and a brief — and clickr handles the rest.
+              No design briefs. No dev sprints. No agency back-and-forth. Just a URL and a brief, and clickr handles the rest.
             </p>
           </div>
 
@@ -510,7 +529,7 @@ export default function ClickrPage() {
               Built for performance marketers.
             </h2>
             <p style={{ fontSize: 16, color: "rgba(255,255,255,0.4)", maxWidth: 560, margin: "0 auto", lineHeight: 1.7 }}>
-              clickr handles every stage — generation, editing, publishing, tracking, and lead capture. No third-party tools. No subscriptions. No context switching.
+              clickr handles every stage: generation, editing, publishing, tracking, lead routing, and notifications. No context switching. No subscriptions for integrations you should already have.
             </p>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }} className="features-grid">
@@ -521,6 +540,90 @@ export default function ClickrPage() {
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.43)", lineHeight: 1.65 }}>{f.desc}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── INTEGRATIONS ───────────────────────────────────────────────────── */}
+      <section className="reveal-section" style={{ padding: "100px 40px", background: "rgba(255,255,255,0.01)", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 64 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: accentLight, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 16 }} className="blur-reveal">Integrations</p>
+            <h2 style={{ fontSize: 44, fontWeight: 900, letterSpacing: "-0.04em", marginBottom: 18, color: "white" }} className="blur-reveal">
+              Plugs into your existing stack.
+            </h2>
+            <p style={{ fontSize: 16, color: "rgba(255,255,255,0.4)", maxWidth: 560, margin: "0 auto", lineHeight: 1.7 }}>
+              clickr connects to the tools your team and clients already use. Leads route to your CRM, your team gets notified instantly, and every event can be sent anywhere via webhook.
+            </p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20 }} className="stagger-in">
+
+            {/* CRM integrations */}
+            <div style={{ padding: "28px 26px", borderRadius: 18, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.22)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>
+                  <Database size={18} />
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "white" }}>CRM integrations</div>
+              </div>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.43)", lineHeight: 1.65, marginBottom: 18 }}>
+                Route leads directly into your existing CRM the moment a form is submitted. No manual exports, no missed follow-ups, no copy-pasting between tabs.
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                {["HubSpot", "Salesforce", "Zoho CRM", "Pipedrive", "Mailchimp", "ActiveCampaign"].map((crm, i) => (
+                  <div key={i} style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>{crm}</div>
+                ))}
+              </div>
+            </div>
+
+            {/* Instant notifications */}
+            <div style={{ padding: "28px 26px", borderRadius: 18, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.22)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>
+                  <Bell size={18} />
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Instant notifications</div>
+              </div>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.43)", lineHeight: 1.65, marginBottom: 18 }}>
+                Get alerted the moment a lead converts. clickr fires real-time notifications to your team via the platforms they already work in, so no conversion ever gets missed.
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                {["Microsoft Teams", "Slack", "Email", "SMS"].map((n, i) => (
+                  <div key={i} style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.5)" }}>{n}</div>
+                ))}
+              </div>
+            </div>
+
+            {/* Form to email */}
+            <div style={{ padding: "28px 26px", borderRadius: 18, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.22)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>
+                  <Mail size={18} />
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Form-to-email routing</div>
+              </div>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.43)", lineHeight: 1.65 }}>
+                Every form submission lands in the right inbox automatically. Route to client email addresses, internal distribution lists, or any combination of both. No third-party form service required, and no setup beyond entering an address.
+              </p>
+            </div>
+
+            {/* Custom webhooks */}
+            <div style={{ padding: "28px 26px", borderRadius: 18, background: "rgba(255,255,255,0.03)", border: `1px solid rgba(249,115,22,0.15)` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.22)", display: "flex", alignItems: "center", justifyContent: "center", color: accentLight }}>
+                  <Link2 size={18} />
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Custom webhooks</div>
+              </div>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.43)", lineHeight: 1.65, marginBottom: 14 }}>
+                Send lead and conversion data to any endpoint that accepts an HTTP POST. Connect clickr to Zapier, Make, your own backend, or any custom workflow already running in your stack.
+              </p>
+              <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.12)", fontSize: 11, fontFamily: "monospace", color: "rgba(255,255,255,0.45)" }}>
+                POST https://your-endpoint.com/webhook
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
@@ -561,7 +664,7 @@ export default function ClickrPage() {
                 {[
                   "GTM container ID or direct pixel tags",
                   "Conversion events fire on form submit, phone click, email click",
-                  "Test mode — verify events without polluting real ad accounts",
+                  "Test mode: verify events without polluting real ad accounts",
                   "Per-page or client-default tracking config",
                 ].map((item, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -592,7 +695,7 @@ export default function ClickrPage() {
                   <div style={{ fontSize: 13, fontWeight: 700, color: "white" }}>Test mode</div>
                 </div>
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", lineHeight: 1.6, margin: 0 }}>
-                  Open any page with <span style={{ color: "rgba(255,255,255,0.6)", fontFamily: "monospace", background: "rgba(255,255,255,0.05)", padding: "1px 5px", borderRadius: 3 }}>?test=1</span> and a floating overlay logs every pixel event that would fire — without sending anything to your ad platforms.
+                  Open any page with <span style={{ color: "rgba(255,255,255,0.6)", fontFamily: "monospace", background: "rgba(255,255,255,0.05)", padding: "1px 5px", borderRadius: 3 }}>?test=1</span> and a floating overlay logs every pixel event that would fire, without sending anything to your ad platforms.
                 </p>
               </div>
             </div>
@@ -620,7 +723,7 @@ export default function ClickrPage() {
             <span style={{ background: `linear-gradient(90deg, ${accentLight}, ${accent}, #ef4444)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Go live today.</span>
           </h2>
           <p style={{ fontSize: 18, color: "rgba(255,255,255,0.48)", lineHeight: 1.8, marginBottom: 44 }}>
-            Paste a URL. Write a brief. clickr does the rest — a fully branded, conversion-optimised landing page, live on clickr.marketing in under a minute.
+            Paste a URL. Write a brief. clickr does the rest: a fully branded, conversion-optimised landing page, live on clickr.marketing in under a minute. Connected to your CRM, your team notifications, and your tracking from day one.
           </p>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
             <a href="/login" style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "16px 32px", borderRadius: 13, background: `linear-gradient(135deg, ${accent}, ${accentDark})`, color: "white", fontSize: 16, fontWeight: 700, textDecoration: "none", boxShadow: `0 0 36px rgba(249,115,22,0.42)` }} className="cta-accent-pulse">
