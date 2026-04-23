@@ -939,59 +939,95 @@ function MultiPicker({ label, values, options, onChange }: {
   const summary = values.length === 0 ? "All" : values.length === 1
     ? options.find((o) => o.value === values[0])?.label ?? "1 selected"
     : `${values.length} selected`;
+  const hasSelection = values.length > 0;
   return (
     <div style={{ position: "relative" }}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="btn btn-secondary btn-sm"
-        style={{ fontSize: 12, gap: 6, display: "inline-flex", alignItems: "center" }}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer",
+          height: 32, padding: "0 10px 0 12px", borderRadius: 8,
+          border: `1px solid ${open || hasSelection ? "var(--accent)" : "var(--border-subtle)"}`,
+          background: open || hasSelection ? "rgba(99,102,241,0.07)" : "var(--bg-2)",
+          fontSize: 13, fontWeight: 500, color: "var(--text-2)",
+          transition: "border-color 0.15s, background 0.15s",
+          whiteSpace: "nowrap",
+        }}
       >
-        <span style={{ color: "var(--text-3)" }}>{label}:</span>
-        <span style={{ color: "var(--text)" }}>{summary}</span>
-        <ChevronDown size={11} />
+        <span style={{ color: hasSelection ? "var(--accent)" : "var(--text-3)", fontWeight: 600, fontSize: 12 }}>{label}:</span>
+        <span style={{ color: hasSelection ? "var(--accent)" : "var(--text)", fontWeight: hasSelection ? 700 : 500 }}>{summary}</span>
+        <ChevronDown size={12} style={{ color: "var(--text-3)", marginLeft: 2, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
       </button>
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 30 }} />
           <div style={{
-            position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 31,
-            background: "var(--bg-1)", border: "1px solid var(--border-subtle)", borderRadius: "var(--r-sm)",
-            minWidth: 220, maxHeight: 320, overflowY: "auto", padding: 6,
-            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+            position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 31,
+            background: "var(--bg)", border: "1px solid var(--border-subtle)",
+            borderRadius: 12,
+            minWidth: 200, maxHeight: 340, overflowY: "auto", padding: "6px 4px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10)",
           }}>
             {options.length === 0 && (
-              <div style={{ padding: 8, fontSize: 12, color: "var(--text-3)" }}>No options</div>
+              <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--text-3)" }}>No options</div>
             )}
             {options.map((opt) => {
               const checked = values.includes(opt.value);
               return (
-                <label key={opt.value} style={{
-                  display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 4,
-                  cursor: "pointer", fontSize: 12, color: "var(--text-2)",
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => {
-                      if (checked) onChange(values.filter((v) => v !== opt.value));
-                      else onChange([...values, opt.value]);
-                    }}
-                  />
-                  {opt.color && <span style={{ width: 8, height: 8, borderRadius: "50%", background: opt.color }} />}
-                  <span style={{ flex: 1 }}>{opt.label}</span>
-                </label>
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    if (checked) onChange(values.filter((v) => v !== opt.value));
+                    else onChange([...values, opt.value]);
+                  }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    width: "100%", padding: "8px 10px", borderRadius: 8,
+                    cursor: "pointer", fontSize: 13, fontWeight: checked ? 600 : 400,
+                    color: checked ? "var(--text)" : "var(--text-2)",
+                    background: checked ? "rgba(99,102,241,0.08)" : "transparent",
+                    border: "none", textAlign: "left",
+                    transition: "background 0.1s",
+                  }}
+                  onMouseEnter={(e) => { if (!checked) e.currentTarget.style.background = "var(--bg-2)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = checked ? "rgba(99,102,241,0.08)" : "transparent"; }}
+                >
+                  {/* Custom checkbox */}
+                  <span style={{
+                    width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                    border: `1.5px solid ${checked ? "var(--accent)" : "var(--border-subtle)"}`,
+                    background: checked ? "var(--accent)" : "transparent",
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    transition: "background 0.12s, border-color 0.12s",
+                  }}>
+                    {checked && (
+                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                        <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </span>
+                  {opt.color && <span style={{ width: 8, height: 8, borderRadius: "50%", background: opt.color, flexShrink: 0 }} />}
+                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt.label}</span>
+                </button>
               );
             })}
             {values.length > 0 && (
-              <div style={{ padding: "6px 4px 0", borderTop: "1px solid var(--border-subtle)", marginTop: 4 }}>
+              <div style={{ padding: "4px 4px 2px", borderTop: "1px solid var(--border-subtle)", marginTop: 4 }}>
                 <button
                   type="button"
                   onClick={() => onChange([])}
-                  className="btn btn-ghost btn-sm"
-                  style={{ fontSize: 11, width: "100%" }}
+                  style={{
+                    width: "100%", padding: "7px 10px", borderRadius: 8, border: "none",
+                    background: "transparent", cursor: "pointer",
+                    fontSize: 12, fontWeight: 600, color: "var(--text-3)",
+                    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "var(--bg-2)"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
                 >
-                  Clear {label.toLowerCase()}
+                  <X size={11} /> Clear {label.toLowerCase()}
                 </button>
               </div>
             )}
