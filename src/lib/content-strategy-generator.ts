@@ -1296,10 +1296,12 @@ export async function generateContentStrategy(
 
   if (model === "claude-opus-4-6") {
     const anthropic = await getAnthropicClient();
-    // Streaming is required for requests that may exceed 10 minutes (large max_tokens)
+    // Streaming is required for requests that may exceed 10 minutes (large max_tokens).
+    // 16 000 tokens ≈ ~100 items across all sections — more than sufficient for a
+    // comprehensive strategy, and keeps worst-case generation time well under 400s.
     const stream = anthropic.messages.stream({
       model: "claude-opus-4-6",
-      max_tokens: 32000,
+      max_tokens: 16000,
       system: STRATEGY_SYSTEM_PROMPT,
       messages: [{ role: "user", content: analysisPrompt }],
     });
@@ -1365,7 +1367,7 @@ export async function generateContentStrategy(
         const anthropic = await getAnthropicClient();
         const retryStream = anthropic.messages.stream({
           model: "claude-opus-4-6",
-          max_tokens: 16000,
+          max_tokens: 8000,
           system: STRATEGY_SYSTEM_PROMPT,
           messages: [{ role: "user", content: retryPrompt }],
         });
