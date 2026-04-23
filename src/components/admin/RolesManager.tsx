@@ -20,6 +20,7 @@ const PERMISSION_GROUPS = [
       { key: "portfolio", label: "Portfolio Health" },
       { key: "actions", label: "Actions" },
       { key: "communications", label: "Communications" },
+      { key: "client_files", label: "Client Files Library" },
     ],
   },
   {
@@ -49,6 +50,22 @@ const PERMISSION_GROUPS = [
   {
     label: "Admin",
     items: [{ key: "users", label: "User Management" }],
+  },
+  {
+    label: "Task Management",
+    note: "Granular control over what users can do with tasks. Without these, the matching action is hidden in the UI and the API will refuse the request.",
+    items: [
+      { key: "tasks.create", label: "Create tasks" },
+      { key: "tasks.edit", label: "Edit tasks" },
+      { key: "tasks.delete", label: "Delete tasks" },
+      { key: "tasks.move", label: "Move / drag tasks (change status)" },
+      { key: "tasks.assign", label: "Assign teammates" },
+      { key: "tasks.approve_internal", label: "Mark as signed off (internal)" },
+      { key: "tasks.approve_client", label: "Mark as signed off by client" },
+      { key: "tasks.comment", label: "Comment on tasks" },
+      { key: "tasks.time_track", label: "Use timer / log time" },
+      { key: "tasks.upload", label: "Upload files to tasks/comments" },
+    ],
   },
   {
     label: "Client Dashboard Tabs",

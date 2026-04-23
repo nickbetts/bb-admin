@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSession, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +50,9 @@ export async function PATCH(
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!hasPermission(session, "tasks.move")) {
+      return NextResponse.json({ error: "Forbidden: tasks.move required" }, { status: 403 });
+    }
 
     const { id } = await params;
     const body = await request.json() as {
@@ -62,6 +65,13 @@ export async function PATCH(
     for (const u of body.updates) {
       if (u.status && !VALID_STATUSES.includes(u.status as typeof VALID_STATUSES[number])) {
         return NextResponse.json({ error: `Invalid status: ${u.status}` }, { status: 400 });
+      }
+      // Block sign-off transitions through reorder — they must use PATCH on the item route.
+      if (u.status === "signed_off_internal" && !hasPermission(session, "tasks.approve_internal")) {
+        return NextResponse.json({ error: "Forbidden: tasks.approve_internal required" }, { status: 403 });
+      }
+      if (u.status === "signed_off_client" && !hasPermission(session, "tasks.approve_client")) {
+        return NextResponse.json({ error: "Forbidden: tasks.approve_client required" }, { status: 403 });
       }
     }
 

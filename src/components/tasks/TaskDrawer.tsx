@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Trash2, Loader2, Check, Play, Pause, Clock, MessageSquare, Send, AlertCircle } from "lucide-react";
+import { X, Trash2, Loader2, Check, Play, Pause, Clock, MessageSquare, Send, AlertCircle, Paperclip, FileText, Download } from "lucide-react";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { UserOption } from "./TaskKanbanBoard";
 
@@ -31,6 +31,8 @@ interface Props {
   task: TaskRecord;
   users: UserOption[];
   categoryName: string;
+  /** Permission keys for the current user — controls which UI affordances render. */
+  permissions?: string[];
   onClose: () => void;
   /** updated = null when deleted */
   onChange: (updated: TaskRecord | null) => void;
@@ -71,6 +73,23 @@ interface TimeApiResponse {
   activeForUser: TaskTimeLogRecord | null;
 }
 
+interface TaskAttachmentRecord {
+  id: string;
+  blobUrl: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  commentId: string | null;
+  createdAt: string;
+  uploadedBy: { id: string; name: string | null; email: string };
+}
+
+function formatBytes(n: number) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function formatDuration(ms: number) {
   if (ms <= 0) return "0m";
   const totalSec = Math.floor(ms / 1000);
@@ -92,11 +111,22 @@ function formatTimer(ms: number) {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
-export function TaskDrawer({ clientId, task, users, categoryName, onClose, onChange }: Props) {
+export function TaskDrawer({ clientId, task, users, categoryName, permissions = [], onClose, onChange }: Props) {
   const [draft, setDraft] = useState<TaskRecord>(task);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const confirm = useConfirm();
+
+  // Permission helpers — used to hide UI affordances. APIs also enforce server-side.
+  const canEdit = permissions.includes("tasks.edit");
+  const canDelete = permissions.includes("tasks.delete");
+  const canMove = permissions.includes("tasks.move");
+  const canAssign = permissions.includes("tasks.assign");
+  const canApproveInternal = permissions.includes("tasks.approve_internal");
+  const canApproveClient = permissions.includes("tasks.approve_client");
+  const canComment = permissions.includes("tasks.comment");
+  const canTimeTrack = permissions.includes("tasks.time_track");
+  const canUpload = permissions.includes("tasks.upload");
 
   // Comments
   const [comments, setComments] = useState<TaskCommentRecord[]>([]);
@@ -109,6 +139,14 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
   const [timerError, setTimerError] = useState<string | null>(null);
   const [tick, setTick] = useState(0); // forces re-render every second when a timer is active
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Attachments (task-level + per-comment, returned in one list)
+  const [attachments, setAttachments] = useState<TaskAttachmentRecord[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const taskFileInputRef = useRef<HTMLInputElement | null>(null);
+  const commentFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [pendingCommentFiles, setPendingCommentFiles] = useState<File[]>([]);
 
   // Client portal users (for "send to client" assignment)
   const [portalUsers, setPortalUsers] = useState<{ id: string; email: string; name: string | null }[]>([]);
@@ -130,13 +168,15 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [cRes, tRes] = await Promise.all([
+      const [cRes, tRes, aRes] = await Promise.all([
         fetch(`/api/clients/${clientId}/actions/${task.id}/comments`, { cache: "no-store" }),
         fetch(`/api/clients/${clientId}/actions/${task.id}/time`, { cache: "no-store" }),
+        fetch(`/api/clients/${clientId}/actions/${task.id}/attachments`, { cache: "no-store" }),
       ]);
       if (cancelled) return;
       if (cRes.ok) setComments(await cRes.json() as TaskCommentRecord[]);
       if (tRes.ok) setTimeData(await tRes.json() as TimeApiResponse);
+      if (aRes.ok) setAttachments(await aRes.json() as TaskAttachmentRecord[]);
     })();
     return () => { cancelled = true; };
   }, [clientId, task.id]);
@@ -201,18 +241,27 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
 
   async function submitComment() {
     const body = commentDraft.trim();
-    if (!body) return;
+    if (!body && pendingCommentFiles.length === 0) return;
     setCommentSubmitting(true);
     try {
       const res = await fetch(`/api/clients/${clientId}/actions/${task.id}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body }),
+        body: JSON.stringify({ body: body || "(attachment)" }),
       });
       if (res.ok) {
         const created = await res.json() as TaskCommentRecord;
         setComments((c) => [...c, created]);
         setCommentDraft("");
+        // Upload any pending files attached to this comment.
+        if (pendingCommentFiles.length > 0) {
+          for (const file of pendingCommentFiles) {
+            const att = await uploadAttachment(file, created.id);
+            if (att) setAttachments((a) => [att, ...a]);
+          }
+          setPendingCommentFiles([]);
+          if (commentFileInputRef.current) commentFileInputRef.current.value = "";
+        }
       }
     } finally {
       setCommentSubmitting(false);
@@ -223,6 +272,44 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
     if (!(await confirm({ title: "Delete this comment?", confirmLabel: "Delete", danger: true }))) return;
     const res = await fetch(`/api/clients/${clientId}/actions/${task.id}/comments/${id}`, { method: "DELETE" });
     if (res.ok) setComments((c) => c.filter((x) => x.id !== id));
+  }
+
+  async function uploadAttachment(file: File, commentId: string | null = null): Promise<TaskAttachmentRecord | null> {
+    const fd = new FormData();
+    fd.append("file", file);
+    if (commentId) fd.append("commentId", commentId);
+    const res = await fetch(`/api/clients/${clientId}/actions/${task.id}/attachments`, {
+      method: "POST",
+      body: fd,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as { error?: string };
+      setUploadError(err.error ?? `Failed to upload ${file.name}`);
+      return null;
+    }
+    const created = await res.json() as TaskAttachmentRecord;
+    return created;
+  }
+
+  async function handleTaskFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      for (const file of Array.from(files)) {
+        const created = await uploadAttachment(file, null);
+        if (created) setAttachments((a) => [created, ...a]);
+      }
+    } finally {
+      setUploading(false);
+      if (taskFileInputRef.current) taskFileInputRef.current.value = "";
+    }
+  }
+
+  async function deleteAttachment(id: string) {
+    if (!(await confirm({ title: "Delete this attachment?", confirmLabel: "Delete", danger: true }))) return;
+    const res = await fetch(`/api/clients/${clientId}/actions/${task.id}/attachments/${id}`, { method: "DELETE" });
+    if (res.ok) setAttachments((a) => a.filter((x) => x.id !== id));
   }
 
   async function startTimer() {
@@ -403,11 +490,13 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
               onBlur={() => draft.title !== task.title && void save({ title: draft.title })}
               rows={1}
               placeholder="Task title"
+              readOnly={!canEdit}
               style={{
                 width: "100%", fontSize: 22, fontWeight: 700, color: "var(--text)",
                 background: "transparent", border: "none", outline: "none", resize: "none",
                 padding: 0, lineHeight: 1.3, fontFamily: "inherit",
                 overflowY: "hidden", letterSpacing: "-0.01em",
+                cursor: canEdit ? "text" : "default",
               }}
             />
 
@@ -420,25 +509,28 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
                 className="form-input"
                 rows={3}
                 placeholder="Add more detail…"
-                style={{ resize: "vertical", minHeight: 80 }}
+                readOnly={!canEdit}
+                style={{ resize: "vertical", minHeight: 80, cursor: canEdit ? "text" : "default" }}
               />
             </Field>
 
             {/* Quick sign-off actions */}
-            {(draft.status === "for_approval" || draft.status === "signed_off_internal") && (
+            {(canApproveInternal || canApproveClient) && (draft.status === "for_approval" || draft.status === "signed_off_internal") && (
               <div style={{
                 display: "flex", gap: 8, padding: "12px 14px", flexWrap: "wrap", alignItems: "center",
                 background: "rgba(99,102,241,0.06)", borderRadius: 10, border: "1px solid rgba(99,102,241,0.18)",
               }}>
                 <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 600, marginRight: 4 }}>Quick sign-off:</span>
-                {draft.status === "for_approval" && (
+                {draft.status === "for_approval" && canApproveInternal && (
                   <button onClick={() => void save({ status: "signed_off_internal" })} className="btn btn-secondary btn-sm">
                     Internal sign-off
                   </button>
                 )}
-                <button onClick={() => void save({ status: "signed_off_client" })} className="btn btn-primary btn-sm">
-                  Client sign-off (manual)
-                </button>
+                {canApproveClient && (
+                  <button onClick={() => void save({ status: "signed_off_client" })} className="btn btn-primary btn-sm">
+                    Client sign-off (manual)
+                  </button>
+                )}
               </div>
             )}
 
@@ -467,6 +559,65 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
                 style={{ resize: "vertical" }}
               />
             </Field>
+
+            {/* Attachments (task-level only — comment-level attachments render inline beneath each comment) */}
+            <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 24, marginTop: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Paperclip style={{ width: 15, height: 15, color: "var(--accent)" }} />
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Attachments</span>
+                  {attachments.filter((a) => !a.commentId).length > 0 && (
+                    <span style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      minWidth: 20, height: 20, padding: "0 6px", borderRadius: 10,
+                      background: "var(--accent)", color: "white",
+                      fontSize: 10, fontWeight: 800,
+                    }}>
+                      {attachments.filter((a) => !a.commentId).length}
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => taskFileInputRef.current?.click()}
+                  disabled={uploading || !canUpload}
+                  title={canUpload ? undefined : "You don't have permission to upload files"}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, opacity: canUpload ? 1 : 0.5 }}
+                >
+                  {uploading ? <Loader2 style={{ width: 12, height: 12 }} className="animate-spin" /> : <Paperclip style={{ width: 12, height: 12 }} />}
+                  Upload file
+                </button>
+                <input
+                  ref={taskFileInputRef}
+                  type="file"
+                  multiple
+                  hidden
+                  onChange={(e) => void handleTaskFiles(e.target.files)}
+                />
+              </div>
+              {uploadError && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", marginBottom: 10,
+                  background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.3)",
+                  borderRadius: 8, fontSize: 12, color: "var(--danger)",
+                }}>
+                  <AlertCircle style={{ width: 14, height: 14, flexShrink: 0 }} />
+                  <span>{uploadError}</span>
+                </div>
+              )}
+              {attachments.filter((a) => !a.commentId).length === 0 ? (
+                <p style={{ fontSize: 13, color: "var(--text-3)", margin: 0 }}>
+                  No files attached. Drop files here or click <span style={{ fontWeight: 600 }}>Upload file</span>.
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {attachments.filter((a) => !a.commentId).map((a) => (
+                    <AttachmentRow key={a.id} a={a} onDelete={canUpload ? () => void deleteAttachment(a.id) : undefined} />
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Comments */}
             <div style={{
@@ -513,13 +664,15 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
                             {new Date(c.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
-                        <button
-                          onClick={() => void deleteComment(c.id)}
-                          aria-label="Delete comment"
-                          style={{ background: "transparent", border: "none", color: "var(--text-4)", cursor: "pointer", padding: 4, borderRadius: 4, display: "flex" }}
-                        >
-                          <Trash2 style={{ width: 12, height: 12 }} />
-                        </button>
+                        {canComment && (
+                          <button
+                            onClick={() => void deleteComment(c.id)}
+                            aria-label="Delete comment"
+                            style={{ background: "transparent", border: "none", color: "var(--text-4)", cursor: "pointer", padding: 4, borderRadius: 4, display: "flex" }}
+                          >
+                            <Trash2 style={{ width: 12, height: 12 }} />
+                          </button>
+                        )}
                       </div>
                       <div style={{
                         background: "var(--bg-2)", borderRadius: 10, padding: "9px 12px",
@@ -527,47 +680,106 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
                       }}>
                         <p style={{ fontSize: 13, color: "var(--text-2)", margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{c.body}</p>
                       </div>
+                      {attachments.filter((a) => a.commentId === c.id).length > 0 && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                          {attachments.filter((a) => a.commentId === c.id).map((a) => (
+                            <AttachmentRow key={a.id} a={a} onDelete={canUpload ? () => void deleteAttachment(a.id) : undefined} />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
 
               {/* Composer */}
+              {canComment && (
               <div style={{
-                marginTop: 14, display: "flex", gap: 0, alignItems: "stretch",
+                marginTop: 14, display: "flex", flexDirection: "column", gap: 0,
                 border: "1px solid var(--border-subtle)", borderRadius: 12,
                 background: "var(--bg)", overflow: "hidden",
                 transition: "border-color 0.15s",
               }}>
-                <textarea
-                  value={commentDraft}
-                  onChange={(e) => setCommentDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void submitComment(); }
-                  }}
-                  placeholder="Write a comment… (⌘/Ctrl+Enter to send)"
-                  rows={2}
-                  style={{
-                    flex: 1, padding: "10px 14px", fontSize: 13, fontFamily: "inherit",
-                    background: "transparent", border: "none", outline: "none",
-                    color: "var(--text)", resize: "none", minHeight: 60,
-                  }}
-                />
-                <button
-                  onClick={() => void submitComment()}
-                  disabled={commentSubmitting || !commentDraft.trim()}
-                  title="Send (⌘/Ctrl+Enter)"
-                  style={{
-                    background: commentDraft.trim() ? "var(--gradient-accent)" : "var(--bg-2)",
-                    color: commentDraft.trim() ? "white" : "var(--text-4)",
-                    border: "none", padding: "0 16px", cursor: commentDraft.trim() ? "pointer" : "not-allowed",
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {commentSubmitting ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> : <Send style={{ width: 14, height: 14 }} />}
-                </button>
+                {pendingCommentFiles.length > 0 && (
+                  <div style={{
+                    display: "flex", flexWrap: "wrap", gap: 6, padding: "8px 12px",
+                    borderBottom: "1px solid var(--border-subtle)",
+                  }}>
+                    {pendingCommentFiles.map((f, i) => (
+                      <span key={i} style={{
+                        display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 8px",
+                        background: "var(--bg-2)", border: "1px solid var(--border-subtle)",
+                        borderRadius: 999, fontSize: 11, color: "var(--text-2)",
+                      }}>
+                        <Paperclip style={{ width: 11, height: 11 }} />
+                        {f.name} <span style={{ color: "var(--text-4)" }}>· {formatBytes(f.size)}</span>
+                        <button
+                          type="button"
+                          onClick={() => setPendingCommentFiles((arr) => arr.filter((_, idx) => idx !== i))}
+                          style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-4)", display: "flex", padding: 0 }}
+                          title="Remove"
+                        >
+                          <X style={{ width: 11, height: 11 }} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: "flex", alignItems: "stretch" }}>
+                  <textarea
+                    value={commentDraft}
+                    onChange={(e) => setCommentDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void submitComment(); }
+                    }}
+                    placeholder="Write a comment… (⌘/Ctrl+Enter to send)"
+                    rows={2}
+                    style={{
+                      flex: 1, padding: "10px 14px", fontSize: 13, fontFamily: "inherit",
+                      background: "transparent", border: "none", outline: "none",
+                      color: "var(--text)", resize: "none", minHeight: 60,
+                    }}
+                  />
+                  <button
+                    onClick={() => commentFileInputRef.current?.click()}
+                    title={canUpload ? "Attach files" : "You don't have permission to upload files"}
+                    type="button"
+                    disabled={!canUpload}
+                    style={{
+                      background: "transparent", border: "none", padding: "0 10px", cursor: canUpload ? "pointer" : "not-allowed",
+                      color: "var(--text-3)", display: canUpload ? "inline-flex" : "none", alignItems: "center",
+                    }}
+                  >
+                    <Paperclip style={{ width: 15, height: 15 }} />
+                  </button>
+                  <input
+                    ref={commentFileInputRef}
+                    type="file"
+                    multiple
+                    hidden
+                    onChange={(e) => {
+                      const files = e.target.files ? Array.from(e.target.files) : [];
+                      if (files.length) setPendingCommentFiles((arr) => [...arr, ...files]);
+                    }}
+                  />
+                  <button
+                    onClick={() => void submitComment()}
+                    disabled={commentSubmitting || (!commentDraft.trim() && pendingCommentFiles.length === 0)}
+                    title="Send (⌘/Ctrl+Enter)"
+                    style={{
+                      background: (commentDraft.trim() || pendingCommentFiles.length > 0) ? "var(--gradient-accent)" : "var(--bg-2)",
+                      color: (commentDraft.trim() || pendingCommentFiles.length > 0) ? "white" : "var(--text-4)",
+                      border: "none", padding: "0 16px",
+                      cursor: (commentDraft.trim() || pendingCommentFiles.length > 0) ? "pointer" : "not-allowed",
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {commentSubmitting ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> : <Send style={{ width: 14, height: 14 }} />}
+                  </button>
+                </div>
               </div>
+              )}
             </div>
           </div>
 
@@ -583,6 +795,7 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
                 value={draft.status}
                 onChange={(e) => { update("status", e.target.value); void save({ status: e.target.value }); }}
                 className="form-input"
+                disabled={!canMove && !canApproveInternal && !canApproveClient}
               >
                 {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
@@ -636,15 +849,17 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
                     <button
                       key={u.id}
                       type="button"
-                      onClick={() => toggleAssignee(u.id)}
-                      title={u.email}
+                      onClick={() => canAssign && toggleAssignee(u.id)}
+                      disabled={!canAssign}
+                      title={canAssign ? u.email : `${u.email} (read-only)`}
                       style={{
                         display: "inline-flex", alignItems: "center", gap: 6,
                         padding: "4px 10px 4px 4px", borderRadius: 99, fontSize: 12, fontWeight: 600,
-                        cursor: "pointer",
+                        cursor: canAssign ? "pointer" : "default",
                         border: `1px solid ${isOn ? "var(--accent)" : "var(--border-subtle)"}`,
                         background: isOn ? "rgba(99,102,241,0.1)" : "var(--bg)",
                         color: isOn ? "var(--accent-text)" : "var(--text-2)",
+                        opacity: canAssign ? 1 : 0.7,
                         transition: "all 0.12s",
                       }}
                     >
@@ -676,7 +891,7 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
                   void save({ clientPortalUserId: value });
                 }}
                 className="form-input"
-                disabled={portalUsers.length === 0}
+                disabled={portalUsers.length === 0 || !canAssign}
               >
                 <option value="">Internal only</option>
                 {portalUsers.map((u) => (
@@ -733,9 +948,9 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
                     </span>
                     <button
                       onClick={() => void stopTimer()}
-                      disabled={timerWorking}
+                      disabled={timerWorking || !canTimeTrack}
                       className="btn btn-secondary btn-sm"
-                      style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0 }}
+                      style={{ display: canTimeTrack ? "inline-flex" : "none", alignItems: "center", gap: 5, flexShrink: 0 }}
                     >
                       {timerWorking ? <Loader2 className="animate-spin" style={{ width: 11, height: 11 }} /> : <Pause style={{ width: 11, height: 11 }} />}
                       Stop
@@ -748,13 +963,15 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
               ) : (
                 <button
                   onClick={() => void startTimer()}
-                  disabled={timerWorking}
+                  disabled={timerWorking || !canTimeTrack}
+                  title={canTimeTrack ? undefined : "You don't have permission to track time"}
                   style={{
                     width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                     padding: "13px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600,
-                    cursor: timerWorking ? "wait" : "pointer",
+                    cursor: !canTimeTrack ? "not-allowed" : timerWorking ? "wait" : "pointer",
                     background: "var(--bg)", border: "1.5px dashed var(--border)",
                     color: "var(--text-2)", transition: "all 0.15s",
+                    opacity: canTimeTrack ? 1 : 0.5,
                   }}
                 >
                   {timerWorking
@@ -785,13 +1002,15 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
                           ? formatDuration(l.durationMs ?? 0)
                           : formatDuration(Math.max(0, Date.now() - new Date(l.startedAt).getTime()))}
                       </span>
-                      <button
-                        onClick={() => void deleteTimeLog(l.id)}
-                        aria-label="Delete entry"
-                        style={{ background: "transparent", border: "none", color: "var(--text-4)", cursor: "pointer", padding: 2, display: "flex" }}
-                      >
-                        <Trash2 style={{ width: 10, height: 10 }} />
-                      </button>
+                      {canTimeTrack && (
+                        <button
+                          onClick={() => void deleteTimeLog(l.id)}
+                          aria-label="Delete entry"
+                          style={{ background: "transparent", border: "none", color: "var(--text-4)", cursor: "pointer", padding: 2, display: "flex" }}
+                        >
+                          <Trash2 style={{ width: 10, height: 10 }} />
+                        </button>
+                      )}
                     </div>
                   ))}
                   {timeData.logs.length > 5 && (
@@ -841,16 +1060,18 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
           display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0,
           background: "var(--bg)",
         }}>
-          <button
-            onClick={handleDelete}
-            style={{
-              background: "transparent", border: "none", cursor: "pointer",
-              color: "var(--danger)", display: "inline-flex", alignItems: "center", gap: 6,
-              fontSize: 13, fontWeight: 500, padding: "6px 8px", borderRadius: 6,
-            }}
-          >
-            <Trash2 style={{ width: 13, height: 13 }} /> Delete task
-          </button>
+          {canDelete ? (
+            <button
+              onClick={handleDelete}
+              style={{
+                background: "transparent", border: "none", cursor: "pointer",
+                color: "var(--danger)", display: "inline-flex", alignItems: "center", gap: 6,
+                fontSize: 13, fontWeight: 500, padding: "6px 8px", borderRadius: 6,
+              }}
+            >
+              <Trash2 style={{ width: 13, height: 13 }} /> Delete task
+            </button>
+          ) : <span />}
           <button onClick={onClose} className="btn btn-secondary" style={{ minWidth: 90 }}>Done</button>
         </footer>
       </div>
@@ -899,4 +1120,62 @@ function avatarColour(seed: string) {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
   return `hsl(${h % 360}, 55%, 45%)`;
+}
+
+function AttachmentRow({ a, onDelete }: { a: TaskAttachmentRecord; onDelete?: () => void }) {
+  const isImage = a.contentType.startsWith("image/");
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
+      background: "var(--bg-2)", border: "1px solid var(--border-subtle)", borderRadius: 10,
+    }}>
+      {isImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={a.blobUrl} alt={a.fileName} style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+      ) : (
+        <div style={{
+          width: 36, height: 36, borderRadius: 6, flexShrink: 0,
+          background: "var(--bg)", border: "1px solid var(--border-subtle)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: "var(--text-3)",
+        }}>
+          <FileText style={{ width: 16, height: 16 }} />
+        </div>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <a
+          href={a.blobUrl}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            fontSize: 13, fontWeight: 500, color: "var(--text)",
+            textDecoration: "none", display: "block",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}
+        >
+          {a.fileName}
+        </a>
+        <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+          {formatBytes(a.sizeBytes)} · {a.uploadedBy.name ?? a.uploadedBy.email} · {new Date(a.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+        </div>
+      </div>
+      <a
+        href={a.blobUrl}
+        download={a.fileName}
+        title="Download"
+        style={{ color: "var(--text-3)", display: "flex", padding: 6, borderRadius: 6 }}
+      >
+        <Download style={{ width: 14, height: 14 }} />
+      </a>
+      {onDelete && (
+        <button
+          onClick={onDelete}
+          title="Delete"
+          style={{ background: "transparent", border: "none", color: "var(--text-4)", cursor: "pointer", padding: 6, borderRadius: 6, display: "flex" }}
+        >
+          <Trash2 style={{ width: 14, height: 14 }} />
+        </button>
+      )}
+    </div>
+  );
 }

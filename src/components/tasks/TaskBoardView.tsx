@@ -13,9 +13,10 @@ interface Props {
   clientId: string;
   categories: TaskCategorySummary[];
   users: UserOption[];
+  permissions: string[];
 }
 
-export function TaskBoardView({ clientId, categories, users }: Props) {
+export function TaskBoardView({ clientId, categories, users, permissions }: Props) {
   const [activeId, setActiveId] = useState<string>(categories[0]?.id ?? "");
 
   if (categories.length === 0) {
@@ -89,6 +90,7 @@ export function TaskBoardView({ clientId, categories, users }: Props) {
         categoryId={active.id}
         categoryName={active.name}
         users={users}
+        permissions={permissions}
       />
     </div>
   );

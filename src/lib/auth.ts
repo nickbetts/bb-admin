@@ -32,6 +32,20 @@ export const ALL_PERMISSIONS = [
   // Portal publishing — gates the "Publish to client portal" action on
   // reports, grand plans, content strategies and landing pages.
   "publish_to_portal",
+  // Client files library — per-client Vercel Blob file storage.
+  "client_files",
+  // Granular task permissions. Without these the action is hidden in the UI
+  // and the corresponding API routes return 403.
+  "tasks.create",
+  "tasks.edit",
+  "tasks.delete",
+  "tasks.move",
+  "tasks.assign",
+  "tasks.approve_internal",
+  "tasks.approve_client",
+  "tasks.comment",
+  "tasks.time_track",
+  "tasks.upload",
 ] as const;
 
 export type Permission = typeof ALL_PERMISSIONS[number];

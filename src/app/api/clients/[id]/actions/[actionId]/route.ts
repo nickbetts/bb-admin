@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSession, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -91,6 +91,47 @@ export async function PATCH(
     const existing = await prisma.actionItem.findFirst({ where: { id: actionId, clientId: id } });
     if (!existing) return NextResponse.json({ error: "Action not found" }, { status: 404 });
 
+    // Granular permission gating per field. Anything that mutates the task must be
+    // backed by an explicit permission. We check per-field so partial updates with
+    // some allowed and some denied fields produce a clear 403.
+    const editFields: (keyof typeof data)[] = [
+      "title", "description", "categoryId", "dueDate", "outcome", "approvalNotes",
+    ];
+    const isEditing = editFields.some((k) => data[k] !== undefined);
+    if (isEditing && !hasPermission(session, "tasks.edit")) {
+      return NextResponse.json({ error: "Forbidden: tasks.edit required" }, { status: 403 });
+    }
+
+    if (data.priority !== undefined && !hasPermission(session, "tasks.edit")) {
+      return NextResponse.json({ error: "Forbidden: tasks.edit required" }, { status: 403 });
+    }
+
+    if (data.status !== undefined && existing.status !== data.status) {
+      if (data.status === "signed_off_internal" && !hasPermission(session, "tasks.approve_internal")) {
+        return NextResponse.json({ error: "Forbidden: tasks.approve_internal required" }, { status: 403 });
+      }
+      if (data.status === "signed_off_client" && !hasPermission(session, "tasks.approve_client")) {
+        return NextResponse.json({ error: "Forbidden: tasks.approve_client required" }, { status: 403 });
+      }
+      // All other status changes (incl. drag/drop) need tasks.move
+      if (
+        data.status !== "signed_off_internal" &&
+        data.status !== "signed_off_client" &&
+        !hasPermission(session, "tasks.move")
+      ) {
+        return NextResponse.json({ error: "Forbidden: tasks.move required" }, { status: 403 });
+      }
+    }
+
+    if (data.boardOrder !== undefined && !hasPermission(session, "tasks.move")) {
+      return NextResponse.json({ error: "Forbidden: tasks.move required" }, { status: 403 });
+    }
+
+    if ((data.assignedTo !== undefined || data.assigneeIds !== undefined || data.clientPortalUserId !== undefined)
+        && !hasPermission(session, "tasks.assign")) {
+      return NextResponse.json({ error: "Forbidden: tasks.assign required" }, { status: 403 });
+    }
+
     const stampExtras =
       data.status !== undefined
         ? buildStatusStampExtras(existing.status, data.status, session.user.id, "agency")
@@ -138,6 +179,9 @@ export async function DELETE(
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!hasPermission(session, "tasks.delete")) {
+      return NextResponse.json({ error: "Forbidden: tasks.delete required" }, { status: 403 });
+    }
 
     const { id, actionId } = await params;
     const existing = await prisma.actionItem.findFirst({ where: { id: actionId, clientId: id } });

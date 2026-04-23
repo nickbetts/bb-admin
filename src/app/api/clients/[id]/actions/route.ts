@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSession, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +58,9 @@ export async function POST(
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!hasPermission(session, "tasks.create")) {
+      return NextResponse.json({ error: "Forbidden: tasks.create required" }, { status: 403 });
+    }
 
     const { id } = await params;
     const data = await request.json() as {

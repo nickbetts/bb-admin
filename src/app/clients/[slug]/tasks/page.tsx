@@ -53,7 +53,7 @@ export default async function ClientTasksPage({ params }: Props) {
         </Link>
       </div>
 
-      <TaskBoardView clientId={client.id} categories={categories} users={users} />
+      <TaskBoardView clientId={client.id} categories={categories} users={users} permissions={session.user.permissions} />
     </div>
   );
 }

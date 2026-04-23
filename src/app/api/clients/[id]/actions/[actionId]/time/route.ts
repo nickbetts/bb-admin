@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSession, hasPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +54,9 @@ export async function POST(
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!hasPermission(session, "tasks.time_track")) {
+      return NextResponse.json({ error: "Forbidden: tasks.time_track required" }, { status: 403 });
+    }
 
     const { id, actionId } = await params;
     const data = (await request.json().catch(() => ({}))) as { note?: string };

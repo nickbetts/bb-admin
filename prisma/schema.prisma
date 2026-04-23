@@ -40,6 +40,8 @@ model User {
   taskAssignments     TaskAssignee[]
   taskComments        TaskComment[]
   taskTimeLogs        TaskTimeLog[]
+  taskAttachments     TaskAttachment[]
+  uploadedClientFiles ClientFile[]
 }
 
 model Session {
@@ -150,6 +152,7 @@ model Client {
   timeEntries           AgencyTimeEntry[]
   portalThreads         PortalThread[]
   taskCategories        ClientTaskCategory[]
+  files                 ClientFile[]
 }
 
 model ClientGoal {
@@ -480,6 +483,7 @@ model ActionItem {
   assignees   TaskAssignee[]
   comments    TaskComment[]
   timeLogs    TaskTimeLog[]
+  attachments TaskAttachment[]
 
   @@index([clientId, categoryId, status, boardOrder])
   @@index([clientPortalUserId, status])
@@ -539,6 +543,7 @@ model TaskComment {
   updatedAt    DateTime   @updatedAt
   actionItem   ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attachments  TaskAttachment[]
 
   @@index([actionItemId, createdAt])
 }
@@ -560,6 +565,45 @@ model TaskTimeLog {
 
   @@index([actionItemId, startedAt])
   @@index([userId, endedAt])
+}
+
+// File attachment uploaded to a task or to a comment on a task. Files are stored in
+// Vercel Blob; this row holds the URL and metadata. If commentId is set, the attachment
+// belongs to that specific comment; otherwise it is a task-level attachment.
+model TaskAttachment {
+  id           String      @id @default(cuid())
+  actionItemId String
+  commentId    String?
+  uploadedById String
+  blobUrl      String
+  fileName     String
+  contentType  String
+  sizeBytes    Int
+  createdAt    DateTime    @default(now())
+  actionItem   ActionItem  @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
+  comment      TaskComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  uploadedBy   User        @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([actionItemId, createdAt])
+  @@index([commentId])
+}
+
+// Per-client file library. Stored in Vercel Blob; one flat list per client.
+model ClientFile {
+  id           String   @id @default(cuid())
+  clientId     String
+  uploadedById String
+  blobUrl      String
+  fileName     String
+  contentType  String
+  sizeBytes    Int
+  description  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([clientId, createdAt])
 }
 
 // Phase 3: Client Communication Hub — centralised communication log

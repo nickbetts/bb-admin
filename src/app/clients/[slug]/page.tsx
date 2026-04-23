@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { Plus, ExternalLink, Settings, Shield, KanbanSquare, Eye } from "lucide-react";
+import { Plus, ExternalLink, Settings, Shield, KanbanSquare, Eye, FolderOpen } from "lucide-react";
 import { ClientDashboard } from "@/components/dashboard/ClientDashboard";
 import { ClientStatusControl } from "@/components/clients/ClientStatusControl";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
@@ -84,6 +84,12 @@ export default async function ClientPage({ params, searchParams }: Props) {
               <KanbanSquare style={{ width: 15, height: 15 }} />
               Tasks
             </Link>
+            {session.user.permissions.includes("client_files") && (
+              <Link href={`/clients/${slug}/files`} className="btn btn-secondary">
+                <FolderOpen style={{ width: 15, height: 15 }} />
+                Files
+              </Link>
+            )}
             <Link href={`/clients/${slug}/settings`} className="btn btn-secondary">
               <Settings style={{ width: 15, height: 15 }} />
               Settings
