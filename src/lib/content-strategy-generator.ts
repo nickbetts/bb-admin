@@ -24,6 +24,7 @@ import {
 import { withApiCache } from "@/lib/api-cache";
 import { getOpenAiClient } from "@/lib/openai-client";
 import { getAnthropicClient } from "@/lib/anthropic-client";
+import { jsonrepair } from "jsonrepair";
 
 export type StrategyModel = "gpt-5.4" | "claude-opus-4-6";
 
@@ -1330,35 +1331,13 @@ export async function generateContentStrategy(
     throw new Error("No response from AI analysis");
   }
 
-  // Attempt JSON parse with truncation recovery as a safety net
-  function repairTruncatedJson(s: string): string {
-    let openBraces = 0;
-    let openBrackets = 0;
-    let inString = false;
-    let escape = false;
-    for (const ch of s) {
-      if (escape) { escape = false; continue; }
-      if (ch === "\\" && inString) { escape = true; continue; }
-      if (ch === '"') { inString = !inString; continue; }
-      if (inString) continue;
-      if (ch === "{") openBraces++;
-      else if (ch === "}") openBraces--;
-      else if (ch === "[") openBrackets++;
-      else if (ch === "]") openBrackets--;
-    }
-    let repaired = s.trimEnd().replace(/,\s*$/, "");
-    for (let i = 0; i < openBrackets; i++) repaired += "]";
-    for (let i = 0; i < openBraces; i++) repaired += "}";
-    return repaired;
-  }
-
   let raw: Record<string, unknown>;
   try {
     raw = JSON.parse(content) as Record<string, unknown>;
   } catch {
-    console.warn("Content strategy JSON parse failed — attempting truncation repair");
+    console.warn("Content strategy JSON parse failed — running jsonrepair");
     try {
-      raw = JSON.parse(repairTruncatedJson(content)) as Record<string, unknown>;
+      raw = JSON.parse(jsonrepair(content)) as Record<string, unknown>;
     } catch (repairError) {
       // Last resort: retry with a shorter, stricter prompt asking for valid JSON
       console.warn("Truncation repair failed — retrying AI call with strict JSON nudge", repairError);
@@ -1807,65 +1786,23 @@ ${SECTION_SCHEMAS[section]}`;
   const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]+?)```/) ?? rawText.match(/(\{[\s\S]+\})/);
   const jsonText = jsonMatch ? jsonMatch[1].trim() : rawText;
 
-  /** Close any unclosed brackets/braces left by a truncated Claude response. */
-  function repairTruncatedJson(s: string): string {
-    let openBraces = 0;
-    let openBrackets = 0;
-    let inString = false;
-    let escape = false;
-    for (const ch of s) {
-      if (escape) { escape = false; continue; }
-      if (ch === "\\" && inString) { escape = true; continue; }
-      if (ch === '"') { inString = !inString; continue; }
-      if (inString) continue;
-      if (ch === "{") openBraces++;
-      else if (ch === "}") openBraces--;
-      else if (ch === "[") openBrackets++;
-      else if (ch === "]") openBrackets--;
-    }
-    let repaired = s.trimEnd().replace(/,\s*$/, "");
-    for (let i = 0; i < openBrackets; i++) repaired += "]";
-    for (let i = 0; i < openBraces; i++) repaired += "}";
-    return repaired;
-  }
-
   let raw: Record<string, unknown>;
   try {
     raw = JSON.parse(jsonText) as Record<string, unknown>;
     console.log(`[content-strategy:${section}] JSON parsed OK — raw keys: ${Object.keys(raw).join(", ")}`);
   } catch (parseErr) {
-    console.warn(`[content-strategy:${section}] JSON parse failed — attempting bracket repair. Error: ${parseErr}`);
-    const repaired = repairTruncatedJson(jsonText);
+    // jsonrepair handles all LLM JSON failures in one pass:
+    // unescaped quotes inside strings, truncated output, trailing commas, etc.
+    console.warn(`[content-strategy:${section}] JSON parse failed — running jsonrepair. Error: ${parseErr}`);
     try {
+      const repaired = jsonrepair(jsonText);
       raw = JSON.parse(repaired) as Record<string, unknown>;
-      console.log(`[content-strategy:${section}] JSON repaired OK — raw keys: ${Object.keys(raw).join(", ")}`);
-    } catch {
-      // The truncation is mid-string (inside a property value), not at a bracket
-      // boundary — bracket repair can't help. Strip backwards to the last complete
-      // array item (ending with `},`) and re-close.
-      console.warn(`[content-strategy:${section}] bracket repair failed — stripping to last complete item...`);
-      const lastComplete = jsonText.lastIndexOf("},");
-      if (lastComplete > 0) {
-        const stripped = repairTruncatedJson(jsonText.substring(0, lastComplete + 1));
-        try {
-          raw = JSON.parse(stripped) as Record<string, unknown>;
-          console.warn(
-            `[content-strategy:${section}] stripped to last complete item OK — ` +
-            `lost ${jsonText.length - lastComplete} chars of truncated output`,
-          );
-        } catch (stripErr) {
-          console.error(
-            `[content-strategy:${section}] all repair attempts FAILED — ` +
-            `raw=${rawText.length} repaired=${repaired.length} stripped=${stripped.length}. Error: ${stripErr}`,
-          );
-          throw stripErr;
-        }
-      } else {
-        console.error(
-          `[content-strategy:${section}] JSON repair FAILED — raw text length=${rawText.length} repaired length=${repaired.length}. Error: ${parseErr}`,
-        );
-        throw parseErr;
-      }
+      console.log(`[content-strategy:${section}] jsonrepair OK — raw keys: ${Object.keys(raw).join(", ")}`);
+    } catch (repairErr) {
+      console.error(
+        `[content-strategy:${section}] jsonrepair FAILED — raw=${rawText.length}. Error: ${repairErr}`,
+      );
+      throw repairErr;
     }
   }
 
