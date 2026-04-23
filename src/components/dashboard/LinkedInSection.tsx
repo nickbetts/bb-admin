@@ -6,6 +6,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { EmptyBlockState } from "@/components/dashboard/shared/EmptyBlockState";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { DataTable } from "@/components/ui/DataTable";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
@@ -68,6 +69,7 @@ interface LinkedInSectionProps {
 
 export function LinkedInSection({ clientId, clientName, accountId, accessToken, startDate, endDate, crossPlatformContext, visibleBlocks }: LinkedInSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [loading, setLoading] = useState(false);
   const [overview, setOverview] = useState<LinkedInOverview | null>(null);
   const [campaigns, setCampaigns] = useState<LinkedInCampaign[]>([]);
@@ -129,6 +131,9 @@ export function LinkedInSection({ clientId, clientName, accountId, accessToken, 
             </MetricGrid>
           )}
 
+          {isExplicit("campaigns") && campaigns.length === 0 && (
+            <EmptyBlockState title="Campaigns" />
+          )}
           {show("campaigns") && campaigns.length > 0 && (
             <DataTable<LinkedInCampaign>
               data={campaigns}
@@ -146,6 +151,9 @@ export function LinkedInSection({ clientId, clientName, accountId, accessToken, 
           )}
 
           {/* Demographics — Industry */}
+          {isExplicit("demographics") && !(demographics?.industry?.length || demographics?.jobFunction?.length || demographics?.companySize?.length) && (
+            <EmptyBlockState title="Audience Demographics" message="No demographic breakdown returned for the selected period." />
+          )}
           {show("demographics") && demographics?.industry && demographics.industry.length > 0 && (
             <DataTable<LinkedInDemoRow>
               data={demographics.industry}

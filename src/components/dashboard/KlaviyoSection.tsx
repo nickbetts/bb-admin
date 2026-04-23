@@ -6,6 +6,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { EmptyBlockState } from "@/components/dashboard/shared/EmptyBlockState";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { DataTable } from "@/components/ui/DataTable";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
@@ -76,6 +77,7 @@ interface KlaviyoSectionProps {
 
 export function KlaviyoSection({ clientId, clientName, startDate: _startDate, endDate: _endDate, crossPlatformContext, visibleBlocks }: KlaviyoSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<KlaviyoOverview | null>(null);
   const [campaigns, setCampaigns] = useState<KlaviyoCampaign[]>([]);
@@ -192,6 +194,9 @@ export function KlaviyoSection({ clientId, clientName, startDate: _startDate, en
           )}
 
           {/* Automated Flows */}
+          {isExplicit("flows") && flows.length === 0 && (
+            <EmptyBlockState title="Automated Flows" message="No active Klaviyo flows for this period." />
+          )}
           {show("flows") && flows.length > 0 && (
             <DataTable<KlaviyoFlow>
               data={flows}

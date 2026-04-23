@@ -10,6 +10,16 @@ import { GoogleAdsSection } from "@/components/dashboard/GoogleAdsSection";
 import { SearchConsoleSection } from "@/components/dashboard/SearchConsoleSection";
 import { OverviewSection } from "@/components/dashboard/OverviewSection";
 import { EcommerceSection } from "@/components/dashboard/EcommerceSection";
+import { TikTokSection } from "@/components/dashboard/TikTokSection";
+import { MicrosoftAdsSection } from "@/components/dashboard/MicrosoftAdsSection";
+import { LinkedInSection } from "@/components/dashboard/LinkedInSection";
+import { KlaviyoSection } from "@/components/dashboard/KlaviyoSection";
+import { GoalsSection } from "@/components/dashboard/GoalsSection";
+import { YouTubeSection } from "@/components/dashboard/YouTubeSection";
+import { HubSpotSection } from "@/components/dashboard/HubSpotSection";
+import { CallRailSection } from "@/components/dashboard/CallRailSection";
+import { CoreWebVitalsSection } from "@/components/dashboard/CoreWebVitalsSection";
+import { CompetitorIntelligenceSection } from "@/components/dashboard/CompetitorIntelligenceSection";
 import { TextSection } from "@/components/reports/TextSection";
 import { ScreenshotsSection } from "@/components/reports/ScreenshotsSection";
 
@@ -32,6 +42,16 @@ const SECTION_SUBTITLES: Record<string, string> = {
   googleads: "Paid search advertising via Google Ads",
   searchconsole: "Organic search performance via Google Search Console",
   ecommerce: "Online store revenue and order performance",
+  tiktok: "TikTok Ads campaign performance",
+  microsoft_ads: "Paid search advertising via Microsoft Advertising",
+  linkedin: "LinkedIn Ads campaign performance",
+  klaviyo: "Email and SMS marketing performance via Klaviyo",
+  goals: "Client objectives and progress tracking",
+  youtube: "YouTube channel and video analytics",
+  hubspot: "CRM pipeline and contact activity via HubSpot",
+  callrail: "Call tracking performance via CallRail",
+  core_web_vitals: "Page experience metrics from CrUX",
+  competitor_intelligence: "Competitor visibility snapshots",
   executive_summary: "AI-generated summary of the full report",
 };
 
@@ -69,6 +89,14 @@ interface Client {
   searchConsoleSiteUrl: string | null;
   woocommerceUrl?: string | null;
   shopifyStoreDomain?: string | null;
+  tiktokAdvertiserId?: string | null;
+  microsoftAdsAccountId?: string | null;
+  linkedinAccountId?: string | null;
+  linkedinAccessToken?: string | null;
+  klaviyoApiKey?: string | null;
+  youtubeChannelId?: string | null;
+  hubspotPortalId?: string | null;
+  callrailAccountId?: string | null;
 }
 
 interface Report {
@@ -609,6 +637,156 @@ export function ReportPrintView({ report, showDescriptions = true }: { report: R
                   {unconfiguredNotice("No WooCommerce or Shopify store connected.")}
                 </>
               ))}
+            {section.sectionType === "tiktok" &&
+              (report.client.tiktokAdvertiserId ? (
+                <>
+                  {afterHeader}
+                  <TikTokSection
+                    clientId={report.client.id}
+                    clientName={report.client.name}
+                    startDate={startDate}
+                    endDate={endDate}
+                    visibleBlocks={visibleBlocks}
+                  />
+                </>
+              ) : (
+                <>
+                  {afterHeader}
+                  {unconfiguredNotice("No TikTok advertiser account connected.")}
+                </>
+              ))}
+            {section.sectionType === "microsoft_ads" &&
+              (report.client.microsoftAdsAccountId ? (
+                <>
+                  {afterHeader}
+                  <MicrosoftAdsSection
+                    clientId={report.client.id}
+                    clientName={report.client.name}
+                    startDate={startDate}
+                    endDate={endDate}
+                    visibleBlocks={visibleBlocks}
+                  />
+                </>
+              ) : (
+                <>
+                  {afterHeader}
+                  {unconfiguredNotice("No Microsoft Ads account connected.")}
+                </>
+              ))}
+            {section.sectionType === "linkedin" &&
+              (report.client.linkedinAccountId ? (
+                <>
+                  {afterHeader}
+                  <LinkedInSection
+                    clientId={report.client.id}
+                    clientName={report.client.name}
+                    accountId={report.client.linkedinAccountId}
+                    accessToken={report.client.linkedinAccessToken}
+                    startDate={startDate}
+                    endDate={endDate}
+                    visibleBlocks={visibleBlocks}
+                  />
+                </>
+              ) : (
+                <>
+                  {afterHeader}
+                  {unconfiguredNotice("No LinkedIn ad account connected.")}
+                </>
+              ))}
+            {section.sectionType === "klaviyo" &&
+              (report.client.klaviyoApiKey ? (
+                <>
+                  {afterHeader}
+                  <KlaviyoSection
+                    clientId={report.client.id}
+                    clientName={report.client.name}
+                    startDate={startDate}
+                    endDate={endDate}
+                    visibleBlocks={visibleBlocks}
+                  />
+                </>
+              ) : (
+                <>
+                  {afterHeader}
+                  {unconfiguredNotice("No Klaviyo account connected.")}
+                </>
+              ))}
+            {section.sectionType === "goals" && (
+              <>
+                {afterHeader}
+                <GoalsSection clientId={report.client.id} visibleBlocks={visibleBlocks} />
+              </>
+            )}
+            {section.sectionType === "youtube" &&
+              (report.client.youtubeChannelId ? (
+                <>
+                  {afterHeader}
+                  <YouTubeSection
+                    clientId={report.client.id}
+                    clientName={report.client.name}
+                    visibleBlocks={visibleBlocks}
+                  />
+                </>
+              ) : (
+                <>
+                  {afterHeader}
+                  {unconfiguredNotice("No YouTube channel connected.")}
+                </>
+              ))}
+            {section.sectionType === "hubspot" &&
+              (report.client.hubspotPortalId ? (
+                <>
+                  {afterHeader}
+                  <HubSpotSection
+                    clientId={report.client.id}
+                    clientName={report.client.name}
+                    visibleBlocks={visibleBlocks}
+                  />
+                </>
+              ) : (
+                <>
+                  {afterHeader}
+                  {unconfiguredNotice("No HubSpot portal connected.")}
+                </>
+              ))}
+            {section.sectionType === "callrail" &&
+              (report.client.callrailAccountId ? (
+                <>
+                  {afterHeader}
+                  <CallRailSection
+                    clientId={report.client.id}
+                    clientName={report.client.name}
+                    visibleBlocks={visibleBlocks}
+                  />
+                </>
+              ) : (
+                <>
+                  {afterHeader}
+                  {unconfiguredNotice("No CallRail account connected.")}
+                </>
+              ))}
+            {section.sectionType === "core_web_vitals" &&
+              (report.client.website ? (
+                <>
+                  {afterHeader}
+                  <CoreWebVitalsSection url={report.client.website} visibleBlocks={visibleBlocks} />
+                </>
+              ) : (
+                <>
+                  {afterHeader}
+                  {unconfiguredNotice("No website URL set for this client.")}
+                </>
+              ))}
+            {section.sectionType === "competitor_intelligence" && (
+              <>
+                {afterHeader}
+                <CompetitorIntelligenceSection
+                  clientId={report.client.id}
+                  semrushDomain={report.client.semrushDomain}
+                  visibleBlocks={visibleBlocks}
+                />
+              </>
+            )}
           </div>
         );
       })}

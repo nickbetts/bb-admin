@@ -18,6 +18,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { SectionCard } from "@/components/ui/index";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { EmptyBlockState } from "@/components/dashboard/shared/EmptyBlockState";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { formatCurrency, formatNumber, formatDateDisplay } from "@/lib/utils";
 import { ShoppingCart, TrendingUp, Package, Users } from "lucide-react";
@@ -50,6 +51,7 @@ const CHART_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8
 
 export function EcommerceSection({ clientId, clientName, platform, startDate, endDate, visibleBlocks, crossPlatformContext }: EcommerceSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [stats, setStats] = useState<EcStats | null>(null);
   const [customers, setCustomers] = useState<{ totalCustomers: number; newCustomers: number; returningCustomers: number; averageOrdersPerCustomer: number; topCustomers: Array<{ name: string; email: string; totalSpent: number; orderCount: number }> } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -281,6 +283,9 @@ export function EcommerceSection({ clientId, clientName, platform, startDate, en
           )}
 
           {/* Repeat Purchase Rate */}
+          {isExplicit("repeat_purchase") && (!customers || customers.totalCustomers === 0) && (
+            <EmptyBlockState title="Repeat Purchase Behaviour" />
+          )}
           {show("repeat_purchase") && customers && customers.totalCustomers > 0 && (
             <SectionCard title="Repeat Purchase Rate" subtitle="Customer loyalty and retention indicator">
               <div className="grid grid-cols-3 gap-5">

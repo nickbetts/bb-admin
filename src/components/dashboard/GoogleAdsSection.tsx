@@ -6,6 +6,7 @@ import { SectionCard, Delta } from "@/components/ui/index";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
+import { EmptyBlockState } from "@/components/dashboard/shared/EmptyBlockState";
 import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE } from "@/lib/chart-config";
 import { formatCurrency, formatNumber, formatPercent, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import {
@@ -290,6 +291,7 @@ type GAdsAlert = { severity: "high" | "medium"; label: string; level: string; de
 
 export function GoogleAdsSection({ customerId, clientId, clientName, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, signalConfig, onMetricsReady, onPreviousMetricsReady, afterHeader }: Props) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [data, setData] = useState<GoogleAdsData | null>(null);
   const [prevData, setPrevData] = useState<GoogleAdsData | null>(null);
   const [prevOverview, setPrevOverview] = useState<GoogleAdsOverview | null>(null);
@@ -1003,6 +1005,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       ) : null}
 
       {/* Performance Max Insights */}
+      {!loading && !error && isExplicit("pmax") && (data?.pmaxInsights?.length ?? 0) === 0 && (
+        <EmptyBlockState title="Performance Max Insights" message="No PMax campaigns reported for this period." />
+      )}
       {!loading && !error && show("pmax") && (data?.pmaxInsights?.length ?? 0) > 0 && (
         <SectionCard title="Performance Max Insights" subtitle="Asset group performance across PMax campaigns">
           <DataTable<NonNullable<GoogleAdsData["pmaxInsights"]>[number] & { roasValue: number }>
@@ -1024,6 +1029,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* Geographic Performance */}
+      {!loading && !error && isExplicit("geo") && (data?.geoPerformance?.length ?? 0) === 0 && (
+        <EmptyBlockState title="Geographic Performance" />
+      )}
       {!loading && !error && show("geo") && (data?.geoPerformance?.length ?? 0) > 0 && (
         <SectionCard title="Geographic Performance" subtitle="Top locations by click volume">
           <DataTable<NonNullable<GoogleAdsData["geoPerformance"]>[number] & { cpaValue: number }>
@@ -1043,6 +1051,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* Ad Schedule Performance */}
+      {!loading && !error && isExplicit("schedule") && (data?.schedulePerformance?.length ?? 0) === 0 && (
+        <EmptyBlockState title="Ad Schedule Performance" />
+      )}
       {!loading && !error && show("schedule") && (data?.schedulePerformance?.length ?? 0) > 0 && (() => {
         const dayOrder = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
         const dayLabels: Record<string, string> = { MONDAY: "Mon", TUESDAY: "Tue", WEDNESDAY: "Wed", THURSDAY: "Thu", FRIDAY: "Fri", SATURDAY: "Sat", SUNDAY: "Sun" };
@@ -1163,6 +1174,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* Keywords & Quality Scores */}
+      {!loading && !error && isExplicit("keywords") && (data?.keywordQualityScores?.length ?? 0) === 0 && (
+        <EmptyBlockState title="Keywords & Quality Scores" />
+      )}
       {!loading && !error && show("keywords") && (data?.keywordQualityScores?.length ?? 0) > 0 && (() => {
         const qsBadge = (rank: string) => {
           const cls = rank === "ABOVE_AVERAGE" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : rank === "AVERAGE" ? "bg-amber-50 text-amber-700 border-amber-200" : rank === "BELOW_AVERAGE" ? "bg-red-50 text-red-700 border-red-200" : "bg-[var(--border-subtle)] text-[var(--text-3)] border-[var(--border)]";
@@ -1210,6 +1224,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* Device Breakdown */}
+      {!loading && !error && isExplicit("device_breakdown") && (data?.deviceBreakdown?.length ?? 0) === 0 && (
+        <EmptyBlockState title="Device Breakdown" />
+      )}
       {!loading && !error && show("device_breakdown") && (data?.deviceBreakdown?.length ?? 0) > 0 && (
         <SectionCard title="Device Breakdown" subtitle="Performance by device type">
           <DataTable<NonNullable<GoogleAdsData["deviceBreakdown"]>[number] & { roasValue: number }>
@@ -1228,6 +1245,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* Negative Keywords */}
+      {!loading && !error && isExplicit("negative_keywords") && (data?.negativeKeywords?.length ?? 0) === 0 && (
+        <EmptyBlockState title="Negative Keywords" message="No negative keywords configured for this account." />
+      )}
       {!loading && !error && show("negative_keywords") && (data?.negativeKeywords?.length ?? 0) > 0 && (
         <SectionCard title="Negative Keywords" subtitle={`${data!.negativeKeywords!.length} negative keyword${data!.negativeKeywords!.length !== 1 ? "s" : ""} active`}>
           <DataTable<NonNullable<GoogleAdsData["negativeKeywords"]>[number]>
@@ -1244,6 +1264,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* Demographics */}
+      {!loading && !error && isExplicit("demographics_paid") && (data?.demographics?.length ?? 0) === 0 && (
+        <EmptyBlockState title="Demographics" />
+      )}
       {!loading && !error && show("demographics_paid") && (data?.demographics?.length ?? 0) > 0 && (
         <SectionCard title="Demographics" subtitle="Performance by age and gender">
           <DataTable<NonNullable<GoogleAdsData["demographics"]>[number]>
@@ -1262,6 +1285,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* Shopping Performance */}
+      {!loading && !error && isExplicit("shopping") && (data?.shoppingPerformance?.length ?? 0) === 0 && (
+        <EmptyBlockState title="Shopping Performance" message="No Shopping campaigns active in this period." />
+      )}
       {!loading && !error && show("shopping") && (data?.shoppingPerformance?.length ?? 0) > 0 && (
         <SectionCard title="Shopping Performance" subtitle={`${data!.shoppingPerformance!.length} product${data!.shoppingPerformance!.length !== 1 ? "s" : ""} with ad data`}>
           <DataTable<NonNullable<GoogleAdsData["shoppingPerformance"]>[number] & { roasValue: number }>
@@ -1282,6 +1308,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* Conversion Actions */}
+      {!loading && !error && isExplicit("conversion_actions") && (data?.conversionActions?.length ?? 0) === 0 && (
+        <EmptyBlockState title="Conversion Actions" />
+      )}
       {!loading && !error && show("conversion_actions") && (data?.conversionActions?.length ?? 0) > 0 && (
         <SectionCard title="Conversion Actions" subtitle="All tracked conversion types">
           <DataTable<NonNullable<GoogleAdsData["conversionActions"]>[number]>
@@ -1299,6 +1328,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* Call Extensions */}
+      {!loading && !error && isExplicit("call_extensions") && (data?.callExtensions?.length ?? 0) === 0 && (
+        <EmptyBlockState title="Call Extensions" />
+      )}
       {!loading && !error && show("call_extensions") && (data?.callExtensions?.length ?? 0) > 0 && (
         <SectionCard title="Call Extensions" subtitle={`${data!.callExtensions!.length} call${data!.callExtensions!.length !== 1 ? "s" : ""} tracked`}>
           <DataTable<NonNullable<GoogleAdsData["callExtensions"]>[number]>
@@ -1316,6 +1348,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* Sitelink Performance */}
+      {!loading && !error && isExplicit("sitelinks") && (data?.sitelinkPerformance?.length ?? 0) === 0 && (
+        <EmptyBlockState title="Sitelink Performance" />
+      )}
       {!loading && !error && show("sitelinks") && (data?.sitelinkPerformance?.length ?? 0) > 0 && (
         <SectionCard title="Sitelink Performance" subtitle="Ad extension click-through data">
           <DataTable<NonNullable<GoogleAdsData["sitelinkPerformance"]>[number]>
@@ -1333,6 +1368,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* Display & Video */}
+      {!loading && !error && isExplicit("display_video") && (data?.displayVideoData?.length ?? 0) === 0 && (
+        <EmptyBlockState title="Display & Video" />
+      )}
       {!loading && !error && show("display_video") && (data?.displayVideoData?.length ?? 0) > 0 && (
         <SectionCard title="Display & Video" subtitle="Performance across display and video campaigns">
           <DataTable<NonNullable<GoogleAdsData["displayVideoData"]>[number]>
@@ -1354,6 +1392,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* Recommendations */}
+      {!loading && !error && isExplicit("recommendations") && (data?.recommendations?.length ?? 0) === 0 && (
+        <EmptyBlockState title="Google Ads Recommendations" />
+      )}
       {!loading && !error && show("recommendations") && (data?.recommendations?.length ?? 0) > 0 && (
         <SectionCard title="Google Ads Recommendations" subtitle={`${data!.recommendations!.length} recommendation${data!.recommendations!.length !== 1 ? "s" : ""} from Google`}>
           <div className="flex flex-col gap-3">
@@ -1371,6 +1412,9 @@ export function GoogleAdsSection({ customerId, clientId, clientName, startDate, 
       )}
 
       {/* Budget Utilisation */}
+      {!loading && !error && isExplicit("budget_utilisation") && (data?.budgetUtilisation?.length ?? 0) === 0 && (
+        <EmptyBlockState title="Budget Utilisation" />
+      )}
       {!loading && !error && show("budget_utilisation") && (data?.budgetUtilisation?.length ?? 0) > 0 && (
         <SectionCard title="Budget Utilisation" subtitle="How much of each campaign budget is being spent">
           <DataTable<NonNullable<GoogleAdsData["budgetUtilisation"]>[number]>

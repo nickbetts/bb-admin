@@ -5,6 +5,7 @@ import { Play, Eye, Clock, Users, ThumbsUp } from "lucide-react";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { EmptyBlockState } from "@/components/dashboard/shared/EmptyBlockState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable } from "@/components/ui/DataTable";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
@@ -69,6 +70,7 @@ interface YouTubeSectionProps {
 
 export function YouTubeSection({ clientId, clientName, crossPlatformContext, visibleBlocks }: YouTubeSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [data, setData] = useState<YouTubeData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -125,6 +127,9 @@ export function YouTubeSection({ clientId, clientName, crossPlatformContext, vis
         </MetricGrid>
       )}
 
+      {isExplicit("videos") && (!videos || videos.length === 0) && (
+        <EmptyBlockState title="Top Videos" />
+      )}
       {show("videos") && videos && videos.length > 0 && (
         <DataTable<YouTubeVideo>
           data={videos}

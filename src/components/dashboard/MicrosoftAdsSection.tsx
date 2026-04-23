@@ -7,6 +7,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { EmptyBlockState } from "@/components/dashboard/shared/EmptyBlockState";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { DataTable } from "@/components/ui/DataTable";
 import { AiInsightsPanel } from "@/components/ai/AiInsightsPanel";
@@ -81,6 +82,7 @@ interface MsGeoBreakdown {
 
 export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks }: MicrosoftAdsSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [data, setData] = useState<{ overview: MicrosoftAdsOverview; campaigns: MicrosoftAdsCampaign[]; keywords?: MsKeyword[]; searchTerms?: MsSearchTerm[]; deviceBreakdown?: MsDeviceBreakdown[]; geoBreakdown?: MsGeoBreakdown[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -139,6 +141,9 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
       )}
 
       {/* Campaigns table */}
+      {isExplicit("campaigns") && campaigns.length === 0 && (
+        <EmptyBlockState title="Campaigns" />
+      )}
       {show("campaigns") && campaigns.length > 0 && (
         <DataTable<MicrosoftAdsCampaign>
           data={campaigns}
@@ -161,6 +166,9 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
       )}
 
       {/* Keywords table */}
+      {isExplicit("keywords") && (!data.keywords || data.keywords.length === 0) && (
+        <EmptyBlockState title="Keywords" />
+      )}
       {show("keywords") && data.keywords && data.keywords.length > 0 && (
         <DataTable<MsKeyword>
           data={data.keywords}
@@ -182,6 +190,9 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
       )}
 
       {/* Search Terms table */}
+      {isExplicit("search_terms") && (!data.searchTerms || data.searchTerms.length === 0) && (
+        <EmptyBlockState title="Search Terms" />
+      )}
       {show("search_terms") && data.searchTerms && data.searchTerms.length > 0 && (
         <DataTable<MsSearchTerm>
           data={data.searchTerms}
@@ -201,6 +212,9 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
       )}
 
       {/* Device Breakdown */}
+      {isExplicit("device_breakdown") && (!data.deviceBreakdown || data.deviceBreakdown.length === 0) && (
+        <EmptyBlockState title="Device Breakdown" />
+      )}
       {show("device_breakdown") && data.deviceBreakdown && data.deviceBreakdown.length > 0 && (
         <div>
           <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 12px", color: "var(--text-1)" }}>Device Breakdown</h3>
@@ -218,6 +232,9 @@ export function MicrosoftAdsSection({ clientId, clientName, startDate, endDate, 
       )}
 
       {/* Geographic Breakdown */}
+      {isExplicit("geo") && (!data.geoBreakdown || data.geoBreakdown.length === 0) && (
+        <EmptyBlockState title="Geographic Performance" />
+      )}
       {show("geo") && data.geoBreakdown && data.geoBreakdown.length > 0 && (
         <DataTable<MsGeoBreakdown>
           data={data.geoBreakdown}

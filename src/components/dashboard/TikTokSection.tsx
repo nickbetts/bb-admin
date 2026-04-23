@@ -8,6 +8,7 @@ import { MetricCard } from "@/components/ui/MetricCard";
 import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { EmptyBlockState } from "@/components/dashboard/shared/EmptyBlockState";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { SectionCard } from "@/components/ui/index";
 import { DataTable } from "@/components/ui/DataTable";
@@ -104,6 +105,7 @@ interface TikTokAdGroupRow {
 
 export function TikTokSection({ clientId, clientName, startDate, endDate, crossPlatformContext, visibleBlocks }: TikTokSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [data, setData] = useState<{ overview: TikTokOverview; campaigns: TikTokCampaign[]; daily: TikTokDaily[]; adGroups?: TikTokAdGroupRow[]; demographics?: TikTokDemo[]; creatives?: TikTokCreative[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -182,6 +184,9 @@ export function TikTokSection({ clientId, clientName, startDate, endDate, crossP
       )}
 
       {/* Campaigns table */}
+      {isExplicit("campaigns") && campaigns.length === 0 && (
+        <EmptyBlockState title="Campaigns" />
+      )}
       {show("campaigns") && campaigns.length > 0 && (
         <DataTable<TikTokCampaign>
           data={campaigns}
@@ -201,6 +206,9 @@ export function TikTokSection({ clientId, clientName, startDate, endDate, crossP
       )}
 
       {/* Ad Groups breakdown */}
+      {isExplicit("ad_groups") && (!data.adGroups || data.adGroups.length === 0) && (
+        <EmptyBlockState title="Ad Groups" />
+      )}
       {show("ad_groups") && data.adGroups && data.adGroups.length > 0 && (
         <DataTable<TikTokAdGroupRow>
           data={data.adGroups}
@@ -224,6 +232,9 @@ export function TikTokSection({ clientId, clientName, startDate, endDate, crossP
       )}
 
       {/* Demographics breakdown */}
+      {isExplicit("demographics") && (!data.demographics || data.demographics.length === 0) && (
+        <EmptyBlockState title="Demographics" />
+      )}
       {show("demographics") && data.demographics && data.demographics.length > 0 && (
         <DataTable<TikTokDemo>
           data={data.demographics}
@@ -240,6 +251,9 @@ export function TikTokSection({ clientId, clientName, startDate, endDate, crossP
       )}
 
       {/* Top Creatives */}
+      {isExplicit("creatives") && (!data.creatives || data.creatives.length === 0) && (
+        <EmptyBlockState title="Creatives" />
+      )}
       {show("creatives") && data.creatives && data.creatives.length > 0 && (
         <DataTable<TikTokCreative>
           data={data.creatives}

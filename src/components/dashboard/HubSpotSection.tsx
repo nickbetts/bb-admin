@@ -5,6 +5,7 @@ import { Users, DollarSign, TrendingUp } from "lucide-react";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { EmptyBlockState } from "@/components/dashboard/shared/EmptyBlockState";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable } from "@/components/ui/DataTable";
@@ -70,6 +71,7 @@ function formatCurrency(v: number) {
 
 export function HubSpotSection({ clientId, clientName, crossPlatformContext, visibleBlocks }: HubSpotSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [data, setData] = useState<HubSpotData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -114,6 +116,9 @@ export function HubSpotSection({ clientId, clientName, crossPlatformContext, vis
         </MetricGrid>
       )}
 
+      {isExplicit("contacts") && (!data.contacts || data.contacts.length === 0) && (
+        <EmptyBlockState title="Recent Contacts" />
+      )}
       {show("contacts") && data.contacts && data.contacts.length > 0 && (
         <DataTable<HubSpotContact>
           data={data.contacts}
@@ -131,6 +136,9 @@ export function HubSpotSection({ clientId, clientName, crossPlatformContext, vis
         />
       )}
 
+      {isExplicit("deals") && (!data.deals || data.deals.length === 0) && (
+        <EmptyBlockState title="Open Deals" />
+      )}
       {show("deals") && data.deals && data.deals.length > 0 && (
         <DataTable<HubSpotDeal>
           data={data.deals}

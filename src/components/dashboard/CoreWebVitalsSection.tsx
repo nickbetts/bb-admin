@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { Loader2, AlertTriangle, CheckCircle, MinusCircle, Globe } from "lucide-react";
+import { EmptyBlockState } from "@/components/dashboard/shared/EmptyBlockState";
 
 interface MetricData {
   p75: number;
@@ -97,6 +98,7 @@ function MetricCard({ name, data }: { name: string; data: MetricData | null }) {
 
 export function CoreWebVitalsSection({ url, visibleBlocks }: CoreWebVitalsSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [data, setData] = useState<CWVData | null>(null);
   const [deviceData, setDeviceData] = useState<Record<string, CWVData> | null>(null);
   const [historyData, setHistoryData] = useState<Array<{ date: string; lcp: number; cls: number; inp: number }>>([]);
@@ -199,6 +201,9 @@ export function CoreWebVitalsSection({ url, visibleBlocks }: CoreWebVitalsSectio
       </div>
 
       {/* Device Breakdown */}
+      {isExplicit("device_breakdown") && !deviceData && (
+        <EmptyBlockState title="Device Breakdown" message="No device-level CrUX data available for this URL." />
+      )}
       {show("device_breakdown") && deviceData && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <h3 style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1, #1a1a1a)" }}>CWV by Device</h3>
@@ -254,6 +259,9 @@ export function CoreWebVitalsSection({ url, visibleBlocks }: CoreWebVitalsSectio
       )}
 
       {/* CWV History */}
+      {isExplicit("history") && historyData.length === 0 && (
+        <EmptyBlockState title="Historical Trends" />
+      )}
       {show("history") && historyData.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <h3 style={{ fontWeight: 700, fontSize: 16, color: "var(--text-1, #1a1a1a)" }}>CWV History</h3>

@@ -22,6 +22,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
+import { EmptyBlockState } from "@/components/dashboard/shared/EmptyBlockState";
 import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE, CHART_BAR_STYLE } from "@/lib/chart-config";
 import { formatNumber, formatCurrency, formatPercent, formatDuration, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import { Users, UserPlus, Eye, MousePointer, Clock, TrendingUp, AlertTriangle, Leaf, BarChart2 } from "lucide-react";
@@ -144,6 +145,7 @@ function diffStr(curr: number, prev: number | null | undefined, fmt: "count" | "
 
 export function GA4Section({ propertyId, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, clientId, clientName, onMetricsReady, onPreviousMetricsReady, afterHeader }: GA4SectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [overview, setOverview] = useState<GA4Overview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GA4Overview | null>(null);
   const [yoyOverview, setYoyOverview] = useState<GA4Overview | null>(null);
@@ -870,6 +872,9 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       {/* Super Summary */}
 
       {/* Landing Page Performance */}
+      {!loading && !error && isExplicit("landing_pages") && landingPages.length === 0 && (
+        <EmptyBlockState title="Landing Page Performance" />
+      )}
       {!loading && !error && show("landing_pages") && landingPages.length > 0 && (
         <SectionCard title="Landing Page Performance" subtitle="Top entry pages by sessions">
           <div style={{ overflowX: "auto" }}>
@@ -894,6 +899,9 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       )}
 
       {/* User Journeys */}
+      {!loading && !error && isExplicit("user_journeys") && userJourneys.length === 0 && (
+        <EmptyBlockState title="User Journeys" />
+      )}
       {!loading && !error && show("user_journeys") && userJourneys.length > 0 && (
         <SectionCard title="User Journeys" subtitle="Most common navigation paths">
           <div style={{ overflowX: "auto" }}>
@@ -914,6 +922,9 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       )}
 
       {/* Cohort Retention */}
+      {!loading && !error && isExplicit("cohort_retention") && cohortRetention.length === 0 && (
+        <EmptyBlockState title="Cohort Retention" />
+      )}
       {!loading && !error && show("cohort_retention") && cohortRetention.length > 0 && (() => {
         const maxWeeks = Math.max(...cohortRetention.map(c => c.retention.length));
         const retentionColor = (pct: number) => {
@@ -1037,6 +1048,9 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       )}
 
       {/* Session Duration Distribution */}
+      {isExplicit("session_duration") && sessionDuration.length === 0 && (
+        <EmptyBlockState title="Session Duration Distribution" />
+      )}
       {show("session_duration") && sessionDuration.length > 0 && (
         <SectionCard title="Session Duration Distribution" subtitle="How long users spend per session">
           <ResponsiveContainer width="100%" height={240}>
@@ -1052,6 +1066,9 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       )}
 
       {/* Event Parameters */}
+      {isExplicit("event_parameters") && eventParameters.length === 0 && (
+        <EmptyBlockState title="Event Parameters" />
+      )}
       {show("event_parameters") && eventParameters.length > 0 && (
         <SectionCard title="Event Parameters" subtitle={`${eventParameters.length} event${eventParameters.length !== 1 ? "s" : ""} tracked`}>
           <DataTable data={eventParameters} columns={[
@@ -1063,6 +1080,9 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       )}
 
       {/* Content Grouping */}
+      {isExplicit("content_grouping") && contentGrouping.length === 0 && (
+        <EmptyBlockState title="Content Grouping" />
+      )}
       {show("content_grouping") && contentGrouping.length > 0 && (
         <SectionCard title="Content Grouping" subtitle="Performance by content group">
           <DataTable data={contentGrouping} columns={[
@@ -1109,6 +1129,9 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       )}
 
       {/* Scroll Depth */}
+      {isExplicit("scroll_depth") && scrollDepth.length === 0 && (
+        <EmptyBlockState title="Scroll Depth" message="No scroll-depth events received. Ensure GA4 enhanced measurement for scrolls is enabled." />
+      )}
       {show("scroll_depth") && scrollDepth.length > 0 && (
         <SectionCard title="Scroll Depth" subtitle="How far users scroll on pages">
           <ResponsiveContainer width="100%" height={240}>
@@ -1124,6 +1147,9 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       )}
 
       {/* Browser & OS */}
+      {isExplicit("browser_os") && browserOs.length === 0 && (
+        <EmptyBlockState title="Browser & OS" />
+      )}
       {show("browser_os") && browserOs.length > 0 && (
         <SectionCard title="Browser & OS" subtitle={`${browserOs.length} browser/OS combination${browserOs.length !== 1 ? "s" : ""}`}>
           <DataTable data={browserOs} columns={[
@@ -1136,6 +1162,9 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       )}
 
       {/* Ecommerce Revenue */}
+      {isExplicit("ecommerce_revenue") && ecommerceRevenue.length === 0 && (
+        <EmptyBlockState title="Ecommerce Revenue" message="No ecommerce events tracked for this property." />
+      )}
       {show("ecommerce_revenue") && ecommerceRevenue.length > 0 && (
         <SectionCard title="Ecommerce Revenue" subtitle="Revenue by page and source">
           <DataTable data={ecommerceRevenue} columns={[
@@ -1149,6 +1178,9 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       )}
 
       {/* User Acquisition */}
+      {isExplicit("user_acquisition") && userAcquisition.length === 0 && (
+        <EmptyBlockState title="User Acquisition" />
+      )}
       {show("user_acquisition") && userAcquisition.length > 0 && (
         <SectionCard title="User Acquisition" subtitle="First-touch source for new users">
           <DataTable data={userAcquisition} columns={[
@@ -1162,6 +1194,9 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       )}
 
       {/* Revenue Per Session */}
+      {isExplicit("revenue_per_session") && revenuePerSession.length === 0 && (
+        <EmptyBlockState title="Revenue Per Session" />
+      )}
       {show("revenue_per_session") && revenuePerSession.length > 0 && (
         <SectionCard title="Revenue Per Session" subtitle="Revenue efficiency by traffic source">
           <DataTable data={revenuePerSession} columns={[

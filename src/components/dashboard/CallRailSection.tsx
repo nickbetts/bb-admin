@@ -5,6 +5,7 @@ import { Phone, PhoneCall, PhoneMissed } from "lucide-react";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { MetricGrid } from "@/components/dashboard/shared/MetricGrid";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
+import { EmptyBlockState } from "@/components/dashboard/shared/EmptyBlockState";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable } from "@/components/ui/DataTable";
@@ -70,6 +71,7 @@ interface CallRailSectionProps {
 
 export function CallRailSection({ clientId, clientName, crossPlatformContext, visibleBlocks }: CallRailSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [data, setData] = useState<CallRailData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -117,6 +119,9 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext, vi
         </MetricGrid>
       )}
 
+      {isExplicit("by_source") && (!summary?.bySource || summary.bySource.length === 0) && (
+        <EmptyBlockState title="Calls by Source" />
+      )}
       {show("by_source") && summary?.bySource && summary.bySource.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 10 }}>Calls by Source</p>
@@ -139,6 +144,9 @@ export function CallRailSection({ clientId, clientName, crossPlatformContext, vi
         </div>
       )}
 
+      {isExplicit("recent_calls") && (!calls || calls.length === 0) && (
+        <EmptyBlockState title="Recent Calls" />
+      )}
       {show("recent_calls") && calls && calls.length > 0 && (
         <DataTable<RecentCall>
           data={calls}

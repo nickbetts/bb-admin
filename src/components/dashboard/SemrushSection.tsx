@@ -20,6 +20,7 @@ import { SectionCard } from "@/components/ui/index";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
+import { EmptyBlockState } from "@/components/dashboard/shared/EmptyBlockState";
 import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE, CHART_BAR_STYLE } from "@/lib/chart-config";
 import { formatNumber, formatCurrency, formatDateDisplay, pctChange } from "@/lib/utils";
 import { TrendingUp, Search, AlertTriangle } from "lucide-react";
@@ -141,6 +142,7 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
   // the caller passes a new array *reference* on every render (e.g. inline IIFE).
   const campaignIdsKey = campaignIds?.join(",") ?? "";
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [rankMovers, setRankMovers] = useState<Keyword[]>([]);
@@ -1230,6 +1232,9 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       )}
 
       {/* Topic Research */}
+      {isExplicit("topic_research") && !topicResearch && (
+        <EmptyBlockState title="Topic Research" />
+      )}
       {show("topic_research") && topicResearch && (
         <SectionCard title="Topic Research" subtitle={`${topicResearch.topic} — volume ${formatNumber(topicResearch.volume)}, difficulty ${topicResearch.difficulty}`}>
           <div className="grid grid-cols-3 gap-4 mb-4">
@@ -1266,6 +1271,9 @@ export function SemrushSection({ domain, projectId, campaignIds, startDate, endD
       )}
 
       {/* Site Audit Summary */}
+      {isExplicit("site_audit") && !siteAudit && (
+        <EmptyBlockState title="Site Audit" message="No SEMrush Site Audit project configured for this domain." />
+      )}
       {show("site_audit") && siteAudit && (
         <SectionCard title="Site Audit Summary" subtitle={`${formatNumber(siteAudit.totalPages)} pages crawled`}>
           <div className="grid grid-cols-4 gap-4 mb-4">

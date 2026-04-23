@@ -19,6 +19,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
+import { EmptyBlockState } from "@/components/dashboard/shared/EmptyBlockState";
 import { CHART_TOOLTIP_STYLE, CHART_AXIS_STYLE, CHART_GRID_STYLE, CHART_AREA_STYLE, CHART_BAR_STYLE } from "@/lib/chart-config";
 import { formatNumber, formatCurrency, formatPercent, formatDateDisplay, getPreviousPeriod, pctChange } from "@/lib/utils";
 import { DollarSign, MousePointer, Eye, TrendingUp, AlertTriangle, ChevronRight, ChevronDown, Play, Image, Layers, X } from "lucide-react";
@@ -243,6 +244,7 @@ interface MetaHourlyRow { hourOfDay: string; impressions: number; clicks: number
 
 export function MetaSection({ clientId, clientName, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, signalConfig, onMetricsReady, onPreviousMetricsReady, afterHeader }: MetaSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [overview, setOverview] = useState<MetaOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<MetaOverview | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -1316,6 +1318,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Lead Form Performance */}
+      {isExplicit("lead_forms") && leadForms.length === 0 && (
+        <EmptyBlockState title="Lead Forms" message="No lead-form ads in this period." />
+      )}
       {show("lead_forms") && leadForms.length > 0 && (
         <SectionCard title="Lead Form Performance" subtitle={`${leadForms.length} form${leadForms.length !== 1 ? "s" : ""} with lead data`}>
           <DataTable
@@ -1332,6 +1337,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Ad Relevance Diagnostics */}
+      {isExplicit("relevance") && relevanceDiagnostics.length === 0 && (
+        <EmptyBlockState title="Relevance Diagnostics" />
+      )}
       {show("relevance") && relevanceDiagnostics.length > 0 && (
         <SectionCard title="Ad Relevance Diagnostics" subtitle="Quality, engagement, and conversion ranking per ad">
           <DataTable
@@ -1380,6 +1388,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Placement Breakdown */}
+      {isExplicit("placements") && placements.length === 0 && (
+        <EmptyBlockState title="Placement Performance" />
+      )}
       {show("placements") && placements.length > 0 && (
         <SectionCard title="Placement Breakdown" subtitle={`Performance across ${placements.length} placement${placements.length !== 1 ? "s" : ""}`}>
           <DataTable<MetaPlacement>
@@ -1403,6 +1414,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Audience Targeting */}
+      {isExplicit("audiences") && adSetAudiences.length === 0 && (
+        <EmptyBlockState title="Audience Performance" />
+      )}
       {show("audiences") && adSetAudiences.length > 0 && (
         <SectionCard title="Audience Targeting" subtitle={`Targeting details for ${adSetAudiences.length} ad set${adSetAudiences.length !== 1 ? "s" : ""}`}>
           <DataTable<AdSetAudience>
@@ -1421,6 +1435,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Demographics */}
+      {isExplicit("demographics") && demographicsData.length === 0 && (
+        <EmptyBlockState title="Demographics" />
+      )}
       {show("demographics") && demographicsData.length > 0 && (() => {
         const byAge = Object.values(
           demographicsData.reduce<Record<string, { age: string; spend: number; clicks: number; impressions: number; conversions: number }>>((acc, d) => {
@@ -1463,6 +1480,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       })()}
 
       {/* Frequency Distribution */}
+      {isExplicit("frequency") && frequencyDist.length === 0 && (
+        <EmptyBlockState title="Frequency Distribution" />
+      )}
       {show("frequency") && frequencyDist.length > 0 && (
         <SectionCard title="Frequency Distribution" subtitle="How often users see your ads">
           <ResponsiveContainer width="100%" height={240}>
@@ -1478,6 +1498,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Reach Estimate — top ad sets by unique users with frequency cap analysis */}
+      {isExplicit("reach_estimate") && adSets.length === 0 && (
+        <EmptyBlockState title="Reach Estimate" />
+      )}
       {show("reach_estimate") && adSets.length > 0 && (
         <SectionCard title="Reach Estimate" subtitle="Top ad sets by unique reach with frequency analysis">
           <DataTable<MetaAdSet>
@@ -1501,6 +1524,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Cost Per Action */}
+      {isExplicit("cost_per_action") && costPerAction.length === 0 && (
+        <EmptyBlockState title="Cost Per Action" />
+      )}
       {show("cost_per_action") && costPerAction.length > 0 && (
         <SectionCard title="Cost Per Action" subtitle="Breakdown by action type">
           <DataTable<MetaCostPerAction>
@@ -1516,6 +1542,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Product Performance */}
+      {isExplicit("product_performance") && productPerformance.length === 0 && (
+        <EmptyBlockState title="Product Performance" message="No product-level data — connect a product catalog to enable." />
+      )}
       {show("product_performance") && productPerformance.length > 0 && (
         <SectionCard title="Product Performance" subtitle={`${productPerformance.length} product${productPerformance.length !== 1 ? "s" : ""} with ad data`}>
           <DataTable<MetaProductPerf>
@@ -1536,6 +1565,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Country Breakdown */}
+      {isExplicit("country_breakdown") && countryBreakdown.length === 0 && (
+        <EmptyBlockState title="Country Breakdown" />
+      )}
       {show("country_breakdown") && countryBreakdown.length > 0 && (
         <SectionCard title="Country Breakdown" subtitle={`Performance across ${countryBreakdown.length} ${countryBreakdown.length !== 1 ? "countries" : "country"}`}>
           <DataTable<MetaCountryRow>
@@ -1557,6 +1589,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Attribution Settings */}
+      {isExplicit("attribution") && attributionSettings.length === 0 && (
+        <EmptyBlockState title="Attribution Settings" />
+      )}
       {show("attribution") && attributionSettings.length > 0 && (
         <SectionCard title="Attribution Settings" subtitle="Attribution windows per ad set">
           <DataTable<MetaAttribution>
@@ -1583,6 +1618,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Action Breakdowns */}
+      {isExplicit("action_breakdowns") && actionBreakdowns.length === 0 && (
+        <EmptyBlockState title="Action Breakdowns" />
+      )}
       {show("action_breakdowns") && actionBreakdowns.length > 0 && (
         <SectionCard title="Action Breakdowns" subtitle="All tracked conversion actions">
           <DataTable<MetaActionBreakdown>
@@ -1598,6 +1636,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Instant Experience */}
+      {isExplicit("instant_experience") && instantExperience.length === 0 && (
+        <EmptyBlockState title="Instant Experience" />
+      )}
       {show("instant_experience") && instantExperience.length > 0 && (
         <SectionCard title="Instant Experience" subtitle="Canvas / instant experience engagement">
           <DataTable<MetaInstantExp>
@@ -1613,6 +1654,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Custom Conversions */}
+      {isExplicit("custom_conversions") && customConversions.length === 0 && (
+        <EmptyBlockState title="Custom Conversions" />
+      )}
       {show("custom_conversions") && customConversions.length > 0 && (
         <SectionCard title="Custom Conversions" subtitle={`${customConversions.length} custom conversion${customConversions.length !== 1 ? "s" : ""} configured`}>
           <DataTable<MetaCustomConv>
@@ -1628,6 +1672,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Saved & Custom Audiences */}
+      {isExplicit("saved_audiences") && savedAudiences.length === 0 && (
+        <EmptyBlockState title="Saved Audiences" />
+      )}
       {show("saved_audiences") && savedAudiences.length > 0 && (
         <SectionCard title="Saved & Custom Audiences" subtitle={`${savedAudiences.length} audience${savedAudiences.length !== 1 ? "s" : ""} available`}>
           <DataTable<MetaSavedAud>
@@ -1644,6 +1691,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Campaign Spending Limits */}
+      {isExplicit("spending_limits") && spendingLimits.length === 0 && (
+        <EmptyBlockState title="Spending Limits" />
+      )}
       {show("spending_limits") && spendingLimits.length > 0 && (
         <SectionCard title="Campaign Spending Limits" subtitle="Budget caps and current spend">
           <DataTable<MetaSpendLimit>
@@ -1673,6 +1723,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       )}
 
       {/* Hourly Performance */}
+      {isExplicit("hourly_breakdown") && hourlyBreakdown.length === 0 && (
+        <EmptyBlockState title="Hourly Breakdown" />
+      )}
       {show("hourly_breakdown") && hourlyBreakdown.length > 0 && (
         <SectionCard title="Hourly Performance" subtitle="Performance by hour of day">
           <ResponsiveContainer width="100%" height={280}>

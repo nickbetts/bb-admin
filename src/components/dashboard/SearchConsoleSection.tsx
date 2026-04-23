@@ -20,6 +20,7 @@ import { SectionCard, Delta, LoadingSpinner } from "@/components/ui/index";
 import { SectionHeader } from "@/components/dashboard/shared/SectionHeader";
 import { SectionLoading } from "@/components/dashboard/shared/SectionLoading";
 import { SectionError } from "@/components/dashboard/shared/SectionError";
+import { EmptyBlockState } from "@/components/dashboard/shared/EmptyBlockState";
 import { formatNumber, formatDateDisplay, pctChange } from "@/lib/utils";
 import { DataTable } from "@/components/ui/DataTable";
 import { MousePointer, Eye, TrendingUp, Search, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
@@ -174,6 +175,7 @@ export function SearchConsoleSection({
   afterHeader,
 }: SearchConsoleSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
+  const isExplicit = (block: string) => Array.isArray(visibleBlocks) && visibleBlocks.includes(block);
   const [overview, setOverview] = useState<GSCOverview | null>(null);
   const [prevOverview, setPrevOverview] = useState<GSCOverview | null>(null);
   const [queries, setQueries] = useState<GSCQuery[]>([]);
@@ -921,6 +923,9 @@ export function SearchConsoleSection({
       )}
 
       {/* Query × Page */}
+      {isExplicit("query_page") && queryPage.length === 0 && (
+        <EmptyBlockState title="Query × Page Matrix" />
+      )}
       {show("query_page") && queryPage.length > 0 && (
         <SectionCard title="Query × Page" subtitle={`${queryPage.length} query/page combination${queryPage.length !== 1 ? "s" : ""}`}>
           <DataTable<GSCQueryPage>
@@ -940,6 +945,9 @@ export function SearchConsoleSection({
       )}
 
       {/* Page × Country */}
+      {isExplicit("page_country") && pageCountry.length === 0 && (
+        <EmptyBlockState title="Page × Country" />
+      )}
       {show("page_country") && pageCountry.length > 0 && (
         <SectionCard title="Page × Country" subtitle={`${pageCountry.length} page/country combination${pageCountry.length !== 1 ? "s" : ""}`}>
           <DataTable<GSCPageCountry>
@@ -959,6 +967,9 @@ export function SearchConsoleSection({
       )}
 
       {/* Discover & News */}
+      {isExplicit("discover_news") && discoverNews.length === 0 && (
+        <EmptyBlockState title="Discover & News" message="No Discover or News traffic for this site." />
+      )}
       {show("discover_news") && discoverNews.length > 0 && (
         <SectionCard title="Discover & News" subtitle="Google Discover and Google News performance">
           <div className="space-y-4">
@@ -999,6 +1010,9 @@ export function SearchConsoleSection({
       )}
 
       {/* Sitemaps */}
+      {isExplicit("sitemaps") && sitemaps.length === 0 && (
+        <EmptyBlockState title="Sitemaps" message="No sitemaps submitted to Search Console." />
+      )}
       {show("sitemaps") && sitemaps.length > 0 && (
         <SectionCard title="Sitemaps" subtitle={`${sitemaps.length} sitemap${sitemaps.length !== 1 ? "s" : ""} submitted`}>
           <div className="space-y-3">
@@ -1043,6 +1057,9 @@ export function SearchConsoleSection({
       )}
 
       {/* Query × Device */}
+      {isExplicit("query_device") && queryDevice.length === 0 && (
+        <EmptyBlockState title="Query × Device" />
+      )}
       {show("query_device") && queryDevice.length > 0 && (
         <SectionCard title="Query × Device" subtitle={`${queryDevice.length} query/device combination${queryDevice.length !== 1 ? "s" : ""}`}>
           <DataTable<GSCQueryDevice>
@@ -1062,6 +1079,9 @@ export function SearchConsoleSection({
       )}
 
       {/* Query × Country */}
+      {isExplicit("query_country") && queryCountry.length === 0 && (
+        <EmptyBlockState title="Query × Country" />
+      )}
       {show("query_country") && queryCountry.length > 0 && (
         <SectionCard title="Query × Country" subtitle={`${queryCountry.length} query/country combination${queryCountry.length !== 1 ? "s" : ""}`}>
           <DataTable<GSCQueryCountry>
