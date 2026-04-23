@@ -515,23 +515,129 @@ export function TaskDrawer({ clientId, task, users, categoryName, permissions = 
               />
             </Field>
 
-            {/* Quick sign-off actions */}
-            {(canApproveInternal || canApproveClient) && (draft.status === "for_approval" || draft.status === "signed_off_internal") && (
+            {/* Approvals chain */}
+            {(canEdit || canApproveInternal || canApproveClient) && (
               <div style={{
-                display: "flex", gap: 8, padding: "12px 14px", flexWrap: "wrap", alignItems: "center",
-                background: "rgba(99,102,241,0.06)", borderRadius: 10, border: "1px solid rgba(99,102,241,0.18)",
+                background: "var(--bg-2)", borderRadius: 10, border: "1px solid var(--border-subtle)",
+                padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12,
               }}>
-                <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 600, marginRight: 4 }}>Quick sign-off:</span>
-                {draft.status === "for_approval" && canApproveInternal && (
-                  <button onClick={() => void save({ status: "signed_off_internal" })} className="btn btn-secondary btn-sm">
-                    Internal sign-off
-                  </button>
-                )}
-                {canApproveClient && (
-                  <button onClick={() => void save({ status: "signed_off_client" })} className="btn btn-primary btn-sm">
-                    Client sign-off (manual)
-                  </button>
-                )}
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  Approvals
+                </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+
+                  {/* Step 1 — For approval */}
+                  {(() => {
+                    const done = draft.status === "for_approval" || draft.status === "signed_off_internal" || draft.status === "signed_off_client";
+                    const canAct = (canEdit || canApproveInternal) && !done && draft.status !== "done" && draft.status !== "cancelled";
+                    return (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{
+                          width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                          background: done ? "#f59e0b" : "var(--bg)",
+                          border: `2px solid ${done ? "#f59e0b" : "var(--border-subtle)"}`,
+                          display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                          {done && <Check style={{ width: 10, height: 10, color: "white" }} />}
+                        </span>
+                        <span style={{ flex: 1, fontSize: 13, color: done ? "var(--text)" : "var(--text-3)", fontWeight: done ? 600 : 400 }}>
+                          Submitted for approval
+                        </span>
+                        {canAct && (
+                          <button
+                            onClick={() => void save({ status: "for_approval" })}
+                            className="btn btn-secondary btn-sm"
+                            style={{ fontSize: 11 }}
+                          >
+                            Mark ready
+                          </button>
+                        )}
+                        {done && (
+                          <button
+                            onClick={() => void save({ status: "in_progress" })}
+                            className="btn btn-ghost btn-sm"
+                            style={{ fontSize: 11, color: "var(--text-3)" }}
+                            title="Undo — move back to In progress"
+                          >
+                            Undo
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Step 2 — Internal sign-off */}
+                  {(() => {
+                    const done = draft.status === "signed_off_internal" || draft.status === "signed_off_client" || !!draft.internalApprovedAt;
+                    const canAct = canApproveInternal && draft.status === "for_approval";
+                    return (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{
+                          width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                          background: done ? "#8b5cf6" : "var(--bg)",
+                          border: `2px solid ${done ? "#8b5cf6" : "var(--border-subtle)"}`,
+                          display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                          {done && <Check style={{ width: 10, height: 10, color: "white" }} />}
+                        </span>
+                        <span style={{ flex: 1, fontSize: 13, color: done ? "var(--text)" : "var(--text-3)", fontWeight: done ? 600 : 400 }}>
+                          Internal sign-off
+                          {draft.internalApprovedAt && (
+                            <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400, marginLeft: 6 }}>
+                              {new Date(draft.internalApprovedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                            </span>
+                          )}
+                        </span>
+                        {canAct && (
+                          <button
+                            onClick={() => void save({ status: "signed_off_internal" })}
+                            className="btn btn-secondary btn-sm"
+                            style={{ fontSize: 11 }}
+                          >
+                            Sign off
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Step 3 — Client sign-off */}
+                  {(() => {
+                    const done = !!draft.clientApprovedAt || draft.status === "signed_off_client";
+                    const canAct = canApproveClient && (draft.status === "signed_off_internal" || draft.status === "for_approval");
+                    return (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{
+                          width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                          background: done ? "#10b981" : "var(--bg)",
+                          border: `2px solid ${done ? "#10b981" : "var(--border-subtle)"}`,
+                          display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                          {done && <Check style={{ width: 10, height: 10, color: "white" }} />}
+                        </span>
+                        <span style={{ flex: 1, fontSize: 13, color: done ? "var(--text)" : "var(--text-3)", fontWeight: done ? 600 : 400 }}>
+                          Client sign-off
+                          {draft.clientApprovedAt && (
+                            <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400, marginLeft: 6 }}>
+                              {new Date(draft.clientApprovedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                              {draft.clientApprovalSource === "portal" && " · via portal"}
+                            </span>
+                          )}
+                        </span>
+                        {canAct && (
+                          <button
+                            onClick={() => void save({ status: "signed_off_client" })}
+                            className="btn btn-primary btn-sm"
+                            style={{ fontSize: 11 }}
+                          >
+                            Sign off
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                </div>
               </div>
             )}
 

@@ -71,16 +71,34 @@ type ViewMode = "kanban" | "list";
 type QuickFilter = "all" | "mine" | "overdue" | "thisWeek" | "unassigned" | "urgent";
 
 const STATUS_COLUMNS: { key: string; label: string; tone: string }[] = [
-  { key: "to_do",                label: "To do",                  tone: "var(--text-3)" },
-  { key: "in_progress",          label: "In progress",            tone: "#0ea5e9" },
-  { key: "for_approval",         label: "For approval",           tone: "#f59e0b" },
-  { key: "signed_off_internal",  label: "Signed off internally",  tone: "#8b5cf6" },
-  { key: "signed_off_client",    label: "Signed off by client",   tone: "#10b981" },
-  { key: "done",                 label: "Done",                   tone: "#16a34a" },
+  { key: "to_do",       label: "To do",       tone: "var(--text-3)" },
+  { key: "in_progress", label: "In progress", tone: "#0ea5e9" },
+  { key: "done",        label: "Done",        tone: "#16a34a" },
 ];
 
-const STATUS_LABEL = Object.fromEntries(STATUS_COLUMNS.map((s) => [s.key, s.label] as const));
-const STATUS_TONE = Object.fromEntries(STATUS_COLUMNS.map((s) => [s.key, s.tone] as const));
+// Full label/tone map — includes approval states that no longer have their own column
+// but are still valid statuses used in list view, badges, etc.
+const ALL_STATUS_LABELS: Record<string, string> = {
+  to_do:               "To do",
+  in_progress:         "In progress",
+  for_approval:        "For approval",
+  signed_off_internal: "Signed off internally",
+  signed_off_client:   "Signed off by client",
+  done:                "Done",
+  cancelled:           "Cancelled",
+};
+const ALL_STATUS_TONES: Record<string, string> = {
+  to_do:               "var(--text-3)",
+  in_progress:         "#0ea5e9",
+  for_approval:        "#f59e0b",
+  signed_off_internal: "#8b5cf6",
+  signed_off_client:   "#10b981",
+  done:                "#16a34a",
+  cancelled:           "var(--text-4)",
+};
+
+// Approval statuses are shown as badges on cards inside the "In progress" column.
+const APPROVAL_STATUSES = new Set(["for_approval", "signed_off_internal", "signed_off_client"]);
 
 const PRIORITIES = ["urgent", "high", "medium", "low"] as const;
 const PRIORITY_TONE: Record<string, string> = {
@@ -372,11 +390,16 @@ export function TaskBoard({
     return baseFiltered.filter((t) => t.assignees.some((a) => a.user.id === activeGroupKey));
   }, [baseFiltered, activeGroupKey, groupBy]);
 
-  // Per-status buckets for kanban
+  // Per-status buckets for kanban.
+  // Approval statuses (for_approval, signed_off_internal, signed_off_client) no longer
+  // have their own columns — they live inside "In progress" and show a badge on the card.
   const tasksByStatus = useMemo(() => {
     const map: Record<string, BoardTask[]> = {};
     for (const col of STATUS_COLUMNS) map[col.key] = [];
-    for (const t of visibleTasks) if (map[t.status]) map[t.status]!.push(t);
+    for (const t of visibleTasks) {
+      const colKey = APPROVAL_STATUSES.has(t.status) ? "in_progress" : t.status;
+      if (map[colKey]) map[colKey]!.push(t);
+    }
     for (const k of Object.keys(map)) map[k]!.sort((a, b) => a.boardOrder - b.boardOrder);
     return map;
   }, [visibleTasks]);
@@ -391,7 +414,11 @@ export function TaskBoard({
       switch (sortKey) {
         case "title":    cmp = a.title.localeCompare(b.title); break;
         case "priority": cmp = (priorityRank[a.priority] ?? 9) - (priorityRank[b.priority] ?? 9); break;
-        case "status":   cmp = STATUS_COLUMNS.findIndex((s) => s.key === a.status) - STATUS_COLUMNS.findIndex((s) => s.key === b.status); break;
+        case "status": {
+          const ORDER = ["to_do","in_progress","for_approval","signed_off_internal","signed_off_client","done","cancelled"];
+          cmp = ORDER.indexOf(a.status) - ORDER.indexOf(b.status);
+          break;
+        }
         case "client":   cmp = a.client.name.localeCompare(b.client.name); break;
         case "category": cmp = (a.category?.name ?? "").localeCompare(b.category?.name ?? ""); break;
         case "dueDate": {
@@ -419,7 +446,7 @@ export function TaskBoard({
     return {
       total: baseFiltered.length,
       inProgress: baseFiltered.filter((t) => t.status === "in_progress").length,
-      forApproval: baseFiltered.filter((t) => t.status === "for_approval").length,
+      forApproval: baseFiltered.filter((t) => APPROVAL_STATUSES.has(t.status)).length,
       overdue,
       dueThisWeek,
       activeTimers: baseFiltered.filter((t) => t.activeTimer).length,
@@ -677,7 +704,7 @@ export function TaskBoard({
       ) : view === "kanban" ? (
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div style={{
-            display: "grid", gridTemplateColumns: "repeat(6, minmax(240px, 1fr))",
+            display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
             gap: 10, overflowX: "auto", paddingBottom: 12,
           }}>
             {STATUS_COLUMNS.map((col) => {
@@ -1220,6 +1247,21 @@ function CardSurface({
         </div>
       )}
 
+      {/* Approval state badge — shows when task is in an approval status */}
+      {APPROVAL_STATUSES.has(task.status) && (
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: 4,
+          fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
+          background: `${ALL_STATUS_TONES[task.status]}1a`,
+          color: ALL_STATUS_TONES[task.status],
+          border: `1px solid ${ALL_STATUS_TONES[task.status]}40`,
+          alignSelf: "flex-start",
+          textTransform: "uppercase", letterSpacing: 0.3,
+        }}>
+          {ALL_STATUS_LABELS[task.status]}
+        </span>
+      )}
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
         <div style={{ display: "flex" }}>
           {task.assignees.slice(0, 4).map((a, i) => (
@@ -1372,11 +1414,11 @@ function ListView({
                   <span style={{
                     display: "inline-flex", alignItems: "center", gap: 5,
                     fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 99,
-                    background: "var(--bg-2)", color: STATUS_TONE[t.status] ?? "var(--text-2)",
-                    border: `1px solid ${STATUS_TONE[t.status] ?? "var(--border-subtle)"}40`,
+                    background: "var(--bg-2)", color: ALL_STATUS_TONES[t.status] ?? "var(--text-2)",
+                    border: `1px solid ${ALL_STATUS_TONES[t.status] ?? "var(--border-subtle)"}40`,
                   }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: STATUS_TONE[t.status] ?? "var(--text-3)" }} />
-                    {STATUS_LABEL[t.status] ?? t.status}
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: ALL_STATUS_TONES[t.status] ?? "var(--text-3)" }} />
+                    {ALL_STATUS_LABELS[t.status] ?? t.status}
                   </span>
                 </td>
                 <td style={{ padding: "10px 12px" }}>
