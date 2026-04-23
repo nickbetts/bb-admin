@@ -1767,13 +1767,15 @@ export async function generateContentStrategySection(
 
 IMPORTANT: You are generating ONLY the "${section}" section of the strategy. The other sections will be generated in separate calls.
 ${SECTION_SCHEMAS[section]}`;
-  console.log(`[content-strategy:${section}] sectionPrompt length=${sectionPrompt.length} chars — calling Claude Opus...`);
+  // blogPosts is the largest section (many items + roadmap). Give it more headroom.
+  const maxTokens = section === "blogPosts" ? 12000 : 8000;
+  console.log(`[content-strategy:${section}] sectionPrompt length=${sectionPrompt.length} chars — calling Claude Opus (max_tokens=${maxTokens})...`);
 
   const tClaude = Date.now();
   const anthropic = await getAnthropicClient();
   const stream = anthropic.messages.stream({
     model: "claude-opus-4-6",
-    max_tokens: 8000,
+    max_tokens: maxTokens,
     system: STRATEGY_SYSTEM_PROMPT,
     messages: [{ role: "user", content: sectionPrompt }],
   });
@@ -1787,19 +1789,55 @@ ${SECTION_SCHEMAS[section]}`;
 
   const block = response.content[0];
   const rawText = block.type === "text" ? block.text.trim() : "";
+
+  if (response.stop_reason === "max_tokens") {
+    console.warn(
+      `[content-strategy:${section}] ⚠️  Claude hit max_tokens (8000) — output is TRUNCATED. ` +
+      `Raw text length=${rawText.length}. Attempting JSON repair...`,
+    );
+  }
+
   const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]+?)```/) ?? rawText.match(/(\{[\s\S]+\})/);
   const jsonText = jsonMatch ? jsonMatch[1].trim() : rawText;
+
+  /** Close any unclosed brackets/braces left by a truncated Claude response. */
+  function repairTruncatedJson(s: string): string {
+    let openBraces = 0;
+    let openBrackets = 0;
+    let inString = false;
+    let escape = false;
+    for (const ch of s) {
+      if (escape) { escape = false; continue; }
+      if (ch === "\\" && inString) { escape = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === "{") openBraces++;
+      else if (ch === "}") openBraces--;
+      else if (ch === "[") openBrackets++;
+      else if (ch === "]") openBrackets--;
+    }
+    let repaired = s.trimEnd().replace(/,\s*$/, "");
+    for (let i = 0; i < openBrackets; i++) repaired += "]";
+    for (let i = 0; i < openBraces; i++) repaired += "}";
+    return repaired;
+  }
 
   let raw: Record<string, unknown>;
   try {
     raw = JSON.parse(jsonText) as Record<string, unknown>;
     console.log(`[content-strategy:${section}] JSON parsed OK — raw keys: ${Object.keys(raw).join(", ")}`);
   } catch (parseErr) {
-    console.warn(`[content-strategy:${section}] JSON parse failed — attempting repair. Error: ${parseErr}`);
-    // Last-resort: trim and re-try with bracket closure
-    const repaired = jsonText.trimEnd().replace(/,\s*$/, "") + (jsonText.split("{").length > jsonText.split("}").length ? "}" : "");
-    raw = JSON.parse(repaired) as Record<string, unknown>;
-    console.log(`[content-strategy:${section}] JSON repaired OK`);
+    console.warn(`[content-strategy:${section}] JSON parse failed — attempting bracket repair. Error: ${parseErr}`);
+    const repaired = repairTruncatedJson(jsonText);
+    try {
+      raw = JSON.parse(repaired) as Record<string, unknown>;
+      console.log(`[content-strategy:${section}] JSON repaired OK — raw keys: ${Object.keys(raw).join(", ")}`);
+    } catch (repairErr) {
+      console.error(
+        `[content-strategy:${section}] JSON repair FAILED — raw text length=${rawText.length} repaired length=${repaired.length}. Error: ${repairErr}`,
+      );
+      throw repairErr;
+    }
   }
 
   // ── Parse helpers (duplicated from generateContentStrategy for locality) ──
