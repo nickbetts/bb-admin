@@ -34,6 +34,7 @@ type StatusUpdateExtras = {
 /**
  * Stamp approval/completion timestamps when status transitions through approval stages.
  * Source defaults to "agency" — the portal endpoint passes "portal" instead.
+ * Also clears timestamps when a status is undone (reversed).
  */
 function buildStatusStampExtras(
   prevStatus: string,
@@ -44,11 +45,18 @@ function buildStatusStampExtras(
   if (prevStatus === nextStatus) return {};
   const extras: StatusUpdateExtras = {};
 
-  if (nextStatus === "for_approval") {
-    // Only stamp the first time it enters for_approval.
+  // Completion tracking
+  if (nextStatus === "done") {
+    extras.completedAt = new Date();
+  } else if (prevStatus === "done") {
+    extras.completedAt = null;
+  }
+
+  // Forward approval transitions — stamp timestamps
+  if (nextStatus === "for_approval" && prevStatus !== "signed_off_internal" && prevStatus !== "signed_off_client") {
     extras.forApprovalAt = new Date();
   }
-  if (nextStatus === "signed_off_internal") {
+  if (nextStatus === "signed_off_internal" && prevStatus !== "signed_off_client") {
     extras.internalApprovedBy = userId;
     extras.internalApprovedAt = new Date();
   }
@@ -57,11 +65,30 @@ function buildStatusStampExtras(
     extras.clientApprovedAt = new Date();
     extras.clientApprovalSource = source;
   }
-  if (nextStatus === "done") {
-    extras.completedAt = new Date();
-  } else if (prevStatus === "done") {
-    extras.completedAt = null;
+
+  // Undo / reversal — clear timestamps for abandoned approval steps
+  if (nextStatus === "in_progress" || nextStatus === "to_do" || nextStatus === "cancelled") {
+    // Fully reverted — clear all approval stamps
+    extras.forApprovalAt = null;
+    extras.internalApprovedBy = null;
+    extras.internalApprovedAt = null;
+    extras.clientApprovedBy = null;
+    extras.clientApprovedAt = null;
+    extras.clientApprovalSource = null;
+  } else if (nextStatus === "for_approval" && (prevStatus === "signed_off_internal" || prevStatus === "signed_off_client")) {
+    // Undo internal (and any client) sign-off — keep forApprovalAt
+    extras.internalApprovedBy = null;
+    extras.internalApprovedAt = null;
+    extras.clientApprovedBy = null;
+    extras.clientApprovedAt = null;
+    extras.clientApprovalSource = null;
+  } else if (nextStatus === "signed_off_internal" && prevStatus === "signed_off_client") {
+    // Undo client sign-off only
+    extras.clientApprovedBy = null;
+    extras.clientApprovedAt = null;
+    extras.clientApprovalSource = null;
   }
+
   return extras;
 }
 

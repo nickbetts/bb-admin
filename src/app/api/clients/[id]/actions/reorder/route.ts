@@ -27,8 +27,12 @@ type StatusUpdateExtras = {
 function buildStatusStampExtras(prev: string, next: string, userId: string): StatusUpdateExtras {
   if (prev === next) return {};
   const e: StatusUpdateExtras = {};
-  if (next === "for_approval") e.forApprovalAt = new Date();
-  if (next === "signed_off_internal") {
+
+  if (next === "done") e.completedAt = new Date();
+  else if (prev === "done") e.completedAt = null;
+
+  if (next === "for_approval" && prev !== "signed_off_internal" && prev !== "signed_off_client") e.forApprovalAt = new Date();
+  if (next === "signed_off_internal" && prev !== "signed_off_client") {
     e.internalApprovedBy = userId;
     e.internalApprovedAt = new Date();
   }
@@ -37,8 +41,26 @@ function buildStatusStampExtras(prev: string, next: string, userId: string): Sta
     e.clientApprovedAt = new Date();
     e.clientApprovalSource = "agency";
   }
-  if (next === "done") e.completedAt = new Date();
-  else if (prev === "done") e.completedAt = null;
+
+  if (next === "in_progress" || next === "to_do" || next === "cancelled") {
+    e.forApprovalAt = null;
+    e.internalApprovedBy = null;
+    e.internalApprovedAt = null;
+    e.clientApprovedBy = null;
+    e.clientApprovedAt = null;
+    e.clientApprovalSource = null;
+  } else if (next === "for_approval" && (prev === "signed_off_internal" || prev === "signed_off_client")) {
+    e.internalApprovedBy = null;
+    e.internalApprovedAt = null;
+    e.clientApprovedBy = null;
+    e.clientApprovedAt = null;
+    e.clientApprovalSource = null;
+  } else if (next === "signed_off_internal" && prev === "signed_off_client") {
+    e.clientApprovedBy = null;
+    e.clientApprovedAt = null;
+    e.clientApprovalSource = null;
+  }
+
   return e;
 }
 

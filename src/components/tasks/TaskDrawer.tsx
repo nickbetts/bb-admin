@@ -532,6 +532,8 @@ export function TaskDrawer({ clientId, task, users, categoryName, permissions = 
                   {(() => {
                     const done = draft.status === "for_approval" || draft.status === "signed_off_internal" || draft.status === "signed_off_client" || !!draft.forApprovalAt;
                     const canAct = (canEdit || canApproveInternal) && !done && draft.status !== "done" && draft.status !== "cancelled";
+                    // Only show undo on step 1 when it is the latest completed step (status === for_approval)
+                    const showUndo = done && draft.status === "for_approval" && (canEdit || canApproveInternal);
                     return (
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <span style={{
@@ -559,7 +561,7 @@ export function TaskDrawer({ clientId, task, users, categoryName, permissions = 
                             Mark ready
                           </button>
                         )}
-                        {done && !canAct && draft.status !== "done" && draft.status !== "cancelled" && (canEdit || canApproveInternal) && (
+                        {showUndo && (
                           <button
                             onClick={() => void save({ status: "in_progress" })}
                             className="btn btn-ghost btn-sm"
@@ -577,6 +579,8 @@ export function TaskDrawer({ clientId, task, users, categoryName, permissions = 
                   {(() => {
                     const done = draft.status === "signed_off_internal" || draft.status === "signed_off_client" || !!draft.internalApprovedAt;
                     const canAct = canApproveInternal && draft.status === "for_approval";
+                    // Only show undo on step 2 when it is the latest completed step (status === signed_off_internal)
+                    const showUndo = done && draft.status === "signed_off_internal" && canApproveInternal;
                     return (
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <span style={{
@@ -604,6 +608,16 @@ export function TaskDrawer({ clientId, task, users, categoryName, permissions = 
                             Sign off
                           </button>
                         )}
+                        {showUndo && (
+                          <button
+                            onClick={() => void save({ status: "for_approval" })}
+                            className="btn btn-ghost btn-sm"
+                            style={{ fontSize: 11, color: "var(--text-3)" }}
+                            title="Undo — move back to For approval"
+                          >
+                            Undo
+                          </button>
+                        )}
                       </div>
                     );
                   })()}
@@ -613,6 +627,8 @@ export function TaskDrawer({ clientId, task, users, categoryName, permissions = 
                     const done = !!draft.clientApprovedAt || draft.status === "signed_off_client";
                     const internalDone = !!draft.internalApprovedAt || draft.status === "signed_off_internal" || draft.status === "signed_off_client";
                     const canAct = canApproveClient && (draft.status === "signed_off_internal" || draft.status === "for_approval");
+                    // Only show undo on step 3 when it is the latest completed step (status === signed_off_client)
+                    const showUndo = done && draft.status === "signed_off_client" && canApproveClient;
                     return (
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <span style={{
@@ -641,6 +657,16 @@ export function TaskDrawer({ clientId, task, users, categoryName, permissions = 
                             style={{ fontSize: 11 }}
                           >
                             Sign off
+                          </button>
+                        )}
+                        {showUndo && (
+                          <button
+                            onClick={() => void save({ status: "signed_off_internal" })}
+                            className="btn btn-ghost btn-sm"
+                            style={{ fontSize: 11, color: "var(--text-3)" }}
+                            title="Undo — move back to Internal sign-off"
+                          >
+                            Undo
                           </button>
                         )}
                       </div>
