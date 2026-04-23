@@ -6,11 +6,11 @@
  */
 
 import { PrismaClient } from "@prisma/client";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const url = process.env.DATABASE_URL ?? "file:dev.db";
-const authToken = process.env.TURSO_AUTH_TOKEN;
-const adapter = new PrismaLibSql({ url, ...(authToken ? { authToken } : {}) });
+const adapter = new PrismaPg({
+  connectionString: process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? "",
+});
 const prisma = new PrismaClient({ adapter });
 
 async function main() {

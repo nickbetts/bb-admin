@@ -61,12 +61,13 @@ Open [http://localhost:3000](http://localhost:3000) and log in.
 Copy `.env.local.example` to `.env.local` and configure:
 
 ```env
-# ─── Database ─────────────────────────────────────────────────────
-# Local development (SQLite)
-DATABASE_URL="file:dev.db"
-# Production (Turso)
-# TURSO_DATABASE_URL="libsql://<your-db>.turso.io"
-# TURSO_AUTH_TOKEN="<your-auth-token>"
+# ─── Database (Vercel Postgres / Neon) ──────────────────────────────
+# Pulled from Vercel via `npm run vercel:env:pull` after attaching Postgres.
+# DATABASE_URL must be the *pooled* connection string (POSTGRES_PRISMA_URL).
+# DIRECT_URL must be the *non-pooled* connection (POSTGRES_URL_NON_POOLING) and
+# is used by Prisma migrations only.
+DATABASE_URL="postgresql://user:password@host-pooler.region.aws.neon.tech/dbname?sslmode=require"
+DIRECT_URL="postgresql://user:password@host.region.aws.neon.tech/dbname?sslmode=require"
 
 # ─── Auth ─────────────────────────────────────────────────────────
 APP_PASSWORD="your-strong-password"        # Legacy fallback password
@@ -127,7 +128,8 @@ For CI or build environments where you don't need real API access, every variabl
 
 | Variable | CI stub value |
 |---|---|
-| `DATABASE_URL` | `file:dev.db` |
+| `DATABASE_URL` | `postgresql://stub:stub@localhost:5432/stub?sslmode=disable` |
+| `DIRECT_URL` | `postgresql://stub:stub@localhost:5432/stub?sslmode=disable` |
 | `SESSION_SECRET` | any random string |
 | `BLOB_READ_WRITE_TOKEN` | `vercel_blob_rw_placeholder` |
 | `OPENAI_API_KEY` | `placeholder` |
@@ -239,7 +241,7 @@ npm run vercel:deploy       # Deploy to production
 node scripts/get-gads-refresh-token.mjs    # Generate Google Ads OAuth refresh token
 node scripts/get-meta-long-lived-token.mjs # Exchange short-lived Meta token for 60-day token
 python scripts/push-env-to-vercel.py       # Push .env.local vars to Vercel
-node scripts/prod-setup.mjs                # Idempotent Turso schema migration
+node scripts/prod-setup.mjs                # Run `prisma migrate deploy` against production Postgres
 ```
 
 ---
@@ -248,23 +250,22 @@ node scripts/prod-setup.mjs                # Idempotent Turso schema migration
 
 ### Deploying to Vercel
 
-#### 1. Create a Turso database
+#### 1. Provision Vercel Postgres (Neon)
+
+In the Vercel dashboard: **Storage → Create → Neon Postgres** → attach to the `i3media-report` project. Vercel auto-injects `POSTGRES_URL`, `POSTGRES_PRISMA_URL` (pooled) and `POSTGRES_URL_NON_POOLING` (direct) into all environments.
+
+For local development, create a Neon **dev branch** from the Vercel UI and use that connection string in your `.env.local` so you don't touch production data while developing.
+
+#### 2. Run migrations against Postgres
 
 ```bash
-brew install tursodatabase/tap/turso
-turso auth login
-turso db create i3media-report
-turso db show i3media-report          # copy the URL
-turso db tokens create i3media-report  # copy the auth token
-```
-
-#### 2. Run migrations against Turso
-
-```bash
-DATABASE_URL="libsql://<your-db>.turso.io" \
-TURSO_AUTH_TOKEN="<your-auth-token>" \
+# Locally, one-off after provisioning:
+DATABASE_URL="$POSTGRES_PRISMA_URL" \
+DIRECT_URL="$POSTGRES_URL_NON_POOLING" \
 npx prisma migrate deploy
 ```
+
+Subsequent migrations are applied automatically by the `DB Migrate (Postgres)` GitHub Action whenever a new migration is committed.
 
 #### 3. Add Vercel Blob storage
 
@@ -278,8 +279,8 @@ In your Vercel project dashboard: **Storage → Create → Blob**. Vercel auto-a
 
 | Variable | Value |
 |----------|-------|
-| `DATABASE_URL` | `libsql://<your-db>.turso.io` |
-| `TURSO_AUTH_TOKEN` | Auth token from Turso |
+| `DATABASE_URL` | `POSTGRES_PRISMA_URL` (pooled, auto-set by Vercel Postgres) |
+| `DIRECT_URL` | `POSTGRES_URL_NON_POOLING` (direct, auto-set by Vercel Postgres) |
 | `APP_PASSWORD` | Strong password |
 | `SESSION_SECRET` | `openssl rand -base64 32` |
 | `BLOB_READ_WRITE_TOKEN` | *(auto-set by Vercel Blob)* |
@@ -349,15 +350,15 @@ The workflow deduplicates: if a recent Copilot Fix Suggestion already exists on 
 
 ## Troubleshooting
 
-### "Unable to open connection to local database dev.db"
+### "Can't reach database server" / Postgres connection errors
 
-This means `DATABASE_URL` is not set to a remote Turso URL in Vercel. Serverless functions cannot access local SQLite files.
+This means `DATABASE_URL` is not set, or is still pointing at an old (Turso/SQLite) value, in Vercel. Verify the value is the Vercel Postgres pooled URL.
 
 ```bash
 # Fix via Vercel CLI
 npm run vercel:link
-vercel env add DATABASE_URL production     # paste: libsql://<your-db>.turso.io
-vercel env add TURSO_AUTH_TOKEN production  # paste: <your-auth-token>
+vercel env add DATABASE_URL production     # paste: $POSTGRES_PRISMA_URL
+vercel env add DIRECT_URL production       # paste: $POSTGRES_URL_NON_POOLING
 npm run vercel:deploy
 ```
 

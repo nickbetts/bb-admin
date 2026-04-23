@@ -37,15 +37,6 @@ const ENV_SCHEMA: EnvVar[] = [
   { name: "SESSION_SECRET", criticality: "critical", placeholderValues: PLACEHOLDERS },
   { name: "NEXTAUTH_SECRET", criticality: "critical", placeholderValues: PLACEHOLDERS },
 
-  // Required only in production (Turso libSQL needs an auth token)
-  {
-    name: "TURSO_AUTH_TOKEN",
-    criticality: "critical",
-    requiredWhen: () =>
-      process.env.NODE_ENV === "production" &&
-      !!process.env.DATABASE_URL?.startsWith("libsql://"),
-  },
-
   // ── CORE ────────────────────────────────────────────────────────────────
   // OpenAI key may also be stored in DB AppSetting; only warn at boot, never throw.
   { name: "OPENAI_API_KEY", criticality: "core", placeholderValues: PLACEHOLDERS },

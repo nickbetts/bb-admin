@@ -175,12 +175,14 @@ There is no separate typecheck or test step in CI. TypeScript errors surface thr
 
 ## Prisma / database notes
 
-- **Local dev**: `DATABASE_URL=file:dev.db` (SQLite file in project root). The file is git-ignored.
-- **Production**: Turso libSQL — `DATABASE_URL=libsql://...` + `TURSO_AUTH_TOKEN=...`.
-- **CI**: uses `DATABASE_URL=file:dev.db` so `prisma generate` and `next build` succeed without a real database.
-- **`prisma.config.ts`** reads `DATABASE_URL` from env (fallback `file:./dev.db`) — not `env()` in `schema.prisma`.
-- Always run `npm run db:migrate` after changing `prisma/schema.prisma` locally.
-- Never commit the `dev.db` file (it's in `.gitignore`).
+- **Database**: Vercel Postgres (Neon-backed). Same engine in local dev, preview, and production — prefer using a Neon **dev branch** for local work.
+- **Required env vars**:
+  - `DATABASE_URL` — the *pooled* connection string (Vercel exposes this as `POSTGRES_PRISMA_URL`).
+  - `DIRECT_URL` — the *non-pooled* connection (Vercel exposes this as `POSTGRES_URL_NON_POOLING`). Used by Prisma migrations only.
+- **CI**: uses a syntactically-valid stub Postgres URL so `prisma generate` and `next build` succeed without a real database. `prisma generate` does not connect.
+- **`prisma.config.ts`** reads `DIRECT_URL` (preferred) then falls back to `DATABASE_URL` from env.
+- Always run `npm run db:migrate` after changing `prisma/schema.prisma` locally. The generated migration is committed and applied to production via the `DB Migrate (Postgres)` GitHub Action.
+- `scripts/prod-setup.mjs` is a thin wrapper around `prisma migrate deploy` — it is no longer the bespoke libsql migration runner it used to be.
 
 ## Environment variables
 
@@ -188,8 +190,8 @@ There is no separate typecheck or test step in CI. TypeScript errors surface thr
 
 | Variable | Required for prod | Can be stubbed in CI/build |
 |---|---|---|
-| `DATABASE_URL` | ✅ | ✅ `file:dev.db` |
-| `TURSO_AUTH_TOKEN` | ✅ (prod only) | ✅ omit for local SQLite |
+| `DATABASE_URL` | ✅ (pooled Postgres URL) | ✅ `postgresql://stub:stub@localhost:5432/stub?sslmode=disable` |
+| `DIRECT_URL` | ✅ (non-pooled Postgres URL) | ✅ same stub as above |
 | `SESSION_SECRET` | ✅ | ✅ any random string |
 | `NEXTAUTH_SECRET` | ✅ | ✅ any random string |
 | `BLOB_READ_WRITE_TOKEN` | ✅ | ✅ `vercel_blob_rw_placeholder` |

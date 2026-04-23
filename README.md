@@ -25,7 +25,7 @@ Built with **Next.js 16**, **React 19**, **Prisma v7**, **Tailwind CSS v4**, and
 | Language | TypeScript (strict) |
 | UI | React 19.2.3 + Tailwind CSS v4 |
 | Charts | Recharts 3.8 |
-| Database | Prisma v7 + SQLite (dev) / Turso libSQL (prod) |
+| Database | Prisma v7 + Vercel Postgres (Neon) |
 | AI | OpenAI (GPT-4o-mini, GPT-4o, GPT-4o-search-preview) |
 | Auth | HMAC-SHA256 signed cookies + bcrypt |
 | File storage | Vercel Blob |

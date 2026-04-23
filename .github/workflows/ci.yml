@@ -30,8 +30,10 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # Use a local SQLite file so prisma generate succeeds without a real DB
-          DATABASE_URL: file:dev.db
+          # Stub Postgres URL: prisma generate parses the schema and validates the URL
+          # shape but does not connect, so a syntactically-valid placeholder works.
+          DATABASE_URL: postgresql://stub:stub@localhost:5432/stub?sslmode=disable
+          DIRECT_URL: postgresql://stub:stub@localhost:5432/stub?sslmode=disable
           # Stub values so env validation / module imports succeed during build.
           # Real secrets are never needed for a static Next.js build.
           BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN != '' && secrets.BLOB_READ_WRITE_TOKEN || 'vercel_blob_rw_placeholder' }}
