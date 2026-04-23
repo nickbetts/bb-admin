@@ -220,6 +220,9 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
   const [yoyData, setYoyData] = useState<PlatformData>({});
   const [campaigns, setCampaigns] = useState<CampaignHighlight[]>([]);
 
+  // Goals (for goal_progress block)
+  const [goals, setGoals] = useState<Array<{ id: string; title: string; metric: string; channel: string | null; targetValue: number; currentValue: number | null; unit: string | null; targetDate: string; status: string }>>([]);
+
   // AI state
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState<OverviewNarrativeResult | null>(null);
@@ -897,6 +900,18 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
       .catch(() => {});
   }, [client.id, startDate, endDate]);
 
+  // Goals fetch (for goal_progress block)
+  useEffect(() => {
+    if (!client.id) return;
+    fetch(`/api/clients/${encodeURIComponent(client.id)}/goals`)
+      .then(r => r.ok ? r.json() : null)
+      .then(json => {
+        if (Array.isArray(json)) setGoals(json);
+        else if (json && Array.isArray(json.goals)) setGoals(json.goals);
+      })
+      .catch(() => {});
+  }, [client.id]);
+
   // ─── Active platforms list ─────────────────────────────────────────────────
 
   const activePlatforms = [
@@ -1008,6 +1023,46 @@ export function OverviewSection({ client, startDate, endDate, compareStartDate, 
               <MetricCard title="Blended ROAS" value={`${blendedRoas.toFixed(2)}x`} icon={<TrendingUp className="h-5 w-5" />} color="blue" change={hasPrevPaid && prevBlendedRoas > 0 ? pctChange(blendedRoas, prevBlendedRoas) : undefined} changeLabel="vs prev period" />
               <MetricCard title="Blended CPA" value={formatCurrency(blendedCpa)} icon={<Wallet className="h-5 w-5" />} color="orange" change={hasPrevPaid && prevBlendedCpa > 0 ? pctChange(blendedCpa, prevBlendedCpa) : undefined} changeDiff={hasPrevPaid ? diffStr(blendedCpa, prevBlendedCpa, "currency") : undefined} changeLabel="vs prev period" />
               <MetricCard title="Total Paid Clicks" value={formatNumber(totalPaidClicks)} icon={<MousePointer className="h-5 w-5" />} color="blue" change={hasPrevPaid ? pctChange(totalPaidClicks, prevTotalPaidClicks) : undefined} changeDiff={hasPrevPaid ? diffStr(totalPaidClicks, prevTotalPaidClicks, "count") : undefined} changeLabel="vs prev period" />
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Standalone Blended CPA highlight */}
+        {show("blended_cpa") && hasPaidData && totalConversions > 0 && (
+          <SectionCard title="Blended CPA" subtitle="Cost per conversion across all paid channels combined">
+            <div className="grid-3" style={{ gap: 16 }}>
+              <MetricCard title="Blended CPA" value={formatCurrency(blendedCpa)} icon={<Wallet className="h-5 w-5" />} color="orange" change={hasPrevPaid && prevBlendedCpa > 0 ? pctChange(blendedCpa, prevBlendedCpa) : undefined} changeDiff={hasPrevPaid ? diffStr(blendedCpa, prevBlendedCpa, "currency") : undefined} changeLabel="vs prev period" />
+              <MetricCard title="Total Spend" value={formatCurrency(totalAdSpend)} icon={<DollarSign className="h-5 w-5" />} color="purple" />
+              <MetricCard title="Total Conversions" value={formatNumber(totalConversions)} icon={<ShoppingCart className="h-5 w-5" />} color="green" />
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Goal Progress */}
+        {show("goal_progress") && goals.filter(g => g.status === "active" || g.status === "at_risk").length > 0 && (
+          <SectionCard title="Goal Progress" subtitle="Active client goals and current progress">
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {goals.filter(g => g.status === "active" || g.status === "at_risk").slice(0, 6).map((g) => {
+                const current = g.currentValue ?? 0;
+                const pct = g.targetValue > 0 ? Math.min(100, Math.round((current / g.targetValue) * 100)) : 0;
+                const barColor = g.status === "at_risk" ? "#f59e0b" : "#6366f1";
+                return (
+                  <div key={g.id} style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, padding: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{g.title}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                          {g.metric}{g.channel ? ` · ${g.channel}` : ""} · Target {g.unit ?? ""}{g.targetValue.toLocaleString()} by {new Date(g.targetDate).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>{pct}%</span>
+                    </div>
+                    <div style={{ height: 6, background: "var(--border)", borderRadius: 99, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 99 }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </SectionCard>
         )}
