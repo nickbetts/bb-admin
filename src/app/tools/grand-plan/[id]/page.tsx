@@ -173,6 +173,12 @@ export default function GrandPlanViewPage({ params }: Props) {
   // Restore
   const [restoringVersion, setRestoringVersion] = useState<string | null>(null);
 
+  // AbortController so the user can cancel a hung generation step. We also
+  // attach a per-step hard timeout so the UI never gets stuck if the underlying
+  // function (Claude / SEMrush etc.) hangs without surfacing an error.
+  const abortRef = useRef<AbortController | null>(null);
+  const cancelledRef = useRef(false);
+
   useEffect(() => {
     loadPlan();
     return () => {
@@ -288,6 +294,8 @@ export default function GrandPlanViewPage({ params }: Props) {
   async function handleGenerate() {
     if (!plan) return;
     setGenerating(true);
+    cancelledRef.current = false;
+    abortRef.current = new AbortController();
     setPlan((prev) => (prev ? { ...prev, status: "generating" } : prev));
 
     const enabled = Array.from(enabledSections);
@@ -307,20 +315,45 @@ export default function GrandPlanViewPage({ params }: Props) {
       const sk = statusKey ?? stepKey;
       setCurrentStepLabel(label);
       setStepStatus((prev) => ({ ...prev, [sk]: "running" }));
-      const res = await fetch(`/api/tools/grand-plan/${id}/generate-step`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ step: stepKey }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Unknown error" }));
-        setStepStatus((prev) => ({ ...prev, [sk]: "failed" }));
-        throw new Error(err.error || `Step "${stepKey}" failed`);
+
+      // Vercel functions cap at 300s. Give the client a slightly longer leash
+      // so we still surface a clean error if the function silently dies.
+      const STEP_TIMEOUT_MS = 320_000;
+      const timeoutId = setTimeout(() => {
+        try { abortRef.current?.abort(); } catch { /* noop */ }
+      }, STEP_TIMEOUT_MS);
+
+      try {
+        const res = await fetch(`/api/tools/grand-plan/${id}/generate-step`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ step: stepKey }),
+          signal: abortRef.current?.signal,
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: "Unknown error" }));
+          setStepStatus((prev) => ({ ...prev, [sk]: "failed" }));
+          throw new Error(err.error || `Step "${stepKey}" failed`);
+        }
+        const data = await res.json();
+        const skipped = !!data.skipped;
+        setStepStatus((prev) => ({ ...prev, [sk]: skipped ? "skipped" : "done" }));
+        return !skipped;
+      } catch (err) {
+        if (cancelledRef.current) {
+          setStepStatus((prev) => ({ ...prev, [sk]: "failed" }));
+          throw new Error("Cancelled");
+        }
+        if (err instanceof DOMException && err.name === "AbortError") {
+          setStepStatus((prev) => ({ ...prev, [sk]: "failed" }));
+          throw new Error(
+            `Step "${label}" timed out after ${Math.round(STEP_TIMEOUT_MS / 1000)}s. The server may have hit its function timeout — retrying will resume from where it stopped.`
+          );
+        }
+        throw err;
+      } finally {
+        clearTimeout(timeoutId);
       }
-      const data = await res.json();
-      const skipped = !!data.skipped;
-      setStepStatus((prev) => ({ ...prev, [sk]: skipped ? "skipped" : "done" }));
-      return !skipped;
     }
 
     try {
@@ -345,11 +378,18 @@ export default function GrandPlanViewPage({ params }: Props) {
         pollRef.current = null;
       }
       const message = error instanceof Error ? error.message : "Generation failed";
-      toast(message, "error");
+      toast(message, cancelledRef.current ? "info" : "error");
       await loadPlan();
     } finally {
+      abortRef.current = null;
       setGenerating(false);
     }
+  }
+
+  function handleCancelGeneration() {
+    cancelledRef.current = true;
+    try { abortRef.current?.abort(); } catch { /* noop */ }
+    toast("Cancelling\u2026 the current step will stop shortly.", "info");
   }
 
   // ─── Refinement & section regeneration ───────────────────────────────────
@@ -1198,6 +1238,7 @@ export default function GrandPlanViewPage({ params }: Props) {
             active
             message={currentStepLabel || plan.statusMessage || "Generating grand plan…"}
             estimatedSeconds={totalEstSeconds}
+            onCancel={generating ? handleCancelGeneration : undefined}
             tips={
               funMode
                 ? [funMessage]
