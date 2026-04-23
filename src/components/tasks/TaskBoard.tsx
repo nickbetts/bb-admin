@@ -218,9 +218,17 @@ export function TaskBoard({
 
   // ---------- Data loaders ----------
   const loadFilters = useCallback(async () => {
+    const categoriesUrl = lockedClientId
+      ? `/api/clients/${lockedClientId}/task-categories`
+      : "/api/task-categories";
     const promises: Array<Promise<unknown>> = [
       fetch("/api/users").then((r) => r.ok ? r.json() : []).then((d) => setUsers(d as UserLite[])),
-      fetch("/api/task-categories").then((r) => r.ok ? r.json() : []).then((d) => setCategories(d as CategoryLite[])),
+      fetch(categoriesUrl).then((r) => r.ok ? r.json() : []).then((d) => {
+        const arr = (Array.isArray(d) ? d : []) as Array<CategoryLite & { isEnabled?: boolean }>;
+        // For client-scoped views, only show categories enabled on this client.
+        const filtered = lockedClientId ? arr.filter((c) => c.isEnabled !== false) : arr;
+        setCategories(filtered.map((c) => ({ id: c.id, name: c.name, color: c.color })));
+      }),
       fetch("/api/auth/session").then((r) => r.ok ? r.json() : null).then((d) => {
         if (d && typeof d === "object" && "user" in d) {
           const u = (d as { user?: { id?: string } }).user;
@@ -237,7 +245,7 @@ export function TaskBoard({
       );
     }
     await Promise.all(promises);
-  }, [isClientScoped]);
+  }, [isClientScoped, lockedClientId]);
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
@@ -300,6 +308,12 @@ export function TaskBoard({
   const groups = useMemo(() => {
     const map = new Map<string, { key: string; label: string; color?: string | null; count: number }>();
     map.set(ALL_KEY, { key: ALL_KEY, label: "All", count: baseFiltered.length });
+    // When grouping by board, seed with every known category so empty boards still show as tabs.
+    if (groupBy === "category") {
+      for (const c of categories) {
+        map.set(c.id, { key: c.id, label: c.name, color: c.color ?? null, count: 0 });
+      }
+    }
     for (const t of baseFiltered) {
       if (groupBy === "category") {
         const k = t.category?.id ?? UNCATEGORISED_KEY;
@@ -330,9 +344,19 @@ export function TaskBoard({
     return Array.from(map.values()).sort((a, b) => {
       if (a.key === ALL_KEY) return -1;
       if (b.key === ALL_KEY) return 1;
+      // For board grouping, preserve the categories order (followed by ad-hoc keys).
+      if (groupBy === "category") {
+        const ai = categories.findIndex((c) => c.id === a.key);
+        const bi = categories.findIndex((c) => c.id === b.key);
+        if (ai !== -1 || bi !== -1) {
+          if (ai === -1) return 1;
+          if (bi === -1) return -1;
+          return ai - bi;
+        }
+      }
       return b.count - a.count || a.label.localeCompare(b.label);
     });
-  }, [baseFiltered, groupBy]);
+  }, [baseFiltered, groupBy, categories]);
 
   // Reset active tab when it falls out of the group set.
   useEffect(() => {
@@ -875,7 +899,7 @@ function FilterRow({
       </div>
 
       {expanded && (
-        <div className="card" style={{ padding: 10, marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+        <div className="card" style={{ padding: 10, marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", overflow: "visible" }}>
           {clients && (
             <MultiPicker
               label="Clients" values={filterClientIds}
