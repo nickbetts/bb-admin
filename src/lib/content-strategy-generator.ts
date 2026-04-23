@@ -1691,8 +1691,20 @@ export async function generateContentStrategySection(
   limits?: ContentStrategyLimits,
   competitorContexts?: { domain: string; pageContext: CompetitorPageContext }[],
 ): Promise<Partial<ContentStrategyData>> {
+  const t0 = Date.now();
+  console.log(`[content-strategy:${section}] start — domain=${domain}`);
+
   const collectedData = await collectSemrushData(domain, competitors, database, searchConsoleSiteUrl, brief);
+  console.log(
+    `[content-strategy:${section}] data collected in ${Date.now() - t0}ms — ` +
+    `organicKw=${collectedData.organicKeywords.length} ` +
+    `gap=${collectedData.contentGap.length} ` +
+    `gsc=${collectedData.gscQueryPages.length} ` +
+    `sitemap=${collectedData.sitemapUrls.length}`,
+  );
+
   const basePrompt = buildAnalysisPrompt(domain, clientName, brief, collectedData, competitorContexts, limits);
+  console.log(`[content-strategy:${section}] prompt built — length=${basePrompt.length} chars`);
 
   const SECTION_SCHEMAS: Record<ContentStrategySection, string> = {
     pageOptimisations: `Return ONLY a JSON object with a single key "pageOptimisations". Follow all keyword rules.
@@ -1755,7 +1767,9 @@ export async function generateContentStrategySection(
 
 IMPORTANT: You are generating ONLY the "${section}" section of the strategy. The other sections will be generated in separate calls.
 ${SECTION_SCHEMAS[section]}`;
+  console.log(`[content-strategy:${section}] sectionPrompt length=${sectionPrompt.length} chars — calling Claude Opus...`);
 
+  const tClaude = Date.now();
   const anthropic = await getAnthropicClient();
   const stream = anthropic.messages.stream({
     model: "claude-opus-4-6",
@@ -1764,6 +1778,13 @@ ${SECTION_SCHEMAS[section]}`;
     messages: [{ role: "user", content: sectionPrompt }],
   });
   const response = await stream.finalMessage();
+  console.log(
+    `[content-strategy:${section}] Claude done in ${Date.now() - tClaude}ms — ` +
+    `stop_reason=${response.stop_reason} ` +
+    `input_tokens=${response.usage.input_tokens} ` +
+    `output_tokens=${response.usage.output_tokens}`,
+  );
+
   const block = response.content[0];
   const rawText = block.type === "text" ? block.text.trim() : "";
   const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]+?)```/) ?? rawText.match(/(\{[\s\S]+\})/);
@@ -1772,10 +1793,13 @@ ${SECTION_SCHEMAS[section]}`;
   let raw: Record<string, unknown>;
   try {
     raw = JSON.parse(jsonText) as Record<string, unknown>;
-  } catch {
+    console.log(`[content-strategy:${section}] JSON parsed OK — raw keys: ${Object.keys(raw).join(", ")}`);
+  } catch (parseErr) {
+    console.warn(`[content-strategy:${section}] JSON parse failed — attempting repair. Error: ${parseErr}`);
     // Last-resort: trim and re-try with bracket closure
     const repaired = jsonText.trimEnd().replace(/,\s*$/, "") + (jsonText.split("{").length > jsonText.split("}").length ? "}" : "");
     raw = JSON.parse(repaired) as Record<string, unknown>;
+    console.log(`[content-strategy:${section}] JSON repaired OK`);
   }
 
   // ── Parse helpers (duplicated from generateContentStrategy for locality) ──
@@ -1869,6 +1893,14 @@ ${SECTION_SCHEMAS[section]}`;
       months4plus: Array.isArray(rawRoadmap?.months4plus) ? rawRoadmap!.months4plus.map(String) : [],
     };
   }
+
+  console.log(
+    `[content-strategy:${section}] complete in ${Date.now() - t0}ms \u2014 ` +
+    `pageOpts=${result.pageOptimisations?.length ?? "-"} ` +
+    `landingPages=${result.landingPages?.length ?? "-"} ` +
+    `blogPosts=${result.blogPosts?.length ?? "-"} ` +
+    `linkTargets=${result.linkTargets?.length ?? "-"}`,
+  );
 
   return result;
 }

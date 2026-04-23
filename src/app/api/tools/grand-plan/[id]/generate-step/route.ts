@@ -295,10 +295,13 @@ export async function POST(
 
       // ── Step 1: generate pageOptimisations, create the ContentStrategy row ──
       if (step === "prepare-content-1") {
+        const t1 = Date.now();
+        console.log(`[grand-plan:${id}] prepare-content-1 start — domain=${csDomain} db=${csDatabase}`);
         await setStatus(id, "Generating page optimisations (1/3)...");
         const partial = await generateContentStrategySection(
           "pageOptimisations", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null,
         );
+        console.log(`[grand-plan:${id}] prepare-content-1 AI done in ${Date.now() - t1}ms — pageOpts=${partial.pageOptimisations?.length ?? 0}`);
         const now = new Date();
         const period = `${now.toLocaleString("en-GB", { month: "long", year: "numeric" })} — Auto-generated`;
         const initialData: ContentStrategyData = {
@@ -318,6 +321,7 @@ export async function POST(
             totalLinkTargets: 0,
           },
         };
+        console.log(`[grand-plan:${id}] prepare-content-1 saving ContentStrategy row...`);
         const savedStrategy = await withDbRetry(() =>
           prisma.contentStrategy.create({
             data: {
@@ -331,6 +335,7 @@ export async function POST(
           })
         );
         await withDbRetry(() => prisma.grandPlan.update({ where: { id }, data: { contentStrategyId: savedStrategy.id } }));
+        console.log(`[grand-plan:${id}] prepare-content-1 complete in ${Date.now() - t1}ms — strategyId=${savedStrategy.id}`);
         return NextResponse.json({ ok: true, step });
       }
 
@@ -348,10 +353,13 @@ export async function POST(
       const existing = JSON.parse(reloadedPlan.contentStrategy.spreadsheetData || "{}") as SafeStrategyData;
 
       if (step === "prepare-content-2") {
+        const t2 = Date.now();
+        console.log(`[grand-plan:${id}] prepare-content-2 start — domain=${csDomain}`);
         await setStatus(id, "Generating landing pages (2/3)...");
         const partial = await generateContentStrategySection(
           "landingPages", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null,
         );
+        console.log(`[grand-plan:${id}] prepare-content-2 AI done in ${Date.now() - t2}ms — landingPages=${partial.landingPages?.length ?? 0} linkTargets=${partial.linkTargets?.length ?? 0}`);
         const merged: ContentStrategyData = {
           ...existing,
           landingPages: partial.landingPages ?? [],
@@ -363,20 +371,25 @@ export async function POST(
             totalLinkTargets: new Set((partial.linkTargets ?? []).map((t) => t.url)).size,
           },
         };
+        console.log(`[grand-plan:${id}] prepare-content-2 saving merge...`);
         await withDbRetry(() =>
           prisma.contentStrategy.update({
             where: { id: reloadedPlan.contentStrategy!.id },
             data: { spreadsheetData: JSON.stringify(merged) },
           })
         );
+        console.log(`[grand-plan:${id}] prepare-content-2 complete in ${Date.now() - t2}ms`);
         return NextResponse.json({ ok: true, step });
       }
 
       if (step === "prepare-content-3") {
+        const t3 = Date.now();
+        console.log(`[grand-plan:${id}] prepare-content-3 start — domain=${csDomain}`);
         await setStatus(id, "Generating blog posts & roadmap (3/3)...");
         const partial = await generateContentStrategySection(
           "blogPosts", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null,
         );
+        console.log(`[grand-plan:${id}] prepare-content-3 AI done in ${Date.now() - t3}ms — blogPosts=${partial.blogPosts?.length ?? 0}`);
         const merged: ContentStrategyData = {
           ...existing,
           blogPosts: partial.blogPosts ?? [],
@@ -388,12 +401,14 @@ export async function POST(
             totalLinkTargets: new Set((existing.linkTargets ?? []).map((t) => t.url)).size,
           },
         };
+        console.log(`[grand-plan:${id}] prepare-content-3 saving merge...`);
         await withDbRetry(() =>
           prisma.contentStrategy.update({
             where: { id: reloadedPlan.contentStrategy!.id },
             data: { spreadsheetData: JSON.stringify(merged) },
           })
         );
+        console.log(`[grand-plan:${id}] prepare-content-3 complete in ${Date.now() - t3}ms`);
         return NextResponse.json({ ok: true, step });
       }
     }
