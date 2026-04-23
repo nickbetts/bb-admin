@@ -466,6 +466,7 @@ model ActionItem {
   sourceType  String?                       // "ai_recommendation" | "manual"
   sourceRef   String?                       // Reference to source (e.g., anomaly id)
   // Approval audit
+  forApprovalAt        DateTime?            // When "Submitted for approval" was first clicked
   internalApprovedBy   String?
   internalApprovedAt   DateTime?
   clientApprovedBy     String?

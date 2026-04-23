@@ -20,6 +20,7 @@ export interface TaskRecord {
   outcome: string | null;
   approvalNotes: string | null;
   sourceType: string | null;
+  forApprovalAt: string | null;
   internalApprovedAt: string | null;
   clientApprovedAt: string | null;
   clientApprovalSource: string | null;
@@ -391,6 +392,7 @@ export function TaskDrawer({ clientId, task, users, categoryName, permissions = 
 
   // Merged chronological activity feed shown in the History panel.
   const activityFeed: { at: string; label: string; sub?: string; tone: string }[] = [
+    ...(draft.forApprovalAt ? [{ at: draft.forApprovalAt, label: "Submitted for approval", tone: "#f59e0b" }] : []),
     ...(draft.internalApprovedAt ? [{ at: draft.internalApprovedAt, label: "Signed off internally", tone: "#8b5cf6" }] : []),
     ...(draft.clientApprovedAt ? [{ at: draft.clientApprovedAt, label: "Signed off by client", sub: draft.clientApprovalSource ?? undefined, tone: "#10b981" }] : []),
     ...timeData.logs.filter((l) => l.endedAt).map((l) => ({
@@ -528,7 +530,7 @@ export function TaskDrawer({ clientId, task, users, categoryName, permissions = 
 
                   {/* Step 1 — For approval */}
                   {(() => {
-                    const done = draft.status === "for_approval" || draft.status === "signed_off_internal" || draft.status === "signed_off_client";
+                    const done = draft.status === "for_approval" || draft.status === "signed_off_internal" || draft.status === "signed_off_client" || !!draft.forApprovalAt;
                     const canAct = (canEdit || canApproveInternal) && !done && draft.status !== "done" && draft.status !== "cancelled";
                     return (
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -542,6 +544,11 @@ export function TaskDrawer({ clientId, task, users, categoryName, permissions = 
                         </span>
                         <span style={{ flex: 1, fontSize: 13, color: done ? "var(--text)" : "var(--text-3)", fontWeight: done ? 600 : 400 }}>
                           Submitted for approval
+                          {draft.forApprovalAt && (
+                            <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 400, marginLeft: 6 }}>
+                              {new Date(draft.forApprovalAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                            </span>
+                          )}
                         </span>
                         {canAct && (
                           <button
@@ -552,7 +559,7 @@ export function TaskDrawer({ clientId, task, users, categoryName, permissions = 
                             Mark ready
                           </button>
                         )}
-                        {done && (
+                        {done && !canAct && draft.status !== "done" && draft.status !== "cancelled" && (canEdit || canApproveInternal) && (
                           <button
                             onClick={() => void save({ status: "in_progress" })}
                             className="btn btn-ghost btn-sm"
@@ -604,6 +611,7 @@ export function TaskDrawer({ clientId, task, users, categoryName, permissions = 
                   {/* Step 3 — Client sign-off */}
                   {(() => {
                     const done = !!draft.clientApprovedAt || draft.status === "signed_off_client";
+                    const internalDone = !!draft.internalApprovedAt || draft.status === "signed_off_internal" || draft.status === "signed_off_client";
                     const canAct = canApproveClient && (draft.status === "signed_off_internal" || draft.status === "for_approval");
                     return (
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -624,9 +632,11 @@ export function TaskDrawer({ clientId, task, users, categoryName, permissions = 
                             </span>
                           )}
                         </span>
-                        {canAct && (
+                        {canApproveClient && !done && (
                           <button
-                            onClick={() => void save({ status: "signed_off_client" })}
+                            onClick={() => internalDone && void save({ status: "signed_off_client" })}
+                            disabled={!canAct || !internalDone}
+                            title={!internalDone ? "Internal sign-off required first" : undefined}
                             className="btn btn-primary btn-sm"
                             style={{ fontSize: 11 }}
                           >

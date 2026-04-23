@@ -16,6 +16,7 @@ const VALID_STATUSES = [
 
 type StatusUpdateExtras = {
   completedAt?: Date | null;
+  forApprovalAt?: Date | null;
   internalApprovedBy?: string | null;
   internalApprovedAt?: Date | null;
   clientApprovedBy?: string | null;
@@ -26,6 +27,7 @@ type StatusUpdateExtras = {
 function buildStatusStampExtras(prev: string, next: string, userId: string): StatusUpdateExtras {
   if (prev === next) return {};
   const e: StatusUpdateExtras = {};
+  if (next === "for_approval") e.forApprovalAt = new Date();
   if (next === "signed_off_internal") {
     e.internalApprovedBy = userId;
     e.internalApprovedAt = new Date();

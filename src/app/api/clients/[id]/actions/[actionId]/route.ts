@@ -23,6 +23,7 @@ const actionInclude = {
 
 type StatusUpdateExtras = {
   completedAt?: Date | null;
+  forApprovalAt?: Date | null;
   internalApprovedBy?: string | null;
   internalApprovedAt?: Date | null;
   clientApprovedBy?: string | null;
@@ -43,6 +44,10 @@ function buildStatusStampExtras(
   if (prevStatus === nextStatus) return {};
   const extras: StatusUpdateExtras = {};
 
+  if (nextStatus === "for_approval") {
+    // Only stamp the first time it enters for_approval.
+    extras.forApprovalAt = new Date();
+  }
   if (nextStatus === "signed_off_internal") {
     extras.internalApprovedBy = userId;
     extras.internalApprovedAt = new Date();
