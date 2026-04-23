@@ -1,6 +1,19 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
+/**
+ * pg ≥8.20 / pg-connection-string ≥3 changes the meaning of `sslmode=require`
+ * from "ignore CA" to "verify-full", which Neon's pooler does not satisfy out
+ * of the box. Until pg v9 ships, force libpq-compatible semantics so the
+ * existing `sslmode=require` keeps working without a noisy security warning.
+ */
+function withLibpqCompat(connectionString: string): string {
+  if (!connectionString) return connectionString;
+  if (connectionString.includes("uselibpqcompat=")) return connectionString;
+  const sep = connectionString.includes("?") ? "&" : "?";
+  return `${connectionString}${sep}uselibpqcompat=true`;
+}
+
 function createPrismaClient() {
   const url = process.env.DATABASE_URL;
 
@@ -28,7 +41,7 @@ function createPrismaClient() {
   // Prisma 7 requires either an adapter or accelerateUrl on the client constructor.
   // We use the pg adapter so a single connection string (the Vercel Postgres pooled
   // URL via PgBouncer) drives all runtime queries.
-  const adapter = new PrismaPg({ connectionString: url ?? "" });
+  const adapter = new PrismaPg({ connectionString: withLibpqCompat(url ?? "") });
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
