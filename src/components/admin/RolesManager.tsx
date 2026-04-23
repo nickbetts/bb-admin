@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Pencil, Trash2, Plus, X, Check, Lock } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Pencil, Trash2, Plus, X, Check, Lock, Search, ListChecks, Eraser } from "lucide-react";
 
 const PERMISSION_GROUPS = [
   {
@@ -104,6 +104,24 @@ interface Role {
   userCount: number;
 }
 
+// Flat lookup so we can pretty-print permission keys anywhere in the UI.
+const PERMISSION_LOOKUP: Record<string, { label: string; group: string }> = (() => {
+  const map: Record<string, { label: string; group: string }> = {};
+  for (const g of PERMISSION_GROUPS) {
+    for (const item of g.items) map[item.key] = { label: item.label, group: g.label };
+  }
+  return map;
+})();
+
+function permissionLabel(key: string) {
+  return PERMISSION_LOOKUP[key]?.label ?? key.replace(/[._:]/g, " ");
+}
+
+// Exported so other admin surfaces (e.g. Users table) can pretty-print permission keys.
+export { permissionLabel };
+
+const TOTAL_PERMISSIONS = PERMISSION_GROUPS.reduce((acc, g) => acc + g.items.length, 0);
+
 function PermissionChecklist({
   value,
   onChange,
@@ -111,40 +129,189 @@ function PermissionChecklist({
   value: string[];
   onChange: (v: string[]) => void;
 }) {
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+
+  const filteredGroups = useMemo(() => {
+    if (!q) return PERMISSION_GROUPS.map((g) => ({ ...g, items: g.items.slice() }));
+    return PERMISSION_GROUPS
+      .map((g) => ({
+        ...g,
+        items: g.items.filter(
+          (i) => i.label.toLowerCase().includes(q) || i.key.toLowerCase().includes(q),
+        ),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [q]);
+
   function toggle(key: string) {
     onChange(value.includes(key) ? value.filter((k) => k !== key) : [...value, key]);
   }
 
+  function selectGroup(items: { key: string }[]) {
+    const set = new Set(value);
+    for (const item of items) set.add(item.key);
+    onChange(Array.from(set));
+  }
+
+  function clearGroup(items: { key: string }[]) {
+    const groupKeys = new Set(items.map((i) => i.key));
+    onChange(value.filter((k) => !groupKeys.has(k)));
+  }
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {PERMISSION_GROUPS.map((group) => (
-        <div key={group.label}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.06em", marginBottom: 8, textTransform: "uppercase" }}>
-            {group.label}
-          </p>
-          {"note" in group && group.note && (
-            <p style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 10, fontStyle: "italic" }}>{group.note}</p>
-          )}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px" }}>
-            {group.items.map((item) => (
-              <label
-                key={item.key}
-                style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text)" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={value.includes(item.key)}
-                  onChange={() => toggle(item.key)}
-                  style={{ width: 14, height: 14, accentColor: "var(--primary, #6366f1)" }}
-                />
-                {item.label}
-              </label>
-            ))}
-          </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Toolbar — search + summary */}
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ position: "relative", flex: "1 1 240px", maxWidth: 360 }}>
+          <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-4)", pointerEvents: "none" }} />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search permissions…"
+            className="form-input"
+            style={{ paddingLeft: 32, height: 34, fontSize: 13 }}
+          />
         </div>
-      ))}
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--text-3)" }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "4px 10px", borderRadius: 999,
+            background: "var(--bg-2)", border: "1px solid var(--border-subtle)",
+            fontWeight: 600, color: "var(--text-2)",
+          }}>
+            {value.length} / {TOTAL_PERMISSIONS} enabled
+          </span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => onChange([])}
+            disabled={value.length === 0}
+            title="Clear all permissions"
+          >
+            Clear all
+          </button>
+        </div>
+      </div>
+
+      {/* Group cards */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+        gap: 12,
+      }}>
+        {filteredGroups.length === 0 && (
+          <div style={{ padding: 24, textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
+            No permissions match “{query}”.
+          </div>
+        )}
+        {filteredGroups.map((group) => {
+          const selectedInGroup = group.items.filter((i) => value.includes(i.key)).length;
+          const total = group.items.length;
+          const allSelected = selectedInGroup === total && total > 0;
+          const noneSelected = selectedInGroup === 0;
+          return (
+            <div
+              key={group.label}
+              style={{
+                background: "var(--bg)",
+                border: "1px solid var(--border-subtle)",
+                borderRadius: 12,
+                padding: 14,
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, letterSpacing: "0.06em",
+                    textTransform: "uppercase", color: "var(--text-2)",
+                  }}>
+                    {group.label}
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700,
+                    padding: "2px 7px", borderRadius: 999,
+                    background: allSelected ? "rgba(99,102,241,0.12)" : "var(--bg-2)",
+                    color: allSelected ? "var(--accent)" : "var(--text-3)",
+                    border: `1px solid ${allSelected ? "rgba(99,102,241,0.25)" : "var(--border-subtle)"}`,
+                  }}>
+                    {selectedInGroup}/{total}
+                  </span>
+                </div>
+                <div style={{ display: "inline-flex", gap: 4, flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => selectGroup(group.items)}
+                    disabled={allSelected}
+                    title="Select all in this group"
+                    style={iconBtnStyle(allSelected)}
+                  >
+                    <ListChecks size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => clearGroup(group.items)}
+                    disabled={noneSelected}
+                    title="Clear this group"
+                    style={iconBtnStyle(noneSelected)}
+                  >
+                    <Eraser size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {"note" in group && group.note && (
+                <p style={{ fontSize: 11.5, color: "var(--text-3)", margin: 0, lineHeight: 1.45 }}>{group.note}</p>
+              )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {group.items.map((item) => {
+                  const checked = value.includes(item.key);
+                  return (
+                    <label
+                      key={item.key}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 9,
+                        cursor: "pointer", fontSize: 13, color: "var(--text)",
+                        padding: "5px 8px", borderRadius: 6,
+                        background: checked ? "rgba(99,102,241,0.06)" : "transparent",
+                        transition: "background 0.12s",
+                      }}
+                      onMouseEnter={(e) => { if (!checked) e.currentTarget.style.background = "var(--bg-2)"; }}
+                      onMouseLeave={(e) => { if (!checked) e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggle(item.key)}
+                        style={{ width: 14, height: 14, accentColor: "var(--accent, #6366f1)", flexShrink: 0 }}
+                      />
+                      <span style={{ flex: 1, minWidth: 0 }}>{item.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
+}
+
+function iconBtnStyle(disabled: boolean): React.CSSProperties {
+  return {
+    width: 24, height: 24, padding: 0, borderRadius: 6,
+    border: "1px solid var(--border-subtle)",
+    background: "var(--bg-2)",
+    color: disabled ? "var(--text-4)" : "var(--text-2)",
+    cursor: disabled ? "default" : "pointer",
+    opacity: disabled ? 0.5 : 1,
+    display: "inline-flex", alignItems: "center", justifyContent: "center",
+  };
 }
 
 function RoleForm({
@@ -196,6 +363,50 @@ function RoleForm({
         </button>
       </div>
     </form>
+  );
+}
+
+function RolePermissionSummary({ permissions }: { permissions: string[] }) {
+  // Bucket the role's permissions by group, in the order PERMISSION_GROUPS defines.
+  const buckets = PERMISSION_GROUPS.map((g) => {
+    const selected = g.items.filter((i) => permissions.includes(i.key));
+    return { label: g.label, selected, total: g.items.length };
+  }).filter((b) => b.selected.length > 0);
+
+  if (buckets.length === 0) {
+    return <span style={{ fontSize: 12, color: "var(--text-4)", fontStyle: "italic" }}>No permissions</span>;
+  }
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+      {buckets.map((b) => {
+        const all = b.selected.length === b.total;
+        return (
+          <span
+            key={b.label}
+            title={b.selected.map((s) => s.label).join(", ")}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 5,
+              fontSize: 11, fontWeight: 500,
+              padding: "3px 9px", borderRadius: 9999,
+              background: all ? "rgba(99,102,241,0.10)" : "var(--bg-2)",
+              border: `1px solid ${all ? "rgba(99,102,241,0.25)" : "var(--border-subtle)"}`,
+              color: all ? "var(--accent)" : "var(--text-2)",
+            }}
+          >
+            {b.label}
+            <span style={{
+              fontSize: 10, fontWeight: 700,
+              padding: "1px 5px", borderRadius: 9999,
+              background: all ? "rgba(99,102,241,0.18)" : "var(--bg)",
+              color: all ? "var(--accent)" : "var(--text-3)",
+            }}>
+              {all ? "all" : `${b.selected.length}/${b.total}`}
+            </span>
+          </span>
+        );
+      })}
+    </div>
   );
 }
 
@@ -387,28 +598,7 @@ export function RolesManager() {
                       </div>
                     </td>
                     <td style={{ padding: "14px 20px" }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                        {role.permissions.slice(0, 5).map((p) => (
-                          <span
-                            key={p}
-                            style={{
-                              fontSize: 11,
-                              padding: "2px 8px",
-                              borderRadius: 9999,
-                              background: "var(--surface)",
-                              border: "1px solid var(--border)",
-                              color: "var(--text-2)",
-                            }}
-                          >
-                            {p.replace(/_/g, " ")}
-                          </span>
-                        ))}
-                        {role.permissions.length > 5 && (
-                          <span style={{ fontSize: 11, color: "var(--text-3)" }}>
-                            +{role.permissions.length - 5} more
-                          </span>
-                        )}
-                      </div>
+                      <RolePermissionSummary permissions={role.permissions} />
                     </td>
                     <td style={{ padding: "14px 20px", fontSize: 13, color: "var(--text-3)" }}>
                       {role.userCount}

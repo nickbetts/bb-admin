@@ -380,8 +380,30 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         setConversionsByChannel(Array.isArray(cvCh) ? cvCh : []);
         setAiReferrals(Array.isArray(aiRef) ? aiRef : []);
         setLandingPages(Array.isArray(lp) ? lp : []);
-        setUserJourneys(Array.isArray(uj) ? uj : []);
-        setCohortRetention(Array.isArray(cr) ? cr : []);
+        // user-journeys API returns { pages, topEntryPages, topExitPages } — flatten to { path, users, conversions }-shaped rows
+        setUserJourneys(
+          Array.isArray(uj?.pages)
+            ? uj.pages.map((p: { pagePath: string; entrances: number; pageviews: number }) => ({
+                path: p.pagePath,
+                users: p.entrances,
+                conversions: p.pageviews,
+              }))
+            : Array.isArray(uj)
+              ? uj
+              : []
+        );
+        // cohort-retention API returns { cohortActiveUsers, retentionRates: [{ week, rate }] } — collapse into one synthetic row so the grid renders
+        setCohortRetention(
+          Array.isArray(cr?.retentionRates) && cr.retentionRates.length > 0
+            ? [{
+                cohort: "All cohorts",
+                users: cr.cohortActiveUsers ?? 0,
+                retention: (cr.retentionRates as { week: number; rate: number }[]).map((r) => r.rate),
+              }]
+            : Array.isArray(cr)
+              ? cr
+              : []
+        );
         setSessionDuration(Array.isArray(sessDurData) ? sessDurData : []);
         setEventParameters(Array.isArray(evParamData) ? evParamData : []);
         setContentGrouping(Array.isArray(contGrpData) ? contGrpData : []);
@@ -769,6 +791,10 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
       })()}
 
       {/* Demographics */}
+      {/* Demographics */}
+      {!loading && !error && isExplicit("demographics") && (!demographics || (demographics.ageGroups.length === 0 && demographics.genderSplit.length === 0)) && (
+        <EmptyBlockState title="Demographics" message="No demographic data available. Enable Google Signals in GA4 admin to unlock age and gender breakdowns." />
+      )}
       {show("demographics") && demographics && (demographics.ageGroups.length > 0 || demographics.genderSplit.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {demographics.ageGroups.length > 0 && (
@@ -903,12 +929,12 @@ export function GA4Section({ propertyId, startDate, endDate, compareStartDate, c
         <EmptyBlockState title="User Journeys" />
       )}
       {!loading && !error && show("user_journeys") && userJourneys.length > 0 && (
-        <SectionCard title="User Journeys" subtitle="Most common navigation paths">
+        <SectionCard title="User Journeys" subtitle="Top entry pages by entrances">
           <div style={{ overflowX: "auto" }}>
             <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 3fr) repeat(2, minmax(90px, 1fr))", gap: 0, fontSize: 13 }}>
-              <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)" }}>Path</div>
-              <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)", textAlign: "right" }}>Users</div>
-              <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)", textAlign: "right" }}>Conversions</div>
+              <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)" }}>Page</div>
+              <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)", textAlign: "right" }}>Entrances</div>
+              <div style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-4)", borderBottom: "2px solid var(--border)", textAlign: "right" }}>Pageviews</div>
               {userJourneys.map((uj, i) => (
                 <div key={i} style={{ display: "contents" }}>
                   <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text)", fontFamily: "monospace", fontSize: 12 }} title={uj.path}>{uj.path}</div>
