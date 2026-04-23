@@ -260,75 +260,285 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
     if (res.ok) setTimeData((d) => ({ ...d, logs: d.logs.filter((l) => l.id !== id) }));
   }
 
+  // Close on Escape + lock body scroll while modal is open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  const statusMeta: Record<string, { label: string; tone: string; bg: string }> = {
+    to_do:               { label: "To do",                  tone: "#64748b", bg: "rgba(100,116,139,0.12)" },
+    in_progress:         { label: "In progress",            tone: "#0ea5e9", bg: "rgba(14,165,233,0.12)" },
+    for_approval:        { label: "For approval",           tone: "#f59e0b", bg: "rgba(245,158,11,0.14)" },
+    signed_off_internal: { label: "Signed off internally",  tone: "#8b5cf6", bg: "rgba(139,92,246,0.14)" },
+    signed_off_client:   { label: "Signed off by client",   tone: "#10b981", bg: "rgba(16,185,129,0.14)" },
+    done:                { label: "Done",                   tone: "#16a34a", bg: "rgba(22,163,74,0.14)" },
+    cancelled:           { label: "Cancelled",              tone: "#94a3b8", bg: "rgba(148,163,184,0.14)" },
+  };
+  const priorityMeta: Record<string, { tone: string; bg: string }> = {
+    low:    { tone: "#64748b", bg: "rgba(100,116,139,0.12)" },
+    medium: { tone: "#0ea5e9", bg: "rgba(14,165,233,0.12)" },
+    high:   { tone: "#f59e0b", bg: "rgba(245,158,11,0.14)" },
+    urgent: { tone: "#ef4444", bg: "rgba(239,68,68,0.14)" },
+  };
+  const currentStatus = statusMeta[draft.status] ?? statusMeta.to_do!;
+
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 50,
-        }}
-      />
-      {/* Drawer */}
-      <aside style={{
-        position: "fixed", top: 0, right: 0, bottom: 0, width: "min(680px, 100vw)",
-        background: "var(--bg-1)", zIndex: 51, boxShadow: "-16px 0 60px rgba(0,0,0,0.3)",
-        display: "flex", flexDirection: "column",
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 24,
+        background: "rgb(0 0 0 / 0.5)",
+        backdropFilter: "blur(6px)",
+        animation: "confirm-backdrop-in 0.15s ease-out",
+      }}
+    >
+      <div style={{
+        width: "min(960px, 100%)", maxHeight: "calc(100vh - 48px)",
+        background: "var(--bg)", border: "1px solid var(--border-subtle)",
+        borderRadius: 16, boxShadow: "0 30px 80px rgb(0 0 0 / 0.35)",
+        display: "flex", flexDirection: "column", overflow: "hidden",
+        animation: "confirm-dialog-in 0.18s cubic-bezier(0.16, 1, 0.3, 1)",
       }}>
-        {/* Header */}
-        <header style={{ padding: "14px 20px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        {/* Header bar */}
+        <header style={{
+          padding: "16px 22px", borderBottom: "1px solid var(--border-subtle)",
+          display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexShrink: 0,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
+            {draft.category && (
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                fontSize: 11, fontWeight: 600, letterSpacing: 0.3,
+                color: "var(--text-2)", background: "var(--bg-2)",
+                borderRadius: 6, padding: "4px 9px", flexShrink: 0,
+                border: "1px solid var(--border-subtle)",
+              }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: draft.category.color ?? "var(--text-3)" }} />
+                {categoryName}
+              </span>
+            )}
             <span style={{
-              fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase",
-              background: "var(--bg-2)", color: "var(--text-3)", borderRadius: 6, padding: "3px 8px", flexShrink: 0,
-            }}>{categoryName}</span>
-            {saving && <Loader2 style={{ width: 13, height: 13, color: "var(--text-4)" }} className="animate-spin" />}
+              display: "inline-flex", alignItems: "center", gap: 6,
+              fontSize: 11, fontWeight: 600,
+              color: currentStatus.tone, background: currentStatus.bg,
+              borderRadius: 6, padding: "4px 9px", flexShrink: 0,
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: currentStatus.tone }} />
+              {currentStatus.label}
+            </span>
+            <div style={{ flex: 1 }} />
+            {saving && (
+              <span style={{ fontSize: 11, color: "var(--text-3)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <Loader2 className="animate-spin" style={{ width: 12, height: 12 }} /> Saving…
+              </span>
+            )}
             {savedAt && !saving && Date.now() - savedAt < 2500 && (
               <span style={{ fontSize: 11, color: "var(--success)", display: "inline-flex", alignItems: "center", gap: 4 }}>
                 <Check style={{ width: 12, height: 12 }} /> Saved
               </span>
             )}
           </div>
-          <button onClick={onClose} className="btn btn-ghost btn-sm" title="Close" style={{ borderRadius: 8, flexShrink: 0 }}>
-            <X style={{ width: 16, height: 16 }} />
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              flexShrink: 0, background: "transparent", border: "none",
+              color: "var(--text-3)", cursor: "pointer",
+              padding: 6, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <X style={{ width: 18, height: 18 }} />
           </button>
         </header>
 
-        <div style={{ overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 20, flex: 1 }}>
-          {/* Title */}
-          <div>
+        {/* Body — two-column layout */}
+        <div style={{
+          flex: 1, display: "grid", gridTemplateColumns: "minmax(0,1fr) 320px",
+          overflow: "hidden", minHeight: 0,
+        }}>
+          {/* MAIN COLUMN */}
+          <div style={{
+            overflowY: "auto", padding: "24px 28px",
+            display: "flex", flexDirection: "column", gap: 24,
+            borderRight: "1px solid var(--border-subtle)",
+          }}>
+            {/* Title */}
             <textarea
               value={draft.title}
               onChange={(e) => { update("title", e.target.value); e.target.style.height = "auto"; e.target.style.height = `${e.target.scrollHeight}px`; }}
               onBlur={() => draft.title !== task.title && void save({ title: draft.title })}
               rows={1}
+              placeholder="Task title"
               style={{
-                width: "100%", fontSize: 20, fontWeight: 700, color: "var(--text)",
+                width: "100%", fontSize: 22, fontWeight: 700, color: "var(--text)",
                 background: "transparent", border: "none", outline: "none", resize: "none",
-                padding: 0, lineHeight: 1.35, fontFamily: "inherit",
-                overflowY: "hidden",
+                padding: 0, lineHeight: 1.3, fontFamily: "inherit",
+                overflowY: "hidden", letterSpacing: "-0.01em",
               }}
             />
-          </div>
 
-          {/* Description */}
-          <div>
-            <label className="form-label" style={{ marginBottom: 6 }}>Description</label>
-            <textarea
-              value={draft.description ?? ""}
-              onChange={(e) => update("description", e.target.value)}
-              onBlur={() => draft.description !== task.description && void save({ description: draft.description })}
-              className="form-input"
-              rows={3}
-              placeholder="Add a description…"
-              style={{ resize: "vertical" }}
-            />
-          </div>
+            {/* Description */}
+            <Field label="Description">
+              <textarea
+                value={draft.description ?? ""}
+                onChange={(e) => update("description", e.target.value)}
+                onBlur={() => draft.description !== task.description && void save({ description: draft.description })}
+                className="form-input"
+                rows={3}
+                placeholder="Add more detail…"
+                style={{ resize: "vertical", minHeight: 80 }}
+              />
+            </Field>
 
-          {/* Status / Priority / Due date */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            {/* Quick sign-off actions */}
+            {(draft.status === "for_approval" || draft.status === "signed_off_internal") && (
+              <div style={{
+                display: "flex", gap: 8, padding: "12px 14px", flexWrap: "wrap", alignItems: "center",
+                background: "rgba(99,102,241,0.06)", borderRadius: 10, border: "1px solid rgba(99,102,241,0.18)",
+              }}>
+                <span style={{ fontSize: 12, color: "var(--text-2)", fontWeight: 600, marginRight: 4 }}>Quick sign-off:</span>
+                {draft.status === "for_approval" && (
+                  <button onClick={() => void save({ status: "signed_off_internal" })} className="btn btn-secondary btn-sm">
+                    Internal sign-off
+                  </button>
+                )}
+                <button onClick={() => void save({ status: "signed_off_client" })} className="btn btn-primary btn-sm">
+                  Client sign-off (manual)
+                </button>
+              </div>
+            )}
+
+            {/* Approval notes */}
+            <Field label="Approval notes">
+              <textarea
+                value={draft.approvalNotes ?? ""}
+                onChange={(e) => update("approvalNotes", e.target.value)}
+                onBlur={() => draft.approvalNotes !== task.approvalNotes && void save({ approvalNotes: draft.approvalNotes })}
+                className="form-input"
+                rows={2}
+                placeholder="Notes from approval discussions, requested changes, etc."
+                style={{ resize: "vertical" }}
+              />
+            </Field>
+
+            {/* Outcome */}
+            <Field label="Outcome / result">
+              <textarea
+                value={draft.outcome ?? ""}
+                onChange={(e) => update("outcome", e.target.value)}
+                onBlur={() => draft.outcome !== task.outcome && void save({ outcome: draft.outcome })}
+                className="form-input"
+                rows={2}
+                placeholder="What happened once this was done?"
+                style={{ resize: "vertical" }}
+              />
+            </Field>
+
+            {/* Comments */}
             <div>
-              <label className="form-label">Status</label>
+              <SectionHeading icon={<MessageSquare style={{ width: 14, height: 14 }} />}>
+                Comments {comments.length > 0 && <span style={{ color: "var(--text-3)", fontWeight: 500, marginLeft: 4 }}>· {comments.length}</span>}
+              </SectionHeading>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
+                {comments.length === 0 && (
+                  <p style={{ fontSize: 13, color: "var(--text-3)", margin: 0 }}>No comments yet — start the conversation.</p>
+                )}
+                {comments.map((c) => (
+                  <div key={c.id} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{
+                      width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
+                      background: avatarColour(c.user.id),
+                      color: "white", fontSize: 11, fontWeight: 700,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {avatarInitials(c.user)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{c.user.name ?? c.user.email}</span>
+                          <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                            {new Date(c.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => void deleteComment(c.id)}
+                          aria-label="Delete comment"
+                          style={{ background: "transparent", border: "none", color: "var(--text-4)", cursor: "pointer", padding: 4, borderRadius: 4, display: "flex" }}
+                        >
+                          <Trash2 style={{ width: 12, height: 12 }} />
+                        </button>
+                      </div>
+                      <div style={{
+                        background: "var(--bg-2)", borderRadius: 10, padding: "9px 12px",
+                        border: "1px solid var(--border-subtle)",
+                      }}>
+                        <p style={{ fontSize: 13, color: "var(--text-2)", margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{c.body}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Composer */}
+              <div style={{
+                marginTop: 14, display: "flex", gap: 0, alignItems: "stretch",
+                border: "1px solid var(--border-subtle)", borderRadius: 12,
+                background: "var(--bg)", overflow: "hidden",
+                transition: "border-color 0.15s",
+              }}>
+                <textarea
+                  value={commentDraft}
+                  onChange={(e) => setCommentDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void submitComment(); }
+                  }}
+                  placeholder="Write a comment… (⌘/Ctrl+Enter to send)"
+                  rows={2}
+                  style={{
+                    flex: 1, padding: "10px 14px", fontSize: 13, fontFamily: "inherit",
+                    background: "transparent", border: "none", outline: "none",
+                    color: "var(--text)", resize: "none", minHeight: 60,
+                  }}
+                />
+                <button
+                  onClick={() => void submitComment()}
+                  disabled={commentSubmitting || !commentDraft.trim()}
+                  title="Send (⌘/Ctrl+Enter)"
+                  style={{
+                    background: commentDraft.trim() ? "var(--gradient-accent)" : "var(--bg-2)",
+                    color: commentDraft.trim() ? "white" : "var(--text-4)",
+                    border: "none", padding: "0 16px", cursor: commentDraft.trim() ? "pointer" : "not-allowed",
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {commentSubmitting ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> : <Send style={{ width: 14, height: 14 }} />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* SIDE COLUMN — properties & meta */}
+          <div style={{
+            overflowY: "auto", padding: "24px 22px",
+            display: "flex", flexDirection: "column", gap: 22,
+            background: "var(--bg-2)",
+          }}>
+            {/* Status */}
+            <SideField label="Status">
               <select
                 value={draft.status}
                 onChange={(e) => { update("status", e.target.value); void save({ status: e.target.value }); }}
@@ -336,284 +546,282 @@ export function TaskDrawer({ clientId, task, users, categoryName, onClose, onCha
               >
                 {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
-            </div>
-            <div>
-              <label className="form-label">Priority</label>
-              <select
-                value={draft.priority}
-                onChange={(e) => { update("priority", e.target.value); void save({ priority: e.target.value }); }}
-                className="form-input"
-              >
-                {PRIORITY_OPTIONS.map((p) => <option key={p} value={p}>{p[0]!.toUpperCase() + p.slice(1)}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="form-label">Due date</label>
+            </SideField>
+
+            {/* Priority */}
+            <SideField label="Priority">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                {PRIORITY_OPTIONS.map((p) => {
+                  const isOn = draft.priority === p;
+                  const meta = priorityMeta[p]!;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => { update("priority", p); void save({ priority: p }); }}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center",
+                        padding: "7px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                        cursor: "pointer", textTransform: "capitalize",
+                        background: isOn ? meta.bg : "var(--bg)",
+                        color: isOn ? meta.tone : "var(--text-2)",
+                        border: `1px solid ${isOn ? meta.tone : "var(--border-subtle)"}`,
+                        transition: "all 0.12s",
+                      }}
+                    >
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: meta.tone }} />
+                      {p}
+                    </button>
+                  );
+                })}
+              </div>
+            </SideField>
+
+            {/* Due date */}
+            <SideField label="Due date">
               <input
                 type="date"
                 value={draft.dueDate ?? ""}
                 onChange={(e) => { update("dueDate", e.target.value || null); void save({ dueDate: e.target.value || null }); }}
                 className="form-input"
               />
-            </div>
-          </div>
+            </SideField>
 
-          {/* Quick sign-off actions */}
-          {(draft.status === "for_approval" || draft.status === "signed_off_internal") && (
-            <div style={{ display: "flex", gap: 8, padding: "10px 14px", background: "rgba(99,102,241,0.06)", borderRadius: 10, border: "1px solid rgba(99,102,241,0.2)", flexWrap: "wrap" }}>
-              {draft.status === "for_approval" && (
-                <button onClick={() => void save({ status: "signed_off_internal" })} className="btn btn-secondary btn-sm">
-                  Mark internally signed off
-                </button>
+            {/* Assignees */}
+            <SideField label={`Assignees${draft.assignees.length ? ` · ${draft.assignees.length}` : ""}`}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {users.map((u) => {
+                  const isOn = draft.assignees.some((a) => a.user.id === u.id);
+                  const initials = u.name ? u.name.trim().split(/\s+/).map((p) => p[0]).join("").toUpperCase().slice(0, 2) : u.email[0]!.toUpperCase();
+                  return (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => toggleAssignee(u.id)}
+                      title={u.email}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "4px 10px 4px 4px", borderRadius: 99, fontSize: 12, fontWeight: 600,
+                        cursor: "pointer",
+                        border: `1px solid ${isOn ? "var(--accent)" : "var(--border-subtle)"}`,
+                        background: isOn ? "rgba(99,102,241,0.1)" : "var(--bg)",
+                        color: isOn ? "var(--accent-text)" : "var(--text-2)",
+                        transition: "all 0.12s",
+                      }}
+                    >
+                      <span style={{
+                        width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                        background: isOn ? "var(--accent)" : avatarColour(u.id),
+                        color: "white", fontSize: 9, fontWeight: 800,
+                        display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        {initials}
+                      </span>
+                      <span style={{ maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {u.name ?? u.email.split("@")[0]}
+                      </span>
+                    </button>
+                  );
+                })}
+                {users.length === 0 && <span style={{ fontSize: 12, color: "var(--text-3)" }}>No teammates available</span>}
+              </div>
+            </SideField>
+
+            {/* Send to client */}
+            <SideField label="Client portal">
+              <select
+                value={draft.clientPortalUserId ?? ""}
+                onChange={(e) => {
+                  const value = e.target.value || null;
+                  update("clientPortalUserId", value);
+                  void save({ clientPortalUserId: value });
+                }}
+                className="form-input"
+                disabled={portalUsers.length === 0}
+              >
+                <option value="">Internal only</option>
+                {portalUsers.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name ?? u.email}</option>
+                ))}
+              </select>
+              {portalUsers.length === 0 && (
+                <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 6, marginBottom: 0 }}>
+                  Add portal users in client settings to send tasks to clients.
+                </p>
               )}
-              <button onClick={() => void save({ status: "signed_off_client" })} className="btn btn-primary btn-sm">
-                Mark signed off by client (manual)
-              </button>
-            </div>
-          )}
+              {draft.clientPortalUserId && draft.clientCompletedAt && (
+                <p style={{ fontSize: 11, color: "var(--success)", marginTop: 6, marginBottom: 0, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <Check style={{ width: 11, height: 11 }} /> Client marked done {new Date(draft.clientCompletedAt).toLocaleDateString("en-GB")}
+                </p>
+              )}
+            </SideField>
 
-          {/* Assignees */}
-          <div>
-            <label className="form-label" style={{ marginBottom: 8 }}>Assignees</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {users.map((u) => {
-                const isOn = draft.assignees.some((a) => a.user.id === u.id);
-                return (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => toggleAssignee(u.id)}
-                    title={u.email}
-                    style={{
-                      display: "inline-flex", alignItems: "center", gap: 7,
-                      padding: "5px 12px 5px 6px", borderRadius: 99, fontSize: 12, fontWeight: 600,
-                      cursor: "pointer", border: "2px solid",
-                      borderColor: isOn ? "var(--accent)" : "var(--border-subtle)",
-                      background: isOn ? "rgba(99,102,241,0.1)" : "var(--bg-2)",
-                      color: isOn ? "var(--accent)" : "var(--text-2)",
-                      transition: "all 0.12s",
-                    }}
-                  >
-                    <span style={{
-                      width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
-                      background: isOn ? "var(--accent)" : "var(--bg-1)",
-                      color: isOn ? "white" : "var(--text-3)",
-                      fontSize: 9, fontWeight: 800,
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      border: "1px solid var(--border-subtle)",
-                    }}>
-                      {(u.name ? u.name.trim().split(/\s+/).map((p) => p[0]).join("").toUpperCase().slice(0, 2) : u.email[0]!.toUpperCase())}
-                    </span>
-                    {u.name ?? u.email.split("@")[0]}
-                  </button>
-                );
-              })}
-              {users.length === 0 && <span style={{ fontSize: 12, color: "var(--text-3)" }}>No users available</span>}
-            </div>
-          </div>
-
-          {/* Send to client portal */}
-          <div>
-            <label className="form-label">Send to client (portal)</label>
-            <select
-              value={draft.clientPortalUserId ?? ""}
-              onChange={(e) => {
-                const value = e.target.value || null;
-                update("clientPortalUserId", value);
-                void save({ clientPortalUserId: value });
-              }}
-              className="form-input"
+            {/* Time tracking */}
+            <SideField
+              label="Time tracking"
+              right={<span style={{ fontSize: 11, color: "var(--text-3)" }}>Total <strong style={{ color: "var(--text)" }}>{formatDuration(liveTotalMs)}</strong></span>}
             >
-              <option value="">— Internal only —</option>
-              {portalUsers.map((u) => (
-                <option key={u.id} value={u.id}>{u.name ?? u.email}</option>
-              ))}
-            </select>
-            {portalUsers.length === 0 && (
-              <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 4 }}>
-                No portal users for this client. Add one from the client settings to enable client tasks.
-              </p>
-            )}
-            {draft.clientPortalUserId && draft.clientCompletedAt && (
-              <p style={{ fontSize: 11, color: "var(--success)", marginTop: 4 }}>
-                Client marked done: {new Date(draft.clientCompletedAt).toLocaleString("en-GB")}
-              </p>
-            )}
-          </div>
-
-          {/* Approval audit */}
-          {(draft.internalApprovedAt || draft.clientApprovedAt) && (
-            <div style={{ background: "var(--bg-2)", borderRadius: "var(--r-sm)", padding: 12, fontSize: 12, color: "var(--text-3)", display: "flex", flexDirection: "column", gap: 4 }}>
-              {draft.internalApprovedAt && (
-                <div>Signed off internally: {new Date(draft.internalApprovedAt).toLocaleString("en-GB")}</div>
-              )}
-              {draft.clientApprovedAt && (
-                <div>
-                  Signed off by client: {new Date(draft.clientApprovedAt).toLocaleString("en-GB")}
-                  {draft.clientApprovalSource && ` (${draft.clientApprovalSource})`}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Approval notes */}
-          <div>
-            <label className="form-label">Approval notes</label>
-            <textarea
-              value={draft.approvalNotes ?? ""}
-              onChange={(e) => update("approvalNotes", e.target.value)}
-              onBlur={() => draft.approvalNotes !== task.approvalNotes && void save({ approvalNotes: draft.approvalNotes })}
-              className="form-input"
-              rows={3}
-              placeholder="Notes from approval discussions, requested changes, etc."
-            />
-          </div>
-
-          {/* Outcome */}
-          <div>
-            <label className="form-label">Outcome / result</label>
-            <textarea
-              value={draft.outcome ?? ""}
-              onChange={(e) => update("outcome", e.target.value)}
-              onBlur={() => draft.outcome !== task.outcome && void save({ outcome: draft.outcome })}
-              className="form-input"
-              rows={3}
-              placeholder="What happened once this was done?"
-            />
-          </div>
-
-          {/* Time tracking */}
-          <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <label className="form-label" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 0 }}>
-                <Clock style={{ width: 13, height: 13 }} /> Time tracking
-              </label>
-              <span style={{ fontSize: 12, color: "var(--text-3)", fontWeight: 500 }}>
-                Total <strong style={{ color: "var(--text)" }}>{formatDuration(liveTotalMs)}</strong>
-              </span>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "var(--bg-2)", borderRadius: 12, border: "1px solid var(--border-subtle)" }}>
-              {timeData.activeForUser ? (
-                <>
-                  <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 0 4px rgba(239,68,68,0.2)" }} />
-                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 16, fontWeight: 700, color: "var(--text)" }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
+                background: "var(--bg)", borderRadius: 10, border: "1px solid var(--border-subtle)",
+              }}>
+                {timeData.activeForUser ? (
+                  <>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 0 4px rgba(239,68,68,0.18)", flexShrink: 0 }} />
+                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 15, fontWeight: 700, color: "var(--text)", flex: 1 }}>
                       {formatTimer(Date.now() - new Date(timeData.activeForUser.startedAt).getTime())}
                     </span>
-                    <span style={{ fontSize: 11, color: "var(--text-3)" }}>running</span>
-                  </div>
-                  <button onClick={() => void stopTimer()} disabled={timerWorking} className="btn btn-secondary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <Pause style={{ width: 12, height: 12 }} /> Stop
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div style={{ flex: 1, fontSize: 12, color: "var(--text-3)" }}>
-                    {hasActiveTimer
-                      ? "Another teammate has a timer running on this task."
-                      : "Start a timer to log time spent on this task."}
-                  </div>
-                  <button onClick={() => void startTimer()} disabled={timerWorking} className="btn btn-primary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <Play style={{ width: 12, height: 12 }} /> Start
-                  </button>
-                </>
-              )}
-            </div>
-
-            {timeData.logs.length > 0 && (
-              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
-                {timeData.logs.map((l) => (
-                  <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, padding: "7px 10px", borderRadius: 8, background: "var(--bg-2)", border: "1px solid var(--border-subtle)" }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: l.endedAt ? "var(--text-4)" : "#ef4444", flexShrink: 0 }} />
-                    <span style={{ color: "var(--text-2)", flexShrink: 0, fontWeight: 600 }}>{l.user.name ?? l.user.email}</span>
-                    <span style={{ color: "var(--text-4)", flex: 1 }}>
-                      {new Date(l.startedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                    <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "var(--text)", fontWeight: 700 }}>
-                      {l.endedAt
-                        ? formatDuration(l.durationMs ?? 0)
-                        : formatDuration(Math.max(0, Date.now() - new Date(l.startedAt).getTime()))}
-                    </span>
-                    <button onClick={() => void deleteTimeLog(l.id)} className="btn btn-ghost btn-sm" style={{ padding: 2, color: "var(--text-4)" }} title="Delete entry">
-                      <Trash2 style={{ width: 11, height: 11 }} />
+                    <button onClick={() => void stopTimer()} disabled={timerWorking} className="btn btn-secondary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <Pause style={{ width: 11, height: 11 }} /> Stop
                     </button>
-                  </div>
-                ))}
+                  </>
+                ) : (
+                  <>
+                    <Clock style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontSize: 12, color: "var(--text-3)" }}>
+                      {hasActiveTimer ? "Teammate has a timer running" : "Not started"}
+                    </span>
+                    <button onClick={() => void startTimer()} disabled={timerWorking} className="btn btn-primary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <Play style={{ width: 11, height: 11 }} /> Start
+                    </button>
+                  </>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Comments */}
-          <div>
-            <label className="form-label" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-              <MessageSquare style={{ width: 13, height: 13 }} /> Comments {comments.length > 0 && <span style={{ color: "var(--text-3)", fontWeight: 400 }}>({comments.length})</span>}
-            </label>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
-              {comments.length === 0 && (
-                <p style={{ fontSize: 12, color: "var(--text-3)", margin: 0, fontStyle: "italic" }}>No comments yet — start the conversation.</p>
-              )}
-              {comments.map((c) => (
-                <div key={c.id} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <div style={{
-                    width: 30, height: 30, borderRadius: "50%", flexShrink: 0,
-                    background: `hsl(${(c.user.id.charCodeAt(0) * 31 + c.user.id.charCodeAt(1)) % 360}, 55%, 45%)`,
-                    color: "white", fontSize: 11, fontWeight: 700,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    {(c.user.name ? c.user.name[0] : c.user.email[0])?.toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1, background: "var(--bg-2)", borderRadius: "0 10px 10px 10px", padding: "8px 12px", border: "1px solid var(--border-subtle)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{c.user.name ?? c.user.email}</span>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 11, color: "var(--text-4)" }}>
-                          {new Date(c.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                        </span>
-                        <button onClick={() => void deleteComment(c.id)} className="btn btn-ghost btn-sm" style={{ padding: 2, color: "var(--text-4)" }} title="Delete">
-                          <Trash2 style={{ width: 11, height: 11 }} />
-                        </button>
-                      </div>
+              {timeData.logs.length > 0 && (
+                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 2 }}>
+                  {timeData.logs.slice(0, 6).map((l) => (
+                    <div key={l.id} style={{
+                      display: "flex", alignItems: "center", gap: 8, fontSize: 11,
+                      padding: "6px 8px", borderRadius: 6,
+                    }}>
+                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: l.endedAt ? "var(--text-4)" : "#ef4444", flexShrink: 0 }} />
+                      <span style={{ color: "var(--text-2)", fontWeight: 600, flexShrink: 0, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {(l.user.name ?? l.user.email).split(" ")[0]}
+                      </span>
+                      <span style={{ color: "var(--text-4)", flex: 1, fontSize: 10 }}>
+                        {new Date(l.startedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                      </span>
+                      <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", color: "var(--text)", fontWeight: 700, fontSize: 11 }}>
+                        {l.endedAt
+                          ? formatDuration(l.durationMs ?? 0)
+                          : formatDuration(Math.max(0, Date.now() - new Date(l.startedAt).getTime()))}
+                      </span>
+                      <button
+                        onClick={() => void deleteTimeLog(l.id)}
+                        aria-label="Delete entry"
+                        style={{ background: "transparent", border: "none", color: "var(--text-4)", cursor: "pointer", padding: 2, borderRadius: 3, display: "flex" }}
+                      >
+                        <Trash2 style={{ width: 10, height: 10 }} />
+                      </button>
                     </div>
-                    <p style={{ fontSize: 13, color: "var(--text-2)", margin: 0, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{c.body}</p>
-                  </div>
+                  ))}
+                  {timeData.logs.length > 6 && (
+                    <span style={{ fontSize: 11, color: "var(--text-4)", padding: "4px 8px" }}>+ {timeData.logs.length - 6} earlier entries</span>
+                  )}
                 </div>
-              ))}
-            </div>
+              )}
+            </SideField>
 
-            <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-              <textarea
-                value={commentDraft}
-                onChange={(e) => setCommentDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void submitComment(); }
-                }}
-                placeholder="Write a comment… (⌘/Ctrl+Enter to send)"
-                className="form-input"
-                rows={2}
-                style={{ flex: 1, resize: "vertical" }}
-              />
-              <button
-                onClick={() => void submitComment()}
-                disabled={commentSubmitting || !commentDraft.trim()}
-                className="btn btn-primary"
-                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 14px", alignSelf: "stretch" }}
-                title="Send comment"
-              >
-                {commentSubmitting ? <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" /> : <Send style={{ width: 13, height: 13 }} />}
-              </button>
-            </div>
+            {/* Approval audit */}
+            {(draft.internalApprovedAt || draft.clientApprovedAt) && (
+              <SideField label="History">
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 11, color: "var(--text-3)" }}>
+                  {draft.internalApprovedAt && (
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#8b5cf6", marginTop: 5, flexShrink: 0 }} />
+                      <span>Signed off internally · {new Date(draft.internalApprovedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                    </div>
+                  )}
+                  {draft.clientApprovedAt && (
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", marginTop: 5, flexShrink: 0 }} />
+                      <span>
+                        Signed off by client · {new Date(draft.clientApprovedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        {draft.clientApprovalSource && <span style={{ color: "var(--text-4)" }}> ({draft.clientApprovalSource})</span>}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </SideField>
+            )}
           </div>
         </div>
 
-        <footer style={{ padding: "14px 24px", borderTop: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-          <button onClick={handleDelete} className="btn btn-ghost btn-sm" style={{ color: "var(--danger)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+        {/* Footer */}
+        <footer style={{
+          padding: "12px 22px", borderTop: "1px solid var(--border-subtle)",
+          display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0,
+          background: "var(--bg)",
+        }}>
+          <button
+            onClick={handleDelete}
+            style={{
+              background: "transparent", border: "none", cursor: "pointer",
+              color: "var(--danger)", display: "inline-flex", alignItems: "center", gap: 6,
+              fontSize: 13, fontWeight: 500, padding: "6px 8px", borderRadius: 6,
+            }}
+          >
             <Trash2 style={{ width: 13, height: 13 }} /> Delete task
           </button>
-          <button onClick={onClose} className="btn btn-secondary" style={{ minWidth: 80 }}>Done</button>
+          <button onClick={onClose} className="btn btn-secondary" style={{ minWidth: 90 }}>Done</button>
         </footer>
-      </aside>
-    </>
+      </div>
+    </div>
   );
+}
+
+// ── small layout helpers ────────────────────────────────────────────────────
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="form-label" style={{ marginBottom: 6, display: "block" }}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function SideField({ label, right, children }: { label: string; right?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        marginBottom: 8,
+      }}>
+        <span style={{
+          fontSize: 11, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase",
+          color: "var(--text-3)",
+        }}>{label}</span>
+        {right}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function SectionHeading({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div style={{
+      display: "inline-flex", alignItems: "center", gap: 8,
+      fontSize: 13, fontWeight: 600, color: "var(--text)",
+    }}>
+      <span style={{ color: "var(--text-3)", display: "inline-flex" }}>{icon}</span>
+      {children}
+    </div>
+  );
+}
+
+function avatarInitials(user: { name: string | null; email: string }) {
+  if (user.name) {
+    const parts = user.name.trim().split(/\s+/);
+    return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || user.name[0]!.toUpperCase();
+  }
+  return user.email[0]?.toUpperCase() ?? "?";
+}
+
+function avatarColour(seed: string) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return `hsl(${h % 360}, 55%, 45%)`;
 }
