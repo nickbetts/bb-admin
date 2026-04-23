@@ -1540,13 +1540,22 @@ a{color:var(--accent);text-decoration:none}
 }
 /* Print */
 @media print{
-  .sticky-nav,.watermark,.auth-gate,.copy-btn,.copy-btn-sm,.hero-orb{display:none!important}
-  .hero{min-height:auto;padding:3rem;page-break-after:always}
-  .stats-band{page-break-after:always}
-  .section{padding:2rem 0;break-inside:avoid;page-break-inside:avoid}
+  @page{margin:18mm 14mm}
+  .sticky-nav,.snav-dropdown,.snav-menu-btn,.watermark,.auth-gate,.copy-btn,.copy-btn-sm,.hero-orb,.cta-close,.lp-frame-wrap,.lp-iframe{display:none!important}
+  html,body{background:#fff!important;color:#0f172a!important}
+  .hero{min-height:auto;padding:2.5rem;page-break-after:always;background:#fff!important;color:#0f172a!important}
+  .hero h1,.hero-label,.hero-sub,.hero-meta-item,.hero-meta-item strong,.hero-meta-item span{color:#0f172a!important}
+  .hero-divider{background:#0f172a!important}
+  .stats-band{page-break-after:always;background:#f1f5f9!important}
+  .stats-band .stat-num{background:none!important;-webkit-text-fill-color:#0f172a!important;color:#0f172a!important}
+  .chapter-panel,.section,.section.dark,.section.alt{padding:1.25rem 0;break-inside:avoid;page-break-inside:avoid;background:#fff!important;color:#0f172a!important}
+  .section.dark *,.section.dark h2,.section.dark h3,.section.dark p{color:#0f172a!important}
   .ag-body{display:block!important}
   .article-body{display:block!important}
-  body{font-size:12px}
+  table,figure,.ad-card,.audience-card,.kw-table{break-inside:avoid;page-break-inside:avoid}
+  h1,h2,h3{break-after:avoid;page-break-after:avoid}
+  body{font-size:11.5px;line-height:1.55}
+  a{color:inherit!important;text-decoration:none!important}
 }
 
 /* ── Context section ────────────────────────────────────────── */
@@ -1813,6 +1822,34 @@ document.querySelectorAll('.snav-link').forEach(function(link){
     });
   },{threshold:0.15,rootMargin:'-80px 0px -60% 0px'});
   sections.forEach(function(s){observer.observe(s);});
+})();
+
+// Parent → iframe messaging: allow the React shell to drive the in-document
+// table of contents. Accepts { type: 'gp:scroll', id: '<sectionId>' }.
+window.addEventListener('message',function(event){
+  var data=event&&event.data;
+  if(!data||typeof data!=='object')return;
+  if(data.type==='gp:scroll'&&typeof data.id==='string'){
+    var el=document.getElementById(data.id);
+    if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  if(data.type==='gp:print'){
+    window.print();
+  }
+});
+
+// Iframe → parent: announce ready and surface the list of section ids so the
+// React shell can build a TOC even if the planDataJson is unavailable.
+(function(){
+  try{
+    var ids=Array.from(document.querySelectorAll('section.section[id]')).map(function(s){
+      var heading=s.querySelector('h2');
+      return {id:s.id,label:heading?heading.textContent.trim():s.id};
+    });
+    if(window.parent&&window.parent!==window){
+      window.parent.postMessage({type:'gp:ready',sections:ids,height:document.body.scrollHeight},'*');
+    }
+  }catch(e){/* ignore */}
 })();
 
 // Decode and inject landing page iframe content. Wire up the "Open in

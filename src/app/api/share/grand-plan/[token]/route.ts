@@ -19,6 +19,7 @@ export async function GET(
       sharePassword: true,
       shareExpiresAt: true,
       generatedHtml: true,
+      client: { select: { name: true } },
     },
   });
 
@@ -34,6 +35,7 @@ export async function GET(
     return NextResponse.json({
       id: plan.id,
       title: plan.title,
+      clientName: plan.client?.name ?? null,
       passwordRequired: true,
     });
   }
@@ -49,6 +51,7 @@ export async function GET(
   return NextResponse.json({
     id: plan.id,
     title: plan.title,
+    clientName: plan.client?.name ?? null,
     passwordRequired: false,
     html: plan.generatedHtml,
   });
@@ -71,6 +74,7 @@ export async function POST(
       sharePassword: true,
       shareExpiresAt: true,
       generatedHtml: true,
+      client: { select: { name: true } },
     },
   });
 
@@ -86,6 +90,7 @@ export async function POST(
     return NextResponse.json({
       id: plan.id,
       title: plan.title,
+      clientName: plan.client?.name ?? null,
       html: plan.generatedHtml,
     });
   }
@@ -111,6 +116,7 @@ export async function POST(
   return NextResponse.json({
     id: plan.id,
     title: plan.title,
+    clientName: plan.client?.name ?? null,
     html: plan.generatedHtml,
   });
 }

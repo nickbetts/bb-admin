@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect, use, useRef } from "react";
+import { useState, useEffect, use, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useToast } from "@/components/ui/Toast";
+import { Modal } from "@/components/ui/Modal";
+import { GenerationProgress } from "@/components/ui/GenerationProgress";
 import { PortalPublishToggle } from "@/components/portal/PortalPublishToggle";
 import {
   ArrowLeft,
@@ -22,7 +25,19 @@ import {
   Map,
   Settings,
   ChevronDown,
+  MoreHorizontal,
+  AlertTriangle,
+  History,
+  ArrowUpRight,
+  Printer,
+  Sparkles,
+  CircleCheck,
+  CircleAlert,
+  Circle,
+  ChevronRight,
 } from "lucide-react";
+
+// ─── Section configuration ─────────────────────────────────────────────────
 
 const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered: boolean }[] = [
   { key: "executiveSummary", label: "Executive Summary", description: "AI-generated overview of the strategy", aiPowered: true },
@@ -42,6 +57,24 @@ const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered
   { key: "servicesInvestment", label: "Services & Investment", description: "Pricing and timeline from proposal", aiPowered: false },
   { key: "mediaPlan", label: "Media Plan", description: "Budget allocation across channels", aiPowered: false },
 ];
+
+// Steps shown in the generation pipeline. These mirror the server's
+// generate-step endpoint but include estimates so the user can see whether
+// they should grab a coffee or wait.
+const PIPELINE_STEPS: { key: string; label: string; estSeconds: number }[] = [
+  { key: "start", label: "Initialising", estSeconds: 2 },
+  { key: "prepare-keywords", label: "Researching keywords", estSeconds: 30 },
+  { key: "prepare-content-data", label: "Collecting SEMrush data", estSeconds: 25 },
+  { key: "prepare-content", label: "Generating content strategy (Claude Opus)", estSeconds: 90 },
+  { key: "prepare-content-audit", label: "Auditing on-page SEO", estSeconds: 30 },
+  { key: "prepare-lp-brand", label: "Extracting brand context", estSeconds: 20 },
+  { key: "prepare-lp-draft", label: "Generating landing page draft", estSeconds: 60 },
+  { key: "prepare-lp-critique", label: "Critiquing landing page", estSeconds: 25 },
+  { key: "prepare-lp-refine-1", label: "Refining landing page (1/2)", estSeconds: 45 },
+  { key: "prepare-lp-refine-2", label: "Refining landing page (2/2)", estSeconds: 45 },
+];
+
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 interface GrandPlanFull {
   id: string;
@@ -72,14 +105,23 @@ interface GrandPlanFull {
   mediaPlan: { id: string; title: string } | null;
 }
 
+interface IframeSection {
+  id: string;
+  label: string;
+}
+
 interface Props {
   params: Promise<{ id: string }>;
 }
+
+// ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function GrandPlanViewPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
   const confirm = useConfirm();
+  const { toast } = useToast();
+
   const [plan, setPlan] = useState<GrandPlanFull | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -90,26 +132,34 @@ export default function GrandPlanViewPage({ params }: Props) {
 
   const [deleting, setDeleting] = useState(false);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [iframeSections, setIframeSections] = useState<IframeSection[]>([]);
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
 
   // Share state
   const [sharingBusy, setSharingBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [sharePassword, setSharePassword] = useState("");
-  const [showShareForm, setShowShareForm] = useState(false);
-  const [shareExpiry, setShareExpiry] = useState("0"); // days: 0 = never
+  const [shareExpiry, setShareExpiry] = useState("0");
+
+  // Action overflow
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const overflowRef = useRef<HTMLDivElement | null>(null);
 
   // Generation
   const [generating, setGenerating] = useState(false);
-  const [generationMessage, setGenerationMessage] = useState("");
+  const [stepStatus, setStepStatus] = useState<Record<string, "pending" | "running" | "done" | "skipped" | "failed">>({});
+  const [currentStepLabel, setCurrentStepLabel] = useState<string>("");
+  const [activeSectionStep, setActiveSectionStep] = useState<{ key: string; index: number; total: number } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // UwU chaos mode
+  // UwU chaos mode (off by default; opt-in via overflow menu)
   const [funMode, setFunMode] = useState(false);
   const funMessage = useGrandPlanUwu(generating && funMode);
-  const toggleFunMode = () => setFunMode((p) => !p);
 
   // Section toggles
-  const [enabledSections, setEnabledSections] = useState<Set<string>>(new Set(ALL_SECTIONS.map(s => s.key)));
+  const [enabledSections, setEnabledSections] = useState<Set<string>>(new Set(ALL_SECTIONS.map((s) => s.key)));
   const [showSectionConfig, setShowSectionConfig] = useState(false);
   const [savingSections, setSavingSections] = useState(false);
 
@@ -120,6 +170,9 @@ export default function GrandPlanViewPage({ params }: Props) {
   // Per-section regeneration
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
 
+  // Restore
+  const [restoringVersion, setRestoringVersion] = useState<string | null>(null);
+
   useEffect(() => {
     loadPlan();
     return () => {
@@ -128,6 +181,35 @@ export default function GrandPlanViewPage({ params }: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Listen for messages from the iframe (sections list + scroll height)
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      const data = event.data;
+      if (!data || typeof data !== "object") return;
+      if (data.type === "gp:ready" && Array.isArray(data.sections)) {
+        setIframeSections(data.sections as IframeSection[]);
+        setIframeLoaded(true);
+        if (iframeRef.current && typeof data.height === "number") {
+          iframeRef.current.style.height = Math.max(data.height, 600) + "px";
+        }
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  // Click-outside to close overflow menu
+  useEffect(() => {
+    if (!overflowOpen) return;
+    function onDoc(e: MouseEvent) {
+      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
+        setOverflowOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [overflowOpen]);
 
   async function loadPlan() {
     setLoading(true);
@@ -143,18 +225,14 @@ export default function GrandPlanViewPage({ params }: Props) {
       setTitleInput(gp.title);
       updateBlobUrl(gp.generatedHtml);
 
-      // Load section config
       try {
         const config = JSON.parse(gp.configJson || "{}");
-        if (config.sections?.length) {
-          setEnabledSections(new Set(config.sections));
-        }
-      } catch { /* ignore */ }
-
-      // If generating, start polling
-      if (gp.status === "generating") {
-        startPolling();
+        if (config.sections?.length) setEnabledSections(new Set(config.sections));
+      } catch {
+        /* ignore */
       }
+
+      if (gp.status === "generating") startPolling();
     } catch {
       setNotFound(true);
     } finally {
@@ -164,6 +242,8 @@ export default function GrandPlanViewPage({ params }: Props) {
 
   function updateBlobUrl(html: string | null) {
     if (blobUrl) URL.revokeObjectURL(blobUrl);
+    setIframeLoaded(false);
+    setIframeSections([]);
     if (html) {
       const blob = new Blob([html], { type: "text/html" });
       setBlobUrl(URL.createObjectURL(blob));
@@ -176,12 +256,11 @@ export default function GrandPlanViewPage({ params }: Props) {
     if (pollRef.current) return;
     let pollCount = 0;
     pollRef.current = setInterval(async () => {
-      // Safety cap: stop polling after 10 minutes (200 × 3s) to prevent infinite loops
       if (++pollCount > 200) {
         if (pollRef.current) clearInterval(pollRef.current);
         pollRef.current = null;
         setGenerating(false);
-        setGenerationMessage("Generation timed out. Please try again.");
+        toast("Generation timed out. Please try again.", "error");
         return;
       }
       try {
@@ -204,72 +283,76 @@ export default function GrandPlanViewPage({ params }: Props) {
     }, 3000);
   }
 
+  // ─── Generation ──────────────────────────────────────────────────────────
+
   async function handleGenerate() {
     if (!plan) return;
     setGenerating(true);
     setPlan((prev) => (prev ? { ...prev, status: "generating" } : prev));
 
+    const enabled = Array.from(enabledSections);
+
+    // Reset stepper
+    const initial: Record<string, "pending" | "running" | "done" | "skipped" | "failed"> = {};
+    for (const s of PIPELINE_STEPS) initial[s.key] = "pending";
+    for (const k of enabled) initial[`section:${k}`] = "pending";
+    initial["assemble"] = "pending";
+    setStepStatus(initial);
+    setActiveSectionStep(null);
+
     const sectionLabels: Record<string, string> = {};
     for (const s of ALL_SECTIONS) sectionLabels[s.key] = s.label;
 
-    try {
-      // Helper to call a step and handle errors
-      async function runStep(step: string, label: string): Promise<boolean> {
-        setGenerationMessage(label);
-        const res = await fetch(`/api/tools/grand-plan/${id}/generate-step`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ step }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: "Unknown error" }));
-          throw new Error(err.error || `Step "${step}" failed`);
-        }
-        const data = await res.json();
-        return !data.skipped;
+    async function runStep(stepKey: string, label: string, statusKey?: string): Promise<boolean> {
+      const sk = statusKey ?? stepKey;
+      setCurrentStepLabel(label);
+      setStepStatus((prev) => ({ ...prev, [sk]: "running" }));
+      const res = await fetch(`/api/tools/grand-plan/${id}/generate-step`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: stepKey }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        setStepStatus((prev) => ({ ...prev, [sk]: "failed" }));
+        throw new Error(err.error || `Step "${stepKey}" failed`);
       }
+      const data = await res.json();
+      const skipped = !!data.skipped;
+      setStepStatus((prev) => ({ ...prev, [sk]: skipped ? "skipped" : "done" }));
+      return !skipped;
+    }
 
-      // 1. Start — initialise plan data
-      await runStep("start", "Initialising...");
-
-      // 2. Prepare pipeline (each is its own 300s call)
-      await runStep("prepare-keywords", "Researching keywords...");
-      await runStep("prepare-content-data", "Collecting SEMrush data...");
-      await runStep("prepare-content", "Generating content strategy (Claude Opus)...");
-      await runStep("prepare-content-audit", "Auditing on-page SEO...");
-      await runStep("prepare-lp-brand", "Extracting brand context...");
-      await runStep("prepare-lp-draft", "Generating landing page draft...");
-      await runStep("prepare-lp-critique", "Critiquing landing page...");
-      await runStep("prepare-lp-refine-1", "Refining landing page (pass 1/2)...");
-      await runStep("prepare-lp-refine-2", "Refining landing page (pass 2/2)...");
-
-      // 3. Generate each enabled section sequentially
-      const enabled = Array.from(enabledSections);
+    try {
+      for (const s of PIPELINE_STEPS) {
+        await runStep(s.key, s.label);
+      }
       for (let i = 0; i < enabled.length; i++) {
         const key = enabled[i];
         const label = sectionLabels[key] || key;
-        await runStep(key, `Generating ${label} (${i + 1}/${enabled.length})...`);
+        setActiveSectionStep({ key, index: i + 1, total: enabled.length });
+        await runStep(key, `Generating ${label} (${i + 1}/${enabled.length})`, `section:${key}`);
       }
+      setActiveSectionStep(null);
+      await runStep("assemble", "Assembling final document");
 
-      // 4. Assemble — render HTML, create version
-      await runStep("assemble", "Assembling final document...");
-
-      // Done — reload plan to get the HTML
-      setGenerationMessage("Complete!");
+      setCurrentStepLabel("Complete!");
+      toast("Grand plan generated", "success");
       await loadPlan();
     } catch (error) {
-      // Stop polling immediately — the plan may still be in "generating" on the server
-      // (e.g. a 400 early-return that didn't update status). Without this, loadPlan()
-      // below would see status=generating and restart the poll indefinitely.
-      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
       const message = error instanceof Error ? error.message : "Generation failed";
-      setGenerationMessage(`Error: ${message}`);
-      // Reload plan to get the accurate server status
+      toast(message, "error");
       await loadPlan();
     } finally {
       setGenerating(false);
     }
   }
+
+  // ─── Refinement & section regeneration ───────────────────────────────────
 
   async function handleRefine() {
     if (!refinePrompt.trim()) return;
@@ -285,6 +368,9 @@ export default function GrandPlanViewPage({ params }: Props) {
         updateBlobUrl(data.html);
         await loadPlan();
         setRefinePrompt("");
+        toast("Refined", "success");
+      } else {
+        toast("Refinement failed", "error");
       }
     } finally {
       setRefining(false);
@@ -303,7 +389,35 @@ export default function GrandPlanViewPage({ params }: Props) {
         const data = await res.json();
         updateBlobUrl(data.html);
         await loadPlan();
+        toast(`Regenerated: ${labelFor(sectionKey)}`, "success");
+      } else {
+        toast(`Failed to regenerate ${labelFor(sectionKey)}`, "error");
       }
+    } finally {
+      setRegeneratingSection(null);
+    }
+  }
+
+  async function handleRegenerateFailed() {
+    if (!plan) return;
+    try {
+      const data = JSON.parse(plan.planDataJson || "{}");
+      const report = data.generationReport as Record<string, { status: string }> | undefined;
+      if (!report) return;
+      const failed = Object.entries(report)
+        .filter(([, r]) => r.status === "failed")
+        .map(([k]) => k);
+      if (!failed.length) return;
+      for (const key of failed) {
+        setRegeneratingSection(key);
+        await fetch(`/api/tools/grand-plan/${id}/regenerate-section`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sectionKey: key }),
+        });
+      }
+      await loadPlan();
+      toast(`Regenerated ${failed.length} failed section${failed.length === 1 ? "" : "s"}`, "success");
     } finally {
       setRegeneratingSection(null);
     }
@@ -327,10 +441,13 @@ export default function GrandPlanViewPage({ params }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ config: { sections } }),
       });
+      toast("Sections saved", "success");
     } finally {
       setSavingSections(false);
     }
   }
+
+  // ─── Title ───────────────────────────────────────────────────────────────
 
   async function handleSaveTitle() {
     if (!titleInput.trim() || !plan) return;
@@ -341,14 +458,14 @@ export default function GrandPlanViewPage({ params }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: titleInput.trim() }),
       });
-      if (res.ok) {
-        setPlan((prev) => (prev ? { ...prev, title: titleInput.trim() } : prev));
-      }
+      if (res.ok) setPlan((prev) => (prev ? { ...prev, title: titleInput.trim() } : prev));
     } finally {
       setSavingTitle(false);
       setEditingTitle(false);
     }
   }
+
+  // ─── Sharing ─────────────────────────────────────────────────────────────
 
   async function handleShare() {
     setSharingBusy(true);
@@ -356,13 +473,21 @@ export default function GrandPlanViewPage({ params }: Props) {
       const res = await fetch("/api/tools/grand-plan", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, action: "share", password: sharePassword || undefined, expiresInDays: parseInt(shareExpiry) || undefined }),
+        body: JSON.stringify({
+          id,
+          action: "share",
+          password: sharePassword || undefined,
+          expiresInDays: parseInt(shareExpiry) || undefined,
+        }),
       });
       if (res.ok) {
         const data = await res.json();
         setPlan((prev) => (prev ? { ...prev, shareToken: data.shareToken } : prev));
-        setShowShareForm(false);
+        setShareModalOpen(false);
         setSharePassword("");
+        toast("Share link created", "success");
+      } else {
+        toast("Failed to create share link", "error");
       }
     } finally {
       setSharingBusy(false);
@@ -378,6 +503,7 @@ export default function GrandPlanViewPage({ params }: Props) {
         body: JSON.stringify({ id, action: "unshare" }),
       });
       setPlan((prev) => (prev ? { ...prev, shareToken: null, sharePassword: null } : prev));
+      toast("Share link revoked", "info");
     } finally {
       setSharingBusy(false);
     }
@@ -387,12 +513,19 @@ export default function GrandPlanViewPage({ params }: Props) {
     if (!plan?.shareToken) return;
     const url = `${window.location.origin}/share/grand-plan/${plan.shareToken}`;
     await navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    toast("Link copied", "success");
   }
 
   async function handleDelete() {
-    if (!(await confirm({ title: "Delete this grand plan?", description: "This cannot be undone.", confirmLabel: "Delete", danger: true }))) return;
+    if (
+      !(await confirm({
+        title: "Delete this grand plan?",
+        description: "This cannot be undone.",
+        confirmLabel: "Delete",
+        danger: true,
+      }))
+    )
+      return;
     setDeleting(true);
     await fetch(`/api/tools/grand-plan/${id}`, { method: "DELETE" });
     router.push("/tools/grand-plan");
@@ -407,6 +540,10 @@ export default function GrandPlanViewPage({ params }: Props) {
     a.download = `${plan.title || "grand-plan"}.html`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  function handlePrint() {
+    iframeRef.current?.contentWindow?.postMessage({ type: "gp:print" }, "*");
   }
 
   async function handleClone() {
@@ -424,17 +561,79 @@ export default function GrandPlanViewPage({ params }: Props) {
       });
       if (res.ok) {
         const data = await res.json();
+        toast("Cloned", "success");
         router.push(`/tools/grand-plan/${data.grandPlan.id}`);
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
+
+  async function handleRestoreVersion(version: { id: string; versionNumber: number }) {
+    const ok = await confirm({
+      title: `Restore version v${version.versionNumber}?`,
+      description: "The current document will be archived as a new version, so you can always undo.",
+      confirmLabel: "Restore",
+    });
+    if (!ok) return;
+    setRestoringVersion(version.id);
+    try {
+      const res = await fetch(`/api/tools/grand-plan/${id}/restore-version`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ versionId: version.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        updateBlobUrl(data.html);
+        await loadPlan();
+        toast(`Restored v${version.versionNumber}`, "success");
+      } else {
+        toast("Failed to restore version", "error");
+      }
+    } finally {
+      setRestoringVersion(null);
+    }
+  }
+
+  function scrollToSection(sectionId: string) {
+    iframeRef.current?.contentWindow?.postMessage({ type: "gp:scroll", id: sectionId }, "*");
+    setActiveSectionId(sectionId);
+  }
+
+  // ─── Derived ─────────────────────────────────────────────────────────────
+
+  const isGenerating = (plan?.status === "generating") || generating;
+  const isComplete = plan?.status === "complete" && !!plan?.generatedHtml;
+
+  const failureSummary = useMemo(() => {
+    if (!plan?.planDataJson) return { failures: [] as { key: string; error?: string }[], warnings: [] as string[] };
+    try {
+      const data = JSON.parse(plan.planDataJson || "{}");
+      const warnings = (data.pipelineWarnings as string[] | undefined) ?? [];
+      const report = (data.generationReport as Record<string, { status: string; error?: string }> | undefined) ?? {};
+      const failures = Object.entries(report)
+        .filter(([, r]) => r.status === "failed")
+        .map(([key, r]) => ({ key, error: r.error }));
+      return { failures, warnings };
+    } catch {
+      return { failures: [], warnings: [] };
+    }
+  }, [plan?.planDataJson]);
+
+  const totalEstSeconds = useMemo(() => {
+    const baseSeconds = PIPELINE_STEPS.reduce((sum, s) => sum + s.estSeconds, 0);
+    const sectionSeconds = enabledSections.size * 25; // average per section
+    return baseSeconds + sectionSeconds + 10; // +assemble
+  }, [enabledSections.size]);
+
+  // ─── Render ──────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="page" style={{ maxWidth: 1200 }}>
-        <div style={{ textAlign: "center", padding: 80, color: "var(--text-3)" }}>
-          <Loader2 style={{ width: 24, height: 24, animation: "spin 1s linear infinite", margin: "0 auto 12px" }} />
-          Loading plan...
+      <div className="page" style={{ maxWidth: 1280 }}>
+        <div className="flex items-center justify-center py-24 text-sm text-[color:var(--text-3)]">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading plan…
         </div>
       </div>
     );
@@ -442,8 +641,8 @@ export default function GrandPlanViewPage({ params }: Props) {
 
   if (notFound || !plan) {
     return (
-      <div className="page" style={{ maxWidth: 1200 }}>
-        <div style={{ textAlign: "center", padding: 80 }}>
+      <div className="page" style={{ maxWidth: 1280 }}>
+        <div className="card" style={{ padding: 64, textAlign: "center" }}>
           <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)" }}>Plan not found</p>
           <Link href="/tools/grand-plan" className="btn btn-ghost" style={{ marginTop: 16 }}>
             <ArrowLeft style={{ width: 14, height: 14 }} /> Back to Grand Plans
@@ -453,49 +652,118 @@ export default function GrandPlanViewPage({ params }: Props) {
     );
   }
 
-  const isGenerating = plan.status === "generating" || generating;
-  const isComplete = plan.status === "complete" && plan.generatedHtml;
-
   return (
-    <div className="page" style={{ maxWidth: 1200 }}>
+    <div className="page" style={{ maxWidth: 1400 }}>
       {/* Back link */}
-      <Link href="/tools/grand-plan" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-3)", marginBottom: 20, textDecoration: "none" }}>
+      <Link
+        href="/tools/grand-plan"
+        className="inline-flex items-center gap-1.5 text-[13px] text-[color:var(--text-3)] no-underline hover:text-[color:var(--text)]"
+        style={{ marginBottom: 18 }}
+      >
         <ArrowLeft style={{ width: 14, height: 14 }} /> Grand Plans
       </Link>
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <Map style={{ width: 20, height: 20, color: "white" }} />
+      <header
+        className="flex items-start justify-between"
+        style={{ gap: 16, marginBottom: 18 }}
+      >
+        <div className="flex items-start" style={{ gap: 14, flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 14,
+              background: "var(--gradient-accent)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <Map style={{ width: 22, height: 22, color: "white" }} aria-hidden />
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             {editingTitle ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div className="flex items-center" style={{ gap: 8 }}>
                 <input
                   value={titleInput}
                   onChange={(e) => setTitleInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSaveTitle()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveTitle();
+                    if (e.key === "Escape") {
+                      setEditingTitle(false);
+                      setTitleInput(plan.title);
+                    }
+                  }}
                   autoFocus
-                  style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", border: "1px solid var(--border)", borderRadius: 6, padding: "2px 8px", flex: 1 }}
+                  aria-label="Plan title"
+                  style={{
+                    fontSize: 24,
+                    fontWeight: 700,
+                    color: "var(--text)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    padding: "4px 10px",
+                    flex: 1,
+                  }}
                 />
-                <button className="btn btn-ghost btn-sm" onClick={handleSaveTitle} disabled={savingTitle}>
-                  <Check style={{ width: 14, height: 14 }} />
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={handleSaveTitle}
+                  disabled={savingTitle}
+                  aria-label="Save title"
+                >
+                  {savingTitle ? (
+                    <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" />
+                  ) : (
+                    <Check style={{ width: 14, height: 14 }} />
+                  )}
                 </button>
-                <button className="btn btn-ghost btn-sm" onClick={() => { setEditingTitle(false); setTitleInput(plan.title); }}>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => {
+                    setEditingTitle(false);
+                    setTitleInput(plan.title);
+                  }}
+                  aria-label="Cancel title edit"
+                >
                   <X style={{ width: 14, height: 14 }} />
                 </button>
               </div>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <h1 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>{plan.title}</h1>
-                <button className="btn btn-ghost btn-sm" onClick={() => setEditingTitle(true)} style={{ padding: 4 }}>
-                  <Pencil style={{ width: 12, height: 12 }} />
+              <div className="flex items-center" style={{ gap: 8 }}>
+                <h1
+                  style={{
+                    fontSize: 24,
+                    fontWeight: 700,
+                    color: "var(--text)",
+                    lineHeight: 1.2,
+                    margin: 0,
+                  }}
+                >
+                  {plan.title}
+                </h1>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setEditingTitle(true)}
+                  style={{ padding: 4 }}
+                  aria-label="Edit title"
+                  title="Edit title"
+                >
+                  <Pencil style={{ width: 13, height: 13 }} />
                 </button>
               </div>
             )}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-              {plan.client && <span style={{ fontSize: 12, color: "var(--text-3)" }}>{plan.client.name}</span>}
+            <div
+              className="flex items-center flex-wrap"
+              style={{ gap: 8, marginTop: 6 }}
+            >
+              {plan.client && (
+                <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                  {plan.client.name}
+                </span>
+              )}
               <StatusBadge status={plan.status} />
               <PurposeBadge purpose={plan.purpose} />
               {plan.generationMs != null && (
@@ -504,67 +772,133 @@ export default function GrandPlanViewPage({ params }: Props) {
                 </span>
               )}
               {plan.viewCount > 0 && (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-3)" }}>
-                  <BarChart3 style={{ width: 10, height: 10 }} /> {plan.viewCount} view{plan.viewCount !== 1 ? "s" : ""}
+                <span
+                  className="inline-flex items-center"
+                  style={{ gap: 3, fontSize: 11, color: "var(--text-3)" }}
+                  title={
+                    plan.lastViewedAt
+                      ? `Last viewed ${new Date(plan.lastViewedAt).toLocaleString("en-GB")}`
+                      : undefined
+                  }
+                >
+                  <BarChart3 style={{ width: 11, height: 11 }} aria-hidden />
+                  {plan.viewCount} view{plan.viewCount !== 1 ? "s" : ""}
                 </span>
               )}
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Linked sources */}
+      {/* Linked sources — now actually navigable */}
       {(plan.proposal || plan.keywordResearch || plan.contentStrategy || plan.mediaPlan) && (
-        <div className="card" style={{ padding: "12px 16px", marginBottom: 16 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Linked Sources</p>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div className="card" style={{ padding: "12px 16px", marginBottom: 14 }}>
+          <p
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "var(--text-4)",
+              textTransform: "uppercase",
+              letterSpacing: 0.6,
+              marginBottom: 8,
+            }}
+          >
+            Linked sources
+          </p>
+          <div className="flex flex-wrap" style={{ gap: 6 }}>
             {plan.proposal && (
-              <span style={{ fontSize: 12, padding: "3px 10px", background: "var(--accent-bg)", color: "var(--accent)", borderRadius: 6 }}>
-                Proposal: {plan.proposal.title}
-              </span>
+              <LinkedSource
+                href={`/tools/proposals/${plan.proposal.id}`}
+                label="Proposal"
+                title={plan.proposal.title}
+              />
             )}
             {plan.keywordResearch && (
-              <span style={{ fontSize: 12, padding: "3px 10px", background: "var(--accent-bg)", color: "var(--accent)", borderRadius: 6 }}>
-                Keywords: {plan.keywordResearch.title}
-              </span>
+              <LinkedSource
+                href={`/tools/keyword-planner${plan.clientId ? `?clientId=${plan.clientId}` : ""}`}
+                label="Keywords"
+                title={plan.keywordResearch.title}
+              />
             )}
             {plan.contentStrategy && (
-              <span style={{ fontSize: 12, padding: "3px 10px", background: "var(--accent-bg)", color: "var(--accent)", borderRadius: 6 }}>
-                Content: {plan.contentStrategy.title}
-              </span>
+              <LinkedSource
+                href={`/tools/content-strategy${plan.clientId ? `?clientId=${plan.clientId}` : ""}`}
+                label="Content"
+                title={plan.contentStrategy.title}
+              />
             )}
             {plan.mediaPlan && (
-              <span style={{ fontSize: 12, padding: "3px 10px", background: "var(--accent-bg)", color: "var(--accent)", borderRadius: 6 }}>
-                Media: {plan.mediaPlan.title}
-              </span>
+              <LinkedSource
+                href={`/tools/media-plan/${plan.mediaPlan.id}`}
+                label="Media"
+                title={plan.mediaPlan.title}
+              />
             )}
           </div>
         </div>
       )}
 
       {/* Section configuration */}
-      <div className="card" style={{ padding: "12px 16px", marginBottom: 16 }}>
+      <div className="card" style={{ padding: "12px 16px", marginBottom: 14 }}>
         <button
           onClick={() => setShowSectionConfig(!showSectionConfig)}
-          style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+          aria-expanded={showSectionConfig}
+          aria-controls="section-config-body"
+          className="flex items-center"
+          style={{
+            gap: 8,
+            width: "100%",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: 0,
+          }}
         >
-          <Settings style={{ width: 13, height: 13, color: "var(--text-3)" }} />
-          <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+          <Settings style={{ width: 14, height: 14, color: "var(--text-3)" }} aria-hidden />
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "var(--text-3)",
+              textTransform: "uppercase",
+              letterSpacing: 0.6,
+            }}
+          >
             Sections ({enabledSections.size} of {ALL_SECTIONS.length} enabled)
           </span>
-          <ChevronDown style={{ width: 12, height: 12, color: "var(--text-4)", marginLeft: "auto", transform: showSectionConfig ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+          <ChevronDown
+            style={{
+              width: 13,
+              height: 13,
+              color: "var(--text-4)",
+              marginLeft: "auto",
+              transform: showSectionConfig ? "rotate(180deg)" : "none",
+              transition: "transform 0.15s",
+            }}
+            aria-hidden
+          />
         </button>
         {showSectionConfig && (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 6 }}>
+          <div id="section-config-body" style={{ marginTop: 12 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                gap: 6,
+              }}
+            >
               {ALL_SECTIONS.map((s) => {
                 const checked = enabledSections.has(s.key);
                 return (
                   <label
                     key={s.key}
+                    className="flex items-start"
                     style={{
-                      display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 10px",
-                      borderRadius: 8, cursor: "pointer", transition: "background 0.1s",
+                      gap: 8,
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      cursor: "pointer",
+                      transition: "background 0.1s",
                       background: checked ? "var(--accent-bg)" : "var(--bg-2)",
                       border: `1px solid ${checked ? "var(--accent)" : "var(--border)"}`,
                       opacity: checked ? 1 : 0.65,
@@ -574,40 +908,71 @@ export default function GrandPlanViewPage({ params }: Props) {
                       type="checkbox"
                       checked={checked}
                       onChange={() => toggleSection(s.key)}
+                      aria-label={s.label}
                       style={{ marginTop: 2, accentColor: "var(--accent)" }}
                     />
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                        <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{s.label}</span>
+                      <div className="flex items-center" style={{ gap: 4 }}>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+                          {s.label}
+                        </span>
                         {s.aiPowered && (
-                          <span style={{ fontSize: 9, padding: "1px 5px", borderRadius: 4, background: "var(--info-bg)", color: "var(--info)", fontWeight: 600 }}>AI</span>
+                          <span
+                            style={{
+                              fontSize: 9,
+                              padding: "1px 5px",
+                              borderRadius: 4,
+                              background: "var(--info-bg)",
+                              color: "var(--info)",
+                              fontWeight: 600,
+                            }}
+                          >
+                            AI
+                          </span>
                         )}
                         {s.aiPowered && plan?.status === "complete" && checked && (
                           <button
                             className="btn btn-ghost btn-sm"
-                            style={{ marginLeft: "auto", fontSize: 10, padding: "2px 6px", gap: 3, opacity: regeneratingSection === s.key ? 1 : 0.6 }}
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRegenerateSection(s.key); }}
+                            style={{
+                              marginLeft: "auto",
+                              fontSize: 10,
+                              padding: "2px 6px",
+                              gap: 3,
+                            }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleRegenerateSection(s.key);
+                            }}
                             disabled={regeneratingSection !== null}
                             title={`Regenerate ${s.label}`}
+                            aria-label={`Regenerate ${s.label}`}
                           >
-                            {regeneratingSection === s.key
-                              ? <Loader2 style={{ width: 10, height: 10, animation: "spin 1s linear infinite" }} />
-                              : <RefreshCw style={{ width: 10, height: 10 }} />}
+                            {regeneratingSection === s.key ? (
+                              <Loader2
+                                style={{ width: 11, height: 11 }}
+                                className="animate-spin"
+                              />
+                            ) : (
+                              <RefreshCw style={{ width: 11, height: 11 }} aria-hidden />
+                            )}
                             Regen
                           </button>
                         )}
                       </div>
-                      <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 1 }}>{s.description}</p>
+                      <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
+                        {s.description}
+                      </p>
                     </div>
                   </label>
                 );
               })}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+            <div className="flex items-center" style={{ gap: 8, marginTop: 10 }}>
               <button
                 className="btn btn-ghost btn-sm"
                 style={{ fontSize: 11 }}
-                onClick={() => setEnabledSections(new Set(ALL_SECTIONS.map(s => s.key)))}
+                onClick={() => setEnabledSections(new Set(ALL_SECTIONS.map((s) => s.key)))}
               >
                 Enable all
               </button>
@@ -625,7 +990,11 @@ export default function GrandPlanViewPage({ params }: Props) {
                 onClick={saveSectionConfig}
                 disabled={savingSections}
               >
-                {savingSections ? <Loader2 style={{ width: 11, height: 11, animation: "spin 1s linear infinite" }} /> : <Check style={{ width: 11, height: 11 }} />}
+                {savingSections ? (
+                  <Loader2 style={{ width: 11, height: 11 }} className="animate-spin" />
+                ) : (
+                  <Check style={{ width: 11, height: 11 }} aria-hidden />
+                )}
                 Save
               </button>
             </div>
@@ -633,262 +1002,944 @@ export default function GrandPlanViewPage({ params }: Props) {
         )}
       </div>
 
-      {/* Actions toolbar */}
-      <div className="card" style={{ padding: "12px 16px", marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          {/* Generate / Regenerate */}
+      {/* ── Action toolbar — grouped ──────────────────────────────────────── */}
+      <div className="card" style={{ padding: "10px 14px", marginBottom: 14 }}>
+        <div className="flex items-center flex-wrap" style={{ gap: 6 }}>
+          {/* Primary group */}
           {!isGenerating && (
-            <button className="btn btn-primary btn-sm" style={{ gap: 6 }} onClick={handleGenerate}>
-              <RefreshCw style={{ width: 13, height: 13 }} />
-              {isComplete ? "Regenerate" : "Generate Plan"}
+            <button
+              className="btn btn-primary btn-sm"
+              style={{ gap: 6 }}
+              onClick={handleGenerate}
+            >
+              {isComplete ? (
+                <RefreshCw style={{ width: 13, height: 13 }} aria-hidden />
+              ) : (
+                <Sparkles style={{ width: 13, height: 13 }} aria-hidden />
+              )}
+              {isComplete ? "Regenerate" : "Generate plan"}
             </button>
           )}
+
           {isGenerating && (
-            <>
-              <GrandPlanChaosOverlay active={funMode && generating} />
-              <span style={{
-                display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13,
-                color: funMode ? "#9333ea" : "var(--warning)",
-                fontWeight: funMode ? 600 : 400,
-                animation: funMode ? "gpUwuWiggle 0.6s ease-in-out infinite" : "none",
-              }}>
-                <style>{`
-                  @keyframes gpUwuWiggle { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
-                  @keyframes gpUwuPulse { 0%, 100% { text-shadow: 0 0 0 transparent; } 50% { text-shadow: 0 0 12px rgba(147,51,234,0.5); } }
-                  @keyframes gpUwuBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-                `}</style>
-                <Loader2 style={{
-                  width: 14, height: 14,
-                  animation: funMode ? "spin 0.4s linear infinite" : "spin 1s linear infinite",
-                }} />
-                <span style={{ animation: funMode ? "gpUwuPulse 1.5s ease-in-out infinite" : "none" }}>
-                  {funMode ? funMessage : (generationMessage || plan.statusMessage || "Generating...")}
-                </span>
-              </span>
-            </>
+            <span
+              className="inline-flex items-center"
+              style={{
+                gap: 6,
+                fontSize: 13,
+                color: "var(--warning)",
+                fontWeight: 500,
+              }}
+            >
+              <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" aria-hidden />
+              {currentStepLabel || plan.statusMessage || "Generating…"}
+            </span>
           )}
 
-          {/* UwU mode toggle */}
-          <button
-            type="button"
-            onClick={toggleFunMode}
-            title={funMode ? "Disable uwu chaos mode" : "Enable uwu chaos mode"}
-            style={{
-              fontSize: 11, padding: "3px 10px", borderRadius: 99,
-              border: `1px solid ${funMode ? "#f9a8d4" : "var(--border)"}`,
-              background: funMode ? "linear-gradient(135deg, #fdf2f8, #fae8ff)" : "var(--surface)",
-              color: funMode ? "#db2777" : "var(--text-3)",
-              cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
-              transition: "all 0.15s",
-              animation: funMode ? "gpUwuBounce 1s ease-in-out infinite" : "none",
-            }}
-          >
-            {funMode ? "😻 GWAND PWAN MODE ON" : "😐 uwu mode"}
-          </button>
+          {isComplete && (
+            <>
+              <span
+                aria-hidden
+                style={{ width: 1, height: 22, background: "var(--border)", margin: "0 4px" }}
+              />
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ gap: 5 }}
+                onClick={handleDownload}
+                title="Download HTML"
+              >
+                <Download style={{ width: 13, height: 13 }} aria-hidden /> Download
+              </button>
+              <button
+                className="btn btn-ghost btn-sm"
+                style={{ gap: 5 }}
+                onClick={handlePrint}
+                title="Print or save as PDF"
+              >
+                <Printer style={{ width: 13, height: 13 }} aria-hidden /> Print
+              </button>
+              {!plan.shareToken && (
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ gap: 5 }}
+                  onClick={() => setShareModalOpen(true)}
+                  title="Create a share link"
+                >
+                  <Share2 style={{ width: 13, height: 13 }} aria-hidden /> Share
+                </button>
+              )}
+              {plan.shareToken && (
+                <>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    style={{ gap: 4, color: "var(--success)" }}
+                    onClick={handleCopyShareLink}
+                    title="Copy share link"
+                  >
+                    <Copy style={{ width: 13, height: 13 }} aria-hidden /> Copy link
+                  </button>
+                  <Link
+                    href={`/share/grand-plan/${plan.shareToken}`}
+                    target="_blank"
+                    className="btn btn-ghost btn-sm"
+                    style={{ gap: 4 }}
+                    title="Open share preview in new tab"
+                  >
+                    <Eye style={{ width: 13, height: 13 }} aria-hidden /> Preview
+                  </Link>
+                  {plan.shareExpiresAt && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color:
+                          new Date(plan.shareExpiresAt) < new Date()
+                            ? "var(--danger)"
+                            : "var(--text-3)",
+                      }}
+                    >
+                      {new Date(plan.shareExpiresAt) < new Date()
+                        ? "Expired"
+                        : `Expires ${formatRelativeFuture(plan.shareExpiresAt)}`}
+                    </span>
+                  )}
+                </>
+              )}
+              {plan.shareToken && (
+                <PortalPublishToggle
+                  resourceType="grand_plan"
+                  resourceId={plan.id}
+                  initialPublishedAt={plan.portalPublishedAt}
+                  onChange={(at) =>
+                    setPlan((prev) => (prev ? { ...prev, portalPublishedAt: at } : prev))
+                  }
+                />
+              )}
+            </>
+          )}
 
           <div style={{ flex: 1 }} />
 
-          {/* Download */}
-          {isComplete && (
-            <button className="btn btn-ghost btn-sm" style={{ gap: 5 }} onClick={handleDownload}>
-              <Download style={{ width: 13, height: 13 }} /> Download
+          {/* Overflow / secondary group */}
+          <div ref={overflowRef} style={{ position: "relative" }}>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => setOverflowOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={overflowOpen}
+              aria-label="More actions"
+              title="More actions"
+            >
+              <MoreHorizontal style={{ width: 14, height: 14 }} aria-hidden />
             </button>
-          )}
-
-          {/* Share */}
-          {isComplete && !plan.shareToken && (
-            <>
-              {showShareForm ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <input
-                    type="text"
-                    value={sharePassword}
-                    onChange={(e) => setSharePassword(e.target.value)}
-                    placeholder="Password (optional)"
-                    style={{ padding: "5px 10px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, width: 150 }}
+            {overflowOpen && (
+              <div
+                role="menu"
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  right: 0,
+                  minWidth: 220,
+                  background: "var(--surface, white)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  boxShadow: "0 12px 24px -8px rgb(15 23 42 / 0.15)",
+                  padding: 6,
+                  zIndex: 10,
+                }}
+              >
+                <OverflowItem
+                  icon={<Copy style={{ width: 13, height: 13 }} aria-hidden />}
+                  label="Clone"
+                  onClick={() => {
+                    setOverflowOpen(false);
+                    handleClone();
+                  }}
+                />
+                {plan.shareToken && (
+                  <OverflowItem
+                    icon={<X style={{ width: 13, height: 13 }} aria-hidden />}
+                    label="Revoke share link"
+                    onClick={() => {
+                      setOverflowOpen(false);
+                      handleUnshare();
+                    }}
+                    disabled={sharingBusy}
                   />
-                  <select
-                    value={shareExpiry}
-                    onChange={(e) => setShareExpiry(e.target.value)}
-                    style={{ padding: "5px 8px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, background: "var(--white)" }}
-                  >
-                    <option value="0">No expiry</option>
-                    <option value="7">7 days</option>
-                    <option value="14">14 days</option>
-                    <option value="30">30 days</option>
-                    <option value="90">90 days</option>
-                  </select>
-                  <button className="btn btn-primary btn-sm" onClick={handleShare} disabled={sharingBusy}>
-                    {sharingBusy ? <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} /> : <Share2 style={{ width: 12, height: 12 }} />}
-                    Share
-                  </button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setShowShareForm(false)}>
-                    <X style={{ width: 12, height: 12 }} />
-                  </button>
-                </div>
-              ) : (
-                <button className="btn btn-ghost btn-sm" style={{ gap: 5 }} onClick={() => setShowShareForm(true)}>
-                  <Share2 style={{ width: 13, height: 13 }} /> Share
-                </button>
-              )}
-            </>
-          )}
-
-          {plan.shareToken && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <button className="btn btn-ghost btn-sm" style={{ gap: 4, color: "var(--success)" }} onClick={handleCopyShareLink}>
-                {copied ? <Check style={{ width: 12, height: 12 }} /> : <Copy style={{ width: 12, height: 12 }} />}
-                {copied ? "Copied!" : "Copy Link"}
-              </button>
-              <Link href={`/share/grand-plan/${plan.shareToken}`} target="_blank" className="btn btn-ghost btn-sm" style={{ gap: 4 }}>
-                <Eye style={{ width: 12, height: 12 }} /> Preview
-              </Link>
-              {plan.shareExpiresAt && (
-                <span style={{ fontSize: 11, color: new Date(plan.shareExpiresAt) < new Date() ? "var(--danger)" : "var(--text-3)" }}>
-                  {new Date(plan.shareExpiresAt) < new Date() ? "Expired" : `Expires ${new Date(plan.shareExpiresAt).toLocaleDateString("en-GB")}`}
-                </span>
-              )}
-              <button className="btn btn-ghost btn-sm" style={{ color: "var(--danger)", gap: 4 }} onClick={handleUnshare} disabled={sharingBusy}>
-                <X style={{ width: 12, height: 12 }} /> Unshare
-              </button>
-            </div>
-          )}
-
-          {/* Publish to client portal */}
-          {isComplete && plan.shareToken && (
-            <PortalPublishToggle
-              resourceType="grand_plan"
-              resourceId={plan.id}
-              initialPublishedAt={plan.portalPublishedAt}
-              onChange={(at) => setPlan((prev) => (prev ? { ...prev, portalPublishedAt: at } : prev))}
-            />
-          )}
-
-          {/* Clone */}
-          <button className="btn btn-ghost btn-sm" style={{ gap: 5 }} onClick={handleClone}>
-            <Copy style={{ width: 13, height: 13 }} /> Clone
-          </button>
-
-          {/* Delete */}
-          <button className="btn btn-ghost btn-sm" style={{ color: "var(--danger)" }} onClick={handleDelete} disabled={deleting}>
-            <Trash2 style={{ width: 13, height: 13 }} />
-          </button>
+                )}
+                <OverflowItem
+                  icon={<Sparkles style={{ width: 13, height: 13 }} aria-hidden />}
+                  label={funMode ? "Disable chaos mode" : "Enable chaos mode"}
+                  onClick={() => {
+                    setFunMode((v) => !v);
+                    setOverflowOpen(false);
+                  }}
+                />
+                <div style={{ height: 1, background: "var(--border)", margin: "4px 2px" }} />
+                <OverflowItem
+                  icon={<Trash2 style={{ width: 13, height: 13 }} aria-hidden />}
+                  label="Delete plan"
+                  destructive
+                  disabled={deleting}
+                  onClick={() => {
+                    setOverflowOpen(false);
+                    handleDelete();
+                  }}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Refine panel */}
+      {/* ── Generation stepper ───────────────────────────────────────────── */}
+      {isGenerating && (
+        <div className="card" style={{ padding: 16, marginBottom: 14 }}>
+          <GenerationProgress
+            active
+            message={currentStepLabel || plan.statusMessage || "Generating grand plan…"}
+            estimatedSeconds={totalEstSeconds}
+            tips={
+              funMode
+                ? [funMessage]
+                : [
+                    "AI generation runs server-side — feel free to leave this tab open.",
+                    "Each AI section uses your linked proposal, keywords and content data.",
+                    "If a section fails, you can regenerate it individually once complete.",
+                  ]
+            }
+          />
+          <div style={{ marginTop: 14 }}>
+            <PipelineStepper
+              steps={PIPELINE_STEPS}
+              sectionKeys={Array.from(enabledSections)}
+              statusMap={stepStatus}
+              activeSection={activeSectionStep}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Refine panel ─────────────────────────────────────────────────── */}
       {isComplete && (
-        <div className="card" style={{ padding: "12px 16px", marginBottom: 16 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Refine with AI</p>
-          <div style={{ display: "flex", gap: 8 }}>
+        <div className="card" style={{ padding: "12px 16px", marginBottom: 14 }}>
+          <p
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "var(--text-3)",
+              textTransform: "uppercase",
+              letterSpacing: 0.6,
+              marginBottom: 8,
+            }}
+          >
+            Refine with AI
+          </p>
+          <div className="flex" style={{ gap: 8 }}>
             <input
               value={refinePrompt}
               onChange={(e) => setRefinePrompt(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleRefine()}
-              placeholder="e.g. Make the executive summary more detailed, add more keywords to the dental ad group..."
-              style={{ flex: 1, padding: "8px 12px", border: "1px solid var(--border)", borderRadius: 8, fontSize: 13 }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) handleRefine();
+              }}
+              placeholder="e.g. Make the executive summary more detailed, add more keywords to the dental ad group…"
+              aria-label="Refinement prompt"
+              style={{
+                flex: 1,
+                padding: "8px 12px",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                fontSize: 13,
+              }}
               disabled={refining}
             />
-            <button className="btn btn-primary btn-sm" onClick={handleRefine} disabled={refining || !refinePrompt.trim()} style={{ gap: 5 }}>
-              {refining ? <Loader2 style={{ width: 13, height: 13, animation: "spin 1s linear infinite" }} /> : <Send style={{ width: 13, height: 13 }} />}
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleRefine}
+              disabled={refining || !refinePrompt.trim()}
+              style={{ gap: 5 }}
+            >
+              {refining ? (
+                <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" />
+              ) : (
+                <Send style={{ width: 13, height: 13 }} aria-hidden />
+              )}
               Refine
             </button>
           </div>
+          <p style={{ fontSize: 11, color: "var(--text-4)", marginTop: 6 }}>
+            Tip: be specific about which section and the change you want. Each refinement creates a new version you can roll back to.
+          </p>
         </div>
       )}
 
-      {/* Version history */}
-      {plan.versions.length > 0 && (
-        <div className="card" style={{ padding: "12px 16px", marginBottom: 16 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: "var(--text-4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Versions</p>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {plan.versions.map((v) => (
-              <span key={v.id} style={{ fontSize: 12, padding: "4px 10px", background: "var(--bg-2)", borderRadius: 6, color: "var(--text-3)" }}>
-                v{v.versionNumber}
-                {v.prompt && ` — ${v.prompt.slice(0, 40)}${v.prompt.length > 40 ? "..." : ""}`}
-                <span style={{ fontSize: 10, color: "var(--text-4)", marginLeft: 6 }}>
-                  {new Date(v.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                </span>
-              </span>
+      {/* ── Failures & warnings ──────────────────────────────────────────── */}
+      {isComplete && failureSummary.failures.length > 0 && (
+        <div
+          className="card"
+          style={{
+            padding: "12px 16px",
+            marginBottom: 14,
+            background: "var(--danger-bg)",
+            border: "1px solid var(--danger)",
+            borderRadius: 10,
+          }}
+        >
+          <div className="flex items-center" style={{ gap: 8, marginBottom: 6 }}>
+            <CircleAlert style={{ width: 14, height: 14, color: "var(--danger)" }} aria-hidden />
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--danger)",
+                textTransform: "uppercase",
+                letterSpacing: 0.6,
+                margin: 0,
+              }}
+            >
+              {failureSummary.failures.length} section{failureSummary.failures.length === 1 ? "" : "s"} failed
+            </p>
+            <button
+              className="btn btn-primary btn-sm"
+              style={{ marginLeft: "auto", gap: 5, fontSize: 11 }}
+              onClick={handleRegenerateFailed}
+              disabled={regeneratingSection !== null}
+            >
+              {regeneratingSection ? (
+                <Loader2 style={{ width: 11, height: 11 }} className="animate-spin" />
+              ) : (
+                <RefreshCw style={{ width: 11, height: 11 }} aria-hidden />
+              )}
+              Regenerate failed sections
+            </button>
+          </div>
+          <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+            {failureSummary.failures.map((f) => (
+              <li key={f.key} style={{ fontSize: 12, color: "var(--danger)", marginBottom: 2 }}>
+                • <strong>{labelFor(f.key)}</strong>
+                {f.error ? `: ${f.error}` : ""}
+              </li>
             ))}
+          </ul>
+        </div>
+      )}
+      {isComplete && failureSummary.warnings.length > 0 && (
+        <div
+          className="card"
+          style={{
+            padding: "12px 16px",
+            marginBottom: 14,
+            background: "var(--warning-bg)",
+            border: "1px solid var(--warning)",
+            borderRadius: 10,
+          }}
+        >
+          <div className="flex items-center" style={{ gap: 8, marginBottom: 4 }}>
+            <AlertTriangle style={{ width: 13, height: 13, color: "var(--warning)" }} aria-hidden />
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--warning)",
+                textTransform: "uppercase",
+                letterSpacing: 0.6,
+                margin: 0,
+              }}
+            >
+              Warnings
+            </p>
+          </div>
+          {failureSummary.warnings.map((w, i) => (
+            <p key={`w-${i}`} style={{ fontSize: 12, color: "var(--warning)", marginBottom: 2 }}>
+              • {w}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* ── Failed-state hero ────────────────────────────────────────────── */}
+      {plan.status === "failed" && !isGenerating && (
+        <div
+          className="card"
+          style={{
+            padding: 18,
+            marginBottom: 14,
+            background: "var(--danger-bg)",
+            border: "1px solid var(--danger)",
+            borderRadius: 10,
+          }}
+        >
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--danger)", marginBottom: 4 }}>
+            Generation failed
+          </p>
+          {plan.generationError && (
+            <p style={{ fontSize: 12, color: "var(--danger)", opacity: 0.85 }}>
+              {plan.generationError}
+            </p>
+          )}
+          <button
+            className="btn btn-primary btn-sm"
+            style={{ marginTop: 10, gap: 6 }}
+            onClick={handleGenerate}
+          >
+            <RefreshCw style={{ width: 13, height: 13 }} aria-hidden /> Retry
+          </button>
+        </div>
+      )}
+
+      {/* ── Document area: TOC + iframe ──────────────────────────────────── */}
+      {isComplete && blobUrl ? (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "240px 1fr",
+            gap: 14,
+            alignItems: "start",
+          }}
+          className="grand-plan-doc-grid"
+        >
+          {/* Sticky TOC */}
+          <aside
+            className="card grand-plan-toc"
+            style={{
+              position: "sticky",
+              top: 14,
+              padding: "12px 8px",
+              maxHeight: "calc(100vh - 28px)",
+              overflowY: "auto",
+            }}
+            aria-label="Document contents"
+          >
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: "var(--text-4)",
+                textTransform: "uppercase",
+                letterSpacing: 0.6,
+                padding: "0 8px 8px",
+                margin: 0,
+              }}
+            >
+              Contents
+            </p>
+            {!iframeLoaded && (
+              <div style={{ padding: "0 8px" }}>
+                {[...Array(6)].map((_, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      height: 14,
+                      background: "var(--bg-2)",
+                      borderRadius: 4,
+                      marginBottom: 6,
+                      opacity: 0.6,
+                      width: `${70 + ((i * 13) % 30)}%`,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+            {iframeLoaded && iframeSections.length === 0 && (
+              <p style={{ fontSize: 12, color: "var(--text-4)", padding: "0 8px" }}>
+                No sections detected.
+              </p>
+            )}
+            <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+              {iframeSections.map((s) => {
+                const active = activeSectionId === s.id;
+                return (
+                  <li key={s.id}>
+                    <button
+                      onClick={() => scrollToSection(s.id)}
+                      className="flex items-center"
+                      style={{
+                        gap: 6,
+                        width: "100%",
+                        textAlign: "left",
+                        padding: "6px 8px",
+                        background: active ? "var(--accent-bg)" : "transparent",
+                        color: active ? "var(--accent)" : "var(--text-2)",
+                        border: "none",
+                        borderRadius: 6,
+                        fontSize: 12.5,
+                        fontWeight: active ? 600 : 400,
+                        cursor: "pointer",
+                        transition: "background 0.1s",
+                      }}
+                    >
+                      <ChevronRight
+                        style={{
+                          width: 11,
+                          height: 11,
+                          opacity: active ? 1 : 0,
+                          transition: "opacity 0.1s",
+                        }}
+                        aria-hidden
+                      />
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {s.label}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </aside>
+
+          {/* Iframe with skeleton */}
+          <div
+            className="card"
+            style={{
+              padding: 0,
+              overflow: "hidden",
+              borderRadius: 12,
+              position: "relative",
+              minHeight: 600,
+            }}
+          >
+            {!iframeLoaded && <DocumentSkeleton />}
+            <iframe
+              ref={iframeRef}
+              src={blobUrl}
+              style={{
+                width: "100%",
+                height: "80vh",
+                border: "none",
+                display: "block",
+              }}
+              title={plan.title}
+              sandbox="allow-scripts"
+              onLoad={() => {
+                // Fallback in case the in-document script didn't postMessage
+                try {
+                  const body = iframeRef.current?.contentDocument?.body;
+                  if (body && iframeRef.current) {
+                    iframeRef.current.style.height = Math.max(body.scrollHeight, 600) + "px";
+                  }
+                } catch {
+                  /* cross-origin */
+                }
+                // If postMessage hasn't fired, treat as loaded after 500ms
+                setTimeout(() => setIframeLoaded(true), 500);
+              }}
+            />
           </div>
         </div>
-      )}
-
-      {/* Pipeline warnings */}
-      {isComplete && (() => {
-        try {
-          const data = JSON.parse(plan.planDataJson || "{}");
-          const warnings = data.pipelineWarnings as string[] | undefined;
-          const report = data.generationReport as Record<string, { status: string; error?: string }> | undefined;
-          const failures = report ? Object.entries(report).filter(([, r]) => r.status === "failed") : [];
-
-          if (!warnings?.length && failures.length === 0) return null;
-
-          return (
-            <div className="card" style={{ padding: "12px 16px", marginBottom: 16, background: "var(--warning-bg)", border: "1px solid var(--warning)", borderRadius: 10 }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: "var(--warning)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
-                {failures.length > 0 ? `Generation issues (${failures.length} section${failures.length === 1 ? "" : "s"} failed)` : "Warnings"}
-              </p>
-              {warnings?.map((w, i) => (
-                <p key={`w-${i}`} style={{ fontSize: 12, color: "var(--warning)", marginBottom: 2 }}>• {w}</p>
-              ))}
-              {failures.map(([key, r]) => (
-                <p key={`f-${key}`} style={{ fontSize: 12, color: "var(--warning)", marginBottom: 2 }}>
-                  • <strong>{key}</strong> failed{r.error ? `: ${r.error}` : ""} — try regenerating this section.
-                </p>
-              ))}
-            </div>
-          );
-        } catch { /* ignore */ }
-        return null;
-      })()}
-
-      {/* Preview iframe */}
-      {isComplete && blobUrl ? (
-        <div className="card" style={{ padding: 0, overflow: "hidden", borderRadius: 12 }}>
-          <iframe
-            src={blobUrl}
-            style={{ width: "100%", height: "80vh", border: "none" }}
-            title={plan.title}
-            sandbox="allow-scripts"
-            onLoad={(e) => {
-              const iframe = e.target as HTMLIFrameElement;
-              try {
-                const body = iframe.contentDocument?.body;
-                if (body) {
-                  iframe.style.height = Math.max(body.scrollHeight, 600) + "px";
-                }
-              } catch {
-                /* cross-origin */
-              }
+      ) : !isGenerating && plan.status !== "failed" ? (
+        <div className="card" style={{ padding: 80, textAlign: "center" }}>
+          <Map
+            style={{
+              width: 48,
+              height: 48,
+              color: "var(--text-4)",
+              margin: "0 auto 16px",
             }}
+            aria-hidden
           />
-        </div>
-      ) : !isGenerating ? (
-        <div>
-          {plan.status === "failed" && (
-            <div className="card" style={{ padding: "14px 16px", marginBottom: 16, background: "var(--danger-bg)", border: "1px solid var(--danger)", borderRadius: 10 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: "var(--danger)", marginBottom: 4 }}>Generation failed</p>
-              {plan.generationError && (
-                <p style={{ fontSize: 12, color: "var(--danger)", opacity: 0.85 }}>{plan.generationError}</p>
-              )}
-              <button className="btn btn-primary btn-sm" style={{ marginTop: 10, gap: 6 }} onClick={handleGenerate}>
-                <RefreshCw style={{ width: 13, height: 13 }} /> Retry
-              </button>
-            </div>
-          )}
-          {plan.status !== "failed" && (
-            <div className="card" style={{ padding: 80, textAlign: "center" }}>
-              <Map style={{ width: 48, height: 48, color: "var(--text-4)", margin: "0 auto 16px" }} />
-              <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)" }}>Ready to generate</p>
-              <p style={{ fontSize: 13, color: "var(--text-3)", marginTop: 6, maxWidth: 400, margin: "6px auto 0" }}>
-                Click &ldquo;Generate Plan&rdquo; above to create the full document from your linked sources.
-              </p>
-            </div>
-          )}
+          <p style={{ fontSize: 16, fontWeight: 600, color: "var(--text-2)" }}>Ready to generate</p>
+          <p
+            style={{
+              fontSize: 13,
+              color: "var(--text-3)",
+              marginTop: 6,
+              maxWidth: 440,
+              margin: "6px auto 0",
+            }}
+          >
+            Click <strong>Generate plan</strong> above to create the full document from your linked sources.
+          </p>
         </div>
       ) : null}
+
+      {/* ── Versions (now restorable) ────────────────────────────────────── */}
+      {plan.versions.length > 0 && (
+        <div className="card" style={{ padding: "12px 16px", marginTop: 14 }}>
+          <div className="flex items-center" style={{ gap: 6, marginBottom: 8 }}>
+            <History style={{ width: 13, height: 13, color: "var(--text-3)" }} aria-hidden />
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--text-3)",
+                textTransform: "uppercase",
+                letterSpacing: 0.6,
+                margin: 0,
+              }}
+            >
+              Versions ({plan.versions.length})
+            </p>
+          </div>
+          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+            {plan.versions.map((v, idx) => (
+              <li key={v.id} style={{ borderBottom: idx < plan.versions.length - 1 ? "1px solid var(--border)" : "none" }}>
+                <div className="flex items-center" style={{ gap: 8, padding: "6px 0" }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: idx === 0 ? "var(--accent)" : "var(--text-3)",
+                      minWidth: 32,
+                    }}
+                  >
+                    v{v.versionNumber}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12.5,
+                      color: "var(--text-2)",
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={v.prompt ?? undefined}
+                  >
+                    {v.prompt || "Initial generation"}
+                  </span>
+                  <span style={{ fontSize: 11, color: "var(--text-4)" }}>
+                    {new Date(v.createdAt).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                  {idx > 0 && (
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      style={{ fontSize: 11, gap: 4 }}
+                      onClick={() => handleRestoreVersion(v)}
+                      disabled={restoringVersion !== null}
+                      aria-label={`Restore version ${v.versionNumber}`}
+                    >
+                      {restoringVersion === v.id ? (
+                        <Loader2 style={{ width: 11, height: 11 }} className="animate-spin" />
+                      ) : (
+                        <History style={{ width: 11, height: 11 }} aria-hidden />
+                      )}
+                      Restore
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Chaos overlay (only when fun mode + generating) */}
+      <GrandPlanChaosOverlay active={funMode && generating} />
+
+      {/* ── Share modal ──────────────────────────────────────────────────── */}
+      <Modal
+        open={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        title="Create share link"
+        description="Generate a public link for this grand plan. You can require a password and set an expiry."
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setShareModalOpen(false)}
+              disabled={sharingBusy}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={handleShare}
+              disabled={sharingBusy}
+              style={{ gap: 5 }}
+            >
+              {sharingBusy ? (
+                <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" />
+              ) : (
+                <Share2 style={{ width: 13, height: 13 }} aria-hidden />
+              )}
+              Create link
+            </button>
+          </>
+        }
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>
+              Password (optional)
+            </span>
+            <input
+              type="text"
+              value={sharePassword}
+              onChange={(e) => setSharePassword(e.target.value)}
+              placeholder="Leave blank for no password"
+              style={{
+                padding: "8px 12px",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                fontSize: 13,
+              }}
+            />
+          </label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Expiry</span>
+            <select
+              value={shareExpiry}
+              onChange={(e) => setShareExpiry(e.target.value)}
+              style={{
+                padding: "8px 12px",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                fontSize: 13,
+                background: "var(--white, white)",
+              }}
+            >
+              <option value="0">No expiry</option>
+              <option value="7">7 days</option>
+              <option value="14">14 days</option>
+              <option value="30">30 days</option>
+              <option value="90">90 days</option>
+            </select>
+          </label>
+        </div>
+      </Modal>
+
+      {/* Mobile responsive override for the doc grid */}
+      <style>{`
+        @media (max-width: 900px) {
+          .grand-plan-doc-grid { grid-template-columns: 1fr !important; }
+          .grand-plan-toc { position: static !important; max-height: none !important; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// ─── Helper components ─────────────────────────────────────────────────────
+
+function LinkedSource({ href, label, title }: { href: string; label: string; title: string }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center"
+      style={{
+        gap: 5,
+        fontSize: 12,
+        padding: "4px 10px",
+        background: "var(--accent-bg)",
+        color: "var(--accent)",
+        borderRadius: 6,
+        textDecoration: "none",
+        border: "1px solid transparent",
+        transition: "border-color 0.15s",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "transparent")}
+    >
+      <strong style={{ fontWeight: 700 }}>{label}:</strong>
+      <span>{title}</span>
+      <ArrowUpRight style={{ width: 11, height: 11 }} aria-hidden />
+    </Link>
+  );
+}
+
+function OverflowItem({
+  icon,
+  label,
+  onClick,
+  destructive,
+  disabled,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  destructive?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      role="menuitem"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex items-center"
+      style={{
+        gap: 8,
+        width: "100%",
+        padding: "7px 10px",
+        background: "transparent",
+        border: "none",
+        borderRadius: 6,
+        cursor: disabled ? "not-allowed" : "pointer",
+        fontSize: 12.5,
+        color: destructive ? "var(--danger)" : "var(--text)",
+        textAlign: "left",
+        opacity: disabled ? 0.5 : 1,
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-2)")}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function PipelineStepper({
+  steps,
+  sectionKeys,
+  statusMap,
+  activeSection,
+}: {
+  steps: { key: string; label: string; estSeconds: number }[];
+  sectionKeys: string[];
+  statusMap: Record<string, "pending" | "running" | "done" | "skipped" | "failed">;
+  activeSection: { key: string; index: number; total: number } | null;
+}) {
+  const allRows: { key: string; statusKey: string; label: string; group: "prep" | "section" | "assemble" }[] = [];
+  for (const s of steps) allRows.push({ key: s.key, statusKey: s.key, label: s.label, group: "prep" });
+  for (const k of sectionKeys) allRows.push({ key: k, statusKey: `section:${k}`, label: labelFor(k), group: "section" });
+  allRows.push({ key: "assemble", statusKey: "assemble", label: "Assembling final document", group: "assemble" });
+
+  const completed = allRows.filter((r) => {
+    const st = statusMap[r.statusKey];
+    return st === "done" || st === "skipped";
+  }).length;
+
+  return (
+    <div>
+      <div
+        className="flex items-center"
+        style={{
+          gap: 8,
+          marginBottom: 10,
+          fontSize: 11.5,
+          color: "var(--text-3)",
+          fontWeight: 500,
+        }}
+      >
+        <span>
+          Step {Math.min(completed + 1, allRows.length)} of {allRows.length}
+        </span>
+        <span aria-hidden>·</span>
+        <span>{completed} complete</span>
+        {activeSection && (
+          <>
+            <span aria-hidden>·</span>
+            <span>
+              Section {activeSection.index} of {activeSection.total}
+            </span>
+          </>
+        )}
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+          gap: 4,
+        }}
+      >
+        {allRows.map((row) => {
+          const st = statusMap[row.statusKey] ?? "pending";
+          return <StepperRow key={row.statusKey} label={row.label} status={st} />;
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StepperRow({
+  label,
+  status,
+}: {
+  label: string;
+  status: "pending" | "running" | "done" | "skipped" | "failed";
+}) {
+  const colour =
+    status === "done"
+      ? "var(--success)"
+      : status === "running"
+      ? "var(--accent)"
+      : status === "failed"
+      ? "var(--danger)"
+      : status === "skipped"
+      ? "var(--text-4)"
+      : "var(--text-4)";
+  const Icon =
+    status === "done"
+      ? CircleCheck
+      : status === "running"
+      ? Loader2
+      : status === "failed"
+      ? CircleAlert
+      : Circle;
+  return (
+    <div
+      className="flex items-center"
+      style={{
+        gap: 6,
+        padding: "5px 8px",
+        borderRadius: 6,
+        background: status === "running" ? "var(--accent-bg)" : "transparent",
+        opacity: status === "pending" ? 0.55 : 1,
+      }}
+    >
+      <Icon
+        style={{ width: 12, height: 12, color: colour }}
+        className={status === "running" ? "animate-spin" : ""}
+        aria-hidden
+      />
+      <span
+        style={{
+          fontSize: 11.5,
+          color: "var(--text-2)",
+          fontWeight: status === "running" ? 600 : 400,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+        title={label}
+      >
+        {label}
+      </span>
+      {status === "skipped" && (
+        <span style={{ fontSize: 10, color: "var(--text-4)", marginLeft: "auto" }}>skipped</span>
+      )}
+    </div>
+  );
+}
+
+function DocumentSkeleton() {
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: "absolute",
+        inset: 0,
+        padding: 32,
+        background: "linear-gradient(180deg, var(--bg-2) 0%, var(--white, white) 100%)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+      }}
+    >
+      <div style={{ height: 36, background: "var(--bg-2)", borderRadius: 8, width: "60%" }} />
+      <div style={{ height: 12, background: "var(--bg-2)", borderRadius: 4, width: "40%", opacity: 0.7 }} />
+      <div style={{ height: 12, background: "var(--bg-2)", borderRadius: 4, width: "85%", opacity: 0.5, marginTop: 12 }} />
+      <div style={{ height: 12, background: "var(--bg-2)", borderRadius: 4, width: "75%", opacity: 0.5 }} />
+      <div style={{ height: 12, background: "var(--bg-2)", borderRadius: 4, width: "80%", opacity: 0.5 }} />
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: 12,
+          marginTop: 24,
+        }}
+      >
+        {[...Array(6)].map((_, i) => (
+          <div key={i} style={{ height: 80, background: "var(--bg-2)", borderRadius: 10, opacity: 0.55 }} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -902,19 +1953,57 @@ function StatusBadge({ status }: { status: string }) {
   };
   const s = map[status] ?? map.draft;
   return (
-    <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 600, background: s.bg, color: s.color }}>
+    <span
+      style={{
+        display: "inline-block",
+        padding: "2px 8px",
+        borderRadius: 12,
+        fontSize: 11,
+        fontWeight: 600,
+        background: s.bg,
+        color: s.color,
+      }}
+    >
       {s.label}
     </span>
   );
 }
 
 function PurposeBadge({ purpose }: { purpose: string }) {
-  const label = purpose === "pitch" ? "Pitch" : purpose === "onboarding" ? "Onboarding" : "Strategy";
+  const label =
+    purpose === "pitch" ? "Pitch" : purpose === "onboarding" ? "Onboarding" : "Strategy";
   return (
-    <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 600, background: "var(--accent-bg)", color: "var(--accent)" }}>
+    <span
+      style={{
+        display: "inline-block",
+        padding: "2px 8px",
+        borderRadius: 12,
+        fontSize: 11,
+        fontWeight: 600,
+        background: "var(--accent-bg)",
+        color: "var(--accent)",
+      }}
+    >
       {label}
     </span>
   );
+}
+
+function labelFor(key: string): string {
+  const found = ALL_SECTIONS.find((s) => s.key === key);
+  return found?.label ?? key;
+}
+
+function formatRelativeFuture(iso: string): string {
+  const target = new Date(iso).getTime();
+  const now = Date.now();
+  const diffMs = target - now;
+  if (diffMs <= 0) return "soon";
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (days >= 1) return `in ${days} day${days === 1 ? "" : "s"}`;
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (hours >= 1) return `in ${hours} hour${hours === 1 ? "" : "s"}`;
+  return "in under an hour";
 }
 
 // ─── UwU Grand Plan Chaos Mode ─────────────────────────────────────────────
@@ -965,18 +2054,65 @@ function useGrandPlanUwu(active: boolean): string {
       indexRef.current = (indexRef.current + 1) % shuffled.length;
       setMsg(shuffled[indexRef.current]);
     }, 2800);
-    return () => { clearTimeout(first); clearInterval(id); };
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
   }, [active]);
 
   return msg;
 }
 
 function GrandPlanChaosOverlay({ active }: { active: boolean }) {
-  const [particles, setParticles] = useState<{ id: number; emoji: string; x: number; y: number; size: number; opacity: number; rotation: number; scale: number; delay: number }[]>([]);
+  const [particles, setParticles] = useState<
+    {
+      id: number;
+      emoji: string;
+      x: number;
+      y: number;
+      size: number;
+      opacity: number;
+      rotation: number;
+      scale: number;
+      delay: number;
+    }[]
+  >([]);
 
   useEffect(() => {
-    if (!active) { queueMicrotask(() => setParticles([])); return; }
-    const EMOJIS = ["✨", "💖", "🌸", "⭐", "🎀", "💫", "🦄", "🌈", "😻", "💕", "🎪", "🚀", "📊", "📈", "🎯", "💅", "✌️", "🔥", "👑", "🎉", "UwU", "OwO", ">.<", ":3", "rawr", "xD", "nyan~", "BAKA"];
+    if (!active) {
+      queueMicrotask(() => setParticles([]));
+      return;
+    }
+    const EMOJIS = [
+      "✨",
+      "💖",
+      "🌸",
+      "⭐",
+      "🎀",
+      "💫",
+      "🦄",
+      "🌈",
+      "😻",
+      "💕",
+      "🎪",
+      "🚀",
+      "📊",
+      "📈",
+      "🎯",
+      "💅",
+      "✌️",
+      "🔥",
+      "👑",
+      "🎉",
+      "UwU",
+      "OwO",
+      ">.<",
+      ":3",
+      "rawr",
+      "xD",
+      "nyan~",
+      "BAKA",
+    ];
     const initial = Array.from({ length: 35 }, (_, i) => ({
       id: i,
       emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
@@ -1010,22 +2146,35 @@ function GrandPlanChaosOverlay({ active }: { active: boolean }) {
       <style>{`
         @keyframes gpChaosFloat { 0% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-20px) rotate(180deg); } 100% { transform: translateY(0) rotate(360deg); } }
       `}</style>
-      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 9999, overflow: "hidden" }}>
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 9999,
+          overflow: "hidden",
+        }}
+      >
         {particles.map((p) => (
-          <span key={p.id} style={{
-            position: "absolute",
-            left: `${p.x}vw`,
-            top: `${p.y}vh`,
-            fontSize: p.size,
-            opacity: p.opacity,
-            transform: `rotate(${p.rotation}deg) scale(${p.scale})`,
-            userSelect: "none",
-            lineHeight: 1,
-            willChange: "transform, opacity",
-            filter: p.size > 30 ? "drop-shadow(0 0 10px rgba(249,168,212,0.9))" : "none",
-            animation: "gpChaosFloat 3s ease-in-out infinite",
-            animationDelay: `${p.delay}s`,
-          }}>{p.emoji}</span>
+          <span
+            key={p.id}
+            style={{
+              position: "absolute",
+              left: `${p.x}vw`,
+              top: `${p.y}vh`,
+              fontSize: p.size,
+              opacity: p.opacity,
+              transform: `rotate(${p.rotation}deg) scale(${p.scale})`,
+              userSelect: "none",
+              lineHeight: 1,
+              willChange: "transform, opacity",
+              filter: p.size > 30 ? "drop-shadow(0 0 10px rgba(249,168,212,0.9))" : "none",
+              animation: "gpChaosFloat 3s ease-in-out infinite",
+              animationDelay: `${p.delay}s`,
+            }}
+          >
+            {p.emoji}
+          </span>
         ))}
       </div>
     </>
