@@ -1767,8 +1767,15 @@ export async function generateContentStrategySection(
 
 IMPORTANT: You are generating ONLY the "${section}" section of the strategy. The other sections will be generated in separate calls.
 ${SECTION_SCHEMAS[section]}`;
-  // blogPosts is the largest section (many items + roadmap). Give it more headroom.
-  const maxTokens = section === "blogPosts" ? 12000 : 8000;
+  // Scale max_tokens by section size. pageOptimisations can be huge on large sites
+  // (390-page sitemap → 50+ suggestions), and blogPosts + roadmap is always the
+  // largest section. landingPages is typically smaller.
+  const MAX_TOKENS_BY_SECTION: Record<ContentStrategySection, number> = {
+    pageOptimisations: 14000,
+    landingPages: 10000,
+    blogPosts: 14000,
+  };
+  const maxTokens = MAX_TOKENS_BY_SECTION[section];
   console.log(`[content-strategy:${section}] sectionPrompt length=${sectionPrompt.length} chars — calling Claude Opus (max_tokens=${maxTokens})...`);
 
   const tClaude = Date.now();
@@ -1792,7 +1799,7 @@ ${SECTION_SCHEMAS[section]}`;
 
   if (response.stop_reason === "max_tokens") {
     console.warn(
-      `[content-strategy:${section}] ⚠️  Claude hit max_tokens (8000) — output is TRUNCATED. ` +
+      `[content-strategy:${section}] ⚠️  Claude hit max_tokens (${maxTokens}) — output is TRUNCATED. ` +
       `Raw text length=${rawText.length}. Attempting JSON repair...`,
     );
   }
@@ -1832,11 +1839,33 @@ ${SECTION_SCHEMAS[section]}`;
     try {
       raw = JSON.parse(repaired) as Record<string, unknown>;
       console.log(`[content-strategy:${section}] JSON repaired OK — raw keys: ${Object.keys(raw).join(", ")}`);
-    } catch (repairErr) {
-      console.error(
-        `[content-strategy:${section}] JSON repair FAILED — raw text length=${rawText.length} repaired length=${repaired.length}. Error: ${repairErr}`,
-      );
-      throw repairErr;
+    } catch {
+      // The truncation is mid-string (inside a property value), not at a bracket
+      // boundary — bracket repair can't help. Strip backwards to the last complete
+      // array item (ending with `},`) and re-close.
+      console.warn(`[content-strategy:${section}] bracket repair failed — stripping to last complete item...`);
+      const lastComplete = jsonText.lastIndexOf("},");
+      if (lastComplete > 0) {
+        const stripped = repairTruncatedJson(jsonText.substring(0, lastComplete + 1));
+        try {
+          raw = JSON.parse(stripped) as Record<string, unknown>;
+          console.warn(
+            `[content-strategy:${section}] stripped to last complete item OK — ` +
+            `lost ${jsonText.length - lastComplete} chars of truncated output`,
+          );
+        } catch (stripErr) {
+          console.error(
+            `[content-strategy:${section}] all repair attempts FAILED — ` +
+            `raw=${rawText.length} repaired=${repaired.length} stripped=${stripped.length}. Error: ${stripErr}`,
+          );
+          throw stripErr;
+        }
+      } else {
+        console.error(
+          `[content-strategy:${section}] JSON repair FAILED — raw text length=${rawText.length} repaired length=${repaired.length}. Error: ${parseErr}`,
+        );
+        throw parseErr;
+      }
     }
   }
 
