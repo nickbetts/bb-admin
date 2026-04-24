@@ -1,0 +1,42 @@
+# clickr by i3MEDIA
+
+> clickr is an AI-powered landing page generator for marketing agencies. Paste a client's website URL, generate a fully branded, conversion-optimised post-click landing page, and publish it live in under 60 seconds.
+
+clickr is part of the StratOS platform by i3MEDIA — a 16-channel marketing intelligence suite built for agencies managing performance campaigns at scale.
+
+**What clickr does:**
+
+- Scrapes any website URL to extract brand colours, typography, copy, services, testimonials, and team information
+- Generates a complete, branded post-click landing page using that data via Meridian, i3MEDIA's proprietary AI
+- Lets you refine the page via a chat editor — describe the change, and clickr rewrites it instantly
+- Publishes to `{client}.clickr.marketing/{slug}` with lead capture, tracking pixels, and conversion notifications active from the moment it goes live
+- Fires real-time alerts on conversion via Microsoft Teams, Slack, email, or any webhook
+
+**Who it is for:**
+
+clickr is designed for paid media teams, performance marketers, and agencies who need to ship high-quality post-click experiences fast — without a designer or developer bottleneck.
+
+**Key differentiators:**
+
+- Brand-accurate output from day one (real colours, real copy, real services — not placeholder text)
+- Chat-based iteration — no form-filling or template-picking
+- Clean subdomain publishing — `{client}.clickr.marketing/{slug}`
+- CRM, Slack, Teams, and webhook integrations out of the box
+- Part of the StratOS ecosystem, so campaign data, GA4, and ad performance can inform page strategy
+
+## Product
+
+- [clickr landing page](https://clickr.marketing/clickr): Full feature overview — how it works, campaign types supported, tracking capabilities, and integration options
+- [StratOS platform](https://stratos.i3media.agency): The broader marketing intelligence platform clickr is part of
+
+## Campaign types supported
+
+clickr generates landing pages optimised for: paid search (Google Ads, Microsoft Ads), paid social (Meta, TikTok, LinkedIn), email campaigns (Klaviyo, HubSpot), local service ads, Google PMax, seasonal promotions, and lead generation.
+
+## Integrations
+
+CRM webhooks, Slack, Microsoft Teams, email notifications, GA4, Google Ads conversion tracking, Meta Pixel, TikTok Pixel, LinkedIn Insight Tag.
+
+## Optional
+
+- [StratOS features overview](https://stratos.i3media.agency): Details on the full 16-channel intelligence platform (GA4, Google Ads, Meta, TikTok, LinkedIn, Klaviyo, YouTube, HubSpot, CallRail, SemRush, Search Console, Moz, WooCommerce, Shopify)
