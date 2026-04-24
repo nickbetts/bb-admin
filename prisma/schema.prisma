@@ -13,7 +13,7 @@ datasource db {
 model Role {
   id          String   @id @default(cuid())
   name        String   @unique
-  permissions String   // JSON array of permission keys
+  permissions String // JSON array of permission keys
   isSystem    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -21,17 +21,17 @@ model Role {
 }
 
 model User {
-  id                  String    @id @default(cuid())
-  email               String    @unique
+  id                  String               @id @default(cuid())
+  email               String               @unique
   name                String?
   password            String
-  role                String    @default("user")
-  mustChangePassword  Boolean   @default(false)
+  role                String               @default("user")
+  mustChangePassword  Boolean              @default(false)
   roleId              String?
-  userRole            Role?     @relation(fields: [roleId], references: [id], onDelete: SetNull)
-  notificationPrefs   String?   // JSON: { email: boolean, slack: boolean, slackWebhook?: string, digestFrequency: "immediate"|"daily"|"weekly", quietHoursStart?: string, quietHoursEnd?: string, enabledTypes: string[] }
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  userRole            Role?                @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  notificationPrefs   String? // JSON: { email: boolean, slack: boolean, slackWebhook?: string, digestFrequency: "immediate"|"daily"|"weekly", quietHoursStart?: string, quietHoursEnd?: string, enabledTypes: string[] }
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
   sessions            Session[]
   notifications       Notification[]
   conversations       ClientConversation[]
@@ -60,59 +60,59 @@ model AppSetting {
 }
 
 model Client {
-  id                    String    @id @default(cuid())
-  name                  String
-  slug                  String    @unique
-  website               String?
-  logoUrl               String?
-  ga4PropertyId         String?
-  ga4PropertyName       String?
-  semrushDomain         String?
-  semrushProjectId      Int?
-  semrushCampaignIds    String?   // JSON: string[] — campaign IDs for Position Tracking (format: "{projectId}_{campaignNum}")
-  metaAccountId         String?
-  metaAccountName       String?
-  metaAccessToken       String?
-  gaCredentials         String?
-  googleAdsCustomerId   String?
-  googleAdsAccountName  String?
-  searchConsoleSiteUrl  String?
-  aiReportInstructions  String?
-  woocommerceUrl        String?
-  woocommerceKey        String?
-  woocommerceSecret     String?
-  shopifyStoreDomain    String?
-  shopifyAccessToken    String?
-  contractedHours       String?   // JSON: Array<{service: string, hoursPerMonth: number}>
-  tiktokAdvertiserId    String?
-  tiktokAccessToken     String?
-  microsoftAdsAccountId String?
+  id                      String                   @id @default(cuid())
+  name                    String
+  slug                    String                   @unique
+  website                 String?
+  logoUrl                 String?
+  ga4PropertyId           String?
+  ga4PropertyName         String?
+  semrushDomain           String?
+  semrushProjectId        Int?
+  semrushCampaignIds      String? // JSON: string[] — campaign IDs for Position Tracking (format: "{projectId}_{campaignNum}")
+  metaAccountId           String?
+  metaAccountName         String?
+  metaAccessToken         String?
+  gaCredentials           String?
+  googleAdsCustomerId     String?
+  googleAdsAccountName    String?
+  searchConsoleSiteUrl    String?
+  aiReportInstructions    String?
+  woocommerceUrl          String?
+  woocommerceKey          String?
+  woocommerceSecret       String?
+  shopifyStoreDomain      String?
+  shopifyAccessToken      String?
+  contractedHours         String? // JSON: Array<{service: string, hoursPerMonth: number}>
+  tiktokAdvertiserId      String?
+  tiktokAccessToken       String?
+  microsoftAdsAccountId   String?
   microsoftAdsAccountName String?
-  cwvUrl                String?   // URL for Core Web Vitals tracking
-  reportSchedule        String?   // JSON: { frequency: "monthly"|"weekly", dayOfMonth?: number, dayOfWeek?: number, autoApprove: boolean, templateId?: string }
-  notifyEmail           String?   // Override email for report delivery
-  linkedinAccountId     String?
-  linkedinAccountName   String?
-  linkedinAccessToken   String?
-  klaviyoApiKey         String?
-  klaviyoAccountName    String?
+  cwvUrl                  String? // URL for Core Web Vitals tracking
+  reportSchedule          String? // JSON: { frequency: "monthly"|"weekly", dayOfMonth?: number, dayOfWeek?: number, autoApprove: boolean, templateId?: string }
+  notifyEmail             String? // Override email for report delivery
+  linkedinAccountId       String?
+  linkedinAccountName     String?
+  linkedinAccessToken     String?
+  klaviyoApiKey           String?
+  klaviyoAccountName      String?
   // Phase 3: New integrations
-  hubspotPortalId       String?   // HubSpot portal ID
-  hubspotAccessToken    String?   // HubSpot private app token
-  youtubeChannelId      String?   // YouTube channel ID
-  youtubeChannelName    String?   // YouTube channel display name
-  callrailAccountId     String?   // CallRail account ID
-  callrailApiKey        String?   // CallRail API key
+  hubspotPortalId         String? // HubSpot portal ID
+  hubspotAccessToken      String? // HubSpot private app token
+  youtubeChannelId        String? // YouTube channel ID
+  youtubeChannelName      String? // YouTube channel display name
+  callrailAccountId       String? // CallRail account ID
+  callrailApiKey          String? // CallRail API key
   // Phase 3: Competitor intelligence
-  competitorDomains     String?   // JSON: string[] — domains to monitor
+  competitorDomains       String? // JSON: string[] — domains to monitor
   // Click fraud protection snippet token
-  clickFraudToken       String?   @unique  // Unique token for website protection snippet
+  clickFraudToken         String?                  @unique // Unique token for website protection snippet
   // Microsoft 365 email sync
-  contactEmails         String?   // JSON: string[] — client contact email addresses for email sync
-  contentStrategyLimits String?   // JSON: { pageOptimisations?: number, landingPages?: number, blogPosts?: number, linkTargets?: number }
+  contactEmails           String? // JSON: string[] — client contact email addresses for email sync
+  contentStrategyLimits   String? // JSON: { pageOptimisations?: number, landingPages?: number, blogPosts?: number, linkTargets?: number }
   // Default analytics/conversion tracking config inherited by new landing pages for this client.
   // JSON shape: see LpAnalyticsConfig in src/lib/lp-analytics.ts
-  defaultAnalyticsConfig String   @default("{}")
+  defaultAnalyticsConfig  String                   @default("{}")
   // Per-client signal/AI configuration. Drives which alerts fire and how the AI frames recommendations.
   // JSON shape: {
   //   primaryKpi?: "roas" | "cpa" | "leads" | "calls" | "awareness" | "engagement",
@@ -123,36 +123,37 @@ model Client {
   //   thresholds?: { roasMin?, roasTarget?, freqMax?, ctrMin?, qsMin?, ... },
   //   mutedSignals?: string[]        // stable signal IDs to suppress (e.g. "meta.campaign.fatigue")
   // }
-  signalConfig          String?
-  status                String    @default("active") // lead | qualifying | proposal_sent | negotiating | active | churned | lost
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  reports               Report[]
-  snapshots             MetricSnapshot[]
-  conversations         ClientConversation[]
-  notifications         Notification[]
-  goals                 ClientGoal[]
-  strategyDocuments     StrategyDocument[]
-  budgetRecommendations BudgetRecommendation[]
-  actions               ActionItem[]
-  communications        ClientCommunication[]
-  portalUsers           ClientPortalUser[]
-  competitorSnapshots   CompetitorSnapshot[]
-  mediaPlans            MediaPlan[]
-  detectedAnomalies     DetectedAnomaly[]
-  clickFraudEvents      ClickFraudEvent[]
-  contentStrategies     ContentStrategy[]
-  landingPages          LandingPage[]
-  qaChecklists          QaChecklist[]
-  proposals             Proposal[]
-  keywordResearch       KeywordPlannerResearch[]
-  grandPlans            GrandPlan[]
-  retainers             ClientRetainer[]
-  invoices              ClientInvoice[]
-  timeEntries           AgencyTimeEntry[]
-  portalThreads         PortalThread[]
-  taskCategories        ClientTaskCategory[]
-  files                 ClientFile[]
+  signalConfig            String?
+  status                  String                   @default("active") // lead | qualifying | proposal_sent | negotiating | active | churned | lost
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  reports                 Report[]
+  snapshots               MetricSnapshot[]
+  conversations           ClientConversation[]
+  notifications           Notification[]
+  goals                   ClientGoal[]
+  strategyDocuments       StrategyDocument[]
+  budgetRecommendations   BudgetRecommendation[]
+  actions                 ActionItem[]
+  communications          ClientCommunication[]
+  portalUsers             ClientPortalUser[]
+  competitorSnapshots     CompetitorSnapshot[]
+  mediaPlans              MediaPlan[]
+  detectedAnomalies       DetectedAnomaly[]
+  clickFraudEvents        ClickFraudEvent[]
+  contentStrategies       ContentStrategy[]
+  landingPages            LandingPage[]
+  qaChecklists            QaChecklist[]
+  proposals               Proposal[]
+  keywordResearch         KeywordPlannerResearch[]
+  grandPlans              GrandPlan[]
+  retainers               ClientRetainer[]
+  invoices                ClientInvoice[]
+  timeEntries             AgencyTimeEntry[]
+  portalThreads           PortalThread[]
+  taskCategories          ClientTaskCategory[]
+  files                   ClientFile[]
+  emailVerificationJobs   EmailVerificationJob[]
 }
 
 model ClientGoal {
@@ -197,32 +198,32 @@ model BudgetRecommendation {
 }
 
 model Report {
-  id               String          @id @default(cuid())
-  clientId         String
-  title            String
-  period           String
-  status           String          @default("draft")
-  shareToken       String?         @unique
-  customStartDate  String?
-  customEndDate    String?
-  compareStartDate String?
-  compareEndDate   String?
+  id                String          @id @default(cuid())
+  clientId          String
+  title             String
+  period            String
+  status            String          @default("draft")
+  shareToken        String?         @unique
+  customStartDate   String?
+  customEndDate     String?
+  compareStartDate  String?
+  compareEndDate    String?
   // AI-generated narrative (persisted so it shows in PDF export)
-  narrativeData    String?         // JSON: { executiveSummary, keyThemes, crossSectionStories, goalProgressNarrative }
+  narrativeData     String? // JSON: { executiveSummary, keyThemes, crossSectionStories, goalProgressNarrative }
   // Phase 3: Collaboration & approval
-  approvalStatus   String?         // "pending" | "approved" | "changes_requested"
-  approvalNotes    String?
-  approvedBy       String?
-  approvedAt       DateTime?
+  approvalStatus    String? // "pending" | "approved" | "changes_requested"
+  approvalNotes     String?
+  approvedBy        String?
+  approvedAt        DateTime?
   // Client-portal publish flag — only items with portalPublishedAt set are visible in the client portal
   portalPublishedAt DateTime?
   portalPublishedBy String?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  client           Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  sections         ReportSection[]
-  screenshots      Screenshot[]
-  comments         ReportComment[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  client            Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  sections          ReportSection[]
+  screenshots       Screenshot[]
+  comments          ReportComment[]
 }
 
 model ReportSection {
@@ -241,22 +242,22 @@ model ReportSection {
 }
 
 model Screenshot {
-  id        String   @id @default(cuid())
-  reportId  String
-  sectionId String?
-  filename  String
-  url       String
-  caption   String?
-  orderIndex Int     @default(0)
-  createdAt DateTime @default(now())
-  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  reportId   String
+  sectionId  String?
+  filename   String
+  url        String
+  caption    String?
+  orderIndex Int      @default(0)
+  createdAt  DateTime @default(now())
+  report     Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
 }
 
 model ReportTemplate {
   id          String   @id @default(cuid())
   name        String
   description String?
-  sections    String   // JSON: SectionConfig[]
+  sections    String // JSON: SectionConfig[]
   isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -274,15 +275,15 @@ model GoogleConnection {
 // historical trending, anomaly detection over multiple periods, and
 // a lightweight change-log experience.
 model MetricSnapshot {
-  id          String   @id @default(cuid())
-  clientId    String
-  sectionType String   // "googleads" | "meta" | "ga4" | "searchconsole" | "seo"
-  periodStart String   // ISO date e.g. "2025-03-01"
-  periodEnd   String   // ISO date e.g. "2025-03-31"
-  metrics     String   // JSON blob of key→number metrics
+  id           String   @id @default(cuid())
+  clientId     String
+  sectionType  String // "googleads" | "meta" | "ga4" | "searchconsole" | "seo"
+  periodStart  String // ISO date e.g. "2025-03-01"
+  periodEnd    String // ISO date e.g. "2025-03-31"
+  metrics      String // JSON blob of key→number metrics
   campaignData String? // JSON blob of per-campaign metrics array
-  createdAt   DateTime @default(now())
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@unique([clientId, sectionType, periodStart, periodEnd])
 }
@@ -290,10 +291,10 @@ model MetricSnapshot {
 // Server-side runtime log — captures console.error/warn from API routes for in-platform debugging
 model ServerLog {
   id        String   @id @default(cuid())
-  level     String   // "error" | "warn"
+  level     String // "error" | "warn"
   message   String
-  source    String?  // route path or module context extracted from stack
-  details   String?  // JSON string of extra args / stack trace
+  source    String? // route path or module context extracted from stack
+  details   String? // JSON string of extra args / stack trace
   createdAt DateTime @default(now())
 
   @@index([level, createdAt])
@@ -302,77 +303,77 @@ model ServerLog {
 // Audit log for each cron/manual snapshot run
 model CronLog {
   id               String    @id @default(cuid())
-  jobName          String    // "snapshots" | "reports"
-  triggeredBy      String    @default("cron")  // "cron" | "manual"
+  jobName          String // "snapshots" | "reports"
+  triggeredBy      String    @default("cron") // "cron" | "manual"
   startedAt        DateTime  @default(now())
   completedAt      DateTime?
-  status           String    @default("running")  // "running" | "success" | "error"
+  status           String    @default("running") // "running" | "success" | "error"
   clientsTotal     Int       @default(0)
   snapshotsNew     Int       @default(0)
   snapshotsSkipped Int       @default(0)
   errors           Int       @default(0)
-  details          String?   // JSON: per-client results array
+  details          String? // JSON: per-client results array
 }
 
 // Short-lived cache for external API responses (SEMrush, GA4, etc.)
 // to avoid burning credits / hitting rate limits on every dashboard load.
 model ApiCache {
-  key       String   @id   // e.g. "semrush:overview:example.com:uk"
-  data      String        // JSON response blob
+  key       String   @id // e.g. "semrush:overview:example.com:uk"
+  data      String // JSON response blob
   fetchedAt DateTime @default(now())
   expiresAt DateTime
 }
 
 model KeywordPlannerResearch {
-  id              String   @id @default(cuid())
-  userId          String
-  clientId        String?  // Optional link to Client — allows standalone prospect research
-  title           String
-  website         String
-  brief           String
-  location        String   @default("2826")
-  adGroups        String   // JSON: AdGroup[]
-  selectedKws     String   // JSON: string[]
-  ideas           String   // JSON: KeywordIdea[]
-  maxCpc          String   @default("")
-  monthlyBudget   String   @default("")
-  conversionRate  String   @default("3")
-  websiteContext   String?  // Crawled website content for AI context
-  proposedServices String   @default("[]") // JSON: string[] — pre-agreed service names
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  client           Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  id               String      @id @default(cuid())
+  userId           String
+  clientId         String? // Optional link to Client — allows standalone prospect research
+  title            String
+  website          String
+  brief            String
+  location         String      @default("2826")
+  adGroups         String // JSON: AdGroup[]
+  selectedKws      String // JSON: string[]
+  ideas            String // JSON: KeywordIdea[]
+  maxCpc           String      @default("")
+  monthlyBudget    String      @default("")
+  conversionRate   String      @default("3")
+  websiteContext   String? // Crawled website content for AI context
+  proposedServices String      @default("[]") // JSON: string[] — pre-agreed service names
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  client           Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
   proposals        Proposal[]
   grandPlans       GrandPlan[]
 }
 
 model Proposal {
-  id              String                  @id @default(cuid())
-  userId          String
-  clientId        String?                 // Optional FK to Client — allows cold-outreach proposals without a client record
-  clientName      String                  // Display name (kept as fallback for prospects)
-  website         String                  @default("")
-  title           String
-  html            String                  // Full generated HTML (legacy/download)
-  servicesJson    String                  @default("[]") // JSON: Service[]
-  timelineJson    String                  @default("[]") // JSON: TimelinePhase[]
-  proposalDataJson String?               // JSON: structured proposal data for interactive viewer
-  shareToken      String?                 @unique // null = not shared
-  viewCount       Int                     @default(0)
-  lastViewedAt    DateTime?
-  researchId      String?
+  id               String                  @id @default(cuid())
+  userId           String
+  clientId         String? // Optional FK to Client — allows cold-outreach proposals without a client record
+  clientName       String // Display name (kept as fallback for prospects)
+  website          String                  @default("")
+  title            String
+  html             String // Full generated HTML (legacy/download)
+  servicesJson     String                  @default("[]") // JSON: Service[]
+  timelineJson     String                  @default("[]") // JSON: TimelinePhase[]
+  proposalDataJson String? // JSON: structured proposal data for interactive viewer
+  shareToken       String?                 @unique // null = not shared
+  viewCount        Int                     @default(0)
+  lastViewedAt     DateTime?
+  researchId       String?
   // Phase 3: Pipeline CRM fields
-  pipelineStage   String                  @default("prospect") // prospect|sent|viewed|negotiating|won|lost
-  pipelineNotes   String?
-  expectedValue   Float?
-  closeDate       String?
-  lostReason      String?
-  client          Client?                 @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  research        KeywordPlannerResearch? @relation(fields: [researchId], references: [id], onDelete: SetNull)
-  enquiries       ProposalEnquiry[]
-  grandPlans      GrandPlan[]
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
+  pipelineStage    String                  @default("prospect") // prospect|sent|viewed|negotiating|won|lost
+  pipelineNotes    String?
+  expectedValue    Float?
+  closeDate        String?
+  lostReason       String?
+  client           Client?                 @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  research         KeywordPlannerResearch? @relation(fields: [researchId], references: [id], onDelete: SetNull)
+  enquiries        ProposalEnquiry[]
+  grandPlans       GrandPlan[]
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
 }
 
 model ProposalEnquiry {
@@ -387,50 +388,50 @@ model ProposalEnquiry {
 }
 
 model QaChecklist {
-  id               String   @id @default(cuid())
-  clientId         String
-  checklistType    String   @default("website")     // "website" | "google_ads" | "meta_ads"
-  label            String?                           // free-text label (campaign name, site name, etc.)
-  websiteUrl       String?
-  status           String   @default("in_progress") // "in_progress" | "complete"
-  marketingChecks  String   @default("{}")           // JSON: { [checkId: string]: boolean }
-  devChecks        String   @default("{}")           // JSON: { [checkId: string]: boolean }
-  notes            String?
-  aiSummary        String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id              String   @id @default(cuid())
+  clientId        String
+  checklistType   String   @default("website") // "website" | "google_ads" | "meta_ads"
+  label           String? // free-text label (campaign name, site name, etc.)
+  websiteUrl      String?
+  status          String   @default("in_progress") // "in_progress" | "complete"
+  marketingChecks String   @default("{}") // JSON: { [checkId: string]: boolean }
+  devChecks       String   @default("{}") // JSON: { [checkId: string]: boolean }
+  notes           String?
+  aiSummary       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
 
 model LlmTemplate {
-  id              String   @id @default(cuid())
-  name            String
-  sector          String
-  description     String?
-  templateText    String   // The structure/format the AI follows to generate the llm.txt
-  promptGuidance  String?  // Strategic/prioritisation instructions the AI should follow when filling this template
-  isBuiltIn       Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  sector         String
+  description    String?
+  templateText   String // The structure/format the AI follows to generate the llm.txt
+  promptGuidance String? // Strategic/prioritisation instructions the AI should follow when filling this template
+  isBuiltIn      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 // Notification system: delivers anomaly alerts, report events, and key platform events
 model Notification {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
   clientId    String?
-  type        String   // "anomaly" | "report_ready" | "report_sent" | "report_opened" | "proposal_viewed" | "integration_error" | "goal_at_risk" | "snapshot_complete"
-  severity    String?  // "high" | "medium" | "low"
+  type        String // "anomaly" | "report_ready" | "report_sent" | "report_opened" | "proposal_viewed" | "integration_error" | "goal_at_risk" | "snapshot_complete"
+  severity    String? // "high" | "medium" | "low"
   title       String
   body        String
-  metadata    String?  // JSON: extra context (anomaly details, report id, etc.)
-  channel     String   @default("in_app") // "in_app" | "email" | "slack"
-  status      String   @default("unread") // "unread" | "read" | "dismissed"
+  metadata    String? // JSON: extra context (anomaly details, report id, etc.)
+  channel     String    @default("in_app") // "in_app" | "email" | "slack"
+  status      String    @default("unread") // "unread" | "read" | "dismissed"
   deliveredAt DateTime?
   readAt      DateTime?
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  client      Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client      Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
 
 // Conversational AI: stores chat messages per client for the "Ask the Data" feature
@@ -438,9 +439,9 @@ model ClientConversation {
   id        String   @id @default(cuid())
   clientId  String
   userId    String
-  role      String   // "user" | "assistant"
+  role      String // "user" | "assistant"
   content   String
-  metadata  String?  // JSON: suggested prompts, context summary, etc.
+  metadata  String? // JSON: suggested prompts, context summary, etc.
   createdAt DateTime @default(now())
   client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -449,42 +450,42 @@ model ClientConversation {
 // Phase 3: Internal Action Tracking — AI recommendations → assigned actions → outcomes
 // Now also powers the per-client kanban task boards (see TaskCategory + TaskAssignee).
 model ActionItem {
-  id          String    @id @default(cuid())
-  clientId    String
-  categoryId  String?
-  title       String
-  description String?
+  id                   String           @id @default(cuid())
+  clientId             String
+  categoryId           String?
+  title                String
+  description          String?
   // status values: to_do | in_progress | for_approval | signed_off_internal | signed_off_client | done | cancelled
   // (legacy AI rows may have: open | completed — migrated to to_do/done by 20260422_add_kanban_tasks)
-  status      String    @default("to_do")
-  priority    String    @default("medium")  // low|medium|high|urgent
-  boardOrder  Int       @default(0)         // Order within a kanban column
-  assignedTo  String?                       // Legacy single-assignee User ID — kept for back-compat
-  dueDate     String?
-  completedAt DateTime?
-  outcome     String?                       // Notes / measured outcome after completion
-  sourceType  String?                       // "ai_recommendation" | "manual"
-  sourceRef   String?                       // Reference to source (e.g., anomaly id)
+  status               String           @default("to_do")
+  priority             String           @default("medium") // low|medium|high|urgent
+  boardOrder           Int              @default(0) // Order within a kanban column
+  assignedTo           String? // Legacy single-assignee User ID — kept for back-compat
+  dueDate              String?
+  completedAt          DateTime?
+  outcome              String? // Notes / measured outcome after completion
+  sourceType           String? // "ai_recommendation" | "manual"
+  sourceRef            String? // Reference to source (e.g., anomaly id)
   // Approval audit
-  forApprovalAt        DateTime?            // When "Submitted for approval" was first clicked
+  forApprovalAt        DateTime? // When "Submitted for approval" was first clicked
   internalApprovedBy   String?
   internalApprovedAt   DateTime?
   clientApprovedBy     String?
   clientApprovedAt     DateTime?
-  clientApprovalSource String?              // "portal" | "agency"
+  clientApprovalSource String? // "portal" | "agency"
   approvalNotes        String?
   // Client-side ownership — when set, this task is something the client portal user is asked to do.
   // Such tasks appear in the client portal's "Your tasks" list and the client can mark them done.
   clientPortalUserId   String?
   clientCompletedAt    DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  category    TaskCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  assignees   TaskAssignee[]
-  comments    TaskComment[]
-  timeLogs    TaskTimeLog[]
-  attachments TaskAttachment[]
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  client               Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  category             TaskCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  assignees            TaskAssignee[]
+  comments             TaskComment[]
+  timeLogs             TaskTimeLog[]
+  attachments          TaskAttachment[]
 
   @@index([clientId, categoryId, status, boardOrder])
   @@index([clientPortalUserId, status])
@@ -492,15 +493,15 @@ model ActionItem {
 
 // Admin-managed global list of task categories. Each client picks which to display via ClientTaskCategory.
 model TaskCategory {
-  id          String   @id @default(cuid())
+  id          String               @id @default(cuid())
   name        String
-  slug        String   @unique
-  color       String?  // Hex like #6366f1
-  icon        String?  // Lucide icon name
-  sortOrder   Int      @default(0)
-  isArchived  Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  slug        String               @unique
+  color       String? // Hex like #6366f1
+  icon        String? // Lucide icon name
+  sortOrder   Int                  @default(0)
+  isArchived  Boolean              @default(false)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
   actionItems ActionItem[]
   clientLinks ClientTaskCategory[]
 }
@@ -526,7 +527,7 @@ model TaskAssignee {
   actionItemId String
   userId       String
   assignedAt   DateTime   @default(now())
-  assignedBy   String?    // User ID who made the assignment
+  assignedBy   String? // User ID who made the assignment
   actionItem   ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -536,14 +537,14 @@ model TaskAssignee {
 
 // Threaded comments on tasks. Authored by an agency User.
 model TaskComment {
-  id           String     @id @default(cuid())
+  id           String           @id @default(cuid())
   actionItemId String
-  userId       String     // Author
+  userId       String // Author
   body         String
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  actionItem   ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  actionItem   ActionItem       @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   attachments  TaskAttachment[]
 
   @@index([actionItemId, createdAt])
@@ -554,11 +555,11 @@ model TaskComment {
 model TaskTimeLog {
   id           String     @id @default(cuid())
   actionItemId String
-  userId       String     // Owner of the timer entry
+  userId       String // Owner of the timer entry
   startedAt    DateTime   @default(now())
   endedAt      DateTime?
-  durationMs   Int?       // Stamped on stop = endedAt - startedAt (ms)
-  note         String?    // Optional note on what was worked on
+  durationMs   Int? // Stamped on stop = endedAt - startedAt (ms)
+  note         String? // Optional note on what was worked on
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   actionItem   ActionItem @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
@@ -572,7 +573,7 @@ model TaskTimeLog {
 // Vercel Blob; this row holds the URL and metadata. If commentId is set, the attachment
 // belongs to that specific comment; otherwise it is a task-level attachment.
 model TaskAttachment {
-  id           String      @id @default(cuid())
+  id           String       @id @default(cuid())
   actionItemId String
   commentId    String?
   uploadedById String
@@ -580,10 +581,10 @@ model TaskAttachment {
   fileName     String
   contentType  String
   sizeBytes    Int
-  createdAt    DateTime    @default(now())
-  actionItem   ActionItem  @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
+  actionItem   ActionItem   @relation(fields: [actionItemId], references: [id], onDelete: Cascade)
   comment      TaskComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  uploadedBy   User        @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  uploadedBy   User         @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
 
   @@index([actionItemId, createdAt])
   @@index([commentId])
@@ -609,34 +610,34 @@ model ClientFile {
 
 // Phase 3: Client Communication Hub — centralised communication log
 model ClientCommunication {
-  id          String    @id @default(cuid())
-  clientId    String
-  userId      String    // Agency user who logged/sent the communication
-  type        String    // "email" | "call" | "meeting" | "note" | "report_share" | "proposal_share"
-  direction   String    @default("outbound")  // "inbound" | "outbound"
-  subject     String
-  body        String?
-  status      String    @default("logged")    // "draft" | "sent" | "logged"
-  sentAt      DateTime?
-  externalMessageId String? @unique           // Dedup key for MS365-synced messages/events
-  metadata    String?   // JSON: { reportId?, proposalId?, duration?, participants?: string[] }
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  client      Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id                String    @id @default(cuid())
+  clientId          String
+  userId            String // Agency user who logged/sent the communication
+  type              String // "email" | "call" | "meeting" | "note" | "report_share" | "proposal_share"
+  direction         String    @default("outbound") // "inbound" | "outbound"
+  subject           String
+  body              String?
+  status            String    @default("logged") // "draft" | "sent" | "logged"
+  sentAt            DateTime?
+  externalMessageId String?   @unique // Dedup key for MS365-synced messages/events
+  metadata          String? // JSON: { reportId?, proposalId?, duration?, participants?: string[] }
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
 }
 
 // Phase 3: Report Collaboration — comments on report sections
 model ReportComment {
-  id         String   @id @default(cuid())
-  reportId   String
-  sectionId  String?
-  userId     String   // Author
-  content    String
-  resolved   Boolean  @default(false)
-  parentId   String?  // For threaded replies
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  report     Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  reportId  String
+  sectionId String?
+  userId    String // Author
+  content   String
+  resolved  Boolean  @default(false)
+  parentId  String? // For threaded replies
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
 }
 
 // Phase 3: Competitor Intelligence — ongoing competitive monitoring snapshots
@@ -644,8 +645,8 @@ model CompetitorSnapshot {
   id          String   @id @default(cuid())
   clientId    String
   domain      String
-  metrics     String   // JSON: { organicTraffic?, organicKeywords?, backlinks?, paidKeywords?, etc. }
-  insights    String?  // AI-generated competitive summary
+  metrics     String // JSON: { organicTraffic?, organicKeywords?, backlinks?, paidKeywords?, etc. }
+  insights    String? // AI-generated competitive summary
   periodStart String
   periodEnd   String
   createdAt   DateTime @default(now())
@@ -656,19 +657,19 @@ model CompetitorSnapshot {
 
 // Phase 3: Media Plan Builder — paid media planning with forecast outputs
 model MediaPlan {
-  id          String   @id @default(cuid())
+  id          String      @id @default(cuid())
   clientId    String?
   title       String
-  objective   String   // "brand_awareness" | "lead_gen" | "ecommerce" | "traffic"
+  objective   String // "brand_awareness" | "lead_gen" | "ecommerce" | "traffic"
   totalBudget Float
-  duration    Int      // Duration in days
+  duration    Int // Duration in days
   startDate   String?
-  channels    String   // JSON: ChannelAllocation[]
-  forecast    String?  // JSON: AI-generated forecast output
-  status      String   @default("draft")  // draft|active|completed|archived
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  client      Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  channels    String // JSON: ChannelAllocation[]
+  forecast    String? // JSON: AI-generated forecast output
+  status      String      @default("draft") // draft|active|completed|archived
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  client      Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
   grandPlans  GrandPlan[]
 }
 
@@ -678,10 +679,10 @@ model ClientPortalUser {
   clientId    String
   email       String    @unique
   name        String?
-  magicToken  String?   @unique  // Single-use login token
+  magicToken  String?   @unique // Single-use login token
   tokenExpiry DateTime?
   lastLoginAt DateTime?
-  permissions String    @default("[]")  // JSON: ["reports","goals","communications"]
+  permissions String    @default("[]") // JSON: ["reports","goals","communications"]
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -690,21 +691,21 @@ model ClientPortalUser {
 
 // Phase 3: Anomaly Memory — stores detected anomalies so root-cause can reference history
 model DetectedAnomaly {
-  id             String   @id @default(cuid())
-  clientId       String
-  platform       String   // "googleads" | "meta" | "ga4" | "searchconsole" | "seo" etc.
-  metric         String   // The metric that triggered the anomaly
-  severity       String   // "high" | "medium" | "low"
-  direction      String   // "up" | "down"
-  changePercent  Float
-  detail         String   // Human-readable description
-  rootCauseText  String?  // AI-generated root cause (short, 2-3 sentences)
-  actionsTaken   String?  // JSON: string[] — actions taken in response
-  periodStart    String   // ISO date
-  periodEnd      String   // ISO date
-  resolvedAt     DateTime?
-  createdAt      DateTime @default(now())
-  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  clientId      String
+  platform      String // "googleads" | "meta" | "ga4" | "searchconsole" | "seo" etc.
+  metric        String // The metric that triggered the anomaly
+  severity      String // "high" | "medium" | "low"
+  direction     String // "up" | "down"
+  changePercent Float
+  detail        String // Human-readable description
+  rootCauseText String? // AI-generated root cause (short, 2-3 sentences)
+  actionsTaken  String? // JSON: string[] — actions taken in response
+  periodStart   String // ISO date
+  periodEnd     String // ISO date
+  resolvedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, platform, metric])
 }
@@ -713,15 +714,15 @@ model DetectedAnomaly {
 model ClickFraudEvent {
   id           String   @id @default(cuid())
   clientId     String
-  sessionId    String   // Random session ID generated by the snippet
+  sessionId    String // Random session ID generated by the snippet
   userAgent    String?
-  ipHash       String?  // SHA-256 of IP address (privacy-safe)
+  ipHash       String? // SHA-256 of IP address (privacy-safe)
   referer      String?
   utmSource    String?
   utmMedium    String?
   utmCampaign  String?
   isSuspicious Boolean  @default(false)
-  reason       String?  // "bot_ua" | "headless" | "no_interaction" | "rapid_repeat"
+  reason       String? // "bot_ua" | "headless" | "no_interaction" | "rapid_repeat"
   createdAt    DateTime @default(now())
   client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
@@ -730,28 +731,28 @@ model ClickFraudEvent {
 }
 
 model ContentStrategy {
-  id               String    @id @default(cuid())
-  clientId         String?
-  title            String
-  period           String
-  createdBy        String?
-  status           String    @default("live") // "live" | "archived"
-  generationMs     Int?      // how long the full generation took in milliseconds
-  generationStatus String    @default("complete") // "generating" | "complete" | "failed"
-  generationError  String?   // error message when generationStatus = "failed"
-  spreadsheetData  String    // JSON: parsed spreadsheet data
-  generatedHtml    String    // Full standalone HTML output
-  shareToken       String?   @unique
-  sharePassword    String?   // bcrypt hash of password for share link
+  id                String      @id @default(cuid())
+  clientId          String?
+  title             String
+  period            String
+  createdBy         String?
+  status            String      @default("live") // "live" | "archived"
+  generationMs      Int? // how long the full generation took in milliseconds
+  generationStatus  String      @default("complete") // "generating" | "complete" | "failed"
+  generationError   String? // error message when generationStatus = "failed"
+  spreadsheetData   String // JSON: parsed spreadsheet data
+  generatedHtml     String // Full standalone HTML output
+  shareToken        String?     @unique
+  sharePassword     String? // bcrypt hash of password for share link
   // Client-portal publish flag — only items with portalPublishedAt set are visible in the client portal
   portalPublishedAt DateTime?
   portalPublishedBy String?
-  viewCount        Int       @default(0)
-  lastViewedAt     DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  client           Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  grandPlans       GrandPlan[]
+  viewCount         Int         @default(0)
+  lastViewedAt      DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  client            Client?     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  grandPlans        GrandPlan[]
 
   @@index([clientId, createdAt])
 }
@@ -759,16 +760,16 @@ model ContentStrategy {
 // User activity log — tracks key actions for an audit trail / changelog
 model UserActivityLog {
   id           String   @id @default(cuid())
-  userId       String?  // null for system/cron-triggered actions
-  userEmail    String?  // denormalised so display works even if user is deleted
-  userName     String?  // display name at time of action
-  action       String   // e.g. "report_created" | "report_published" | "ai_summary" | "client_created"
-  resourceType String?  // "report" | "client" | "proposal" | "strategy_document" | "snapshot"
-  resourceId   String?  // ID of the affected resource
-  clientId     String?  // which client this relates to (if any)
-  clientName   String?  // denormalised client name
-  description  String   // human-readable: "Generated report 'April 2025' for Acme Corp"
-  metadata     String?  // JSON: extra context (model, tokens, etc.)
+  userId       String? // null for system/cron-triggered actions
+  userEmail    String? // denormalised so display works even if user is deleted
+  userName     String? // display name at time of action
+  action       String // e.g. "report_created" | "report_published" | "ai_summary" | "client_created"
+  resourceType String? // "report" | "client" | "proposal" | "strategy_document" | "snapshot"
+  resourceId   String? // ID of the affected resource
+  clientId     String? // which client this relates to (if any)
+  clientName   String? // denormalised client name
+  description  String // human-readable: "Generated report 'April 2025' for Acme Corp"
+  metadata     String? // JSON: extra context (model, tokens, etc.)
   createdAt    DateTime @default(now())
 
   @@index([createdAt])
@@ -780,9 +781,9 @@ model UserActivityLog {
 // Microsoft 365 connected accounts for email/calendar sync
 model Ms365Connection {
   id           String   @id @default(cuid())
-  label        String   // Display name / email address
+  label        String // Display name / email address
   email        String   @unique
-  refreshToken String   // OAuth2 refresh token
+  refreshToken String // OAuth2 refresh token
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -791,32 +792,32 @@ model Ms365Connection {
 
 // AI-generated landing pages for ad campaigns, optionally linked to a client
 model LandingPage {
-  id               String               @id @default(cuid())
-  clientId         String?
-  userId           String               // Creator
-  title            String
-  slug             String               // URL slug — unique within client scope
-  currentHtml      String               // Active HTML (latest accepted version)
-  briefJson        String               // JSON: { url, brief, campaignType, targetAudience }
-  brandContextJson String               // JSON: extracted brand data (colours, fonts, logo, imagery)
-  formConfig       String               @default("{}") // JSON: { builtInFields?: string[], externalFormUrl?: string }
+  id                String               @id @default(cuid())
+  clientId          String?
+  userId            String // Creator
+  title             String
+  slug              String // URL slug — unique within client scope
+  currentHtml       String // Active HTML (latest accepted version)
+  briefJson         String // JSON: { url, brief, campaignType, targetAudience }
+  brandContextJson  String // JSON: extracted brand data (colours, fonts, logo, imagery)
+  formConfig        String               @default("{}") // JSON: { builtInFields?: string[], externalFormUrl?: string }
   // Per-landing-page analytics/conversion tracking override. Merged on top of Client.defaultAnalyticsConfig at serve time.
-  analyticsConfig  String               @default("{}")
-  shareToken       String?              @unique
-  publicSlug       String?              @unique   // Pretty URL slug for /lp/{slug}
-  viewCount        Int                  @default(0)
-  lastViewedAt     DateTime?
-  status           String               @default("draft") // draft | published | archived
+  analyticsConfig   String               @default("{}")
+  shareToken        String?              @unique
+  publicSlug        String?              @unique // Pretty URL slug for /lp/{slug}
+  viewCount         Int                  @default(0)
+  lastViewedAt      DateTime?
+  status            String               @default("draft") // draft | published | archived
   // Client-portal publish flag — only items with portalPublishedAt set are visible in the client portal
   portalPublishedAt DateTime?
   portalPublishedBy String?
-  templateId       String?              // LandingPageTemplate.id if created from template
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-  client           Client?              @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  versions         LandingPageVersion[]
-  leads            LandingPageLead[]
+  templateId        String? // LandingPageTemplate.id if created from template
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  client            Client?              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versions          LandingPageVersion[]
+  leads             LandingPageLead[]
 
   @@unique([clientId, slug])
   @@index([clientId, createdAt])
@@ -827,9 +828,9 @@ model LandingPage {
 model LandingPageVersion {
   id            String      @id @default(cuid())
   landingPageId String
-  versionNumber Int         // Sequential per landing page (1, 2, 3…)
-  html          String      // Full HTML at this version
-  prompt        String      // The user prompt that produced this version
+  versionNumber Int // Sequential per landing page (1, 2, 3…)
+  html          String // Full HTML at this version
+  prompt        String // The user prompt that produced this version
   createdAt     DateTime    @default(now())
   landingPage   LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
 
@@ -845,7 +846,7 @@ model LandingPageLead {
   email         String
   phone         String?
   message       String?
-  formData      String?     // JSON: additional custom field data
+  formData      String? // JSON: additional custom field data
   referrer      String?
   createdAt     DateTime    @default(now())
   landingPage   LandingPage @relation(fields: [landingPageId], references: [id], onDelete: Cascade)
@@ -858,12 +859,12 @@ model LandingPageTemplate {
   id             String   @id @default(cuid())
   name           String
   description    String?
-  category       String   // "lead-gen" | "ecommerce" | "event" | "service" | "product-launch"
+  category       String // "lead-gen" | "ecommerce" | "event" | "service" | "product-launch"
   thumbnailUrl   String?
-  html           String   // Template HTML (with placeholder markers)
-  promptGuidance String?  // System prompt hints for AI when using this template
+  html           String // Template HTML (with placeholder markers)
+  promptGuidance String? // System prompt hints for AI when using this template
   isBuiltIn      Boolean  @default(false)
-  createdBy      String?  // User email who saved this template
+  createdBy      String? // User email who saved this template
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -874,47 +875,47 @@ model LandingPageTemplate {
 // media plans, campaign structures, and content calendars into a single
 // client-facing deliverable. Used for pitches (pre-sale) and onboarding (post-sale).
 model GrandPlan {
-  id                      String              @id @default(cuid())
-  clientId                String?
-  userId                  String              // Creator
-  title                   String
-  status                  String              @default("draft") // draft | generating | complete | failed
-  statusMessage           String?             // Progress message during generation (e.g., "Researching keywords...")
-  purpose                 String              @default("pitch") // pitch | onboarding | strategy_refresh
-  generationMs            Int?                // How long AI generation took in ms
-  generationError         String?             // Error message when status = "failed"
+  id                       String                  @id @default(cuid())
+  clientId                 String?
+  userId                   String // Creator
+  title                    String
+  status                   String                  @default("draft") // draft | generating | complete | failed
+  statusMessage            String? // Progress message during generation (e.g., "Researching keywords...")
+  purpose                  String                  @default("pitch") // pitch | onboarding | strategy_refresh
+  generationMs             Int? // How long AI generation took in ms
+  generationError          String? // Error message when status = "failed"
   // Source links — all optional, sections auto-enabled based on what's linked
-  proposalId              String?
-  keywordResearchId       String?
-  contentStrategyId       String?
-  mediaPlanId             String?
+  proposalId               String?
+  keywordResearchId        String?
+  contentStrategyId        String?
+  mediaPlanId              String?
   // Generated output
-  planDataJson            String?             // JSON: structured plan data for interactive viewer
-  generatedHtml           String?             // Full standalone HTML deliverable
+  planDataJson             String? // JSON: structured plan data for interactive viewer
+  generatedHtml            String? // Full standalone HTML deliverable
   // Customisation
-  configJson              String    @default("{}") // JSON: { sections: string[], brandingOverrides?: {} }
-  campaignFocusPeriodsJson String   @default("[]") // JSON: Array<{ startMonth: number, endMonth: number, label: string, description?: string }>
-  customSectionsJson      String    @default("[]") // JSON: user-added custom sections
-  clientBrief             String?             // Free-text brief for AI context
-  targetAudiences         String?             // Free-text description of target audiences for AI context
+  configJson               String                  @default("{}") // JSON: { sections: string[], brandingOverrides?: {} }
+  campaignFocusPeriodsJson String                  @default("[]") // JSON: Array<{ startMonth: number, endMonth: number, label: string, description?: string }>
+  customSectionsJson       String                  @default("[]") // JSON: user-added custom sections
+  clientBrief              String? // Free-text brief for AI context
+  targetAudiences          String? // Free-text description of target audiences for AI context
   // Sharing
-  shareToken              String?   @unique
-  sharePassword           String?             // SHA256 hash of password for share link
-  shareExpiresAt          DateTime?           // Optional expiry for share link
+  shareToken               String?                 @unique
+  sharePassword            String? // SHA256 hash of password for share link
+  shareExpiresAt           DateTime? // Optional expiry for share link
   // Client-portal publish flag — only items with portalPublishedAt set are visible in the client portal
-  portalPublishedAt       DateTime?
-  portalPublishedBy       String?
-  viewCount               Int       @default(0)
-  lastViewedAt            DateTime?
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
+  portalPublishedAt        DateTime?
+  portalPublishedBy        String?
+  viewCount                Int                     @default(0)
+  lastViewedAt             DateTime?
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
   // Relations
-  client                  Client?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  proposal                Proposal?           @relation(fields: [proposalId], references: [id], onDelete: SetNull)
-  keywordResearch         KeywordPlannerResearch? @relation(fields: [keywordResearchId], references: [id], onDelete: SetNull)
-  contentStrategy         ContentStrategy?    @relation(fields: [contentStrategyId], references: [id], onDelete: SetNull)
-  mediaPlan               MediaPlan?          @relation(fields: [mediaPlanId], references: [id], onDelete: SetNull)
-  versions                GrandPlanVersion[]
+  client                   Client?                 @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  proposal                 Proposal?               @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  keywordResearch          KeywordPlannerResearch? @relation(fields: [keywordResearchId], references: [id], onDelete: SetNull)
+  contentStrategy          ContentStrategy?        @relation(fields: [contentStrategyId], references: [id], onDelete: SetNull)
+  mediaPlan                MediaPlan?              @relation(fields: [mediaPlanId], references: [id], onDelete: SetNull)
+  versions                 GrandPlanVersion[]
 
   @@index([clientId, createdAt])
   @@index([userId, createdAt])
@@ -924,10 +925,10 @@ model GrandPlan {
 model GrandPlanVersion {
   id            String    @id @default(cuid())
   grandPlanId   String
-  versionNumber Int       // Sequential per plan (1, 2, 3…)
-  generatedHtml String    // Full HTML at this version
-  planDataJson  String?   // Structured data at this version
-  prompt        String    // The user prompt that produced this version
+  versionNumber Int // Sequential per plan (1, 2, 3…)
+  generatedHtml String // Full HTML at this version
+  planDataJson  String? // Structured data at this version
+  prompt        String // The user prompt that produced this version
   createdAt     DateTime  @default(now())
   grandPlan     GrandPlan @relation(fields: [grandPlanId], references: [id], onDelete: Cascade)
 
@@ -939,16 +940,16 @@ model GrandPlanVersion {
 // Recurring retainer / project fees billed per client. Drives utilisation,
 // margin and "is this account profitable?" reporting.
 model ClientRetainer {
-  id           String   @id @default(cuid())
-  clientId     String
-  monthlyFee   Float    // GBP per month
+  id              String   @id @default(cuid())
+  clientId        String
+  monthlyFee      Float // GBP per month
   contractedHours Float? // Hours included per month
-  startDate    String   // ISO date
-  endDate      String?  // null = active
-  notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  startDate       String // ISO date
+  endDate         String? // null = active
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, startDate])
 }
@@ -958,11 +959,11 @@ model ClientRetainer {
 model ClientInvoice {
   id          String   @id @default(cuid())
   clientId    String
-  invoiceRef  String   // External reference (e.g. Xero invoice number)
-  amount      Float    // GBP, ex VAT
-  issuedDate  String   // ISO date
-  dueDate     String?  // ISO date
-  paidDate    String?  // ISO date — null = unpaid
+  invoiceRef  String // External reference (e.g. Xero invoice number)
+  amount      Float // GBP, ex VAT
+  issuedDate  String // ISO date
+  dueDate     String? // ISO date
+  paidDate    String? // ISO date — null = unpaid
   status      String   @default("issued") // draft|issued|paid|overdue|void
   description String?
   createdAt   DateTime @default(now())
@@ -976,17 +977,17 @@ model ClientInvoice {
 // Time logged by team members against a client. The unit feeding utilisation,
 // margin, and capacity planning. Could be imported from a timer or manual.
 model AgencyTimeEntry {
-  id          String   @id @default(cuid())
-  clientId    String
-  userId      String
-  date        String   // ISO date
-  hours       Float
-  category    String?  // "strategy" | "ads" | "seo" | "creative" | "meeting" | …
-  notes       String?
-  billable    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  clientId  String
+  userId    String
+  date      String // ISO date
+  hours     Float
+  category  String? // "strategy" | "ads" | "seo" | "creative" | "meeting" | …
+  notes     String?
+  billable  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([clientId, date])
   @@index([userId, date])
@@ -997,15 +998,15 @@ model AgencyTimeEntry {
 // separate from `ClientCommunication` (which is the agency-side log) so the
 // permission boundaries are obvious.
 model PortalThread {
-  id          String         @id @default(cuid())
-  clientId    String
-  subject     String
-  status      String         @default("open") // open|resolved|archived
-  lastMessageAt DateTime     @default(now())
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  client      Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  messages    PortalMessage[]
+  id            String          @id @default(cuid())
+  clientId      String
+  subject       String
+  status        String          @default("open") // open|resolved|archived
+  lastMessageAt DateTime        @default(now())
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  client        Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  messages      PortalMessage[]
 
   @@index([clientId, lastMessageAt])
 }
@@ -1013,10 +1014,10 @@ model PortalThread {
 model PortalMessage {
   id          String       @id @default(cuid())
   threadId    String
-  authorType  String       // "agency_user" | "portal_user"
-  authorId    String       // FK to User (agency) or ClientPortalUser
+  authorType  String // "agency_user" | "portal_user"
+  authorId    String // FK to User (agency) or ClientPortalUser
   body        String
-  attachments String?      // JSON: [{ name, url, size }]
+  attachments String? // JSON: [{ name, url, size }]
   readAt      DateTime?
   createdAt   DateTime     @default(now())
   thread      PortalThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
@@ -1030,23 +1031,78 @@ model PortalMessage {
 // for and where the credentials are stored. Passwords are encrypted at
 // rest using AES-256-GCM with the SESSION_SECRET.
 model AgencySubscription {
-  id            String   @id @default(cuid())
-  platform      String   // e.g. "Claude", "Vercel", "Figma"
-  category      String?  // e.g. "AI", "Hosting", "Design", "Marketing"
-  url           String?  // login URL
-  email         String?  // login email / username
-  loginMethod   String   @default("password") // password|magic_link|email_code|google_sso|sso_saml|api_key|other
-  passwordEnc   String?  // AES-256-GCM ciphertext — only used when loginMethod="password"
-  cost          Float    @default(0)     // amount in chosen currency
-  currency      String   @default("GBP") // ISO code
-  billingCycle  String   @default("monthly") // monthly|yearly
-  renewalDate   String?  // ISO date (next renewal/billing date)
-  owner         String?  // person/team responsible internally
-  notes         String?
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  platform     String // e.g. "Claude", "Vercel", "Figma"
+  category     String? // e.g. "AI", "Hosting", "Design", "Marketing"
+  url          String? // login URL
+  email        String? // login email / username
+  loginMethod  String   @default("password") // password|magic_link|email_code|google_sso|sso_saml|api_key|other
+  passwordEnc  String? // AES-256-GCM ciphertext — only used when loginMethod="password"
+  cost         Float    @default(0) // amount in chosen currency
+  currency     String   @default("GBP") // ISO code
+  billingCycle String   @default("monthly") // monthly|yearly
+  renewalDate  String? // ISO date (next renewal/billing date)
+  owner        String? // person/team responsible internally
+  notes        String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([platform])
   @@index([active])
+}
+
+// --------------------------------------------------------------------------
+// Email Verifier — bulk email validation jobs powered by ZeroBounce.
+// --------------------------------------------------------------------------
+model EmailVerificationJob {
+  id             String                    @id @default(cuid())
+  userId         String
+  clientId       String?
+  title          String
+  status         String                    @default("pending") // pending | running | complete | failed
+  totalCount     Int                       @default(0)
+  processedCount Int                       @default(0)
+  validCount     Int                       @default(0)
+  invalidCount   Int                       @default(0)
+  catchAllCount  Int                       @default(0)
+  unknownCount   Int                       @default(0)
+  abuseCount     Int                       @default(0)
+  spamtrapCount  Int                       @default(0)
+  doNotMailCount Int                       @default(0)
+  errorMessage   String?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  client         Client?                   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  results        EmailVerificationResult[]
+
+  @@index([userId])
+  @@index([clientId])
+  @@index([createdAt])
+}
+
+model EmailVerificationResult {
+  id           String               @id @default(cuid())
+  jobId        String
+  email        String
+  status       String               @default("unknown") // valid | invalid | catch-all | unknown | spamtrap | abuse | do_not_mail
+  subStatus    String?
+  account      String?
+  domain       String?
+  mxFound      Boolean              @default(false)
+  mxRecord     String?
+  smtpProvider String?
+  didYouMean   String?
+  freeEmail    Boolean              @default(false)
+  role         Boolean              @default(false)
+  disposable   Boolean              @default(false)
+  toxic        Boolean              @default(false)
+  errorMessage String?
+  processedAt  DateTime?
+  createdAt    DateTime             @default(now())
+  job          EmailVerificationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([email])
+  @@index([status])
 }

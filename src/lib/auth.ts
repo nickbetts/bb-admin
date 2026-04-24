@@ -29,6 +29,7 @@ export const ALL_PERMISSIONS = [
   "subscriptions",
   "meridian_architecture",
   "grand_plan",
+  "email_verifier",
   // Portal publishing — gates the "Publish to client portal" action on
   // reports, grand plans, content strategies and landing pages.
   "publish_to_portal",
