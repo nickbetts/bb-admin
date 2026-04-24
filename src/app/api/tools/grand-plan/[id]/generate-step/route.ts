@@ -155,6 +155,11 @@ export async function POST(
           statusMessage: "Starting generation...",
           generationError: null,
           planDataJson: JSON.stringify(initialData),
+          // Always start the Grand Plan from scratch — unlink any previously
+          // linked keyword research / content strategy so prepare-* steps
+          // regenerate fresh data instead of short-circuiting on stale links.
+          keywordResearchId: null,
+          contentStrategyId: null,
           // Save overrides if provided
           ...(body.overrides?.clientBrief ? { clientBrief: body.overrides.clientBrief } : {}),
           ...(body.overrides?.campaignFocusPeriods
@@ -168,11 +173,6 @@ export async function POST(
 
     // ─── STEP: prepare-keywords ──────────────────────────────────────────────
     if (step === "prepare-keywords") {
-      // Skip if already linked
-      if (plan.keywordResearch) {
-        return NextResponse.json({ ok: true, step, skipped: true });
-      }
-
       const kwBriefText = config.kwBrief?.brief || brief;
       if (!website || !kwBriefText) {
         return NextResponse.json({ ok: true, step, skipped: true });
@@ -234,13 +234,8 @@ export async function POST(
     // withApiCache, this step stores the results in the DB so prepare-content
     // gets instant cache hits and its full 300 s budget goes to the AI call.
     if (step === "prepare-content-data") {
-      const freshPlan = await prisma.grandPlan.findUnique({
-        where: { id },
-        include: { contentStrategy: { select: { id: true } } },
-      });
-
-      // Skip if content strategy is already linked or no website to query
-      if (freshPlan?.contentStrategy || !website) {
+      // Always re-warm SEMrush caches; Grand Plans regenerate from scratch.
+      if (!website) {
         return NextResponse.json({ ok: true, step, skipped: true });
       }
 
@@ -271,20 +266,6 @@ export async function POST(
     // Legacy "prepare-content" is still handled below for any plans generated
     // before this change (it will be skipped if a strategy is already linked).
     if (step === "prepare-content-1" || step === "prepare-content-2" || step === "prepare-content-3" || step === "prepare-content") {
-      const freshPlan = await prisma.grandPlan.findUnique({
-        where: { id },
-        include: { contentStrategy: { select: { id: true } } },
-      });
-
-      // If it's the legacy single-shot step and a strategy already exists, skip.
-      if (step === "prepare-content" && freshPlan?.contentStrategy) {
-        return NextResponse.json({ ok: true, step, skipped: true });
-      }
-      // If step 1 and strategy already exists, all three are already done — skip.
-      if (step === "prepare-content-1" && freshPlan?.contentStrategy) {
-        return NextResponse.json({ ok: true, step, skipped: true });
-      }
-
       if (!website) {
         return NextResponse.json({ ok: true, step, skipped: true });
       }
