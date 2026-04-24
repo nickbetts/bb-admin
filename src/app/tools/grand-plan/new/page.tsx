@@ -97,6 +97,7 @@ export default function NewGrandPlanPage() {
   const [website, setWebsite] = useState("");
   const [brief, setBrief] = useState("");
   const [monthlyBudget, setMonthlyBudget] = useState("");
+  const [channelBudgets, setChannelBudgets] = useState<Record<string, string>>({});
 
   // Linked sources
   const [sources, setSources] = useState<AvailableSources | null>(null);
@@ -204,8 +205,12 @@ export default function NewGrandPlanPage() {
             postsPerMonth,
             socialPostsPerWeek,
             ...(sector ? { sector } : {}),
-            ...(!selectedKwResearch && website ? { kwBrief: { website, brief, monthlyBudget } } : {}),
+            ...(!selectedKwResearch && website ? { kwBrief: { website, brief, monthlyBudget: channelBudgets.googleAds || monthlyBudget } } : {}),
             ...(!selectedContentStrategy && domain ? { contentBrief: { domain, database: csDatabase, brief, competitors: csCompetitors } } : {}),
+            ...(Object.keys(channelBudgets).length > 0 ? { channelBudgets: Object.fromEntries(
+              Object.entries(channelBudgets).filter(([, v]) => v && Number(v.replace(/[^0-9.]/g, "")) > 0)
+                .map(([k, v]) => [k, Number(v.replace(/[^0-9.]/g, ""))])
+            ) } : {}),
           },
         }),
       });
@@ -375,45 +380,62 @@ export default function NewGrandPlanPage() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
                 {PLATFORMS.map((p) => {
                   const checked = platforms.includes(p.id);
+                  const isPaid = p.id === "googleAds" || p.id === "metaAds" || p.id === "linkedInAds";
                   return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => togglePlatform(p.id)}
-                      style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: 10,
-                        padding: "12px 14px",
-                        borderRadius: "var(--r-sm)",
-                        border: `1.5px solid ${checked ? "var(--accent)" : "var(--border)"}`,
-                        background: checked ? "var(--accent-bg)" : "var(--white, #fff)",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        transition: "all 0.15s",
-                      }}
-                    >
-                      <div
+                    <div key={p.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <button
+                        type="button"
+                        onClick={() => togglePlatform(p.id)}
                         style={{
-                          width: 18,
-                          height: 18,
-                          borderRadius: 5,
-                          border: `1.5px solid ${checked ? "var(--accent)" : "var(--border)"}`,
-                          background: checked ? "var(--accent)" : "transparent",
                           display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexShrink: 0,
-                          marginTop: 1,
+                          alignItems: "flex-start",
+                          gap: 10,
+                          padding: "12px 14px",
+                          borderRadius: "var(--r-sm)",
+                          border: `1.5px solid ${checked ? "var(--accent)" : "var(--border)"}`,
+                          background: checked ? "var(--accent-bg)" : "var(--white, #fff)",
+                          cursor: "pointer",
+                          textAlign: "left",
+                          transition: "all 0.15s",
+                          width: "100%",
                         }}
                       >
-                        {checked && <Check style={{ width: 11, height: 11, color: "white" }} />}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{p.label}</div>
-                        <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{p.description}</div>
-                      </div>
-                    </button>
+                        <div
+                          style={{
+                            width: 18,
+                            height: 18,
+                            borderRadius: 5,
+                            border: `1.5px solid ${checked ? "var(--accent)" : "var(--border)"}`,
+                            background: checked ? "var(--accent)" : "transparent",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                            marginTop: 1,
+                          }}
+                        >
+                          {checked && <Check style={{ width: 11, height: 11, color: "white" }} />}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{p.label}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>{p.description}</div>
+                        </div>
+                      </button>
+                      {isPaid && checked && (
+                        <div style={{ paddingLeft: 2 }}>
+                          <input
+                            className="form-input"
+                            style={{ fontSize: 12, padding: "6px 10px" }}
+                            value={channelBudgets[p.id] ?? ""}
+                            onChange={(e) => setChannelBudgets((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                            placeholder="Monthly budget e.g. £500"
+                          />
+                          <span className="form-hint" style={{ fontSize: 11 }}>
+                            Budget shapes the number of campaigns and ad groups the AI will plan
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>

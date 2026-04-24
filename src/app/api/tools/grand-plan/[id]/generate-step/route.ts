@@ -107,6 +107,7 @@ export async function POST(
     sector?: string;
     kwBrief?: { website?: string; brief?: string; monthlyBudget?: string };
     contentBrief?: { domain?: string; database?: string; brief?: string; competitors?: string };
+    channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number };
   }>(plan.configJson, {});
 
   const clientName = plan.client?.name || plan.proposal?.clientName || "Client";
@@ -885,6 +886,7 @@ function buildSources(plan: any, config: any, brief: string): GrandPlanSources {
     dataAvailability,
     postsPerMonth: typeof config.postsPerMonth === "number" && config.postsPerMonth > 0 ? config.postsPerMonth : undefined,
     socialPostsPerWeek: typeof config.socialPostsPerWeek === "number" && config.socialPostsPerWeek > 0 ? config.socialPostsPerWeek : undefined,
+    channelBudgets: config.channelBudgets ?? undefined,
     proposal: plan.proposal
       ? {
           title: plan.proposal.title,

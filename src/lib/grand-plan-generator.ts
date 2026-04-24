@@ -386,6 +386,8 @@ export interface GrandPlanSources {
   /** Optional content-volume overrides (default 4 blog posts/month, 3 social/week). */
   postsPerMonth?: number;
   socialPostsPerWeek?: number;
+  /** Per-channel paid advertising budgets (£/month) entered on the creation form. */
+  channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number };
 }
 
 // ─── Customer voice / web search helper ────────────────────────────────────
@@ -713,6 +715,17 @@ function buildContextSummary(
     }
   }
 
+  if (sources.channelBudgets) {
+    const cb = sources.channelBudgets;
+    const budgetLines: string[] = [];
+    if (cb.googleAds) budgetLines.push(`  Google Ads: £${cb.googleAds}/month`);
+    if (cb.metaAds) budgetLines.push(`  Meta Ads: £${cb.metaAds}/month`);
+    if (cb.linkedInAds) budgetLines.push(`  LinkedIn Ads: £${cb.linkedInAds}/month`);
+    if (budgetLines.length > 0) {
+      parts.push(`Channel budgets (use these to calibrate campaign scale and ad group count):\n${budgetLines.join("\n")}`);
+    }
+  }
+
   if (contentData) {
     const pageOpts = contentData.pageOptimisations?.length ?? 0;
     const blogPosts = contentData.blogPosts?.length ?? 0;
@@ -942,7 +955,21 @@ Return a JSON object with key "campaigns" containing an array of campaign object
 
 Rules:
 - Create 2-3 campaigns based on the keyword themes provided AND the target audiences below. Each campaign should clearly map to one or more named audiences.
-- Audience targeting interests/customAudiences/lookalikes should reflect the real personas, not generic demographics. Mix specific behaviours, life events, and adjacent interests, not just first-person pain points.
+${(() => {
+  const metaBudget = sources.channelBudgets?.metaAds;
+  if (!metaBudget) return "";
+  let rule = `- BUDGET CALIBRATION: This client has £${metaBudget}/month for Meta Ads.\n`;
+  if (metaBudget < 300) {
+    rule += `  Under £300/mo — create ONLY 1 campaign with 2-3 ad creatives. Budget field: "£${metaBudget}/month". At this level, a single focused campaign will outperform a split budget.`;
+  } else if (metaBudget < 1000) {
+    const split = Math.round(metaBudget * 0.6);
+    rule += `  £300–1000/mo — create 2 campaigns max. Budget field examples: "£${split}/month" and "£${metaBudget - split}/month". Do not create more campaigns than the total budget can sustain.`;
+  } else {
+    const perCampaign = Math.round(metaBudget / 3);
+    rule += `  Over £1000/mo — 2-3 campaigns. Budget field examples: approx "£${perCampaign}/month" each. Ensure each campaign has enough budget to exit the Meta learning phase.`;
+  }
+  return rule + "\n";
+})()}- Audience targeting interests/customAudiences/lookalikes should reflect the real personas, not generic demographics. Mix specific behaviours, life events, and adjacent interests, not just first-person pain points.
 - CAPTION HOOK RULE: Every caption in captionCopyBank MUST open with a single sentence of 12 words or fewer that would stop a scroll — a provocative question, a specific pain point stated as fact, or a surprising statistic. The detail and offer follow in lines 2-3.
 - COPY VARIANTS: Of the 5-8 captions, produce: 2 written in first-person from the customer's perspective (e.g. "I spent three months searching for..."), 2 in brand voice, and 2 as direct offers (lead with the outcome or price point).
 - AD CREATIVE HEADLINE LIMIT: Meta headline is 40 characters maximum. Count every character including spaces. Hard limit.
@@ -1255,7 +1282,17 @@ Rules:
 - Descriptions expand on the proposition with a call to action.
 - If campaign focus periods list specific dates or windows, include at least one headline or description per group that references the nearest upcoming period to drive urgency.
 - Character limits are HARD limits — count every character including spaces. Anything over will be rejected by Google.${briefNegatives.length ? `\n- EXCLUDED TERMS (must NOT appear in any headline, description, or sitelink): ${briefNegatives.join(", ")}` : ""}
-- Return ONLY valid JSON, no markdown fences.${feedback ? `\n\nIMPORTANT — your previous attempt was invalid:\n${feedback}\nFix these issues and try again.` : ""}
+${(() => {
+  const gBudget = sources.channelBudgets?.googleAds;
+  if (!gBudget) return "";
+  let rule = `- BUDGET CALIBRATION: This client has £${gBudget}/month for Google Ads. Scale your ad groups accordingly:\n`;
+  if (gBudget < 300) rule += "  Under £300/mo — write ad copy for a MAXIMUM of 1 ad group. Focus on the single highest-intent group only.";
+  else if (gBudget < 800) rule += "  £300–800/mo — write ad copy for a MAXIMUM of 2 ad groups. Prioritise the two highest-intent groups.";
+  else if (gBudget < 2000) rule += "  £800–2000/mo — write ad copy for up to 3-4 ad groups.";
+  else rule += "  Over £2000/mo — write ad copy for all ad groups provided.";
+  rule += "\n  Do NOT write ad copy for more groups than the budget allows to run simultaneously.";
+  return rule + "\n";
+})()}- Return ONLY valid JSON, no markdown fences.${feedback ? `\n\nIMPORTANT — your previous attempt was invalid:\n${feedback}\nFix these issues and try again.` : ""}
 
 Client: ${sources.clientName}
 Brief: ${sources.clientBrief ?? sources.keywordResearch?.brief ?? ""}
@@ -1808,7 +1845,11 @@ function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources,
       "Campaign Type": "Search",
       "Goal": "Conversions",
       "Bidding": "Maximise Conversions",
-      "Budget": sources.keywordResearch?.monthlyBudget ? `£${sources.keywordResearch.monthlyBudget}/month` : "TBC",
+      "Budget": sources.channelBudgets?.googleAds
+        ? `£${sources.channelBudgets.googleAds}/month`
+        : sources.keywordResearch?.monthlyBudget
+          ? `£${sources.keywordResearch.monthlyBudget}/month`
+          : "TBC",
       "Locations": detectLocations(sources.clientBrief),
       "Language": "English",
       "Ad Schedule": adSchedule,
@@ -1977,7 +2018,21 @@ Rules:
 - Create at least 3 ad creatives per campaign (minimum) — LinkedIn's algorithm needs creative variants to optimise delivery across placements and audiences. Label the first as the control and subsequent ones as variants.
 - One campaign should focus on lead gen (use Lead Gen Form format for lowest friction), one on awareness/thought leadership (Thought Leadership ads or document ads perform well here — recommend appropriately)
 - For awareness campaigns, suggest Thought Leadership ad format where applicable (promoted posts from a personal profile rather than company page — higher engagement rates)
-- Audience targeting MUST be derived from the named target audiences (use their job titles, seniority, industries)
+${(() => {
+  const lisBudget = sources.channelBudgets?.linkedInAds;
+  if (!lisBudget) return "";
+  let rule = `- BUDGET CALIBRATION: This client has £${lisBudget}/month for LinkedIn Ads. LinkedIn CPCs typically range from £8–25.\n`;
+  if (lisBudget < 500) {
+    rule += `  Under £500/mo — create ONLY 1 campaign with 3 ad creatives. Budget field: "£${lisBudget}/month". At this spend level, splitting across multiple campaigns means neither will exit the learning phase.`;
+  } else if (lisBudget < 1500) {
+    const split = Math.round(lisBudget * 0.65);
+    rule += `  £500–1500/mo — create 2 campaigns max. Budget field examples: "£${split}/month" (lead gen) and "£${lisBudget - split}/month" (awareness). Prioritise the lead gen campaign.`;
+  } else {
+    const perCampaign = Math.round(lisBudget / 3);
+    rule += `  Over £1500/mo — up to 3 campaigns. Budget field examples: approx "£${perCampaign}/month" each.`;
+  }
+  return rule + "\n";
+})()}- Audience targeting MUST be derived from the named target audiences (use their job titles, seniority, industries)
 - Headlines and intro text must speak to the audience by their role and pain point — address the decision-maker's specific problem, not a generic pitch
 - Each creative should include urlPaths: string[] (2 display path segments, max 15 chars each) for the ad destination
 - ${sources.sector === "industrial" || sources.sector === "professional_services" ? "LinkedIn is a primary channel — make campaigns comprehensive" : sources.sector === "ecommerce" || sources.sector === "dental" ? "LinkedIn is secondary for this sector — focus on brand building and partnerships" : "LinkedIn campaigns should target decision makers"}

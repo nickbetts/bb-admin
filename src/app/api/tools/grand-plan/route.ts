@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       targetAudiences?: string;
       sector?: string;
       campaignFocusPeriods?: { startMonth: number; endMonth: number; label: string; description?: string }[];
-      config?: { sections?: string[]; postsPerMonth?: number; socialPostsPerWeek?: number };
+      config?: { sections?: string[]; postsPerMonth?: number; socialPostsPerWeek?: number; channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number } };
       cloneFromId?: string;
     };
 
