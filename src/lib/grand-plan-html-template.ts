@@ -38,8 +38,9 @@ function renderGroundingBadge(g?: { grounding: string; sourceLabels: string[] })
   return `<span class="dg-badge ${meta.className}" title="${escapeAttr(tooltip)}">${meta.text}</span>`;
 }
 
-function escapeAttr(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+function escapeAttr(s: string | null | undefined): string {
+  if (s == null) return "";
+  return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
 
 /** Inject a grounding badge into the first <h2> tag of a rendered section. */
@@ -1338,8 +1339,9 @@ function renderLandingPagePlaceholder(error?: string): string {
 
 // ─── Utilities ──────────────────────────────────────────────────────────────
 
-function esc(s: string): string {
-  return s
+function esc(s: string | null | undefined): string {
+  if (s == null) return "";
+  return String(s)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -1347,8 +1349,9 @@ function esc(s: string): string {
     .replace(/'/g, "&#039;");
 }
 
-function escAttr(s: string): string {
-  return s.replace(/'/g, "\\'").replace(/\n/g, "\\n");
+function escAttr(s: string | null | undefined): string {
+  if (s == null) return "";
+  return String(s).replace(/'/g, "\\'").replace(/\n/g, "\\n");
 }
 
 // ─── Inline CSS ─────────────────────────────────────────────────────────────
