@@ -14,10 +14,7 @@ import {
   Sparkles,
   HelpCircle,
   TrendingUp,
-  Inbox,
   FileText,
-  ShieldCheck,
-  Plug,
 } from "lucide-react";
 
 interface NavItem {
@@ -42,10 +39,7 @@ const intelligence: NavItem[] = [
 ];
 
 const operations: NavItem[] = [
-  { href: "/pillar-insights/communications", label: "Communications", icon: <Inbox className="h-4 w-4" /> },
   { href: "/pillar-insights/reports", label: "Reports & exports", icon: <FileText className="h-4 w-4" /> },
-  { href: "/pillar-insights/compliance", label: "Compliance & Gift Aid", icon: <ShieldCheck className="h-4 w-4" /> },
-  { href: "/pillar-insights/integrations", label: "Integrations", icon: <Plug className="h-4 w-4" /> },
 ];
 
 export function PillarSidebar() {
@@ -101,7 +95,7 @@ export function PillarSidebar() {
         ))}
 
         <div className="sidebar-nav-label" style={{ marginTop: 16 }}>
-          Operations
+          Reporting
         </div>
         {operations.map((item) => (
           <Link
