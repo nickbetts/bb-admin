@@ -1674,6 +1674,7 @@ export async function generateContentStrategySection(
   searchConsoleSiteUrl?: string | null,
   limits?: ContentStrategyLimits,
   competitorContexts?: { domain: string; pageContext: CompetitorPageContext }[],
+  audienceNames?: string[],
 ): Promise<Partial<ContentStrategyData>> {
   const t0 = Date.now();
   console.log(`[content-strategy:${section}] start — domain=${domain}`);
@@ -1702,7 +1703,8 @@ export async function generateContentStrategySection(
       "notes": "Rewrite H1 around primary keyword. Add comparison table. Strengthen CTA above the fold.",
       "impact": 4,
       "effort": 2,
-      "contextLinks": [{"url": "domain.com/page/", "anchorText": "..."}]
+      "contextLinks": [{"url": "domain.com/page/", "anchorText": "..."}],
+      "targetAudiences": ["Audience name 1"]
     }
   ]
 }`,
@@ -1717,7 +1719,8 @@ export async function generateContentStrategySection(
       "notes": "Hero focused on the audience pain point. Three proof modules. Sticky enquiry CTA.",
       "impact": 4,
       "effort": 3,
-      "internalLinks": [{"url": "domain.com/page/", "anchorText": "..."}]
+      "internalLinks": [{"url": "domain.com/page/", "anchorText": "..."}],
+      "targetAudiences": ["Audience name 1"]
     }
   ],
   "linkTargets": [
@@ -1736,7 +1739,8 @@ export async function generateContentStrategySection(
       "cluster": "...",
       "impact": 3,
       "effort": 2,
-      "internalLinks": [{"url": "domain.com/page/", "anchorText": "..."}]
+      "internalLinks": [{"url": "domain.com/page/", "anchorText": "..."}],
+      "targetAudiences": ["Audience name 1"]
     }
   ],
   "roadmap": {
@@ -1750,7 +1754,7 @@ export async function generateContentStrategySection(
   const sectionPrompt = `${basePrompt}
 
 IMPORTANT: You are generating ONLY the "${section}" section of the strategy. The other sections will be generated in separate calls.
-${SECTION_SCHEMAS[section]}`;
+${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item to 1-3 of these by exact name in the "targetAudiences" array): ${audienceNames.map((n) => `"${n}"`).join(", ")}\n` : ""}${SECTION_SCHEMAS[section]}`;
   // Scale max_tokens by section size. pageOptimisations can be huge on large sites
   // (390-page sitemap → 50+ suggestions), and blogPosts + roadmap is always the
   // largest section. landingPages is typically smaller.

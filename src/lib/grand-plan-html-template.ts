@@ -873,6 +873,7 @@ function renderContentStrategy(data: any): string {
     tier?: "pillar" | "mega" | "article";
     intent?: string;
     internalLinks?: string[];
+    targetAudiences?: string[];
   };
 
   const pageOpts = (data.pageOptimisations ?? []).slice(0, 15) as Entry[];
@@ -904,6 +905,8 @@ function renderContentStrategy(data: any): string {
     const kw = entry.keywords?.[0]?.keyword;
     const intent = entry.intent;
     const briefText = entry.brief ?? entry.notes;
+    const audChips = (entry.targetAudiences ?? []).slice(0, 3)
+      .map((n) => `<span class="audience-tag">${esc(n)}</span>`).join(" ");
     return `
       <div class="cluster-card ${tier}">
         <div class="cluster-card-head"><span class="cluster-type-pill">${esc(typeLabel)}</span></div>
@@ -911,6 +914,7 @@ function renderContentStrategy(data: any): string {
           <div class="cc-title">${esc(entry.title ?? entry.url ?? "Untitled")}</div>
           ${kw ? `<div class="cc-kw">${esc(kw)}</div>` : ""}
           ${intent ? `<span class="cc-intent ${intentClass(intent)}">${esc(intentLabel(intent))}</span>` : ""}
+          ${audChips ? `<div class="cc-audiences">${audChips}</div>` : ""}
           ${briefText ? `<p class="cc-brief">${esc(briefText)}</p>` : ""}
         </div>
       </div>`;
@@ -948,6 +952,8 @@ function renderContentStrategy(data: any): string {
     <div class="content-cards">
       ${pageOpts.map((p) => {
         const url = p.url || "";
+        const audChips = (p.targetAudiences ?? []).slice(0, 3)
+          .map((n) => `<span class="audience-tag">${esc(n)}</span>`).join(" ");
         return `
       <div class="content-card">
         <div class="content-url-row">
@@ -955,9 +961,40 @@ function renderContentStrategy(data: any): string {
           ${url ? `<button type="button" class="content-url-copy" data-copy="${esc(url)}" aria-label="Copy URL">Copy</button>` : ""}
         </div>
         ${p.keywords?.length ? `<div class="content-kws">${p.keywords.slice(0, 5).map((k) => `<span class="kw-pill">${esc(k.keyword)}</span>`).join(" ")}</div>` : ""}
+        ${audChips ? `<div class="cc-audiences" style="margin-top:6px">${audChips}</div>` : ""}
         ${p.notes ? `<p class="content-notes">${esc(p.notes)}</p>` : ""}
       </div>`;
       }).join("\n")}
+    </div>` : "";
+
+  // ── Audience Plays cross-reference panel ──────────────────────────────
+  // Group every content asset by the audiences it serves, so the strategist
+  // can see at a glance which audiences are well-covered and which are thin.
+  const allAssets: { kind: string; title: string; entry: Entry }[] = [];
+  if (pillar) allAssets.push({ kind: "Pillar Page", title: pillar.title ?? pillar.url ?? "", entry: pillar });
+  megas.forEach((m, i) => allAssets.push({ kind: megas.length === 1 ? "Mega Guide" : `Mega Guide ${i + 1}`, title: m.title ?? m.url ?? "", entry: m }));
+  articles.forEach((a, i) => allAssets.push({ kind: `Article ${i + 1}`, title: a.title ?? a.url ?? "", entry: a }));
+  pageOpts.forEach((p) => allAssets.push({ kind: "On-Page", title: p.url ?? p.title ?? "", entry: p }));
+  const audienceMap = new Map<string, { kind: string; title: string }[]>();
+  for (const asset of allAssets) {
+    for (const audName of asset.entry.targetAudiences ?? []) {
+      const key = audName.trim();
+      if (!key) continue;
+      if (!audienceMap.has(key)) audienceMap.set(key, []);
+      audienceMap.get(key)!.push({ kind: asset.kind, title: asset.title });
+    }
+  }
+  const audiencePlaysHtml = audienceMap.size > 0 ? `
+    <h3 style="margin-top:2.5rem">Audience Plays</h3>
+    <p class="section-intro" style="margin-bottom:1rem">Which content assets serve which audience. Use this to spot gaps before sign-off.</p>
+    <div class="audience-plays">
+      ${[...audienceMap.entries()].map(([audName, items]) => `
+      <div class="audience-play">
+        <div class="audience-play-name">${esc(audName)} <span class="audience-play-count">${items.length} asset${items.length === 1 ? "" : "s"}</span></div>
+        <ul class="audience-play-list">
+          ${items.slice(0, 8).map((it) => `<li><span class="audience-play-kind">${esc(it.kind)}</span> ${esc(it.title)}</li>`).join("")}
+        </ul>
+      </div>`).join("\n")}
     </div>` : "";
 
   return `
@@ -968,6 +1005,7 @@ function renderContentStrategy(data: any): string {
         <p class="section-intro">A topic-cluster approach: one anchoring pillar page, supporting deep-dive guides, and themed articles that capture every stage of intent.</p>
       ${clusterBlock}
       ${pageOptsHtml}
+      ${audiencePlaysHtml}
       </div>
     </section>`;
 }
@@ -1670,6 +1708,16 @@ a{color:var(--accent);text-decoration:none}
 .exec-outcome .exec-callout-label{color:#15803d}
 .exec-risk{background:#fef2f2;border-color:#ef4444}
 .exec-risk .exec-callout-label{color:#b91c1c}
+.audience-tag{display:inline-block;font-size:10px;font-weight:600;letter-spacing:.4px;padding:2px 8px;background:#eef2ff;color:#4338ca;border-radius:999px;margin:2px 2px 0 0}
+.cc-audiences{margin-top:6px;line-height:1.7}
+.audience-plays{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.audience-play{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.audience-play-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.audience-play-count{font-size:11px;font-weight:500;color:var(--text-light);background:var(--bg);padding:2px 8px;border-radius:999px}
+.audience-play-list{list-style:none;padding:0;margin:0;font-size:12.5px;color:var(--text-light);line-height:1.6}
+.audience-play-list li{padding:3px 0;border-top:1px solid var(--border)}
+.audience-play-list li:first-child{border-top:none}
+.audience-play-kind{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:1px 6px;background:#f1f5f9;color:#475569;border-radius:4px;margin-right:6px}
 /* Internal linking recommendations */
 .il-section{margin-top:1.75rem}
 .il-section h3{font-size:.95rem;font-weight:700;color:var(--heading);margin:0 0 .75rem;letter-spacing:-.005em}

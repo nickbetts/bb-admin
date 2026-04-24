@@ -294,6 +294,20 @@ export async function POST(
         : [];
       const searchConsoleSiteUrl = plan.client?.searchConsoleSiteUrl ?? undefined;
 
+      // Parse strategist-supplied audience names so each content asset can
+      // be correlated back to the audiences it serves.
+      const audienceNames = (plan.targetAudiences ?? "")
+        .split(/\n+/)
+        .map((line: string) => {
+          const trimmed = line.trim();
+          if (!trimmed) return "";
+          const sepIdx = trimmed.search(/[:–—]/);
+          const namePart = sepIdx >= 0 ? trimmed.slice(0, sepIdx) : trimmed;
+          return namePart.trim().slice(0, 120);
+        })
+        .filter(Boolean)
+        .slice(0, 6);
+
       // ── Legacy single-shot step (kept for backwards compatibility) ──────────
       if (step === "prepare-content") {
         await setStatus(id, "Generating content strategy with Claude Opus...");
@@ -325,7 +339,7 @@ export async function POST(
         console.log(`[grand-plan:${id}] prepare-content-1 start — domain=${csDomain} db=${csDatabase}`);
         await setStatus(id, "Generating page optimisations (1/3)...");
         const partial = await generateContentStrategySection(
-          "pageOptimisations", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null,
+          "pageOptimisations", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null, undefined, undefined, audienceNames,
         );
         console.log(`[grand-plan:${id}] prepare-content-1 AI done in ${Date.now() - t1}ms — pageOpts=${partial.pageOptimisations?.length ?? 0}`);
         const now = new Date();
@@ -383,7 +397,7 @@ export async function POST(
         console.log(`[grand-plan:${id}] prepare-content-2 start — domain=${csDomain}`);
         await setStatus(id, "Generating landing pages (2/3)...");
         const partial = await generateContentStrategySection(
-          "landingPages", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null,
+          "landingPages", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null, undefined, undefined, audienceNames,
         );
         console.log(`[grand-plan:${id}] prepare-content-2 AI done in ${Date.now() - t2}ms — landingPages=${partial.landingPages?.length ?? 0} linkTargets=${partial.linkTargets?.length ?? 0}`);
         const merged: ContentStrategyData = {
@@ -413,7 +427,7 @@ export async function POST(
         console.log(`[grand-plan:${id}] prepare-content-3 start — domain=${csDomain}`);
         await setStatus(id, "Generating blog posts & roadmap (3/3)...");
         const partial = await generateContentStrategySection(
-          "blogPosts", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null,
+          "blogPosts", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null, undefined, undefined, audienceNames,
         );
         console.log(`[grand-plan:${id}] prepare-content-3 AI done in ${Date.now() - t3}ms — blogPosts=${partial.blogPosts?.length ?? 0}`);
         const merged: ContentStrategyData = {
@@ -1088,6 +1102,8 @@ function buildSources(plan: any, config: any, brief: string): GrandPlanSources {
     accountData,
     customerVoice,
     dataAvailability,
+    postsPerMonth: typeof config.postsPerMonth === "number" && config.postsPerMonth > 0 ? config.postsPerMonth : undefined,
+    socialPostsPerWeek: typeof config.socialPostsPerWeek === "number" && config.socialPostsPerWeek > 0 ? config.socialPostsPerWeek : undefined,
     proposal: plan.proposal
       ? {
           title: plan.proposal.title,

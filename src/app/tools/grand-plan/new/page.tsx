@@ -118,6 +118,10 @@ export default function NewGrandPlanPage() {
   // Target audiences
   const [targetAudiences, setTargetAudiences] = useState("");
 
+  // Content volume — drives the calendar and organic social cadence
+  const [postsPerMonth, setPostsPerMonth] = useState(4);
+  const [socialPostsPerWeek, setSocialPostsPerWeek] = useState(3);
+
   // Platforms — controls which paid/organic channels the AI focuses on
   const [platforms, setPlatforms] = useState<PlatformId[]>(["googleAds", "metaAds", "linkedInAds", "organicSocial", "emailMarketing"]);
 
@@ -203,6 +207,8 @@ export default function NewGrandPlanPage() {
           campaignFocusPeriods: focusPeriods.filter((fp) => fp.label),
           config: {
             sections: enabledSections,
+            postsPerMonth,
+            socialPostsPerWeek,
             ...(sector ? { sector } : {}),
             ...(!selectedKwResearch && website ? { kwBrief: { website, brief, monthlyBudget } } : {}),
             ...(!selectedContentStrategy && domain ? { contentBrief: { domain, database: csDatabase, brief, competitors: csCompetitors } } : {}),
@@ -336,6 +342,35 @@ export default function NewGrandPlanPage() {
                 style={{ minHeight: 80 }}
               />
               <span className="form-hint">One audience per line. When filled in, the plan uses your exact personas rather than inferring them — and earns a stronger data grounding badge.</span>
+            </div>
+
+            {/* Content Volume */}
+            <div>
+              <label className="form-label">Content Volume</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <input
+                    className="form-input"
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={postsPerMonth}
+                    onChange={(e) => setPostsPerMonth(Math.max(1, Number(e.target.value) || 1))}
+                  />
+                  <span className="form-hint">Blog posts per month</span>
+                </div>
+                <div>
+                  <input
+                    className="form-input"
+                    type="number"
+                    min={1}
+                    max={14}
+                    value={socialPostsPerWeek}
+                    onChange={(e) => setSocialPostsPerWeek(Math.max(1, Number(e.target.value) || 1))}
+                  />
+                  <span className="form-hint">Social posts per week</span>
+                </div>
+              </div>
             </div>
 
             {/* Platforms */}

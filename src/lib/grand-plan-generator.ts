@@ -75,6 +75,9 @@ interface ContentStrategyEntry {
   brief?: string;
   /** Internal linking recommendations (one short sentence each). */
   internalLinks?: string[];
+  /** Names of audiences (matching AudienceItem.name) this asset is built for.
+   * Used to render the cross-reference Audience Plays panel. */
+  targetAudiences?: string[];
 }
 
 interface QuickWinAction {
@@ -371,6 +374,9 @@ export interface GrandPlanSources {
   customerVoice?: CustomerVoiceData;
   /** Booleans the generators inspect to decide when to fall back to AI inference. */
   dataAvailability?: DataAvailability;
+  /** Optional content-volume overrides (default 4 blog posts/month, 3 social/week). */
+  postsPerMonth?: number;
+  socialPostsPerWeek?: number;
 }
 
 // ─── Customer voice / web search helper ────────────────────────────────────
@@ -1022,6 +1028,10 @@ async function generateContentCalendar(anthropic: Anthropic, context: string, co
     ? contentData.blogPosts.slice(0, 15).map((b: { title?: string; keyword?: string }) => b.title || b.keyword).filter(Boolean).join(", ")
     : "";
 
+  const postsPerMonth = sources.postsPerMonth ?? 4;
+  const socialPerWeek = sources.socialPostsPerWeek ?? 3;
+  const socialPerMonth = socialPerWeek * 4;
+
   const res = await withAnthropicRetry("contentCalendar", () => anthropic.messages.create({
     model: MODEL,
     max_tokens: 3500,
@@ -1033,8 +1043,8 @@ async function generateContentCalendar(anthropic: Anthropic, context: string, co
 Return a JSON object with key "months" containing an array of 6 month objects:
 - month: string (e.g., "May 2026")
 - focusLabel: string or null (campaign focus for this month, from the focus periods provided)
-- blogPosts: array of { title: string, intent: "awareness"|"commercial"|"decision", targetKeyword: string } (2-3 per month)
-- socialPosts: array of { platform: "instagram"|"facebook", type: "reel"|"carousel"|"static"|"story", topic: string } (4-6 per month)
+- blogPosts: array of { title: string, intent: "awareness"|"commercial"|"decision", targetKeyword: string } (EXACTLY ${postsPerMonth} per month)
+- socialPosts: array of { platform: "instagram"|"facebook", type: "reel"|"carousel"|"static"|"story", topic: string } (EXACTLY ${socialPerMonth} per month, equating to ${socialPerWeek} per week)
 
 Rules:
 - Start from next month
@@ -1058,6 +1068,7 @@ ${context}${buildSharedContextBlocks(sources)}`,
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function generateOrganicSocial(anthropic: Anthropic, context: string, contentData: any, sources: GrandPlanSources): Promise<OrganicSocialPlan> {
+  const socialPerWeek = sources.socialPostsPerWeek ?? 3;
   const res = await withAnthropicRetry("organicSocial", () => anthropic.messages.create({
     model: MODEL_LIGHT,
     max_tokens: 2200,
@@ -1068,7 +1079,7 @@ async function generateOrganicSocial(anthropic: Anthropic, context: string, cont
 
 Return a JSON object:
 - pillars: array of { name: string, description: string, examplePosts: string[] (3 examples each) } — 4-6 pillars
-- postingFrequency: string (e.g., "4-5 posts per week across Instagram and Facebook")
+- postingFrequency: string (state ${socialPerWeek} posts per week across Instagram and Facebook)
 - contentMix: array of { type: "reel"|"carousel"|"static"|"story", percentage: number } (must total 100)
 - hashtagStrategy: string[] (10-15 relevant hashtags)
 
@@ -1111,9 +1122,26 @@ ${context}${buildSharedContextBlocks(sources)}`,
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function generateExampleArticles(anthropic: Anthropic, context: string, contentData: any, sources: GrandPlanSources): Promise<{ title: string; html: string; seoMeta?: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } }[]> {
-  // Pick 3 blog topics to generate examples for
-  const blogPosts = contentData?.blogPosts ?? [];
-  const topicsToGenerate = blogPosts.slice(0, 3).map((b: { title?: string; keyword?: string }) => b.title || b.keyword || "Untitled");
+  // Pick up to 3 blog topics, prioritising audience coverage over list order.
+  // If blog posts carry targetAudiences, take the first post per distinct audience
+  // so the samples span the audience set rather than clustering on one persona.
+  const blogPosts = (contentData?.blogPosts ?? []) as { title?: string; keyword?: string; targetAudiences?: string[] }[];
+  const seenAudiences = new Set<string>();
+  const picked: typeof blogPosts = [];
+  for (const post of blogPosts) {
+    const audKey = (post.targetAudiences?.[0] ?? "").trim().toLowerCase();
+    if (audKey && !seenAudiences.has(audKey)) {
+      seenAudiences.add(audKey);
+      picked.push(post);
+      if (picked.length >= 3) break;
+    }
+  }
+  // Top-up with remaining posts in original order if we have fewer than 3.
+  for (const post of blogPosts) {
+    if (picked.length >= 3) break;
+    if (!picked.includes(post)) picked.push(post);
+  }
+  const topicsToGenerate = picked.slice(0, 3).map((b) => b.title || b.keyword || "Untitled");
 
   if (topicsToGenerate.length === 0) return [];
 
