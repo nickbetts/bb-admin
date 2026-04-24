@@ -241,6 +241,7 @@ export default function EmailVerifierPage() {
     setQuickRunning(true);
     setQuickResults([]);
     setQuickProgress({ done: 0, total: unique.length });
+    const collected: SingleResult[] = [];
     try {
       for (const email of unique) {
         const res = await fetch("/api/tools/email-verifier/single", {
@@ -254,10 +255,23 @@ export default function EmailVerifierPage() {
           break;
         }
         const data = (await res.json()) as { result: SingleResult };
+        collected.push(data.result);
         setQuickResults((prev) => [...prev, data.result]);
         setQuickProgress((prev) => ({ done: prev.done + 1, total: prev.total }));
       }
-      refreshCredits();
+      // Persist to history.
+      if (collected.length > 0) {
+        await fetch("/api/tools/email-verifier/jobs/quick", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            results: collected,
+            clientId: urlClientId ?? null,
+          }),
+        });
+        await refreshHistory();
+      }
+      await refreshCredits();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Quick check failed");
     } finally {
@@ -703,49 +717,94 @@ export default function EmailVerifierPage() {
           ) : history.length === 0 ? (
             <p style={{ color: "var(--text-3)", fontSize: 13 }}>No jobs yet.</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {history.map((job) => (
-                <div
-                  key={job.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    padding: "12px 14px",
-                    background: activeJobId === job.id ? "var(--accent-bg)" : "var(--surface)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--r)",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => loadJob(job.id)}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 500 }}>{job.title}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
-                      {new Date(job.createdAt).toLocaleString("en-GB")}
-                      {job.createdByName ? ` · ${job.createdByName}` : ""}
-                      {job.client?.name ? ` · ${job.client.name}` : ""}
-                      {" · "}
-                      {job.processedCount}/{job.totalCount} processed
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {history.map((job) => {
+                const isQuick = job.title.startsWith("Quick check");
+                const creditsUsed = job.processedCount;
+                const creditCost = (creditsUsed * 0.014).toLocaleString("en-GB", { style: "currency", currency: "GBP", minimumFractionDigits: 2, maximumFractionDigits: 3 });
+                return (
+                  <div
+                    key={job.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      padding: "12px 14px",
+                      background: activeJobId === job.id ? "var(--accent-bg)" : "var(--surface)",
+                      border: `1px solid ${activeJobId === job.id ? "var(--accent)" : "var(--border)"}`,
+                      borderRadius: "var(--r)",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => loadJob(job.id)}
+                  >
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      {/* Title + source badge */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 500 }}>{job.title}</span>
+                        <span style={{
+                          fontSize: 10, fontWeight: 600, padding: "1px 6px",
+                          borderRadius: 4, border: "1px solid",
+                          background: isQuick ? "var(--accent-bg)" : "var(--surface-2)",
+                          color: isQuick ? "var(--accent)" : "var(--text-3)",
+                          borderColor: isQuick ? "var(--accent)" : "var(--border)",
+                        }}>
+                          {isQuick ? "Quick" : "Bulk"}
+                        </span>
+                        {job.client?.name && (
+                          <span style={{ fontSize: 11, color: "var(--text-3)" }}>{job.client.name}</span>
+                        )}
+                      </div>
+                      {/* Meta row */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 5, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                          {new Date(job.createdAt).toLocaleString("en-GB")}
+                        </span>
+                        {job.createdByName && (
+                          <span style={{ fontSize: 11, color: "var(--text-2)" }}>by {job.createdByName}</span>
+                        )}
+                        <span style={{ fontSize: 11, color: "var(--text-2)", fontWeight: 500 }}>
+                          {job.processedCount.toLocaleString()} email{job.processedCount !== 1 ? "s" : ""} verified
+                        </span>
+                        <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+                          {creditsUsed} credit{creditsUsed !== 1 ? "s" : ""} · {creditCost}
+                        </span>
+                        {job.totalCount > job.processedCount && (
+                          <span style={{ fontSize: 11, color: "var(--warning-text)" }}>
+                            {job.totalCount - job.processedCount} pending
+                          </span>
+                        )}
+                      </div>
+                      {/* Mini result bar */}
+                      {job.processedCount > 0 && (
+                        <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                          {job.validCount > 0 && <span style={{ fontSize: 10, color: "var(--success-text)" }}>✓ {job.validCount} valid</span>}
+                          {job.invalidCount > 0 && <span style={{ fontSize: 10, color: "var(--danger-text)" }}>✗ {job.invalidCount} invalid</span>}
+                          {job.catchAllCount > 0 && <span style={{ fontSize: 10, color: "var(--warning-text)" }}>~ {job.catchAllCount} catch-all</span>}
+                          {(job.abuseCount + job.spamtrapCount + job.doNotMailCount) > 0 && (
+                            <span style={{ fontSize: 10, color: "var(--danger-text)" }}>⚠ {job.abuseCount + job.spamtrapCount + job.doNotMailCount} risky</span>
+                          )}
+                          {job.unknownCount > 0 && <span style={{ fontSize: 10, color: "var(--text-3)" }}>? {job.unknownCount} unknown</span>}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                      <StatusPill
+                        status={job.status === "complete" ? "valid" : job.status === "failed" ? "invalid" : "unknown"}
+                        subStatus={job.status}
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(job.id); }}
+                        style={iconBtnStyle}
+                        title="Delete job"
+                      >
+                        <Trash2 style={{ width: 14, height: 14 }} />
+                      </button>
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <StatusPill status={job.status === "complete" ? "valid" : job.status === "failed" ? "invalid" : "unknown"} subStatus={job.status} />
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmDeleteId(job.id);
-                      }}
-                      style={iconBtnStyle}
-                      title="Delete job"
-                    >
-                      <Trash2 style={{ width: 14, height: 14 }} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
