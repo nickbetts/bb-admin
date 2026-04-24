@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Plus, FileDown, Calendar, Sparkles } from "lucide-react";
 import { PageHeader, MockupBanner, Section, Tag, AIInsight } from "../../_components/PillarUI";
 import { SCHEDULED_REPORTS, REPORT_TEMPLATES } from "../../_data/extendedData";
@@ -34,7 +35,7 @@ export default function ReportsPage() {
               <div style={{ fontSize: 12, color: "var(--text-3)", lineHeight: 1.5, marginBottom: 14, minHeight: 48 }}>{t.description}</div>
               <div style={{ display: "flex", gap: 6 }}>
                 <button className="btn btn-primary btn-sm" style={{ fontSize: 11 }}><FileDown className="h-3 w-3" /> Generate</button>
-                <button className="btn btn-secondary btn-sm" style={{ fontSize: 11 }}>Preview</button>
+                <Link href={`/pillar-insights/reports/R-00${t.id}`} className="btn btn-secondary btn-sm" style={{ fontSize: 11 }}>Preview</Link>
               </div>
             </div>
           ))}
@@ -55,8 +56,10 @@ export default function ReportsPage() {
               {SCHEDULED_REPORTS.map((r) => (
                 <tr key={r.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                   <td style={{ padding: "14px 18px" }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{r.name}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-3)" }}>{r.id}</div>
+                    <Link href={`/pillar-insights/reports/${r.id}`} style={{ color: "inherit", textDecoration: "none" }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{r.name}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)" }}>{r.id}</div>
+                    </Link>
                   </td>
                   <td style={{ padding: "14px 18px", fontSize: 13, color: "var(--text-2)" }}>{r.recipients} people</td>
                   <td style={{ padding: "14px 18px", fontSize: 12, color: "var(--text-2)" }}>{r.schedule}</td>
