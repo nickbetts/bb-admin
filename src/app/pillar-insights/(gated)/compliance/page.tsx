@@ -6,9 +6,9 @@ import { GIFT_AID_BATCHES, AUDIT_LOG } from "../../_data/extendedData";
 import { COMPLIANCE_FLAGS as ORIGINAL_FLAGS } from "../../_data/mockData";
 
 const batchTone = (s: string) =>
-  ((s === "ready" ? "amber" : s === "submitted" ? "indigo" : s === "approved" ? "teal" : "emerald") as const);
+  ((s === "ready" ? "amber" : s === "submitted" ? "indigo" : s === "approved" ? "teal" : "emerald") as "amber" | "indigo" | "teal" | "emerald");
 
-const flagTone = (sev: string) => ((sev === "high" ? "rose" : sev === "medium" ? "amber" : "neutral") as const);
+const flagTone = (sev: string) => ((sev === "high" ? "rose" : sev === "medium" ? "amber" : "neutral") as "rose" | "amber" | "neutral");
 
 export default function CompliancePage() {
   const totalReady = GIFT_AID_BATCHES.filter((b) => b.status === "ready").reduce((s, b) => s + b.value, 0);
