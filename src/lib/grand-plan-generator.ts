@@ -294,7 +294,8 @@ export interface GrandPlanData {
       campaignName: string;
       overview: Record<string, string>;
       negativeKeywords: string[];
-      adGroups: { name: string; keywords: AdGroupKeyword[]; adCopy?: { headlines: string[]; descriptions: string[]; sitelinks?: string[] } }[];
+      aiNegativesWithReason?: { keyword: string; reason: string }[];
+      adGroups: { name: string; keywords: AdGroupKeyword[]; adCopy?: { headlines: string[]; descriptions: string[]; sitelinks?: string[] }; adGroupNegatives?: string[] }[];
     };
     metaCampaigns?: MetaCampaign[];
     keywordResearch?: {
@@ -528,6 +529,7 @@ export async function generateGrandPlan(
   if (isEnabled("organicSocial")) sectionNames.push("Organic Social");
   if (isEnabled("exampleArticles") && contentData) sectionNames.push("Example Articles");
   if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0) sectionNames.push("Ad Copy");
+  if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0) sectionNames.push("Negative Keywords");
   if (isEnabled("emailMarketing")) sectionNames.push("Email Marketing");
   if (isEnabled("linkedInAds")) sectionNames.push("LinkedIn Ads");
   if (isEnabled("competitorIntel") && sources.keywordResearch) sectionNames.push("Competitor Intel");
@@ -557,7 +559,7 @@ export async function generateGrandPlan(
   if (onProgress) await onProgress(`Generating ${total} AI sections...`);
 
   // Batch 1: core sections (errors are isolated — one failure does not abort the rest)
-  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, adCopyData] =
+  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, adCopyData, aiNegatives] =
     await Promise.all([
       isEnabled("executiveSummary")
         ? runSection("Executive Summary", "executiveSummary", () => generateExecutiveSummary(anthropic, contextSummary, sources))
@@ -579,6 +581,9 @@ export async function generateGrandPlan(
         : Promise.resolve(undefined),
       isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
         ? runSection("Ad Copy", "googleAdsAdCopy", () => generateGoogleAdsAdCopy(anthropic, adGroups, contextSummary, sources))
+        : Promise.resolve(undefined),
+      isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
+        ? runSection("Negative Keywords", "googleAdsNegatives", () => generateNegativeKeywords(anthropic, adGroups, contextSummary, sources))
         : Promise.resolve(undefined),
     ]);
 
@@ -607,7 +612,7 @@ export async function generateGrandPlan(
 
   // Build Google Ads campaigns from keyword research (structured data + AI ad copy)
   const googleAdsCampaigns = isEnabled("googleAdsCampaigns") && sources.keywordResearch
-    ? buildGoogleAdsCampaigns(adGroups, sources, adCopyData ?? [])
+    ? buildGoogleAdsCampaigns(adGroups, sources, adCopyData ?? [], aiNegatives)
     : undefined;
 
   // Build keyword research section
@@ -1143,7 +1148,7 @@ async function generateExampleArticles(anthropic: Anthropic, context: string, co
   // Pick up to 3 blog topics, prioritising audience coverage over list order.
   // If blog posts carry targetAudiences, take the first post per distinct audience
   // so the samples span the audience set rather than clustering on one persona.
-  const blogPosts = (contentData?.blogPosts ?? []) as { title?: string; keyword?: string; targetAudiences?: string[] }[];
+  const blogPosts = (contentData?.blogPosts ?? []) as { title?: string; keyword?: string; targetAudiences?: string[]; brief?: string; notes?: string; intent?: string; keywords?: { keyword: string }[] }[];
   const seenAudiences = new Set<string>();
   const picked: typeof blogPosts = [];
   for (const post of blogPosts) {
@@ -1159,13 +1164,24 @@ async function generateExampleArticles(anthropic: Anthropic, context: string, co
     if (picked.length >= 3) break;
     if (!picked.includes(post)) picked.push(post);
   }
-  const topicsToGenerate = picked.slice(0, 3).map((b) => b.title || b.keyword || "Untitled");
+  const topicsToGenerate = picked.slice(0, 3);
 
   if (topicsToGenerate.length === 0) return [];
 
+  // Pull strategist-supplied audience names + customer-voice pain points so we
+  // can give each article a SPECIFIC audience anchor, not generic copy.
+  const audienceNames = (sources.targetAudiences ?? "")
+    .split(/\n+/).map((l) => l.trim().replace(/^[-•*\d.)\s]+/, "").split(/[:–—]/)[0].trim()).filter(Boolean);
+  const customerPains = (sources.customerVoice?.painPoints ?? []).slice(0, 8);
+
   const articles: { title: string; html: string; seoMeta?: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } }[] = [];
 
-  for (const topic of topicsToGenerate) {
+  for (const post of topicsToGenerate) {
+    const topic = post.title || post.keyword || "Untitled";
+    const articleAudience = post.targetAudiences?.[0]?.trim() || audienceNames[0] || "";
+    const articlePrimaryKeyword = post.keywords?.[0]?.keyword || post.keyword || "";
+    const articleBrief = post.brief || post.notes || "";
+
     const res = await withAnthropicRetry(`exampleArticle:${topic}`, () => anthropic.messages.create({
       model: MODEL_LIGHT,
       max_tokens: 2500,
@@ -1182,16 +1198,25 @@ Rules:
 - Write directly to the named target audience for this topic. Address their pain points and reading-level. State who the article is for in the intro.
 - Return HTML content only (h2, h3, p, ul, li, blockquote, strong). No wrapper div, no article tag.
 - This is an EXAMPLE article to show what the content plan will deliver. Mark it clearly as an example.
-- At the very end, add a comment block with SEO metadata in this exact format:
+- MANDATORY — at the very end, add this comment block. EVERY field is required (no skipping):
   <!-- SEO_META
-  title_tag: [55-60 char title tag with primary keyword]
-  meta_description: [150-160 char meta description with primary keyword and CTA]
-  primary_keyword: [main target keyword]
+  title_tag: [55-60 char title tag containing the primary keyword]
+  meta_description: [150-160 char meta description with primary keyword and a clear CTA]
+  primary_keyword: [the main target keyword for this article]
   secondary_keywords: [2-3 related keywords, comma separated]
   -->
+  Do not omit any field. Do not skip the SEO_META block. The downstream report renders nothing if it is missing.
 
-Write an article titled "${topic}" for ${sources.clientName}.
+Article topic: "${topic}"
+Client: ${sources.clientName}
+${articlePrimaryKeyword ? `Primary keyword to use: ${articlePrimaryKeyword}` : ""}
+${articleAudience ? `Primary target audience: ${articleAudience}` : ""}
+${post.intent ? `Search intent: ${post.intent}` : ""}
+${articleBrief ? `Writer brief from the content plan: ${articleBrief}` : ""}
 
+${customerPains.length ? `Real pain points this audience has expressed (use the language and frustrations naturally in the article — do not paste verbatim):
+${customerPains.map((p) => `  - ${p}`).join("\n")}
+` : ""}
 Context:
 ${context}${buildSharedContextBlocks(sources)}`,
         },
@@ -1217,9 +1242,25 @@ ${context}${buildSharedContextBlocks(sources)}`,
           secondaryKeywords: meta.secondary_keywords?.split(",").map(s => s.trim()),
         };
       }
+      // FALLBACK — if the AI dropped the SEO_META block (or any field), synthesise
+      // a sensible default from the topic + primary keyword so every article card
+      // renders consistently. The report previously showed metadata on some
+      // articles and not others when the AI was inconsistent.
+      const fallbackTitleTag = topic.length <= 60 ? topic : topic.slice(0, 57).trim() + "...";
+      const fallbackMetaDesc = articlePrimaryKeyword
+        ? `Practical guidance on ${articlePrimaryKeyword} from ${sources.clientName}. Read the full guide and get in touch to find out more.`
+        : `Read the full guide from ${sources.clientName} and get in touch to find out how we can help.`;
+      seoMeta = {
+        titleTag: seoMeta?.titleTag || fallbackTitleTag,
+        metaDescription: seoMeta?.metaDescription || fallbackMetaDesc.slice(0, 160),
+        primaryKeyword: seoMeta?.primaryKeyword || articlePrimaryKeyword || undefined,
+        secondaryKeywords: seoMeta?.secondaryKeywords?.length
+          ? seoMeta.secondaryKeywords
+          : (post.keywords ?? []).slice(1, 4).map((k) => k.keyword).filter(Boolean),
+      };
       // Strip the SEO comment from the HTML
       const cleanHtml = html.replace(/<!--\s*SEO_META\s*\n[\s\S]*?-->/, "").trim();
-      articles.push({ title: topic as string, html: cleanHtml, seoMeta });
+      articles.push({ title: topic, html: cleanHtml, seoMeta });
     }
   }
 
@@ -1831,12 +1872,21 @@ function detectLocations(brief?: string): string {
   return "United Kingdom";
 }
 
-function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources, adCopyData: { name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; urlPaths?: string[]; isFallback?: boolean } }[]) {
+function buildGoogleAdsCampaigns(
+  adGroups: AdGroup[],
+  sources: GrandPlanSources,
+  adCopyData: { name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; urlPaths?: string[]; isFallback?: boolean } }[],
+  aiNegatives?: { campaignLevel: { keyword: string; reason: string }[]; byAdGroup: { name: string; negatives: string[] }[] },
+) {
   const adCopyMap = new Map(adCopyData.map((d) => [d.name, d.adCopy]));
+  const adGroupNegMap = new Map((aiNegatives?.byAdGroup ?? []).map((g) => [g.name, g.negatives]));
   const sector = sources.sector ?? "";
   const sectorNegs = SECTOR_NEGATIVES[sector] ?? [];
   const briefNegs = parseBriefNegatives(sources.clientBrief ?? "");
-  const allNegatives = [...new Set([...BASE_NEGATIVES, ...sectorNegs, ...briefNegs])];
+  const aiCampaignNegs = (aiNegatives?.campaignLevel ?? []).map((n) => n.keyword);
+  const allNegatives = [...new Set([...BASE_NEGATIVES, ...sectorNegs, ...briefNegs, ...aiCampaignNegs])];
+  // Keep the AI-supplied reasoned list separate so we can render it with rationale.
+  const aiNegativesWithReason = (aiNegatives?.campaignLevel ?? []).filter((n) => n.keyword && n.reason);
   const adSchedule = SECTOR_AD_SCHEDULE[sector] ?? "Mon-Fri, 7am-9pm";
 
   return {
@@ -1858,6 +1908,7 @@ function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources,
       "Max CPC": sources.keywordResearch?.maxCpc ? `£${sources.keywordResearch.maxCpc}` : "Auto",
     },
     negativeKeywords: allNegatives,
+    aiNegativesWithReason,
     adGroups: adGroups.map((g) => {
       // Drop zero/null-volume keywords — they don't deserve real estate in the
       // ad group breakdown. If everything is zero (rare), keep the original
@@ -1877,9 +1928,91 @@ function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources,
         })),
         hiddenLowVolumeCount: filtered.length > 0 ? hiddenCount : 0,
         adCopy: adCopyMap.get(g.name),
+        adGroupNegatives: adGroupNegMap.get(g.name) ?? [],
       };
     }),
   };
+}
+
+/**
+ * Use AI to suggest tailored campaign-level and per-ad-group negative keywords.
+ * The static SECTOR_NEGATIVES/BASE_NEGATIVES list is fine for the obvious
+ * "free", "jobs", "reddit" stuff but the AI catches sector-and-brief-specific
+ * waste (e.g. for a football academy: "FIFA video game", "ronaldo", "highlights").
+ */
+async function generateNegativeKeywords(
+  anthropic: Anthropic,
+  adGroups: AdGroup[],
+  context: string,
+  sources: GrandPlanSources,
+): Promise<{ campaignLevel: { keyword: string; reason: string }[]; byAdGroup: { name: string; negatives: string[] }[] }> {
+  const groupSummary = adGroups
+    .slice(0, 8)
+    .map((g) => `- ${g.name}: ${g.keywords.slice(0, 5).map((k) => k.keyword).join(", ")}`)
+    .join("\n");
+
+  const res = await withAnthropicRetry("googleAdsNegatives", () => anthropic.messages.create({
+    model: MODEL_LIGHT,
+    max_tokens: 1500,
+    messages: [
+      {
+        role: "user",
+        content: `You are a Google Ads PPC specialist at i3media. Suggest negative keywords for this client's Search campaign so we don't burn budget on irrelevant clicks.
+
+Client: ${sources.clientName}
+Sector: ${sources.sector ?? "general"}
+Brief: ${sources.clientBrief ?? "n/a"}
+
+Ad groups in the campaign:
+${groupSummary}
+
+Return ONLY valid JSON with this exact shape:
+{
+  "campaignLevel": [
+    { "keyword": "negative term", "reason": "one short sentence why this would waste budget" }
+  ],
+  "byAdGroup": [
+    { "name": "exact ad group name from the list above", "negatives": ["term 1", "term 2", "term 3"] }
+  ]
+}
+
+Rules:
+- Produce 12-20 campaign-level negatives. Each MUST be specific to this client's product, sector or brief — not generic ("free", "jobs", "reddit" are already handled, do NOT include those).
+- For each ad group, suggest 4-8 negatives that would only matter for THAT group (e.g. exclude course/training searches from a buying-focused group, exclude DIY searches from a service group).
+- Each campaign-level reason must be one short sentence (max 18 words). No marketing waffle, plain English.
+- Cover: cheaper alternatives, DIY/self-serve searches, related-but-wrong audiences, lower-intent informational queries, competitor brand names the client should NOT bid on, locations outside the target geography, and obviously off-topic terms that the keyword set might trigger.
+- British English. No em dashes. No semicolons.
+- Return ONLY the JSON object, no markdown fences, no commentary.
+
+Context:
+${context}${buildSharedContextBlocks(sources)}`,
+      },
+    ],
+  }));
+
+  const parsed = safeJsonParse(extractText(res), { campaignLevel: [], byAdGroup: [] });
+  const campaignLevel = Array.isArray(parsed.campaignLevel)
+    ? parsed.campaignLevel
+        .filter((n: unknown): n is { keyword?: unknown; reason?: unknown } => !!n && typeof n === "object")
+        .map((n: { keyword?: unknown; reason?: unknown }) => ({
+          keyword: cleanEmDashes(String(n.keyword ?? "").trim()),
+          reason: cleanEmDashes(String(n.reason ?? "").trim()),
+        }))
+        .filter((n: { keyword: string; reason: string }) => n.keyword.length > 0 && n.keyword.length <= 60)
+        .slice(0, 25)
+    : [];
+  const byAdGroup = Array.isArray(parsed.byAdGroup)
+    ? parsed.byAdGroup
+        .filter((g: unknown): g is { name?: unknown; negatives?: unknown } => !!g && typeof g === "object")
+        .map((g: { name?: unknown; negatives?: unknown }) => ({
+          name: String(g.name ?? "").trim(),
+          negatives: Array.isArray(g.negatives)
+            ? g.negatives.map((n) => cleanEmDashes(String(n).trim())).filter((n: string) => n.length > 0 && n.length <= 60).slice(0, 10)
+            : [],
+        }))
+        .filter((g: { name: string; negatives: string[] }) => g.name && g.negatives.length > 0)
+    : [];
+  return { campaignLevel, byAdGroup };
 }
 
 function buildKeywordResearchSection(adGroups: AdGroup[]) {
@@ -2241,33 +2374,27 @@ async function generateAudiences(
   const signalCount = (sources.targetAudiences ? 1 : 0) + (hasGa4Audience ? 1 : 0) + (hasGscIntent ? 1 : 0) + (hasCustomerVoice ? 1 : 0);
   const grounding: DataGrounding = signalCount >= 2 ? "real" : signalCount === 1 ? "partial" : "ai-only";
 
+  // Parse strategist-supplied audience NAMES so the AI is constrained to them
+  // (rather than inventing audiences). Pain points, descriptions, persona
+  // quotes and sectorPreview are ALL generated by the AI per audience —
+  // we never surface raw scraped customer-voice text or the strategist's
+  // own one-line description verbatim.
+  let strategistAudienceNames: string[] = [];
   if (sources.targetAudiences) {
-    // Strategist has provided audiences — parse them rather than regenerate from scratch.
-    const lines = sources.targetAudiences.split(/\n+/).map((l) => l.trim()).filter(Boolean);
-    if (lines.length) {
-      const allPains = cv?.painPoints ?? [];
-      const perAudience = Math.max(2, Math.floor(allPains.length / Math.max(1, lines.length)));
-      const value = lines.slice(0, 6).map((line, idx) => {
-        const sepMatch = line.match(/[:–—]/);
-        const sepIdx = sepMatch?.index ?? -1;
-        const namePart = sepIdx >= 0 ? line.slice(0, sepIdx) : line;
-        const descPart = sepIdx >= 0 ? line.slice(sepIdx + 1).trim() : "";
-        // Distribute customer-voice pain points across audiences (no duplication).
-        const start = idx * perAudience;
-        const painPoints = allPains.length
-          ? allPains.slice(start, start + perAudience).length
-            ? allPains.slice(start, start + perAudience)
-            : allPains.slice(0, perAudience) // wrap for trailing audiences
-          : [];
-        return {
-          name: namePart.trim().slice(0, 120),
-          description: descPart || "Provided by client strategist.",
-          painPoints,
-          channels: [],
-        } as AudienceItem;
-      });
-      return { value, grounding, sourceLabels };
-    }
+    strategistAudienceNames = sources.targetAudiences
+      .split(/\n+/)
+      .map((l) => {
+        const trimmed = l.trim();
+        if (!trimmed) return "";
+        // Strip any leading bullet markers, numbering or dash separators
+        const cleaned = trimmed.replace(/^[-•*\d.)\s]+/, "");
+        // Take the part before any : – — (the rest is description waffle we'll discard)
+        const sepMatch = cleaned.match(/[:–—]/);
+        const namePart = sepMatch?.index !== undefined ? cleaned.slice(0, sepMatch.index) : cleaned;
+        return namePart.trim().slice(0, 120);
+      })
+      .filter(Boolean)
+      .slice(0, 6);
   }
 
   const res = await withAnthropicRetry("audiences", () => anthropic.messages.create({
@@ -2313,7 +2440,18 @@ Return JSON in this exact format:
 ]
 - 3-5 keywordGroups per audience
 - 2-3 campaignTeasers per audience (only include channels actually relevant to this client)
+${strategistAudienceNames.length ? `
+MANDATORY — the strategist has specified the audiences for this client. You MUST produce exactly one entry per name below, in the order given. Do NOT add, rename, merge or omit any. Use the names verbatim:
+${strategistAudienceNames.map((n, i) => `  ${i + 1}. ${n}`).join("\n")}
 
+For each audience, write the description, painPoints, personaQuote and sectorPreview FROM SCRATCH. Each painPoint must be:
+  - A short, plain-English sentence (10-22 words). NEVER a paragraph, NEVER multiple sentences.
+  - Specific to THAT named audience (a pain a parent has is not the same as a pain a teenager has).
+  - In their voice, not marketing copy. No em dashes. No semicolons.
+  - Drawn from the customer-voice block below where it fits, but rewritten and trimmed — do NOT paste raw scraped text.
+  - Distinct: never repeat the same pain across two audiences.
+Produce 4-6 painPoints per audience.
+` : ""}
 Client context:
 ${context}${buildSharedContextBlocks(sources)}`,
       },
@@ -2327,12 +2465,19 @@ ${context}${buildSharedContextBlocks(sources)}`,
     if (!Array.isArray(parsed)) return { value: [], grounding, sourceLabels };
     const value = parsed
       .filter((a) => a && typeof a.name === "string")
-      .map((a): AudienceItem => ({
-        name: String(a.name).trim(),
-        description: String(a.description ?? "").trim(),
-        painPoints: Array.isArray(a.painPoints) ? a.painPoints.map(String) : [],
+      .map((a, idx): AudienceItem => ({
+        // If the strategist specified names, enforce them slot-for-slot
+        // so the AI can't quietly rename or reorder audiences.
+        name: strategistAudienceNames[idx] ?? String(a.name).trim(),
+        description: cleanEmDashes(String(a.description ?? "").trim()),
+        painPoints: Array.isArray(a.painPoints)
+          ? a.painPoints
+              .map((p: unknown) => cleanEmDashes(String(p).trim()))
+              .filter((p: string) => p.length > 0 && p.length <= 220)
+              .slice(0, 6)
+          : [],
         channels: Array.isArray(a.channels) ? a.channels.map(String) : [],
-        personaQuote: typeof a.personaQuote === "string" ? a.personaQuote.trim().slice(0, 240) : undefined,
+        personaQuote: typeof a.personaQuote === "string" ? cleanEmDashes(a.personaQuote.trim().slice(0, 240)) : undefined,
         sectorPreview: a.sectorPreview && typeof a.sectorPreview === "object" ? {
           keywordGroups: Array.isArray(a.sectorPreview.keywordGroups)
             ? a.sectorPreview.keywordGroups

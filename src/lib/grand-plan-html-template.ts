@@ -622,7 +622,18 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
     .map((k: string) => `<span class="neg-chip">${esc(k)}</span>`)
     .join(" ");
 
-  const adGroupsHtml = ((data.adGroups ?? []) as { name: string; keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number; adCopy?: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; urlPaths?: string[]; isFallback?: boolean } }[])
+  const aiNegReasoned = ((data.aiNegativesWithReason ?? []) as { keyword: string; reason: string }[])
+    .filter((n) => n.keyword && n.reason);
+  const aiNegHtml = aiNegReasoned.length > 0 ? `
+        <div class="neg-reasoned-list">
+          ${aiNegReasoned.map((n) => `
+            <div class="neg-reason-item">
+              <span class="neg-chip">${esc(n.keyword)}</span>
+              <span class="neg-reason-text">${esc(n.reason)}</span>
+            </div>`).join("")}
+        </div>` : "";
+
+  const adGroupsHtml = ((data.adGroups ?? []) as { name: string; keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number; adCopy?: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; urlPaths?: string[]; isFallback?: boolean }; adGroupNegatives?: string[] }[])
     .map((g, i) => {
       const kwRows = (g.keywords ?? [])
         .map((k) => {
@@ -652,10 +663,41 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           ? `<div class="sitelinks-section"><div class="ad-copy-label">Sitelinks</div><div class="sitelink-chips">${g.adCopy!.sitelinks!.map((s) => `<span class="sitelink-chip">${esc(s)}${charBadge(s.length, 25)}</span>`).join("")}</div></div>`
           : "";
 
-        // Google ad preview mockup
-        const h1 = g.adCopy!.headlines[0] ?? "";
-        const h2 = g.adCopy!.headlines[1] ?? "";
-        const h3 = g.adCopy!.headlines[2] ?? "";
+        // Google ad preview mockup — pick 3 visually distinct headlines
+        // rather than the first 3 (which often share the same keyword prefix
+        // and get truncated to the same "keyword..." string in the preview).
+        // We pull from the structured 15-headline distribution: index 0
+        // (keyword-led), 4 (benefit-led), 8 (USP/differentiator).
+        const headlines = g.adCopy!.headlines;
+        const pickDistinct = (preferred: number[], cap = 30): string => {
+          for (const idx of preferred) {
+            const h = headlines[idx];
+            if (h && h.length <= cap) return h;
+          }
+          // Fallback: shortest headline still under cap
+          const ranked = [...headlines].filter((h) => h && h.length <= cap).sort((a, b) => a.length - b.length);
+          return ranked[0] ?? "";
+        };
+        const usedIndices = new Set<number>();
+        const pickUnique = (preferred: number[]): string => {
+          for (const idx of preferred) {
+            if (usedIndices.has(idx)) continue;
+            const h = headlines[idx];
+            if (h) { usedIndices.add(idx); return h; }
+          }
+          // Fallback: any unused headline that's reasonably short
+          const sorted = headlines
+            .map((h, i) => ({ h, i }))
+            .filter((x) => x.h && !usedIndices.has(x.i))
+            .sort((a, b) => a.h.length - b.h.length);
+          if (sorted[0]) { usedIndices.add(sorted[0].i); return sorted[0].h; }
+          return "";
+        };
+        // Force the first headline to be reasonably short so the preview
+        // doesn't show three truncated identical-looking strings.
+        const h1 = pickUnique([0, 1, 2, 3]) || pickDistinct([0]);
+        const h2 = pickUnique([4, 5, 6, 7]); // benefit-led
+        const h3 = pickUnique([8, 9, 10, 11]); // USP / urgency
         const desc1 = g.adCopy!.descriptions[0] ?? "";
         const previewSitelinks = (g.adCopy!.sitelinks ?? []).slice(0, 4);
         const gadPreview = `
@@ -666,7 +708,7 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
             <div class="ad-card-body">
               <div class="gad-sponsor-row"><div class="gad-dot"></div><span class="gad-sponsored-tag">Sponsored</span></div>
               <div class="gad-url-text">https://${esc(adDomain)}${g.adCopy!.urlPaths?.[0] ? ` <span style="color:#70757a">&#8250;</span> <span style="color:#70757a">${esc(g.adCopy!.urlPaths[0])}</span>` : ""}${g.adCopy!.urlPaths?.[1] ? ` <span style="color:#70757a">&#8250;</span> <span style="color:#70757a">${esc(g.adCopy!.urlPaths[1])}</span>` : ""}</div>
-              <div class="gad-headline">${esc(h1)}${h2 ? ` <span class="gad-headline-sep">|</span> ${esc(h2)}` : ""}${h3 ? ` <span class="gad-headline-sep">|</span> ${esc(h3)}` : ""}</div>
+              <div class="gad-headline">${[h1, h2, h3].filter(Boolean).map((h, idx) => `<span class="gad-h-part">${esc(h)}</span>${idx < [h1, h2, h3].filter(Boolean).length - 1 ? `<span class="gad-headline-sep">|</span>` : ""}`).join("")}</div>
               <div class="gad-desc">${esc(desc1)}</div>
               ${previewSitelinks.length ? `<div class="gad-sitelinks">${previewSitelinks.map((sl: string) => `<span class="gad-sitelink">${esc(sl)}</span>`).join("")}</div>` : ""}
             </div>
@@ -709,6 +751,11 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           </table>
           ${hiddenNote}
           <button class="copy-btn" onclick="copyAgKeywords(this)">Copy Keywords</button>
+          ${(g.adGroupNegatives && g.adGroupNegatives.length > 0) ? `
+          <div class="ag-neg-section">
+            <h5>Ad Group Negatives</h5>
+            <div class="neg-list">${g.adGroupNegatives.map((n) => `<span class="neg-chip">${esc(n)}</span>`).join(" ")}</div>
+          </div>` : ""}
           ${adCopyHtml}
         </div>
       </div>`;
@@ -728,6 +775,7 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
         <div class="neg-section">
           <h4>Campaign-Level Negative Keywords</h4>
           <div class="neg-list">${negKws}</div>
+          ${aiNegHtml ? `<h4 style="margin-top:1.5rem">AI-Recommended Negatives <span style="font-weight:400;color:var(--mid);font-size:.8em">— with rationale</span></h4>${aiNegHtml}` : ""}
         </div>
         <h3 class="ag-heading">Ad Groups</h3>
         ${adGroupsHtml}
@@ -849,6 +897,87 @@ function renderKeywordResearch(data: any): string {
     </section>`;
 }
 
+/**
+ * Convert a single brief text blob into structured HTML.
+ * Detects inline labelled sections like "Modules:", "H2s:", "FAQ:",
+ * "CTA:" and renders each as its own labelled paragraph or bullet list.
+ * Single-quote-wrapped items inside a labelled section become bullets.
+ * Falls back to paragraph-per-sentence if no structure is detected.
+ */
+function formatBriefBlock(raw: string): string {
+  const text = String(raw ?? "").trim();
+  if (!text) return "";
+
+  // Section labels we recognise (case-insensitive). Anything matching becomes
+  // its own heading + body. Order matters — longer labels first.
+  const LABELS = [
+    "Hero headline", "Lead paragraph", "Lead", "Modules", "Sections",
+    "H2 headings", "H2s", "H3s", "Sub-headings", "FAQ", "FAQs",
+    "Internal linking", "Internal links", "Schema", "Schema markup",
+    "Tone", "Voice", "CTA", "Calls to action", "Notes", "Writer note",
+    "Word count", "Word-count", "Length", "Format", "Visuals",
+    "Trust signals", "Social proof", "Conversion", "Conversion goal",
+  ];
+  const labelRegex = new RegExp(`(?:^|\\.\\s+)(${LABELS.join("|")})\\s*:\\s*`, "gi");
+
+  // Split the text into label-prefixed chunks. We do this by finding each
+  // label match position and slicing in between.
+  type Chunk = { label?: string; body: string };
+  const matches: { idx: number; label: string; matchEnd: number }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = labelRegex.exec(text)) !== null) {
+    // Skip leading "." that we matched — record the position of the label itself.
+    const labelStart = m.index + (m[0].startsWith(".") ? m[0].indexOf(m[1]) : 0);
+    matches.push({ idx: labelStart, label: m[1], matchEnd: m.index + m[0].length });
+  }
+
+  const chunks: Chunk[] = [];
+  if (matches.length === 0) {
+    chunks.push({ body: text });
+  } else {
+    if (matches[0].idx > 0) chunks.push({ body: text.slice(0, matches[0].idx).trim() });
+    matches.forEach((mt, i) => {
+      const next = matches[i + 1];
+      const body = text.slice(mt.matchEnd, next?.idx ?? text.length).trim().replace(/\.\s*$/, "");
+      if (body) chunks.push({ label: mt.label, body });
+    });
+  }
+
+  // Render each chunk. If the body contains 'quoted items', or comma-separated
+  // short items after a recognised list-style label, render as bullets.
+  const LIST_LABELS = new Set(["Modules", "Sections", "H2 headings", "H2s", "H3s", "Sub-headings", "FAQ", "FAQs", "Internal linking", "Internal links", "Visuals", "Trust signals", "CTA", "Calls to action"]);
+
+  const renderChunk = (c: Chunk): string => {
+    const labelHtml = c.label ? `<div class="cc-brief-label">${esc(c.label)}</div>` : "";
+
+    // Try to extract single-quoted items first ('item one', 'item two')
+    const quoted = [...c.body.matchAll(/['"]([^'"]{2,160})['"]/g)].map((q) => q[1].trim());
+    const looksList = c.label && LIST_LABELS.has(c.label);
+
+    if (quoted.length >= 2 && (looksList || quoted.length >= 3)) {
+      return `${labelHtml}<ul class="cc-brief-list">${quoted.slice(0, 12).map((q) => `<li>${esc(q)}</li>`).join("")}</ul>`;
+    }
+
+    // Comma-separated short items under a list-style label
+    if (looksList) {
+      const items = c.body.split(/,(?![^()]*\))/g).map((s) => s.trim().replace(/^['"]|['"]$/g, "")).filter((s) => s.length > 1 && s.length <= 200);
+      if (items.length >= 2) {
+        return `${labelHtml}<ul class="cc-brief-list">${items.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>`;
+      }
+    }
+
+    // Default: split body into 1-2 sentence paragraphs
+    const sentences = c.body.split(/(?<=[.!?])\s+(?=[A-Z'"])/).filter(Boolean);
+    const paras: string[] = [];
+    for (let i = 0; i < sentences.length; i += 2) {
+      paras.push(sentences.slice(i, i + 2).join(" "));
+    }
+    return `${labelHtml}${paras.map((p) => `<p>${esc(p)}</p>`).join("")}`;
+  };
+
+  return chunks.map(renderChunk).join("");
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderContentStrategy(data: any, intro?: string, audienceRationales?: Record<string, string>): string {
   type Entry = {
@@ -857,7 +986,9 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
     notes?: string; brief?: string;
     tier?: "pillar" | "mega" | "article";
     intent?: string;
-    internalLinks?: string[];
+    // Content-strategy generator returns {url, anchorText} objects, but legacy
+    // data may be plain strings. Render handles both shapes.
+    internalLinks?: (string | { url?: string; anchorText?: string })[];
     targetAudiences?: string[];
   };
 
@@ -900,7 +1031,7 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
           ${kw ? `<div class="cc-kw">${esc(kw)}</div>` : ""}
           ${intent ? `<span class="cc-intent ${intentClass(intent)}">${esc(intentLabel(intent))}</span>` : ""}
           ${audChips ? `<div class="cc-audiences">${audChips}</div>` : ""}
-          ${briefText ? `<p class="cc-brief">${esc(briefText)}</p>` : ""}
+          ${briefText ? `<div class="cc-brief">${formatBriefBlock(briefText)}</div>` : ""}
         </div>
       </div>`;
   };
@@ -915,11 +1046,36 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
     ...megas.flatMap((m) => m.internalLinks ?? []),
     ...articles.flatMap((a) => a.internalLinks ?? []),
   ];
-  const internalLinkingHtml = allInternalLinks.length > 0 ? `
+  // Normalise into { url, anchorText } pairs and dedupe by URL+anchor combo.
+  const normalisedLinks = allInternalLinks
+    .map((s) => {
+      if (typeof s === "string") {
+        // Older string-only data: treat the whole string as the anchor.
+        return { url: "", anchorText: s.trim() };
+      }
+      return { url: (s?.url ?? "").trim(), anchorText: (s?.anchorText ?? "").trim() };
+    })
+    .filter((l) => l.url || l.anchorText);
+  const seenLinks = new Set<string>();
+  const dedupedLinks = normalisedLinks.filter((l) => {
+    const key = `${l.url}|${l.anchorText}`.toLowerCase();
+    if (seenLinks.has(key)) return false;
+    seenLinks.add(key);
+    return true;
+  });
+  const internalLinkingHtml = dedupedLinks.length > 0 ? `
     <div class="il-section">
       <h3>Internal Linking Recommendations</h3>
+      <p class="cluster-block-sub" style="margin-bottom:.75rem">Link new content to these existing pages with the suggested anchor text to push authority through the cluster.</p>
       <div class="il-grid">
-        ${allInternalLinks.slice(0, 8).map((s) => `<div class="il-item"><span class="il-arrow">&#8594;</span><span>${esc(s)}</span></div>`).join("\n")}
+        ${dedupedLinks.slice(0, 12).map((l) => {
+          const anchor = l.anchorText || l.url || "";
+          const linkHtml = l.url
+            ? `<a class="il-link" href="${esc(l.url.startsWith("http") ? l.url : `https://${l.url}`)}" target="_blank" rel="noopener">${esc(anchor)}</a>`
+            : `<span>${esc(anchor)}</span>`;
+          const urlSub = l.url && l.anchorText ? `<span class="il-url">${esc(l.url)}</span>` : "";
+          return `<div class="il-item"><span class="il-arrow">&#8594;</span><span class="il-text">${linkHtml}${urlSub}</span></div>`;
+        }).join("\n")}
       </div>
     </div>` : "";
 
@@ -947,7 +1103,7 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
         </div>
         ${p.keywords?.length ? `<div class="content-kws">${p.keywords.slice(0, 5).map((k) => `<span class="kw-pill">${esc(k.keyword)}</span>`).join(" ")}</div>` : ""}
         ${audChips ? `<div class="cc-audiences" style="margin-top:6px">${audChips}</div>` : ""}
-        ${p.notes ? `<p class="content-notes">${esc(p.notes)}</p>` : ""}
+        ${p.notes ? `<div class="content-notes">${formatBriefBlock(p.notes)}</div>` : ""}
       </div>`;
       }).join("\n")}
     </div>` : "";
@@ -1560,6 +1716,14 @@ a{color:var(--accent);text-decoration:none}
 .ov-label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);margin-bottom:2px}
 .ov-value{font-size:14px;font-weight:600;color:var(--heading)}
 /* Negative keywords */
+.neg-reasoned-list{display:flex;flex-direction:column;gap:.55rem;margin-top:.85rem}
+.neg-reason-item{display:grid;grid-template-columns:minmax(140px,200px) 1fr;gap:14px;align-items:start;padding:.6rem .85rem;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:8px}
+.section.dark .neg-reason-item{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
+.neg-reason-text{font-size:12.5px;color:var(--mid);line-height:1.5}
+.section.dark .neg-reason-text{color:#cbd5e1}
+.ag-neg-section{margin-top:1.25rem;padding-top:1rem;border-top:1px dashed var(--border)}
+.ag-neg-section h5{margin:0 0 .5rem;font-size:.85rem;font-weight:700;color:var(--text)}
+@media (max-width:600px){.neg-reason-item{grid-template-columns:1fr}}
 .neg-section{margin-bottom:2rem}
 .neg-section h4{font-size:14px;font-weight:700;color:var(--heading);margin-bottom:10px}
 .section.dark .neg-section h4{color:#fff}
@@ -1644,7 +1808,14 @@ a{color:var(--accent);text-decoration:none}
 .content-url-copy:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
 .content-title{font-size:14px;font-weight:600;color:var(--heading);margin-bottom:6px}
 .content-kws{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
-.content-notes{font-size:13px;color:var(--text-light);margin-top:6px}
+.content-notes{font-size:13px;color:var(--text-light);margin-top:8px;padding:10px 12px;background:#f8fafc;border-left:3px solid var(--accent);border-radius:4px}
+.content-notes p{margin:0 0 .55rem;font-size:13px;color:var(--text);line-height:1.55}
+.content-notes p:last-child{margin-bottom:0}
+.content-notes ul{margin:0 0 .55rem;padding-left:1.05rem;font-size:13px;color:var(--text);line-height:1.55}
+.content-notes ul:last-child{margin-bottom:0}
+.content-notes li{margin-bottom:.2rem}
+.content-notes .cc-brief-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);font-weight:700;margin:.65rem 0 .3rem}
+.content-notes .cc-brief-label:first-child{margin-top:0}
 .kw-pill{display:inline-block;padding:2px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:11px;color:var(--text-light)}
 .intent-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
 .intent-awareness,.intent-informational{background:#dbeafe;color:#1e40af}
@@ -1674,6 +1845,13 @@ a{color:var(--accent);text-decoration:none}
 .cc-intent.intent-cm,.cc-intent.intent-commercial{background:#fef3c7;color:#92400e}
 .cc-intent.intent-dc,.cc-intent.intent-decision{background:#d1fae5;color:#065f46}
 .cc-brief{font-size:13px;color:var(--text);line-height:1.55;margin:0;padding:10px 12px;background:#f8fafc;border-left:3px solid var(--accent);border-radius:4px}
+.cc-brief p{margin:0 0 .55rem;font-size:13px;color:var(--text);line-height:1.55}
+.cc-brief p:last-child{margin-bottom:0}
+.cc-brief-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);font-weight:700;margin:.65rem 0 .3rem}
+.cc-brief-label:first-child{margin-top:0}
+.cc-brief-list{margin:0 0 .55rem;padding-left:1.05rem;font-size:13px;color:var(--text);line-height:1.55}
+.cc-brief-list li{margin-bottom:.2rem}
+.cc-brief-list:last-child{margin-bottom:0}
 .compliance-callout{margin-top:1.25rem;padding:14px 16px;background:#fffbea;border:1px solid #f5e1a2;border-left:4px solid #d97706;border-radius:6px}
 .compliance-callout strong{display:block;font-size:11px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:#92400e;margin-bottom:6px}
 .compliance-callout ul{margin:0;padding-left:18px;font-size:13px;color:#78350f;line-height:1.55}
@@ -1717,6 +1895,10 @@ a{color:var(--accent);text-decoration:none}
 .il-grid{display:grid;grid-template-columns:1fr;gap:.45rem}
 .il-item{display:flex;align-items:flex-start;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.65rem .85rem;font-size:13px;color:var(--text);line-height:1.55}
 .il-arrow{color:var(--mid);flex-shrink:0;margin-top:1px;font-weight:700}
+.il-text{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.il-link{color:var(--accent);text-decoration:none;font-weight:600;word-break:break-word}
+.il-link:hover{text-decoration:underline}
+.il-url{font-size:11.5px;color:var(--mid);font-family:'SFMono-Regular',Menlo,monospace;word-break:break-all}
 /* Priority action grid */
 .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}
 @media (max-width:760px){.action-grid{grid-template-columns:1fr}}
@@ -2167,8 +2349,9 @@ details.cal-month[open] .cal-month-header::after{content:"\\2212"}
 .gad-dot{width:6px;height:6px;border-radius:50%;background:#000;opacity:.8}
 .gad-sponsored-tag{font-size:10.5px;border:1px solid #70757a;color:#70757a;padding:1px 5px;border-radius:3px;font-weight:600}
 .gad-url-text{font-size:12px;color:#1a0dab;margin-bottom:2px}
-.gad-headline{font-size:17px;color:#1a0dab;line-height:1.35;margin-bottom:3px;cursor:default}
-.gad-headline-sep{color:#70757a;font-weight:400;margin:0 2px}
+.gad-headline{font-size:17px;color:#1a0dab;line-height:1.35;margin-bottom:3px;cursor:default;display:flex;flex-wrap:nowrap;align-items:baseline;gap:6px;overflow:hidden}
+.gad-h-part{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gad-headline-sep{color:#70757a;font-weight:400;flex:0 0 auto}
 .gad-desc{font-size:13px;color:#4d5156;line-height:1.55;margin-bottom:0}
 .gad-sitelinks{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid #e2e8f0}
 .gad-sitelink{font-size:12px;color:#1a0dab}
