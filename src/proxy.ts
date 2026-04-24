@@ -31,14 +31,14 @@ export default function middleware(request: NextRequest) {
     pathname === "/favicon.ico" ||
     /\.[a-zA-Z0-9]{1,5}$/.test(pathname); // any obvious file extension
 
-  if (host === LP_DOMAIN && !isInternal) {
-    // Apex → serve the clickr marketing page (internal rewrite, URL stays clean)
+  if ((host === LP_DOMAIN || host === `www.${LP_DOMAIN}`) && !isInternal) {
+    // Apex / www → serve the clickr marketing page (internal rewrite, URL stays clean)
     const url = request.nextUrl.clone();
     url.pathname = "/clickr";
     return NextResponse.rewrite(url);
   } else if (host.endsWith(`.${LP_DOMAIN}`) && !isInternal) {
     const sub = host.slice(0, -1 * (LP_DOMAIN.length + 1));
-    // Reject empty / "www" / multi-label subdomains for safety
+    // www is handled above; reject empty / multi-label subdomains for safety
     if (sub && sub !== "www" && !sub.includes(".")) {
       const lpPath = pathname === "/" ? "" : pathname;
       const url = request.nextUrl.clone();
