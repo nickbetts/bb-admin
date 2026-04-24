@@ -38,6 +38,7 @@ import {
   Map,
   CreditCard,
   MailCheck,
+  ImageIcon,
 } from "lucide-react";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { KeyboardShortcutsHelp } from "@/components/ui/KeyboardShortcutsHelp";
@@ -82,6 +83,7 @@ const toolsNavItems: NavItem[] = [
   { href: "/tools/qa-checklist", label: "Client QA", icon: <ClipboardCheck className="h-4 w-4" />, permission: "qa_checklist" },
   { href: "/tools/subscriptions", label: "Subscriptions", icon: <CreditCard className="h-4 w-4" />, permission: "subscriptions" },
   { href: "/tools/email-verifier", label: "Email Verifier", icon: <MailCheck className="h-4 w-4" />, permission: "email_verifier" },
+  { href: "/tools/ad-image-generator", label: "Ad Image Generator", icon: <ImageIcon className="h-4 w-4" />, permission: "ad_image_generator" },
 ];
 
 interface SidebarProps {

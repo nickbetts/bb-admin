@@ -40,6 +40,7 @@ const PERMISSION_GROUPS = [
       { key: "qa_checklist", label: "Client QA" },
       { key: "subscriptions", label: "Subscriptions" },
       { key: "email_verifier", label: "Email Verifier" },
+      { key: "ad_image_generator", label: "Ad Image Generator" },
     ],
   },
   {
