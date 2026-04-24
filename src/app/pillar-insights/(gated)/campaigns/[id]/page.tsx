@@ -19,7 +19,8 @@ import {
 import { CAMPAIGNS } from "../../../_data/mockData";
 import { getCampaignDailyRevenue, getCampaignVariants, getCampaignFunnel } from "../../../_data/extendedData";
 
-const statusTone = (s: string) => (s === "active" ? "emerald" : s === "scheduled" ? "indigo" : "neutral") as const;
+const statusTone = (s: string) =>
+  ((s === "active" ? "emerald" : s === "scheduled" ? "indigo" : "neutral") as "emerald" | "indigo" | "neutral");
 
 export default function CampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);

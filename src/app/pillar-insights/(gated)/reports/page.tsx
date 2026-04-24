@@ -4,7 +4,8 @@ import { Plus, FileDown, Calendar, Sparkles } from "lucide-react";
 import { PageHeader, MockupBanner, Section, Tag, AIInsight } from "../../_components/PillarUI";
 import { SCHEDULED_REPORTS, REPORT_TEMPLATES } from "../../_data/extendedData";
 
-const statusTone = (s: string) => (s === "active" ? "emerald" : s === "scheduled" ? "indigo" : "neutral") as const;
+const statusTone = (s: string) =>
+  ((s === "active" ? "emerald" : s === "scheduled" ? "indigo" : "neutral") as "emerald" | "indigo" | "neutral");
 
 export default function ReportsPage() {
   return (

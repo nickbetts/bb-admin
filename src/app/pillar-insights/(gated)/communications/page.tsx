@@ -12,7 +12,8 @@ const channelIcon = (c: string) => {
   return <Inbox className="h-3.5 w-3.5" />;
 };
 
-const priorityTone = (p: string) => (p === "high" ? "rose" : p === "low" ? "neutral" : "indigo") as const;
+const priorityTone = (p: string) =>
+  ((p === "high" ? "rose" : p === "low" ? "neutral" : "indigo") as "rose" | "neutral" | "indigo");
 
 export default function CommunicationsPage() {
   const [filter, setFilter] = useState<string>("all");

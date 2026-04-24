@@ -4,7 +4,8 @@ import { Plus, RefreshCw } from "lucide-react";
 import { PageHeader, MockupBanner, Section, Tag, AIInsight } from "../../_components/PillarUI";
 import { INTEGRATIONS } from "../../_data/extendedData";
 
-const statusTone = (s: string) => (s === "connected" ? "emerald" : s === "needs-attention" ? "amber" : "neutral") as const;
+const statusTone = (s: string) =>
+  ((s === "connected" ? "emerald" : s === "needs-attention" ? "amber" : "neutral") as "emerald" | "amber" | "neutral");
 
 export default function IntegrationsPage() {
   const grouped = INTEGRATIONS.reduce<Record<string, typeof INTEGRATIONS>>((acc, i) => {
