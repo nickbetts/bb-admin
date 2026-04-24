@@ -317,14 +317,9 @@ export interface GrandPlanData {
       totalBudget: number;
       channels: { name: string; budget: number; percentage: number; strategy: string }[];
     };
-    landingPage?: {
-      html: string;
-      campaignType: string;
-    };
     emailMarketing?: EmailMarketingPlan;
     linkedInAds?: LinkedInCampaign[];
     competitorIntel?: CompetitorInsight[];
-    googleAdsForecast?: GoogleAdsForecast;
     /** Prioritised list of next-step actions, surfaced under Strategy. */
     quickWins?: QuickWinAction[];
     /** KPI/measurement framework grouped by channel. */
@@ -512,13 +507,6 @@ export async function generateGrandPlan(
   // Build context summary for AI prompts
   const contextSummary = buildContextSummary(sources, adGroups, contentData, services);
 
-  // Pre-compute Google Ads forecast (deterministic, no AI). The media plan AI
-  // needs this in its prompt so the budget allocation is grounded in real
-  // CPC/conversion economics rather than vibes.
-  const googleAdsForecast = isEnabled("googleAdsForecast") && sources.keywordResearch && adGroups.length > 0
-    ? buildGoogleAdsForecast(adGroups, sources)
-    : undefined;
-
   // Derive which paid/organic platforms the strategist actually selected.
   // Prefer an explicit list on `sources.enabledPlatforms` (used by single
   // section regeneration so the original platform mix isn't lost), else
@@ -537,7 +525,6 @@ export async function generateGrandPlan(
   if (isEnabled("contentCalendar")) sectionNames.push("Content Calendar");
   if (isEnabled("organicSocial")) sectionNames.push("Organic Social");
   if (isEnabled("exampleArticles") && contentData) sectionNames.push("Example Articles");
-  if (isEnabled("mediaPlan") && sources.mediaPlan && mediaChannels.length === 0) sectionNames.push("Media Plan");
   if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0) sectionNames.push("Ad Copy");
   if (isEnabled("emailMarketing")) sectionNames.push("Email Marketing");
   if (isEnabled("linkedInAds")) sectionNames.push("LinkedIn Ads");
@@ -568,7 +555,7 @@ export async function generateGrandPlan(
   if (onProgress) await onProgress(`Generating ${total} AI sections...`);
 
   // Batch 1: core sections (errors are isolated — one failure does not abort the rest)
-  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, aiMediaPlan, adCopyData] =
+  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, adCopyData] =
     await Promise.all([
       isEnabled("executiveSummary")
         ? runSection("Executive Summary", "executiveSummary", () => generateExecutiveSummary(anthropic, contextSummary, sources))
@@ -587,9 +574,6 @@ export async function generateGrandPlan(
         : Promise.resolve(undefined),
       isEnabled("exampleArticles") && contentData
         ? runSection("Example Articles", "exampleArticles", () => generateExampleArticles(anthropic, contextSummary, contentData, sources))
-        : Promise.resolve(undefined),
-      isEnabled("mediaPlan") && sources.mediaPlan && mediaChannels.length === 0
-        ? runSection("Media Plan", "mediaPlan", () => generateMediaPlanChannels(anthropic, contextSummary, sources, { enabledPlatforms, paidOnly, googleAdsForecast }))
         : Promise.resolve(undefined),
       isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
         ? runSection("Ad Copy", "googleAdsAdCopy", () => generateGoogleAdsAdCopy(anthropic, adGroups, contextSummary, sources))
@@ -639,20 +623,6 @@ export async function generateGrandPlan(
     ? { services, timeline }
     : undefined;
 
-  // Build media plan section
-  const mediaPlanSection = isEnabled("mediaPlan") && sources.mediaPlan
-    ? {
-        objective: sources.mediaPlan.objective,
-        totalBudget: sources.mediaPlan.totalBudget,
-        channels: aiMediaPlan ?? mediaChannels.map((ch: { name?: string; budget?: number; percentage?: number; strategy?: string }) => ({
-          name: ch.name ?? "Unknown",
-          budget: ch.budget ?? 0,
-          percentage: ch.percentage ?? 0,
-          strategy: ch.strategy ?? "",
-        })),
-      }
-    : undefined;
-
   // Unpack grounded sections (audiences, emailMarketing, linkedInAds, competitorIntel)
   // — these now return { value, grounding, sourceLabels } so we can surface badges.
   const grounding: NonNullable<GrandPlanData["grounding"]> = {};
@@ -674,7 +644,6 @@ export async function generateGrandPlan(
   if (sources.keywordResearch) dataSources.push({ label: "Keyword Planner", detail: sources.keywordResearch.title });
   if (sources.contentStrategy) dataSources.push({ label: "Content Strategy", detail: "Saved strategy doc" });
   if (sources.proposal) dataSources.push({ label: "Proposal", detail: "Services, hours, pricing" });
-  if (sources.mediaPlan) dataSources.push({ label: "Media Plan", detail: `Total budget £${sources.mediaPlan.totalBudget?.toLocaleString?.() ?? "?"}` });
 
   if (onProgress) await onProgress("Assembling final document...");
 
@@ -697,11 +666,9 @@ export async function generateGrandPlan(
       organicSocial,
       exampleArticles,
       servicesInvestment,
-      mediaPlan: mediaPlanSection,
       emailMarketing: emailMarketing?.value,
       linkedInAds: linkedInAds?.value,
       competitorIntel: competitorIntel?.value,
-      googleAdsForecast,
       quickWins,
       kpis,
     },

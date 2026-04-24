@@ -54,7 +54,6 @@ const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered
   { key: "exampleArticles", label: "Example Articles", description: "3 sample blog posts with SEO metadata", aiPowered: true },
   { key: "competitorIntel", label: "Competitor Intelligence", description: "AI-generated competitive analysis", aiPowered: true },
   { key: "servicesInvestment", label: "Services & Investment", description: "Pricing and timeline from proposal", aiPowered: false },
-  { key: "mediaPlan", label: "Media Plan", description: "Budget allocation across channels", aiPowered: false },
 ];
 
 // Steps shown in the generation pipeline. These mirror the server's
@@ -65,16 +64,11 @@ const PIPELINE_STEPS: { key: string; label: string; estSeconds: number }[] = [
   { key: "prepare-keywords", label: "Researching keywords", estSeconds: 30 },
   { key: "prepare-content-data", label: "Collecting SEMrush data", estSeconds: 25 },
   { key: "prepare-content-1", label: "Generating page optimisations (1/3)", estSeconds: 90 },
-  { key: "prepare-content-2", label: "Generating landing pages (2/3)", estSeconds: 90 },
+  { key: "prepare-content-2", label: "Generating blog + link targets (2/3)", estSeconds: 90 },
   { key: "prepare-content-3", label: "Generating blog posts & roadmap (3/3)", estSeconds: 90 },
   { key: "prepare-content-audit", label: "Auditing on-page SEO", estSeconds: 30 },
   { key: "prepare-research", label: "Harvesting account data (GA4 / GSC / SEMrush)", estSeconds: 60 },
   { key: "prepare-customer-voice", label: "Researching customer voice (web search)", estSeconds: 60 },
-  { key: "prepare-lp-brand", label: "Extracting brand context", estSeconds: 20 },
-  { key: "prepare-lp-draft", label: "Generating landing page draft", estSeconds: 60 },
-  { key: "prepare-lp-critique", label: "Critiquing landing page", estSeconds: 25 },
-  { key: "prepare-lp-refine-1", label: "Refining landing page (1/2)", estSeconds: 45 },
-  { key: "prepare-lp-refine-2", label: "Refining landing page (2/2)", estSeconds: 45 },
 ];
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -105,7 +99,6 @@ interface GrandPlanFull {
   proposal: { id: string; title: string } | null;
   keywordResearch: { id: string; title: string } | null;
   contentStrategy: { id: string; title: string; period: string } | null;
-  mediaPlan: { id: string; title: string } | null;
 }
 
 interface IframeSection {
@@ -838,7 +831,7 @@ export default function GrandPlanViewPage({ params }: Props) {
       </header>
 
       {/* Linked sources — now actually navigable */}
-      {(plan.proposal || plan.keywordResearch || plan.contentStrategy || plan.mediaPlan) && (
+      {(plan.proposal || plan.keywordResearch || plan.contentStrategy) && (
         <div className="card" style={{ padding: "12px 16px", marginBottom: 14 }}>
           <p
             style={{
@@ -872,13 +865,6 @@ export default function GrandPlanViewPage({ params }: Props) {
                 href={`/tools/content-strategy${plan.clientId ? `?clientId=${plan.clientId}` : ""}`}
                 label="Content"
                 title={plan.contentStrategy.title}
-              />
-            )}
-            {plan.mediaPlan && (
-              <LinkedSource
-                href={`/tools/media-plan/${plan.mediaPlan.id}`}
-                label="Media"
-                title={plan.mediaPlan.title}
               />
             )}
           </div>

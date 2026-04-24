@@ -14,7 +14,6 @@ import {
   Sparkles,
   Link as LinkIcon,
   Globe,
-  Layout,
   Check,
 } from "lucide-react";
 
@@ -64,7 +63,7 @@ const SECTORS = [
 type PlatformId = "googleAds" | "metaAds" | "linkedInAds" | "organicSocial" | "emailMarketing";
 
 const PLATFORMS: { id: PlatformId; label: string; description: string; sections: string[] }[] = [
-  { id: "googleAds", label: "Google Ads", description: "Search campaigns, RSA ad copy, forecast", sections: ["googleAdsCampaigns", "googleAdsForecast"] },
+  { id: "googleAds", label: "Google Ads", description: "Search campaigns, RSA ad copy", sections: ["googleAdsCampaigns"] },
   { id: "metaAds", label: "Meta Ads", description: "Facebook & Instagram audience-led campaigns", sections: ["metaCampaigns"] },
   { id: "linkedInAds", label: "LinkedIn Ads", description: "B2B targeting and ad mockups", sections: ["linkedInAds"] },
   { id: "organicSocial", label: "Organic Social", description: "Content pillars and posting cadence", sections: ["organicSocial"] },
@@ -79,7 +78,6 @@ const ALWAYS_ON_SECTIONS = [
   "contentCalendar",
   "exampleArticles",
   "competitorIntel",
-  "mediaPlan",
   "contentStrategy",
   "keywordResearch",
   "servicesInvestment",
@@ -110,10 +108,6 @@ export default function NewGrandPlanPage() {
   // Content strategy extras
   const [csDatabase, setCsDatabase] = useState("uk");
   const [csCompetitors, setCsCompetitors] = useState("");
-
-  // Landing page
-  const [generateLandingPage, setGenerateLandingPage] = useState(true);
-  const [lpCampaignType, setLpCampaignType] = useState("lead-gen");
 
   // Target audiences
   const [targetAudiences, setTargetAudiences] = useState("");
@@ -212,7 +206,6 @@ export default function NewGrandPlanPage() {
             ...(sector ? { sector } : {}),
             ...(!selectedKwResearch && website ? { kwBrief: { website, brief, monthlyBudget } } : {}),
             ...(!selectedContentStrategy && domain ? { contentBrief: { domain, database: csDatabase, brief, competitors: csCompetitors } } : {}),
-            ...(generateLandingPage && website ? { lpBrief: { campaignType: lpCampaignType } } : {}),
           },
         }),
       });
@@ -526,41 +519,6 @@ export default function NewGrandPlanPage() {
             </div>
           )}
 
-          {/* Landing page toggle */}
-          <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 14 }}>
-            <button
-              onClick={() => setGenerateLandingPage(!generateLandingPage)}
-              style={{
-                width: 22, height: 22, borderRadius: 6,
-                border: `1.5px solid ${generateLandingPage ? "var(--accent)" : "var(--border)"}`,
-                background: generateLandingPage ? "var(--accent)" : "transparent",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer", flexShrink: 0, transition: "all 0.2s",
-              }}
-            >
-              {generateLandingPage && <Check style={{ width: 13, height: 13, color: "white" }} />}
-            </button>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
-                <Layout style={{ width: 14, height: 14, color: "var(--text-3)" }} />
-                Generate Example Landing Page
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 3 }}>
-                Auto-generates a real, branded landing page from the website. Included as a live preview in the plan.
-              </div>
-            </div>
-            {generateLandingPage && (
-              <select className="form-input form-select" style={{ width: "auto", fontSize: 13, padding: "7px 12px" }}
-                value={lpCampaignType} onChange={(e) => setLpCampaignType(e.target.value)}>
-                <option value="lead-gen">Lead Gen</option>
-                <option value="event">Event</option>
-                <option value="service">Service</option>
-                <option value="product-launch">Product Launch</option>
-                <option value="ecommerce">Ecommerce</option>
-              </select>
-            )}
-          </div>
-
           {/* Focus periods */}
           <div style={{ padding: "18px 24px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: focusPeriods.length > 0 ? 12 : 0 }}>
@@ -619,7 +577,6 @@ export default function NewGrandPlanPage() {
               { label: "Organic Social", ai: true, on: platforms.includes("organicSocial") },
               { label: "Email Marketing", ai: true, on: platforms.includes("emailMarketing") },
               { label: "Example Articles", ai: true, on: true },
-              ...(generateLandingPage ? [{ label: "Landing Page", ai: true, on: true }] : []),
             ]
               .filter((item) => item.on)
               .map((item) => (

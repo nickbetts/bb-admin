@@ -98,13 +98,12 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
 
   const hasContext = s.audiences?.length || plan.brief || plan.campaignPeriods?.length;
   const hasStrategy = s.executiveSummary || s.strategyPlan || s.quickWins?.length;
-  const hasPaidSearch = s.googleAdsCampaigns || s.googleAdsForecast;
+  const hasPaidSearch = !!s.googleAdsCampaigns;
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
   const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial || s.exampleArticles?.length;
   const hasResearch = s.keywordResearch || s.competitorIntel?.length;
-  const hasCommercial = s.servicesInvestment || s.mediaPlan || s.emailMarketing;
+  const hasCommercial = s.servicesInvestment || s.emailMarketing;
   const hasMeasurement = s.kpis?.length;
-  const hasCreative = s.landingPage;
 
   if (hasContext) {
     addChapter("Context");
@@ -119,7 +118,6 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
   if (hasPaidSearch) {
     addChapter("Paid Search");
     if (s.googleAdsCampaigns) navItems.push({ id: "google-ads", label: "Google Ads" });
-    if (s.googleAdsForecast) navItems.push({ id: "google-ads-forecast", label: "Performance Forecast" });
   }
   if (hasPaidSocial) {
     addChapter("Paid Social");
@@ -141,16 +139,11 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
   if (hasCommercial) {
     addChapter("Commercial");
     if (s.servicesInvestment) navItems.push({ id: "services", label: "Services & Investment" });
-    if (s.mediaPlan) navItems.push({ id: "media-plan", label: "Media Plan" });
     if (s.emailMarketing) navItems.push({ id: "email-marketing", label: "Email Marketing" });
   }
   if (hasMeasurement) {
     addChapter("Measurement");
     navItems.push({ id: "kpis", label: "KPIs & Targets" });
-  }
-  if (hasCreative) {
-    addChapter("Creative");
-    navItems.push({ id: "landing-page", label: "Landing Page" });
   }
 
   // ── Stats band ─────────────────────────────────────────────────────────────
@@ -270,13 +263,6 @@ ${renderCtaClose(plan.clientName)}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildChapteredSections(s: any, clientName: string, brief?: string, campaignPeriods?: { label: string; startMonth: number; endMonth: number; description?: string }[], generationReport?: Record<string, { status: string; error?: string }>, grounding?: GrandPlanData["grounding"], dataSources?: GrandPlanData["dataSources"], clientWebsite?: string, sectionIntros?: GrandPlanData["sectionIntros"], audienceRationales?: GrandPlanData["audienceRationales"]): string {
-  // Stash the LP report on the section data so the Creative-chapter logic
-  // below can decide whether to render the placeholder card. Avoids threading
-  // generationReport through every helper.
-  if (generationReport?.landingPage) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (s as any).__lpReport = generationReport.landingPage;
-  }
   let chapterNum = 0;
   const ch = (title: string, sub: string) => {
     chapterNum++;
@@ -285,13 +271,12 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
 
   const hasContext = brief || s.audiences?.length || campaignPeriods?.length;
   const hasStrategy = s.executiveSummary || s.strategyPlan || s.quickWins?.length;
-  const hasPaidSearch = s.googleAdsCampaigns || s.googleAdsForecast;
+  const hasPaidSearch = !!s.googleAdsCampaigns;
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
   const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial || s.exampleArticles?.length;
   const hasResearch = s.keywordResearch || s.competitorIntel?.length;
-  const hasCommercial = s.servicesInvestment || s.mediaPlan || s.emailMarketing;
+  const hasCommercial = s.servicesInvestment || s.emailMarketing;
   const hasMeasurement = s.kpis?.length;
-  const hasCreative = s.landingPage;
 
   const parts: string[] = [];
 
@@ -313,9 +298,8 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   }
 
   if (hasPaidSearch) {
-    parts.push(ch("Paid Search", "Google Ads campaign structure, ad groups, keyword targeting, and performance forecasts."));
+    parts.push(ch("Paid Search", "Google Ads campaign structure, ad groups, and keyword targeting."));
     if (s.googleAdsCampaigns) parts.push(renderGoogleAdsCampaigns(s.googleAdsCampaigns, clientWebsite, sectionIntros?.googleAdsCampaigns));
-    if (s.googleAdsForecast) parts.push(renderGoogleAdsForecast(s.googleAdsForecast));
   }
 
   if (hasPaidSocial) {
@@ -339,27 +323,14 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   }
 
   if (hasCommercial) {
-    parts.push(ch("Commercial", "Services, investment overview, media budget allocation, and email lifecycle."));
+    parts.push(ch("Commercial", "Services, investment overview, and email lifecycle."));
     if (s.servicesInvestment) parts.push(renderServicesInvestment(s.servicesInvestment));
-    if (s.mediaPlan) parts.push(renderMediaPlan(s.mediaPlan));
     if (s.emailMarketing) parts.push(withGroundingBadge(renderEmailMarketing(s.emailMarketing), grounding?.emailMarketing));
   }
 
   if (hasMeasurement) {
     parts.push(ch("Measurement", "The KPIs, targets, and reporting cadence that will tell us whether the plan is working."));
     parts.push(renderKpis(s.kpis));
-  }
-
-  if (hasCreative) {
-    parts.push(ch("Creative", "An AI-generated example landing page built from your website content and branding."));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const lpReport = (s as any).__lpReport as { status: string; error?: string } | undefined;
-    const lpFailed = lpReport && lpReport.status !== "ok";
-    if (s.landingPage) {
-      parts.push(renderLandingPage(s.landingPage));
-    } else if (lpFailed) {
-      parts.push(renderLandingPagePlaceholder(lpReport?.error));
-    }
   }
 
   return parts.join("\n");

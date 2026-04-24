@@ -8,7 +8,6 @@ import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import { suggestAdGroups, researchKeywords } from "@/lib/keyword-planner-pipeline";
 import { generateContentStrategy } from "@/lib/content-strategy-generator";
 import { extractBrandContext } from "@/lib/brand-extractor";
-import { generateLandingPageWithCritique } from "@/lib/lp-generator";
 
 export const maxDuration = 800;
 export const dynamic = "force-dynamic";
@@ -237,39 +236,6 @@ export async function POST(
         }
       }
 
-      // ── Auto-generate landing page if requested ───────────────────────────
-      let landingPageData: { html: string; campaignType: string } | undefined;
-      if (config.lpBrief && website) {
-        const lpCampaignType = config.lpBrief.campaignType ?? "lead-gen";
-        const lpBriefText = brief || `${clientName} landing page for ${lpCampaignType} campaign`;
-        try {
-          await setProgress("Extracting brand context from website...");
-          const brandContext = await extractBrandContext(website);
-
-          // Three-pass approach: draft -> critique -> targeted refinements.
-          // Each pass gets a fresh 32K-token output budget so nothing is
-          // truncated, and refinement is focused on the highest-severity
-          // issues the critique pass surfaced.
-          const { html: lpHtml, critique, passes } = await generateLandingPageWithCritique({
-            brief: lpBriefText,
-            campaignType: lpCampaignType,
-            brandContext,
-            targetAudience: config.sector || undefined,
-            refinementPasses: 2,
-            fixesPerPass: 4,
-            onProgress: async (msg) => { await setProgress(msg); },
-          });
-          console.log(
-            `[grand-plan] Landing page generated with ${passes} refinement pass(es), ${critique.length} critique items.`,
-          );
-
-          landingPageData = { html: lpHtml, campaignType: lpCampaignType };
-        } catch (lpError) {
-          console.error("Auto landing page generation failed (continuing without):", lpError);
-          pipelineWarnings.push("Auto landing page generation failed. The plan was generated without an example landing page.");
-        }
-      }
-
       await setProgress("Generating plan sections with Claude...");
 
       const sources: GrandPlanSources = {
@@ -328,11 +294,6 @@ export async function POST(
       };
 
       const planData = await generateGrandPlan(sources, setProgress, enabledSections);
-
-      // Inject landing page if it was generated
-      if (landingPageData) {
-        planData.sections.landingPage = landingPageData;
-      }
 
       // Attach pipeline warnings if any
       if (pipelineWarnings.length > 0) {

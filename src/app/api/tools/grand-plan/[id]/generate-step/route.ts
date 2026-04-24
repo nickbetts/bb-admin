@@ -18,13 +18,6 @@ import {
 import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import { suggestAdGroups, researchKeywords } from "@/lib/keyword-planner-pipeline";
 import { generateContentStrategy, generateContentStrategySection, collectSemrushData, runOnPageAudit, type ContentStrategyData } from "@/lib/content-strategy-generator";
-import { extractBrandContext, type BrandContext } from "@/lib/brand-extractor";
-import {
-  generateLandingPage,
-  critiqueLandingPage,
-  refineLandingPage,
-  type LPCritiqueItem,
-} from "@/lib/lp-generator";
 import { withApiCache } from "@/lib/api-cache";
 import { getAnthropicClient } from "@/lib/anthropic-client";
 import {
@@ -49,8 +42,8 @@ export const dynamic = "force-dynamic";
 const SECTION_KEYS = [
   "executiveSummary", "strategyPlan", "audiences", "googleAdsCampaigns", "metaCampaigns",
   "keywordResearch", "contentStrategy", "contentCalendar", "organicSocial",
-  "exampleArticles", "servicesInvestment", "mediaPlan", "emailMarketing",
-  "linkedInAds", "competitorIntel", "googleAdsForecast", "quickWins", "kpis",
+  "exampleArticles", "servicesInvestment", "emailMarketing",
+  "linkedInAds", "competitorIntel", "quickWins", "kpis",
 ];
 
 /**
@@ -102,12 +95,6 @@ export async function POST(
       contentStrategy: {
         select: { id: true, title: true, period: true, spreadsheetData: true },
       },
-      mediaPlan: {
-        select: {
-          id: true, title: true, objective: true,
-          totalBudget: true, channels: true, forecast: true,
-        },
-      },
       versions: { orderBy: { versionNumber: "desc" }, take: 1 },
     },
   });
@@ -120,17 +107,11 @@ export async function POST(
     sector?: string;
     kwBrief?: { website?: string; brief?: string; monthlyBudget?: string };
     contentBrief?: { domain?: string; database?: string; brief?: string; competitors?: string };
-    mediaBrief?: { objective?: string; totalBudget?: number; duration?: number };
-    lpBrief?: { campaignType?: string };
   }>(plan.configJson, {});
 
   const clientName = plan.client?.name || plan.proposal?.clientName || "Client";
   const brief = body.overrides?.clientBrief ?? plan.clientBrief ?? "";
   const website = config.kwBrief?.website ?? plan.client?.website ?? plan.keywordResearch?.website ?? "";
-  // LP generation is wanted when either the plan was created with lpBrief, OR
-  // the landingPage section was enabled (covers plans where the client had no
-  // website at creation time but now has one).
-  const wantsLp = !!config.lpBrief || !!(config.sections?.includes("landingPage") && website);
 
   try {
     // ─── STEP: start ─────────────────────────────────────────────────────────
@@ -662,212 +643,6 @@ export async function POST(
       } });
     }
 
-    // ─── STEP: prepare-lp-brand ───────────────────────────────────────────────
-    // Scrapes the website for brand colours, fonts, copy and stashes the
-    // BrandContext in planDataJson. Isolated so the LP generation step has the
-    // full 300 s budget for the 32K-token Opus call.
-    if (step === "prepare-lp-brand") {
-      // LP generation requires a website. lpBrief being absent is fine — we
-      // default to "lead-gen" so plans created before the client had a website
-      // can still get a landing page on regeneration.
-      if (!website) {
-        await recordLpReport(id, "skipped", "No website on the linked client — landing page generation needs a URL to scrape brand context from.");
-        return NextResponse.json({ ok: true, step, skipped: true });
-      }
-      // If neither lpBrief nor the landingPage section key is present this plan
-      // deliberately excluded the LP — skip silently.
-      if (!wantsLp) {
-        return NextResponse.json({ ok: true, step, skipped: true });
-      }
-
-      const lpCampaignType = config.lpBrief?.campaignType ?? "lead-gen";
-      const lpBriefText = brief || `${clientName} landing page for ${lpCampaignType} campaign`;
-
-      try {
-        await setStatus(id, "Extracting brand context from website...");
-        const brandContext = await extractBrandContext(website);
-
-        // Stash brand context so subsequent LP steps don't need to re-scrape.
-        const existing = safeJsonParse<GrandPlanData | null>(plan.planDataJson, null);
-        if (existing) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (existing as any)._lpInProgress = {
-            html: "",
-            critique: [],
-            brandContext,
-            campaignType: lpCampaignType,
-            brief: lpBriefText,
-            targetAudience: config.sector || undefined,
-          } satisfies LpInProgress;
-          await prisma.grandPlan.update({
-            where: { id },
-            data: { planDataJson: JSON.stringify(existing) },
-          });
-        }
-
-        return NextResponse.json({ ok: true, step });
-      } catch (lpError) {
-        const message = lpError instanceof Error ? lpError.message : "Unknown error";
-        console.error("[grand-plan] prepare-lp-brand failed:", lpError);
-        await recordLpReport(id, "failed", `Brand context extraction failed: ${message}`);
-        // Don't halt the pipeline — downstream LP steps will see no stash and skip.
-        return NextResponse.json({ ok: true, step, skipped: true, reason: message });
-      }
-    }
-
-    // ─── STEP: prepare-lp-draft ──────────────────────────────────────────────
-    // 32K-token Claude Opus LP generation. Brand context comes from the stash
-    // written by prepare-lp-brand so we don't re-scrape. Runs in its own 300 s
-    // budget — the only "expensive" operation here is the single Opus stream.
-    if (step === "prepare-lp-draft") {
-      if (!wantsLp || !website) {
-        return NextResponse.json({ ok: true, step, skipped: true });
-      }
-
-      try {
-        const initialStash = readLpInProgress(plan.planDataJson);
-        if (!initialStash?.brandContext) {
-          // Brand step didn't run or failed — re-extract inline (adds ~15s but unblocks)
-          const lpCampaignType = config.lpBrief?.campaignType ?? "lead-gen";
-          const lpBriefText = brief || `${clientName} landing page for ${lpCampaignType} campaign`;
-          await setStatus(id, "Extracting brand context from website...");
-          const brandContext = await extractBrandContext(website);
-          await stashLpInProgress(id, plan.planDataJson, {
-            html: "", critique: [], brandContext,
-            campaignType: lpCampaignType, brief: lpBriefText,
-            targetAudience: config.sector || undefined,
-          });
-          // Re-read fresh plan to get updated stash
-          const updated = await prisma.grandPlan.findUnique({ where: { id }, select: { planDataJson: true } });
-          Object.assign(plan, { planDataJson: updated?.planDataJson });
-        }
-
-        const s = readLpInProgress(plan.planDataJson)!;
-        await setStatus(id, "Generating landing page draft (Claude Opus)...");
-        const draftHtml = await generateLandingPage({
-          brief: s.brief,
-          campaignType: s.campaignType,
-          brandContext: s.brandContext,
-          targetAudience: s.targetAudience,
-        });
-
-        // Reload plan before stashing to pick up any intervening writes
-        const freshForStash = await prisma.grandPlan.findUnique({ where: { id }, select: { planDataJson: true } });
-        await stashLpInProgress(id, freshForStash?.planDataJson ?? null, { ...s, html: draftHtml });
-
-        // Promote draft immediately so the user has a page even if refinement fails
-        await promoteLpDraftToSection(id, draftHtml, s.campaignType);
-        await recordLpReport(id, "ok");
-
-        return NextResponse.json({ ok: true, step });
-      } catch (lpError) {
-        const message = lpError instanceof Error ? lpError.message : "Unknown error";
-        console.error("[grand-plan] prepare-lp-draft failed:", lpError);
-        await recordLpReport(id, "failed", `Landing page draft generation failed: ${message}`);
-        return NextResponse.json({ ok: true, step, skipped: true, reason: message });
-      }
-    }
-
-    // ─── STEP: prepare-lp-critique ───────────────────────────────────────────
-    // CRO critique of the draft. Isolated from the generation step so a slow
-    // Opus stream on the draft doesn't eat into the critique budget.
-    if (step === "prepare-lp-critique") {
-      if (!wantsLp || !website) {
-        return NextResponse.json({ ok: true, step, skipped: true });
-      }
-
-      const stash = readLpInProgress(plan.planDataJson);
-      if (!stash?.html) {
-        return NextResponse.json({ ok: true, step, skipped: true, reason: "No draft to critique" });
-      }
-
-      try {
-        await setStatus(id, "Critiquing landing page draft...");
-        const critique = await critiqueLandingPage({
-          html: stash.html,
-          brief: stash.brief,
-          campaignType: stash.campaignType,
-          brandContext: stash.brandContext,
-          targetAudience: stash.targetAudience,
-        });
-
-        const severityRank = { high: 0, medium: 1, low: 2 } as const;
-        const sortedCritique = [...critique].sort(
-          (a, b) => severityRank[a.severity] - severityRank[b.severity],
-        );
-
-        const freshForCritique = await prisma.grandPlan.findUnique({ where: { id }, select: { planDataJson: true } });
-        await stashLpInProgress(id, freshForCritique?.planDataJson ?? null, { ...stash, critique: sortedCritique });
-
-        return NextResponse.json({ ok: true, step, critiqueItems: sortedCritique.length });
-      } catch (lpError) {
-        // Critique is a nice-to-have — the draft is already promoted. Log and continue.
-        const message = lpError instanceof Error ? lpError.message : "Unknown error";
-        console.error("[grand-plan] prepare-lp-critique failed (non-fatal):", lpError);
-        return NextResponse.json({ ok: true, step, skipped: true, reason: message });
-      }
-    }
-
-    // ─── STEPS: prepare-lp-refine-1 / prepare-lp-refine-2 ────────────────────
-    // Each pass applies up to 4 critique fixes via a fresh 32K-token Claude Opus
-    // call. Splitting refinements across separate lambdas means the worst case
-    // is one 32K stream per 300 s budget instead of three back-to-back.
-    if (step === "prepare-lp-refine-1" || step === "prepare-lp-refine-2") {
-      if (!wantsLp || !website) {
-        return NextResponse.json({ ok: true, step, skipped: true });
-      }
-
-      const passIndex = step === "prepare-lp-refine-1" ? 0 : 1;
-      const fixesPerPass = 4;
-
-      const stash = readLpInProgress(plan.planDataJson);
-      if (!stash) {
-        // Draft step was skipped or failed — nothing to refine.
-        return NextResponse.json({ ok: true, step, skipped: true });
-      }
-
-      const batch = stash.critique.slice(passIndex * fixesPerPass, (passIndex + 1) * fixesPerPass);
-      if (batch.length === 0) {
-        return NextResponse.json({ ok: true, step, skipped: true });
-      }
-
-      const instructions = batch
-        .map((item, idx) => `${idx + 1}. [${item.area}] ${item.fix}`)
-        .join("\n");
-
-      try {
-        await setStatus(
-          id,
-          `Refining landing page (pass ${passIndex + 1}/2, ${batch.length} fixes)...`,
-        );
-
-        const refinedHtml = await refineLandingPage({
-          currentHtml: stash.html,
-          brandContext: stash.brandContext,
-          prompt: `Apply the following targeted improvements. Each is a small, specific change — do not rewrite anything that is not mentioned.\n\n${instructions}`,
-        });
-
-        // Reload plan inside the update to avoid stomping on concurrent writes
-        const fresh = await prisma.grandPlan.findUnique({
-          where: { id },
-          select: { planDataJson: true },
-        });
-
-        await stashLpInProgress(id, fresh?.planDataJson ?? null, {
-          ...stash,
-          html: refinedHtml,
-        });
-        await promoteLpDraftToSection(id, refinedHtml, stash.campaignType);
-
-        return NextResponse.json({ ok: true, step, fixesApplied: batch.length });
-      } catch (lpError) {
-        // Refinement failed but the unrefined draft is already promoted.
-        const message = lpError instanceof Error ? lpError.message : "Unknown error";
-        console.error(`[grand-plan] ${step} failed (non-fatal — draft retained):`, lpError);
-        return NextResponse.json({ ok: true, step, skipped: true, reason: message });
-      }
-    }
-
     // ─── STEP: section generation ────────────────────────────────────────────
     if (SECTION_KEYS.includes(step)) {
       await setStatus(id, `Generating ${step}...`);
@@ -892,12 +667,6 @@ export async function POST(
           },
           contentStrategy: {
             select: { id: true, title: true, period: true, spreadsheetData: true },
-          },
-          mediaPlan: {
-            select: {
-              id: true, title: true, objective: true,
-              totalBudget: true, channels: true, forecast: true,
-            },
           },
         },
       });
@@ -1144,106 +913,10 @@ function buildSources(plan: any, config: any, brief: string): GrandPlanSources {
           spreadsheetData: plan.contentStrategy.spreadsheetData,
         }
       : undefined,
-    mediaPlan: plan.mediaPlan
-      ? {
-          title: plan.mediaPlan.title,
-          objective: plan.mediaPlan.objective,
-          totalBudget: plan.mediaPlan.totalBudget,
-          channels: plan.mediaPlan.channels,
-          forecast: plan.mediaPlan.forecast,
-        }
-      : config.mediaBrief?.totalBudget
-        ? {
-            title: `${clientName} — Media Plan`,
-            objective: config.mediaBrief.objective ?? "lead_gen",
-            totalBudget: config.mediaBrief.totalBudget,
-            channels: "[]",
-            forecast: null,
-          }
-        : undefined,
   };
 }
 
 function safeJsonParse<T>(s: string | null | undefined, fallback: T): T {
   if (!s) return fallback;
   try { return JSON.parse(s); } catch { return fallback; }
-}
-
-// ─── Landing-page interim state helpers ──────────────────────────────────────
-//
-// The LP pipeline is now split across three lambdas (draft, refine-1, refine-2).
-// Each pass needs the previous HTML, the unconsumed critique items, and the
-// brand context Claude was originally given. We stash that under a transient
-// key on planDataJson — the HTML template ignores keys it doesn't know about.
-
-interface LpInProgress {
-  html: string;
-  critique: LPCritiqueItem[];
-  brandContext: BrandContext;
-  campaignType: string;
-  brief: string;
-  targetAudience?: string;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PlanDataWithLpStash = GrandPlanData & { _lpInProgress?: LpInProgress };
-
-function readLpInProgress(planDataJson: string | null): LpInProgress | null {
-  const data = safeJsonParse<PlanDataWithLpStash | null>(planDataJson, null);
-  return data?._lpInProgress ?? null;
-}
-
-async function stashLpInProgress(
-  planId: string,
-  planDataJson: string | null,
-  stash: LpInProgress,
-): Promise<void> {
-  const data = safeJsonParse<PlanDataWithLpStash | null>(planDataJson, null);
-  if (!data) return;
-  data._lpInProgress = stash;
-  await prisma.grandPlan.update({
-    where: { id: planId },
-    data: { planDataJson: JSON.stringify(data) },
-  });
-}
-
-async function promoteLpDraftToSection(
-  planId: string,
-  html: string,
-  campaignType: string,
-): Promise<void> {
-  const fresh = await prisma.grandPlan.findUnique({
-    where: { id: planId },
-    select: { planDataJson: true },
-  });
-  const data = safeJsonParse<PlanDataWithLpStash | null>(fresh?.planDataJson ?? null, null);
-  if (!data) return;
-  data.sections.landingPage = { html, campaignType };
-  await prisma.grandPlan.update({
-    where: { id: planId },
-    data: { planDataJson: JSON.stringify(data) },
-  });
-}
-
-// Records the landing-page pipeline status under generationReport.landingPage
-// so the viewer's pipeline-warnings panel surfaces failures and skips. Without
-// this, a quietly-failed LP step would leave the user wondering why the
-// "Creative" chapter never appeared in the rendered plan.
-async function recordLpReport(
-  planId: string,
-  status: "ok" | "skipped" | "failed",
-  error?: string,
-): Promise<void> {
-  const fresh = await prisma.grandPlan.findUnique({
-    where: { id: planId },
-    select: { planDataJson: true },
-  });
-  const data = safeJsonParse<GrandPlanData | null>(fresh?.planDataJson ?? null, null);
-  if (!data) return;
-  data.generationReport = data.generationReport ?? {};
-  data.generationReport.landingPage = error ? { status, error } : { status };
-  await prisma.grandPlan.update({
-    where: { id: planId },
-    data: { planDataJson: JSON.stringify(data) },
-  });
 }
