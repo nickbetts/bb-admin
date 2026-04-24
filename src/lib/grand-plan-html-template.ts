@@ -618,7 +618,7 @@ function renderGoogleAdsCampaigns(data: any): string {
         <div class="ad-channel-group" style="margin-top:1.5rem">
           <div class="ad-channel-label">&#128269; Ad Preview</div>
           <div class="ad-card">
-            <div class="ad-card-header"><span class="ad-badge google">Google</span><span style="font-size:11px;color:var(--mid)">${esc(g.name)}</span></div>
+            <div class="ad-card-header"><span class="ad-badge google">Google</span><span style="font-size:11px;color:var(--mid)">${esc(g.name) || `Ad Group ${i + 1}`}</span></div>
             <div class="ad-card-body">
               <div class="gad-sponsor-row"><div class="gad-dot"></div><span class="gad-sponsored-tag">Sponsored</span></div>
               <div class="gad-url-text">https://example.com</div>
@@ -653,7 +653,7 @@ function renderGoogleAdsCampaigns(data: any): string {
       <div class="ag-section">
         <div class="ag-header" onclick="this.parentElement.classList.toggle('open')">
           <span class="ag-num">${i + 1}</span>
-          <span class="ag-name">${esc(g.name)}</span>
+          <span class="ag-name">${esc(g.name) || `Ad Group ${i + 1}`}</span>
           <span class="ag-count">${g.keywords.length} keywords</span>
           <span class="ag-chevron">+</span>
         </div>
@@ -764,7 +764,7 @@ function renderMetaCampaigns(campaigns: any[]): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderKeywordResearch(data: any): string {
   const groupsHtml = ((data.adGroups ?? []) as { name: string; keywords: { keyword: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number }[])
-    .map((g) => {
+    .map((g, gi) => {
       const kwLines = (g.keywords ?? []).map((k) => {
         const vol = k.volume != null ? ` <span class="kw-meta">${k.volume.toLocaleString()}/mo</span>` : "";
         return `<div class="kw-line"><span class="kw-word">${esc(k.keyword)}</span>${vol}<button class="copy-btn-sm" onclick="copySingle(this,'${escAttr(k.keyword)}')">Copy</button></div>`;
@@ -777,7 +777,7 @@ function renderKeywordResearch(data: any): string {
       return `
       <div class="kw-group">
         <div class="kw-group-header">
-          <h4>${esc(g.name)}</h4>
+          <h4>${esc(g.name) || `Keyword Group ${gi + 1}`}</h4>
           <button class="copy-btn" onclick="copyGroupKws(this)">Copy All</button>
         </div>
         <div class="kw-line-list">${kwLines}</div>
