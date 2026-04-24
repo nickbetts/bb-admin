@@ -577,7 +577,7 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             <Stat label="Beneficiaries reached" value="28,400" hint="est. March allocation" />
                             <Stat label="Food parcels dispatched" value="12,000" delta="+20%" positive hint="vs target 10,000" />
-                            <AIInsight title="Restricted fund status" tone="emerald">
+                            <AIInsight title="Restricted fund status" tone="teal">
                               All Zakat funds for March have been disbursed to compliant asnaf categories. No restricted fund balances are overdue. SORP compliance confirmed by Finance.
                             </AIInsight>
                           </div>
