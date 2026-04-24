@@ -9,13 +9,15 @@ export async function POST(request: NextRequest) {
 
   if (password !== PILLAR_PASSWORD) {
     const redirect = NextResponse.redirect(
-      new URL("/pillar-insights/login?error=1", url.origin)
+      new URL("/pillar-insights/login?error=1", url.origin),
+      { status: 303 }
     );
     return redirect;
   }
 
   const response = NextResponse.redirect(
-    new URL("/pillar-insights", url.origin)
+    new URL("/pillar-insights", url.origin),
+    { status: 303 }
   );
   response.cookies.set({
     name: "pillar_access",
