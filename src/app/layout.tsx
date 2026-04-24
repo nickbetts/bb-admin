@@ -9,6 +9,11 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "StratOS by i3MEDIA — Marketing intelligence for agencies",
   description: "16-channel marketing performance platform. GA4, Google Ads, Meta, TikTok, LinkedIn, Klaviyo and more. AI-powered insights, automated reporting, and 90-day forecasting.",
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: { index: false, follow: false },
+  },
 };
 
 export default function RootLayout({
