@@ -110,6 +110,8 @@ interface MetaCampaign {
   }[];
   captionCopyBank: string[];
   contentPillars: string[];
+  /** Optional platform/policy compliance notes (e.g. minor-targeting workarounds, age gating). Surfaced as a separate callout, not mixed into captions. */
+  complianceNotes?: string[];
   /** True when this campaign was synthesised deterministically because the
    * AI returned no usable structures. The renderer surfaces an amber chip so
    * the strategist knows to regenerate the section. */
@@ -128,6 +130,9 @@ interface OrganicSocialPlan {
   postingFrequency: string;
   contentMix: { type: string; percentage: number }[];
   hashtagStrategy: string[];
+  /** Indexes (into hashtagStrategy) of tags flagged as low-confidence by validation.
+   * Renderer surfaces a soft ⚠️ chip rather than a hard rejection. */
+  hashtagWarnings?: number[];
 }
 
 interface EmailMarketingPlan {
@@ -835,11 +840,17 @@ function buildCustomerVoiceBlock(sources: GrandPlanSources): string {
 }
 
 function buildSharedContextBlocks(sources: GrandPlanSources): string {
-  return buildAudienceBlock(sources)
+  return buildGeographyBlock(sources)
+    + buildAudienceBlock(sources)
     + buildSectorBlock(sources)
     + buildCampaignPeriodsBlock(sources)
     + buildAccountDataBlock(sources)
     + buildCustomerVoiceBlock(sources);
+}
+
+function buildGeographyBlock(sources: GrandPlanSources): string {
+  const loc = detectLocations(sources.clientBrief);
+  return `\n\nTarget geography: ${loc}. All copy, examples, references (regulators, currency, units, place names) must reflect this market. Do not reference unrelated regions.`;
 }
 
 // ─── AI generation functions ────────────────────────────────────────────────
@@ -925,20 +936,21 @@ Return a JSON object with key "campaigns" containing an array of campaign object
 - bidding: string (e.g., "Lowest Cost" or "Cost Cap")
 - audienceTargeting: { interests: string[], customAudiences: string[], lookalikes: string[] }
 - adCreatives: array of { format: "feed"|"reel"|"story", headline: string, primaryText: string, description?: string, cta: string }
-- captionCopyBank: string[] (5-8 ready-to-use captions)
+- captionCopyBank: string[] (5-8 ready-to-use captions — POLISHED ad copy only, no compliance/strategy notes)
 - contentPillars: string[] (4-6 organic content themes)
+- complianceNotes: string[] (OPTIONAL — only if Meta policy or audience constraints require it: under-18 targeting workarounds, geo-restricted product mentions, prohibited categories. Each note ONE short sentence, NEVER duplicated in captions.)
 
 Rules:
 - Create 2-3 campaigns based on the keyword themes provided AND the target audiences below. Each campaign should clearly map to one or more named audiences.
-- Audience targeting interests/customAudiences/lookalikes should reflect the real personas — reference their behaviours and pain points, not generic demographics.
+- Audience targeting interests/customAudiences/lookalikes should reflect the real personas, not generic demographics. Mix specific behaviours, life events, and adjacent interests, not just first-person pain points.
 - Captions and creative copy must speak directly to the audience's situation in plain British English.
-- If campaign focus periods are listed, design at least one campaign or creative variant around the most imminent period — include specific dates/windows in the ad copy to drive urgency.
-- British English, no AI jargon
+- If campaign focus periods are listed, design at least one campaign or creative variant around the most imminent period, include specific dates/windows in the ad copy to drive urgency.
+- British English, no AI jargon, no em-dashes
 - Return ONLY valid JSON, no markdown fences
 
-CRITICAL CONSTRAINTS (must be followed — client brief overrides defaults):
+CRITICAL CONSTRAINTS (must be followed, client brief overrides defaults):
 - GEOGRAPHY: Use the target markets from the brief. Do NOT default to UK-only if the brief specifies European, international, or non-UK markets. Set interests and audience locations to match the stated geography.
-- UNDER-18 AUDIENCES: If any target audience includes minors (under 18), Meta restricts interest-based and demographic targeting for users under 18. Acknowledge this in the campaign strategy — add a note in captionCopyBank or contentPillars — and suggest a compliant workaround (e.g. broad targeting, targeting parents of teenagers, or age-targeting 18+ in parallel campaigns).
+- UNDER-18 AUDIENCES: If any target audience includes minors, Meta restricts interest-based and demographic targeting for users under 18. Put the workaround (parents-of, broad targeting, parallel 18+ campaign) in complianceNotes ONLY. Do NOT mention it in captionCopyBank.
 - NEGATIVE CONSTRAINTS: If the brief lists any terms or language to avoid, do NOT reference them in any ad copy, headline, caption, or interest targeting.
 
 Client: ${sources.clientName}
@@ -1070,12 +1082,25 @@ ${context}${buildSharedContextBlocks(sources)}`,
   }));
 
   const raw = extractText(res);
-  return safeJsonParse(raw, {
+  const plan = safeJsonParse<OrganicSocialPlan>(raw, {
     pillars: [],
     postingFrequency: "3-4 posts per week",
     contentMix: [],
     hashtagStrategy: [],
   });
+  // Soft validation: flag hashtags that are very long, contain non-tag punctuation,
+  // or are obvious filler (e.g. #1, #love alone). The renderer shows a ⚠️ chip
+  // — we never silently delete what the AI produced.
+  const warnings: number[] = [];
+  (plan.hashtagStrategy ?? []).forEach((tag, i) => {
+    const t = (tag ?? "").trim();
+    const body = t.replace(/^#/, "");
+    if (!body || body.length > 30 || body.length < 3) { warnings.push(i); return; }
+    if (/[^a-z0-9_]/i.test(body)) { warnings.push(i); return; }
+    if (/^(love|life|insta|photooftheday|follow|like4like|1)$/i.test(body)) { warnings.push(i); return; }
+  });
+  if (warnings.length) plan.hashtagWarnings = warnings;
+  return plan;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1554,7 +1579,7 @@ const SECTOR_AD_SCHEDULE: Record<string, string> = {
   education:             "All week, 8am-10pm",
 };
 
-const BASE_NEGATIVES = ["free", "cheap", "DIY", "job", "jobs", "career", "salary", "reddit", "forum", "template", "download"];
+const BASE_NEGATIVES = ["free", "jobs", "career", "salary", "reddit", "template torrent"];
 
 /**
  * Parse the client brief for explicit negative term instructions
@@ -1580,13 +1605,27 @@ function parseBriefNegatives(brief: string): string[] {
 /**
  * Detect the primary target geography from the client brief.
  * Defaults to "United Kingdom" when no signals are found.
+ * Recognises explicit country names and common UK city/region cues.
  */
 function detectLocations(brief?: string): string {
   if (!brief) return "United Kingdom";
   const l = brief.toLowerCase();
+
+  // Multi-country first
+  if (l.includes("uk and ireland") || l.includes("uk & ireland")) return "United Kingdom, Republic of Ireland";
+  if (l.includes("united states") || /\busa?\b/.test(l) || l.includes("north america")) return "United States";
+  if (l.includes("canada")) return "Canada";
+  if (l.includes("australia")) return "Australia";
+  if (l.includes("ireland") && !l.includes("northern ireland")) return "Republic of Ireland";
   if (l.includes("europe") && !l.includes("uk only")) return "Europe";
   if (l.includes("international") || l.includes("worldwide") || l.includes("global")) return "International";
-  if (l.includes("uk and ireland") || l.includes("uk & ireland")) return "United Kingdom, Republic of Ireland";
+
+  // UK regional / city scoping → "United Kingdom (X)"
+  const ukRegions = ["london", "manchester", "birmingham", "leeds", "liverpool", "bristol", "glasgow", "edinburgh", "cardiff", "belfast", "scotland", "wales", "northern ireland", "yorkshire", "midlands", "south west", "south east", "north east", "north west"];
+  const matches = ukRegions.filter((r) => l.includes(r));
+  if (matches.length === 1) return `United Kingdom (${matches[0].replace(/\b\w/g, (c) => c.toUpperCase())})`;
+  if (matches.length > 1) return "United Kingdom (regional)";
+
   return "United Kingdom";
 }
 
@@ -1983,13 +2022,20 @@ async function generateAudiences(
     // Strategist has provided audiences — parse them rather than regenerate from scratch.
     const lines = sources.targetAudiences.split(/\n+/).map((l) => l.trim()).filter(Boolean);
     if (lines.length) {
-      const value = lines.slice(0, 6).map((line) => {
+      const allPains = cv?.painPoints ?? [];
+      const perAudience = Math.max(2, Math.floor(allPains.length / Math.max(1, lines.length)));
+      const value = lines.slice(0, 6).map((line, idx) => {
         const sepMatch = line.match(/[:–—]/);
         const sepIdx = sepMatch?.index ?? -1;
         const namePart = sepIdx >= 0 ? line.slice(0, sepIdx) : line;
         const descPart = sepIdx >= 0 ? line.slice(sepIdx + 1).trim() : "";
-        // If we have customer voice, sprinkle 2 real pain points per audience.
-        const painPoints = cv?.painPoints?.length ? cv.painPoints.slice(0, 3) : [];
+        // Distribute customer-voice pain points across audiences (no duplication).
+        const start = idx * perAudience;
+        const painPoints = allPains.length
+          ? allPains.slice(start, start + perAudience).length
+            ? allPains.slice(start, start + perAudience)
+            : allPains.slice(0, perAudience) // wrap for trailing audiences
+          : [];
         return {
           name: namePart.trim().slice(0, 120),
           description: descPart || "Provided by client strategist.",

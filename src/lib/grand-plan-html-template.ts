@@ -750,6 +750,7 @@ function renderMetaCampaigns(campaigns: any[], clientWebsite?: string): string {
           <h5>Caption Copy Bank</h5>
           <div class="captions-list">${captions}</div>
           ${pillars ? `<h5>Content Pillars</h5><ul class="pillars-list">${pillars}</ul>` : ""}
+          ${(c.complianceNotes ?? []).length ? `<div class="compliance-callout"><strong>Platform / compliance notes</strong><ul>${(c.complianceNotes ?? []).map((n: string) => `<li>${esc(n)}</li>`).join("")}</ul></div>` : ""}
         </div>
       </div>`;
     })
@@ -966,8 +967,13 @@ function renderOrganicSocial(data: any): string {
       `<div class="mix-item"><span class="mix-type">${esc(m.type)}</span><div class="mix-bar"><div class="mix-fill" style="width:${m.percentage}%"></div></div><span class="mix-pct">${m.percentage}%</span></div>`)
     .join("\n");
 
+  const warnSet = new Set<number>(Array.isArray(data.hashtagWarnings) ? data.hashtagWarnings : []);
   const hashtags = (data.hashtagStrategy ?? [])
-    .map((h: string) => `<span class="hashtag">#${esc(h.replace(/^#/, ""))}</span>`)
+    .map((h: string, i: number) => {
+      const cleaned = h.replace(/^#/, "");
+      const isWarn = warnSet.has(i);
+      return `<span class="hashtag${isWarn ? " hashtag-warn" : ""}"${isWarn ? ` title="Low-confidence tag — review before posting"` : ""}>#${esc(cleaned)}${isWarn ? ' <span class="hashtag-warn-icon" aria-hidden="true">⚠</span>' : ""}</span>`;
+    })
     .join(" ");
 
   return `
@@ -1580,6 +1586,10 @@ a{color:var(--accent);text-decoration:none}
 .cc-intent.intent-cm,.cc-intent.intent-commercial{background:#fef3c7;color:#92400e}
 .cc-intent.intent-dc,.cc-intent.intent-decision{background:#d1fae5;color:#065f46}
 .cc-brief{font-size:13px;color:var(--text);line-height:1.55;margin:0;padding:10px 12px;background:#f8fafc;border-left:3px solid var(--accent);border-radius:4px}
+.compliance-callout{margin-top:1.25rem;padding:14px 16px;background:#fffbea;border:1px solid #f5e1a2;border-left:4px solid #d97706;border-radius:6px}
+.compliance-callout strong{display:block;font-size:11px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:#92400e;margin-bottom:6px}
+.compliance-callout ul{margin:0;padding-left:18px;font-size:13px;color:#78350f;line-height:1.55}
+.compliance-callout li{margin:3px 0}
 /* Internal linking recommendations */
 .il-section{margin-top:1.75rem}
 .il-section h3{font-size:.95rem;font-weight:700;color:var(--heading);margin:0 0 .75rem;letter-spacing:-.005em}
@@ -1647,6 +1657,8 @@ details.cal-month[open] .cal-month-header::after{content:"\\2212"}
 .pillar-example{font-size:12px;color:var(--text);padding:6px 10px;background:var(--bg);border-radius:6px;border-left:3px solid var(--blue)}
 .hashtag-list{display:flex;flex-wrap:wrap;gap:6px}
 .hashtag{display:inline-block;padding:4px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text-light)}
+.hashtag-warn{background:#fffbea;border-color:#f5e1a2;color:#92400e}
+.hashtag-warn-icon{font-size:11px;margin-left:2px}
 /* Example articles */
 .example-article{border:1px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden;background:var(--white);box-shadow:0 2px 12px rgba(0,0,0,.03)}
 .article-header{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;user-select:none;transition:background .12s}
