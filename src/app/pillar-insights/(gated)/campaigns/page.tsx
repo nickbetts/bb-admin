@@ -22,7 +22,7 @@ export default function CampaignsPage() {
       <PageHeader
         eyebrow="Campaigns"
         title="Campaign intelligence"
-        description="Every appeal carries full metadata - channel, medium, audience, theme, fund and budget. Pillar attributes every charge automatically and reports ROI per pound spent."
+        description="Every appeal carries full metadata - channel, medium, audience, theme, fund and budget. Pillar tracks Zakat, Qurbani and emergency appeals separately, attributes every charge automatically and reports ROI per pound raised."
         actions={
           <>
             <button className="btn btn-secondary btn-sm"><Filter className="h-3.5 w-3.5" /> Filter</button>
@@ -49,9 +49,9 @@ export default function CampaignsPage() {
           />
         </Section>
         <AIInsight title="Pillar AI - campaign optimisation" tone="indigo">
-          Your <strong>Sponsor a Child - April Drive</strong> is converting <strong>2.1%</strong>, below the
-          historical sponsorship benchmark of 3.4%. Pillar suggests testing a softer ask amount of <strong>£25/month</strong>{" "}
-          for first-time sponsors and pairing it with the Mariam orphan story creative - predicted lift <strong>+38%</strong>.
+          Your <strong>Orphan Sponsorship Drive</strong> is converting at <strong>1.8%</strong>, below the
+          sector benchmark of 3.1%. Pillar suggests pairing the Yusuf (Gaza) beneficiary story creative with
+          a softer introductory ask of <strong>£30/month</strong> for first-time sponsors - predicted lift <strong>+41%</strong>.
         </AIInsight>
       </div>
 

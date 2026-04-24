@@ -94,11 +94,11 @@ export function PillarSidebar() {
             className="sidebar-avatar"
             style={{ background: "linear-gradient(135deg, #14b8a6, #6366f1)" }}
           >
-            PM
+            MA
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", lineHeight: 1.2 }}>
-              Pillar Mockup
+              Muslim Aid
             </div>
             <div
               style={{
@@ -109,7 +109,7 @@ export function PillarSidebar() {
                 textOverflow: "ellipsis",
               }}
             >
-              charity@example.org
+              demo@pillar-preview.org
             </div>
           </div>
         </div>

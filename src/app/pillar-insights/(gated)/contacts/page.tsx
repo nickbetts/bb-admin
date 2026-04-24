@@ -74,9 +74,9 @@ export default function ContactsPage() {
       </div>
 
       <AIInsight title="Audience insight" tone="indigo">
-        Supporters who give to <strong>Water &amp; Sanitation</strong> are <strong>2.4× more likely</strong> to upgrade
-        to recurring giving than the average donor, and <strong>3.1× more likely</strong> to give again within 30 days
-        when emailed on a Tuesday morning.
+        Supporters who give during <strong>Ramadan</strong> are <strong>3.1x more likely</strong> to take out an
+        orphan sponsorship in the following 90 days, and <strong>2.8x more likely</strong> to respond to a subsequent
+        emergency appeal when contacted on Friday morning.
       </AIInsight>
 
       <Section

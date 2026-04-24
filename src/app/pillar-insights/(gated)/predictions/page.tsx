@@ -106,9 +106,10 @@ export default function PredictionsPage() {
       </div>
 
       <AIInsight title="Pillar AI - this week's highest-impact recommendation" tone="indigo">
-        <strong>284 one-off donors</strong> scored ≥70 on Upgrade Likelihood AND ≥60 on Mission Match for the
-        upcoming Eid Gift of Joy campaign. Activate the <em>Recurring upgrade prompt</em> journey targeted at this
-        sub-segment for an estimated <strong>£12,400 in incremental annual recurring revenue</strong>.
+        <strong>312 post-Ramadan one-off donors</strong> scored above 70 on Upgrade Likelihood AND above 65 on
+        Mission Match for the upcoming Qurbani 2026 campaign. Activate the{" "}
+        <em>Recurring upgrade prompt</em> journey targeted at this sub-segment for an estimated{" "}
+        <strong>£84,000 in incremental annual recurring revenue</strong>.
       </AIInsight>
 
       {/* Top at-risk */}

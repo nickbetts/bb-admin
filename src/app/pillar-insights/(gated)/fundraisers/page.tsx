@@ -31,9 +31,9 @@ export default function FundraisersPage() {
       </div>
 
       <AIInsight title="Pillar AI - fundraiser opportunity" tone="teal">
-        Hannah Wright&rsquo;s <strong>London Marathon for Clean Water</strong> exceeded its goal by 37%. Pillar
-        recommends inviting her into the <strong>Champion fundraisers</strong> programme and triggering a personal
-        thank-you from the CEO - historic data shows this lifts repeat-fundraising likelihood by <strong>3.8×</strong>.
+        Adam Hughes&rsquo; <strong>London Marathon for Gaza</strong> exceeded its goal by 37%. Pillar recommends
+        inviting him into the <strong>Champion Fundraisers</strong> programme and triggering a personal thank-you
+        from the CEO - historic data shows this lifts repeat-fundraising likelihood by <strong>3.8x</strong>.
       </AIInsight>
 
       <Section title="All fundraisers" subtitle="Pages and events created by your supporters">

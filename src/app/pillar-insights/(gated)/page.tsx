@@ -24,7 +24,7 @@ export default function PillarOverviewPage() {
       <PageHeader
         eyebrow={ORG.fiscalYear}
         title="Pillar Intelligence"
-        description={`Mission control for ${ORG.name}. AI-powered visibility into supporters, campaigns, fundraisers and sponsorships - designed for charities that want to grow giving without growing overhead.`}
+        description={`Mission control for ${ORG.name}. AI-powered visibility across Zakat, Qurbani, emergency appeals, orphan sponsorships and peer-to-peer fundraising - serving humanity since 1985.`}
         actions={
           <>
             <button className="btn btn-secondary btn-sm">Last 30 days</button>
@@ -101,21 +101,21 @@ export default function PillarOverviewPage() {
       {/* AI insight strip */}
       <div className="grid-2" style={{ marginTop: 28 }}>
         <AIInsight title="Supporter Twin - what changed this week" tone="indigo">
-          <strong>1,842 supporters</strong> moved into the <em>At Risk</em> segment this week, driven mostly by lapsed
-          one-off donors from the autumn Emergency Appeal. Pillar suggests a personalised{" "}
-          <strong>reactivation journey</strong> with an ask of £{HEADLINE_KPIS.averageGift.toFixed(0)} - projected
-          recovery: <strong>£14,200</strong>.
+          <strong>18,412 supporters</strong> moved into the <em>At Risk</em> segment this week, predominantly
+          post-Qurbani one-off donors who have not engaged since June 2025. Pillar suggests a personalised{" "}
+          <strong>Post-Ramadan reactivation journey</strong> with a Zakat reminder and an ask of
+          £{HEADLINE_KPIS.averageGift.toFixed(0)} - projected recovery: <strong>£84,200</strong>.
         </AIInsight>
         <AIInsight title="Mission Match recommendation" tone="teal">
-          412 donors who previously gave to <strong>Water &amp; Sanitation</strong> show high affinity for the
-          upcoming <strong>Schools Reach 2026</strong> campaign. Suggested send window:{" "}
-          <strong>Tuesday 09:30 BST</strong>. Predicted conversion uplift: <strong>+18%</strong>.
+          624 donors who gave to <strong>Palestine &amp; Gaza</strong> also show high affinity for the
+          upcoming <strong>Water for Sudan</strong> spring appeal. Suggested send window:{" "}
+          <strong>Tuesday 09:30 BST</strong>. Predicted conversion uplift: <strong>+22%</strong>.
         </AIInsight>
       </div>
 
       {/* Donation trend */}
       <Section
-        title="Donation revenue - last 12 months"
+        title="Donation revenue - last 12 months (May 2025 - Apr 2026)"
         subtitle="Total donations across all appeals, channels and payment methods"
         actions={
           <div style={{ display: "flex", gap: 6 }}>

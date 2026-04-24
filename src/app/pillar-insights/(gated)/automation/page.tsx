@@ -35,9 +35,9 @@ export default function AutomationPage() {
       </div>
 
       <AIInsight title="Pillar AI - next best action" tone="teal">
-        <strong>1,240 supporters</strong> entered the lapsed reactivation journey this morning. Pillar predicts{" "}
-        <strong>108 will reactivate</strong> with an average gift of <strong>£36</strong> - projected recovery{" "}
-        <strong>£3,890</strong>.
+        <strong>4,840 post-Ramadan donors</strong> have not engaged since Eid al-Fitr. Pillar predicts{" "}
+        <strong>412 will reactivate</strong> with a targeted Qurbani pre-launch email, average gift{" "}
+        <strong>£62</strong> - projected recovery <strong>£25,500</strong>.
       </AIInsight>
 
       <Section title="All journeys" padded={false}>

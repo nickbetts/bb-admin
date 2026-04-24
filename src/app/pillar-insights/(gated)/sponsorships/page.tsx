@@ -24,7 +24,7 @@ export default function SponsorshipsPage() {
       <PageHeader
         eyebrow="Regular Giving"
         title="Sponsorship programmes"
-        description="Monitor monthly income, attrition, payment failures and sponsor engagement across orphan, village and school sponsorship programmes."
+        description="Monitor monthly income, attrition, payment failures and sponsor engagement across orphan, school and community sponsorship programmes. Pillar tracks Gift Aid eligibility and beneficiary review dates automatically."
         actions={
           <button className="btn btn-primary btn-sm"><Plus className="h-3.5 w-3.5" /> New sponsorship</button>
         }
@@ -42,10 +42,10 @@ export default function SponsorshipsPage() {
           <Donut data={breakdown} centerLabel="Programmes" centerValue={SPONSORSHIPS.length.toString()} />
         </Section>
         <AIInsight title="Pillar AI - sponsor retention" tone="amber">
-          <strong>2 sponsorships</strong> have failed payment 2+ times this month. Pillar predicts a{" "}
-          <strong>72% churn likelihood</strong> for Ibrahim Patel without intervention. Recommended action: trigger
-          the <em>Sponsor renewal nudge</em> journey via SMS within 24 hours - historic recovery rate{" "}
-          <strong>62.4%</strong>.
+          <strong>2 orphan sponsorships</strong> have failed payment 2+ times this month. Pillar predicts a{" "}
+          <strong>74% churn likelihood</strong> for Aisha Siddiqui without intervention. Recommended action: trigger
+          the <em>Orphan sponsor renewal nudge</em> journey via SMS within 24 hours - historic recovery rate{" "}
+          <strong>64.8%</strong>.
         </AIInsight>
       </div>
 
