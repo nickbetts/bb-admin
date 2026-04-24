@@ -32,12 +32,10 @@ export function proxy(request: NextRequest) {
     /\.[a-zA-Z0-9]{1,5}$/.test(pathname); // any obvious file extension
 
   if (host === LP_DOMAIN && !isInternal) {
-    // Apex → bounce to the clickr marketing page
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
-    if (appUrl) {
-      return NextResponse.redirect(`${appUrl}/clickr`, 308);
-    }
-    // No app URL configured — fall through to whatever exists at /
+    // Apex → serve the clickr marketing page (internal rewrite, URL stays clean)
+    const url = request.nextUrl.clone();
+    url.pathname = "/clickr";
+    return NextResponse.rewrite(url);
   } else if (host.endsWith(`.${LP_DOMAIN}`) && !isInternal) {
     const sub = host.slice(0, -1 * (LP_DOMAIN.length + 1));
     // Reject empty / "www" / multi-label subdomains for safety
