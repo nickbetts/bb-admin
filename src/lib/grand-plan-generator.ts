@@ -177,6 +177,20 @@ interface GoogleAdsForecast {
   disclaimer?: string;
 }
 
+export interface AudienceItem {
+  name: string;
+  description: string;
+  painPoints: string[];
+  channels: string[];
+  /** A short, in-voice quote that captures how this persona thinks (1 sentence, max ~25 words). */
+  personaQuote?: string;
+  /** Sector-level keyword + campaign teaser shown inside an accordion in the audience card. */
+  sectorPreview?: {
+    keywordGroups: { label: string; samples: string }[];
+    campaignTeasers: { channel: string; focus: string }[];
+  };
+}
+
 export interface GrandPlanData {
   title: string;
   clientName: string;
@@ -185,7 +199,7 @@ export interface GrandPlanData {
   brief?: string;
   campaignPeriods?: CampaignFocusPeriod[];
   sections: {
-    audiences?: { name: string; description: string; painPoints: string[]; channels: string[] }[];
+    audiences?: AudienceItem[];
     executiveSummary?: string;
     strategyPlan?: string;
     googleAdsCampaigns?: {
@@ -1588,7 +1602,7 @@ async function generateAudiences(
   anthropic: Anthropic,
   context: string,
   sources: GrandPlanSources
-): Promise<{ name: string; description: string; painPoints: string[]; channels: string[] }[]> {
+): Promise<AudienceItem[]> {
   if (sources.targetAudiences) {
     // Strategist has provided audiences — parse them rather than regenerate from scratch.
     // Split only on colons / en-dash / em-dash. Hyphens are preserved as part of
@@ -1612,7 +1626,7 @@ async function generateAudiences(
 
   const res = await withAnthropicRetry("audiences", () => anthropic.messages.create({
     model: MODEL_LIGHT,
-    max_tokens: 1200,
+    max_tokens: 2200,
     messages: [
       {
         role: "user",
@@ -1624,6 +1638,8 @@ Rules:
 - Be specific and realistic about who this client is trying to reach
 - Each audience should reflect a real person or buying group, not a generic demographic label
 - Pain points must be grounded in the specific sector context — not generic marketing platitudes
+- The personaQuote must sound like something this person would actually say to a colleague (one sentence, max 25 words, no marketing speak)
+- The sectorPreview must reference real keywords, services, and campaign angles that fit this audience and sector
 - Return ONLY a valid JSON array, no prose, no markdown fences
 - 3 to 5 audiences maximum
 
@@ -1632,10 +1648,23 @@ Return JSON in this exact format:
   {
     "name": "Audience name (short, specific — e.g. 'Practice Managers considering Invisalign')",
     "description": "2-3 sentence description of who they are and what motivates them",
+    "personaQuote": "One first-person sentence that sounds like this person speaking, e.g. 'I just need a supplier who turns up, sets up, and doesn't make me look bad in front of the trustees.'",
     "painPoints": ["Pain point 1", "Pain point 2", "Pain point 3"],
-    "channels": ["Google Search", "Facebook", "Instagram"]
+    "channels": ["Google Search", "Facebook", "Instagram"],
+    "sectorPreview": {
+      "keywordGroups": [
+        { "label": "Short keyword theme (3-4 words)", "samples": "\\"sample keyword 1\\", \\"sample keyword 2\\", \\"sample keyword 3\\"" }
+      ],
+      "campaignTeasers": [
+        { "channel": "Google PPC", "focus": "Brand & Core, Service Terms, Competitor" },
+        { "channel": "LinkedIn", "focus": "Job titles + industries this audience holds" },
+        { "channel": "Meta", "focus": "Interest targeting + lookalike angles" }
+      ]
+    }
   }
 ]
+- 3-5 keywordGroups per audience
+- 2-3 campaignTeasers per audience (only include channels actually relevant to this client)
 
 Client context:
 ${context}${buildSharedContextBlocks(sources)}`,
@@ -1647,8 +1676,36 @@ ${context}${buildSharedContextBlocks(sources)}`,
   const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
   try {
     const parsed = JSON.parse(cleaned);
-    if (Array.isArray(parsed)) return parsed;
-    return [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((a) => a && typeof a.name === "string")
+      .map((a): AudienceItem => ({
+        name: String(a.name).trim(),
+        description: String(a.description ?? "").trim(),
+        painPoints: Array.isArray(a.painPoints) ? a.painPoints.map(String) : [],
+        channels: Array.isArray(a.channels) ? a.channels.map(String) : [],
+        personaQuote: typeof a.personaQuote === "string" ? a.personaQuote.trim().slice(0, 240) : undefined,
+        sectorPreview: a.sectorPreview && typeof a.sectorPreview === "object" ? {
+          keywordGroups: Array.isArray(a.sectorPreview.keywordGroups)
+            ? a.sectorPreview.keywordGroups
+                .filter((g: unknown): g is { label?: unknown; samples?: unknown } => !!g && typeof g === "object")
+                .map((g: { label?: unknown; samples?: unknown }) => ({
+                  label: String(g.label ?? "").trim(),
+                  samples: String(g.samples ?? "").trim(),
+                }))
+                .filter((g: { label: string; samples: string }) => g.label && g.samples)
+            : [],
+          campaignTeasers: Array.isArray(a.sectorPreview.campaignTeasers)
+            ? a.sectorPreview.campaignTeasers
+                .filter((t: unknown): t is { channel?: unknown; focus?: unknown } => !!t && typeof t === "object")
+                .map((t: { channel?: unknown; focus?: unknown }) => ({
+                  channel: String(t.channel ?? "").trim(),
+                  focus: String(t.focus ?? "").trim(),
+                }))
+                .filter((t: { channel: string; focus: string }) => t.channel && t.focus)
+            : [],
+        } : undefined,
+      }));
   } catch {
     return [];
   }
