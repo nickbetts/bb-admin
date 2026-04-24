@@ -15,6 +15,24 @@
 
 import type { GrandPlanData } from "./grand-plan-generator";
 
+/**
+ * Extract a clean one-paragraph teaser from executive summary HTML.
+ * Strips heading tags, HTML markup, code-fence artefacts, and truncates
+ * to ~220 chars so the hero section always looks intentional.
+ */
+function heroSubtext(raw: string): string {
+  // Strip any remaining code-fence prefix (e.g. "html\n") that slipped past extractText
+  const nofence = raw.replace(/^(?:html|markdown|md|json)\s+/i, "");
+  // Remove heading tags and their content — we want body copy only
+  const noHeadings = nofence.replace(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/gi, " ");
+  // Strip all remaining HTML tags
+  const text = noHeadings.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  if (!text) return "";
+  if (text.length <= 220) return text;
+  const sub = text.slice(0, 220);
+  return (sub.slice(0, sub.lastIndexOf(" ")) || sub) + "…";
+}
+
 export function renderGrandPlanHtml(plan: GrandPlanData): string {
   const s = plan.sections;
 
@@ -138,7 +156,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
     <div class="hero-label">${plan.purpose === "pitch" ? "Pitch Deck" : plan.purpose === "onboarding" ? "Onboarding Plan" : "Strategy Overview"} &nbsp;&middot;&nbsp; ${new Date(plan.generatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })} &nbsp;&middot;&nbsp; i3media</div>
     <h1>${esc(plan.title)}</h1>
     <div class="hero-divider"></div>
-    <p class="hero-sub">${s.executiveSummary ? esc(s.executiveSummary.replace(/<[^>]*>/g, "").slice(0, 200).trim()) + "..." : `A comprehensive digital marketing strategy for ${esc(plan.clientName)}.`}</p>
+    <p class="hero-sub">${s.executiveSummary ? esc(heroSubtext(s.executiveSummary)) : `A comprehensive digital marketing strategy for ${esc(plan.clientName)}.`}</p>
     <div class="hero-meta">
       <div class="hero-meta-item"><strong>Client</strong><span>${esc(plan.clientName)}</span></div>
       <div class="hero-meta-item"><strong>Agency</strong><span>i3media</span></div>

@@ -1,5 +1,6 @@
 import { getAnthropicClient } from "@/lib/anthropic-client";
 import type Anthropic from "@anthropic-ai/sdk";
+import { jsonrepair } from "jsonrepair";
 
 const MODEL = "claude-sonnet-4-6";
 const MODEL_LIGHT = "claude-haiku-4-5";
@@ -618,7 +619,7 @@ async function generateMetaCampaigns(anthropic: Anthropic, context: string, adGr
 
   const res = await withAnthropicRetry("metaCampaigns", () => anthropic.messages.create({
     model: MODEL,
-    max_tokens: 3000,
+    max_tokens: 5000,
     messages: [
       {
         role: "user",
@@ -639,9 +640,14 @@ Rules:
 - Create 2-3 campaigns based on the keyword themes provided AND the target audiences below. Each campaign should clearly map to one or more named audiences.
 - Audience targeting interests/customAudiences/lookalikes should reflect the real personas — reference their behaviours and pain points, not generic demographics.
 - Captions and creative copy must speak directly to the audience's situation in plain British English.
-- If campaign focus periods are listed, design at least one campaign or creative variant around the most imminent period.
+- If campaign focus periods are listed, design at least one campaign or creative variant around the most imminent period — include specific dates/windows in the ad copy to drive urgency.
 - British English, no AI jargon
 - Return ONLY valid JSON, no markdown fences
+
+CRITICAL CONSTRAINTS (must be followed — client brief overrides defaults):
+- GEOGRAPHY: Use the target markets from the brief. Do NOT default to UK-only if the brief specifies European, international, or non-UK markets. Set interests and audience locations to match the stated geography.
+- UNDER-18 AUDIENCES: If any target audience includes minors (under 18), Meta restricts interest-based and demographic targeting for users under 18. Acknowledge this in the campaign strategy — add a note in captionCopyBank or contentPillars — and suggest a compliant workaround (e.g. broad targeting, targeting parents of teenagers, or age-targeting 18+ in parallel campaigns).
+- NEGATIVE CONSTRAINTS: If the brief lists any terms or language to avoid, do NOT reference them in any ad copy, headline, caption, or interest targeting.
 
 Client: ${sources.clientName}
 Key themes: ${topThemes}
@@ -880,6 +886,10 @@ async function generateGoogleAdsAdCopy(
   const DESC_LIMIT = 90;
   const SITELINK_LIMIT = 25;
 
+  // Pull any explicit "avoid X" constraints out of the brief so the AI
+  // doesn't use prohibited language in copy (e.g. "no scholarship language").
+  const briefNegatives = parseBriefNegatives(sources.clientBrief ?? "");
+
   const buildPrompt = (feedback?: string) => `You are a Google Ads specialist at i3media. Write Responsive Search Ad copy for each ad group below.
 
 Return a JSON object with key "adGroups" containing an array. Each item:
@@ -893,7 +903,8 @@ Rules:
 - Vary headlines between: primary keyword inclusion, benefit statement, USP, CTA, social proof.
 - Speak to the named target audiences provided in the context — at least 3 headlines per group should reference an audience pain point or moment.
 - Descriptions expand on the proposition with a call to action.
-- Character limits are HARD limits — count every character including spaces. Anything over will be rejected by Google.
+- If campaign focus periods list specific dates or windows, include at least one headline or description per group that references the nearest upcoming period to drive urgency.
+- Character limits are HARD limits — count every character including spaces. Anything over will be rejected by Google.${briefNegatives.length ? `\n- EXCLUDED TERMS (must NOT appear in any headline, description, or sitelink): ${briefNegatives.join(", ")}` : ""}
 - Return ONLY valid JSON, no markdown fences.${feedback ? `\n\nIMPORTANT — your previous attempt was invalid:\n${feedback}\nFix these issues and try again.` : ""}
 
 Client: ${sources.clientName}
@@ -1189,8 +1200,8 @@ ${context}${buildSharedContextBlocks(sources)}`,
 function extractText(response: Anthropic.Message): string {
   const block = response.content.find((b) => b.type === "text");
   const raw = block && block.type === "text" ? block.text.trim() : "";
-  // Strip markdown fencing if present
-  return raw.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
+  // Strip markdown fencing if present (any language: json, html, markdown, etc.)
+  return raw.replace(/^```(?:\w+)?\s*/i, "").replace(/\s*```$/i, "");
 }
 
 // ─── Structured data builders (no AI needed) ────────────────────────────────
@@ -1223,11 +1234,46 @@ const SECTOR_AD_SCHEDULE: Record<string, string> = {
 
 const BASE_NEGATIVES = ["free", "cheap", "DIY", "job", "jobs", "career", "salary", "reddit", "forum", "template", "download"];
 
+/**
+ * Parse the client brief for explicit negative term instructions
+ * (e.g. "Avoid 'scholarship' language entirely" → ["scholarship"]).
+ */
+function parseBriefNegatives(brief: string): string[] {
+  const negatives = new Set<string>();
+  const patterns = [
+    /\bavoid(?:ing)?\s+['"]?([a-z][^'",.]{1,50})['"]?/gi,
+    /\bdo\s+not\s+(?:use|include|reference|mention)\s+['"]?([a-z][^'",.]{1,50})['"]?/gi,
+    /\bno\s+['"]([^'"]{1,50})['"]?\s+(?:language|keywords?|terms?|messaging|copy)/gi,
+    /\bexclude\s+['"]?([a-z][^'",.]{1,50})['"]?/gi,
+  ];
+  for (const re of patterns) {
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(brief)) !== null) {
+      negatives.add(m[1].trim().toLowerCase());
+    }
+  }
+  return [...negatives];
+}
+
+/**
+ * Detect the primary target geography from the client brief.
+ * Defaults to "United Kingdom" when no signals are found.
+ */
+function detectLocations(brief?: string): string {
+  if (!brief) return "United Kingdom";
+  const l = brief.toLowerCase();
+  if (l.includes("europe") && !l.includes("uk only")) return "Europe";
+  if (l.includes("international") || l.includes("worldwide") || l.includes("global")) return "International";
+  if (l.includes("uk and ireland") || l.includes("uk & ireland")) return "United Kingdom, Republic of Ireland";
+  return "United Kingdom";
+}
+
 function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources, adCopyData: { name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; isFallback?: boolean } }[]) {
   const adCopyMap = new Map(adCopyData.map((d) => [d.name, d.adCopy]));
   const sector = sources.sector ?? "";
   const sectorNegs = SECTOR_NEGATIVES[sector] ?? [];
-  const allNegatives = [...new Set([...BASE_NEGATIVES, ...sectorNegs])];
+  const briefNegs = parseBriefNegatives(sources.clientBrief ?? "");
+  const allNegatives = [...new Set([...BASE_NEGATIVES, ...sectorNegs, ...briefNegs])];
   const adSchedule = SECTOR_AD_SCHEDULE[sector] ?? "Mon-Fri, 7am-9pm";
 
   return {
@@ -1237,7 +1283,7 @@ function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources,
       "Goal": "Conversions",
       "Bidding": "Maximise Conversions",
       "Budget": sources.keywordResearch?.monthlyBudget ? `£${sources.keywordResearch.monthlyBudget}/month` : "TBC",
-      "Locations": "United Kingdom",
+      "Locations": detectLocations(sources.clientBrief),
       "Language": "English",
       "Ad Schedule": adSchedule,
       "Conversion Tracking": "Website form submissions, phone calls",
@@ -1620,8 +1666,12 @@ function buildGoogleAdsForecast(adGroups: AdGroup[], sources: GrandPlanSources):
 
 function safeJsonParse<T>(json: string, fallback: T): T {
   try {
-    return JSON.parse(json) as T;
+    return JSON.parse(jsonrepair(json)) as T;
   } catch {
-    return fallback;
+    try {
+      return JSON.parse(json) as T;
+    } catch {
+      return fallback;
+    }
   }
 }

@@ -298,7 +298,7 @@ export default function ClickrPage() {
             </h1>
 
             <p style={{ fontSize: 19, color: "rgba(255,255,255,0.58)", lineHeight: 1.78, maxWidth: 500, marginBottom: 36, fontWeight: 400 }}>
-              Powered by Meridian, i3MEDIA's proprietary marketing intelligence. Scrape any website, generate a fully branded post-click page, and go live at <span style={{ color: accentLight, fontWeight: 600 }}>clickr.marketing</span>. Integrates with your existing CRM, notification stack, and any tool that accepts a webhook.
+              Powered by Meridian, i3MEDIA&apos;s proprietary marketing intelligence. Scrape any website, generate a fully branded post-click page, and go live at <span style={{ color: accentLight, fontWeight: 600 }}>clickr.marketing</span>. Integrates with your existing CRM, notification stack, and any tool that accepts a webhook.
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 11, marginBottom: 38 }}>

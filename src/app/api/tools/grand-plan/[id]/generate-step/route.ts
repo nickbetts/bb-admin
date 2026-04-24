@@ -103,6 +103,10 @@ export async function POST(
   const clientName = plan.client?.name || plan.proposal?.clientName || "Client";
   const brief = body.overrides?.clientBrief ?? plan.clientBrief ?? "";
   const website = config.kwBrief?.website ?? plan.client?.website ?? plan.keywordResearch?.website ?? "";
+  // LP generation is wanted when either the plan was created with lpBrief, OR
+  // the landingPage section was enabled (covers plans where the client had no
+  // website at creation time but now has one).
+  const wantsLp = !!config.lpBrief || !!(config.sections?.includes("landingPage") && website);
 
   try {
     // ─── STEP: start ─────────────────────────────────────────────────────────
@@ -459,16 +463,20 @@ export async function POST(
     // BrandContext in planDataJson. Isolated so the LP generation step has the
     // full 300 s budget for the 32K-token Opus call.
     if (step === "prepare-lp-brand") {
-      if (!config.lpBrief) {
-        await recordLpReport(id, "skipped", "Landing page generation was disabled when this plan was created.");
-        return NextResponse.json({ ok: true, step, skipped: true });
-      }
+      // LP generation requires a website. lpBrief being absent is fine — we
+      // default to "lead-gen" so plans created before the client had a website
+      // can still get a landing page on regeneration.
       if (!website) {
         await recordLpReport(id, "skipped", "No website on the linked client — landing page generation needs a URL to scrape brand context from.");
         return NextResponse.json({ ok: true, step, skipped: true });
       }
+      // If neither lpBrief nor the landingPage section key is present this plan
+      // deliberately excluded the LP — skip silently.
+      if (!wantsLp) {
+        return NextResponse.json({ ok: true, step, skipped: true });
+      }
 
-      const lpCampaignType = config.lpBrief.campaignType ?? "lead-gen";
+      const lpCampaignType = config.lpBrief?.campaignType ?? "lead-gen";
       const lpBriefText = brief || `${clientName} landing page for ${lpCampaignType} campaign`;
 
       try {
@@ -508,7 +516,7 @@ export async function POST(
     // written by prepare-lp-brand so we don't re-scrape. Runs in its own 300 s
     // budget — the only "expensive" operation here is the single Opus stream.
     if (step === "prepare-lp-draft") {
-      if (!config.lpBrief || !website) {
+      if (!wantsLp || !website) {
         return NextResponse.json({ ok: true, step, skipped: true });
       }
 
@@ -516,7 +524,7 @@ export async function POST(
         const initialStash = readLpInProgress(plan.planDataJson);
         if (!initialStash?.brandContext) {
           // Brand step didn't run or failed — re-extract inline (adds ~15s but unblocks)
-          const lpCampaignType = config.lpBrief.campaignType ?? "lead-gen";
+          const lpCampaignType = config.lpBrief?.campaignType ?? "lead-gen";
           const lpBriefText = brief || `${clientName} landing page for ${lpCampaignType} campaign`;
           await setStatus(id, "Extracting brand context from website...");
           const brandContext = await extractBrandContext(website);
@@ -560,7 +568,7 @@ export async function POST(
     // CRO critique of the draft. Isolated from the generation step so a slow
     // Opus stream on the draft doesn't eat into the critique budget.
     if (step === "prepare-lp-critique") {
-      if (!config.lpBrief || !website) {
+      if (!wantsLp || !website) {
         return NextResponse.json({ ok: true, step, skipped: true });
       }
 
@@ -601,7 +609,7 @@ export async function POST(
     // call. Splitting refinements across separate lambdas means the worst case
     // is one 32K stream per 300 s budget instead of three back-to-back.
     if (step === "prepare-lp-refine-1" || step === "prepare-lp-refine-2") {
-      if (!config.lpBrief || !website) {
+      if (!wantsLp || !website) {
         return NextResponse.json({ ok: true, step, skipped: true });
       }
 
