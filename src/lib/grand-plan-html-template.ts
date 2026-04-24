@@ -46,12 +46,13 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
   };
 
   const hasContext = s.audiences?.length || plan.brief || plan.campaignPeriods?.length;
-  const hasStrategy = s.executiveSummary || s.strategyPlan;
+  const hasStrategy = s.executiveSummary || s.strategyPlan || s.quickWins?.length;
   const hasPaidSearch = s.googleAdsCampaigns || s.googleAdsForecast;
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
   const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial || s.exampleArticles?.length;
   const hasResearch = s.keywordResearch || s.competitorIntel?.length;
   const hasCommercial = s.servicesInvestment || s.mediaPlan || s.emailMarketing;
+  const hasMeasurement = s.kpis?.length;
   const hasCreative = s.landingPage;
 
   if (hasContext) {
@@ -62,6 +63,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
     addChapter("Strategy");
     if (s.executiveSummary) navItems.push({ id: "executive-summary", label: "Executive Summary" });
     if (s.strategyPlan) navItems.push({ id: "strategy-plan", label: "Strategy Plan" });
+    if (s.quickWins?.length) navItems.push({ id: "quick-wins", label: "Quick Wins" });
   }
   if (hasPaidSearch) {
     addChapter("Paid Search");
@@ -90,6 +92,10 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
     if (s.servicesInvestment) navItems.push({ id: "services", label: "Services & Investment" });
     if (s.mediaPlan) navItems.push({ id: "media-plan", label: "Media Plan" });
     if (s.emailMarketing) navItems.push({ id: "email-marketing", label: "Email Marketing" });
+  }
+  if (hasMeasurement) {
+    addChapter("Measurement");
+    navItems.push({ id: "kpis", label: "KPIs & Targets" });
   }
   if (hasCreative) {
     addChapter("Creative");
@@ -218,12 +224,13 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   };
 
   const hasContext = brief || s.audiences?.length || campaignPeriods?.length;
-  const hasStrategy = s.executiveSummary || s.strategyPlan;
+  const hasStrategy = s.executiveSummary || s.strategyPlan || s.quickWins?.length;
   const hasPaidSearch = s.googleAdsCampaigns || s.googleAdsForecast;
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
   const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial || s.exampleArticles?.length;
   const hasResearch = s.keywordResearch || s.competitorIntel?.length;
   const hasCommercial = s.servicesInvestment || s.mediaPlan || s.emailMarketing;
+  const hasMeasurement = s.kpis?.length;
   const hasCreative = s.landingPage;
 
   const parts: string[] = [];
@@ -237,6 +244,7 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
     parts.push(ch("Strategy", `The overall marketing strategy and executive overview for ${clientName}.`));
     if (s.executiveSummary) parts.push(renderExecutiveSummary(s.executiveSummary));
     if (s.strategyPlan) parts.push(renderStrategyPlan(s.strategyPlan));
+    if (s.quickWins?.length) parts.push(renderQuickWins(s.quickWins));
   }
 
   if (hasPaidSearch) {
@@ -270,6 +278,11 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
     if (s.servicesInvestment) parts.push(renderServicesInvestment(s.servicesInvestment));
     if (s.mediaPlan) parts.push(renderMediaPlan(s.mediaPlan));
     if (s.emailMarketing) parts.push(renderEmailMarketing(s.emailMarketing));
+  }
+
+  if (hasMeasurement) {
+    parts.push(ch("Measurement", "The KPIs, targets, and reporting cadence that will tell us whether the plan is working."));
+    parts.push(renderKpis(s.kpis));
   }
 
   if (hasCreative) {
@@ -404,6 +417,70 @@ function renderStrategyPlan(html: string): string {
         <div class="section-kicker">The Plan</div>
         <h2>Strategy Plan</h2>
         <div class="section-body">${html}</div>
+      </div>
+    </section>`;
+}
+
+function renderQuickWins(items: { title: string; description: string; priority: string }[]): string {
+  if (!items?.length) return "";
+  const priCls = (p: string) => {
+    switch (p) {
+      case "high": return "pri-h";
+      case "medium-high": return "pri-mh";
+      case "medium": return "pri-m";
+      case "ongoing": return "pri-og";
+      case "long-term": return "pri-lt";
+      default: return "pri-m";
+    }
+  };
+  const priLabel = (p: string) => {
+    switch (p) {
+      case "high": return "High Priority";
+      case "medium-high": return "Medium-High";
+      case "medium": return "Medium";
+      case "ongoing": return "Ongoing";
+      case "long-term": return "Long Term";
+      default: return p;
+    }
+  };
+  // Sort by priority for visual flow.
+  const order: Record<string, number> = { "high": 0, "medium-high": 1, "medium": 2, "ongoing": 3, "long-term": 4 };
+  const sorted = [...items].sort((a, b) => (order[a.priority] ?? 9) - (order[b.priority] ?? 9));
+  const cards = sorted.map((a) => `
+    <div class="ac-card">
+      <span class="pri ${priCls(a.priority)}">${esc(priLabel(a.priority))}</span>
+      <h4>${esc(a.title)}</h4>
+      <p>${esc(a.description)}</p>
+    </div>`).join("\n");
+  return `
+    <section id="quick-wins" class="section alt">
+      <div class="section-inner">
+        <div class="section-kicker">Action Plan</div>
+        <h2>Quick Wins &amp; Priority Actions</h2>
+        <p class="section-intro">A prioritised list of actions, sequenced for impact. High-priority items kick off in the first 30 days; long-term items shape the second half of the year.</p>
+        <div class="action-grid">${cards}</div>
+      </div>
+    </section>`;
+}
+
+function renderKpis(channels: { channel: string; icon?: string; metrics: { name: string; target: string }[] }[]): string {
+  if (!channels?.length) return "";
+  const cards = channels.map((c) => `
+    <div class="kpi-card">
+      <div class="kpi-icon">${esc(c.icon ?? "📊")}</div>
+      <h4>${esc(c.channel)}</h4>
+      <ul>
+        ${c.metrics.map((m) => `<li><span class="kpi-name">${esc(m.name)}</span><span class="kpi-target">${esc(m.target)}</span></li>`).join("\n")}
+      </ul>
+    </div>`).join("\n");
+  return `
+    <section id="kpis" class="section">
+      <div class="section-inner">
+        <div class="section-kicker">Measurement</div>
+        <h2>KPIs &amp; Success Metrics</h2>
+        <p class="section-intro">The numbers we will report on each month, channel by channel. Targets are 90-day benchmarks calibrated to the budget and sector.</p>
+        <div class="kpi-grid">${cards}</div>
+        <div class="callout">Reporting cadence: a monthly performance report against these KPIs, plus a quarterly strategic review to recalibrate targets and reallocate budget where needed.</div>
       </div>
     </section>`;
 }
@@ -639,39 +716,91 @@ function renderKeywordResearch(data: any): string {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderContentStrategy(data: any): string {
-  const pageOpts = (data.pageOptimisations ?? []).slice(0, 15);
-  const landingPages = (data.landingPages ?? []).slice(0, 10);
-  const blogPosts = (data.blogPosts ?? []).slice(0, 20);
+  type Entry = {
+    url?: string; title?: string;
+    keywords?: { keyword: string; volume?: number }[];
+    notes?: string; brief?: string;
+    tier?: "pillar" | "mega" | "article";
+    intent?: string;
+    internalLinks?: string[];
+  };
+
+  const pageOpts = (data.pageOptimisations ?? []).slice(0, 15) as Entry[];
+  const landingPages = (data.landingPages ?? []) as Entry[];
+  const blogPosts = (data.blogPosts ?? []).slice(0, 12) as Entry[];
+
+  // Build cluster: 1 Pillar + 1-2 Mega + N Articles. Use explicit tier when
+  // present, else derive from list position.
+  const pillar = landingPages.find((p) => p.tier === "pillar") ?? landingPages[0];
+  const megas = landingPages.filter((p) => p !== pillar).slice(0, 2);
+  const articles = blogPosts;
+
+  const intentClass = (intent?: string): string => {
+    if (!intent) return "";
+    const v = intent.toLowerCase();
+    if (v.startsWith("dec") || v.includes("transact")) return "intent-dc";
+    if (v.startsWith("comm") || v.includes("consider")) return "intent-cm";
+    return "intent-aw";
+  };
+  const intentLabel = (intent?: string): string => {
+    if (!intent) return "";
+    const v = intent.toLowerCase();
+    if (v.startsWith("dec") || v.includes("transact")) return "Decision";
+    if (v.startsWith("comm") || v.includes("consider")) return "Commercial";
+    return "Awareness";
+  };
+
+  const card = (entry: Entry, tier: "pillar" | "mega" | "article", typeLabel: string): string => {
+    const kw = entry.keywords?.[0]?.keyword;
+    const intent = entry.intent;
+    const briefText = entry.brief ?? entry.notes;
+    return `
+      <div class="cluster-card ${tier}">
+        <div class="cluster-card-head"><span class="cluster-type-pill">${esc(typeLabel)}</span></div>
+        <div class="cluster-card-body">
+          <div class="cc-title">${esc(entry.title ?? entry.url ?? "Untitled")}</div>
+          ${kw ? `<div class="cc-kw">${esc(kw)}</div>` : ""}
+          ${intent ? `<span class="cc-intent ${intentClass(intent)}">${esc(intentLabel(intent))}</span>` : ""}
+          ${briefText ? `<p class="cc-brief">${esc(briefText)}</p>` : ""}
+        </div>
+      </div>`;
+  };
+
+  const clusterCards: string[] = [];
+  if (pillar) clusterCards.push(card(pillar, "pillar", "Pillar Page"));
+  megas.forEach((m, i) => clusterCards.push(card(m, "mega", megas.length === 1 ? "Mega Guide" : `Mega Guide ${i + 1}`)));
+  articles.forEach((a, i) => clusterCards.push(card(a, "article", `Article ${i + 1}`)));
+
+  const allInternalLinks = [
+    ...(pillar?.internalLinks ?? []),
+    ...megas.flatMap((m) => m.internalLinks ?? []),
+    ...articles.flatMap((a) => a.internalLinks ?? []),
+  ];
+  const internalLinkingHtml = allInternalLinks.length > 0 ? `
+    <div class="il-section">
+      <h3>Internal Linking Recommendations</h3>
+      <div class="il-grid">
+        ${allInternalLinks.slice(0, 8).map((s) => `<div class="il-item"><span class="il-arrow">&#8594;</span><span>${esc(s)}</span></div>`).join("\n")}
+      </div>
+    </div>` : "";
+
+  const clusterBlock = clusterCards.length > 0 ? `
+    <div class="cluster-block">
+      <h3 class="cluster-block-title">Topic Cluster</h3>
+      <p class="cluster-block-sub">A pillar page anchors the topic, supported by a mega guide and themed articles. Each article has a target keyword, search intent and a writer brief.</p>
+      <div class="cluster-grid">${clusterCards.join("\n")}</div>
+      ${internalLinkingHtml}
+    </div>` : "";
 
   const pageOptsHtml = pageOpts.length > 0 ? `
-    <h3>Page Optimisations</h3>
+    <h3 style="margin-top:2rem">On-Page Optimisations</h3>
+    <p class="section-intro" style="margin-bottom:1rem">Existing pages that need a refresh — title tags, meta descriptions, content depth, internal links, and schema.</p>
     <div class="content-cards">
-      ${pageOpts.map((p: { url?: string; title?: string; keywords?: { keyword: string }[]; notes?: string }) => `
+      ${pageOpts.map((p) => `
       <div class="content-card">
         <p class="content-url">${esc(p.url || "")}</p>
-        ${p.keywords?.length ? `<div class="content-kws">${p.keywords.slice(0, 5).map((k: { keyword: string }) => `<span class="kw-pill">${esc(k.keyword)}</span>`).join(" ")}</div>` : ""}
+        ${p.keywords?.length ? `<div class="content-kws">${p.keywords.slice(0, 5).map((k) => `<span class="kw-pill">${esc(k.keyword)}</span>`).join(" ")}</div>` : ""}
         ${p.notes ? `<p class="content-notes">${esc(p.notes)}</p>` : ""}
-      </div>`).join("\n")}
-    </div>` : "";
-
-  const landingsHtml = landingPages.length > 0 ? `
-    <h3>New Landing Pages</h3>
-    <div class="content-cards">
-      ${landingPages.map((p: { title?: string; keywords?: { keyword: string }[] }) => `
-      <div class="content-card">
-        <p class="content-title">${esc(p.title || "Untitled")}</p>
-        ${p.keywords?.length ? `<div class="content-kws">${p.keywords.slice(0, 5).map((k: { keyword: string }) => `<span class="kw-pill">${esc(k.keyword)}</span>`).join(" ")}</div>` : ""}
-      </div>`).join("\n")}
-    </div>` : "";
-
-  const blogsHtml = blogPosts.length > 0 ? `
-    <h3>Blog Posts</h3>
-    <div class="content-cards">
-      ${blogPosts.map((p: { title?: string; intent?: string; keywords?: { keyword: string }[] }) => `
-      <div class="content-card">
-        <p class="content-title">${esc(p.title || "Untitled")}</p>
-        ${p.intent ? `<span class="intent-badge intent-${p.intent}">${esc(p.intent)}</span>` : ""}
-        ${p.keywords?.length ? `<div class="content-kws">${p.keywords.slice(0, 3).map((k: { keyword: string }) => `<span class="kw-pill">${esc(k.keyword)}</span>`).join(" ")}</div>` : ""}
       </div>`).join("\n")}
     </div>` : "";
 
@@ -680,9 +809,9 @@ function renderContentStrategy(data: any): string {
       <div class="section-inner">
         <div class="section-kicker">Content & SEO</div>
         <h2>Content & SEO Strategy</h2>
+        <p class="section-intro">A topic-cluster approach: one anchoring pillar page, supporting deep-dive guides, and themed articles that capture every stage of intent.</p>
+      ${clusterBlock}
       ${pageOptsHtml}
-      ${landingsHtml}
-      ${blogsHtml}
       </div>
     </section>`;
 }
@@ -702,13 +831,15 @@ function renderContentCalendar(months: any[]): string {
         .join("\n");
 
       return `
-      <div class="cal-month">
-        <div class="cal-month-header">
-          <h4>${esc(m.month)}</h4>
-          ${m.focusLabel ? `<span class="cal-focus">${esc(m.focusLabel)}</span>` : ""}
-        </div>
+      <details class="cal-month" open>
+        <summary>
+          <div class="cal-month-header">
+            <h4>${esc(m.month)}</h4>
+            ${m.focusLabel ? `<span class="cal-focus">${esc(m.focusLabel)}</span>` : ""}
+          </div>
+        </summary>
         <div class="cal-items">${blogs}${social}</div>
-      </div>`;
+      </details>`;
     })
     .join("\n");
 
@@ -1312,6 +1443,68 @@ a{color:var(--accent);text-decoration:none}
 .intent-awareness,.intent-informational{background:#dbeafe;color:#1e40af}
 .intent-commercial{background:#fef3c7;color:#92400e}
 .intent-decision,.intent-transactional{background:#d1fae5;color:#065f46}
+/* Topic cluster cards (Pillar / Mega Guide / Article) */
+.cluster-block{margin-bottom:2.5rem}
+.cluster-block-title{font-size:1.05rem;font-weight:700;color:var(--heading);margin:0 0 .25rem;letter-spacing:-.005em}
+.cluster-block-sub{font-size:13px;color:var(--text-light);margin:0 0 1rem;line-height:1.6}
+.cluster-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.25rem;margin-bottom:1.5rem}
+@media (max-width:900px){.cluster-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:600px){.cluster-grid{grid-template-columns:1fr}}
+.cluster-card{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--white);box-shadow:0 2px 12px rgba(0,0,0,.03);display:flex;flex-direction:column}
+.cluster-card-head{padding:.7rem 1rem;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:8px}
+.cluster-card-body{padding:1rem 1.1rem 1.15rem;display:flex;flex-direction:column;flex:1}
+.cluster-type-pill{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:2px 8px;border-radius:10px}
+.cluster-card.pillar .cluster-card-head{background:#0f172a;color:#fff}
+.cluster-card.pillar .cluster-type-pill{background:rgba(255,255,255,.15);color:#fff}
+.cluster-card.mega .cluster-card-head{background:#1e293b;color:#cbd5e1}
+.cluster-card.mega .cluster-type-pill{background:rgba(255,255,255,.1);color:#cbd5e1}
+.cluster-card.article .cluster-card-head{background:var(--bg);color:var(--heading);border-bottom:1px solid var(--border)}
+.cluster-card.article .cluster-type-pill{background:var(--border);color:var(--text-light)}
+.cc-title{font-size:14px;font-weight:700;color:var(--heading);margin-bottom:.35rem;line-height:1.35}
+.cc-kw{font-size:12px;color:var(--text-light);margin-bottom:.45rem;font-family:'SF Mono','Fira Code','Courier New',monospace}
+.cc-intent{font-size:11px;padding:1px 8px;border-radius:10px;display:inline-block;margin-bottom:.55rem;font-weight:600}
+.cc-intent.intent-aw,.cc-intent.intent-awareness{background:#dbeafe;color:#1e40af}
+.cc-intent.intent-cm,.cc-intent.intent-commercial{background:#fef3c7;color:#92400e}
+.cc-intent.intent-dc,.cc-intent.intent-decision{background:#d1fae5;color:#065f46}
+.cc-brief{font-size:13px;color:var(--text);line-height:1.6;margin:0}
+/* Internal linking recommendations */
+.il-section{margin-top:1.75rem}
+.il-section h3{font-size:.95rem;font-weight:700;color:var(--heading);margin:0 0 .75rem;letter-spacing:-.005em}
+.il-grid{display:grid;grid-template-columns:1fr;gap:.45rem}
+.il-item{display:flex;align-items:flex-start;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.65rem .85rem;font-size:13px;color:var(--text);line-height:1.55}
+.il-arrow{color:var(--mid);flex-shrink:0;margin-top:1px;font-weight:700}
+/* Priority action grid */
+.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}
+@media (max-width:760px){.action-grid{grid-template-columns:1fr}}
+.ac-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.15rem 1.2rem;box-shadow:0 2px 12px rgba(0,0,0,.03)}
+.ac-card h4{font-size:13.5px;font-weight:700;color:var(--heading);margin:0 0 6px;line-height:1.35;letter-spacing:-.005em}
+.ac-card p{font-size:12.5px;color:var(--text-light);margin:0;line-height:1.55}
+.pri{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:2px 8px;border-radius:10px;display:inline-block;margin-bottom:.5rem}
+.pri-h{background:#fef2f2;color:#b91c1c}
+.pri-mh{background:#fff7ed;color:#b45309}
+.pri-m{background:#f0fdf4;color:#15803d}
+.pri-og{background:#eef2ff;color:#3730a3}
+.pri-lt{background:#fdf4ff;color:#7e22ce}
+/* KPI / measurement grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-top:1rem}
+@media (max-width:1000px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:540px){.kpi-grid{grid-template-columns:1fr}}
+.kpi-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.15rem;box-shadow:0 2px 12px rgba(0,0,0,.03)}
+.kpi-icon{font-size:1.4rem;margin-bottom:6px;line-height:1}
+.kpi-card h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-light);margin:0 0 .55rem}
+.kpi-card ul{list-style:none;padding:0;margin:0}
+.kpi-card ul li{font-size:12.5px;color:var(--text);padding:5px 0;border-bottom:1px dotted var(--border);display:flex;justify-content:space-between;gap:8px;line-height:1.4}
+.kpi-card ul li:last-child{border:none}
+.kpi-card ul li .kpi-name{color:var(--text-light)}
+.kpi-card ul li .kpi-target{font-weight:700;color:var(--heading);text-align:right;flex-shrink:0}
+/* Callout box */
+.callout{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1.15rem 1.3rem;margin-top:1.25rem;font-size:13.5px;color:var(--text);line-height:1.6}
+/* Collapsible calendar months */
+details.cal-month{padding:0}
+details.cal-month > summary{list-style:none;cursor:pointer}
+details.cal-month > summary::-webkit-details-marker{display:none}
+details.cal-month .cal-month-header::after{content:"+";font-size:1rem;font-weight:700;color:rgba(255,255,255,.65);margin-left:8px;transition:transform .2s}
+details.cal-month[open] .cal-month-header::after{content:"\\2212"}
 /* Content calendar */
 .calendar-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
 .cal-month{background:var(--white);border-radius:12px;overflow:hidden;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.03)}

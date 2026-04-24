@@ -67,6 +67,27 @@ interface ContentStrategyEntry {
   keywords?: { keyword: string; volume?: number; intent?: string }[];
   notes?: string;
   type?: string;
+  /** Cluster tier — drives the cluster-card colour treatment. */
+  tier?: "pillar" | "mega" | "article";
+  /** Top-level intent classification used for the coloured intent badge. */
+  intent?: "awareness" | "commercial" | "decision";
+  /** One-paragraph writer brief surfaced inside the cluster card. */
+  brief?: string;
+  /** Internal linking recommendations (one short sentence each). */
+  internalLinks?: string[];
+}
+
+interface QuickWinAction {
+  title: string;
+  description: string;
+  priority: "high" | "medium-high" | "medium" | "ongoing" | "long-term";
+}
+
+interface KpiChannel {
+  channel: string;
+  /** Short emoji or symbol shown above the KPI list. */
+  icon?: string;
+  metrics: { name: string; target: string }[];
 }
 
 interface MetaCampaign {
@@ -202,6 +223,10 @@ export interface GrandPlanData {
     linkedInAds?: LinkedInCampaign[];
     competitorIntel?: CompetitorInsight[];
     googleAdsForecast?: GoogleAdsForecast;
+    /** Prioritised list of next-step actions, surfaced under Strategy. */
+    quickWins?: QuickWinAction[];
+    /** KPI/measurement framework grouped by channel. */
+    kpis?: KpiChannel[];
   };
   generationReport?: Record<string, { status: "ok" | "skipped" | "failed"; error?: string }>;
 }
@@ -318,6 +343,8 @@ export async function generateGrandPlan(
   if (isEnabled("emailMarketing")) sectionNames.push("Email Marketing");
   if (isEnabled("linkedInAds")) sectionNames.push("LinkedIn Ads");
   if (isEnabled("competitorIntel") && sources.keywordResearch) sectionNames.push("Competitor Intel");
+  if (isEnabled("quickWins")) sectionNames.push("Quick Wins");
+  if (isEnabled("kpis")) sectionNames.push("KPIs");
 
   let completedCount = 0;
   const total = sectionNames.length;
@@ -371,7 +398,7 @@ export async function generateGrandPlan(
     ]);
 
   // Batch 2: supplementary sections
-  const [emailMarketing, linkedInAds, competitorIntel, audiences] =
+  const [emailMarketing, linkedInAds, competitorIntel, audiences, quickWins, kpis] =
     await Promise.all([
       isEnabled("emailMarketing")
         ? runSection("Email Marketing", "emailMarketing", () => generateEmailMarketing(anthropic, contextSummary, sources))
@@ -384,6 +411,12 @@ export async function generateGrandPlan(
         : Promise.resolve(undefined),
       isEnabled("audiences")
         ? runSection("Audiences", "audiences", () => generateAudiences(anthropic, contextSummary, sources))
+        : Promise.resolve(undefined),
+      isEnabled("quickWins")
+        ? runSection("Quick Wins", "quickWins", () => generateQuickWins(anthropic, contextSummary, sources))
+        : Promise.resolve(undefined),
+      isEnabled("kpis")
+        ? runSection("KPIs", "kpis", () => generateKpis(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
     ]);
 
@@ -447,6 +480,8 @@ export async function generateGrandPlan(
       linkedInAds,
       competitorIntel,
       googleAdsForecast,
+      quickWins,
+      kpis,
     },
     generationReport,
   };
@@ -1338,10 +1373,29 @@ function buildKeywordResearchSection(adGroups: AdGroup[]) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildContentStrategySection(contentData: any) {
+  // Map intent strings from the source spreadsheet to the canonical short codes
+  // used by the renderer's coloured intent badges.
+  const normaliseIntent = (raw: unknown): "awareness" | "commercial" | "decision" | undefined => {
+    if (typeof raw !== "string") return undefined;
+    const v = raw.toLowerCase();
+    if (v.includes("decis") || v.includes("transact") || v.includes("convers")) return "decision";
+    if (v.includes("comm") || v.includes("consider") || v.includes("eval")) return "commercial";
+    if (v.includes("aware") || v.includes("info") || v.includes("educat")) return "awareness";
+    return undefined;
+  };
+  const enrich = (entry: ContentStrategyEntry, tier: ContentStrategyEntry["tier"]): ContentStrategyEntry => ({
+    ...entry,
+    tier,
+    intent: entry.intent ?? normaliseIntent(entry.keywords?.[0]?.intent) ?? (tier === "pillar" ? "decision" : tier === "mega" ? "awareness" : "commercial"),
+    brief: entry.brief ?? entry.notes,
+  });
+  const landingPages = (contentData.landingPages ?? []) as ContentStrategyEntry[];
+  const blogPosts = (contentData.blogPosts ?? []) as ContentStrategyEntry[];
+  const pageOptimisations = (contentData.pageOptimisations ?? []) as ContentStrategyEntry[];
   return {
-    pageOptimisations: contentData.pageOptimisations ?? [],
-    landingPages: contentData.landingPages ?? [],
-    blogPosts: contentData.blogPosts ?? [],
+    pageOptimisations,
+    landingPages: landingPages.map((p, i) => enrich(p, i === 0 ? "pillar" : "mega")),
+    blogPosts: blogPosts.map((p) => enrich(p, "article")),
   };
 }
 
@@ -1598,6 +1652,92 @@ ${context}${buildSharedContextBlocks(sources)}`,
   } catch {
     return [];
   }
+}
+
+// ─── Quick Wins (priority actions) generator ────────────────────────────────
+
+async function generateQuickWins(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<QuickWinAction[]> {
+  const res = await withAnthropicRetry("quickWins", () => anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 1500,
+    messages: [
+      {
+        role: "user",
+        content: `You are a senior strategist at i3media. Distil the plan below into a prioritised action list — what should be done first, then second, then ongoing.
+
+Return ONLY a JSON array (no markdown fences, no commentary) of 8-10 objects:
+{ "title": string, "description": string, "priority": "high" | "medium-high" | "medium" | "ongoing" | "long-term" }
+
+Rules:
+- Title is 4-8 words, action-led ("Launch brand search campaign", "Rebuild homepage hero section").
+- Description is one short sentence (max 22 words) explaining why and the expected outcome.
+- Mix: at least 2 "high" (do first 30 days), 2 "medium-high", 2 "medium", 1-2 "ongoing", 1-2 "long-term".
+- Cover paid media, content/SEO, conversion/landing-page, measurement, organic social where relevant.
+- Each action must be concrete and reference real assets, channels, or audiences from the plan — no platitudes.
+- British English. No AI jargon ("harness", "leverage", "supercharge", "elevate", "craft", "tailored", "seamlessly", "robust", "cutting-edge").
+
+Client: ${sources.clientName}
+Context:
+${context}${buildSharedContextBlocks(sources)}`,
+      },
+    ],
+  }));
+
+  const parsed = safeJsonParse<QuickWinAction[]>(extractText(res), []);
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .filter((a) => a && typeof a.title === "string" && typeof a.description === "string")
+    .map((a) => ({
+      title: String(a.title).trim(),
+      description: String(a.description).trim(),
+      priority: ["high", "medium-high", "medium", "ongoing", "long-term"].includes(a.priority)
+        ? a.priority
+        : "medium",
+    }));
+}
+
+// ─── KPI / measurement framework generator ──────────────────────────────────
+
+async function generateKpis(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<KpiChannel[]> {
+  const res = await withAnthropicRetry("kpis", () => anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 1500,
+    messages: [
+      {
+        role: "user",
+        content: `You are a senior strategist at i3media. Define the measurement framework — the KPIs the team will report on for each active channel.
+
+Return ONLY a JSON array (no markdown fences) of 4-6 objects:
+{ "channel": string, "icon": string, "metrics": [{ "name": string, "target": string }] }
+
+Rules:
+- Channel options: "Google Ads", "Meta Ads", "LinkedIn Ads", "SEO & Content", "Organic Social", "Email Marketing", "Website / CRO". Only include channels actually in the plan.
+- icon is a single emoji (one character) appropriate for the channel — e.g. "🔍", "📱", "💼", "📈", "📨", "🛒".
+- Each channel returns 3-5 metric objects.
+- Metric "name" is a short KPI (e.g. "Cost per lead", "Organic sessions", "Email click rate").
+- Metric "target" is a specific 90-day target — a number, percentage, or directional change ("£35 max", "+25% MoM", "8-12 leads/month"). Numbers should be sensible for the budget and sector implied by the context.
+- Mix acquisition + engagement + conversion KPIs per channel.
+- British English. No AI jargon.
+
+Client: ${sources.clientName}
+Context:
+${context}${buildSharedContextBlocks(sources)}`,
+      },
+    ],
+  }));
+
+  const parsed = safeJsonParse<KpiChannel[]>(extractText(res), []);
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .filter((k) => k && typeof k.channel === "string" && Array.isArray(k.metrics))
+    .map((k) => ({
+      channel: String(k.channel).trim(),
+      icon: typeof k.icon === "string" && k.icon.trim() ? k.icon.trim() : "📊",
+      metrics: k.metrics
+        .filter((m) => m && typeof m.name === "string" && typeof m.target === "string")
+        .map((m) => ({ name: String(m.name).trim(), target: String(m.target).trim() })),
+    }))
+    .filter((k) => k.metrics.length > 0);
 }
 
 // ─── Google Ads Forecast builder (computed, no AI) ──────────────────────────
