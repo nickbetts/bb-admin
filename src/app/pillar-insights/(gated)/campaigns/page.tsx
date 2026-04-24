@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Plus, Filter } from "lucide-react";
 import { PageHeader, MockupBanner, Stat, Section, AIInsight, Progress, BarChart } from "../../_components/PillarUI";
 import { CAMPAIGNS, CHANNEL_BREAKDOWN } from "../../_data/mockData";
@@ -72,12 +73,14 @@ export default function CampaignsPage() {
                 const pct = c.goal ? (c.raised / c.goal) * 100 : 0;
                 const cRoi = c.budget ? c.raised / c.budget : 0;
                 return (
-                  <tr key={c.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <tr key={c.id} style={{ borderBottom: "1px solid var(--border-subtle)", cursor: "pointer" }}>
                     <td style={{ padding: "16px 18px", maxWidth: 280 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{c.name}</div>
-                      <div style={{ fontSize: 11, color: "var(--text-3)" }}>
-                        {c.id} · {c.appealTheme} · {c.startDate} → {c.endDate}
-                      </div>
+                      <Link href={`/pillar-insights/campaigns/${c.id}`} style={{ color: "inherit", textDecoration: "none" }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{c.name}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                          {c.id} · {c.appealTheme} · {c.startDate} → {c.endDate}
+                        </div>
+                      </Link>
                     </td>
                     <td style={{ padding: "16px 18px" }}><span className="badge badge-purple">{c.type}</span></td>
                     <td style={{ padding: "16px 18px", fontSize: 12, color: "var(--text-2)" }}>

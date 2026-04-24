@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Plus } from "lucide-react";
 import { PageHeader, MockupBanner, Stat, Section, AIInsight, Donut } from "../../_components/PillarUI";
 import { SPONSORSHIPS } from "../../_data/mockData";
@@ -63,8 +64,10 @@ export default function SponsorshipsPage() {
             </thead>
             <tbody>
               {SPONSORSHIPS.map((s) => (
-                <tr key={s.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                  <td style={{ padding: "16px 18px", fontSize: 12, fontFamily: "monospace", color: "var(--text-3)" }}>{s.id}</td>
+                <tr key={s.id} style={{ borderBottom: "1px solid var(--border-subtle)", cursor: "pointer" }}>
+                  <td style={{ padding: "16px 18px", fontSize: 12, fontFamily: "monospace", color: "var(--text-3)" }}>
+                    <Link href={`/pillar-insights/sponsorships/${s.id}`} style={{ color: "inherit", textDecoration: "none" }}>{s.id}</Link>
+                  </td>
                   <td style={{ padding: "16px 18px", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{s.sponsor}</td>
                   <td style={{ padding: "16px 18px", fontSize: 13, color: "var(--text-2)" }}>{s.beneficiary}</td>
                   <td style={{ padding: "16px 18px" }}><span className="badge badge-purple">{s.type}</span></td>

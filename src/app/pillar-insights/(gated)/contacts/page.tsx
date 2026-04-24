@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Search, Filter, Download, Users } from "lucide-react";
 import { PageHeader, MockupBanner, Stat, Section, AIInsight, Spark, ScoreRing, Progress, Donut } from "../../_components/PillarUI";
 import { SUPPORTERS, RFM_SEGMENTS, HEADLINE_KPIS } from "../../_data/mockData";
@@ -118,12 +119,14 @@ export default function ContactsPage() {
             </thead>
             <tbody>
               {SUPPORTERS.map((s) => (
-                <tr key={s.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                <tr key={s.id} style={{ borderBottom: "1px solid var(--border-subtle)", cursor: "pointer" }}>
                   <td style={{ padding: "16px 18px" }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{s.name}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-3)" }}>
-                      {s.email} · {s.country} · {s.charges} gifts {s.recurring && "· monthly"}
-                    </div>
+                    <Link href={`/pillar-insights/contacts/${s.id}`} style={{ color: "inherit", textDecoration: "none" }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{s.name}</div>
+                      <div style={{ fontSize: 11, color: "var(--text-3)" }}>
+                        {s.email} · {s.country} · {s.charges} gifts {s.recurring && "· monthly"}
+                      </div>
+                    </Link>
                   </td>
                   <td style={{ padding: "16px 18px" }}>
                     <span className={`badge ${segmentColour(s.segment)}`}>{s.segment}</span>

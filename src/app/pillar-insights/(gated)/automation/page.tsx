@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Workflow, Plus, Play, ShieldCheck } from "lucide-react";
 import { PageHeader, MockupBanner, Stat, Section, AIInsight, Progress } from "../../_components/PillarUI";
 import { JOURNEYS, COMPLIANCE_FLAGS } from "../../_data/mockData";
@@ -54,17 +55,19 @@ export default function AutomationPage() {
             </thead>
             <tbody>
               {JOURNEYS.map((j) => (
-                <tr key={j.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                <tr key={j.id} style={{ borderBottom: "1px solid var(--border-subtle)", cursor: "pointer" }}>
                   <td style={{ padding: "16px 18px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ width: 28, height: 28, borderRadius: "var(--r-sm)", background: "rgb(99 102 241 / 0.10)", color: "#6366f1", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <Workflow className="h-3.5 w-3.5" />
-                      </span>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{j.name}</div>
-                        <div style={{ fontSize: 11, color: "var(--text-3)" }}>{j.id}</div>
+                    <Link href={`/pillar-insights/automation/${j.id}`} style={{ color: "inherit", textDecoration: "none" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ width: 28, height: 28, borderRadius: "var(--r-sm)", background: "rgb(99 102 241 / 0.10)", color: "#6366f1", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Workflow className="h-3.5 w-3.5" />
+                        </span>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{j.name}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-3)" }}>{j.id}</div>
+                        </div>
                       </div>
-                    </div>
+                    </Link>
                   </td>
                   <td style={{ padding: "16px 18px", fontSize: 12, color: "var(--text-2)", maxWidth: 220 }}>{j.trigger}</td>
                   <td style={{ padding: "16px 18px" }}><span className="badge badge-purple">{j.audience}</span></td>

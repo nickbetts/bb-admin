@@ -1,4 +1,5 @@
 import { PillarSidebar } from "../_components/PillarSidebar";
+import { TopBar } from "../_components/PillarUI";
 
 export default function PillarGatedLayout({
   children,
@@ -8,7 +9,10 @@ export default function PillarGatedLayout({
   return (
     <div className="app-shell">
       <PillarSidebar />
-      <main className="app-main">{children}</main>
+      <main className="app-main" style={{ display: "flex", flexDirection: "column" }}>
+        <TopBar alerts={3} />
+        <div style={{ flex: 1 }}>{children}</div>
+      </main>
     </div>
   );
 }

@@ -13,6 +13,11 @@ import {
   Trophy,
   Sparkles,
   HelpCircle,
+  TrendingUp,
+  Inbox,
+  FileText,
+  ShieldCheck,
+  Plug,
 } from "lucide-react";
 
 interface NavItem {
@@ -32,7 +37,15 @@ const primary: NavItem[] = [
 const intelligence: NavItem[] = [
   { href: "/pillar-insights/predictions", label: "Supporter Twin", icon: <Brain className="h-4 w-4" /> },
   { href: "/pillar-insights/automation", label: "Journey Orchestrator", icon: <Workflow className="h-4 w-4" /> },
+  { href: "/pillar-insights/forecasting", label: "Forecasting", icon: <TrendingUp className="h-4 w-4" /> },
   { href: "/pillar-insights/benchmarks", label: "Benchmarks", icon: <Trophy className="h-4 w-4" /> },
+];
+
+const operations: NavItem[] = [
+  { href: "/pillar-insights/communications", label: "Communications", icon: <Inbox className="h-4 w-4" /> },
+  { href: "/pillar-insights/reports", label: "Reports & exports", icon: <FileText className="h-4 w-4" /> },
+  { href: "/pillar-insights/compliance", label: "Compliance & Gift Aid", icon: <ShieldCheck className="h-4 w-4" /> },
+  { href: "/pillar-insights/integrations", label: "Integrations", icon: <Plug className="h-4 w-4" /> },
 ];
 
 export function PillarSidebar() {
@@ -77,6 +90,20 @@ export function PillarSidebar() {
           AI &amp; Automation
         </div>
         {intelligence.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`nav-item${isActive(item.href) ? " active" : ""}`}
+          >
+            <span className="nav-item-icon">{item.icon}</span>
+            <span>{item.label}</span>
+          </Link>
+        ))}
+
+        <div className="sidebar-nav-label" style={{ marginTop: 16 }}>
+          Operations
+        </div>
+        {operations.map((item) => (
           <Link
             key={item.href}
             href={item.href}
