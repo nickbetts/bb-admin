@@ -134,7 +134,7 @@ export default function EmailVerifierPage() {
   const [loadingCredits, setLoadingCredits] = useState(false);
 
   // Quick check
-  const [quickInput, setQuickInput] = useState("");
+  const [quickEmails, setQuickEmails] = useState<string[]>([""]);
   const [quickResults, setQuickResults] = useState<SingleResult[]>([]);
   const [quickRunning, setQuickRunning] = useState(false);
   const [quickProgress, setQuickProgress] = useState({ done: 0, total: 0 });
@@ -195,15 +195,23 @@ export default function EmailVerifierPage() {
   }, [refreshCredits, refreshHistory]);
 
   // ─── Quick check ─────────────────────────────────────────────────────────
+  function setQuickEmail(idx: number, value: string) {
+    setQuickEmails((prev) => prev.map((e, i) => (i === idx ? value : e)));
+  }
+  function addQuickEmail() {
+    setQuickEmails((prev) => [...prev, ""]);
+  }
+  function removeQuickEmail(idx: number) {
+    setQuickEmails((prev) => prev.length === 1 ? [""] : prev.filter((_, i) => i !== idx));
+  }
+
   async function runQuickCheck() {
     setError(null);
-    const lines = quickInput
-      .split(/\r?\n|,|;/)
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean);
-    const unique = Array.from(new Set(lines)).slice(0, 20);
+    const unique = Array.from(
+      new Set(quickEmails.map((s) => s.trim().toLowerCase()).filter(Boolean))
+    ).slice(0, 20);
     if (unique.length === 0) {
-      setError("Paste at least one email address (one per line).");
+      setError("Enter at least one email address.");
       return;
     }
 
@@ -233,6 +241,8 @@ export default function EmailVerifierPage() {
       setQuickRunning(false);
     }
   }
+
+  const quickHasValues = quickEmails.some((e) => e.trim().length > 0);
 
   // ─── Bulk submit + polling ───────────────────────────────────────────────
   async function submitBulk() {
@@ -492,25 +502,59 @@ export default function EmailVerifierPage() {
       {/* ── QUICK ─────────────────────────────────────────────── */}
       {tab === "quick" && (
         <section style={cardStyle}>
-          <label style={labelStyle}>Paste emails (one per line, max 20)</label>
-          <textarea
-            value={quickInput}
-            onChange={(e) => setQuickInput(e.target.value)}
-            placeholder={"alice@example.com\nbob@example.com"}
-            rows={6}
-            style={textareaStyle}
-            disabled={quickRunning}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {quickEmails.map((email, idx) => (
+              <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setQuickEmail(idx, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (idx === quickEmails.length - 1 && quickEmails.length < 20) addQuickEmail();
+                    }
+                  }}
+                  placeholder="email@example.com"
+                  style={{ ...inputStyle, flex: 1 }}
+                  disabled={quickRunning}
+                  autoFocus={idx === quickEmails.length - 1 && idx > 0}
+                />
+                {quickEmails.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeQuickEmail(idx)}
+                    disabled={quickRunning}
+                    title="Remove"
+                    style={iconBtnStyle}
+                  >
+                    <Trash2 style={{ width: 13, height: 13 }} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-            <span style={{ fontSize: 12, color: "var(--text-3)" }}>
-              {quickRunning
-                ? `Verifying ${quickProgress.done + 1} of ${quickProgress.total}…`
-                : "Each address consumes one ZeroBounce credit."}
-            </span>
-            <button type="button" onClick={runQuickCheck} disabled={quickRunning || !quickInput.trim()} style={primaryBtnStyle}>
-              {quickRunning ? <Loader2 style={{ width: 14, height: 14 }} className="spin" /> : <Send style={{ width: 14, height: 14 }} />}
-              {quickRunning ? "Verifying…" : "Verify"}
+            <button
+              type="button"
+              onClick={addQuickEmail}
+              disabled={quickRunning || quickEmails.length >= 20}
+              style={{ ...fileBtnStyle, fontSize: 12 }}
+            >
+              + Add another email
             </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+                {quickRunning
+                  ? `Verifying ${quickProgress.done + 1} of ${quickProgress.total}…`
+                  : "Each address consumes one credit."}
+              </span>
+              <button type="button" onClick={runQuickCheck} disabled={quickRunning || !quickHasValues} style={primaryBtnStyle}>
+                {quickRunning ? <Loader2 style={{ width: 14, height: 14 }} className="spin" /> : <Send style={{ width: 14, height: 14 }} />}
+                {quickRunning ? "Verifying…" : "Verify"}
+              </button>
+            </div>
           </div>
 
           {quickResults.length > 0 && (
