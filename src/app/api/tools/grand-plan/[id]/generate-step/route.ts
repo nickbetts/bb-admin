@@ -4,6 +4,9 @@ import { prisma, withDbRetry } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
 import {
   generateGrandPlan,
+  generateHeroTagline,
+  generateSectionIntros,
+  buildAudienceRationales,
   type GrandPlanSources,
   type GrandPlanData,
   type CampaignFocusPeriod,
@@ -985,6 +988,34 @@ export async function POST(
           data: { status: "failed", generationError: "No plan data found at assemble step. Please regenerate." },
         }).catch(() => {});
         return NextResponse.json({ error: "No plan data to assemble" }, { status: 400 });
+      }
+
+      // ── Polish: hero tagline + section intros + audience rationales ─────
+      // These read the assembled plan and produce the most-read body copy.
+      // All optional: failures fall back to existing renderer defaults.
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const stash = (planData as any)._customerVoice as CustomerVoiceData | undefined;
+        const audienceNames = (planData.sections.audiences ?? [])
+          .map((a) => a.name).filter((n): n is string => typeof n === "string" && n.length > 0);
+        const rationales = buildAudienceRationales(audienceNames, stash);
+        if (Object.keys(rationales).length > 0) {
+          planData.audienceRationales = rationales;
+        }
+      } catch (polishErr) {
+        console.warn("audienceRationales polish skipped:", polishErr);
+      }
+
+      try {
+        const anthropic = await getAnthropicClient();
+        const [tagline, intros] = await Promise.all([
+          generateHeroTagline(anthropic, planData).catch((e) => { console.warn("heroTagline failed:", e); return ""; }),
+          generateSectionIntros(anthropic, planData).catch((e) => { console.warn("sectionIntros failed:", e); return {}; }),
+        ]);
+        if (tagline) planData.heroTagline = tagline;
+        if (Object.keys(intros).length > 0) planData.sectionIntros = intros;
+      } catch (polishErr) {
+        console.warn("hero/intros polish skipped:", polishErr);
       }
 
       // Strip transient working state before final render/persistence.

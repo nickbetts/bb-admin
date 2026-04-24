@@ -61,20 +61,27 @@ function renderDataSourcesPanel(sources: { label: string; detail?: string }[]): 
 
 /**
  * Extract a clean one-paragraph teaser from executive summary HTML.
- * Strips heading tags, HTML markup, code-fence artefacts, and truncates
- * to ~220 chars so the hero section always looks intentional.
+ * Used as a FALLBACK when planData.heroTagline is missing. Cuts at sentence
+ * boundaries up to ~340 chars so the hero never visibly chops mid-clause.
  */
 function heroSubtext(raw: string): string {
   // Strip any remaining code-fence prefix (e.g. "html\n") that slipped past extractText
   const nofence = raw.replace(/^(?:html|markdown|md|json)\s+/i, "");
-  // Remove heading tags and their content — we want body copy only
+  // Remove heading tags and their content, we want body copy only
   const noHeadings = nofence.replace(/<h[1-6][^>]*>[\s\S]*?<\/h[1-6]>/gi, " ");
+  // Drop callout paragraphs (Why this matters / Outcome / Risk) so the hero
+  // gets the narrative open paragraph rather than a bracketed risk note.
+  const noCallouts = noHeadings.replace(/<p[^>]*>\s*<strong>\s*(Why\s+(?:this\s+|it\s+)?matters|Outcome|Risk|Opportunity|Headline)\s*:?\s*<\/strong>[\s\S]*?<\/p>/gi, " ");
   // Strip all remaining HTML tags
-  const text = noHeadings.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  const text = noCallouts.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
   if (!text) return "";
-  if (text.length <= 220) return text;
-  const sub = text.slice(0, 220);
-  return (sub.slice(0, sub.lastIndexOf(" ")) || sub) + "…";
+  if (text.length <= 340) return text;
+  // Prefer the last full sentence inside the budget over a mid-word slice.
+  const window = text.slice(0, 340);
+  const lastStop = Math.max(window.lastIndexOf(". "), window.lastIndexOf("! "), window.lastIndexOf("? "));
+  if (lastStop > 200) return window.slice(0, lastStop + 1);
+  const lastSpace = window.lastIndexOf(" ");
+  return (lastSpace > 0 ? window.slice(0, lastSpace) : window) + "…";
 }
 
 export function renderGrandPlanHtml(plan: GrandPlanData): string {
@@ -215,7 +222,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
     <div class="hero-label">${plan.purpose === "pitch" ? "Pitch Deck" : plan.purpose === "onboarding" ? "Onboarding Plan" : "Strategy Overview"} &nbsp;&middot;&nbsp; ${new Date(plan.generatedAt).toLocaleDateString("en-GB", { month: "long", year: "numeric" })} &nbsp;&middot;&nbsp; i3media</div>
     <h1>${esc(plan.title)}</h1>
     <div class="hero-divider"></div>
-    <p class="hero-sub">${s.executiveSummary ? esc(heroSubtext(s.executiveSummary)) : `A comprehensive digital marketing strategy for ${esc(plan.clientName)}.`}</p>
+    <p class="hero-sub">${plan.heroTagline ? esc(plan.heroTagline) : s.executiveSummary ? esc(heroSubtext(s.executiveSummary)) : `A comprehensive digital marketing strategy for ${esc(plan.clientName)}.`}</p>
     <div class="hero-meta">
       <div class="hero-meta-item"><strong>Client</strong><span>${esc(plan.clientName)}</span></div>
       <div class="hero-meta-item"><strong>Agency</strong><span>i3media</span></div>
@@ -233,7 +240,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
 </div>
 
 <!-- Main Content -->
-${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods, plan.generationReport, plan.grounding, plan.dataSources, plan.clientWebsite)}
+${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods, plan.generationReport, plan.grounding, plan.dataSources, plan.clientWebsite, plan.sectionIntros, plan.audienceRationales)}
 
 <!-- Closing CTA -->
 ${renderCtaClose(plan.clientName)}
@@ -262,7 +269,7 @@ ${renderCtaClose(plan.clientName)}
 // ─── Chapter layout builder ─────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildChapteredSections(s: any, clientName: string, brief?: string, campaignPeriods?: { label: string; startMonth: number; endMonth: number; description?: string }[], generationReport?: Record<string, { status: string; error?: string }>, grounding?: GrandPlanData["grounding"], dataSources?: GrandPlanData["dataSources"], clientWebsite?: string): string {
+function buildChapteredSections(s: any, clientName: string, brief?: string, campaignPeriods?: { label: string; startMonth: number; endMonth: number; description?: string }[], generationReport?: Record<string, { status: string; error?: string }>, grounding?: GrandPlanData["grounding"], dataSources?: GrandPlanData["dataSources"], clientWebsite?: string, sectionIntros?: GrandPlanData["sectionIntros"], audienceRationales?: GrandPlanData["audienceRationales"]): string {
   // Stash the LP report on the section data so the Creative-chapter logic
   // below can decide whether to render the placeholder card. Avoids threading
   // generationReport through every helper.
@@ -307,21 +314,21 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
 
   if (hasPaidSearch) {
     parts.push(ch("Paid Search", "Google Ads campaign structure, ad groups, keyword targeting, and performance forecasts."));
-    if (s.googleAdsCampaigns) parts.push(renderGoogleAdsCampaigns(s.googleAdsCampaigns));
+    if (s.googleAdsCampaigns) parts.push(renderGoogleAdsCampaigns(s.googleAdsCampaigns, clientWebsite, sectionIntros?.googleAdsCampaigns));
     if (s.googleAdsForecast) parts.push(renderGoogleAdsForecast(s.googleAdsForecast));
   }
 
   if (hasPaidSocial) {
     parts.push(ch("Paid Social", "Facebook, Instagram, and LinkedIn campaign structures with audience targeting and ad creative."));
-    if (s.metaCampaigns?.length) parts.push(renderMetaCampaigns(s.metaCampaigns, clientWebsite));
+    if (s.metaCampaigns?.length) parts.push(renderMetaCampaigns(s.metaCampaigns, clientWebsite, sectionIntros?.metaCampaigns));
     if (s.linkedInAds?.length) parts.push(withGroundingBadge(renderLinkedInAds(s.linkedInAds), grounding?.linkedInAds));
   }
 
   if (hasContent) {
     parts.push(ch("Content & SEO", "Content strategy, publishing calendar, organic social, and example content assets."));
-    if (s.contentStrategy) parts.push(renderContentStrategy(s.contentStrategy));
+    if (s.contentStrategy) parts.push(renderContentStrategy(s.contentStrategy, sectionIntros?.contentStrategy, audienceRationales));
     if (s.contentCalendar?.length) parts.push(renderContentCalendar(s.contentCalendar));
-    if (s.organicSocial) parts.push(renderOrganicSocial(s.organicSocial));
+    if (s.organicSocial) parts.push(renderOrganicSocial(s.organicSocial, sectionIntros?.organicSocial));
     if (s.exampleArticles?.length) parts.push(renderExampleArticles(s.exampleArticles));
   }
 
@@ -630,7 +637,12 @@ function renderKpis(channels: { channel: string; icon?: string; metrics: { name:
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderGoogleAdsCampaigns(data: any): string {
+function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: string): string {
+  const adDomain = (clientWebsite ?? "")
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/\/.*$/, "")
+    .trim() || "yourbrand.com";
   const overviewGrid = Object.entries((data.overview ?? {}) as Record<string, string>)
     .map(([k, v]) => `<div class="ov-item"><span class="ov-label">${esc(k)}</span><span class="ov-value">${esc(v)}</span></div>`)
     .join("\n");
@@ -682,7 +694,7 @@ function renderGoogleAdsCampaigns(data: any): string {
             <div class="ad-card-header"><span class="ad-badge google">Google</span><span style="font-size:11px;color:var(--mid)">${esc(g.name) || `Ad Group ${i + 1}`}</span></div>
             <div class="ad-card-body">
               <div class="gad-sponsor-row"><div class="gad-dot"></div><span class="gad-sponsored-tag">Sponsored</span></div>
-              <div class="gad-url-text">https://example.com</div>
+              <div class="gad-url-text">https://${esc(adDomain)}</div>
               <div class="gad-headline">${esc(h1)}${h2 ? ` <span class="gad-headline-sep">|</span> ${esc(h2)}` : ""}${h3 ? ` <span class="gad-headline-sep">|</span> ${esc(h3)}` : ""}</div>
               <div class="gad-desc">${esc(desc1)}</div>
               ${previewSitelinks.length ? `<div class="gad-sitelinks">${previewSitelinks.map((sl: string) => `<span class="gad-sitelink">${esc(sl)}</span>`).join("")}</div>` : ""}
@@ -711,11 +723,12 @@ function renderGoogleAdsCampaigns(data: any): string {
       })() : "";
 
       return `
-      <div class="ag-section">
+      <div class="ag-section open">
         <div class="ag-header" onclick="this.parentElement.classList.toggle('open')">
           <span class="ag-num">${i + 1}</span>
           <span class="ag-name">${esc(g.name) || `Ad Group ${i + 1}`}</span>
           <span class="ag-count">${g.keywords.length} keywords</span>
+          ${g.adCopy ? `<span class="ag-count ag-adcount">${g.adCopy.headlines.length} headlines, ${g.adCopy.descriptions.length} descriptions, ad preview</span>` : ""}
           <span class="ag-chevron">+</span>
         </div>
         <div class="ag-body">
@@ -736,6 +749,7 @@ function renderGoogleAdsCampaigns(data: any): string {
       <div class="section-inner">
         <div class="section-kicker blue">Paid Search</div>
         <h2>Google Ads Campaigns</h2>
+        ${intro ? `<p class="section-intro section-intro-ai">${esc(intro)}</p>` : ""}
         <div class="campaign-hero">
           <h3>${esc(data.campaignName)}</h3>
         </div>
@@ -751,7 +765,7 @@ function renderGoogleAdsCampaigns(data: any): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderMetaCampaigns(campaigns: any[], clientWebsite?: string): string {
+function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: string): string {
   const adDomain = (clientWebsite ?? "")
     .replace(/^https?:\/\//, "")
     .replace(/^www\./, "")
@@ -822,7 +836,7 @@ function renderMetaCampaigns(campaigns: any[], clientWebsite?: string): string {
       <div class="section-inner">
         <div class="section-kicker">Paid Social</div>
         <h2>Meta Campaigns</h2>
-      <p class="section-intro">Facebook and Instagram campaign structures with audience targeting, ad creative, and caption banks.</p>
+      <p class="section-intro">${intro ? esc(intro) : "Facebook and Instagram campaign structures with audience targeting, ad creative, and caption banks."}</p>
       ${campaignsHtml}
       </div>
     </section>`;
@@ -865,7 +879,7 @@ function renderKeywordResearch(data: any): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderContentStrategy(data: any): string {
+function renderContentStrategy(data: any, intro?: string, audienceRationales?: Record<string, string>): string {
   type Entry = {
     url?: string; title?: string;
     keywords?: { keyword: string; volume?: number }[];
@@ -988,13 +1002,17 @@ function renderContentStrategy(data: any): string {
     <h3 style="margin-top:2.5rem">Audience Plays</h3>
     <p class="section-intro" style="margin-bottom:1rem">Which content assets serve which audience. Use this to spot gaps before sign-off.</p>
     <div class="audience-plays">
-      ${[...audienceMap.entries()].map(([audName, items]) => `
+      ${[...audienceMap.entries()].map(([audName, items]) => {
+        const why = audienceRationales?.[audName];
+        return `
       <div class="audience-play">
         <div class="audience-play-name">${esc(audName)} <span class="audience-play-count">${items.length} asset${items.length === 1 ? "" : "s"}</span></div>
+        ${why ? `<p class="audience-play-why">${esc(why)}</p>` : ""}
         <ul class="audience-play-list">
           ${items.slice(0, 8).map((it) => `<li><span class="audience-play-kind">${esc(it.kind)}</span> ${esc(it.title)}</li>`).join("")}
         </ul>
-      </div>`).join("\n")}
+      </div>`;
+      }).join("\n")}
     </div>` : "";
 
   return `
@@ -1002,7 +1020,7 @@ function renderContentStrategy(data: any): string {
       <div class="section-inner">
         <div class="section-kicker">Content & SEO</div>
         <h2>Content & SEO Strategy</h2>
-        <p class="section-intro">A topic-cluster approach: one anchoring pillar page, supporting deep-dive guides, and themed articles that capture every stage of intent.</p>
+        <p class="section-intro">${intro ? esc(intro) : "A topic-cluster approach: one anchoring pillar page, supporting deep-dive guides, and themed articles that capture every stage of intent."}</p>
       ${clusterBlock}
       ${pageOptsHtml}
       ${audiencePlaysHtml}
@@ -1049,7 +1067,7 @@ function renderContentCalendar(months: any[]): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderOrganicSocial(data: any): string {
+function renderOrganicSocial(data: any, intro?: string): string {
   const pillarsHtml = (data.pillars ?? [])
     .map((p: { name: string; description: string; examplePosts: string[] }) => `
     <div class="pillar-card">
@@ -1080,7 +1098,7 @@ function renderOrganicSocial(data: any): string {
       <div class="section-inner">
         <div class="section-kicker">Social Media</div>
         <h2>Organic Social — Meta</h2>
-      <p class="section-intro">Content pillars, posting frequency, and content type mix for Instagram and Facebook.</p>
+      <p class="section-intro">${intro ? esc(intro) : "Content pillars, posting frequency, and content type mix for Instagram and Facebook."}</p>
       <div class="social-freq"><strong>Posting frequency:</strong> ${esc(data.postingFrequency ?? "")}</div>
       <h3>Content Mix</h3>
       <div class="mix-chart">${mixHtml}</div>
@@ -1713,6 +1731,10 @@ a{color:var(--accent);text-decoration:none}
 .audience-plays{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
 .audience-play{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px}
 .audience-play-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.audience-play-why{font-size:12.5px;color:var(--text-light);font-style:italic;line-height:1.5;margin:0 0 10px;padding-left:10px;border-left:2px solid var(--accent)}
+.section-intro-ai{position:relative;padding-left:14px;border-left:3px solid var(--accent);background:linear-gradient(90deg,rgba(99,102,241,0.06),transparent);padding:10px 14px;border-radius:0 6px 6px 0}
+.section.dark .section-intro-ai{background:linear-gradient(90deg,rgba(99,102,241,0.12),transparent)}
+.ag-adcount{background:rgba(99,102,241,0.12);color:#6366f1;border-radius:999px;padding:2px 10px;font-weight:600}
 .audience-play-count{font-size:11px;font-weight:500;color:var(--text-light);background:var(--bg);padding:2px 8px;border-radius:999px}
 .audience-play-list{list-style:none;padding:0;margin:0;font-size:12.5px;color:var(--text-light);line-height:1.6}
 .audience-play-list li{padding:3px 0;border-top:1px solid var(--border)}

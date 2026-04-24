@@ -272,6 +272,20 @@ export interface GrandPlanData {
   generatedAt: string;
   brief?: string;
   campaignPeriods?: CampaignFocusPeriod[];
+  /** Purpose-written 1-2 sentence proposition for the cover hero — beats the
+   * sliced exec summary fallback. Generated in the assemble step. */
+  heroTagline?: string;
+  /** Client-aware section intros. Renderer falls back to hardcoded copy when
+   * the matching key is missing. Generated in the assemble step. */
+  sectionIntros?: {
+    contentStrategy?: string;
+    metaCampaigns?: string;
+    googleAdsCampaigns?: string;
+    organicSocial?: string;
+  };
+  /** Audience name → 1-line "why this audience matters" rationale, built from
+   * customerVoice pain points at assemble time. No AI call. */
+  audienceRationales?: Record<string, string>;
   sections: {
     audiences?: AudienceItem[];
     executiveSummary?: string;
@@ -1584,6 +1598,145 @@ export const STYLE_RULES = `STYLE RULES (apply to every output):
 - Speak as the agency planning the work for the client. Avoid first-person plural waffle ("we will work tirelessly to...").
 - No marketing clichés. No exclamation marks unless quoting an ad headline.
 `;
+
+// ─── Hero & section intro generators (run in assemble step) ─────────────────
+//
+// These are post-section "polish" generators that read the assembled plan and
+// produce the most-read body copy in the document: the cover hero subtitle and
+// the four highest-impact section intros. Both are optional; the renderer
+// falls back to safe defaults when either is missing.
+
+/**
+ * Build a 1-2 sentence proposition for the cover hero.
+ * Uses Sonnet (most-read 30 words in the document — worth the model spend).
+ */
+export async function generateHeroTagline(
+  anthropic: Anthropic,
+  data: GrandPlanData,
+): Promise<string> {
+  const audienceLines = (data.sections.audiences ?? [])
+    .slice(0, 4)
+    .map((a) => `- ${a.name}${a.description ? `: ${a.description}` : ""}`)
+    .join("\n");
+  const briefSnippet = (data.brief ?? "").slice(0, 800);
+  const execSnippet = (data.sections.executiveSummary ?? "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 600);
+
+  const res = await withAnthropicRetry("heroTagline", () => anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 220,
+    messages: [
+      {
+        role: "user",
+        content: `${STYLE_RULES}
+
+You are writing the cover-page subtitle for ${data.clientName}'s ${data.purpose === "pitch" ? "pitch deck" : data.purpose === "onboarding" ? "onboarding plan" : "strategy document"}.
+
+Write ONE proposition, 2 sentences max, 240 characters max total. It must:
+- Name the audience or sector being served
+- State the commercial outcome we are chasing (growth, market share, lifecycle revenue, etc.)
+- Sound like a senior strategist briefing the room, not marketing copy
+
+Return PLAIN TEXT only. No quotes around the answer. No HTML. No "Tagline:" prefix.
+
+Client: ${data.clientName}
+${audienceLines ? `Audiences:\n${audienceLines}\n` : ""}${briefSnippet ? `Brief: ${briefSnippet}\n` : ""}${execSnippet ? `Executive summary excerpt: ${execSnippet}` : ""}`,
+      },
+    ],
+  }));
+  return cleanEmDashes(extractText(res).trim().replace(/^["'`]|["'`]$/g, ""));
+}
+
+/**
+ * Generate client-aware intro paragraphs for the four highest-impact sections.
+ * One Haiku call returning a JSON object so we batch four intros for the price
+ * of one round-trip.
+ */
+export async function generateSectionIntros(
+  anthropic: Anthropic,
+  data: GrandPlanData,
+): Promise<NonNullable<GrandPlanData["sectionIntros"]>> {
+  const want = {
+    contentStrategy: !!data.sections.contentStrategy,
+    metaCampaigns: !!data.sections.metaCampaigns?.length,
+    googleAdsCampaigns: !!data.sections.googleAdsCampaigns,
+    organicSocial: !!data.sections.organicSocial,
+  };
+  const wanted = Object.entries(want).filter(([, v]) => v).map(([k]) => k);
+  if (wanted.length === 0) return {};
+
+  const audienceLines = (data.sections.audiences ?? [])
+    .slice(0, 4)
+    .map((a) => `- ${a.name}${a.description ? `: ${a.description}` : ""}`)
+    .join("\n");
+
+  const res = await withAnthropicRetry("sectionIntros", () => anthropic.messages.create({
+    model: MODEL_LIGHT,
+    max_tokens: 800,
+    messages: [
+      {
+        role: "user",
+        content: `${STYLE_RULES}
+
+You are writing introduction paragraphs for ${data.clientName}'s strategy document. Each intro is the first thing the reader sees under the section heading.
+
+Return ONLY a JSON object with the keys listed below. Each value is ONE paragraph, 2-3 sentences, 320 characters max. No HTML. No markdown. No leading "In this section…" formula. Speak directly about what we are doing for this client and why it works for the named audiences.
+
+Required keys: ${wanted.map((k) => `"${k}"`).join(", ")}.
+
+Section briefs:
+${want.contentStrategy ? '- contentStrategy: "Topic-cluster SEO content plan: pillar page, mega guides, supporting articles, on-page optimisations."\n' : ""}${want.metaCampaigns ? '- metaCampaigns: "Audience-led Meta (Facebook + Instagram) paid social plan, with creative angles and pillar topics."\n' : ""}${want.googleAdsCampaigns ? '- googleAdsCampaigns: "Google Ads search campaigns with ad groups, keywords, RSA copy and a forecast."\n' : ""}${want.organicSocial ? '- organicSocial: "Organic Meta plan: pillars, content mix, posting cadence and hashtag strategy."\n' : ""}
+
+Client: ${data.clientName}
+${audienceLines ? `Audiences:\n${audienceLines}` : ""}`,
+      },
+    ],
+  }));
+  const raw = extractText(res);
+  const parsed = safeJsonParse<Record<string, string>>(raw, {});
+  const out: NonNullable<GrandPlanData["sectionIntros"]> = {};
+  for (const k of wanted) {
+    const v = parsed[k];
+    if (typeof v === "string" && v.trim().length > 0) {
+      out[k as keyof typeof out] = cleanEmDashes(v.trim());
+    }
+  }
+  return out;
+}
+
+/**
+ * Build a per-audience "why this audience matters" map from customerVoice
+ * pain points already harvested by the prepare-customer-voice step. Pure
+ * function: no AI call. Each audience name is matched against pain-point
+ * strings; the first match wins. Audiences without a match are omitted.
+ */
+export function buildAudienceRationales(
+  audienceNames: string[],
+  customerVoice?: CustomerVoiceData,
+): Record<string, string> {
+  if (!customerVoice?.painPoints?.length || audienceNames.length === 0) return {};
+  const out: Record<string, string> = {};
+  for (const name of audienceNames) {
+    const key = name.trim();
+    if (!key) continue;
+    // Take the first 1-2 keywords from the audience name and look for any pain
+    // point that mentions them. Keeps matches loose (e.g. "Practice Managers"
+    // matches a pain point about "managers" or "practices").
+    const tokens = key.toLowerCase().split(/\s+/).filter((t) => t.length > 3).slice(0, 3);
+    const matched = customerVoice.painPoints.find((p) => {
+      const lower = p.toLowerCase();
+      return tokens.some((t) => lower.includes(t));
+    }) ?? customerVoice.painPoints[0]; // fall back to top pain so every audience gets context
+    if (matched) {
+      const summary = matched.split(/(?<=[.!?])\s/)[0]?.trim();
+      if (summary) out[key] = summary;
+    }
+  }
+  return out;
+}
 
 // ─── Structured data builders (no AI needed) ────────────────────────────────
 
