@@ -233,7 +233,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
 </div>
 
 <!-- Main Content -->
-${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods, plan.generationReport, plan.grounding, plan.dataSources)}
+${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods, plan.generationReport, plan.grounding, plan.dataSources, plan.clientWebsite)}
 
 <!-- Closing CTA -->
 ${renderCtaClose(plan.clientName)}
@@ -262,7 +262,7 @@ ${renderCtaClose(plan.clientName)}
 // ─── Chapter layout builder ─────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildChapteredSections(s: any, clientName: string, brief?: string, campaignPeriods?: { label: string; startMonth: number; endMonth: number; description?: string }[], generationReport?: Record<string, { status: string; error?: string }>, grounding?: GrandPlanData["grounding"], dataSources?: GrandPlanData["dataSources"]): string {
+function buildChapteredSections(s: any, clientName: string, brief?: string, campaignPeriods?: { label: string; startMonth: number; endMonth: number; description?: string }[], generationReport?: Record<string, { status: string; error?: string }>, grounding?: GrandPlanData["grounding"], dataSources?: GrandPlanData["dataSources"], clientWebsite?: string): string {
   // Stash the LP report on the section data so the Creative-chapter logic
   // below can decide whether to render the placeholder card. Avoids threading
   // generationReport through every helper.
@@ -313,7 +313,7 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
 
   if (hasPaidSocial) {
     parts.push(ch("Paid Social", "Facebook, Instagram, and LinkedIn campaign structures with audience targeting and ad creative."));
-    if (s.metaCampaigns?.length) parts.push(renderMetaCampaigns(s.metaCampaigns));
+    if (s.metaCampaigns?.length) parts.push(renderMetaCampaigns(s.metaCampaigns, clientWebsite));
     if (s.linkedInAds?.length) parts.push(withGroundingBadge(renderLinkedInAds(s.linkedInAds), grounding?.linkedInAds));
   }
 
@@ -690,7 +690,12 @@ function renderGoogleAdsCampaigns(data: any): string {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderMetaCampaigns(campaigns: any[]): string {
+function renderMetaCampaigns(campaigns: any[], clientWebsite?: string): string {
+  const adDomain = (clientWebsite ?? "")
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/\/.*$/, "")
+    .trim() || "yourbrand.com";
   const campaignsHtml = campaigns
     .map((c, idx) => {
       const audiences = [
@@ -713,7 +718,7 @@ function renderMetaCampaigns(campaigns: any[]): string {
               </div>
               <p class="mad-caption">${esc(cr.primaryText)}</p>
               <div class="mad-cta-block">
-                <div><div class="mad-cta-block-url">i3media.co.uk</div><div class="mad-cta-block-title">${esc(cr.headline)}</div></div>
+                <div><div class="mad-cta-block-url">${esc(adDomain)}</div><div class="mad-cta-block-title">${esc(cr.headline)}</div></div>
                 <div class="mad-cta-btn">${esc(cr.cta)}</div>
               </div>
             </div>
@@ -879,12 +884,18 @@ function renderContentStrategy(data: any): string {
     <h3 style="margin-top:2rem">On-Page Optimisations</h3>
     <p class="section-intro" style="margin-bottom:1rem">Existing pages that need a refresh — title tags, meta descriptions, content depth, internal links, and schema.</p>
     <div class="content-cards">
-      ${pageOpts.map((p) => `
+      ${pageOpts.map((p) => {
+        const url = p.url || "";
+        return `
       <div class="content-card">
-        <p class="content-url">${esc(p.url || "")}</p>
+        <div class="content-url-row">
+          <a class="content-url" href="${esc(url)}" target="_blank" rel="noopener" title="${esc(url)}">${esc(url)}</a>
+          ${url ? `<button type="button" class="content-url-copy" data-copy="${esc(url)}" aria-label="Copy URL">Copy</button>` : ""}
+        </div>
         ${p.keywords?.length ? `<div class="content-kws">${p.keywords.slice(0, 5).map((k) => `<span class="kw-pill">${esc(k.keyword)}</span>`).join(" ")}</div>` : ""}
         ${p.notes ? `<p class="content-notes">${esc(p.notes)}</p>` : ""}
-      </div>`).join("\n")}
+      </div>`;
+      }).join("\n")}
     </div>` : "";
 
   return `
@@ -1532,7 +1543,11 @@ a{color:var(--accent);text-decoration:none}
 /* Content cards */
 .content-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:2rem}
 .content-card{background:var(--white);padding:1.25rem;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,.03)}
-.content-url{font-size:12px;color:var(--text-light);font-family:'SF Mono','Fira Code','Courier New',monospace;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.content-url-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px}
+.content-url{font-size:12px;color:var(--text-light);font-family:'SF Mono','Fira Code','Courier New',monospace;word-break:break-all;text-decoration:none;flex:1;line-height:1.5}
+.content-url:hover{color:var(--accent);text-decoration:underline}
+.content-url-copy{font-size:10px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;background:transparent;border:1px solid var(--border);color:var(--text-light);padding:3px 8px;border-radius:4px;cursor:pointer;flex-shrink:0;white-space:nowrap}
+.content-url-copy:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
 .content-title{font-size:14px;font-weight:600;color:var(--heading);margin-bottom:6px}
 .content-kws{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .content-notes{font-size:13px;color:var(--text-light);margin-top:6px}
@@ -1564,7 +1579,7 @@ a{color:var(--accent);text-decoration:none}
 .cc-intent.intent-aw,.cc-intent.intent-awareness{background:#dbeafe;color:#1e40af}
 .cc-intent.intent-cm,.cc-intent.intent-commercial{background:#fef3c7;color:#92400e}
 .cc-intent.intent-dc,.cc-intent.intent-decision{background:#d1fae5;color:#065f46}
-.cc-brief{font-size:13px;color:var(--text);line-height:1.6;margin:0}
+.cc-brief{font-size:13px;color:var(--text);line-height:1.55;margin:0;padding:10px 12px;background:#f8fafc;border-left:3px solid var(--accent);border-radius:4px}
 /* Internal linking recommendations */
 .il-section{margin-top:1.75rem}
 .il-section h3{font-size:.95rem;font-weight:700;color:var(--heading);margin:0 0 .75rem;letter-spacing:-.005em}
@@ -2083,6 +2098,19 @@ const JS = `
     else{document.getElementById('auth-error').textContent='Incorrect password';}
   });
 })();
+
+// Copy URL buttons (on-page optimisations)
+document.addEventListener('click', function(e){
+  var t = e.target;
+  if(!t || !t.classList || !t.classList.contains('content-url-copy')) return;
+  var url = t.getAttribute('data-copy') || '';
+  if(!url) return;
+  navigator.clipboard.writeText(url).then(function(){
+    var orig = t.textContent;
+    t.textContent = 'Copied';
+    setTimeout(function(){ t.textContent = orig; }, 1500);
+  });
+});
 
 // Copy ad group keywords
 function copyAgKeywords(btn){

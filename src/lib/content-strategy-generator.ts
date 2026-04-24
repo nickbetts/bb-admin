@@ -1109,6 +1109,11 @@ SCHEMA TYPE GUIDANCE (use for suggestedSchema field):
 - Local business: "LocalBusiness"
 When a page suits multiple types, pick the most specific one. If genuinely uncertain, use "WebPage".
 
+NOTES STYLE (the "notes" field on every page/post):
+- 1-2 sentences. Action-led. Describe what changes on the page or what the article will deliver.
+- Do NOT start with "We will". Do NOT use first-person plural. Write directives: "Rewrite H1...", "Add comparison module...", "Open with...".
+- Concrete and specific. No filler. British English. No em-dashes.
+
 INTERNAL LINKS GUIDANCE:
 - For each blogPost, provide 2–4 internalLinks: existing pages this article should link to, with descriptive anchor text. Prioritise commercial/landing pages to drive the funnel.
 - For each landingPage, provide 2–3 internalLinks: related existing content (blog posts, FAQs) that this page should reference.
@@ -1694,7 +1699,7 @@ export async function generateContentStrategySection(
       "intent": "commercial",
       "suggestedSchema": "Service",
       "keywords": [{"keyword": "...", "volume": 0, "type": "primary"}],
-      "notes": "We will...",
+      "notes": "Rewrite H1 around primary keyword. Add comparison table. Strengthen CTA above the fold.",
       "impact": 4,
       "effort": 2,
       "contextLinks": [{"url": "domain.com/page/", "anchorText": "..."}]
@@ -1709,7 +1714,7 @@ export async function generateContentStrategySection(
       "intent": "transactional",
       "suggestedSchema": "Service",
       "keywords": [{"keyword": "...", "volume": 0, "type": "primary"}],
-      "notes": "We will...",
+      "notes": "Hero focused on the audience pain point. Three proof modules. Sticky enquiry CTA.",
       "impact": 4,
       "effort": 3,
       "internalLinks": [{"url": "domain.com/page/", "anchorText": "..."}]
@@ -1727,7 +1732,7 @@ export async function generateContentStrategySection(
       "intent": "informational",
       "suggestedSchema": "Article",
       "keywords": [{"keyword": "...", "volume": 0, "type": "primary"}],
-      "notes": "We will...",
+      "notes": "Answer the search intent in the first 80 words. Include comparison data. Link to the related service page.",
       "cluster": "...",
       "impact": 3,
       "effort": 2,

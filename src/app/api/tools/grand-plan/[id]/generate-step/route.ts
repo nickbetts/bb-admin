@@ -139,6 +139,7 @@ export async function POST(
       const initialData: GrandPlanData = {
         title: `${clientName} — Go-To-Market Plan`,
         clientName,
+        clientWebsite: plan.client?.website ?? website ?? undefined,
         purpose: plan.purpose,
         generatedAt: new Date().toISOString(),
         sections: {},

@@ -259,6 +259,7 @@ export interface DataAvailability {
 export interface GrandPlanData {
   title: string;
   clientName: string;
+  clientWebsite?: string;
   purpose: string;
   generatedAt: string;
   brief?: string;
@@ -1492,8 +1493,38 @@ function extractText(response: Anthropic.Message): string {
   const block = response.content.find((b) => b.type === "text");
   const raw = block && block.type === "text" ? block.text.trim() : "";
   // Strip markdown fencing if present (any language: json, html, markdown, etc.)
-  return raw.replace(/^```(?:\w+)?\s*/i, "").replace(/\s*```$/i, "");
+  const stripped = raw.replace(/^```(?:\w+)?\s*/i, "").replace(/\s*```$/i, "");
+  return cleanEmDashes(stripped);
 }
+
+/**
+ * Post-processes AI output to remove em-dashes (and en-dashes used as em-dashes).
+ * Claude follows the "no em-dash" prompt rule only ~70% of the time, so we enforce it here.
+ * Preserves number ranges like "10–20" or "9-5" by only replacing dashes surrounded by spaces
+ * or where a sentence pause is clearly intended.
+ */
+export function cleanEmDashes(text: string): string {
+  if (!text) return text;
+  return text
+    // " — " or " – " (em/en-dash with surrounding spaces) → ", "
+    .replace(/\s+[—–]\s+/g, ", ")
+    // Em-dash with no spaces between words (e.g. "fast—reliable") → ", "
+    .replace(/([a-zA-Z]),?\s*[—]\s*([a-zA-Z])/g, "$1, $2")
+    // Stray em-dashes left over → ", "
+    .replace(/—/g, ", ");
+}
+
+/**
+ * Universal style rules prepended to every Grand Plan AI prompt.
+ * Centralises tone, voice, and formatting standards so we don't repeat them everywhere.
+ */
+export const STYLE_RULES = `STYLE RULES (apply to every output):
+- British English spelling (optimise, organise, colour, programme, behaviour).
+- Plain-text dashes only: use commas, full stops, or "and". Never use em-dashes (—) or en-dashes (–) as punctuation.
+- Active voice. Concrete numbers and verbs. No filler phrases ("in today's fast-paced world", "leverage synergies").
+- Speak as the agency planning the work for the client. Avoid first-person plural waffle ("we will work tirelessly to...").
+- No marketing clichés. No exclamation marks unless quoting an ad headline.
+`;
 
 // ─── Structured data builders (no AI needed) ────────────────────────────────
 
