@@ -872,6 +872,10 @@ Rules:
 - Open by naming the audiences this plan is built for and the commercial outcome we are chasing.
 - ${sources.purpose === "pitch" ? "This is a pitch — be persuasive but honest. Show you understand their business." : "This is an onboarding plan — be operational and clear about what happens next."}
 - Return HTML content (paragraphs, headings h3/h4, bullet lists). No wrapper div or section tags.
+- Include 2-3 callout paragraphs in this exact format so they render as visual highlights:
+  <p><strong>Why this matters:</strong> one sentence on the strategic stake.</p>
+  <p><strong>Outcome:</strong> the measurable result we expect.</p>
+  <p><strong>Risk:</strong> the main thing that could derail the plan.</p>
 - Keep it to 300-400 words.
 
 Write the executive summary for this plan:
@@ -894,11 +898,13 @@ async function generateStrategyPlan(anthropic: Anthropic, context: string, sourc
 
 Rules:
 - British English, no em dashes, no semicolons, no AI jargon
-- Each phase should cover: what gets done, which audiences we are reaching and on which channels, expected outcomes, key metrics to track
+- Use exactly THREE <h3> headings, one per phase. Format them as: "<h3>Phase 1, Foundations (Month 1)</h3>", "<h3>Phase 2, Build (Months 2-3)</h3>", "<h3>Phase 3, Scale (Months 4+)</h3>". Renderer turns each h3 + body into a visual phase card.
+- Inside each phase use h4 for sub-sections (e.g. "Audiences", "Channels", "Outcomes", "Metrics").
+- Each phase should cover: what gets done, which audiences we are reaching and on which channels, expected outcomes, key metrics to track.
 - Reference real channels and tactics from the context provided. Match channels to audiences explicitly (e.g. "reach Practice Managers via LinkedIn in Phase 2").
 - If campaign focus periods are listed, weave them into the relevant phase.
-- ${sources.purpose === "pitch" ? "Persuasive but grounded — show clear ROI potential" : "Operational clarity — this is the actual plan"}
-- Return HTML content (h3 for phases, p, ul/li). No wrapper tags.
+- ${sources.purpose === "pitch" ? "Persuasive but grounded, show clear ROI potential" : "Operational clarity, this is the actual plan"}
+- Return HTML content (h3, h4, p, ul/li). No wrapper tags. No markdown fences.
 - 400-500 words total.
 
 Write the phased strategy plan:

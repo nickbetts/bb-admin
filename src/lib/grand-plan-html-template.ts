@@ -483,25 +483,86 @@ function renderContext(
 }
 
 function renderExecutiveSummary(html: string): string {
+  const enhanced = enhanceExecutiveSummary(html);
   return `
     <section id="executive-summary" class="section alt">
       <div class="section-inner">
         <div class="section-kicker">Overview</div>
         <h2>Executive Summary</h2>
-        <div class="section-body">${html}</div>
+        <div class="section-body exec-summary">${enhanced}</div>
       </div>
     </section>`;
 }
 
 function renderStrategyPlan(html: string): string {
+  const enhanced = enhanceStrategyPlan(html);
   return `
     <section id="strategy-plan" class="section">
       <div class="section-inner">
         <div class="section-kicker">The Plan</div>
         <h2>Strategy Plan</h2>
-        <div class="section-body">${html}</div>
+        <div class="section-body strategy-plan">${enhanced}</div>
       </div>
     </section>`;
+}
+
+/**
+ * Wraps each <h3>/<h4> heading and the content that follows into a `.phase-card`.
+ * Detects phase keywords (Phase, Month, Quick Wins, Foundations) and adds a
+ * coloured badge so the timeline reads visually instead of as a wall of text.
+ */
+function enhanceStrategyPlan(html: string): string {
+  if (!html || typeof html !== "string") return html;
+  // Split on h3 boundaries to group sections. Keep h4 inside their parent group.
+  const parts = html.split(/(?=<h3\b)/i);
+  if (parts.length <= 1) return html; // No headings — leave as-is
+  let phaseNum = 0;
+  return parts
+    .map((chunk) => {
+      if (!/^<h3\b/i.test(chunk)) return chunk; // intro paragraph(s)
+      phaseNum++;
+      const headingMatch = chunk.match(/<h3\b[^>]*>([\s\S]*?)<\/h3>/i);
+      const headingText = headingMatch ? stripTags(headingMatch[1]) : "";
+      const badge = detectPhaseBadge(headingText, phaseNum);
+      // Inject badge into the h3
+      const withBadge = chunk.replace(
+        /<h3\b([^>]*)>([\s\S]*?)<\/h3>/i,
+        `<h3$1><span class="phase-badge ${badge.cls}">${esc(badge.label)}</span>$2</h3>`,
+      );
+      return `<div class="phase-card">${withBadge}</div>`;
+    })
+    .join("");
+}
+
+function detectPhaseBadge(heading: string, fallback: number): { label: string; cls: string } {
+  const t = heading.toLowerCase();
+  if (/quick win|month\s*0|week\s*[0-4]\b|first 30/i.test(t)) return { label: "Quick Wins", cls: "phase-quick" };
+  if (/foundation|month\s*1\b|month\s*1[-–]2|first month/i.test(t)) return { label: "Foundations", cls: "phase-foundation" };
+  if (/phase\s*1\b/i.test(t)) return { label: "Phase 1", cls: "phase-foundation" };
+  if (/phase\s*2\b|month\s*[3-6]/i.test(t)) return { label: "Phase 2", cls: "phase-build" };
+  if (/phase\s*3\b|month\s*[7-9]|long[-\s]?term|scale/i.test(t)) return { label: "Phase 3", cls: "phase-scale" };
+  if (/optimis|test|iterate/i.test(t)) return { label: "Optimise", cls: "phase-build" };
+  return { label: `Phase ${fallback}`, cls: "phase-build" };
+}
+
+/**
+ * Surfaces "Why it matters", "Outcome", "Risk" lines from the executive summary
+ * as right-rail callouts. Looks for <p><strong>Label:</strong> ...</p> patterns.
+ */
+function enhanceExecutiveSummary(html: string): string {
+  if (!html || typeof html !== "string") return html;
+  // Match <p><strong>Label:</strong> body</p>
+  return html.replace(
+    /<p>\s*<strong>\s*(Why (?:this |it )?matters|Outcome|Risk|Opportunity|Headline)\s*:?\s*<\/strong>\s*([\s\S]*?)<\/p>/gi,
+    (_m, label: string, body: string) => {
+      const cls = /risk/i.test(label) ? "exec-risk" : /opport|matter/i.test(label) ? "exec-opportunity" : "exec-outcome";
+      return `<aside class="exec-callout ${cls}"><div class="exec-callout-label">${esc(label.trim())}</div><div class="exec-callout-body">${body.trim()}</div></aside>`;
+    },
+  );
+}
+
+function stripTags(s: string): string {
+  return (s ?? "").replace(/<[^>]+>/g, "").trim();
 }
 
 function renderQuickWins(items: { title: string; description: string; priority: string }[]): string {
@@ -1590,6 +1651,25 @@ a{color:var(--accent);text-decoration:none}
 .compliance-callout strong{display:block;font-size:11px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:#92400e;margin-bottom:6px}
 .compliance-callout ul{margin:0;padding-left:18px;font-size:13px;color:#78350f;line-height:1.55}
 .compliance-callout li{margin:3px 0}
+.phase-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.25rem 1.5rem;margin:1rem 0;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.phase-card h3{margin-top:0!important;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+.phase-card h4{margin-top:1rem!important;color:var(--text);font-size:15px}
+.phase-card>p:last-child,.phase-card>ul:last-child{margin-bottom:0}
+.phase-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;padding:3px 10px;border-radius:999px;line-height:1.2}
+.phase-quick{background:#dcfce7;color:#15803d}
+.phase-foundation{background:#dbeafe;color:#1d4ed8}
+.phase-build{background:#fef3c7;color:#92400e}
+.phase-scale{background:#ede9fe;color:#6d28d9}
+.exec-summary{position:relative}
+.exec-callout{margin:1rem 0;padding:14px 18px;border-radius:8px;border-left:4px solid;background:#f8fafc}
+.exec-callout-label{font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;margin-bottom:6px;opacity:.85}
+.exec-callout-body{font-size:14px;line-height:1.6}
+.exec-opportunity{background:#eff6ff;border-color:#3b82f6}
+.exec-opportunity .exec-callout-label{color:#1d4ed8}
+.exec-outcome{background:#f0fdf4;border-color:#22c55e}
+.exec-outcome .exec-callout-label{color:#15803d}
+.exec-risk{background:#fef2f2;border-color:#ef4444}
+.exec-risk .exec-callout-label{color:#b91c1c}
 /* Internal linking recommendations */
 .il-section{margin-top:1.75rem}
 .il-section h3{font-size:.95rem;font-weight:700;color:var(--heading);margin:0 0 .75rem;letter-spacing:-.005em}
