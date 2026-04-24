@@ -41,10 +41,10 @@ export default function SponsorshipsPage() {
         <Section title="Programme mix" subtitle="Breakdown by sponsorship type">
           <Donut data={breakdown} centerLabel="Programmes" centerValue={SPONSORSHIPS.length.toString()} />
         </Section>
-        <AIInsight title="Pillar AI — sponsor retention" tone="amber">
+        <AIInsight title="Pillar AI - sponsor retention" tone="amber">
           <strong>2 sponsorships</strong> have failed payment 2+ times this month. Pillar predicts a{" "}
           <strong>72% churn likelihood</strong> for Ibrahim Patel without intervention. Recommended action: trigger
-          the <em>Sponsor renewal nudge</em> journey via SMS within 24 hours — historic recovery rate{" "}
+          the <em>Sponsor renewal nudge</em> journey via SMS within 24 hours - historic recovery rate{" "}
           <strong>62.4%</strong>.
         </AIInsight>
       </div>

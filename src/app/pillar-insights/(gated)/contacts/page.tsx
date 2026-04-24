@@ -22,7 +22,7 @@ export default function ContactsPage() {
       <PageHeader
         eyebrow="Supporters"
         title="Contacts &amp; Supporter Twin"
-        description="Every supporter has a Twin — a living AI profile combining donation history, channel preferences, predicted lifetime value and next-best-action."
+        description="Every supporter has a Twin - a living AI profile combining donation history, channel preferences, predicted lifetime value and next-best-action."
         actions={
           <>
             <button className="btn btn-secondary btn-sm"><Download className="h-3.5 w-3.5" /> Export</button>
@@ -46,7 +46,7 @@ export default function ContactsPage() {
             centerValue={RFM_SEGMENTS.reduce((s, d) => s + d.value, 0).toLocaleString()}
           />
         </Section>
-        <Section title="Supporter Twin — at a glance" subtitle="Predictive scores generated nightly">
+        <Section title="Supporter Twin - at a glance" subtitle="Predictive scores generated nightly">
           <div style={{ display: "grid", gap: 16 }}>
             <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
               <ScoreRing value={78} label="Engaged" color="#10b981" />

@@ -1,6 +1,6 @@
 /**
  * Dummy data for the Pillar Intelligence mockup.
- * Numbers, names and amounts are illustrative only — no real donors, charges or campaigns.
+ * Numbers, names and amounts are illustrative only - no real donors, charges or campaigns.
  */
 
 export const ORG = {
@@ -261,7 +261,7 @@ export interface Campaign {
 export const CAMPAIGNS: Campaign[] = [
   {
     id: "CMP-2641",
-    name: "Spring Emergency — East Africa Drought",
+    name: "Spring Emergency - East Africa Drought",
     type: "Emergency Appeal",
     channel: "Email",
     medium: "klaviyo",
@@ -297,7 +297,7 @@ export const CAMPAIGNS: Campaign[] = [
   },
   {
     id: "CMP-2748",
-    name: "Sponsor a Child — April Drive",
+    name: "Sponsor a Child - April Drive",
     type: "Sponsorship",
     channel: "Social Media",
     medium: "facebook",
@@ -351,7 +351,7 @@ export const CAMPAIGNS: Campaign[] = [
   },
   {
     id: "CMP-2854",
-    name: "Schools Reach 2026 — Q3",
+    name: "Schools Reach 2026 - Q3",
     type: "Programme Appeal",
     channel: "Direct / Website",
     medium: "organic",
@@ -401,7 +401,7 @@ export const FUNDRAISERS: Fundraiser[] = [
   },
   {
     id: "FR-3157",
-    name: "School Bake Sale — Year 6",
+    name: "School Bake Sale - Year 6",
     creator: "Sarah Jenkins",
     goal: 1_200,
     raised: 1_842,
@@ -413,7 +413,7 @@ export const FUNDRAISERS: Fundraiser[] = [
   },
   {
     id: "FR-3204",
-    name: "Iftar at Work — Manchester",
+    name: "Iftar at Work - Manchester",
     creator: "Yusuf Khan",
     goal: 3_000,
     raised: 1_840,
@@ -430,19 +430,19 @@ export const FUNDRAISERS: Fundraiser[] = [
     goal: 4_500,
     raised: 740,
     donors: 22,
-    campaign: "Sponsor a Child — April",
+    campaign: "Sponsor a Child - April",
     status: "active",
     createdAt: "2026-04-08",
     spark: [50, 100, 180, 240, 320, 380, 440, 520, 580, 640, 700, 740],
   },
   {
     id: "FR-3289",
-    name: "Birthday Donation — Priya",
+    name: "Birthday Donation - Priya",
     creator: "Priya Sharma",
     goal: 500,
     raised: 612,
     donors: 38,
-    campaign: "—",
+    campaign: "-",
     status: "completed",
     createdAt: "2026-04-12",
     spark: [20, 60, 120, 180, 240, 320, 400, 460, 520, 560, 590, 612],
@@ -514,7 +514,7 @@ export const COMPLIANCE_FLAGS = [
   { id: "CF-001", title: "8 recurring subscriptions failed retry 3x", severity: "high", area: "Payments" },
   { id: "CF-002", title: "12 supporters missing email or phone", severity: "medium", area: "Data quality" },
   { id: "CF-003", title: "2 campaigns missing fund_id metadata", severity: "medium", area: "Restricted funds" },
-  { id: "CF-004", title: "1 donor opted out — still in active journey", severity: "high", area: "Consent" },
+  { id: "CF-004", title: "1 donor opted out - still in active journey", severity: "high", area: "Consent" },
   { id: "CF-005", title: "4 sponsorships approaching review date", severity: "low", area: "Programme" },
 ];
 

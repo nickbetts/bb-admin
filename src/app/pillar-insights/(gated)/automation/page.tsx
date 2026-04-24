@@ -34,9 +34,9 @@ export default function AutomationPage() {
         <Stat label="Compliance flags" value={COMPLIANCE_FLAGS.length.toString()} delta="2 high" positive={false} hint="open" />
       </div>
 
-      <AIInsight title="Pillar AI — next best action" tone="teal">
+      <AIInsight title="Pillar AI - next best action" tone="teal">
         <strong>1,240 supporters</strong> entered the lapsed reactivation journey this morning. Pillar predicts{" "}
-        <strong>108 will reactivate</strong> with an average gift of <strong>£36</strong> — projected recovery{" "}
+        <strong>108 will reactivate</strong> with an average gift of <strong>£36</strong> - projected recovery{" "}
         <strong>£3,890</strong>.
       </AIInsight>
 
@@ -74,7 +74,7 @@ export default function AutomationPage() {
                   <td style={{ padding: "16px 18px", width: 180 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <Progress value={j.conversion} color="#14b8a6" />
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", minWidth: 38, textAlign: "right" }}>{j.conversion ? `${j.conversion.toFixed(1)}%` : "—"}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", minWidth: 38, textAlign: "right" }}>{j.conversion ? `${j.conversion.toFixed(1)}%` : "-"}</span>
                     </div>
                   </td>
                   <td style={{ padding: "16px 18px" }}><span className={`badge ${statusBadge(j.status)}`}>{j.status}</span></td>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Pillar Intelligence — Sign in",
+  title: "Pillar Intelligence - Sign in",
   robots: { index: false, follow: false },
 };
 
@@ -182,7 +182,7 @@ export default async function PillarLoginPage({
             textAlign: "center",
           }}
         >
-          Mockup preview — no live data
+          Mockup preview - no live data
         </div>
       </div>
     </div>

@@ -79,7 +79,7 @@ export function MockupBanner() {
         }}
       />
       <span>
-        <strong style={{ color: "var(--text)" }}>Mockup preview</strong> — all numbers, supporters and
+        <strong style={{ color: "var(--text)" }}>Mockup preview</strong> - all numbers, supporters and
         campaigns shown here are illustrative dummy data.
       </span>
     </div>

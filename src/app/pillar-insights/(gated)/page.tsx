@@ -24,7 +24,7 @@ export default function PillarOverviewPage() {
       <PageHeader
         eyebrow={ORG.fiscalYear}
         title="Pillar Intelligence"
-        description={`Mission control for ${ORG.name}. AI-powered visibility into supporters, campaigns, fundraisers and sponsorships — designed for charities that want to grow giving without growing overhead.`}
+        description={`Mission control for ${ORG.name}. AI-powered visibility into supporters, campaigns, fundraisers and sponsorships - designed for charities that want to grow giving without growing overhead.`}
         actions={
           <>
             <button className="btn btn-secondary btn-sm">Last 30 days</button>
@@ -100,10 +100,10 @@ export default function PillarOverviewPage() {
 
       {/* AI insight strip */}
       <div className="grid-2" style={{ marginTop: 28 }}>
-        <AIInsight title="Supporter Twin — what changed this week" tone="indigo">
+        <AIInsight title="Supporter Twin - what changed this week" tone="indigo">
           <strong>1,842 supporters</strong> moved into the <em>At Risk</em> segment this week, driven mostly by lapsed
           one-off donors from the autumn Emergency Appeal. Pillar suggests a personalised{" "}
-          <strong>reactivation journey</strong> with an ask of £{HEADLINE_KPIS.averageGift.toFixed(0)} — projected
+          <strong>reactivation journey</strong> with an ask of £{HEADLINE_KPIS.averageGift.toFixed(0)} - projected
           recovery: <strong>£14,200</strong>.
         </AIInsight>
         <AIInsight title="Mission Match recommendation" tone="teal">
@@ -115,7 +115,7 @@ export default function PillarOverviewPage() {
 
       {/* Donation trend */}
       <Section
-        title="Donation revenue — last 12 months"
+        title="Donation revenue - last 12 months"
         subtitle="Total donations across all appeals, channels and payment methods"
         actions={
           <div style={{ display: "flex", gap: 6 }}>
@@ -152,7 +152,7 @@ export default function PillarOverviewPage() {
 
       {/* RFM segments */}
       <Section
-        title="Supporter health — RFM segmentation"
+        title="Supporter health - RFM segmentation"
         subtitle="Recency × Frequency × Monetary scoring across your active supporter base"
         actions={<button className="btn btn-ghost btn-sm">Open segments →</button>}
       >

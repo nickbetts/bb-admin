@@ -64,7 +64,7 @@ export default function PredictionsPage() {
       <PageHeader
         eyebrow="AI Models"
         title="Supporter Twin &amp; predictions"
-        description="Five live AI models score every supporter every night. Outputs feed dashboards, segments and journeys — turning data into decisions."
+        description="Five live AI models score every supporter every night. Outputs feed dashboards, segments and journeys - turning data into decisions."
         actions={
           <button className="btn btn-primary btn-sm"><Brain className="h-3.5 w-3.5" /> Train new model</button>
         }
@@ -105,14 +105,14 @@ export default function PredictionsPage() {
         ))}
       </div>
 
-      <AIInsight title="Pillar AI — this week's highest-impact recommendation" tone="indigo">
+      <AIInsight title="Pillar AI - this week's highest-impact recommendation" tone="indigo">
         <strong>284 one-off donors</strong> scored ≥70 on Upgrade Likelihood AND ≥60 on Mission Match for the
         upcoming Eid Gift of Joy campaign. Activate the <em>Recurring upgrade prompt</em> journey targeted at this
         sub-segment for an estimated <strong>£12,400 in incremental annual recurring revenue</strong>.
       </AIInsight>
 
       {/* Top at-risk */}
-      <Section title="Top at-risk supporters" subtitle="Highest churn-risk scores in your active base — ready for proactive outreach" padded={false}>
+      <Section title="Top at-risk supporters" subtitle="Highest churn-risk scores in your active base - ready for proactive outreach" padded={false}>
         <div style={{ overflowX: "auto" }}>
           <table className="data-table">
             <thead>
@@ -196,7 +196,7 @@ export default function PredictionsPage() {
         </div>
       </Section>
 
-      <Section title="Pillar AI — feature importance" subtitle="Which supporter signals drive each model's predictions">
+      <Section title="Pillar AI - feature importance" subtitle="Which supporter signals drive each model's predictions">
         <div style={{ display: "grid", gap: 14 }}>
           {[
             { feature: "Recency of last gift", importance: 92 },

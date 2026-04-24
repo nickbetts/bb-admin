@@ -22,7 +22,7 @@ export default function CampaignsPage() {
       <PageHeader
         eyebrow="Campaigns"
         title="Campaign intelligence"
-        description="Every appeal carries full metadata — channel, medium, audience, theme, fund and budget. Pillar attributes every charge automatically and reports ROI per pound spent."
+        description="Every appeal carries full metadata - channel, medium, audience, theme, fund and budget. Pillar attributes every charge automatically and reports ROI per pound spent."
         actions={
           <>
             <button className="btn btn-secondary btn-sm"><Filter className="h-3.5 w-3.5" /> Filter</button>
@@ -48,10 +48,10 @@ export default function CampaignsPage() {
             color2="#6366f1"
           />
         </Section>
-        <AIInsight title="Pillar AI — campaign optimisation" tone="indigo">
-          Your <strong>Sponsor a Child — April Drive</strong> is converting <strong>2.1%</strong>, below the
+        <AIInsight title="Pillar AI - campaign optimisation" tone="indigo">
+          Your <strong>Sponsor a Child - April Drive</strong> is converting <strong>2.1%</strong>, below the
           historical sponsorship benchmark of 3.4%. Pillar suggests testing a softer ask amount of <strong>£25/month</strong>{" "}
-          for first-time sponsors and pairing it with the Mariam orphan story creative — predicted lift <strong>+38%</strong>.
+          for first-time sponsors and pairing it with the Mariam orphan story creative - predicted lift <strong>+38%</strong>.
         </AIInsight>
       </div>
 
@@ -105,13 +105,13 @@ export default function CampaignsPage() {
                       {c.donors.toLocaleString()}
                     </td>
                     <td style={{ padding: "16px 18px", textAlign: "right", fontSize: 13, color: "var(--text-2)" }}>
-                      {c.conversionRate ? `${c.conversionRate.toFixed(1)}%` : "—"}
+                      {c.conversionRate ? `${c.conversionRate.toFixed(1)}%` : "-"}
                     </td>
                     <td style={{ padding: "16px 18px", textAlign: "right", fontSize: 13, color: "var(--text-2)" }}>
-                      {c.averageGift ? `£${c.averageGift.toFixed(0)}` : "—"}
+                      {c.averageGift ? `£${c.averageGift.toFixed(0)}` : "-"}
                     </td>
                     <td style={{ padding: "16px 18px", textAlign: "right", fontSize: 13, fontWeight: 600, color: cRoi >= 5 ? "#10b981" : "var(--text)" }}>
-                      {cRoi ? `${cRoi.toFixed(1)}×` : "—"}
+                      {cRoi ? `${cRoi.toFixed(1)}×` : "-"}
                     </td>
                     <td style={{ padding: "16px 18px" }}>
                       <span className={`badge ${statusBadge(c.status)}`}>{c.status}</span>
@@ -127,7 +127,7 @@ export default function CampaignsPage() {
       <Section title="Campaign metadata model" subtitle="Required fields for advanced analytics & AI">
         <div className="grid-3">
           {[
-            ["campaign_id", "Unique identifier — joins charges to campaigns"],
+            ["campaign_id", "Unique identifier - joins charges to campaigns"],
             ["campaign_type", "emergency_appeal · zakat · seasonal · event"],
             ["channel / medium", "email / klaviyo · paid_search / google_ads · social / facebook"],
             ["audience_segment", "recent_donors · lapsed_donors · sponsors · lookalikes"],

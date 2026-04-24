@@ -11,7 +11,7 @@ export default function BenchmarksPage() {
       <PageHeader
         eyebrow="Benchmarks"
         title="How you compare"
-        description="Aggregated, anonymised performance from charities on Pillar — see how your fundraising stacks up against peers and the top quartile."
+        description="Aggregated, anonymised performance from charities on Pillar - see how your fundraising stacks up against peers and the top quartile."
         actions={
           <span style={{ display: "inline-flex", gap: 6, fontSize: 12, color: "var(--text-3)", alignItems: "center" }}>
             <Info className="h-3.5 w-3.5" /> Peer cohort: UK charities, £1M–£5M annual income
@@ -19,7 +19,7 @@ export default function BenchmarksPage() {
         }
       />
 
-      <AIInsight title="Pillar AI — your edge" tone="teal">
+      <AIInsight title="Pillar AI - your edge" tone="teal">
         You&rsquo;re outperforming peers on <strong>4 of 6 metrics</strong>. Your strongest advantage is{" "}
         <strong>email conversion</strong> (+33% vs peers). Your biggest opportunity is closing the{" "}
         <strong>upgrade rate</strong> gap to the top quartile (+3.2 pts available, ≈ £18,400 in incremental ARR).

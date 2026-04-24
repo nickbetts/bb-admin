@@ -125,7 +125,7 @@ export function PillarSidebar() {
           }}
         >
           <HelpCircle className="h-3.5 w-3.5" />
-          <span>Mockup — no live data</span>
+          <span>Mockup - no live data</span>
         </div>
       </div>
     </aside>
