@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const MAX_EMAILS_PER_JOB = 10000;
 
-/** GET /api/tools/email-verifier/jobs — list current user's jobs (optionally by client). */
+/** GET /api/tools/email-verifier/jobs — list all jobs (optionally by client). */
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
@@ -19,11 +19,11 @@ export async function GET(request: NextRequest) {
 
     const jobs = await prisma.emailVerificationJob.findMany({
       where: {
-        userId: session.user.id,
         ...(clientId ? { clientId } : {}),
       },
       select: {
         id: true,
+        userId: true,
         title: true,
         status: true,
         clientId: true,
@@ -42,10 +42,20 @@ export async function GET(request: NextRequest) {
         client: { select: { name: true } },
       },
       orderBy: { createdAt: "desc" },
-      take: 100,
+      take: 200,
     });
 
-    return NextResponse.json({ jobs });
+    // Attach user name for display without a DB relation.
+    const userIds = Array.from(new Set(jobs.map((j) => j.userId)));
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, email: true },
+    });
+    const userMap = Object.fromEntries(users.map((u) => [u.id, u.name || u.email]));
+
+    const enriched = jobs.map((j) => ({ ...j, createdByName: userMap[j.userId] ?? "Unknown" }));
+
+    return NextResponse.json({ jobs: enriched });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Email verifier list jobs error:", error);

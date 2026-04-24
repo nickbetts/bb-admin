@@ -39,6 +39,7 @@ const PERMISSION_GROUPS = [
       { key: "grand_plan", label: "Grand Plan" },
       { key: "qa_checklist", label: "Client QA" },
       { key: "subscriptions", label: "Subscriptions" },
+      { key: "email_verifier", label: "Email Verifier" },
     ],
   },
   {

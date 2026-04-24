@@ -14,10 +14,12 @@ import {
   XCircle,
   HelpCircle,
   ShieldAlert,
+  ChevronDown,
+  ChevronUp,
+  Calculator,
 } from "lucide-react";
 import { ClientBackLink } from "@/components/ui/ClientBackLink";
 import { ClientFilterBanner } from "@/components/ui/ClientFilterBanner";
-import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -46,6 +48,8 @@ interface JobSummary {
   title: string;
   status: string;
   clientId: string | null;
+  userId: string;
+  createdByName?: string;
   totalCount: number;
   processedCount: number;
   validCount: number;
@@ -69,15 +73,20 @@ interface SingleResult {
   email: string;
   status: string;
   subStatus: string | null;
-  errorMessage: string | null;
+  account: string | null;
+  domain: string | null;
+  mxFound: boolean;
+  mxRecord: string | null;
+  smtpProvider: string | null;
+  didYouMean: string | null;
   freeEmail: boolean;
   role: boolean;
   disposable: boolean;
-  didYouMean: string | null;
-  mxFound: boolean;
+  toxic: boolean;
+  errorMessage: string | null;
 }
 
-type Tab = "quick" | "bulk" | "history";
+type Tab = "quick" | "bulk" | "history" | "calculator";
 
 // ─── Status styling ────────────────────────────────────────────────────────
 
@@ -152,10 +161,24 @@ export default function EmailVerifierPage() {
   const [history, setHistory] = useState<JobSummary[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [expandedResultIds, setExpandedResultIds] = useState<Set<string>>(new Set());
+
+  // Calculator
+  const [calcEmails, setCalcEmails] = useState("");
+  const [calcClientRate, setCalcClientRate] = useState("");
+  const [calcRateMode, setCalcRateMode] = useState<"per_email" | "flat">("per_email");
 
   const [error, setError] = useState<string | null>(null);
 
   const pollAbortRef = useRef(false);
+
+  function toggleResultExpand(id: string) {
+    setExpandedResultIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   // ─── Loaders ─────────────────────────────────────────────────────────────
   const refreshCredits = useCallback(async () => {
@@ -368,36 +391,6 @@ export default function EmailVerifierPage() {
   const liveJob = activeJob;
   const progress = liveJob && liveJob.totalCount > 0 ? liveJob.processedCount / liveJob.totalCount : 0;
 
-  const tableColumns: DataTableColumn<VerificationRow>[] = useMemo(
-    () => [
-      { key: "email", label: "Email", sortable: true, minWidth: "220px" },
-      {
-        key: "status",
-        label: "Status",
-        sortable: true,
-        render: (_v, row) => <StatusPill status={row.status} subStatus={row.subStatus} />,
-      },
-      { key: "subStatus", label: "Sub-status", sortable: true, render: (_v, row) => row.subStatus ?? "—" },
-      { key: "domain", label: "Domain", sortable: true, render: (_v, row) => row.domain ?? "—" },
-      {
-        key: "flags",
-        label: "Flags",
-        render: (_v, row) => {
-          const flags: string[] = [];
-          if (row.role) flags.push("role");
-          if (row.disposable) flags.push("disposable");
-          if (row.freeEmail) flags.push("free");
-          if (row.toxic) flags.push("toxic");
-          if (!row.mxFound) flags.push("no-mx");
-          return flags.length ? flags.join(", ") : "—";
-        },
-      },
-      { key: "didYouMean", label: "Did you mean?", render: (_v, row) => row.didYouMean ?? "—" },
-      { key: "smtpProvider", label: "SMTP", render: (_v, row) => row.smtpProvider ?? "—" },
-    ],
-    [],
-  );
-
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
     <main style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 32px 80px" }}>
@@ -478,6 +471,7 @@ export default function EmailVerifierPage() {
           { key: "quick", label: "Quick check" },
           { key: "bulk", label: "Bulk verification" },
           { key: "history", label: "History" },
+          { key: "calculator", label: "Calculator" },
         ] as { key: Tab; label: string }[]).map((t) => (
           <button
             key={t.key}
@@ -558,31 +552,64 @@ export default function EmailVerifierPage() {
           </div>
 
           {quickResults.length > 0 && (
-            <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 8 }}>
-              {quickResults.map((r, idx) => (
-                <div
-                  key={`${r.email}-${idx}`}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    padding: "10px 14px",
-                    background: "var(--surface)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--r)",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                    <StatusIcon status={r.status} />
-                    <span style={{ fontSize: 13, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis" }}>{r.email}</span>
-                    {r.didYouMean ? (
-                      <span style={{ fontSize: 11, color: "var(--text-3)" }}>· did you mean <strong>{r.didYouMean}</strong>?</span>
-                    ) : null}
+            <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 4 }}>
+              {quickResults.map((r, idx) => {
+                const key = `${r.email}-${idx}`;
+                const isOpen = expandedResultIds.has(key);
+                const flags: string[] = [];
+                if (r.role) flags.push("Role address");
+                if (r.disposable) flags.push("Disposable");
+                if (r.freeEmail) flags.push("Free provider");
+                if (r.toxic) flags.push("Toxic");
+                if (!r.mxFound) flags.push("No MX record");
+                return (
+                  <div
+                    key={key}
+                    style={{ border: "1px solid var(--border)", borderRadius: "var(--r)", overflow: "hidden", background: "var(--surface)" }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleResultExpand(key)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 10, width: "100%",
+                        padding: "9px 12px", background: "none", border: "none", cursor: "pointer", textAlign: "left",
+                      }}
+                    >
+                      <StatusIcon status={r.status} />
+                      <span style={{ flex: 1, fontSize: 13, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {r.email}
+                      </span>
+                      {r.didYouMean && (
+                        <span style={{ fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>→ {r.didYouMean}?</span>
+                      )}
+                      {flags.length > 0 && (
+                        <span style={{ fontSize: 10, color: "var(--warning-text)", background: "var(--warning-bg)", border: "1px solid var(--warning-border)", borderRadius: 4, padding: "1px 5px", whiteSpace: "nowrap" }}>
+                          {flags.length} flag{flags.length > 1 ? "s" : ""}
+                        </span>
+                      )}
+                      <StatusPill status={r.status} subStatus={r.subStatus} />
+                      {isOpen ? <ChevronUp style={{ width: 13, height: 13, color: "var(--text-3)", flexShrink: 0 }} /> : <ChevronDown style={{ width: 13, height: 13, color: "var(--text-3)", flexShrink: 0 }} />}
+                    </button>
+                    {isOpen && (
+                      <div style={{ borderTop: "1px solid var(--border)", padding: "12px 14px", background: "var(--surface-2)", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "8px 16px" }}>
+                        <DetailField label="Status" value={r.status} />
+                        <DetailField label="Sub-status" value={r.subStatus} />
+                        <DetailField label="Domain" value={r.domain} />
+                        <DetailField label="Account" value={r.account} />
+                        <DetailField label="MX found" value={r.mxFound ? "Yes" : "No"} highlight={!r.mxFound ? "warn" : undefined} />
+                        <DetailField label="MX record" value={r.mxRecord} />
+                        <DetailField label="SMTP provider" value={r.smtpProvider} />
+                        <DetailField label="Free email" value={r.freeEmail ? "Yes" : "No"} />
+                        <DetailField label="Role address" value={r.role ? "Yes" : "No"} highlight={r.role ? "warn" : undefined} />
+                        <DetailField label="Disposable" value={r.disposable ? "Yes" : "No"} highlight={r.disposable ? "danger" : undefined} />
+                        <DetailField label="Toxic" value={r.toxic ? "Yes" : "No"} highlight={r.toxic ? "danger" : undefined} />
+                        {r.didYouMean && <DetailField label="Did you mean?" value={r.didYouMean} highlight="warn" />}
+                        {r.errorMessage && <DetailField label="Error" value={r.errorMessage} highlight="danger" />}
+                      </div>
+                    )}
                   </div>
-                  <StatusPill status={r.status} subStatus={r.subStatus} />
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
@@ -656,7 +683,7 @@ export default function EmailVerifierPage() {
           </div>
 
           {liveJob && activeJobId && (
-            <ActiveJobView job={liveJob} progress={progress} columns={tableColumns} polling={polling} />
+            <ActiveJobView job={liveJob} progress={progress} polling={polling} expandedIds={expandedResultIds} onToggleExpand={toggleResultExpand} />
           )}
         </section>
       )}
@@ -697,6 +724,7 @@ export default function EmailVerifierPage() {
                     <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 500 }}>{job.title}</div>
                     <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 2 }}>
                       {new Date(job.createdAt).toLocaleString("en-GB")}
+                      {job.createdByName ? ` · ${job.createdByName}` : ""}
                       {job.client?.name ? ` · ${job.client.name}` : ""}
                       {" · "}
                       {job.processedCount}/{job.totalCount} processed
@@ -722,8 +750,132 @@ export default function EmailVerifierPage() {
           )}
 
           {liveJob && activeJobId && tab === "history" && (
-            <ActiveJobView job={liveJob} progress={progress} columns={tableColumns} polling={polling} />
+            <ActiveJobView job={liveJob} progress={progress} polling={polling} expandedIds={expandedResultIds} onToggleExpand={toggleResultExpand} />
           )}
+        </section>
+      )}
+
+      {/* ── CALCULATOR ────────────────────────────────────────── */}
+      {tab === "calculator" && (
+        <section style={cardStyle}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+            <Calculator style={{ width: 16, height: 16, color: "var(--accent)" }} />
+            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Pricing calculator</h2>
+          </div>
+
+          {/* Credit cost info banner */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 12, padding: "10px 14px",
+            background: "var(--surface-2)", border: "1px solid var(--border)",
+            borderRadius: "var(--r)", marginBottom: 20, fontSize: 13,
+          }}>
+            <span style={{ color: "var(--text-2)" }}>Our cost per credit (email verified):</span>
+            <strong style={{ color: "var(--text)", fontSize: 14 }}>£0.014</strong>
+            {credits !== null && (
+              <span style={{ marginLeft: "auto", color: "var(--text-3)", fontSize: 12 }}>
+                {credits.toLocaleString()} credits remaining
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            {/* Inputs */}
+            <div>
+              <label style={labelStyle}>Number of emails to verify</label>
+              <input
+                type="number"
+                min={1}
+                value={calcEmails}
+                onChange={(e) => setCalcEmails(e.target.value)}
+                placeholder="e.g. 5000"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Charge to client</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <select
+                  value={calcRateMode}
+                  onChange={(e) => setCalcRateMode(e.target.value as "per_email" | "flat")}
+                  style={{ ...inputStyle, width: "auto", paddingRight: 28 }}
+                >
+                  <option value="per_email">Per email (£)</option>
+                  <option value="flat">Flat fee (£)</option>
+                </select>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.001}
+                  value={calcClientRate}
+                  onChange={(e) => setCalcClientRate(e.target.value)}
+                  placeholder={calcRateMode === "per_email" ? "e.g. 0.05" : "e.g. 250"}
+                  style={{ ...inputStyle, flex: 1 }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Results */}
+          {(() => {
+            const emailCount = parseFloat(calcEmails);
+            const rate = parseFloat(calcClientRate);
+            if (!emailCount || emailCount <= 0 || !rate || rate < 0) return null;
+
+            const OUR_COST_PER_EMAIL = 0.014;
+            const totalOurCost = emailCount * OUR_COST_PER_EMAIL;
+            const totalRevenue = calcRateMode === "per_email" ? emailCount * rate : rate;
+            const profit = totalRevenue - totalOurCost;
+            const margin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
+            const markup = totalOurCost > 0 ? (profit / totalOurCost) * 100 : 0;
+
+            const fmt = (n: number) =>
+              new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+
+            const rows: { label: string; value: string; tone?: "success" | "danger" | "muted" }[] = [
+              { label: "Emails to verify", value: emailCount.toLocaleString("en-GB") },
+              { label: "Our cost", value: fmt(totalOurCost), tone: "danger" },
+              {
+                label: calcRateMode === "per_email"
+                  ? `Client charge (${fmt(rate)} × ${emailCount.toLocaleString("en-GB")})`
+                  : "Client charge (flat fee)",
+                value: fmt(totalRevenue),
+                tone: "muted",
+              },
+              { label: "Gross profit", value: fmt(profit), tone: profit >= 0 ? "success" : "danger" },
+              { label: "Profit margin", value: `${margin.toFixed(1)}%`, tone: profit >= 0 ? "success" : "danger" },
+              { label: "Markup on cost", value: `${markup.toFixed(1)}%`, tone: profit >= 0 ? "success" : "danger" },
+            ];
+
+            return (
+              <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 0, border: "1px solid var(--border)", borderRadius: "var(--r)", overflow: "hidden" }}>
+                {rows.map((row, i) => (
+                  <div
+                    key={row.label}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "10px 14px",
+                      background: i % 2 === 0 ? "var(--surface)" : "var(--surface-2)",
+                      borderTop: i > 0 ? "1px solid var(--border)" : undefined,
+                    }}
+                  >
+                    <span style={{ fontSize: 13, color: "var(--text-2)" }}>{row.label}</span>
+                    <span style={{
+                      fontSize: 13, fontWeight: 600,
+                      color: row.tone === "success" ? "var(--success-text)"
+                        : row.tone === "danger" ? "var(--danger-text)"
+                        : "var(--text)",
+                    }}>
+                      {row.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          <p style={{ marginTop: 14, fontSize: 11, color: "var(--text-3)" }}>
+            Based on £0.014 per ZeroBounce credit. Figures are pre-tax estimates only.
+          </p>
         </section>
       )}
 
@@ -786,14 +938,50 @@ export default function EmailVerifierPage() {
 function ActiveJobView({
   job,
   progress,
-  columns,
   polling,
+  expandedIds,
+  onToggleExpand,
 }: {
   job: JobDetail;
   progress: number;
-  columns: DataTableColumn<VerificationRow>[];
   polling: boolean;
+  expandedIds: Set<string>;
+  onToggleExpand: (id: string) => void;
 }) {
+  const [filter, setFilter] = useState("");
+  const filtered = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return job.results;
+    return job.results.filter(
+      (r) =>
+        r.email.toLowerCase().includes(q) ||
+        r.status.toLowerCase().includes(q) ||
+        (r.subStatus ?? "").toLowerCase().includes(q) ||
+        (r.domain ?? "").toLowerCase().includes(q),
+    );
+  }, [job.results, filter]);
+
+  function exportCsv() {
+    const header = "email,status,sub_status,domain,mx_found,mx_record,smtp_provider,free_email,role,disposable,toxic,did_you_mean,error\n";
+    const rows = job.results
+      .map((r) =>
+        [
+          r.email, r.status, r.subStatus ?? "", r.domain ?? "",
+          r.mxFound, r.mxRecord ?? "", r.smtpProvider ?? "",
+          r.freeEmail, r.role, r.disposable, r.toxic,
+          r.didYouMean ?? "", r.errorMessage ?? "",
+        ]
+          .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+          .join(","),
+      )
+      .join("\n");
+    const blob = new Blob([header + rows], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `email-verification-${job.id}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  }
+
   return (
     <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid var(--border)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
@@ -817,23 +1005,127 @@ function ActiveJobView({
       </div>
 
       {job.errorMessage ? (
-        <p style={{ marginTop: 12, color: "var(--danger-text)", fontSize: 12 }}>
-          {job.errorMessage}
-        </p>
+        <p style={{ marginTop: 12, color: "var(--danger-text)", fontSize: 12 }}>{job.errorMessage}</p>
       ) : null}
 
-      <div style={{ marginTop: 18 }}>
-        <DataTable
-          data={job.results}
-          columns={columns}
-          searchable
-          searchPlaceholder="Filter by email, status, domain…"
-          exportable
-          exportFilename={`email-verification-${job.id}`}
-          pageSize={25}
-          stickyHeader
-        />
-      </div>
+      {job.results.length > 0 && (
+        <div style={{ marginTop: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <input
+              type="search"
+              placeholder="Filter by email, status, domain…"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              style={{ ...inputStyle, flex: 1, padding: "6px 10px", fontSize: 12 }}
+            />
+            <button type="button" onClick={exportCsv} style={{ ...fileBtnStyle, fontSize: 12, whiteSpace: "nowrap" }}>
+              Export CSV
+            </button>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {filtered.map((r) => {
+              const isOpen = expandedIds.has(r.id);
+              const flags: string[] = [];
+              if (r.role) flags.push("Role address");
+              if (r.disposable) flags.push("Disposable");
+              if (r.freeEmail) flags.push("Free provider");
+              if (r.toxic) flags.push("Toxic");
+              if (!r.mxFound) flags.push("No MX record");
+
+              return (
+                <div
+                  key={r.id}
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--r)",
+                    overflow: "hidden",
+                    background: "var(--surface)",
+                  }}
+                >
+                  {/* Summary row */}
+                  <button
+                    type="button"
+                    onClick={() => onToggleExpand(r.id)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      width: "100%",
+                      padding: "9px 12px",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <StatusIcon status={r.status} />
+                    <span style={{ flex: 1, fontSize: 13, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {r.email}
+                    </span>
+                    {r.didYouMean && (
+                      <span style={{ fontSize: 11, color: "var(--text-3)", whiteSpace: "nowrap" }}>
+                        → {r.didYouMean}?
+                      </span>
+                    )}
+                    {flags.length > 0 && (
+                      <span style={{ fontSize: 10, color: "var(--warning-text)", background: "var(--warning-bg)", border: "1px solid var(--warning-border)", borderRadius: 4, padding: "1px 5px", whiteSpace: "nowrap" }}>
+                        {flags.length} flag{flags.length > 1 ? "s" : ""}
+                      </span>
+                    )}
+                    <StatusPill status={r.status} subStatus={r.subStatus} />
+                    {isOpen ? <ChevronUp style={{ width: 13, height: 13, color: "var(--text-3)", flexShrink: 0 }} /> : <ChevronDown style={{ width: 13, height: 13, color: "var(--text-3)", flexShrink: 0 }} />}
+                  </button>
+
+                  {/* Expanded detail */}
+                  {isOpen && (
+                    <div
+                      style={{
+                        borderTop: "1px solid var(--border)",
+                        padding: "12px 14px",
+                        background: "var(--surface-2)",
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                        gap: "8px 16px",
+                        fontSize: 12,
+                      }}
+                    >
+                      <DetailField label="Status" value={r.status} />
+                      <DetailField label="Sub-status" value={r.subStatus} />
+                      <DetailField label="Domain" value={r.domain} />
+                      <DetailField label="Account" value={r.account} />
+                      <DetailField label="MX found" value={r.mxFound ? "Yes" : "No"} highlight={!r.mxFound ? "warn" : undefined} />
+                      <DetailField label="MX record" value={r.mxRecord} />
+                      <DetailField label="SMTP provider" value={r.smtpProvider} />
+                      <DetailField label="Free email" value={r.freeEmail ? "Yes" : "No"} />
+                      <DetailField label="Role address" value={r.role ? "Yes" : "No"} highlight={r.role ? "warn" : undefined} />
+                      <DetailField label="Disposable" value={r.disposable ? "Yes" : "No"} highlight={r.disposable ? "danger" : undefined} />
+                      <DetailField label="Toxic" value={r.toxic ? "Yes" : "No"} highlight={r.toxic ? "danger" : undefined} />
+                      {r.didYouMean && <DetailField label="Did you mean?" value={r.didYouMean} highlight="warn" />}
+                      {r.errorMessage && <DetailField label="Error" value={r.errorMessage} highlight="danger" />}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {filtered.length === 0 && (
+            <p style={{ fontSize: 12, color: "var(--text-3)", marginTop: 8 }}>No results match your filter.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DetailField({ label, value, highlight }: { label: string; value?: string | null; highlight?: "warn" | "danger" }) {
+  if (!value && value !== "No" && value !== "Yes") return null;
+  const color = highlight === "danger" ? "var(--danger-text)" : highlight === "warn" ? "var(--warning-text)" : "var(--text)";
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 500, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
+      <div style={{ fontSize: 12, color, marginTop: 1 }}>{value ?? "—"}</div>
     </div>
   );
 }
