@@ -18,7 +18,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const LP_DOMAIN = (process.env.LP_DOMAIN?.trim() || "clickr.marketing").toLowerCase();
 
-export function proxy(request: NextRequest) {
+export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = (request.headers.get("host") || "").toLowerCase().split(":")[0];
 
