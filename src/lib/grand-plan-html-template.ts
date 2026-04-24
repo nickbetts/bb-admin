@@ -570,17 +570,17 @@ function renderKpis(channels: { channel: string; icon?: string; metrics: { name:
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderGoogleAdsCampaigns(data: any): string {
-  const overviewGrid = Object.entries(data.overview as Record<string, string>)
+  const overviewGrid = Object.entries((data.overview ?? {}) as Record<string, string>)
     .map(([k, v]) => `<div class="ov-item"><span class="ov-label">${esc(k)}</span><span class="ov-value">${esc(v)}</span></div>`)
     .join("\n");
 
-  const negKws = (data.negativeKeywords as string[])
+  const negKws = ((data.negativeKeywords ?? []) as string[])
     .map((k: string) => `<span class="neg-chip">${esc(k)}</span>`)
     .join(" ");
 
-  const adGroupsHtml = (data.adGroups as { name: string; keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number; adCopy?: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; isFallback?: boolean } }[])
+  const adGroupsHtml = ((data.adGroups ?? []) as { name: string; keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number; adCopy?: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; isFallback?: boolean } }[])
     .map((g, i) => {
-      const kwRows = g.keywords
+      const kwRows = (g.keywords ?? [])
         .map((k) => {
           const display = k.matchType === "exact" ? `[${k.keyword}]` : k.matchType === "phrase" ? `"${k.keyword}"` : k.keyword;
           const badge = k.matchType === "exact" ? "match-exact" : k.matchType === "phrase" ? "match-phrase" : "match-broad";
@@ -763,9 +763,9 @@ function renderMetaCampaigns(campaigns: any[]): string {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderKeywordResearch(data: any): string {
-  const groupsHtml = (data.adGroups as { name: string; keywords: { keyword: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number }[])
+  const groupsHtml = ((data.adGroups ?? []) as { name: string; keywords: { keyword: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number }[])
     .map((g) => {
-      const kwLines = g.keywords.map((k) => {
+      const kwLines = (g.keywords ?? []).map((k) => {
         const vol = k.volume != null ? ` <span class="kw-meta">${k.volume.toLocaleString()}/mo</span>` : "";
         return `<div class="kw-line"><span class="kw-word">${esc(k.keyword)}</span>${vol}<button class="copy-btn-sm" onclick="copySingle(this,'${escAttr(k.keyword)}')">Copy</button></div>`;
       }).join("\n");
@@ -1054,7 +1054,7 @@ function renderMediaPlan(data: any): string {
     <div class="channel-row">
       <span class="channel-name">${esc(ch.name)}</span>
       <div class="channel-bar"><div class="channel-fill" style="width:${ch.percentage}%"></div></div>
-      <span class="channel-budget">£${ch.budget.toLocaleString()}</span>
+      <span class="channel-budget">£${(ch.budget ?? 0).toLocaleString()}</span>
       <span class="channel-pct">${ch.percentage}%</span>
     </div>`)
     .join("\n");
@@ -1063,7 +1063,7 @@ function renderMediaPlan(data: any): string {
     .map((ch: { name: string; budget: number; percentage: number; strategy: string }) => `
     <tr>
       <td style="font-weight:600;white-space:nowrap">${esc(ch.name)}</td>
-      <td style="font-weight:600">£${ch.budget.toLocaleString()}</td>
+      <td style="font-weight:600">£${(ch.budget ?? 0).toLocaleString()}</td>
       <td>${ch.percentage}%</td>
       <td class="channel-strategy">${esc(ch.strategy)}</td>
     </tr>`)
@@ -1076,7 +1076,7 @@ function renderMediaPlan(data: any): string {
         <h2>Media Plan</h2>
       <div class="media-summary">
         <div class="media-stat"><span class="media-label">Objective</span><span class="media-value">${esc(data.objective)}</span></div>
-        <div class="media-stat"><span class="media-label">Total Budget</span><span class="media-value">£${data.totalBudget.toLocaleString()}</span></div>
+        <div class="media-stat"><span class="media-label">Total Budget</span><span class="media-value">£${(data.totalBudget ?? 0).toLocaleString()}</span></div>
       </div>
       <h3>Channel Allocation</h3>
       <div class="channel-chart">${channelsHtml}</div>
@@ -1095,13 +1095,13 @@ function renderEmailMarketing(data: any): string {
       <div class="em-flow-header" onclick="this.parentElement.classList.toggle('open')">
         <span class="ag-num">${i + 1}</span>
         <span class="ag-name">${esc(flow.name)}</span>
-        <span class="ag-count">${flow.emails.length} emails</span>
+        <span class="ag-count">${(flow.emails ?? []).length} emails</span>
         <span class="ag-chevron">+</span>
       </div>
       <div class="em-flow-body">
         <p class="em-trigger"><strong>Trigger:</strong> ${esc(flow.trigger)}</p>
         <div class="em-emails">
-          ${flow.emails.map((e: { subject: string; purpose: string; delay?: string }, j: number) => `
+          ${(flow.emails ?? []).map((e: { subject: string; purpose: string; delay?: string }, j: number) => `
           <div class="em-email-item">
             <span class="em-email-num">${j + 1}</span>
             <div class="em-email-content">
@@ -1172,7 +1172,7 @@ function renderLinkedInAds(campaigns: any[]): string {
             </div>
             <p class="lad-caption">${esc(cr.introText)}</p>
             <div class="lad-image-wrap">
-              <div class="lad-img-txt">${esc(cr.headline)}<span class="char-badge ${cr.headline.length <= 70 ? "char-ok" : "char-over"}" style="margin-left:6px">${cr.headline.length}/70</span></div>
+              <div class="lad-img-txt">${esc(cr.headline)}<span class="char-badge ${(cr.headline ?? "").length <= 70 ? "char-ok" : "char-over"}" style="margin-left:6px">${(cr.headline ?? "").length}/70</span></div>
             </div>
             ${cr.description ? `<p style="font-size:12px;color:var(--text-light);margin-bottom:8px">${esc(cr.description)}</p>` : ""}
             <div class="lad-cta-row">
