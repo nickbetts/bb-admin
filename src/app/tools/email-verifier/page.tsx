@@ -567,6 +567,30 @@ export default function EmailVerifierPage() {
 
           {quickResults.length > 0 && (
             <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+                <button
+                  type="button"
+                  style={{ ...fileBtnStyle, fontSize: 12 }}
+                  onClick={() => {
+                    const header = "email,result\n";
+                    const rows = quickResults
+                      .map((r) => {
+                        const result = r.status === "valid" ? "valid" : "invalid";
+                        return `"${r.email.replace(/"/g, '""')}","${result}"`;
+                      })
+                      .join("\n");
+                    const blob = new Blob([header + rows], { type: "text/csv" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `quick-check-${Date.now()}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                >
+                  Export CSV
+                </button>
+              </div>
               {quickResults.map((r, idx) => {
                 const key = `${r.email}-${idx}`;
                 const isOpen = expandedResultIds.has(key);
@@ -1021,18 +1045,12 @@ function ActiveJobView({
   }, [job.results, filter]);
 
   function exportCsv() {
-    const header = "email,status,sub_status,domain,mx_found,mx_record,smtp_provider,free_email,role,disposable,toxic,did_you_mean,error\n";
+    const header = "email,result\n";
     const rows = job.results
-      .map((r) =>
-        [
-          r.email, r.status, r.subStatus ?? "", r.domain ?? "",
-          r.mxFound, r.mxRecord ?? "", r.smtpProvider ?? "",
-          r.freeEmail, r.role, r.disposable, r.toxic,
-          r.didYouMean ?? "", r.errorMessage ?? "",
-        ]
-          .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-          .join(","),
-      )
+      .map((r) => {
+        const result = r.status === "valid" ? "valid" : "invalid";
+        return `"${r.email.replace(/"/g, '""')}","${result}"`;
+      })
       .join("\n");
     const blob = new Blob([header + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
