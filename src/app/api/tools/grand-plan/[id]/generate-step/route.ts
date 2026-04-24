@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma, withDbRetry } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-logger";
-import { generateGrandPlan, type GrandPlanSources, type GrandPlanData, type CampaignFocusPeriod } from "@/lib/grand-plan-generator";
+import {
+  generateGrandPlan,
+  type GrandPlanSources,
+  type GrandPlanData,
+  type CampaignFocusPeriod,
+  type AccountResearchData,
+  type CustomerVoiceData,
+  type DataAvailability,
+  runWebSearchResearch,
+} from "@/lib/grand-plan-generator";
 import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import { suggestAdGroups, researchKeywords } from "@/lib/keyword-planner-pipeline";
 import { generateContentStrategy, generateContentStrategySection, collectSemrushData, runOnPageAudit, type ContentStrategyData } from "@/lib/content-strategy-generator";
@@ -13,6 +22,18 @@ import {
   refineLandingPage,
   type LPCritiqueItem,
 } from "@/lib/lp-generator";
+import { withApiCache } from "@/lib/api-cache";
+import { getAnthropicClient } from "@/lib/anthropic-client";
+import {
+  getGA4Overview,
+  getGA4TrafficSources,
+  getGA4Demographics,
+  getGA4Devices,
+  getGA4ConversionsByChannel,
+  getGA4TopPages,
+} from "@/lib/ga4";
+import { getGSCTopQueries, getGSCTopPages } from "@/lib/search-console";
+import { getDomainOverview, getCompetitors, getTopOrganicKeywords, getBacklinks } from "@/lib/semrush";
 
 // 800s = Vercel Pro maximum. The heaviest steps (prepare-content with Claude
 // Opus 32k tokens, prepare-lp-refine with multi-pass critique) can exceed
@@ -61,7 +82,7 @@ export async function POST(
   const plan = await prisma.grandPlan.findUnique({
     where: { id },
     include: {
-      client: { select: { id: true, name: true, slug: true, website: true, searchConsoleSiteUrl: true } },
+      client: { select: { id: true, name: true, slug: true, website: true, searchConsoleSiteUrl: true, ga4PropertyId: true, semrushDomain: true } },
       proposal: {
         select: {
           id: true, title: true, clientName: true,
@@ -458,6 +479,190 @@ export async function POST(
       return NextResponse.json({ ok: true, step });
     }
 
+    // ─── STEP: prepare-research ──────────────────────────────────────────────
+    // Harvests real account data (GA4, Search Console, SEMrush competitors)
+    // and stashes it onto planDataJson._researchData so every downstream
+    // generator can ground its recommendations in actual numbers. All calls
+    // are wrapped in withApiCache (7-day TTL) so a regeneration within the
+    // week reuses the same snapshot.
+    if (step === "prepare-research") {
+      const cli = plan.client;
+      // Nothing to ground against — skip silently.
+      if (!cli || (!cli.ga4PropertyId && !cli.searchConsoleSiteUrl && !cli.semrushDomain && !website)) {
+        return NextResponse.json({ ok: true, step, skipped: true });
+      }
+
+      await setStatus(id, "Harvesting real account data (GA4, Search Console, SEMrush)...");
+
+      const propertyId = cli.ga4PropertyId ?? null;
+      const gscSite = cli.searchConsoleSiteUrl ?? null;
+      const semDomain = cli.semrushDomain
+        ?? (website ? website.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "") : null);
+
+      // Default to the last 30 days for all data pulls.
+      const endDate = new Date().toISOString().slice(0, 10);
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const cacheTtlHours = 24 * 7;
+
+      const safe = async <T>(label: string, fn: () => Promise<T>): Promise<T | null> => {
+        try { return await fn(); } catch (err) {
+          console.warn(`[grand-plan:${id}] research(${label}) failed:`, err instanceof Error ? err.message : err);
+          return null;
+        }
+      };
+
+      const [ga4Overview, ga4Traffic, ga4Demo, ga4Devices, ga4Convs, ga4TopPages, ga4Geo, gscQueries, gscPages, semCompetitors] = await Promise.all([
+        propertyId ? safe("ga4Overview", () => withApiCache(`gp-research:ga4-overview:${propertyId}:${startDate}:${endDate}`, cacheTtlHours, () => getGA4Overview(propertyId, startDate, endDate))) : Promise.resolve(null),
+        propertyId ? safe("ga4Traffic", () => withApiCache(`gp-research:ga4-traffic:${propertyId}:${startDate}:${endDate}`, cacheTtlHours, () => getGA4TrafficSources(propertyId, startDate, endDate))) : Promise.resolve(null),
+        propertyId ? safe("ga4Demo", () => withApiCache(`gp-research:ga4-demo:${propertyId}:${startDate}:${endDate}`, cacheTtlHours, () => getGA4Demographics(propertyId, startDate, endDate))) : Promise.resolve(null),
+        propertyId ? safe("ga4Devices", () => withApiCache(`gp-research:ga4-devices:${propertyId}:${startDate}:${endDate}`, cacheTtlHours, () => getGA4Devices(propertyId, startDate, endDate))) : Promise.resolve(null),
+        propertyId ? safe("ga4Convs", () => withApiCache(`gp-research:ga4-convs:${propertyId}:${startDate}:${endDate}`, cacheTtlHours, () => getGA4ConversionsByChannel(propertyId, startDate, endDate))) : Promise.resolve(null),
+        propertyId ? safe("ga4TopPages", () => withApiCache(`gp-research:ga4-pages:${propertyId}:${startDate}:${endDate}`, cacheTtlHours, () => getGA4TopPages(propertyId, startDate, endDate))) : Promise.resolve(null),
+        // ga4Geo is unused for now but kept as a placeholder slot in the parallel array.
+        Promise.resolve(null),
+        gscSite ? safe("gscQueries", () => withApiCache(`gp-research:gsc-queries:${gscSite}:${startDate}:${endDate}`, cacheTtlHours, () => getGSCTopQueries(gscSite, startDate, endDate, 25))) : Promise.resolve(null),
+        gscSite ? safe("gscPages", () => withApiCache(`gp-research:gsc-pages:${gscSite}:${startDate}:${endDate}`, cacheTtlHours, () => getGSCTopPages(gscSite, startDate, endDate))) : Promise.resolve(null),
+        semDomain ? safe("semCompetitors", () => withApiCache(`gp-research:sem-competitors:${semDomain}:uk`, cacheTtlHours, () => getCompetitors(semDomain, "uk", 6))) : Promise.resolve(null),
+      ]);
+      void ga4Geo; // reserved for future use
+
+      // Per-competitor enrichment (top organic keywords + backlinks). Limited
+      // to the top 4 competitors to stay inside SEMrush quota and the lambda
+      // budget. Each is independently cached for 7 days.
+      const topCompetitors = (semCompetitors ?? []).slice(0, 4);
+      const competitorEnriched = await Promise.all(topCompetitors.map(async (c) => {
+        const overview = await safe(`sem-comp-overview:${c.domain}`, () => withApiCache(`gp-research:sem-comp-overview:${c.domain}:uk`, cacheTtlHours, () => getDomainOverview(c.domain, "uk")));
+        const kws = await safe(`sem-comp-kws:${c.domain}`, () => withApiCache(`gp-research:sem-comp-kws:${c.domain}:uk`, cacheTtlHours, () => getTopOrganicKeywords(c.domain, "uk", 10)));
+        const links = await safe(`sem-comp-links:${c.domain}`, () => withApiCache(`gp-research:sem-comp-links:${c.domain}`, cacheTtlHours, () => getBacklinks(c.domain, 1)));
+        return {
+          domain: c.domain,
+          organicTraffic: overview?.organicTraffic ?? c.organicTraffic ?? 0,
+          organicKeywords: overview?.organicKeywords ?? c.organicKeywords ?? 0,
+          paidKeywords: overview?.paidKeywords ?? 0,
+          backlinks: Array.isArray(links) ? links.length : 0,
+          topKeywords: Array.isArray(kws) ? kws.map((k) => k.keyword).filter(Boolean).slice(0, 10) : [],
+        };
+      }));
+
+      const research: AccountResearchData = {
+        ga4: propertyId ? {
+          propertyId,
+          overview: ga4Overview ? {
+            sessions: ga4Overview.sessions,
+            users: ga4Overview.users,
+            bounceRate: ga4Overview.bounceRate,
+            conversionRate: ga4Overview.conversionRate,
+            avgSessionDuration: ga4Overview.avgSessionDuration,
+          } : undefined,
+          topPages: Array.isArray(ga4TopPages)
+            ? ga4TopPages.slice(0, 15).map((p) => ({ path: p.pagePath, sessions: p.sessions, bounceRate: p.bounceRate }))
+            : undefined,
+          trafficSources: Array.isArray(ga4Traffic)
+            ? ga4Traffic.slice(0, 12).map((t) => ({ source: t.source, medium: t.medium, sessions: t.sessions, conversions: t.conversions }))
+            : undefined,
+          devices: Array.isArray(ga4Devices)
+            ? ga4Devices.map((d) => ({ device: d.device, sessions: d.sessions, bounceRate: 0 }))
+            : undefined,
+          // Flatten age + gender into a single demographic-like list (country
+          // shape is not what we have here, so we re-purpose `country` field as
+          // the demographic label — older callers ignored this, new generators
+          // read the labels directly).
+          demographics: ga4Demo
+            ? [
+                ...(ga4Demo.ageGroups ?? []).map((a) => ({ country: `Age ${a.range}`, sessions: a.users })),
+                ...(ga4Demo.genderSplit ?? []).map((g) => ({ country: `Gender ${g.gender}`, sessions: g.users })),
+              ].slice(0, 15)
+            : undefined,
+          conversionsByChannel: Array.isArray(ga4Convs)
+            ? ga4Convs.slice(0, 12).map((c) => ({ channel: c.channel, conversions: c.conversions, conversionRate: c.sessions > 0 ? (c.conversions / c.sessions) * 100 : 0 }))
+            : undefined,
+          weakPages: Array.isArray(ga4TopPages)
+            ? ga4TopPages
+                .filter((p) => (p.bounceRate ?? 0) > 70 && (p.sessions ?? 0) >= 50)
+                .slice(0, 8)
+                .map((p) => ({ path: p.pagePath, bounceRate: p.bounceRate, sessions: p.sessions }))
+            : undefined,
+        } : undefined,
+        searchConsole: gscSite ? {
+          siteUrl: gscSite,
+          topQueries: Array.isArray(gscQueries) ? gscQueries.slice(0, 20) : undefined,
+          topPages: Array.isArray(gscPages) ? gscPages.slice(0, 20) : undefined,
+        } : undefined,
+        competitorData: competitorEnriched.length ? competitorEnriched : undefined,
+      };
+
+      // Stash on planDataJson under a transient key. Stripped at assemble time.
+      const fresh = await prisma.grandPlan.findUnique({ where: { id }, select: { planDataJson: true } });
+      const data = safeJsonParse<(GrandPlanData & { _researchData?: AccountResearchData }) | null>(fresh?.planDataJson ?? null, null);
+      if (data) {
+        data._researchData = research;
+        await prisma.grandPlan.update({ where: { id }, data: { planDataJson: JSON.stringify(data) } });
+      }
+
+      return NextResponse.json({ ok: true, step, signals: {
+        ga4: !!research.ga4,
+        gsc: !!research.searchConsole,
+        competitors: research.competitorData?.length ?? 0,
+      } });
+    }
+
+    // ─── STEP: prepare-customer-voice ────────────────────────────────────────
+    // Uses Anthropic's built-in web_search tool to harvest real customer pain
+    // points, competitor complaints and verbatim quotes from forums and review
+    // sites. Stashed on planDataJson._customerVoice for downstream generators.
+    if (step === "prepare-customer-voice") {
+      // Skip if we have neither a sector nor a brief to ground the search.
+      if (!config.sector && !brief && !plan.client?.name) {
+        return NextResponse.json({ ok: true, step, skipped: true });
+      }
+
+      await setStatus(id, "Researching real customer voice (forums, reviews)...");
+
+      // Pull cached competitor list off the research stash if available.
+      const fresh = await prisma.grandPlan.findUnique({ where: { id }, select: { planDataJson: true } });
+      const planData = safeJsonParse<(GrandPlanData & { _researchData?: AccountResearchData; _customerVoice?: CustomerVoiceData }) | null>(fresh?.planDataJson ?? null, null);
+      const competitors = (planData?._researchData?.competitorData ?? []).map((c) => c.domain).slice(0, 4);
+
+      // Derive likely services from proposal / keyword research.
+      const services: string[] = [];
+      if (plan.proposal?.servicesJson) {
+        try {
+          const parsed = JSON.parse(plan.proposal.servicesJson) as Array<{ name?: string; title?: string }>;
+          if (Array.isArray(parsed)) services.push(...parsed.map((s) => s.name ?? s.title ?? "").filter(Boolean).slice(0, 4));
+        } catch { /* ignore */ }
+      }
+
+      const cacheKey = `gp-customer-voice:${plan.clientId ?? id}:${config.sector ?? "unknown"}:${services.slice(0, 3).join(",")}`;
+      let voice: CustomerVoiceData;
+      try {
+        voice = await withApiCache(cacheKey, 24 * 7, async () => {
+          const anthropic = await getAnthropicClient();
+          return runWebSearchResearch(anthropic, {
+            clientName,
+            sector: config.sector,
+            services,
+            competitors,
+            brief,
+          });
+        });
+      } catch (err) {
+        console.error(`[grand-plan:${id}] customer voice failed:`, err);
+        voice = { painPoints: [], competitorComplaints: [], quotes: [], queriesFired: [] };
+      }
+
+      if (planData) {
+        planData._customerVoice = voice;
+        await prisma.grandPlan.update({ where: { id }, data: { planDataJson: JSON.stringify(planData) } });
+      }
+
+      return NextResponse.json({ ok: true, step, signals: {
+        painPoints: voice.painPoints.length,
+        complaints: voice.competitorComplaints.length,
+        quotes: voice.quotes.length,
+        queries: voice.queriesFired.length,
+      } });
+    }
+
     // ─── STEP: prepare-lp-brand ───────────────────────────────────────────────
     // Scrapes the website for brand colours, fonts, copy and stashes the
     // BrandContext in planDataJson. Isolated so the LP generation step has the
@@ -672,7 +877,7 @@ export async function POST(
       const freshPlan = await prisma.grandPlan.findUnique({
         where: { id },
         include: {
-          client: { select: { id: true, name: true, slug: true, website: true } },
+          client: { select: { id: true, name: true, slug: true, website: true, searchConsoleSiteUrl: true, ga4PropertyId: true, semrushDomain: true } },
           proposal: {
             select: {
               id: true, title: true, clientName: true,
@@ -720,6 +925,18 @@ export async function POST(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (existingData.sections as any)[sectionKey] = newValue;
       }
+      // Merge grounding metadata for sections that surface it (audiences,
+      // emailMarketing, linkedInAds, competitorIntel). Other sections leave
+      // partial.grounding undefined and we leave existingData.grounding alone.
+      const partialGrounding = partial.grounding?.[sectionKey];
+      if (partialGrounding) {
+        existingData.grounding = existingData.grounding ?? {};
+        existingData.grounding[sectionKey] = partialGrounding;
+      }
+      // dataSources is recomputed each section pass — replace if present.
+      if (partial.dataSources?.length) {
+        existingData.dataSources = partial.dataSources;
+      }
 
       await prisma.grandPlan.update({
         where: { id },
@@ -755,9 +972,13 @@ export async function POST(
         return NextResponse.json({ error: "No plan data to assemble" }, { status: 400 });
       }
 
-      // Strip transient LP working state before final render/persistence.
+      // Strip transient working state before final render/persistence.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (planData as any)._lpInProgress;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (planData as any)._researchData;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (planData as any)._customerVoice;
 
       const html = renderGrandPlanHtml(planData);
 
@@ -839,6 +1060,22 @@ async function setStatus(id: string, message: string) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildSources(plan: any, config: any, brief: string): GrandPlanSources {
   const clientName = plan.client?.name || plan.proposal?.clientName || "Client";
+
+  // Pull research / customer-voice stashes off planDataJson if the prepare-* steps
+  // have run. These are stripped before the final assemble step renders the HTML.
+  const stash = safeJsonParse<{ _researchData?: AccountResearchData; _customerVoice?: CustomerVoiceData } | null>(plan.planDataJson, null);
+  const accountData = stash?._researchData;
+  const customerVoice = stash?._customerVoice;
+
+  const dataAvailability: DataAvailability = {
+    ga4: !!accountData?.ga4,
+    searchConsole: !!accountData?.searchConsole,
+    meta: !!plan.client?.metaAccountId,
+    googleAds: !!plan.client?.googleAdsCustomerId,
+    semrushCompetitors: !!accountData?.competitorData?.length,
+    customerVoice: !!customerVoice?.painPoints?.length,
+  };
+
   return {
     clientName,
     purpose: plan.purpose,
@@ -847,6 +1084,9 @@ function buildSources(plan: any, config: any, brief: string): GrandPlanSources {
     sector: config.sector || undefined,
     enabledPlatforms: config.sections,
     campaignFocusPeriods: safeJsonParse(plan.campaignFocusPeriodsJson, []),
+    accountData,
+    customerVoice,
+    dataAvailability,
     proposal: plan.proposal
       ? {
           title: plan.proposal.title,

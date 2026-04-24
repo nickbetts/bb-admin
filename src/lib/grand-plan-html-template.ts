@@ -15,6 +15,49 @@
 
 import type { GrandPlanData, AudienceItem } from "./grand-plan-generator";
 
+// ─── Data grounding badges ──────────────────────────────────────────────────
+// Each grounded section returns a { grounding, sourceLabels } record on
+// plan.grounding[key]. We inject a small badge into the section's first <h2>
+// heading so the reader can see at a glance which sections are real-data
+// driven vs AI-generated. Sections with no grounding entry are left alone.
+
+const GROUNDING_LABEL: Record<string, { className: string; text: string }> = {
+  real: { className: "dg-real", text: "Real data" },
+  partial: { className: "dg-partial", text: "Partly grounded" },
+  "ai-only": { className: "dg-ai", text: "AI estimate" },
+};
+
+function renderGroundingBadge(g?: { grounding: string; sourceLabels: string[] }): string {
+  if (!g) return "";
+  const meta = GROUNDING_LABEL[g.grounding] ?? GROUNDING_LABEL["ai-only"];
+  const tooltip = g.sourceLabels?.length
+    ? `Sources: ${g.sourceLabels.join(", ")}`
+    : g.grounding === "ai-only"
+      ? "Generated without account data — verify before sharing."
+      : "Grounded in connected data.";
+  return `<span class="dg-badge ${meta.className}" title="${escapeAttr(tooltip)}">${meta.text}</span>`;
+}
+
+function escapeAttr(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+/** Inject a grounding badge into the first <h2> tag of a rendered section. */
+function withGroundingBadge(html: string, g?: { grounding: string; sourceLabels: string[] }): string {
+  if (!g) return html;
+  const badge = renderGroundingBadge(g);
+  if (!badge) return html;
+  // Insert just before the closing </h2> of the first heading.
+  return html.replace(/(<h2\b[^>]*>[\s\S]*?)(<\/h2>)/, (_m, open, close) => `${open} ${badge}${close}`);
+}
+
+function renderDataSourcesPanel(sources: { label: string; detail?: string }[]): string {
+  const items = sources
+    .map((s) => `<li><strong>${escapeAttr(s.label)}</strong>${s.detail ? `<span class="ds-detail">— ${escapeAttr(s.detail)}</span>` : ""}</li>`) 
+    .join("");
+  return `<div class="data-sources-panel"><h3>Data sources used in this plan</h3><ul class="data-sources-list">${items}</ul></div>`;
+}
+
 /**
  * Extract a clean one-paragraph teaser from executive summary HTML.
  * Strips heading tags, HTML markup, code-fence artefacts, and truncates
@@ -189,7 +232,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
 </div>
 
 <!-- Main Content -->
-${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods, plan.generationReport)}
+${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods, plan.generationReport, plan.grounding, plan.dataSources)}
 
 <!-- Closing CTA -->
 ${renderCtaClose(plan.clientName)}
@@ -218,7 +261,7 @@ ${renderCtaClose(plan.clientName)}
 // ─── Chapter layout builder ─────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildChapteredSections(s: any, clientName: string, brief?: string, campaignPeriods?: { label: string; startMonth: number; endMonth: number; description?: string }[], generationReport?: Record<string, { status: string; error?: string }>): string {
+function buildChapteredSections(s: any, clientName: string, brief?: string, campaignPeriods?: { label: string; startMonth: number; endMonth: number; description?: string }[], generationReport?: Record<string, { status: string; error?: string }>, grounding?: GrandPlanData["grounding"], dataSources?: GrandPlanData["dataSources"]): string {
   // Stash the LP report on the section data so the Creative-chapter logic
   // below can decide whether to render the placeholder card. Avoids threading
   // generationReport through every helper.
@@ -244,9 +287,14 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
 
   const parts: string[] = [];
 
+  // Data sources panel (only if at least one real data source was consulted)
+  if (dataSources?.length) {
+    parts.push(renderDataSourcesPanel(dataSources));
+  }
+
   if (hasContext) {
     parts.push(ch("Context", `The brief, target audiences, and campaign periods that define this plan.`));
-    parts.push(renderContext(brief, s.audiences, campaignPeriods));
+    parts.push(withGroundingBadge(renderContext(brief, s.audiences, campaignPeriods), grounding?.audiences));
   }
 
   if (hasStrategy) {
@@ -265,7 +313,7 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   if (hasPaidSocial) {
     parts.push(ch("Paid Social", "Facebook, Instagram, and LinkedIn campaign structures with audience targeting and ad creative."));
     if (s.metaCampaigns?.length) parts.push(renderMetaCampaigns(s.metaCampaigns));
-    if (s.linkedInAds?.length) parts.push(renderLinkedInAds(s.linkedInAds));
+    if (s.linkedInAds?.length) parts.push(withGroundingBadge(renderLinkedInAds(s.linkedInAds), grounding?.linkedInAds));
   }
 
   if (hasContent) {
@@ -279,14 +327,14 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   if (hasResearch) {
     parts.push(ch("Research", "Keyword research and competitor intelligence across all target areas."));
     if (s.keywordResearch) parts.push(renderKeywordResearch(s.keywordResearch));
-    if (s.competitorIntel?.length) parts.push(renderCompetitorIntel(s.competitorIntel));
+    if (s.competitorIntel?.length) parts.push(withGroundingBadge(renderCompetitorIntel(s.competitorIntel), grounding?.competitorIntel));
   }
 
   if (hasCommercial) {
     parts.push(ch("Commercial", "Services, investment overview, media budget allocation, and email lifecycle."));
     if (s.servicesInvestment) parts.push(renderServicesInvestment(s.servicesInvestment));
     if (s.mediaPlan) parts.push(renderMediaPlan(s.mediaPlan));
-    if (s.emailMarketing) parts.push(renderEmailMarketing(s.emailMarketing));
+    if (s.emailMarketing) parts.push(withGroundingBadge(renderEmailMarketing(s.emailMarketing), grounding?.emailMarketing));
   }
 
   if (hasMeasurement) {
@@ -1999,6 +2047,20 @@ details.cal-month[open] .cal-month-header::after{content:"\\2212"}
 .lad-cta-row{display:flex;align-items:center;justify-content:space-between}
 .lad-cta-btn{background:transparent;border:1px solid #0077b5;color:#0077b5;font-size:12.5px;font-weight:700;padding:.3rem .85rem;border-radius:6px}
 .lad-stats{font-size:11.5px;color:var(--mid)}
+
+/* Data grounding badges (real / partial / ai-only) */
+.dg-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;margin-left:10px;vertical-align:middle;letter-spacing:.02em;text-transform:uppercase;cursor:help}
+.dg-real{background:#dcfce7;color:#166534;border:1px solid #86efac}
+.dg-partial{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+.dg-ai{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
+.dg-badge::before{content:"\u25cf";font-size:9px}
+
+/* Data sources used panel */
+.data-sources-panel{margin:1.5rem 0 2rem;padding:1rem 1.25rem;background:#f8fafc;border-left:3px solid #0ea5e9;border-radius:6px}
+.data-sources-panel h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#0c4a6e;margin:0 0 .5rem 0}
+.data-sources-list{display:flex;flex-wrap:wrap;gap:.4rem .6rem;margin:0;padding:0;list-style:none;font-size:12.5px}
+.data-sources-list li{background:#fff;border:1px solid #e2e8f0;border-radius:4px;padding:.25rem .55rem;color:#334155}
+.data-sources-list li .ds-detail{color:#64748b;font-size:11.5px;margin-left:4px}
 `;
 
 

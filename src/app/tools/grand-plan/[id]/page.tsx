@@ -69,6 +69,8 @@ const PIPELINE_STEPS: { key: string; label: string; estSeconds: number }[] = [
   { key: "prepare-content-2", label: "Generating landing pages (2/3)", estSeconds: 90 },
   { key: "prepare-content-3", label: "Generating blog posts & roadmap (3/3)", estSeconds: 90 },
   { key: "prepare-content-audit", label: "Auditing on-page SEO", estSeconds: 30 },
+  { key: "prepare-research", label: "Harvesting account data (GA4 / GSC / SEMrush)", estSeconds: 60 },
+  { key: "prepare-customer-voice", label: "Researching customer voice (web search)", estSeconds: 60 },
   { key: "prepare-lp-brand", label: "Extracting brand context", estSeconds: 20 },
   { key: "prepare-lp-draft", label: "Generating landing page draft", estSeconds: 60 },
   { key: "prepare-lp-critique", label: "Critiquing landing page", estSeconds: 25 },

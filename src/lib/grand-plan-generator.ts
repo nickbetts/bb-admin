@@ -191,6 +191,71 @@ export interface AudienceItem {
   };
 }
 
+/** Per-section grounding badge — surfaced in the rendered HTML so users can
+ * see at a glance which parts of the plan are backed by real data versus
+ * pure AI inference. */
+export type DataGrounding = "real" | "partial" | "ai-only";
+
+/** Grounded section wrapper — attached as a sibling on each section's data
+ * shape. Consumers use the legacy property name (e.g. `audiences`) plus a
+ * parallel `audiencesGrounding` property on `sections`. */
+export interface GroundedSection<T> {
+  value: T;
+  grounding: DataGrounding;
+  /** Short list of source labels — e.g. "GA4 audiences", "Web search: Trustpilot". */
+  sourceLabels?: string[];
+}
+
+/** Real account data harvested from connected platforms before sections run. */
+export interface AccountResearchData {
+  ga4?: {
+    propertyId: string;
+    overview?: { sessions: number; users: number; bounceRate: number; conversionRate: number; avgSessionDuration: number };
+    topPages?: { path: string; sessions: number; bounceRate: number }[];
+    trafficSources?: { source: string; medium: string; sessions: number; conversions: number }[];
+    devices?: { device: string; sessions: number; bounceRate: number }[];
+    demographics?: { country: string; sessions: number }[];
+    conversionsByChannel?: { channel: string; conversions: number; conversionRate: number }[];
+    /** Pages with high bounce + low conversion — concrete CRO targets. */
+    weakPages?: { path: string; bounceRate: number; sessions: number }[];
+  };
+  searchConsole?: {
+    siteUrl: string;
+    topQueries?: { query: string; clicks: number; impressions: number; ctr: number; position: number }[];
+    topPages?: { page: string; clicks: number; impressions: number; ctr: number }[];
+  };
+  competitorData?: {
+    domain: string;
+    organicTraffic: number;
+    organicKeywords: number;
+    paidKeywords: number;
+    backlinks: number;
+    topKeywords: string[];
+  }[];
+}
+
+/** Customer-voice research harvested via Anthropic web search. */
+export interface CustomerVoiceData {
+  /** Real customer pain points pulled verbatim (or paraphrased from forums/reviews). */
+  painPoints: string[];
+  /** Common complaints customers raise about competitors in this sector. */
+  competitorComplaints: string[];
+  /** Notable quotes / phrasing that should colour persona language. */
+  quotes: { text: string; source: string }[];
+  /** Web-search queries actually fired — surfaced in the Data Sources panel. */
+  queriesFired: string[];
+}
+
+/** Flags telling each generator which integrations are actually available. */
+export interface DataAvailability {
+  ga4: boolean;
+  searchConsole: boolean;
+  meta: boolean;
+  googleAds: boolean;
+  semrushCompetitors: boolean;
+  customerVoice: boolean;
+}
+
 export interface GrandPlanData {
   title: string;
   clientName: string;
@@ -242,6 +307,12 @@ export interface GrandPlanData {
     /** KPI/measurement framework grouped by channel. */
     kpis?: KpiChannel[];
   };
+  /** Per-section grounding flags + source labels — used by the renderer to
+   * surface badges next to each section heading. Keyed by the same keys as
+   * `sections`. Optional so legacy plans render unchanged. */
+  grounding?: Partial<Record<keyof GrandPlanData["sections"], { grounding: DataGrounding; sourceLabels: string[] }>>;
+  /** Aggregate list of every real source consulted across the run. */
+  dataSources?: { label: string; detail?: string }[];
   generationReport?: Record<string, { status: "ok" | "skipped" | "failed"; error?: string }>;
 }
 
@@ -288,6 +359,94 @@ export interface GrandPlanSources {
   clientName: string;
   purpose: string;
   campaignFocusPeriods: CampaignFocusPeriod[];
+  /** Real data harvested by the prepare-research step (GA4, GSC, SEMrush). */
+  accountData?: AccountResearchData;
+  /** Customer-voice + competitor-complaint research from Anthropic web search. */
+  customerVoice?: CustomerVoiceData;
+  /** Booleans the generators inspect to decide when to fall back to AI inference. */
+  dataAvailability?: DataAvailability;
+}
+
+// ─── Customer voice / web search helper ────────────────────────────────────
+// Uses Anthropic's built-in web_search tool to harvest real pain points,
+// competitor complaints and verbatim quotes from forums and review sites.
+// Designed to be called from the prepare-customer-voice route step and
+// stashed onto planDataJson._customerVoice for downstream generators.
+
+export async function runWebSearchResearch(
+  anthropic: Anthropic,
+  options: {
+    clientName: string;
+    sector?: string;
+    services?: string[];
+    competitors?: string[];
+    brief?: string;
+  }
+): Promise<CustomerVoiceData> {
+  const sectorLabel = options.sector ? options.sector.replace(/_/g, " ") : "their industry";
+  const servicesLine = options.services?.length ? options.services.slice(0, 4).join(", ") : "";
+  const competitorLine = options.competitors?.length ? options.competitors.slice(0, 4).join(", ") : "";
+
+  const prompt = `You are a qualitative researcher. Use the web_search tool (max 5 searches) to find REAL customer pain points, frustrations, and verbatim quotes about ${sectorLabel}${servicesLine ? ` and specifically ${servicesLine}` : ""}.
+
+Search Reddit, Trustpilot, Google reviews, industry forums and Q&A sites. Look for:
+1. Pain points and frustrations buyers express
+2. Specific complaints about competitors${competitorLine ? ` (especially: ${competitorLine})` : ""}
+3. Verbatim quotes (exact phrasing) from real customers
+
+After your searches, return ONLY a JSON object (no prose, no markdown fences) in this format:
+{
+  "painPoints": ["pain point 1", "pain point 2", ...],   // 5-10 items, real frustrations in customers' own language
+  "competitorComplaints": ["complaint 1", ...],           // 3-8 items, specific competitor weaknesses
+  "quotes": [{"text": "verbatim quote", "source": "where it came from (e.g. 'r/smallbusiness, March 2024')"}],  // 3-8 items
+  "queriesFired": ["search query 1", "search query 2", ...]  // the queries you actually ran
+}
+
+Client: ${options.clientName}
+Brief: ${options.brief ?? "(none provided)"}
+Sector: ${sectorLabel}
+Services: ${servicesLine || "(unspecified)"}
+Competitors to investigate: ${competitorLine || "(none provided — search for likely competitors)"}
+
+Be ruthless about authenticity — drop anything that sounds like marketing copy. Real customers complain about specific things in specific words. Capture that.`;
+
+  let res;
+  try {
+    res = await withAnthropicRetry("customerVoice", () => anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 3500,
+      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 } as unknown as Anthropic.Tool],
+      messages: [{ role: "user", content: prompt }],
+    }));
+  } catch (err) {
+    console.error("[grand-plan] customer voice web search failed:", err);
+    return { painPoints: [], competitorComplaints: [], quotes: [], queriesFired: [] };
+  }
+
+  // Extract the final text block (after any tool use) and parse JSON
+  const text = extractText(res);
+  const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  // Find the first { ... } block in case the model added prose around it
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  const jsonStr = match ? match[0] : cleaned;
+  try {
+    const parsed = JSON.parse(jsonStr) as Partial<CustomerVoiceData>;
+    return {
+      painPoints: Array.isArray(parsed.painPoints) ? parsed.painPoints.map(String).slice(0, 12) : [],
+      competitorComplaints: Array.isArray(parsed.competitorComplaints) ? parsed.competitorComplaints.map(String).slice(0, 10) : [],
+      quotes: Array.isArray(parsed.quotes)
+        ? (parsed.quotes as unknown[])
+            .filter((q): q is { text: unknown; source?: unknown } => !!q && typeof q === "object")
+            .map((q) => ({ text: String((q as { text?: unknown }).text ?? ""), source: String((q as { source?: unknown }).source ?? "") }))
+            .filter((q) => q.text)
+            .slice(0, 10)
+        : [],
+      queriesFired: Array.isArray(parsed.queriesFired) ? parsed.queriesFired.map(String).slice(0, 8) : [],
+    };
+  } catch (err) {
+    console.error("[grand-plan] customer voice JSON parse failed:", err);
+    return { painPoints: [], competitorComplaints: [], quotes: [], queriesFired: [] };
+  }
 }
 
 // ─── Main generator ─────────────────────────────────────────────────────────
@@ -468,6 +627,29 @@ export async function generateGrandPlan(
       }
     : undefined;
 
+  // Unpack grounded sections (audiences, emailMarketing, linkedInAds, competitorIntel)
+  // — these now return { value, grounding, sourceLabels } so we can surface badges.
+  const grounding: NonNullable<GrandPlanData["grounding"]> = {};
+  const recordGrounding = <K extends string>(key: K, gs: GroundedSection<unknown> | undefined) => {
+    if (gs) grounding[key as keyof NonNullable<GrandPlanData["grounding"]>] = { grounding: gs.grounding, sourceLabels: gs.sourceLabels ?? [] };
+  };
+  recordGrounding("audiences", audiences);
+  recordGrounding("emailMarketing", emailMarketing);
+  recordGrounding("linkedInAds", linkedInAds);
+  recordGrounding("competitorIntel", competitorIntel);
+
+  // Aggregate the data sources actually consulted across the plan, for the
+  // "Data Sources Used" panel rendered near the top of the report.
+  const dataSources: NonNullable<GrandPlanData["dataSources"]> = [];
+  if (sources.accountData?.ga4) dataSources.push({ label: "Google Analytics 4", detail: "Last 30 days, audiences, devices, conversions" });
+  if (sources.accountData?.searchConsole) dataSources.push({ label: "Search Console", detail: "Top queries and pages" });
+  if (sources.accountData?.competitorData?.length) dataSources.push({ label: "SEMrush", detail: `${sources.accountData.competitorData.length} competitor snapshot(s)` });
+  if (sources.customerVoice?.queriesFired?.length) dataSources.push({ label: "Customer voice (web search)", detail: `${sources.customerVoice.queriesFired.length} research queries` });
+  if (sources.keywordResearch) dataSources.push({ label: "Keyword Planner", detail: sources.keywordResearch.title });
+  if (sources.contentStrategy) dataSources.push({ label: "Content Strategy", detail: "Saved strategy doc" });
+  if (sources.proposal) dataSources.push({ label: "Proposal", detail: "Services, hours, pricing" });
+  if (sources.mediaPlan) dataSources.push({ label: "Media Plan", detail: `Total budget £${sources.mediaPlan.totalBudget?.toLocaleString?.() ?? "?"}` });
+
   if (onProgress) await onProgress("Assembling final document...");
 
   return {
@@ -478,7 +660,7 @@ export async function generateGrandPlan(
     brief: sources.clientBrief,
     campaignPeriods: sources.campaignFocusPeriods.length > 0 ? sources.campaignFocusPeriods : undefined,
     sections: {
-      audiences,
+      audiences: audiences?.value,
       executiveSummary,
       strategyPlan,
       googleAdsCampaigns,
@@ -490,13 +672,15 @@ export async function generateGrandPlan(
       exampleArticles,
       servicesInvestment,
       mediaPlan: mediaPlanSection,
-      emailMarketing,
-      linkedInAds,
-      competitorIntel,
+      emailMarketing: emailMarketing?.value,
+      linkedInAds: linkedInAds?.value,
+      competitorIntel: competitorIntel?.value,
       googleAdsForecast,
       quickWins,
       kpis,
     },
+    grounding: Object.keys(grounding).length ? grounding : undefined,
+    dataSources: dataSources.length ? dataSources : undefined,
     generationReport,
   };
 }
@@ -595,8 +779,66 @@ function buildCampaignPeriodsBlock(sources: GrandPlanSources): string {
   return `\n\nKey campaign focus periods (the plan must reflect these — emphasise relevant messaging, creative, and offers in these windows):\n${lines.join("\n")}`;
 }
 
+function buildAccountDataBlock(sources: GrandPlanSources): string {
+  const a = sources.accountData;
+  if (!a) return "";
+  const parts: string[] = [];
+  if (a.ga4?.overview) {
+    const o = a.ga4.overview;
+    parts.push(`GA4 (last 30 days): ${o.sessions.toLocaleString()} sessions, ${o.users.toLocaleString()} users, ${o.bounceRate.toFixed(1)}% bounce, ${o.conversionRate.toFixed(2)}% conversion rate.`);
+  }
+  if (a.ga4?.trafficSources?.length) {
+    const top = a.ga4.trafficSources.slice(0, 5).map((s) => `${s.source}/${s.medium} (${s.sessions.toLocaleString()} sess${s.conversions ? `, ${s.conversions} conv` : ""})`).join("; ");
+    parts.push(`Top traffic sources: ${top}.`);
+  }
+  if (a.ga4?.demographics?.length) {
+    const top = a.ga4.demographics.slice(0, 5).map((d) => `${d.country} (${d.sessions.toLocaleString()})`).join("; ");
+    parts.push(`Geography: ${top}.`);
+  }
+  if (a.ga4?.devices?.length) {
+    const top = a.ga4.devices.map((d) => `${d.device} ${d.sessions.toLocaleString()} (${d.bounceRate.toFixed(0)}% bounce)`).join("; ");
+    parts.push(`Device mix: ${top}.`);
+  }
+  if (a.ga4?.weakPages?.length) {
+    parts.push(`Underperforming pages (high bounce, decent traffic): ${a.ga4.weakPages.slice(0, 5).map((p) => `${p.path} (${p.bounceRate.toFixed(0)}% bounce, ${p.sessions} sess)`).join("; ")}.`);
+  }
+  if (a.ga4?.conversionsByChannel?.length) {
+    parts.push(`Conversions by channel: ${a.ga4.conversionsByChannel.slice(0, 6).map((c) => `${c.channel} ${c.conversions} (${c.conversionRate.toFixed(2)}% CR)`).join("; ")}.`);
+  }
+  if (a.searchConsole?.topQueries?.length) {
+    const top = a.searchConsole.topQueries.slice(0, 8).map((q) => `"${q.query}" (${q.clicks} clicks, ${q.impressions} impr, pos ${q.position.toFixed(1)})`).join("; ");
+    parts.push(`Search Console top converting queries: ${top}.`);
+  }
+  if (a.competitorData?.length) {
+    const lines = a.competitorData.slice(0, 5).map((c) => `${c.domain}: ${c.organicTraffic.toLocaleString()} organic visits/mo, ${c.organicKeywords.toLocaleString()} keywords, ${c.backlinks.toLocaleString()} backlinks`);
+    parts.push(`SEMrush competitor snapshot:\n${lines.join("\n")}`);
+  }
+  if (parts.length === 0) return "";
+  return `\n\nReal account data (use these numbers to ground recommendations — do NOT invent metrics that contradict them):\n${parts.join("\n")}`;
+}
+
+function buildCustomerVoiceBlock(sources: GrandPlanSources): string {
+  const cv = sources.customerVoice;
+  if (!cv || (!cv.painPoints?.length && !cv.competitorComplaints?.length && !cv.quotes?.length)) return "";
+  const parts: string[] = [];
+  if (cv.painPoints?.length) {
+    parts.push(`Real customer pain points (from review sites, forums, Reddit — use this language and these frustrations in audience profiles, ad copy, and content):\n- ${cv.painPoints.slice(0, 10).join("\n- ")}`);
+  }
+  if (cv.quotes?.length) {
+    parts.push(`Verbatim customer phrasing to echo:\n- ${cv.quotes.slice(0, 6).map((q) => `"${q}"`).join("\n- ")}`);
+  }
+  if (cv.competitorComplaints?.length) {
+    parts.push(`Common complaints customers raise about competitors in this sector (these are positioning opportunities):\n- ${cv.competitorComplaints.slice(0, 8).join("\n- ")}`);
+  }
+  return `\n\n${parts.join("\n\n")}`;
+}
+
 function buildSharedContextBlocks(sources: GrandPlanSources): string {
-  return buildAudienceBlock(sources) + buildSectorBlock(sources) + buildCampaignPeriodsBlock(sources);
+  return buildAudienceBlock(sources)
+    + buildSectorBlock(sources)
+    + buildCampaignPeriodsBlock(sources)
+    + buildAccountDataBlock(sources)
+    + buildCustomerVoiceBlock(sources);
 }
 
 // ─── AI generation functions ────────────────────────────────────────────────
@@ -1415,7 +1657,18 @@ function buildContentStrategySection(contentData: any) {
 
 // ─── Email Marketing generator ──────────────────────────────────────────────
 
-async function generateEmailMarketing(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<EmailMarketingPlan> {
+async function generateEmailMarketing(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<GroundedSection<EmailMarketingPlan>> {
+  const a = sources.accountData;
+  const cv = sources.customerVoice;
+  // Derive grounding: real if we have GA4 conversion-by-channel data showing
+  // email/owned activity OR customer voice; partial if just one; ai-only otherwise.
+  const hasChannelData = !!a?.ga4?.conversionsByChannel?.some((c) => /email|newsletter|mailchimp|klaviyo|hubspot/i.test(c.channel));
+  const hasCustomerVoice = !!cv?.painPoints?.length;
+  const grounding: DataGrounding = hasChannelData && hasCustomerVoice ? "real" : hasChannelData || hasCustomerVoice ? "partial" : "ai-only";
+  const sourceLabels: string[] = [];
+  if (hasChannelData) sourceLabels.push("GA4 channel conversions");
+  if (hasCustomerVoice) sourceLabels.push("Customer voice (web search)");
+
   const res = await withAnthropicRetry("emailMarketing", () => anthropic.messages.create({
     model: MODEL,
     max_tokens: 2500,
@@ -1434,6 +1687,8 @@ Rules:
 - Campaigns should mix promotional, educational, and nurture content
 - Segments MUST mirror the named target audiences where possible (use the same names) and include at least one behavioural segment.
 - Each campaign's audience field must reference a real named audience, not "all subscribers".
+- ${hasCustomerVoice ? "Subject lines and email purposes MUST echo the real customer pain points listed in the context. Use the actual frustrations as hooks." : ""}
+- ${hasChannelData ? "Anchor your campaign cadence in the actual conversion volume from GA4 — do not promise more activity than the data supports." : ""}
 - ${sources.sector === "ecommerce" ? "Include post-purchase, browse abandonment, VIP/loyalty flows" : sources.sector === "charities" ? "Include donation receipt, Ramadan series, impact updates" : "Include lead nurture, case study digest, service update flows"}
 - British English, no AI jargon
 - Return ONLY valid JSON, no markdown fences
@@ -1445,16 +1700,28 @@ ${context}${buildSharedContextBlocks(sources)}`,
     ],
   }));
 
-  return safeJsonParse(extractText(res), {
-    flows: [],
-    campaigns: [],
-    segmentation: { segments: [] },
-  });
+  return {
+    value: safeJsonParse(extractText(res), {
+      flows: [],
+      campaigns: [],
+      segmentation: { segments: [] },
+    }),
+    grounding,
+    sourceLabels,
+  };
 }
 
 // ─── LinkedIn Ads generator ─────────────────────────────────────────────────
 
-async function generateLinkedInAds(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<LinkedInCampaign[]> {
+async function generateLinkedInAds(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<GroundedSection<LinkedInCampaign[]>> {
+  const a = sources.accountData;
+  const hasLinkedInTraffic = !!a?.ga4?.trafficSources?.some((s) => /linkedin/i.test(s.source));
+  const hasAudienceJobTitles = !!sources.targetAudiences;
+  const grounding: DataGrounding = hasLinkedInTraffic && hasAudienceJobTitles ? "real" : hasLinkedInTraffic || hasAudienceJobTitles ? "partial" : "ai-only";
+  const sourceLabels: string[] = [];
+  if (hasLinkedInTraffic) sourceLabels.push("GA4 LinkedIn referral data");
+  if (hasAudienceJobTitles) sourceLabels.push("Strategist-supplied audiences");
+
   const res = await withAnthropicRetry("linkedInAds", () => anthropic.messages.create({
     model: MODEL,
     max_tokens: 2500,
@@ -1489,19 +1756,21 @@ ${context}${buildSharedContextBlocks(sources)}`,
 
   const parsed = safeJsonParse(extractText(res), { campaigns: [] });
   const campaigns = (parsed.campaigns ?? []) as LinkedInCampaign[];
+  let value: LinkedInCampaign[];
   if (!Array.isArray(campaigns) || campaigns.length === 0) {
-    return buildFallbackLinkedInCampaigns(sources);
+    value = buildFallbackLinkedInCampaigns(sources);
+  } else {
+    value = campaigns.map((c) => ({
+      ...c,
+      adCreatives: (c.adCreatives ?? []).map((ad) => ({
+        ...ad,
+        headline: (ad.headline ?? "").slice(0, 70),
+        introText: (ad.introText ?? "").slice(0, 150),
+        description: ad.description ? ad.description.slice(0, 100) : undefined,
+      })),
+    }));
   }
-  // Hard truncate as a safety net (LinkedIn rejects over-length copy)
-  return campaigns.map((c) => ({
-    ...c,
-    adCreatives: (c.adCreatives ?? []).map((ad) => ({
-      ...ad,
-      headline: (ad.headline ?? "").slice(0, 70),
-      introText: (ad.introText ?? "").slice(0, 150),
-      description: ad.description ? ad.description.slice(0, 100) : undefined,
-    })),
-  }));
+  return { value, grounding, sourceLabels };
 }
 
 function buildFallbackLinkedInCampaigns(sources: GrandPlanSources): LinkedInCampaign[] {
@@ -1552,10 +1821,68 @@ function buildFallbackLinkedInCampaigns(sources: GrandPlanSources): LinkedInCamp
 
 // ─── Competitor Intelligence generator ──────────────────────────────────────
 
-async function generateCompetitorIntel(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<CompetitorInsight[]> {
+async function generateCompetitorIntel(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<GroundedSection<CompetitorInsight[]>> {
   const website = sources.keywordResearch?.website ?? "";
   const brief = sources.clientBrief ?? sources.keywordResearch?.brief ?? "";
+  const realCompetitors = sources.accountData?.competitorData ?? [];
+  const customerComplaints = sources.customerVoice?.competitorComplaints ?? [];
 
+  // If we have real SEMrush competitor snapshots from the prepare-research
+  // step, use those as the spine — just have the AI add strengths/weaknesses
+  // commentary anchored to the real numbers and customer complaints.
+  if (realCompetitors.length > 0) {
+    const competitorBlock = realCompetitors
+      .map((c) => `${c.domain}: ${c.organicTraffic.toLocaleString()} organic visits/mo, ${c.organicKeywords.toLocaleString()} keywords, ${c.paidKeywords.toLocaleString()} paid keywords, ${c.backlinks.toLocaleString()} backlinks. Top keywords: ${c.topKeywords.slice(0, 6).join(", ")}`)
+      .join("\n");
+    const complaintBlock = customerComplaints.length
+      ? `\n\nReal customer complaints about competitors in this sector (use these to seed the weaknesses fields):\n- ${customerComplaints.slice(0, 8).join("\n- ")}`
+      : "";
+    const res = await withAnthropicRetry("competitorIntel:enrich", () => anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 1800,
+      messages: [
+        {
+          role: "user",
+          content: `You are a competitive intelligence analyst at i3media. The real SEMrush data for each competitor is provided below — your job is ONLY to add the strengths and weaknesses commentary. Do NOT change the numeric fields.
+
+Return a JSON object with key "competitors" containing one entry per competitor below, in the same order. Each entry:
+- domain: string (must match exactly)
+- strengths: string[] (2-3 specific competitive strengths grounded in the real data — e.g. "Ranks page 1 for 12 commercial keywords we target")
+- weaknesses: string[] (2-3 areas where ${sources.clientName} could beat them, drawing on the customer complaints below where possible)
+
+Competitor data (verified SEMrush snapshot):
+${competitorBlock}${complaintBlock}
+
+Client context:
+${context}${buildSharedContextBlocks(sources)}
+
+Rules: British English, no AI jargon, no fluff. Each strength/weakness must reference a specific number, keyword, or complaint — no platitudes. Return ONLY valid JSON, no markdown fences.`,
+        },
+      ],
+    }));
+    const parsed = safeJsonParse<{ competitors?: { domain?: string; strengths?: string[]; weaknesses?: string[] }[] }>(extractText(res), { competitors: [] });
+    const enriched = parsed.competitors ?? [];
+    const value: CompetitorInsight[] = realCompetitors.map((c) => {
+      const match = enriched.find((e) => e.domain && e.domain.toLowerCase().includes(c.domain.toLowerCase().replace(/^www\./, "")));
+      return {
+        domain: c.domain,
+        organicTraffic: c.organicTraffic,
+        organicKeywords: c.organicKeywords,
+        paidKeywords: c.paidKeywords,
+        backlinks: c.backlinks,
+        topKeywords: c.topKeywords.slice(0, 8),
+        strengths: Array.isArray(match?.strengths) ? match!.strengths : [],
+        weaknesses: Array.isArray(match?.weaknesses) ? match!.weaknesses : [],
+      };
+    });
+    return {
+      value,
+      grounding: "real",
+      sourceLabels: ["SEMrush domain overview", customerComplaints.length ? "Customer voice (web search)" : ""].filter(Boolean) as string[],
+    };
+  }
+
+  // No real data — fall back to AI estimates (renderer surfaces the disclaimer).
   const res = await withAnthropicRetry("competitorIntel", () => anthropic.messages.create({
     model: MODEL,
     max_tokens: 2500,
@@ -1593,7 +1920,11 @@ ${context}${buildSharedContextBlocks(sources)}`,
   }));
 
   const parsed = safeJsonParse(extractText(res), { competitors: [] });
-  return parsed.competitors ?? [];
+  return {
+    value: parsed.competitors ?? [],
+    grounding: customerComplaints.length ? "partial" : "ai-only",
+    sourceLabels: customerComplaints.length ? ["Customer voice (web search)"] : [],
+  };
 }
 
 // ─── Audience generator ──────────────────────────────────────────────────────
@@ -1602,25 +1933,40 @@ async function generateAudiences(
   anthropic: Anthropic,
   context: string,
   sources: GrandPlanSources
-): Promise<AudienceItem[]> {
+): Promise<GroundedSection<AudienceItem[]>> {
+  const cv = sources.customerVoice;
+  const a = sources.accountData;
+  const hasGa4Audience = !!(a?.ga4?.demographics?.length || a?.ga4?.devices?.length);
+  const hasGscIntent = !!a?.searchConsole?.topQueries?.length;
+  const hasCustomerVoice = !!cv?.painPoints?.length;
+  const sourceLabels: string[] = [];
+  if (sources.targetAudiences) sourceLabels.push("Strategist-supplied audiences");
+  if (hasGa4Audience) sourceLabels.push("GA4 demographics & devices");
+  if (hasGscIntent) sourceLabels.push("Search Console intent signals");
+  if (hasCustomerVoice) sourceLabels.push("Customer voice (web search)");
+  // Need at least 2 real signals for "real"; 1 for "partial"; else "ai-only".
+  const signalCount = (sources.targetAudiences ? 1 : 0) + (hasGa4Audience ? 1 : 0) + (hasGscIntent ? 1 : 0) + (hasCustomerVoice ? 1 : 0);
+  const grounding: DataGrounding = signalCount >= 2 ? "real" : signalCount === 1 ? "partial" : "ai-only";
+
   if (sources.targetAudiences) {
     // Strategist has provided audiences — parse them rather than regenerate from scratch.
-    // Split only on colons / en-dash / em-dash. Hyphens are preserved as part of
-    // the name (so "parents of kids aged 14-19" stays intact).
     const lines = sources.targetAudiences.split(/\n+/).map((l) => l.trim()).filter(Boolean);
     if (lines.length) {
-      return lines.slice(0, 6).map((line) => {
+      const value = lines.slice(0, 6).map((line) => {
         const sepMatch = line.match(/[:–—]/);
         const sepIdx = sepMatch?.index ?? -1;
         const namePart = sepIdx >= 0 ? line.slice(0, sepIdx) : line;
         const descPart = sepIdx >= 0 ? line.slice(sepIdx + 1).trim() : "";
+        // If we have customer voice, sprinkle 2 real pain points per audience.
+        const painPoints = cv?.painPoints?.length ? cv.painPoints.slice(0, 3) : [];
         return {
           name: namePart.trim().slice(0, 120),
           description: descPart || "Provided by client strategist.",
-          painPoints: [],
+          painPoints,
           channels: [],
-        };
+        } as AudienceItem;
       });
+      return { value, grounding, sourceLabels };
     }
   }
 
@@ -1638,6 +1984,8 @@ Rules:
 - Be specific and realistic about who this client is trying to reach
 - Each audience should reflect a real person or buying group, not a generic demographic label
 - Pain points must be grounded in the specific sector context — not generic marketing platitudes
+- ${hasCustomerVoice ? "CRITICAL: pain points MUST be drawn from the real customer voice block in the context. Use the actual phrasing from forums and reviews." : ""}
+- ${hasGscIntent ? "Use the real Search Console queries listed in the context to inform which audiences are actually showing buying intent right now." : ""}
 - The personaQuote must sound like something this person would actually say to a colleague (one sentence, max 25 words, no marketing speak)
 - The sectorPreview must reference real keywords, services, and campaign angles that fit this audience and sector
 - Return ONLY a valid JSON array, no prose, no markdown fences
@@ -1676,8 +2024,8 @@ ${context}${buildSharedContextBlocks(sources)}`,
   const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
   try {
     const parsed = JSON.parse(cleaned);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
+    if (!Array.isArray(parsed)) return { value: [], grounding, sourceLabels };
+    const value = parsed
       .filter((a) => a && typeof a.name === "string")
       .map((a): AudienceItem => ({
         name: String(a.name).trim(),
@@ -1706,8 +2054,9 @@ ${context}${buildSharedContextBlocks(sources)}`,
             : [],
         } : undefined,
       }));
+    return { value, grounding, sourceLabels };
   } catch {
-    return [];
+    return { value: [], grounding, sourceLabels };
   }
 }
 
