@@ -48,7 +48,7 @@ const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered
   { key: "linkedInAds", label: "LinkedIn Ads", description: "AI-generated LinkedIn campaign structures", aiPowered: true },
   { key: "keywordResearch", label: "Keyword Research", description: "Ad groups and keyword data", aiPowered: false },
   { key: "contentStrategy", label: "Content Strategy", description: "Page optimisations, landing pages, blog posts", aiPowered: false },
-  { key: "contentCalendar", label: "Content Calendar", description: "6-month blog and social posting schedule", aiPowered: true },
+  { key: "contentCalendar", label: "Content Calendar", description: "12-month blog and social posting schedule", aiPowered: true },
   { key: "organicSocial", label: "Organic Social", description: "Social pillars, posting frequency, hashtags", aiPowered: true },
   { key: "emailMarketing", label: "Email Marketing", description: "Automated flows, campaigns, segmentation", aiPowered: true },
   { key: "exampleArticles", label: "Example Articles", description: "3 sample blog posts with SEO metadata", aiPowered: true },
@@ -69,6 +69,7 @@ const PIPELINE_STEPS: { key: string; label: string; estSeconds: number }[] = [
   { key: "prepare-content-audit", label: "Auditing on-page SEO", estSeconds: 30 },
   { key: "prepare-research", label: "Harvesting account data (GA4 / GSC / SEMrush)", estSeconds: 60 },
   { key: "prepare-customer-voice", label: "Researching customer voice (web search)", estSeconds: 60 },
+  { key: "prepare-strategy-brain", label: "Synthesising strategy brain (positioning, audiences, messaging)", estSeconds: 45 },
 ];
 
 // ─── Types ──────────────────────────────────────────────────────────────────

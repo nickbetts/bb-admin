@@ -13,7 +13,7 @@
  * - i3media branding
  */
 
-import type { GrandPlanData, AudienceItem } from "./grand-plan-generator";
+import type { GrandPlanData, AudienceItem, StrategyBrain } from "./grand-plan-generator";
 
 // ─── Data grounding badges ──────────────────────────────────────────────────
 // Each grounded section returns a { grounding, sourceLabels } record on
@@ -147,21 +147,71 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
   }
 
   // ── Stats band ─────────────────────────────────────────────────────────────
-  const stats: { num: string; label: string }[] = [];
+  // Render every derived count we have, grouped by theme so the hero handoff
+  // shows scope at a glance without truncating items behind a slice cap.
+  type StatItem = { num: string; label: string };
+  type StatGroup = { label: string; items: StatItem[] };
+
+  const fmt = (n: number) => n > 1000 ? `${Math.round(n / 100) / 10}k` : String(n);
+
+  const strategyStats: StatItem[] = [];
   const sectionCount = navItems.filter(n => !n.isChapter).length;
-  stats.push({ num: String(sectionCount), label: "Sections" });
-  if (s.googleAdsCampaigns?.adGroups?.length) stats.push({ num: String(s.googleAdsCampaigns.adGroups.length), label: "Ad Groups" });
+  if (sectionCount) strategyStats.push({ num: String(sectionCount), label: "Sections" });
+  if (s.audiences?.length) strategyStats.push({ num: String(s.audiences.length), label: "Audiences" });
+  if (s.quickWins?.length) strategyStats.push({ num: String(s.quickWins.length), label: "Quick Wins" });
+  if (plan.campaignPeriods?.length) strategyStats.push({ num: String(plan.campaignPeriods.length), label: "Focus Periods" });
+
+  const paidStats: StatItem[] = [];
+  if (s.googleAdsCampaigns?.adGroups?.length) {
+    paidStats.push({ num: String(s.googleAdsCampaigns.adGroups.length), label: "Google Ad Groups" });
+  }
   if (s.keywordResearch?.adGroups?.length) {
     const totalKws = s.keywordResearch.adGroups.reduce((sum: number, g: { keywords: unknown[] }) => sum + g.keywords.length, 0);
-    stats.push({ num: totalKws > 100 ? `${Math.round(totalKws / 10) * 10}+` : String(totalKws), label: "Target Keywords" });
+    if (totalKws) paidStats.push({ num: totalKws > 100 ? `${Math.round(totalKws / 10) * 10}+` : String(totalKws), label: "Target Keywords" });
   }
+  const negCount = (s.googleAdsCampaigns?.negativeKeywords?.length ?? 0)
+    + (s.googleAdsCampaigns?.aiNegativesWithReason?.length ?? 0);
+  if (negCount) paidStats.push({ num: String(negCount), label: "Negative Keywords" });
+  if (s.metaCampaigns?.length) paidStats.push({ num: String(s.metaCampaigns.length), label: "Meta Campaigns" });
+  if (s.linkedInAds?.length) paidStats.push({ num: String(s.linkedInAds.length), label: "LinkedIn Campaigns" });
+
+  const contentStats: StatItem[] = [];
   if (s.contentStrategy) {
-    const contentCount = (s.contentStrategy.pageOptimisations?.length ?? 0) + (s.contentStrategy.landingPages?.length ?? 0) + (s.contentStrategy.blogPosts?.length ?? 0);
-    if (contentCount) stats.push({ num: String(contentCount), label: "Content Assets" });
+    const pageOpts = s.contentStrategy.pageOptimisations?.length ?? 0;
+    const landing = s.contentStrategy.landingPages?.length ?? 0;
+    const blogs = s.contentStrategy.blogPosts?.length ?? 0;
+    if (pageOpts) contentStats.push({ num: String(pageOpts), label: "Page Optimisations" });
+    if (landing) contentStats.push({ num: String(landing), label: "Landing Pages" });
+    if (blogs) contentStats.push({ num: String(blogs), label: "Blog Posts" });
   }
-  if (s.metaCampaigns?.length) stats.push({ num: String(s.metaCampaigns.length), label: "Meta Campaigns" });
-  if (s.linkedInAds?.length) stats.push({ num: String(s.linkedInAds.length), label: "LinkedIn Campaigns" });
-  if (s.competitorIntel?.length) stats.push({ num: String(s.competitorIntel.length), label: "Competitors Analysed" });
+  if (s.contentCalendar?.length) contentStats.push({ num: String(s.contentCalendar.length), label: "Calendar Months" });
+  if (s.exampleArticles?.length) contentStats.push({ num: String(s.exampleArticles.length), label: "Example Articles" });
+
+  const organicStats: StatItem[] = [];
+  if (s.organicSocial?.pillars?.length) organicStats.push({ num: String(s.organicSocial.pillars.length), label: "Social Pillars" });
+  if (s.organicSocial?.hashtagStrategy?.length) organicStats.push({ num: String(s.organicSocial.hashtagStrategy.length), label: "Hashtags" });
+  if (s.emailMarketing?.flows?.length) organicStats.push({ num: String(s.emailMarketing.flows.length), label: "Email Flows" });
+  if (s.emailMarketing?.segmentation?.segments?.length) {
+    organicStats.push({ num: String(s.emailMarketing.segmentation.segments.length), label: "Email Segments" });
+  }
+  if (s.emailMarketing?.campaigns?.length) organicStats.push({ num: String(s.emailMarketing.campaigns.length), label: "Email Campaigns" });
+
+  const measurementStats: StatItem[] = [];
+  if (s.competitorIntel?.length) measurementStats.push({ num: String(s.competitorIntel.length), label: "Competitors Analysed" });
+  if (s.kpis?.length) {
+    const metricCount = s.kpis.reduce((sum: number, k: { metrics?: unknown[] }) => sum + (k.metrics?.length ?? 0), 0);
+    measurementStats.push({ num: String(s.kpis.length), label: "KPI Channels" });
+    if (metricCount) measurementStats.push({ num: String(metricCount), label: "Tracked Metrics" });
+  }
+  void fmt; // reserved for future formatting use
+
+  const statGroups: StatGroup[] = [
+    { label: "Strategy", items: strategyStats },
+    { label: "Paid Media", items: paidStats },
+    { label: "Content & SEO", items: contentStats },
+    { label: "Organic & Lifecycle", items: organicStats },
+    { label: "Performance", items: measurementStats },
+  ].filter(g => g.items.length > 0);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -228,9 +278,16 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
 <!-- Stats Band -->
 <div class="stats-band">
   <div class="stats-inner">
-    ${stats.slice(0, 5).map(st => `<div class="stat-item"><span class="stat-num">${st.num}</span><span class="stat-label">${st.label}</span></div>`).join("\n    ")}
+    ${statGroups.map(g => `
+    <div class="stats-row" data-group="${esc(g.label)}">
+      <div class="stats-row-label">${esc(g.label)}</div>
+      ${g.items.map(st => `<div class="stat-item"><span class="stat-num">${st.num}</span><span class="stat-label">${esc(st.label)}</span></div>`).join("")}
+    </div>`).join("")}
   </div>
 </div>
+
+${renderStrategyBrainPanel(plan.strategyBrain)}
+${renderCoherencePanel(plan.coherenceIssues)}
 
 <!-- Main Content -->
 ${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods, plan.generationReport, plan.grounding, plan.dataSources, plan.clientWebsite, plan.sectionIntros, plan.audienceRationales)}
@@ -358,6 +415,14 @@ function renderCtaClose(clientName: string): string {
   <div class="section-inner" style="max-width:800px;margin:0 auto;position:relative;z-index:1">
     <div class="section-kicker" style="color:rgba(255,255,255,.45)">Next Steps</div>
     <h2 style="font-size:clamp(2rem,5vw,3.25rem);color:#fff;letter-spacing:-1.5px;margin-bottom:1.25rem">Ready when you are.</h2>
+    <p style="font-size:1.1rem;color:rgba(255,255,255,.6);max-width:560px;line-height:1.7;margin-bottom:3rem">This plan is ready to execute. If you have any questions about the strategy for ${esc(clientName)}, get in touch and we can walk through it together.</p>
+    <div class="cta-links">
+      <a href="mailto:hello@i3media.co.uk" class="cta-link-card">
+        <span class="cta-link-icon">✉</span>
+        <div><div class="cta-link-label">Email us</div><div class="cta-link-val">hello@i3media.co.uk</div></div>
+      </a>
+      <a href="https://i3media.co.uk" class="cta-link-card" target="_blank" rel="noopener">
+        <span class="cta-link-icon">🌐</span>
     <p style="font-size:1.1rem;color:rgba(255,255,255,.6);max-width:560px;line-height:1.7;margin-bottom:3rem">This plan is ready to execute. If you have any questions about the strategy for ${esc(clientName)}, get in touch and we can walk through it together.</p>
     <div class="cta-links">
       <a href="mailto:hello@i3media.co.uk" class="cta-link-card">
@@ -1657,30 +1722,33 @@ a{color:var(--accent);text-decoration:none}
 @media (max-width:1240px){.gp-toc{display:none}}
 
 /* ── Hero ──────────────────────────────────────────────────── */
-.hero{min-height:88vh;background:linear-gradient(145deg,#0a1124 0%,#0f172a 45%,#141f3a 80%,#0c1428 100%);display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;padding:5.5rem 3rem 4.5rem}
+.hero{min-height:clamp(60vh,72vh,80vh);background:linear-gradient(145deg,#0a1124 0%,#0f172a 45%,#141f3a 80%,#0c1428 100%);display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;padding:3.25rem 3rem 2.5rem}
 .hero::after{content:'';position:absolute;inset:auto 0 0 0;height:1px;background:linear-gradient(90deg,transparent,rgba(99,102,241,.35),transparent)}
 .hero-orb{position:absolute;border-radius:50%;pointer-events:none;filter:blur(2px)}
 .hero-orb:nth-child(1){width:680px;height:680px;top:-220px;right:-160px;background:radial-gradient(circle,rgba(99,102,241,.12) 0%,transparent 65%)}
 .hero-orb:nth-child(2){width:420px;height:420px;bottom:-120px;left:-100px;background:radial-gradient(circle,rgba(168,85,247,.09) 0%,transparent 70%)}
 .hero-orb:nth-child(3){width:260px;height:260px;top:28%;right:24%;background:radial-gradient(circle,rgba(236,72,153,.06) 0%,transparent 70%)}
 .hero-inner{max-width:1100px;margin:0 auto;width:100%;position:relative;z-index:1}
-.hero-label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:#94a3b8;margin-bottom:1.75rem;display:flex;align-items:center;gap:12px}
+.hero-label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:#94a3b8;margin-bottom:1.25rem;display:flex;align-items:center;gap:12px}
 .hero-label::before{content:'';width:32px;height:1px;background:linear-gradient(90deg,#6366f1,transparent);display:block}
-.hero h1{font-size:clamp(2.6rem,5.5vw,4.5rem);font-weight:800;letter-spacing:-.035em;line-height:1.05;color:#fff;margin-bottom:1.5rem;max-width:820px}
-.hero-divider{width:48px;height:3px;background:var(--gradient-accent);border-radius:2px;margin-bottom:2.25rem}
-.hero-sub{font-size:1.075rem;color:#cbd5e1;line-height:1.7;max-width:600px;margin-bottom:3rem;font-weight:400}
-.hero-meta{display:flex;flex-wrap:wrap;gap:2.5rem;font-size:13px;color:#64748b;border-top:1px solid rgba(255,255,255,.06);padding-top:2.25rem;margin-top:auto}
+.hero h1{font-size:clamp(2.4rem,5vw,4rem);font-weight:800;letter-spacing:-.035em;line-height:1.05;color:#fff;margin-bottom:1.25rem;max-width:820px}
+.hero-divider{width:48px;height:3px;background:var(--gradient-accent);border-radius:2px;margin-bottom:1.5rem}
+.hero-sub{font-size:1.05rem;color:#cbd5e1;line-height:1.65;max-width:640px;margin-bottom:2rem;font-weight:400}
+.hero-meta{display:flex;flex-wrap:wrap;gap:2.25rem;font-size:13px;color:#64748b;border-top:1px solid rgba(255,255,255,.06);padding-top:1.5rem;margin-top:auto}
 .hero-meta-item strong{display:block;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:#64748b;margin-bottom:4px}
 .hero-meta-item span{color:#e2e8f0;font-weight:500}
 
 /* ── Stats Band ────────────────────────────────────────────── */
-.stats-band{background:#0a1124;padding:3rem 3rem;border-bottom:1px solid rgba(255,255,255,.04)}
-.stats-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0}
-.stat-item{padding:.25rem 2rem;border-right:1px solid rgba(255,255,255,.06);text-align:center}
+.stats-band{background:#0a1124;padding:2.25rem 3rem;border-bottom:1px solid rgba(255,255,255,.04)}
+.stats-inner{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:1.5rem}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0;align-items:end}
+.stats-row + .stats-row{padding-top:1.5rem;border-top:1px solid rgba(255,255,255,.05)}
+.stats-row-label{font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.18em;margin-bottom:-.5rem}
+.stat-item{padding:.25rem 1.5rem;border-right:1px solid rgba(255,255,255,.06);text-align:center;min-height:64px;display:flex;flex-direction:column;justify-content:flex-end;gap:.4rem}
 .stat-item:last-child{border-right:none}
-.stat-num{font-size:2.5rem;font-weight:700;letter-spacing:-.04em;color:#fff;line-height:1;display:block;margin-bottom:.5rem;background:var(--gradient-accent);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.stat-num{font-size:1.95rem;font-weight:700;letter-spacing:-.04em;color:#fff;line-height:1;display:block;background:var(--gradient-accent);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .stat-num span{color:#a78bfa}
-.stat-label{font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.12em}
+.stat-label{font-size:10.5px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.1em;line-height:1.2}
 
 /* ── Sections ──────────────────────────────────────────────── */
 .section{padding:5rem 3rem}
@@ -2152,20 +2220,20 @@ details.cal-month[open] .cal-month-header::after{content:"\\2212"}
 .seo-kw-chip{display:inline-block;font-size:10px;padding:1px 6px;background:#dbeafe;color:#1e40af;border-radius:6px}
 /* Responsive */
 @media(max-width:900px){
-  .hero{padding:4rem 2rem 3rem;min-height:auto}
+  .hero{padding:2.75rem 2rem 2rem;min-height:auto}
   .hero h1{font-size:clamp(2rem,5vw,3rem)}
-  .stats-inner{grid-template-columns:repeat(3,1fr);row-gap:2rem}
-  .stat-item{border-right:none;padding:0 1rem}
+  .stats-row{grid-template-columns:repeat(3,1fr);row-gap:1.5rem}
+  .stat-item{border-right:none;padding:0 1rem;min-height:56px}
   .section{padding:4rem 2rem}
   .ad-copy-cols{grid-template-columns:1fr}
   .snav-dropdown-inner{padding:0 2rem}
   .sticky-nav-inner{padding:0 2rem}
 }
 @media(max-width:640px){
-  .hero{padding:3rem 1.5rem 2.5rem}
+  .hero{padding:2.25rem 1.5rem 1.75rem}
   .hero h1{font-size:2rem;letter-spacing:-1px}
   .hero-meta{gap:1.5rem}
-  .stats-inner{grid-template-columns:repeat(2,1fr)}
+  .stats-row{grid-template-columns:repeat(2,1fr)}
   .section{padding:3rem 1.5rem}
   .overview-grid{grid-template-columns:1fr}
   .content-cards{grid-template-columns:1fr}
@@ -2582,3 +2650,147 @@ const I3_LOGO_SVG = `<svg viewBox="0 0 161 53" fill="none" xmlns="http://www.w3.
 <path d="M75.2092 36.2156C74.1396 36.2156 73.2121 36.0986 72.4266 35.8647C71.6412 35.6475 70.981 35.3383 70.4462 34.9373C69.9282 34.5196 69.5271 34.0099 69.243 33.4084C68.9589 32.8068 68.7834 32.1384 68.7166 31.4032L71.6244 30.5008C71.6412 31.0857 71.7498 31.5786 71.9503 31.9797C72.1509 32.3807 72.4183 32.7149 72.7525 32.9822C73.0868 33.2329 73.4711 33.4167 73.9056 33.5337C74.3402 33.6506 74.7914 33.7091 75.2593 33.7091C75.9445 33.7091 76.5545 33.6172 77.0893 33.4334C77.6241 33.2329 78.0502 32.9321 78.3678 32.5311C78.6853 32.1133 78.8441 31.5786 78.8441 30.9269C78.8441 30.1249 78.5767 29.4815 78.0419 28.9969C77.5238 28.4957 76.7634 28.1531 75.7607 27.9693C74.758 27.7855 73.538 27.7437 72.1007 27.844V25.9641L77.7661 22.054V21.8535L69.4937 21.9036V19.2969H80.9498V22.3798L75.6604 26.1396V26.3651C77.2313 26.2983 78.4764 26.4738 79.3956 26.8915C80.3147 27.3093 80.9748 27.7821 81.3759 28.5959C81.777 29.3144 81.9776 30.1165 81.9776 31.0021C81.9776 32.0549 81.7269 32.9739 81.2255 33.7593C80.7409 34.5446 79.9972 35.1545 78.9945 35.589C77.9917 36.0067 76.73 36.2156 75.2092 36.2156Z" fill="currentColor"/>
 <path d="M63.6388 35.8647V22.7558H66.797V35.8647H63.6388ZM65.2179 20.7005C64.5829 20.7005 64.09 20.5668 63.7391 20.2994C63.4049 20.0154 63.2378 19.6143 63.2378 19.0963C63.2378 18.5783 63.4049 18.1856 63.7391 17.9183C64.09 17.6342 64.5829 17.4922 65.2179 17.4922C65.8863 17.4922 66.3876 17.6259 66.7218 17.8932C67.056 18.1606 67.2231 18.5616 67.2231 19.0963C67.2231 19.6143 67.0476 20.0154 66.6967 20.2994C66.3625 20.5668 65.8696 20.7005 65.2179 20.7005Z" fill="currentColor"/>
 </svg>`;
+
+// ─── Strategy Brain (read-only preview) ─────────────────────────────────────
+// Renders the upstream reasoning the AI used to build the plan. Sits between
+// the stats band and the main body so strategists can sanity-check the
+// foundation before reading 14 channel write-ups built on top of it.
+function renderStrategyBrainPanel(brain: StrategyBrain | undefined): string {
+  if (!brain || !brain.positioning?.statement) return "";
+  const audiences = (brain.audiences ?? []).slice(0, 6).map((a) => `
+    <div class="brain-audience">
+      <div class="brain-audience-name">${esc(a.name)}</div>
+      <div class="brain-audience-line"><strong>Insight:</strong> ${esc(a.coreInsight)}</div>
+      <div class="brain-audience-line"><strong>Lead pain:</strong> ${esc(a.primaryPain)}</div>
+      <div class="brain-audience-line"><strong>Trigger:</strong> ${esc(a.decisionTrigger)}</div>
+      ${a.channels?.length ? `<div class="brain-audience-line"><strong>Channels:</strong> ${a.channels.map(esc).join(", ")}</div>` : ""}
+    </div>`).join("");
+
+  const channels = (brain.channelStrategy ?? []).map((c) => `
+    <li><strong>${esc(c.channel)}:</strong> ${esc(c.role)} <span class="brain-meta">(audience: ${esc(c.primaryAudience)} · success: ${esc(c.successMetric)})</span></li>`).join("");
+
+  const messagesToOwn = (brain.competitorAngle?.messagesToOwn ?? []).map((m) => `<li>${esc(m)}</li>`).join("");
+  const messagesToAvoid = (brain.competitorAngle?.messagesToAvoid ?? []).map((m) => `<li>${esc(m)}</li>`).join("");
+  const supporting = (brain.messageHierarchy?.secondary ?? []).map((m) => `<li>${esc(m)}</li>`).join("");
+
+  return `
+<details class="brain-panel" open>
+  <summary class="brain-summary">
+    <span class="brain-kicker">Strategy Brain</span>
+    <span class="brain-title">The reasoning behind this plan</span>
+    <span class="brain-toggle">Click to collapse</span>
+  </summary>
+  <div class="brain-inner">
+    <div class="brain-headline">
+      <div class="brain-headline-label">Positioning</div>
+      <p class="brain-headline-statement">${esc(brain.positioning.statement)}</p>
+      ${brain.positioning.proofPoints?.length ? `<ul class="brain-proof">${brain.positioning.proofPoints.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}
+    </div>
+    <div class="brain-grid">
+      <div class="brain-cell">
+        <h4>Market context</h4>
+        <p><strong>State:</strong> ${esc(brain.marketContext?.state ?? "")}</p>
+        <p><strong>Opportunity:</strong> ${esc(brain.marketContext?.opportunity ?? "")}</p>
+        <p><strong>Threat:</strong> ${esc(brain.marketContext?.threat ?? "")}</p>
+      </div>
+      <div class="brain-cell">
+        <h4>Competitor angle</h4>
+        <p><strong>Differentiator:</strong> ${esc(brain.competitorAngle?.differentiator ?? "")}</p>
+        ${messagesToOwn ? `<p><strong>Messages to own:</strong></p><ul>${messagesToOwn}</ul>` : ""}
+        ${messagesToAvoid ? `<p><strong>Messages to avoid (saturated):</strong></p><ul>${messagesToAvoid}</ul>` : ""}
+      </div>
+      <div class="brain-cell">
+        <h4>Message hierarchy</h4>
+        <p class="brain-primary-msg">${esc(brain.messageHierarchy?.primary ?? "")}</p>
+        ${supporting ? `<p><strong>Supporting:</strong></p><ul>${supporting}</ul>` : ""}
+      </div>
+      <div class="brain-cell brain-cell-wide">
+        <h4>Channel strategy</h4>
+        <ul class="brain-channels">${channels}</ul>
+      </div>
+    </div>
+    ${audiences ? `
+    <div class="brain-audiences">
+      <h4>Audience definitions (these names are used everywhere downstream)</h4>
+      <div class="brain-audience-grid">${audiences}</div>
+    </div>` : ""}
+  </div>
+</details>
+<style>
+.brain-panel{max-width:1180px;margin:2.5rem auto 0;background:#fafbff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;font-family:inherit}
+.brain-summary{display:flex;flex-wrap:wrap;align-items:baseline;gap:1rem;padding:1.25rem 1.75rem;cursor:pointer;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;list-style:none}
+.brain-summary::-webkit-details-marker{display:none}
+.brain-kicker{font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#a78bfa}
+.brain-title{font-size:1.05rem;font-weight:600;color:#fff}
+.brain-toggle{font-size:11px;color:#94a3b8;margin-left:auto}
+.brain-panel[open] .brain-toggle::before{content:"▾ "}
+.brain-panel:not([open]) .brain-toggle::before{content:"▸ "}
+.brain-inner{padding:1.75rem 2rem 2rem}
+.brain-headline{margin-bottom:1.75rem;padding-bottom:1.25rem;border-bottom:1px solid #e2e8f0}
+.brain-headline-label{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#6366f1;margin-bottom:.5rem}
+.brain-headline-statement{font-size:1.15rem;font-weight:600;color:#0f172a;line-height:1.5;margin:0 0 .75rem}
+.brain-proof{margin:.5rem 0 0;padding-left:1.25rem;color:#475569;font-size:13px;line-height:1.6}
+.brain-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem;margin-bottom:1.75rem}
+.brain-cell{padding:1rem 1.25rem;background:#fff;border:1px solid #e2e8f0;border-radius:10px}
+.brain-cell h4{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#475569;margin:0 0 .75rem}
+.brain-cell p{font-size:13px;color:#334155;line-height:1.55;margin:0 0 .5rem}
+.brain-cell ul{margin:.25rem 0 .75rem;padding-left:1.25rem;font-size:13px;color:#475569;line-height:1.55}
+.brain-cell-wide{grid-column:span 2}
+.brain-primary-msg{background:#eef2ff;border:1px solid #c7d2fe;padding:.6rem .85rem;border-radius:8px;font-weight:600;color:#1e1b4b !important}
+.brain-channels li{margin-bottom:.4rem}
+.brain-meta{color:#64748b;font-size:12px}
+.brain-audiences h4{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#475569;margin:0 0 .75rem}
+.brain-audience-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem}
+.brain-audience{padding:.85rem 1rem;background:#fff;border:1px solid #e2e8f0;border-radius:10px;border-left:3px solid #6366f1}
+.brain-audience-name{font-size:13px;font-weight:700;color:#0f172a;margin-bottom:.4rem}
+.brain-audience-line{font-size:12px;color:#475569;line-height:1.5;margin-bottom:.2rem}
+@media(max-width:760px){.brain-grid{grid-template-columns:1fr}.brain-cell-wide{grid-column:span 1}.brain-summary{padding:1rem 1.25rem}.brain-inner{padding:1.25rem}}
+</style>`;
+}
+
+// ─── Coherence issues panel (Strategist Review) ─────────────────────────────
+function renderCoherencePanel(issues: GrandPlanData["coherenceIssues"]): string {
+  if (!issues?.length) return "";
+  const groups: Record<string, NonNullable<GrandPlanData["coherenceIssues"]>> = {};
+  for (const i of issues) (groups[i.section] ??= []).push(i);
+  const blocks = Object.entries(groups).map(([section, list]) => `
+    <div class="coh-group">
+      <div class="coh-section">${esc(section)}</div>
+      <ul>${list.map((i) => `
+        <li class="coh-item coh-${esc(i.severity)}">
+          <span class="coh-issue">${esc(i.issue)}</span>
+          <span class="coh-fix">→ ${esc(i.suggestedFix)}</span>
+        </li>`).join("")}</ul>
+    </div>`).join("");
+  return `
+<details class="coh-panel">
+  <summary class="coh-summary">
+    <span class="coh-kicker">Strategist Review</span>
+    <span class="coh-title">${issues.length} item${issues.length === 1 ? "" : "s"} to verify before sending</span>
+    <span class="coh-toggle">Click to expand</span>
+  </summary>
+  <div class="coh-inner">
+    <p class="coh-intro">The coherence checker found these issues against the strategy brain. Use the Refine box below to ask the AI to correct them, or edit the section directly.</p>
+    ${blocks}
+  </div>
+</details>
+<style>
+.coh-panel{max-width:1180px;margin:1.25rem auto 0;background:#fef3c7;border:1px solid #fcd34d;border-radius:14px;overflow:hidden}
+.coh-summary{display:flex;flex-wrap:wrap;align-items:baseline;gap:1rem;padding:1rem 1.5rem;cursor:pointer;list-style:none;background:#fbbf24;color:#451a03}
+.coh-summary::-webkit-details-marker{display:none}
+.coh-kicker{font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase}
+.coh-title{font-size:14px;font-weight:600}
+.coh-toggle{font-size:11px;color:#78350f;margin-left:auto}
+.coh-panel[open] .coh-toggle::before{content:"▾ "}
+.coh-panel:not([open]) .coh-toggle::before{content:"▸ "}
+.coh-inner{padding:1.25rem 1.75rem 1.5rem;background:#fffbeb}
+.coh-intro{font-size:13px;color:#78350f;margin:0 0 1rem}
+.coh-group{margin-bottom:1rem}
+.coh-section{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#78350f;margin-bottom:.4rem}
+.coh-group ul{margin:0;padding-left:1.25rem;font-size:13px;color:#451a03;line-height:1.55}
+.coh-item{margin-bottom:.5rem}
+.coh-issue{display:block;font-weight:600}
+.coh-fix{display:block;font-size:12px;color:#78350f;margin-top:2px}
+.coh-high{color:#7f1d1d}.coh-medium{color:#78350f}.coh-low{color:#92400e}
+</style>`;
+}

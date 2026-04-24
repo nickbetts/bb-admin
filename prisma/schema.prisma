@@ -1106,3 +1106,22 @@ model EmailVerificationResult {
   @@index([email])
   @@index([status])
 }
+
+// ─── Ad Image Generator ───────────────────────────────────────────────────────
+// Multi-turn AI ad imagery sessions. Each turn captures the user's prompt and
+// the resulting image URL (stored in Vercel Blob). The first turn is a fresh
+// generate; subsequent turns refine the latest image via images.edit.
+model AdImageSession {
+  id              String   @id @default(cuid())
+  userId          String
+  clientId        String?
+  title           String
+  size            String   @default("1024x1024") // gpt-image-1 size
+  messages        String   @default("[]") // JSON: AdImageTurn[]
+  currentImageUrl String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([clientId])
+}

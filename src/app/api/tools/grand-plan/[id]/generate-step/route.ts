@@ -7,14 +7,17 @@ import {
   generateHeroTagline,
   generateSectionIntros,
   buildAudienceRationales,
+  synthesiseStrategyBrain,
   type GrandPlanSources,
   type GrandPlanData,
   type CampaignFocusPeriod,
   type AccountResearchData,
   type CustomerVoiceData,
   type DataAvailability,
+  type StrategyBrain,
   runWebSearchResearch,
 } from "@/lib/grand-plan-generator";
+import { validateCoherence } from "@/lib/grand-plan-coherence";
 import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import { suggestAdGroups, researchKeywords } from "@/lib/keyword-planner-pipeline";
 import { generateContentStrategy, generateContentStrategySection, collectSemrushData, runOnPageAudit, type ContentStrategyData } from "@/lib/content-strategy-generator";
@@ -644,6 +647,51 @@ export async function POST(
       } });
     }
 
+    // ─── STEP: prepare-strategy-brain ─────────────────────────────────────────
+    // Single upstream reasoning step. Synthesises positioning, audience
+    // definitions, message hierarchy, channel strategy and per-section
+    // directives BEFORE any section copy is written. Every section step then
+    // receives the brain via GrandPlanSources.strategyBrain so the plan reads
+    // as one coherent strategy rather than 14 disconnected channel write-ups.
+    if (step === "prepare-strategy-brain") {
+      await setStatus(id, "Synthesising strategy brain...");
+
+      // Reload to pick up any prepare-* stashes (research data, customer voice).
+      const freshPlan = await prisma.grandPlan.findUnique({
+        where: { id },
+        include: {
+          client: { select: { id: true, name: true, slug: true, website: true, searchConsoleSiteUrl: true, ga4PropertyId: true, semrushDomain: true } },
+          proposal: { select: { id: true, title: true, clientName: true, servicesJson: true, timelineJson: true, proposalDataJson: true } },
+          keywordResearch: { select: { id: true, title: true, website: true, brief: true, adGroups: true, selectedKws: true, ideas: true, maxCpc: true, monthlyBudget: true } },
+          contentStrategy: { select: { id: true, title: true, period: true, spreadsheetData: true } },
+        },
+      });
+      if (!freshPlan) return NextResponse.json({ error: "Plan not found" }, { status: 404 });
+
+      const sources = buildSources(freshPlan, config, brief);
+
+      let brain: StrategyBrain;
+      try {
+        brain = await synthesiseStrategyBrain(sources);
+      } catch (err) {
+        console.error(`[grand-plan:${id}] strategy brain synthesis failed:`, err);
+        return NextResponse.json({ ok: true, step, skipped: true, error: "synthesis-failed" });
+      }
+
+      // Stash the brain so subsequent section steps can pick it up via buildSources.
+      const planData = safeJsonParse<(GrandPlanData & { _researchData?: AccountResearchData; _customerVoice?: CustomerVoiceData; _strategyBrain?: StrategyBrain }) | null>(freshPlan.planDataJson, null);
+      if (planData) {
+        planData._strategyBrain = brain;
+        await prisma.grandPlan.update({ where: { id }, data: { planDataJson: JSON.stringify(planData) } });
+      }
+
+      return NextResponse.json({ ok: true, step, signals: {
+        audiences: brain.audiences.length,
+        channels: brain.channelStrategy.length,
+        directives: Object.keys(brain.directives).length,
+      } });
+    }
+
     // ─── STEP: section generation ────────────────────────────────────────────
     if (SECTION_KEYS.includes(step)) {
       await setStatus(id, `Generating ${step}...`);
@@ -769,6 +817,36 @@ export async function POST(
         console.warn("hero/intros polish skipped:", polishErr);
       }
 
+      // Promote the strategy brain stash to the top-level field so the
+      // renderer can show the read-only "Strategy Brain" panel above the plan.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const brainStash = (planData as any)._strategyBrain as StrategyBrain | undefined;
+      if (brainStash) planData.strategyBrain = brainStash;
+
+      // ── Coherence validation ────────────────────────────────────────────
+      // Cross-check the assembled plan against the strategy brain. We surface
+      // issues in a "Strategist Review" panel rather than auto-correcting,
+      // so the strategist stays in the loop and any LLM rewrite happens in
+      // the user-driven Refine step (no extra Anthropic latency at assemble).
+      try {
+        const fullPlan = await prisma.grandPlan.findUnique({
+          where: { id },
+          include: {
+            client: { select: { id: true, name: true, slug: true, website: true, searchConsoleSiteUrl: true, ga4PropertyId: true, semrushDomain: true } },
+            proposal: { select: { id: true, title: true, clientName: true, servicesJson: true, timelineJson: true, proposalDataJson: true } },
+            keywordResearch: { select: { id: true, title: true, website: true, brief: true, adGroups: true, selectedKws: true, ideas: true, maxCpc: true, monthlyBudget: true } },
+            contentStrategy: { select: { id: true, title: true, period: true, spreadsheetData: true } },
+          },
+        });
+        if (fullPlan) {
+          const sources = buildSources(fullPlan, config, brief);
+          const issues = validateCoherence(planData, brainStash, sources);
+          if (issues.length) planData.coherenceIssues = issues;
+        }
+      } catch (err) {
+        console.warn(`[grand-plan:${id}] coherence validation skipped:`, err);
+      }
+
       // Strip transient working state before final render/persistence.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (planData as any)._lpInProgress;
@@ -776,6 +854,8 @@ export async function POST(
       delete (planData as any)._researchData;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (planData as any)._customerVoice;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (planData as any)._strategyBrain;
 
       const html = renderGrandPlanHtml(planData);
 
@@ -860,9 +940,10 @@ function buildSources(plan: any, config: any, brief: string): GrandPlanSources {
 
   // Pull research / customer-voice stashes off planDataJson if the prepare-* steps
   // have run. These are stripped before the final assemble step renders the HTML.
-  const stash = safeJsonParse<{ _researchData?: AccountResearchData; _customerVoice?: CustomerVoiceData } | null>(plan.planDataJson, null);
+  const stash = safeJsonParse<{ _researchData?: AccountResearchData; _customerVoice?: CustomerVoiceData; _strategyBrain?: StrategyBrain } | null>(plan.planDataJson, null);
   const accountData = stash?._researchData;
   const customerVoice = stash?._customerVoice;
+  const strategyBrain = stash?._strategyBrain;
 
   const dataAvailability: DataAvailability = {
     ga4: !!accountData?.ga4,
@@ -883,6 +964,7 @@ function buildSources(plan: any, config: any, brief: string): GrandPlanSources {
     campaignFocusPeriods: safeJsonParse(plan.campaignFocusPeriodsJson, []),
     accountData,
     customerVoice,
+    strategyBrain,
     dataAvailability,
     postsPerMonth: typeof config.postsPerMonth === "number" && config.postsPerMonth > 0 ? config.postsPerMonth : undefined,
     socialPostsPerWeek: typeof config.socialPostsPerWeek === "number" && config.socialPostsPerWeek > 0 ? config.socialPostsPerWeek : undefined,

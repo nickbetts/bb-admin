@@ -254,6 +254,69 @@ export interface CustomerVoiceData {
   queriesFired: string[];
 }
 
+/** Strategy Brain — upstream reasoning produced before any section copy is written.
+ * Every section generator receives this so the plan reads like one coherent strategy
+ * instead of 14 disconnected channel write-ups. */
+export interface StrategyBrain {
+  positioning: {
+    /** 1-2 sentence positioning statement: who it is for, what it does, how it differs. */
+    statement: string;
+    /** 3-4 concrete proof points the plan can reference. */
+    proofPoints: string[];
+  };
+  audiences: Array<{
+    name: string;
+    /** One-sentence definition of who this audience really is. */
+    coreInsight: string;
+    /** The single pain point we lead with for this audience. */
+    primaryPain: string;
+    /** What actually triggers them to convert. */
+    decisionTrigger: string;
+    /** Recommended channels for this audience, in priority order. */
+    channels: string[];
+  }>;
+  marketContext: {
+    state: string;
+    opportunity: string;
+    threat: string;
+  };
+  competitorAngle: {
+    /** How we win against the competitors named in the data. */
+    differentiator: string;
+    /** Saturated messages every competitor is already running. */
+    messagesToAvoid: string[];
+    /** White-space messages we should own. */
+    messagesToOwn: string[];
+  };
+  messageHierarchy: {
+    /** The headline message that runs everywhere (hero, ads, email, social). */
+    primary: string;
+    /** 2-4 supporting messages, each ideally tagged to an audience or funnel stage. */
+    secondary: string[];
+  };
+  channelStrategy: Array<{
+    channel: string;
+    role: string;
+    primaryAudience: string;
+    successMetric: string;
+  }>;
+  /** Per-section directives. Each generator reads its own block as guardrails so
+   * email segments mirror audience names, ad copy uses the agreed primary pain, etc. */
+  directives: {
+    audiences?: string;
+    googleAds?: string;
+    meta?: string;
+    linkedIn?: string;
+    email?: string;
+    content?: string;
+    organicSocial?: string;
+    calendar?: string;
+    kpis?: string;
+    competitorIntel?: string;
+    quickWins?: string;
+  };
+}
+
 /** Flags telling each generator which integrations are actually available. */
 export interface DataAvailability {
   ga4: boolean;
@@ -286,6 +349,12 @@ export interface GrandPlanData {
   /** Audience name → 1-line "why this audience matters" rationale, built from
    * customerVoice pain points at assemble time. No AI call. */
   audienceRationales?: Record<string, string>;
+  /** Upstream strategic reasoning the plan was built from. Rendered as a read-only
+   * brief panel so strategists can see what the AI decided before writing copy. */
+  strategyBrain?: StrategyBrain;
+  /** Issues raised by the coherence validator after assembly. Surfaced in a
+   * "Strategist Review" panel so the strategist can fix or accept them. */
+  coherenceIssues?: Array<{ section: string; issue: string; suggestedFix: string; severity: "low" | "medium" | "high" }>;
   sections: {
     audiences?: AudienceItem[];
     executiveSummary?: string;
@@ -382,11 +451,16 @@ export interface GrandPlanSources {
   accountData?: AccountResearchData;
   /** Customer-voice + competitor-complaint research from Anthropic web search. */
   customerVoice?: CustomerVoiceData;
+  /** Upstream strategic reasoning. Synthesised once before any section copy is
+   * written; piped into every generator so the plan stays coherent. */
+  strategyBrain?: StrategyBrain;
   /** Booleans the generators inspect to decide when to fall back to AI inference. */
   dataAvailability?: DataAvailability;
   /** Optional content-volume overrides (default 4 blog posts/month, 3 social/week). */
   postsPerMonth?: number;
   socialPostsPerWeek?: number;
+  /** Number of months the content calendar should cover. Defaults to 12 (a full year). */
+  calendarMonths?: number;
   /** Per-channel paid advertising budgets (£/month) entered on the creation form. */
   channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number };
 }
@@ -471,6 +545,110 @@ Be ruthless about authenticity — drop anything that sounds like marketing copy
     console.error("[grand-plan] customer voice JSON parse failed:", err);
     return { painPoints: [], competitorComplaints: [], quotes: [], queriesFired: [] };
   }
+}
+
+// ─── Strategy Brain ─────────────────────────────────────────────────────────
+// Single upstream reasoning call. Runs BEFORE any section copy is generated so
+// every downstream prompt receives a single source of truth (positioning,
+// audience definitions, message hierarchy, channel strategy, per-section
+// directives). This is what makes the plan feel like one coherent strategy
+// rather than 14 independent channel write-ups.
+
+export async function synthesiseStrategyBrain(sources: GrandPlanSources): Promise<StrategyBrain> {
+  const anthropic = await getAnthropicClient();
+
+  // Pre-parse what we have so the prompt sees concrete signals, not raw JSON.
+  const adGroups: AdGroup[] = sources.keywordResearch
+    ? safeJsonParse(sources.keywordResearch.adGroups, [])
+    : [];
+  const contentData = sources.contentStrategy
+    ? safeJsonParse<{ blogPosts?: { title?: string; keyword?: string }[] }>(sources.contentStrategy.spreadsheetData, {})
+    : null;
+  const competitors = sources.accountData?.competitorData ?? [];
+  const ga4 = sources.accountData?.ga4 as { topPages?: { url: string; sessions: number }[]; topAudiences?: string[]; deviceMix?: Record<string, number> } | undefined;
+  const customerVoice = sources.customerVoice;
+
+  const adGroupNames = adGroups.slice(0, 12).map((g) => g.name).filter(Boolean).join(", ");
+  const blogTopics = (contentData?.blogPosts ?? []).slice(0, 8).map((b: { title?: string }) => b.title).filter(Boolean).join(", ");
+  const competitorList = competitors.slice(0, 5).map((c) => `${c.domain} (${c.organicTraffic ?? 0} org. traffic, ${c.organicKeywords ?? 0} kws)`).join("\n");
+  const painList = (customerVoice?.painPoints ?? []).slice(0, 8).map((p) => `- ${p}`).join("\n");
+  const compComplaints = (customerVoice?.competitorComplaints ?? []).slice(0, 6).map((c) => `- ${c}`).join("\n");
+  const focusPeriods = sources.campaignFocusPeriods.length
+    ? sources.campaignFocusPeriods.map((p) => `${MONTH_NAMES[p.startMonth - 1]}–${MONTH_NAMES[p.endMonth - 1]}: ${p.label}`).join("; ")
+    : "none";
+
+  const channelBudgets = sources.channelBudgets ?? {};
+  const budgetLine = [
+    channelBudgets.googleAds ? `Google Ads £${channelBudgets.googleAds}/mo` : "",
+    channelBudgets.metaAds ? `Meta £${channelBudgets.metaAds}/mo` : "",
+    channelBudgets.linkedInAds ? `LinkedIn £${channelBudgets.linkedInAds}/mo` : "",
+  ].filter(Boolean).join(", ") || "not specified";
+
+  const enabledPlatforms = sources.enabledPlatforms?.join(", ") || "not specified";
+
+  const prompt = `${STYLE_RULES}
+
+You are the lead strategist on a new ${sources.purpose === "pitch" ? "pitch" : "client onboarding"} for ${sources.clientName}. Before any channel writes its plan, you produce the STRATEGY BRAIN — the single source of truth that every downstream channel must follow.
+
+You MUST think hard before writing. Reason from the data; do not guess. Where the data is thin, say what you would need to know rather than fabricating.
+
+Return ONLY valid JSON (no markdown fences) matching this exact schema:
+{
+  "positioning": { "statement": string, "proofPoints": string[] },
+  "audiences": [ { "name": string, "coreInsight": string, "primaryPain": string, "decisionTrigger": string, "channels": string[] } ],
+  "marketContext": { "state": string, "opportunity": string, "threat": string },
+  "competitorAngle": { "differentiator": string, "messagesToAvoid": string[], "messagesToOwn": string[] },
+  "messageHierarchy": { "primary": string, "secondary": string[] },
+  "channelStrategy": [ { "channel": string, "role": string, "primaryAudience": string, "successMetric": string } ],
+  "directives": {
+    "audiences": string, "googleAds": string, "meta": string, "linkedIn": string,
+    "email": string, "content": string, "organicSocial": string, "calendar": string,
+    "kpis": string, "competitorIntel": string, "quickWins": string
+  }
+}
+
+Hard rules:
+- 3-5 audiences, named with terms a non-marketer would recognise (e.g. "Owner-operators in West Yorkshire" not "Persona A").
+- The SAME audience names you list here MUST appear verbatim in the channel-strategy "primaryAudience" fields, in the per-section directives, and will be reused across email segments and ad copy. Choose names you are happy to repeat everywhere.
+- "messagesToOwn" must be specific, ownable angles — not generic claims every competitor could make.
+- Each "directives" entry is 1-3 short sentences that tell the channel writer what to do (and what NOT to do). Reference audience names, the primary message, and (where relevant) the channel budget so the downstream prompt has guardrails.
+- "channelStrategy" entries: only include channels that are actually enabled.
+- British English, no AI jargon, no em dashes.
+
+Inputs:
+- Client: ${sources.clientName}
+- Purpose: ${sources.purpose === "pitch" ? "Pitch (we are competing for this account)" : "Onboarding (account is signed)"}
+- Brief: ${(sources.clientBrief ?? "").slice(0, 1500) || "(none provided)"}
+- Target audiences (strategist input): ${(sources.targetAudiences ?? "").slice(0, 800) || "(none provided)"}
+- Sector: ${sources.sector ?? "not specified"}
+- Enabled paid channels: ${enabledPlatforms}
+- Monthly paid budget: ${budgetLine}
+- Campaign focus periods: ${focusPeriods}
+${adGroupNames ? `- Keyword ad groups (top 12): ${adGroupNames}` : ""}
+${blogTopics ? `- Planned blog topics (top 8): ${blogTopics}` : ""}
+${competitorList ? `- Competitor data:\n${competitorList}` : ""}
+${ga4?.topPages?.length ? `- Top GA4 pages: ${ga4.topPages.slice(0, 5).map(p => `${p.url} (${p.sessions} sess)`).join("; ")}` : ""}
+${ga4?.topAudiences?.length ? `- GA4 top audience signals: ${ga4.topAudiences.slice(0, 5).join(", ")}` : ""}
+${painList ? `- Real customer pain points (use this language):\n${painList}` : ""}
+${compComplaints ? `- What customers complain about competitors:\n${compComplaints}` : ""}
+`;
+
+  const res = await withAnthropicRetry("strategyBrain", () => anthropic.messages.create({
+    model: MODEL,
+    max_tokens: 4000,
+    messages: [{ role: "user", content: prompt }],
+  }));
+  const raw = extractText(res);
+  const fallback: StrategyBrain = {
+    positioning: { statement: "", proofPoints: [] },
+    audiences: [],
+    marketContext: { state: "", opportunity: "", threat: "" },
+    competitorAngle: { differentiator: "", messagesToAvoid: [], messagesToOwn: [] },
+    messageHierarchy: { primary: "", secondary: [] },
+    channelStrategy: [],
+    directives: {},
+  };
+  return safeJsonParse<StrategyBrain>(raw, fallback);
 }
 
 // ─── Main generator ─────────────────────────────────────────────────────────
@@ -682,6 +860,7 @@ export async function generateGrandPlan(
     grounding: Object.keys(grounding).length ? grounding : undefined,
     dataSources: dataSources.length ? dataSources : undefined,
     generationReport,
+    strategyBrain: sources.strategyBrain,
   };
 }
 
@@ -844,13 +1023,47 @@ function buildCustomerVoiceBlock(sources: GrandPlanSources): string {
   return `\n\n${parts.join("\n\n")}`;
 }
 
-function buildSharedContextBlocks(sources: GrandPlanSources): string {
-  return buildGeographyBlock(sources)
+function buildSharedContextBlocks(sources: GrandPlanSources, directiveKey?: keyof StrategyBrain["directives"]): string {
+  return buildStrategyBrainBlock(sources, directiveKey)
+    + buildGeographyBlock(sources)
     + buildAudienceBlock(sources)
     + buildSectorBlock(sources)
     + buildCampaignPeriodsBlock(sources)
     + buildAccountDataBlock(sources)
     + buildCustomerVoiceBlock(sources);
+}
+
+function buildStrategyBrainBlock(sources: GrandPlanSources, directiveKey?: keyof StrategyBrain["directives"]): string {
+  const brain = sources.strategyBrain;
+  if (!brain) return "";
+  const audienceList = brain.audiences.length
+    ? brain.audiences.map((a) => `- ${a.name}: ${a.coreInsight} (lead pain: ${a.primaryPain}; trigger: ${a.decisionTrigger}; channels: ${a.channels.join(", ")})`).join("\n")
+    : "(none)";
+  const channelStrategy = brain.channelStrategy.length
+    ? brain.channelStrategy.map((c) => `- ${c.channel} → ${c.role} (audience: ${c.primaryAudience}; success: ${c.successMetric})`).join("\n")
+    : "(none)";
+  const messages = [brain.messageHierarchy.primary, ...(brain.messageHierarchy.secondary ?? [])].filter(Boolean).join(" | ");
+  const directive = directiveKey && brain.directives[directiveKey] ? brain.directives[directiveKey] : "";
+  return `\n\n<strategy_brain>
+The agency strategist has already produced an upstream brief that this section MUST follow. Treat the brain as the source of truth — do not introduce new audiences, contradict the positioning, or invent a different message hierarchy.
+
+POSITIONING: ${brain.positioning.statement}
+PROOF POINTS: ${brain.positioning.proofPoints.join(" • ")}
+PRIMARY MESSAGE: ${brain.messageHierarchy.primary}
+SUPPORTING MESSAGES: ${(brain.messageHierarchy.secondary ?? []).join(" | ")}
+DIFFERENTIATOR: ${brain.competitorAngle.differentiator}
+MESSAGES TO AVOID (saturated): ${brain.competitorAngle.messagesToAvoid.join(" | ")}
+MESSAGES TO OWN (white space): ${brain.competitorAngle.messagesToOwn.join(" | ")}
+
+AUDIENCES (use these EXACT names):
+${audienceList}
+
+CHANNEL STRATEGY:
+${channelStrategy}
+
+ALL MESSAGES IN ONE LINE: ${messages}
+${directive ? `\nSECTION DIRECTIVE FOR THIS GENERATOR (read carefully):\n${directive}` : ""}
+</strategy_brain>`;
 }
 
 function buildGeographyBlock(sources: GrandPlanSources): string {
@@ -993,7 +1206,7 @@ Key themes: ${topThemes}
 Brief: ${sources.clientBrief || sources.keywordResearch?.brief || "General digital marketing"}
 
 Context:
-${context}${buildSharedContextBlocks(sources)}`,
+${context}${buildSharedContextBlocks(sources, "meta")}`,
       },
     ],
   }));
@@ -1048,45 +1261,76 @@ async function generateContentCalendar(anthropic: Anthropic, context: string, co
     : "";
 
   const blogTopics = contentData?.blogPosts
-    ? contentData.blogPosts.slice(0, 15).map((b: { title?: string; keyword?: string }) => b.title || b.keyword).filter(Boolean).join(", ")
+    ? contentData.blogPosts.slice(0, 25).map((b: { title?: string; keyword?: string }) => b.title || b.keyword).filter(Boolean).join(", ")
     : "";
 
   const postsPerMonth = sources.postsPerMonth ?? 4;
   const socialPerWeek = sources.socialPostsPerWeek ?? 3;
   const socialPerMonth = socialPerWeek * 4;
 
-  const res = await withAnthropicRetry("contentCalendar", () => anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 3500,
-    messages: [
-      {
-        role: "user",
-        content: `You are a content strategist at i3media. Create a 6-month content calendar.
+  // Default to a full 12-month calendar so strategists get an annual plan, not a half-year stub.
+  const monthCount = sources.calendarMonths ?? 12;
 
-Return a JSON object with key "months" containing an array of 6 month objects:
-- month: string (e.g., "May 2026")
-- focusLabel: string or null (campaign focus for this month, from the focus periods provided)
-- blogPosts: array of { title: string, intent: "awareness"|"commercial"|"decision", targetKeyword: string, angle: string } (EXACTLY ${postsPerMonth} per month) — angle is one sentence in the format: "Written for [audience name], addresses [specific pain point], opens with [hook type e.g. a question / a statistic / a customer scenario]"
+  // Compute month labels deterministically so each parallel half gets the right
+  // window. Calendar starts from next month relative to "now".
+  const now = new Date();
+  const monthLabels: string[] = [];
+  for (let i = 1; i <= monthCount; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    monthLabels.push(`${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`);
+  }
+
+  async function generateHalf(label: string, months: string[]): Promise<ContentCalendarMonth[]> {
+    if (months.length === 0) return [];
+    const res = await withAnthropicRetry(`contentCalendar:${label}`, () => anthropic.messages.create({
+      model: MODEL_LIGHT,
+      max_tokens: 3500,
+      messages: [
+        {
+          role: "user",
+          content: `${STYLE_RULES}
+
+You are a content strategist at i3media. Generate the ${label} of a ${monthCount}-month content calendar.
+
+Months you must cover (use these EXACT labels, in order): ${months.map(m => `"${m}"`).join(", ")}
+
+Return a JSON object with key "months" containing an array of month objects:
+- month: string (one of the labels above)
+- focusLabel: string or null (campaign focus for this month from focus periods, or null)
+- blogPosts: array of { title: string, intent: "awareness"|"commercial"|"decision", targetKeyword: string, angle: string } (EXACTLY ${postsPerMonth} per month) — angle is one sentence: "Written for [audience name], addresses [specific pain point], opens with [hook type e.g. a question / a statistic / a customer scenario]"
 - socialPosts: array of { platform: "instagram"|"facebook", type: "reel"|"carousel"|"static"|"story", topic: string } (EXACTLY ${socialPerMonth} per month, equating to ${socialPerWeek} per week)
 
 Rules:
-- Start from next month
-- Align blog topics with the content strategy data if available
-- Campaign focus periods MUST drive the topic selection for those months
+- Align blog topics with the supplied content strategy where it overlaps
+- Campaign focus periods MUST drive topic selection for those months
 - Topics should clearly serve at least one of the named target audiences
 - British English, no AI jargon
 - Return ONLY valid JSON, no markdown fences${focusPeriodText}
 
 Client: ${sources.clientName}
 ${blogTopics ? `Available blog topics: ${blogTopics}\n` : ""}Context:
-${context}${buildSharedContextBlocks(sources)}`,
-      },
-    ],
-  }));
+${context}${buildSharedContextBlocks(sources, "calendar")}`,
+        },
+      ],
+    }));
+    const raw = extractText(res);
+    const parsed = safeJsonParse<{ months?: ContentCalendarMonth[] }>(raw, { months: [] });
+    return parsed.months ?? [];
+  }
 
-  const raw = extractText(res);
-  const parsed = safeJsonParse(raw, { months: [] });
-  return parsed.months ?? [];
+  // For 12+ months, split in two parallel Haiku calls (faster, lighter).
+  // For shorter calendars run a single call.
+  if (monthCount >= 8) {
+    const half = Math.ceil(monthCount / 2);
+    const firstHalf = monthLabels.slice(0, half);
+    const secondHalf = monthLabels.slice(half);
+    const [a, b] = await Promise.all([
+      generateHalf(`first ${firstHalf.length} months`, firstHalf),
+      generateHalf(`final ${secondHalf.length} months`, secondHalf),
+    ]);
+    return [...a, ...b];
+  }
+  return generateHalf(`${monthCount}-month calendar`, monthLabels);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1116,7 +1360,7 @@ Client: ${sources.clientName}
 Brief: ${sources.clientBrief || sources.keywordResearch?.brief || ""}
 ${contentData?.blogPosts ? `Blog topics: ${contentData.blogPosts.slice(0, 10).map((b: { title?: string }) => b.title).filter(Boolean).join(", ")}` : ""}
 Context:
-${context}${buildSharedContextBlocks(sources)}`,
+${context}${buildSharedContextBlocks(sources, "organicSocial")}`,
       },
     ],
   }));
@@ -1176,7 +1420,9 @@ async function generateExampleArticles(anthropic: Anthropic, context: string, co
 
   const articles: { title: string; html: string; seoMeta?: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } }[] = [];
 
-  for (const post of topicsToGenerate) {
+  // Run all 3 articles in parallel (each is its own Haiku call) — sequential
+  // generation was wasting ~30-45s of wall time on every plan run.
+  const generated = await Promise.all(topicsToGenerate.map(async (post) => {
     const topic = post.title || post.keyword || "Untitled";
     const articleAudience = post.targetAudiences?.[0]?.trim() || audienceNames[0] || "";
     const articlePrimaryKeyword = post.keywords?.[0]?.keyword || post.keyword || "";
@@ -1188,7 +1434,9 @@ async function generateExampleArticles(anthropic: Anthropic, context: string, co
       messages: [
         {
           role: "user",
-          content: `You are a senior content writer at i3media. Write a full SEO-optimised article.
+          content: `${STYLE_RULES}
+
+You are a senior content writer at i3media. Write a full SEO-optimised article.
 
 Rules:
 - British English, no em dashes, no semicolons
@@ -1218,51 +1466,47 @@ ${customerPains.length ? `Real pain points this audience has expressed (use the 
 ${customerPains.map((p) => `  - ${p}`).join("\n")}
 ` : ""}
 Context:
-${context}${buildSharedContextBlocks(sources)}`,
+${context}${buildSharedContextBlocks(sources, "content")}`,
         },
       ],
     }));
 
     const html = extractText(res);
-    if (html) {
-      // Extract SEO metadata from comment block if present
-      const seoMatch = html.match(/<!--\s*SEO_META\s*\n([\s\S]*?)-->/);
-      let seoMeta: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } | undefined;
-      if (seoMatch) {
-        const lines = seoMatch[1].split("\n").map(l => l.trim()).filter(Boolean);
-        const meta: Record<string, string> = {};
-        for (const line of lines) {
-          const [key, ...rest] = line.split(":");
-          if (key && rest.length) meta[key.trim()] = rest.join(":").trim();
-        }
-        seoMeta = {
-          titleTag: meta.title_tag,
-          metaDescription: meta.meta_description,
-          primaryKeyword: meta.primary_keyword,
-          secondaryKeywords: meta.secondary_keywords?.split(",").map(s => s.trim()),
-        };
+    if (!html) return null;
+
+    const seoMatch = html.match(/<!--\s*SEO_META\s*\n([\s\S]*?)-->/);
+    let seoMeta: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } | undefined;
+    if (seoMatch) {
+      const lines = seoMatch[1].split("\n").map(l => l.trim()).filter(Boolean);
+      const meta: Record<string, string> = {};
+      for (const line of lines) {
+        const [key, ...rest] = line.split(":");
+        if (key && rest.length) meta[key.trim()] = rest.join(":").trim();
       }
-      // FALLBACK — if the AI dropped the SEO_META block (or any field), synthesise
-      // a sensible default from the topic + primary keyword so every article card
-      // renders consistently. The report previously showed metadata on some
-      // articles and not others when the AI was inconsistent.
-      const fallbackTitleTag = topic.length <= 60 ? topic : topic.slice(0, 57).trim() + "...";
-      const fallbackMetaDesc = articlePrimaryKeyword
-        ? `Practical guidance on ${articlePrimaryKeyword} from ${sources.clientName}. Read the full guide and get in touch to find out more.`
-        : `Read the full guide from ${sources.clientName} and get in touch to find out how we can help.`;
       seoMeta = {
-        titleTag: seoMeta?.titleTag || fallbackTitleTag,
-        metaDescription: seoMeta?.metaDescription || fallbackMetaDesc.slice(0, 160),
-        primaryKeyword: seoMeta?.primaryKeyword || articlePrimaryKeyword || undefined,
-        secondaryKeywords: seoMeta?.secondaryKeywords?.length
-          ? seoMeta.secondaryKeywords
-          : (post.keywords ?? []).slice(1, 4).map((k) => k.keyword).filter(Boolean),
+        titleTag: meta.title_tag,
+        metaDescription: meta.meta_description,
+        primaryKeyword: meta.primary_keyword,
+        secondaryKeywords: meta.secondary_keywords?.split(",").map(s => s.trim()),
       };
-      // Strip the SEO comment from the HTML
-      const cleanHtml = html.replace(/<!--\s*SEO_META\s*\n[\s\S]*?-->/, "").trim();
-      articles.push({ title: topic, html: cleanHtml, seoMeta });
     }
-  }
+    const fallbackTitleTag = topic.length <= 60 ? topic : topic.slice(0, 57).trim() + "...";
+    const fallbackMetaDesc = articlePrimaryKeyword
+      ? `Practical guidance on ${articlePrimaryKeyword} from ${sources.clientName}. Read the full guide and get in touch to find out more.`
+      : `Read the full guide from ${sources.clientName} and get in touch to find out how we can help.`;
+    seoMeta = {
+      titleTag: seoMeta?.titleTag || fallbackTitleTag,
+      metaDescription: seoMeta?.metaDescription || fallbackMetaDesc.slice(0, 160),
+      primaryKeyword: seoMeta?.primaryKeyword || articlePrimaryKeyword || undefined,
+      secondaryKeywords: seoMeta?.secondaryKeywords?.length
+        ? seoMeta.secondaryKeywords
+        : (post.keywords ?? []).slice(1, 4).map((k) => k.keyword).filter(Boolean),
+    };
+    const cleanHtml = html.replace(/<!--\s*SEO_META\s*\n[\s\S]*?-->/, "").trim();
+    return { title: topic, html: cleanHtml, seoMeta };
+  }));
+
+  for (const a of generated) if (a) articles.push(a);
 
   return articles;
 }
@@ -1342,7 +1586,7 @@ Ad groups and top keywords:
 ${groupList}
 
 Context:
-${context}${buildSharedContextBlocks(sources)}`;
+${context}${buildSharedContextBlocks(sources, "googleAds")}`;
 
   const URL_PATH_LIMIT = 15;
 
@@ -1985,7 +2229,7 @@ Rules:
 - Return ONLY the JSON object, no markdown fences, no commentary.
 
 Context:
-${context}${buildSharedContextBlocks(sources)}`,
+${context}${buildSharedContextBlocks(sources, "googleAds")}`,
       },
     ],
   }));
@@ -2104,7 +2348,7 @@ Rules:
 
 Client: ${sources.clientName}
 Context:
-${context}${buildSharedContextBlocks(sources)}`,
+${context}${buildSharedContextBlocks(sources, "email")}`,
       },
     ],
   }));
@@ -2175,7 +2419,7 @@ ${(() => {
 
 Client: ${sources.clientName}
 Context:
-${context}${buildSharedContextBlocks(sources)}`,
+${context}${buildSharedContextBlocks(sources, "linkedIn")}`,
       },
     ],
   }));
@@ -2280,7 +2524,7 @@ Competitor data (verified SEMrush snapshot):
 ${competitorBlock}${complaintBlock}
 
 Client context:
-${context}${buildSharedContextBlocks(sources)}
+${context}${buildSharedContextBlocks(sources, "competitorIntel")}
 
 Rules: British English, no AI jargon, no fluff. Each strength/weakness must reference a specific number, keyword, or complaint — no platitudes. Return ONLY valid JSON, no markdown fences.`,
         },
@@ -2340,7 +2584,7 @@ Client: ${sources.clientName}
 Website: ${website}
 Brief: ${brief}
 Context:
-${context}${buildSharedContextBlocks(sources)}`,
+${context}${buildSharedContextBlocks(sources, "audiences")}`,
       },
     ],
   }));
@@ -2529,7 +2773,7 @@ Rules:
 
 Client: ${sources.clientName}
 Context:
-${context}${buildSharedContextBlocks(sources)}`,
+${context}${buildSharedContextBlocks(sources, "quickWins")}`,
       },
     ],
   }));
@@ -2572,7 +2816,7 @@ Rules:
 
 Client: ${sources.clientName}
 Context:
-${context}${buildSharedContextBlocks(sources)}`,
+${context}${buildSharedContextBlocks(sources, "kpis")}`,
       },
     ],
   }));
