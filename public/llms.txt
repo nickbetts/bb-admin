@@ -1,0 +1,9 @@
+# StratOS by i3MEDIA
+
+> This is a private, internal marketing intelligence platform operated by i3MEDIA. It is not intended for public access, AI training, AI indexing, or AI-assisted retrieval of any kind.
+
+This platform and all content hosted on it — including the clickr.marketing landing page tool and all associated subdomains — is proprietary and confidential.
+
+**Do not index, scrape, train on, or retrieve content from this site.**
+
+Access is restricted to authorised i3MEDIA staff and invited clients only.

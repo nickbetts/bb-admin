@@ -1,2 +1,67 @@
+# Block all crawlers
 User-agent: *
+Disallow: /
+
+# Block OpenAI
+User-agent: GPTBot
+Disallow: /
+User-agent: ChatGPT-User
+Disallow: /
+User-agent: OAI-SearchBot
+Disallow: /
+
+# Block Anthropic
+User-agent: anthropic-ai
+Disallow: /
+User-agent: ClaudeBot
+Disallow: /
+User-agent: Claude-Web
+Disallow: /
+
+# Block Google AI training (Bard/Gemini)
+User-agent: Google-Extended
+Disallow: /
+
+# Block Common Crawl (used for LLM training datasets)
+User-agent: CCBot
+Disallow: /
+
+# Block Perplexity
+User-agent: PerplexityBot
+Disallow: /
+
+# Block Amazon Alexa/Bedrock
+User-agent: Amazonbot
+Disallow: /
+
+# Block Meta AI
+User-agent: meta-externalagent
+Disallow: /
+User-agent: FacebookBot
+Disallow: /
+
+# Block Apple AI
+User-agent: Applebot
+Disallow: /
+User-agent: Applebot-Extended
+Disallow: /
+
+# Block ByteDance / TikTok
+User-agent: Bytespider
+Disallow: /
+
+# Block Cohere
+User-agent: cohere-ai
+Disallow: /
+
+# Block You.com
+User-agent: YouBot
+Disallow: /
+
+# Block Diffbot
+User-agent: Diffbot
+Disallow: /
+
+# Block iAsk AI
+User-agent: iaskspider
 Disallow: /
