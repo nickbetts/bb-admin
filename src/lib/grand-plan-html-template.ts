@@ -622,7 +622,7 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
     .map((k: string) => `<span class="neg-chip">${esc(k)}</span>`)
     .join(" ");
 
-  const adGroupsHtml = ((data.adGroups ?? []) as { name: string; keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number; adCopy?: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; isFallback?: boolean } }[])
+  const adGroupsHtml = ((data.adGroups ?? []) as { name: string; keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number; adCopy?: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; urlPaths?: string[]; isFallback?: boolean } }[])
     .map((g, i) => {
       const kwRows = (g.keywords ?? [])
         .map((k) => {
@@ -665,7 +665,7 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
             <div class="ad-card-header"><span class="ad-badge google">Google</span><span style="font-size:11px;color:var(--mid)">${esc(g.name) || `Ad Group ${i + 1}`}</span></div>
             <div class="ad-card-body">
               <div class="gad-sponsor-row"><div class="gad-dot"></div><span class="gad-sponsored-tag">Sponsored</span></div>
-              <div class="gad-url-text">https://${esc(adDomain)}</div>
+              <div class="gad-url-text">https://${esc(adDomain)}${g.adCopy!.urlPaths?.[0] ? ` <span style="color:#70757a">&#8250;</span> <span style="color:#70757a">${esc(g.adCopy!.urlPaths[0])}</span>` : ""}${g.adCopy!.urlPaths?.[1] ? ` <span style="color:#70757a">&#8250;</span> <span style="color:#70757a">${esc(g.adCopy!.urlPaths[1])}</span>` : ""}</div>
               <div class="gad-headline">${esc(h1)}${h2 ? ` <span class="gad-headline-sep">|</span> ${esc(h2)}` : ""}${h3 ? ` <span class="gad-headline-sep">|</span> ${esc(h3)}` : ""}</div>
               <div class="gad-desc">${esc(desc1)}</div>
               ${previewSitelinks.length ? `<div class="gad-sitelinks">${previewSitelinks.map((sl: string) => `<span class="gad-sitelink">${esc(sl)}</span>`).join("")}</div>` : ""}
@@ -760,9 +760,9 @@ function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: s
                 <div><div class="mad-info-name">${esc(c.campaignName ?? "")}</div><div class="mad-info-sub">Sponsored &middot; ${esc(cr.format)}</div></div>
               </div>
               <div class="mad-image-wrap">
-                <div class="mad-img-content"><strong>${esc(cr.headline)}</strong></div>
+                <div class="mad-img-content"><strong>${esc(cr.headline)}</strong><span class="char-badge ${(cr.headline ?? "").length <= 40 ? "char-ok" : "char-over"}" style="margin-top:8px;display:inline-block">${(cr.headline ?? "").length}/40</span></div>
               </div>
-              <p class="mad-caption">${esc(cr.primaryText)}</p>
+              <p class="mad-caption">${(cr.primaryText ?? "").length > 125 ? `${esc((cr.primaryText ?? "").slice(0, 125))}<span style="color:var(--mid)">... <em>See more</em></span>` : esc(cr.primaryText)}</p>
               <div class="mad-cta-block">
                 <div><div class="mad-cta-block-url">${esc(adDomain)}</div><div class="mad-cta-block-title">${esc(cr.headline)}</div></div>
                 <div class="mad-cta-btn">${esc(cr.cta)}</div>
@@ -1004,8 +1004,8 @@ function renderContentCalendar(months: any[]): string {
   const monthsHtml = months
     .map((m) => {
       const blogs = (m.blogPosts ?? [])
-        .map((b: { title: string; intent: string; targetKeyword: string }) =>
-          `<div class="cal-item cal-blog"><span class="cal-type">Blog</span><span class="cal-topic">${esc(b.title)}</span><span class="intent-badge intent-${b.intent}">${esc(b.intent)}</span></div>`)
+        .map((b: { title: string; intent: string; targetKeyword: string; angle?: string }) =>
+          `<div class="cal-item cal-blog"><span class="cal-type">Blog</span><span class="cal-topic">${esc(b.title)}${b.angle ? `<span class="cal-angle" title="${escAttr(b.angle)}" style="display:block;font-size:11px;color:var(--mid);margin-top:2px;font-style:italic">${esc(b.angle)}</span>` : ""}</span><span class="intent-badge intent-${b.intent}">${esc(b.intent)}</span></div>`)
         .join("\n");
 
       const social = (m.socialPosts ?? [])
@@ -1275,11 +1275,11 @@ function renderLinkedInAds(campaigns: any[]): string {
               <div class="lad-avatar">i3</div>
               <div><div class="lad-info-name">${esc(c.campaignName ?? "LinkedIn Ad")}</div><div class="lad-info-sub">Sponsored</div><div class="lad-follow">+ Follow</div></div>
             </div>
-            <p class="lad-caption">${esc(cr.introText)}</p>
+            <p class="lad-caption">${esc(cr.introText)}<span class="char-badge ${(cr.introText ?? "").length <= 150 ? "char-ok" : "char-over"}" style="margin-left:6px">${(cr.introText ?? "").length}/150</span></p>
             <div class="lad-image-wrap">
               <div class="lad-img-txt">${esc(cr.headline)}<span class="char-badge ${(cr.headline ?? "").length <= 70 ? "char-ok" : "char-over"}" style="margin-left:6px">${(cr.headline ?? "").length}/70</span></div>
             </div>
-            ${cr.description ? `<p style="font-size:12px;color:var(--text-light);margin-bottom:8px">${esc(cr.description)}</p>` : ""}
+            ${cr.description ? `<p style="font-size:12px;color:var(--text-light);margin-bottom:8px">${esc(cr.description)}<span class="char-badge ${(cr.description ?? '').length <= 100 ? 'char-ok' : 'char-over'}" style="margin-left:6px">${(cr.description ?? '').length}/100</span></p>` : ""}
             <div class="lad-cta-row">
               <div class="lad-cta-btn">${esc(cr.cta)}</div>
               <div class="lad-stats">Sponsored</div>

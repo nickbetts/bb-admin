@@ -844,12 +844,17 @@ function buildGeographyBlock(sources: GrandPlanSources): string {
 
 async function generateExecutiveSummary(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<string> {
   const res = await withAnthropicRetry("executiveSummary", () => anthropic.messages.create({
-    model: MODEL_LIGHT,
-    max_tokens: 1200,
+    model: MODEL,
+    max_tokens: 1400,
     messages: [
       {
         role: "user",
-        content: `You are a senior digital marketing strategist at i3media, a specialist UK digital marketing agency. Write an executive summary for a go-to-market plan.
+        content: `You are a senior digital marketing strategist at i3media, a specialist UK digital marketing agency. You are writing a strategic memo DIRECTLY TO the client's decision-maker — not a report about them. Write in second person throughout ("your business", "you are", "your customers").
+
+Structure the memo using a situation → complication → resolution framework:
+1. SITUATION: What is true about their market and position right now (specific facts, no generics)
+2. COMPLICATION: What stands between them and the outcome they want (the real obstacle)
+3. RESOLUTION: What this plan does about it and what they can expect if they commit
 
 Rules:
 - British English only
@@ -859,11 +864,10 @@ Rules:
 - Open by naming the audiences this plan is built for and the commercial outcome we are chasing.
 - ${sources.purpose === "pitch" ? "This is a pitch — be persuasive but honest. Show you understand their business." : "This is an onboarding plan — be operational and clear about what happens next."}
 - Return HTML content (paragraphs, headings h3/h4, bullet lists). No wrapper div or section tags.
-- Include 2-3 callout paragraphs in this exact format so they render as visual highlights:
-  <p><strong>Why this matters:</strong> one sentence on the strategic stake.</p>
-  <p><strong>Outcome:</strong> the measurable result we expect.</p>
-  <p><strong>Risk:</strong> the main thing that could derail the plan.</p>
-- Keep it to 300-400 words.
+- You MUST include all three callout paragraphs in this exact format (they render as visual highlights):
+  <p><strong>Why this matters:</strong> one sentence on the strategic stake — make it specific to their market.</p>
+  <p><strong>Outcome:</strong> the measurable result we expect if the plan is executed. Name a number or direction.</p>
+  <p><strong>Risk:</strong> the single most likely reason this plan fails. Be honest — it builds trust.</p>
 
 Write the executive summary for this plan:
 
@@ -876,7 +880,7 @@ ${context}${buildSharedContextBlocks(sources)}`,
 
 async function generateStrategyPlan(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<string> {
   const res = await withAnthropicRetry("strategyPlan", () => anthropic.messages.create({
-    model: MODEL_LIGHT,
+    model: MODEL,
     max_tokens: 1600,
     messages: [
       {
@@ -888,7 +892,10 @@ Rules:
 - Use exactly THREE <h3> headings, one per phase. Format them as: "<h3>Phase 1, Foundations (Month 1)</h3>", "<h3>Phase 2, Build (Months 2-3)</h3>", "<h3>Phase 3, Scale (Months 4+)</h3>". Renderer turns each h3 + body into a visual phase card.
 - Inside each phase use h4 for sub-sections (e.g. "Audiences", "Channels", "Outcomes", "Metrics").
 - Each phase should cover: what gets done, which audiences we are reaching and on which channels, expected outcomes, key metrics to track.
-- Reference real channels and tactics from the context provided. Match channels to audiences explicitly (e.g. "reach Practice Managers via LinkedIn in Phase 2").
+- PHASE 1 MUST name EXACTLY which 1-2 channels go live first and which single audience segment they target. No generics — name the channel and the audience by their exact names from the plan.
+- PHASE 2 MUST name the second audience being layered on AND identify the first optimisation metric being tracked with a specific threshold (e.g. "when CPA falls below £X, we increase budget by Y%" or "once CTR exceeds X%, we expand match types").
+- PHASE 3 MUST cite a specific measurable trigger for scale — a real number, not a direction. (e.g. "when conversion rate reaches 3.5%" not "when performance improves").
+- Reference real channels and tactics from the context provided. Match channels to audiences explicitly.
 - If campaign focus periods are listed, weave them into the relevant phase.
 - ${sources.purpose === "pitch" ? "Persuasive but grounded, show clear ROI potential" : "Operational clarity, this is the actual plan"}
 - Return HTML content (h3, h4, p, ul/li). No wrapper tags. No markdown fences.
@@ -936,6 +943,9 @@ Return a JSON object with key "campaigns" containing an array of campaign object
 Rules:
 - Create 2-3 campaigns based on the keyword themes provided AND the target audiences below. Each campaign should clearly map to one or more named audiences.
 - Audience targeting interests/customAudiences/lookalikes should reflect the real personas, not generic demographics. Mix specific behaviours, life events, and adjacent interests, not just first-person pain points.
+- CAPTION HOOK RULE: Every caption in captionCopyBank MUST open with a single sentence of 12 words or fewer that would stop a scroll — a provocative question, a specific pain point stated as fact, or a surprising statistic. The detail and offer follow in lines 2-3.
+- COPY VARIANTS: Of the 5-8 captions, produce: 2 written in first-person from the customer's perspective (e.g. "I spent three months searching for..."), 2 in brand voice, and 2 as direct offers (lead with the outcome or price point).
+- AD CREATIVE HEADLINE LIMIT: Meta headline is 40 characters maximum. Count every character including spaces. Hard limit.
 - Captions and creative copy must speak directly to the audience's situation in plain British English.
 - If campaign focus periods are listed, design at least one campaign or creative variant around the most imminent period, include specific dates/windows in the ad copy to drive urgency.
 - British English, no AI jargon, no em-dashes
@@ -1024,7 +1034,7 @@ async function generateContentCalendar(anthropic: Anthropic, context: string, co
 Return a JSON object with key "months" containing an array of 6 month objects:
 - month: string (e.g., "May 2026")
 - focusLabel: string or null (campaign focus for this month, from the focus periods provided)
-- blogPosts: array of { title: string, intent: "awareness"|"commercial"|"decision", targetKeyword: string } (EXACTLY ${postsPerMonth} per month)
+- blogPosts: array of { title: string, intent: "awareness"|"commercial"|"decision", targetKeyword: string, angle: string } (EXACTLY ${postsPerMonth} per month) — angle is one sentence in the format: "Written for [audience name], addresses [specific pain point], opens with [hook type e.g. a question / a statistic / a customer scenario]"
 - socialPosts: array of { platform: "instagram"|"facebook", type: "reel"|"carousel"|"static"|"story", topic: string } (EXACTLY ${socialPerMonth} per month, equating to ${socialPerWeek} per week)
 
 Rules:
@@ -1196,7 +1206,7 @@ async function generateGoogleAdsAdCopy(
   adGroups: AdGroup[],
   context: string,
   sources: GrandPlanSources,
-): Promise<{ name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; isFallback?: boolean } }[]> {
+): Promise<{ name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; urlPaths?: string[]; isFallback?: boolean } }[]> {
   // Pick the highest-volume keywords per group so the AI gets meaningful
   // commercial intent signals rather than whatever was stored first.
   const groupList = adGroups
@@ -1229,10 +1239,18 @@ Return a JSON object with key "adGroups" containing an array. Each item:
 - headlines: string[] (15 headlines, STRICTLY max ${HEADLINE_LIMIT} characters each — count carefully)
 - descriptions: string[] (4 descriptions, STRICTLY max ${DESC_LIMIT} characters each)
 - sitelinks: string[] (4-6 sitelink labels, max ${SITELINK_LIMIT} chars each)
+- urlPaths: string[] (exactly 2 display path segments, max 15 chars each, no spaces — use hyphens)
 
 Rules:
 - British English. No AI jargon. Be direct and benefit-led.
-- Vary headlines between: primary keyword inclusion, benefit statement, USP, CTA, social proof.
+- HEADLINE DISTRIBUTION — write EXACTLY this mix for each ad group:
+  * 4 headlines that include the primary keyword or a close variant
+  * 4 benefit-led headlines that do NOT repeat the keyword (focus on outcome or pain resolution)
+  * 3 USP/differentiator headlines (what makes this client unique)
+  * 2 urgency or offer headlines (limited time, specific saving, or availability signal)
+  * 2 social proof headlines (rating, case study reference, years in business, or number of customers served)
+  Total = 15 headlines.
+- Each ad group should also include 2 URL path fields (urlPaths: string[2]) for the display path, max 15 chars each (e.g. ["dental-care", "book-online"]). These appear in the ad as: domain.com/path1/path2.
 - Speak to the named target audiences provided in the context — at least 3 headlines per group should reference an audience pain point or moment.
 - Descriptions expand on the proposition with a call to action.
 - If campaign focus periods list specific dates or windows, include at least one headline or description per group that references the nearest upcoming period to drive urgency.
@@ -1248,12 +1266,15 @@ ${groupList}
 Context:
 ${context}${buildSharedContextBlocks(sources)}`;
 
+  const URL_PATH_LIMIT = 15;
+
   type RawGroup = {
     name?: string;
     headlines?: unknown;
     descriptions?: unknown;
     sitelinks?: unknown;
-    adCopy?: { headlines?: unknown; descriptions?: unknown; sitelinks?: unknown };
+    urlPaths?: unknown;
+    adCopy?: { headlines?: unknown; descriptions?: unknown; sitelinks?: unknown; urlPaths?: unknown };
   };
 
   const toStringArray = (v: unknown): string[] =>
@@ -1267,25 +1288,28 @@ ${context}${buildSharedContextBlocks(sources)}`;
         headlines: toStringArray(src.headlines),
         descriptions: toStringArray(src.descriptions),
         sitelinks: toStringArray(src.sitelinks),
+        urlPaths: toStringArray(src.urlPaths),
       };
     });
 
   const collectViolations = (
-    groups: { name: string; headlines: string[]; descriptions: string[]; sitelinks: string[] }[],
+    groups: { name: string; headlines: string[]; descriptions: string[]; sitelinks: string[]; urlPaths: string[] }[],
   ) => {
     const issues: string[] = [];
     for (const g of groups) {
       const overH = g.headlines.filter((h) => h.length > HEADLINE_LIMIT);
       const overD = g.descriptions.filter((d) => d.length > DESC_LIMIT);
       const overS = g.sitelinks.filter((s) => s.length > SITELINK_LIMIT);
+      const overP = g.urlPaths.filter((p) => p.length > URL_PATH_LIMIT);
       if (overH.length) issues.push(`Ad group "${g.name}": ${overH.length} headline(s) exceed ${HEADLINE_LIMIT} chars: ${overH.map((h) => `"${h}" (${h.length})`).join(", ")}`);
       if (overD.length) issues.push(`Ad group "${g.name}": ${overD.length} description(s) exceed ${DESC_LIMIT} chars`);
       if (overS.length) issues.push(`Ad group "${g.name}": ${overS.length} sitelink(s) exceed ${SITELINK_LIMIT} chars`);
+      if (overP.length) issues.push(`Ad group "${g.name}": ${overP.length} URL path(s) exceed ${URL_PATH_LIMIT} chars`);
     }
     return issues;
   };
 
-  let lastNormalised: { name: string; headlines: string[]; descriptions: string[]; sitelinks: string[] }[] = [];
+  let lastNormalised: { name: string; headlines: string[]; descriptions: string[]; sitelinks: string[]; urlPaths: string[] }[] = [];
   let feedback: string | undefined;
 
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -1318,6 +1342,7 @@ ${context}${buildSharedContextBlocks(sources)}`;
           headlines: g.headlines.map((h) => h.slice(0, HEADLINE_LIMIT)),
           descriptions: g.descriptions.map((d) => d.slice(0, DESC_LIMIT)),
           sitelinks: g.sitelinks.map((s) => s.slice(0, SITELINK_LIMIT)),
+          urlPaths: g.urlPaths.slice(0, 2).map((p) => p.slice(0, URL_PATH_LIMIT)),
         },
       };
     }
@@ -1681,28 +1706,14 @@ ${audienceLines ? `Audiences:\n${audienceLines}` : ""}`,
  * strings; the first match wins. Audiences without a match are omitted.
  */
 export function buildAudienceRationales(
-  audienceNames: string[],
-  customerVoice?: CustomerVoiceData,
+  _audienceNames: string[],
+  _customerVoice?: CustomerVoiceData,
 ): Record<string, string> {
-  if (!customerVoice?.painPoints?.length || audienceNames.length === 0) return {};
-  const out: Record<string, string> = {};
-  for (const name of audienceNames) {
-    const key = name.trim();
-    if (!key) continue;
-    // Take the first 1-2 keywords from the audience name and look for any pain
-    // point that mentions them. Keeps matches loose (e.g. "Practice Managers"
-    // matches a pain point about "managers" or "practices").
-    const tokens = key.toLowerCase().split(/\s+/).filter((t) => t.length > 3).slice(0, 3);
-    const matched = customerVoice.painPoints.find((p) => {
-      const lower = p.toLowerCase();
-      return tokens.some((t) => lower.includes(t));
-    }) ?? customerVoice.painPoints[0]; // fall back to top pain so every audience gets context
-    if (matched) {
-      const summary = matched.split(/(?<=[.!?])\s/)[0]?.trim();
-      if (summary) out[key] = summary;
-    }
-  }
-  return out;
+  // Audience rationales previously surfaced raw scraped pain-point text verbatim,
+  // which produced noisy, unpolished output. The personaQuote field in each
+  // audience card handles per-audience voice more effectively. Return empty
+  // to suppress the audience-play-why paragraph entirely.
+  return {};
 }
 
 // ─── Structured data builders (no AI needed) ────────────────────────────────
@@ -1783,7 +1794,7 @@ function detectLocations(brief?: string): string {
   return "United Kingdom";
 }
 
-function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources, adCopyData: { name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; isFallback?: boolean } }[]) {
+function buildGoogleAdsCampaigns(adGroups: AdGroup[], sources: GrandPlanSources, adCopyData: { name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; urlPaths?: string[]; isFallback?: boolean } }[]) {
   const adCopyMap = new Map(adCopyData.map((d) => [d.name, d.adCopy]));
   const sector = sources.sector ?? "";
   const sectorNegs = SECTOR_NEGATIVES[sector] ?? [];
@@ -1963,9 +1974,12 @@ Return a JSON object with key "campaigns" containing an array of 2-3 campaign ob
 - adCreatives: array of { headline: string (max 70 chars), introText: string (max 150 chars), description: string (optional, max 100 chars), cta: string }
 
 Rules:
-- One campaign should focus on lead gen, one on awareness/thought leadership
+- Create at least 3 ad creatives per campaign (minimum) — LinkedIn's algorithm needs creative variants to optimise delivery across placements and audiences. Label the first as the control and subsequent ones as variants.
+- One campaign should focus on lead gen (use Lead Gen Form format for lowest friction), one on awareness/thought leadership (Thought Leadership ads or document ads perform well here — recommend appropriately)
+- For awareness campaigns, suggest Thought Leadership ad format where applicable (promoted posts from a personal profile rather than company page — higher engagement rates)
 - Audience targeting MUST be derived from the named target audiences (use their job titles, seniority, industries)
-- Headlines and intro text must speak to the audience by their role and pain point
+- Headlines and intro text must speak to the audience by their role and pain point — address the decision-maker's specific problem, not a generic pitch
+- Each creative should include urlPaths: string[] (2 display path segments, max 15 chars each) for the ad destination
 - ${sources.sector === "industrial" || sources.sector === "professional_services" ? "LinkedIn is a primary channel — make campaigns comprehensive" : sources.sector === "ecommerce" || sources.sector === "dental" ? "LinkedIn is secondary for this sector — focus on brand building and partnerships" : "LinkedIn campaigns should target decision makers"}
 - Strictly respect character limits: headline ≤70, intro ≤150, description ≤100
 - British English, no AI jargon
