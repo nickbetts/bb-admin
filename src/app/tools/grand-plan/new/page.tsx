@@ -332,9 +332,10 @@ export default function NewGrandPlanPage() {
                 className="form-input form-textarea"
                 value={targetAudiences}
                 onChange={(e) => setTargetAudiences(e.target.value)}
-                placeholder="Describe the key audiences the AI should keep in mind — e.g. 'Parents of children aged 6-16 looking for football coaching', 'School PE coordinators seeking holiday camps'. Used across all AI-generated sections."
+                placeholder={"One per line — Name: Description\ne.g. Parents aged 30–45: looking for holiday football camps\nSchool PE coordinators: sourcing group coaching sessions"}
                 style={{ minHeight: 80 }}
               />
+              <span className="form-hint">One audience per line. When filled in, the plan uses your exact personas rather than inferring them — and earns a stronger data grounding badge.</span>
             </div>
 
             {/* Platforms */}

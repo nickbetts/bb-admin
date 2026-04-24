@@ -25,7 +25,6 @@ import {
   Map,
   Settings,
   ChevronDown,
-  MoreHorizontal,
   AlertTriangle,
   History,
   ArrowUpRight,
@@ -147,10 +146,6 @@ export default function GrandPlanViewPage({ params }: Props) {
   const [sharePassword, setSharePassword] = useState("");
   const [shareExpiry, setShareExpiry] = useState("0");
 
-  // Action overflow
-  const [overflowOpen, setOverflowOpen] = useState(false);
-  const overflowRef = useRef<HTMLDivElement | null>(null);
-
   // Generation
   const [generating, setGenerating] = useState(false);
   const [stepStatus, setStepStatus] = useState<Record<string, "pending" | "running" | "done" | "skipped" | "failed">>({});
@@ -192,6 +187,16 @@ export default function GrandPlanViewPage({ params }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Warn the user if they try to close/navigate away while generating.
+  useEffect(() => {
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (!generating) return;
+      e.preventDefault();
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [generating]);
+
   // Listen for messages from the iframe (sections list + scroll height)
   useEffect(() => {
     function onMessage(event: MessageEvent) {
@@ -208,18 +213,6 @@ export default function GrandPlanViewPage({ params }: Props) {
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
   }, []);
-
-  // Click-outside to close overflow menu
-  useEffect(() => {
-    if (!overflowOpen) return;
-    function onDoc(e: MouseEvent) {
-      if (overflowRef.current && !overflowRef.current.contains(e.target as Node)) {
-        setOverflowOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [overflowOpen]);
 
   async function loadPlan() {
     setLoading(true);
@@ -1173,75 +1166,41 @@ export default function GrandPlanViewPage({ params }: Props) {
 
           <div style={{ flex: 1 }} />
 
-          {/* Overflow / secondary group */}
-          <div ref={overflowRef} style={{ position: "relative" }}>
+          {/* Secondary actions */}
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={handleClone}
+            title="Clone plan"
+          >
+            <Copy style={{ width: 14, height: 14 }} aria-hidden /> Clone
+          </button>
+          {plan.shareToken && (
             <button
               className="btn btn-ghost btn-sm"
-              onClick={() => setOverflowOpen((v) => !v)}
-              aria-haspopup="menu"
-              aria-expanded={overflowOpen}
-              aria-label="More actions"
-              title="More actions"
+              onClick={handleUnshare}
+              disabled={sharingBusy}
+              title="Revoke share link"
             >
-              <MoreHorizontal style={{ width: 14, height: 14 }} aria-hidden />
+              <X style={{ width: 14, height: 14 }} aria-hidden /> Revoke link
             </button>
-            {overflowOpen && (
-              <div
-                role="menu"
-                style={{
-                  position: "absolute",
-                  top: "calc(100% + 6px)",
-                  right: 0,
-                  minWidth: 220,
-                  background: "var(--surface, white)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 10,
-                  boxShadow: "0 12px 24px -8px rgb(15 23 42 / 0.15)",
-                  padding: 6,
-                  zIndex: 10,
-                }}
-              >
-                <OverflowItem
-                  icon={<Copy style={{ width: 13, height: 13 }} aria-hidden />}
-                  label="Clone"
-                  onClick={() => {
-                    setOverflowOpen(false);
-                    handleClone();
-                  }}
-                />
-                {plan.shareToken && (
-                  <OverflowItem
-                    icon={<X style={{ width: 13, height: 13 }} aria-hidden />}
-                    label="Revoke share link"
-                    onClick={() => {
-                      setOverflowOpen(false);
-                      handleUnshare();
-                    }}
-                    disabled={sharingBusy}
-                  />
-                )}
-                <OverflowItem
-                  icon={<Sparkles style={{ width: 13, height: 13 }} aria-hidden />}
-                  label={funMode ? "Disable chaos mode" : "Enable chaos mode"}
-                  onClick={() => {
-                    setFunMode((v) => !v);
-                    setOverflowOpen(false);
-                  }}
-                />
-                <div style={{ height: 1, background: "var(--border)", margin: "4px 2px" }} />
-                <OverflowItem
-                  icon={<Trash2 style={{ width: 13, height: 13 }} aria-hidden />}
-                  label="Delete plan"
-                  destructive
-                  disabled={deleting}
-                  onClick={() => {
-                    setOverflowOpen(false);
-                    handleDelete();
-                  }}
-                />
-              </div>
-            )}
-          </div>
+          )}
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setFunMode((v) => !v)}
+            title={funMode ? "Disable chaos mode" : "Enable chaos mode"}
+            style={funMode ? { color: "var(--accent)" } : undefined}
+          >
+            <Sparkles style={{ width: 14, height: 14 }} aria-hidden />
+          </button>
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={handleDelete}
+            disabled={deleting}
+            title="Delete plan"
+            style={{ color: "var(--danger, #dc2626)" }}
+          >
+            <Trash2 style={{ width: 14, height: 14 }} aria-hidden />
+          </button>
         </div>
       </div>
 
@@ -1257,12 +1216,18 @@ export default function GrandPlanViewPage({ params }: Props) {
               funMode
                 ? [funMessage]
                 : [
-                    "AI generation runs server-side — feel free to leave this tab open.",
+                    "Keep this tab open — generation runs in the browser and will pause if you close it.",
                     "Each AI section uses your linked proposal, keywords and content data.",
                     "If a section fails, you can regenerate it individually once complete.",
                   ]
             }
           />
+          {!funMode && (
+            <p style={{ fontSize: 11, color: "var(--text-3)", marginTop: 10, marginBottom: 0, display: "flex", alignItems: "center", gap: 5 }}>
+              <span style={{ fontSize: 13 }}>⚠️</span>
+              <span>Keep this tab open — closing or navigating away will pause generation. Completed steps are saved and will not re-run.</span>
+            </p>
+          )}
           <div style={{ marginTop: 14 }}>
             <PipelineStepper
               steps={PIPELINE_STEPS}
@@ -2118,6 +2083,29 @@ function useGrandPlanUwu(active: boolean): string {
   return msg;
 }
 
+// ─── Chaos mode sound engine ─────────────────────────────────────────────────
+// Uses the Web Audio API to generate retro 8-bit blips. No external assets.
+function playChaosBleep() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const AC = window.AudioContext ?? (window as any).webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC() as AudioContext;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const FREQS = [261, 329, 392, 523, 659, 784, 1046, 1318];
+    osc.frequency.value = FREQS[Math.floor(Math.random() * FREQS.length)];
+    osc.type = (["square", "sawtooth", "triangle"] as OscillatorType[])[Math.floor(Math.random() * 3)];
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.18);
+    osc.onended = () => ctx.close();
+  } catch { /* AudioContext blocked — silent fail */ }
+}
+
 function GrandPlanChaosOverlay({ active }: { active: boolean }) {
   const [particles, setParticles] = useState<
     {
@@ -2133,50 +2121,109 @@ function GrandPlanChaosOverlay({ active }: { active: boolean }) {
     }[]
   >([]);
 
+  // ── Hue-rotate the whole page CSS and add shake / glitch ──────────────────
+  useEffect(() => {
+    if (!active) {
+      document.documentElement.style.removeProperty("filter");
+      document.documentElement.style.removeProperty("animation");
+      document.body.style.removeProperty("font-family");
+      return;
+    }
+
+    // Inject chaos keyframes once
+    const styleId = "gp-chaos-global-styles";
+    if (!document.getElementById(styleId)) {
+      const el = document.createElement("style");
+      el.id = styleId;
+      el.textContent = `
+        @keyframes gpHueSpin {
+          0%   { filter: hue-rotate(0deg) saturate(2) brightness(1.05); }
+          25%  { filter: hue-rotate(90deg) saturate(3) brightness(1.1); }
+          50%  { filter: hue-rotate(180deg) saturate(2.5) brightness(0.95) invert(0.04); }
+          75%  { filter: hue-rotate(270deg) saturate(3.5) brightness(1.15); }
+          100% { filter: hue-rotate(360deg) saturate(2) brightness(1.05); }
+        }
+        @keyframes gpBodyShake {
+          0%,100% { transform: translate(0,0) rotate(0deg); }
+          10%     { transform: translate(-3px, 2px) rotate(-0.4deg); }
+          20%     { transform: translate(3px, -2px) rotate(0.4deg); }
+          30%     { transform: translate(-2px, 3px) rotate(-0.2deg); }
+          40%     { transform: translate(4px, -1px) rotate(0.3deg); }
+          50%     { transform: translate(-3px, -3px) rotate(-0.5deg); }
+          60%     { transform: translate(2px, 3px) rotate(0.2deg); }
+          70%     { transform: translate(-4px, 1px) rotate(-0.3deg); }
+          80%     { transform: translate(3px, -3px) rotate(0.4deg); }
+          90%     { transform: translate(-1px, 2px) rotate(-0.1deg); }
+        }
+        @keyframes gpGlitchText {
+          0%,90%,100% { text-shadow: none; }
+          91% { text-shadow: -3px 0 #f0f, 3px 0 #0ff; }
+          93% { text-shadow: 3px 0 #f0f, -3px 0 #0ff; }
+          95% { text-shadow: -2px 0 #ff0, 2px 0 #f0f; }
+        }
+        @keyframes gpChaosFloat {
+          0%   { transform: translateY(0) rotate(0deg) scale(1); }
+          33%  { transform: translateY(-24px) rotate(120deg) scale(1.2); }
+          66%  { transform: translateY(10px) rotate(240deg) scale(0.85); }
+          100% { transform: translateY(0) rotate(360deg) scale(1); }
+        }
+        .gp-chaos-active * {
+          animation: gpGlitchText 4s infinite !important;
+        }
+        .gp-chaos-active h1, .gp-chaos-active h2, .gp-chaos-active h3 {
+          font-family: "Comic Sans MS", "Comic Sans", cursive !important;
+          letter-spacing: 0.05em !important;
+        }
+        .gp-chaos-active {
+          animation: gpBodyShake 0.18s infinite, gpHueSpin 3s linear infinite !important;
+        }
+      `;
+      document.head.appendChild(el);
+    }
+
+    document.documentElement.classList.add("gp-chaos-active");
+    return () => {
+      document.documentElement.classList.remove("gp-chaos-active");
+    };
+  }, [active]);
+
+  // ── Random bleeps ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!active) return;
+    // First bleep immediately, then random interval 600–1800ms
+    playChaosBleep();
+    let timeoutId: ReturnType<typeof setTimeout>;
+    function scheduleNext() {
+      timeoutId = setTimeout(() => {
+        playChaosBleep();
+        scheduleNext();
+      }, 600 + Math.random() * 1200);
+    }
+    scheduleNext();
+    return () => clearTimeout(timeoutId);
+  }, [active]);
+
+  // ── Floating emoji particles ───────────────────────────────────────────────
   useEffect(() => {
     if (!active) {
       queueMicrotask(() => setParticles([]));
       return;
     }
     const EMOJIS = [
-      "✨",
-      "💖",
-      "🌸",
-      "⭐",
-      "🎀",
-      "💫",
-      "🦄",
-      "🌈",
-      "😻",
-      "💕",
-      "🎪",
-      "🚀",
-      "📊",
-      "📈",
-      "🎯",
-      "💅",
-      "✌️",
-      "🔥",
-      "👑",
-      "🎉",
-      "UwU",
-      "OwO",
-      ">.<",
-      ":3",
-      "rawr",
-      "xD",
-      "nyan~",
-      "BAKA",
+      "✨","💖","🌸","⭐","🎀","💫","🦄","🌈","😻","💕","🎪","🚀",
+      "📊","📈","🎯","💅","✌️","🔥","👑","🎉","💣","🤯","🫠","😱",
+      "UwU","OwO",">.<",":3","rawr","xD","nyan~","BAKA","W","T","F",
+      "brrrr","404","ERROR","NaN","null","undefined","😈","🧨","💥",
     ];
-    const initial = Array.from({ length: 35 }, (_, i) => ({
+    const initial = Array.from({ length: 55 }, (_, i) => ({
       id: i,
       emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
       x: Math.random() * 100,
       y: Math.random() * 100,
-      size: 14 + Math.random() * 28,
-      opacity: 0.15 + Math.random() * 0.25,
+      size: 14 + Math.random() * 36,
+      opacity: 0.2 + Math.random() * 0.4,
       rotation: Math.random() * 360,
-      scale: 0.6 + Math.random() * 0.8,
+      scale: 0.6 + Math.random() * 1.2,
       delay: Math.random() * 2,
     }));
     queueMicrotask(() => setParticles(initial));
@@ -2184,54 +2231,52 @@ function GrandPlanChaosOverlay({ active }: { active: boolean }) {
       setParticles((prev) =>
         prev.map((p) => ({
           ...p,
-          x: (p.x + (Math.random() - 0.5) * 3 + 100) % 100,
-          y: (p.y - 0.3 - Math.random() * 0.5 + 100) % 100,
-          rotation: p.rotation + (Math.random() - 0.5) * 15,
-          opacity: 0.1 + Math.random() * 0.3,
+          x: (p.x + (Math.random() - 0.5) * 5 + 100) % 100,
+          y: (p.y - 0.5 - Math.random() * 0.8 + 100) % 100,
+          rotation: p.rotation + (Math.random() - 0.5) * 25,
+          opacity: 0.15 + Math.random() * 0.45,
+          scale: 0.5 + Math.random() * 1.4,
         }))
       );
-    }, 400);
+    }, 300);
     return () => clearInterval(id);
   }, [active]);
 
   if (!active || particles.length === 0) return null;
 
   return (
-    <>
-      <style>{`
-        @keyframes gpChaosFloat { 0% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-20px) rotate(180deg); } 100% { transform: translateY(0) rotate(360deg); } }
-      `}</style>
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          pointerEvents: "none",
-          zIndex: 9999,
-          overflow: "hidden",
-        }}
-      >
-        {particles.map((p) => (
-          <span
-            key={p.id}
-            style={{
-              position: "absolute",
-              left: `${p.x}vw`,
-              top: `${p.y}vh`,
-              fontSize: p.size,
-              opacity: p.opacity,
-              transform: `rotate(${p.rotation}deg) scale(${p.scale})`,
-              userSelect: "none",
-              lineHeight: 1,
-              willChange: "transform, opacity",
-              filter: p.size > 30 ? "drop-shadow(0 0 10px rgba(249,168,212,0.9))" : "none",
-              animation: "gpChaosFloat 3s ease-in-out infinite",
-              animationDelay: `${p.delay}s`,
-            }}
-          >
-            {p.emoji}
-          </span>
-        ))}
-      </div>
-    </>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        pointerEvents: "none",
+        zIndex: 9999,
+        overflow: "hidden",
+      }}
+    >
+      {particles.map((p) => (
+        <span
+          key={p.id}
+          style={{
+            position: "absolute",
+            left: `${p.x}vw`,
+            top: `${p.y}vh`,
+            fontSize: p.size,
+            opacity: p.opacity,
+            transform: `rotate(${p.rotation}deg) scale(${p.scale})`,
+            userSelect: "none",
+            lineHeight: 1,
+            willChange: "transform, opacity",
+            filter: p.size > 32
+              ? "drop-shadow(0 0 12px rgba(249,168,212,0.95)) drop-shadow(0 0 4px #f0f)"
+              : "none",
+            animation: `gpChaosFloat ${2 + p.delay}s ease-in-out infinite`,
+            animationDelay: `${p.delay}s`,
+          }}
+        >
+          {p.emoji}
+        </span>
+      ))}
+    </div>
   );
 }
