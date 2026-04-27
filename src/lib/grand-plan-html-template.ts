@@ -124,6 +124,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   if (hasContent) {
     addChapter("Content & SEO");
     if (s.contentStrategy) navItems.push({ id: "content-strategy", label: "Content Strategy" });
+    if (s.seoFoundations) navItems.push({ id: "seo-foundations", label: "SEO Foundations" });
     if (s.contentCalendar?.length) navItems.push({ id: "content-calendar", label: "Content Calendar" });
     if (s.organicSocial) navItems.push({ id: "organic-social", label: "Organic Social" });
     if (s.exampleArticles?.length) navItems.push({ id: "example-articles", label: "Example Articles" });
@@ -363,6 +364,7 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   if (hasContent) {
     parts.push(ch("Content & SEO", "Content strategy, publishing calendar, organic social, and example content assets."));
     if (s.contentStrategy) parts.push(renderContentStrategy(s.contentStrategy, sectionIntros?.contentStrategy, audienceRationales));
+    if (s.seoFoundations) parts.push(renderSeoFoundations(s.seoFoundations));
     if (s.contentCalendar?.length) parts.push(renderContentCalendar(s.contentCalendar));
     if (s.organicSocial) parts.push(renderOrganicSocial(s.organicSocial, sectionIntros?.organicSocial));
     if (s.exampleArticles?.length) parts.push(renderExampleArticles(s.exampleArticles));
@@ -1277,6 +1279,199 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
     </section>`;
 }
 
+// ─── SEO Foundations renderer ───────────────────────────────────────────────
+// Renders the three SEO pieces that sit alongside the content cluster:
+// quick-win on-page fixes, internal linking structure, outbound link-building plan.
+type SeoFoundationsData = {
+  intro?: string;
+  quickWins?: Array<{
+    url: string;
+    pageTitle?: string;
+    rationale?: string;
+    newTitleTag?: string;
+    newMetaDescription?: string;
+    crossLinksToAdd?: { targetUrl: string; anchorText: string; rationale?: string }[];
+    estimatedTimeToImpact?: string;
+    effort?: string;
+  }>;
+  internalLinking?: {
+    overview?: string;
+    hubs?: Array<{
+      hubUrl: string;
+      hubTitle?: string;
+      hubRole?: string;
+      inboundLinks?: { fromUrl: string; anchorText: string; rationale?: string }[];
+    }>;
+  };
+  linkBuilding?: {
+    overallStrategy?: string;
+    targets?: Array<{
+      targetUrl: string;
+      targetPageTitle?: string;
+      priority?: string;
+      rationale?: string;
+      anchorMix?: { anchorText: string; anchorType: string; suggestedShare?: string }[];
+      outreachAngles?: string[];
+      estimatedLinksNeeded?: string;
+    }>;
+    outreachChannels?: string[];
+  };
+};
+
+function renderSeoFoundations(data: SeoFoundationsData): string {
+  const quickWins = data.quickWins ?? [];
+  const linking = data.internalLinking ?? {};
+  const hubs = linking.hubs ?? [];
+  const lb = data.linkBuilding ?? {};
+  const targets = lb.targets ?? [];
+  const channels = lb.outreachChannels ?? [];
+
+  const anchorTypeLabel = (t: string): string => {
+    const v = (t || "").toLowerCase();
+    if (v === "exact") return "Exact match";
+    if (v === "partial") return "Partial match";
+    if (v === "branded" || v === "brand") return "Branded";
+    if (v === "naked-url" || v === "naked") return "Naked URL";
+    return "Generic";
+  };
+  const anchorTypeClass = (t: string): string => {
+    const v = (t || "").toLowerCase();
+    if (v === "exact") return "anchor-exact";
+    if (v === "partial") return "anchor-partial";
+    if (v === "branded" || v === "brand") return "anchor-branded";
+    if (v === "naked-url" || v === "naked") return "anchor-naked";
+    return "anchor-generic";
+  };
+  const priorityClass = (p?: string): string => {
+    const v = (p || "").toLowerCase();
+    if (v.includes("1")) return "tier-pill-1";
+    if (v.includes("2")) return "tier-pill-2";
+    return "tier-pill-3";
+  };
+  const linkUrl = (u: string): string => u.startsWith("http") ? u : (u.startsWith("/") ? u : `https://${u}`);
+
+  const quickWinsHtml = quickWins.length ? `
+    <h3 class="seo-sub-heading">Quick Wins on Existing Pages</h3>
+    <p class="seo-sub-intro">Existing pages that can move within weeks: rewritten title tags, refreshed meta descriptions, and the cross-links to add inside the page body.</p>
+    <div class="qw-grid">
+      ${quickWins.map((q) => {
+        const title = q.newTitleTag ?? "";
+        const meta = q.newMetaDescription ?? "";
+        const cross = q.crossLinksToAdd ?? [];
+        return `
+        <div class="qw-card">
+          <div class="qw-head">
+            <a class="qw-url" href="${esc(linkUrl(q.url))}" target="_blank" rel="noopener">${esc(q.url)}</a>
+            <div class="qw-badges">
+              ${q.effort ? `<span class="qw-badge qw-effort qw-effort-${esc(q.effort)}">${esc(q.effort)} effort</span>` : ""}
+              ${q.estimatedTimeToImpact ? `<span class="qw-badge qw-time">${esc(q.estimatedTimeToImpact)}</span>` : ""}
+            </div>
+          </div>
+          ${q.pageTitle ? `<div class="qw-page-title">${esc(q.pageTitle)}</div>` : ""}
+          ${q.rationale ? `<p class="qw-rationale">${esc(q.rationale)}</p>` : ""}
+          ${title ? `
+          <div class="qw-row">
+            <div class="qw-row-label">New title tag</div>
+            <div class="qw-row-val">${esc(title)} <span class="char-badge ${title.length <= 60 ? "char-ok" : "char-over"}">${title.length}/60</span></div>
+          </div>` : ""}
+          ${meta ? `
+          <div class="qw-row">
+            <div class="qw-row-label">New meta description</div>
+            <div class="qw-row-val">${esc(meta)} <span class="char-badge ${meta.length <= 160 ? "char-ok" : "char-over"}">${meta.length}/160</span></div>
+          </div>` : ""}
+          ${cross.length ? `
+          <div class="qw-row">
+            <div class="qw-row-label">Cross-links to add</div>
+            <ul class="qw-cross-list">
+              ${cross.map((c) => `
+                <li>
+                  <span class="qw-cross-anchor">"${esc(c.anchorText)}"</span>
+                  <span class="qw-cross-arrow">&rarr;</span>
+                  <a class="qw-cross-url" href="${esc(linkUrl(c.targetUrl))}" target="_blank" rel="noopener">${esc(c.targetUrl)}</a>
+                  ${c.rationale ? `<div class="qw-cross-why">${esc(c.rationale)}</div>` : ""}
+                </li>`).join("")}
+            </ul>
+          </div>` : ""}
+        </div>`;
+      }).join("\n")}
+    </div>` : "";
+
+  const internalLinkingHtml = hubs.length ? `
+    <h3 class="seo-sub-heading">Internal Linking Structure</h3>
+    ${linking.overview ? `<p class="seo-sub-intro">${esc(linking.overview)}</p>` : ""}
+    <div class="ils-grid">
+      ${hubs.map((h) => `
+        <div class="ils-hub">
+          <div class="ils-hub-head">
+            <span class="ils-hub-pill">Hub</span>
+            <a class="ils-hub-url" href="${esc(linkUrl(h.hubUrl))}" target="_blank" rel="noopener">${esc(h.hubTitle || h.hubUrl)}</a>
+          </div>
+          ${h.hubUrl && h.hubTitle ? `<div class="ils-hub-sub">${esc(h.hubUrl)}</div>` : ""}
+          ${h.hubRole ? `<p class="ils-hub-role">${esc(h.hubRole)}</p>` : ""}
+          ${h.inboundLinks?.length ? `
+          <div class="ils-inbound-label">Inbound links from</div>
+          <ul class="ils-inbound-list">
+            ${h.inboundLinks.map((l) => `
+              <li>
+                <a class="ils-from-url" href="${esc(linkUrl(l.fromUrl))}" target="_blank" rel="noopener">${esc(l.fromUrl)}</a>
+                <span class="ils-arrow">&rarr;</span>
+                <span class="ils-anchor">"${esc(l.anchorText)}"</span>
+                ${l.rationale ? `<div class="ils-why">${esc(l.rationale)}</div>` : ""}
+              </li>`).join("")}
+          </ul>` : ""}
+        </div>`).join("\n")}
+    </div>` : "";
+
+  const linkBuildingHtml = (targets.length || lb.overallStrategy) ? `
+    <h3 class="seo-sub-heading">Outbound Link-Building Plan</h3>
+    ${lb.overallStrategy ? `<p class="seo-sub-intro">${esc(lb.overallStrategy)}</p>` : ""}
+    ${channels.length ? `
+    <div class="lb-channels">
+      <span class="lb-channels-label">Outreach channels</span>
+      ${channels.map((c) => `<span class="lb-channel-chip">${esc(c)}</span>`).join("")}
+    </div>` : ""}
+    <div class="lb-grid">
+      ${targets.map((t) => `
+        <div class="lb-target">
+          <div class="lb-target-head">
+            <span class="tier-pill ${priorityClass(t.priority)}">${esc(t.priority || "tier-3")}</span>
+            <a class="lb-target-url" href="${esc(linkUrl(t.targetUrl))}" target="_blank" rel="noopener">${esc(t.targetPageTitle || t.targetUrl)}</a>
+            ${t.estimatedLinksNeeded ? `<span class="lb-est">${esc(t.estimatedLinksNeeded)}</span>` : ""}
+          </div>
+          ${t.targetPageTitle ? `<div class="lb-target-sub">${esc(t.targetUrl)}</div>` : ""}
+          ${t.rationale ? `<p class="lb-rationale">${esc(t.rationale)}</p>` : ""}
+          ${t.anchorMix?.length ? `
+          <div class="lb-anchor-label">Anchor text mix</div>
+          <table class="lb-anchor-table">
+            <thead><tr><th>Anchor text</th><th>Type</th><th>Share</th></tr></thead>
+            <tbody>
+              ${t.anchorMix.map((a) => `
+                <tr>
+                  <td class="lb-anchor-text">"${esc(a.anchorText)}"</td>
+                  <td><span class="anchor-type-pill ${anchorTypeClass(a.anchorType)}">${esc(anchorTypeLabel(a.anchorType))}</span></td>
+                  <td class="lb-anchor-share">${esc(a.suggestedShare || "")}</td>
+                </tr>`).join("")}
+            </tbody>
+          </table>` : ""}
+          ${t.outreachAngles?.length ? `
+          <div class="lb-angles-label">Outreach angles</div>
+          <ul class="lb-angles">${t.outreachAngles.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>` : ""}
+        </div>`).join("\n")}
+    </div>` : "";
+
+  return `
+    <section id="seo-foundations" class="section">
+      <div class="section-inner">
+        <div class="section-kicker">Content & SEO</div>
+        <h2>SEO Foundations</h2>
+        <p class="section-intro">${data.intro ? esc(data.intro) : "The on-page, internal linking and outbound link-building work that compounds the content cluster's results."}</p>
+        ${quickWinsHtml}
+        ${internalLinkingHtml}
+        ${linkBuildingHtml}
+      </div>
+    </section>`;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderContentCalendar(months: any[]): string {
   const monthsHtml = months
@@ -1949,6 +2144,83 @@ a{color:var(--accent);text-decoration:none}
 .onpage-list{margin:0;padding-left:1.1rem;font-size:13px;color:var(--text);line-height:1.55}
 .onpage-list li{margin-bottom:.2rem}
 .onpage-chips{display:flex;flex-wrap:wrap;gap:4px}
+/* SEO Foundations: quick wins, internal linking structure, outbound link building */
+.seo-sub-heading{font-size:1.15rem;font-weight:700;color:var(--heading);margin:2.25rem 0 .35rem;letter-spacing:-.005em}
+.seo-sub-heading:first-of-type{margin-top:.5rem}
+.seo-sub-intro{font-size:13.5px;color:var(--text-light);margin:0 0 1.1rem;line-height:1.65;max-width:760px}
+.qw-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.1rem}
+@media (max-width:900px){.qw-grid{grid-template-columns:1fr}}
+.qw-card{border:1px solid var(--border);border-radius:12px;background:var(--white);padding:1.1rem 1.25rem;display:flex;flex-direction:column;gap:.7rem}
+.qw-head{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;flex-wrap:wrap}
+.qw-url{font-family:'SF Mono','Fira Code','Courier New',monospace;font-size:12.5px;color:var(--accent);text-decoration:none;word-break:break-all;font-weight:600}
+.qw-url:hover{text-decoration:underline}
+.qw-badges{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap}
+.qw-badge{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:999px;text-transform:capitalize}
+.qw-effort-low{background:#d1fae5;color:#065f46}
+.qw-effort-medium{background:#fef3c7;color:#92400e}
+.qw-effort-high{background:#fee2e2;color:#991b1b}
+.qw-time{background:#eef2ff;color:#4338ca}
+.qw-page-title{font-size:14.5px;font-weight:600;color:var(--heading);line-height:1.35}
+.qw-rationale{font-size:12.5px;color:var(--text-light);margin:0;font-style:italic;line-height:1.55;padding-left:.65rem;border-left:2px solid var(--border)}
+.qw-row{display:flex;flex-direction:column;gap:.3rem}
+.qw-row-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);font-weight:700}
+.qw-row-val{font-size:13px;color:var(--text);line-height:1.5;display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;background:#f8fafc;padding:.55rem .7rem;border-radius:6px;border-left:3px solid var(--accent)}
+.qw-cross-list{list-style:none;margin:.15rem 0 0;padding:0;display:flex;flex-direction:column;gap:.55rem}
+.qw-cross-list>li{font-size:12.5px;color:var(--text);line-height:1.5;background:#f8fafc;padding:.55rem .7rem;border-radius:6px;display:flex;flex-wrap:wrap;align-items:center;gap:.45rem}
+.qw-cross-anchor{font-weight:600;color:var(--heading)}
+.qw-cross-arrow{color:var(--mid);font-weight:700}
+.qw-cross-url{font-family:'SF Mono','Fira Code','Courier New',monospace;font-size:11.5px;color:var(--accent);text-decoration:none;word-break:break-all}
+.qw-cross-url:hover{text-decoration:underline}
+.qw-cross-why{flex-basis:100%;font-size:11.5px;color:var(--text-light);font-style:italic;margin-top:2px}
+/* Internal linking structure (hub-and-spoke) */
+.ils-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.1rem;margin-bottom:1rem}
+@media (max-width:900px){.ils-grid{grid-template-columns:1fr}}
+.ils-hub{border:1px solid var(--border);border-radius:12px;background:var(--white);padding:1.1rem 1.25rem;display:flex;flex-direction:column;gap:.65rem}
+.ils-hub-head{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.ils-hub-pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;background:linear-gradient(135deg,#6366f1,#a855f7);color:#fff;border-radius:999px}
+.ils-hub-url{font-size:14.5px;font-weight:700;color:var(--heading);text-decoration:none}
+.ils-hub-url:hover{color:var(--accent)}
+.ils-hub-sub{font-family:'SF Mono','Fira Code','Courier New',monospace;font-size:11.5px;color:var(--text-light);word-break:break-all}
+.ils-hub-role{font-size:13px;color:var(--text-light);margin:0;line-height:1.55}
+.ils-inbound-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);font-weight:700;margin-top:.3rem}
+.ils-inbound-list{list-style:none;margin:.15rem 0 0;padding:0;display:flex;flex-direction:column;gap:.5rem}
+.ils-inbound-list>li{font-size:12.5px;color:var(--text);line-height:1.5;background:#f8fafc;padding:.5rem .65rem;border-radius:6px;display:flex;flex-wrap:wrap;align-items:center;gap:.4rem}
+.ils-from-url{font-family:'SF Mono','Fira Code','Courier New',monospace;font-size:11.5px;color:var(--accent);text-decoration:none;word-break:break-all}
+.ils-from-url:hover{text-decoration:underline}
+.ils-arrow{color:var(--mid);font-weight:700}
+.ils-anchor{font-weight:600;color:var(--heading)}
+.ils-why{flex-basis:100%;font-size:11.5px;color:var(--text-light);font-style:italic;margin-top:2px}
+/* Outbound link-building plan */
+.lb-channels{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin:0 0 1.25rem;padding:.7rem .9rem;background:#fafbff;border:1px solid var(--border);border-radius:8px}
+.lb-channels-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);font-weight:700;margin-right:.35rem}
+.lb-channel-chip{display:inline-block;font-size:11.5px;font-weight:600;padding:3px 10px;background:#eef2ff;color:#4338ca;border-radius:999px}
+.lb-grid{display:flex;flex-direction:column;gap:1.1rem}
+.lb-target{border:1px solid var(--border);border-radius:12px;background:var(--white);padding:1.1rem 1.25rem;display:flex;flex-direction:column;gap:.7rem}
+.lb-target-head{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.tier-pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+.tier-pill-1{background:linear-gradient(135deg,#dc2626,#ec4899);color:#fff}
+.tier-pill-2{background:#fef3c7;color:#92400e}
+.tier-pill-3{background:#e0e7ff;color:#3730a3}
+.lb-target-url{font-size:14.5px;font-weight:700;color:var(--heading);text-decoration:none;flex:1}
+.lb-target-url:hover{color:var(--accent)}
+.lb-est{font-size:11.5px;color:var(--text-light);background:var(--bg);padding:2px 8px;border-radius:999px}
+.lb-target-sub{font-family:'SF Mono','Fira Code','Courier New',monospace;font-size:11.5px;color:var(--text-light);word-break:break-all}
+.lb-rationale{font-size:13px;color:var(--text-light);margin:0;line-height:1.55;font-style:italic;padding-left:.7rem;border-left:2px solid var(--border)}
+.lb-anchor-label,.lb-angles-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);font-weight:700;margin-top:.35rem}
+.lb-anchor-table{width:100%;border-collapse:collapse;font-size:12.5px;background:#f8fafc;border-radius:6px;overflow:hidden}
+.lb-anchor-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);font-weight:700;padding:.5rem .65rem;background:#eef2ff;border-bottom:1px solid var(--border)}
+.lb-anchor-table td{padding:.55rem .65rem;border-bottom:1px solid var(--border);vertical-align:top}
+.lb-anchor-table tr:last-child td{border-bottom:none}
+.lb-anchor-text{font-weight:600;color:var(--heading)}
+.lb-anchor-share{font-family:'SF Mono','Fira Code','Courier New',monospace;color:var(--text-light);white-space:nowrap}
+.anchor-type-pill{display:inline-block;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.anchor-exact{background:#fee2e2;color:#991b1b}
+.anchor-partial{background:#fef3c7;color:#92400e}
+.anchor-branded{background:#dbeafe;color:#1e40af}
+.anchor-naked{background:#e0e7ff;color:#3730a3}
+.anchor-generic{background:#f1f5f9;color:#475569}
+.lb-angles{margin:.15rem 0 0;padding-left:1.1rem;font-size:12.5px;color:var(--text);line-height:1.55}
+.lb-angles>li{margin-bottom:.25rem}
 .kw-pill{display:inline-block;padding:2px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:11px;color:var(--text-light)}
 .intent-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
 .intent-awareness,.intent-informational{background:#dbeafe;color:#1e40af}

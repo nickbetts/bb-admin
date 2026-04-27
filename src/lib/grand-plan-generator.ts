@@ -155,6 +155,68 @@ interface LinkTargetEntry {
   effort?: "high" | "medium" | "low";
 }
 
+// ─── SEO Foundations (quick wins, internal linking, outbound link building) ──
+/** Page-level quick win: rewrite title + meta and add cross-links to existing pages. */
+interface SeoQuickWinPage {
+  url: string;
+  pageTitle?: string;
+  /** Why this page is a quick win (e.g. "Ranks position 6 for 'X' — light edits could push to top 3"). */
+  rationale: string;
+  /** Rewritten <title> (≤ 60 chars). */
+  newTitleTag: string;
+  /** Rewritten meta description (≤ 160 chars). */
+  newMetaDescription: string;
+  /** 2–4 cross-links to add from THIS page to other pages on the site. */
+  crossLinksToAdd: { targetUrl: string; anchorText: string; rationale?: string }[];
+  estimatedTimeToImpact?: "1–2 weeks" | "3–4 weeks" | "1–2 months";
+  effort?: "low" | "medium" | "high";
+}
+/** Hub page in the internal linking structure (a page that should attract links from supporting pages). */
+interface InternalLinkingHub {
+  hubUrl: string;
+  hubTitle: string;
+  /** Why this page is a hub (commercial value, ranking authority, etc.). */
+  hubRole: string;
+  /** Pages that should link TO the hub, with the anchor text to use. */
+  inboundLinks: { fromUrl: string; anchorText: string; rationale?: string }[];
+}
+/** A page on the client's site that needs outbound backlinks (link-building target). */
+interface LinkBuildingTarget {
+  /** The page on the client's own site we want links pointing TO. */
+  targetUrl: string;
+  targetPageTitle?: string;
+  priority: "tier-1" | "tier-2" | "tier-3";
+  /** Why this page is worth building links to (commercial value / ranking gap). */
+  rationale: string;
+  /** Recommended anchor text mix for backlinks pointing at this page. */
+  anchorMix: {
+    anchorText: string;
+    anchorType: "exact" | "partial" | "branded" | "naked-url" | "generic";
+    /** Suggested share of total backlinks to use this anchor (e.g. "40%"). */
+    suggestedShare?: string;
+  }[];
+  /** Outreach angles / placement ideas (industry sites, guest posts, resource lists, journalists, etc.). */
+  outreachAngles: string[];
+  estimatedLinksNeeded?: string;
+}
+interface SeoFoundations {
+  /** Editorial intro shown above the section. */
+  intro?: string;
+  quickWins: SeoQuickWinPage[];
+  internalLinking: {
+    /** One-paragraph overview of the linking philosophy. */
+    overview: string;
+    hubs: InternalLinkingHub[];
+  };
+  linkBuilding: {
+    /** Overarching anchor strategy + sourcing approach. */
+    overallStrategy: string;
+    targets: LinkBuildingTarget[];
+    /** Channels/tactics to use across all targets (PR, guest posts, resource pages, digital PR, etc.). */
+    outreachChannels: string[];
+  };
+}
+
 /** First-class typing for the services / timeline / why-us blocks. */
 interface ServiceItem {
   name: string;
@@ -478,6 +540,8 @@ export interface GrandPlanData {
       /** Dedicated link-target list with anchor text + type. Optional. */
       linkTargets?: LinkTargetEntry[];
     };
+    /** SEO foundations: on-page quick wins, internal linking structure, outbound link-building plan. */
+    seoFoundations?: SeoFoundations;
     contentCalendar?: ContentCalendarMonth[];
     organicSocial?: OrganicSocialPlan;
     exampleArticles?: { title: string; html: string; seoMeta?: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } }[];
@@ -821,6 +885,7 @@ export async function generateGrandPlan(
   if (isEnabled("executiveSummary")) sectionNames.push("Executive Summary");
   if (isEnabled("strategyPlan")) sectionNames.push("Strategy Plan");
   if (isEnabled("contentStrategy") && !contentData) sectionNames.push("Content Clusters");
+  if (isEnabled("seoFoundations")) sectionNames.push("SEO Foundations");
   if (isEnabled("metaCampaigns") && sources.keywordResearch) sectionNames.push("Meta Campaigns");
   if (isEnabled("contentCalendar")) sectionNames.push("Content Calendar");
   if (isEnabled("organicSocial")) sectionNames.push("Organic Social");
@@ -890,7 +955,7 @@ export async function generateGrandPlan(
     ]);
 
   // Batch 2: supplementary sections
-  const [emailMarketing, linkedInAds, competitorIntel, audiences, quickWins, kpis] =
+  const [emailMarketing, linkedInAds, competitorIntel, audiences, quickWins, kpis, seoFoundations] =
     await Promise.all([
       isEnabled("emailMarketing")
         ? runSection("Email Marketing", "emailMarketing", () => generateEmailMarketing(anthropic, contextSummary, sources))
@@ -909,6 +974,9 @@ export async function generateGrandPlan(
         : Promise.resolve(undefined),
       isEnabled("kpis")
         ? runSection("KPIs", "kpis", () => generateKpis(anthropic, contextSummary, sources))
+        : Promise.resolve(undefined),
+      isEnabled("seoFoundations")
+        ? runSection("SEO Foundations", "seoFoundations", () => generateSeoFoundations(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
     ]);
 
@@ -972,6 +1040,7 @@ export async function generateGrandPlan(
       metaCampaigns,
       keywordResearch,
       contentStrategy: contentStrategySection,
+      seoFoundations,
       contentCalendar,
       organicSocial,
       exampleArticles,
@@ -2665,6 +2734,115 @@ ${context}${buildSharedContextBlocks(sources, "content")}`;
   }));
   const fallback: AiContentClusters = { pillars: [], pageOptimisations: [] };
   return safeJsonParse<AiContentClusters>(extractText(res), fallback);
+}
+
+// ─── SEO Foundations generator ──────────────────────────────────────────────
+// Produces the three SEO pieces that sit alongside the content cluster:
+//   1. Quick wins on existing pages (title + meta rewrites + cross-links)
+//   2. Internal linking structure (hub-and-spoke map)
+//   3. Outbound link-building plan (per-target anchor mix + outreach angles)
+
+async function generateSeoFoundations(
+  anthropic: Anthropic,
+  context: string,
+  sources: GrandPlanSources,
+): Promise<SeoFoundations> {
+  const brain = sources.strategyBrain;
+  const audienceLines = (brain?.audiences ?? []).map((a) => `- ${a.name}: ${a.coreInsight}`).join("\n") || "(no brain audiences)";
+  const website = sources.keywordResearch?.website ?? "the client's website";
+  const geos = (brain?.targetGeographies ?? []).join(", ") || "United Kingdom";
+
+  const prompt = `${STYLE_RULES}
+
+You are the SEO lead at i3media. Build a tight, actionable SEO foundations brief for ${sources.clientName} covering THREE things only:
+  1. Quick wins on existing pages (rewrite title tags + meta descriptions + add cross-links).
+  2. Internal linking structure (hub-and-spoke map showing which existing pages should pass authority to which).
+  3. Outbound link-building plan (target pages on the client site, recommended anchor mix, outreach angles).
+
+Return ONLY valid JSON (no markdown fences) matching this schema:
+{
+  "intro": string,
+  "quickWins": [
+    {
+      "url": string,
+      "pageTitle": string,
+      "rationale": string,
+      "newTitleTag": string,
+      "newMetaDescription": string,
+      "crossLinksToAdd": [ { "targetUrl": string, "anchorText": string, "rationale": string } ],
+      "estimatedTimeToImpact": "1–2 weeks" | "3–4 weeks" | "1–2 months",
+      "effort": "low" | "medium" | "high"
+    }
+  ],
+  "internalLinking": {
+    "overview": string,
+    "hubs": [
+      {
+        "hubUrl": string,
+        "hubTitle": string,
+        "hubRole": string,
+        "inboundLinks": [ { "fromUrl": string, "anchorText": string, "rationale": string } ]
+      }
+    ]
+  },
+  "linkBuilding": {
+    "overallStrategy": string,
+    "targets": [
+      {
+        "targetUrl": string,
+        "targetPageTitle": string,
+        "priority": "tier-1" | "tier-2" | "tier-3",
+        "rationale": string,
+        "anchorMix": [
+          { "anchorText": string, "anchorType": "exact" | "partial" | "branded" | "naked-url" | "generic", "suggestedShare": string }
+        ],
+        "outreachAngles": [ string ],
+        "estimatedLinksNeeded": string
+      }
+    ],
+    "outreachChannels": [ string ]
+  }
+}
+
+Hard rules:
+- "intro": one paragraph (2 sentences) framing the SEO foundations work as the multiplier on top of the content cluster.
+- "quickWins": EXACTLY 6 entries. Pick existing pages on ${website} that are realistic quick wins (commercial pages and key service/category pages — not blog posts). Use real-looking URL slugs.
+  - "newTitleTag" ≤ 60 characters, primary keyword near the start, brand suffix if it fits.
+  - "newMetaDescription" ≤ 160 characters, ends with a soft CTA.
+  - "crossLinksToAdd": EXACTLY 3 cross-links per page, pointing to other existing pages on the same site. Anchor text must be natural prose (not bare keywords stuffed in).
+- "internalLinking.hubs": EXACTLY 4 hub pages. A hub is a high-commercial-value page that should attract internal links from supporting pages.
+  - Each hub has 4–6 inboundLinks (other pages that should link to it). Mix anchor text — do NOT repeat the same exact-match anchor across all 4–6 inbound links.
+  - "rationale" on each inbound link is one short sentence explaining why the link belongs there.
+- "linkBuilding.targets": EXACTLY 4 target pages on the client's own site. Order by priority (tier-1 first).
+  - "anchorMix": EXACTLY 5 entries per target representing the recommended diversification. Suggested shares should add to roughly 100% (e.g. 30% / 25% / 20% / 15% / 10%).
+  - Anchor type discipline: aim for 20–30% exact, 25–35% partial, 25–35% branded, 5–15% naked URL, 5–15% generic. Adjust per target if a more conservative or aggressive mix is warranted and explain why in the rationale.
+  - "outreachAngles": 3–5 concrete placement ideas (named site types, content angles, journalist beats — not generic "guest posts").
+  - "estimatedLinksNeeded": e.g. "8–12 over 6 months".
+- "linkBuilding.outreachChannels": 4–6 distinct channels (digital PR, niche edits, resource pages, broken-link reclaim, sector journalism, podcast appearances, etc.).
+- British English throughout. No em dashes. No AI jargon.
+
+Strategic foundation:
+- Client: ${sources.clientName}
+- Sector: ${sources.sector ?? "not specified"}
+- Markets: ${geos}
+- Brief: ${(sources.clientBrief ?? "").slice(0, 1200) || "(none provided)"}
+- Audiences:\n${audienceLines}
+
+Context:
+${context}${buildSharedContextBlocks(sources, "seo-foundations")}`;
+
+  const res = await withAnthropicRetry("seoFoundations", () => anthropic.messages.create({
+    model: MODEL_PRIMARY(),
+    max_tokens: 5000,
+    messages: [{ role: "user", content: prompt }],
+  }));
+
+  const fallback: SeoFoundations = {
+    quickWins: [],
+    internalLinking: { overview: "", hubs: [] },
+    linkBuilding: { overallStrategy: "", targets: [], outreachChannels: [] },
+  };
+  return safeJsonParse<SeoFoundations>(extractText(res), fallback);
 }
 
 // ─── Email Marketing generator ──────────────────────────────────────────────
