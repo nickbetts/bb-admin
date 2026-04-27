@@ -182,13 +182,20 @@ export async function POST(request: NextRequest) {
 
     const openai = await getOpenAiClient();
 
-    // Call the Responses API with the stored prompt
+    // Call the Responses API with the stored prompt.
+    // We pass tools explicitly to avoid the `tool_search requires at least one deferred tool` error
+    // that occurs when the stored prompt's tool_search is activated without deferred function tools.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const openaiResponse = await (openai.responses.create as any)({
       prompt: { id: PROMPT_ID, version: PROMPT_VERSION },
       input: [{ role: "user", content: userMessage }],
       ...(dbSession.lastResponseId ? { previous_response_id: dbSession.lastResponseId } : {}),
       store: true,
+      tools: [
+        { type: "web_search_preview" },
+        { type: "image_generation" },
+        { type: "code_interpreter", container: { type: "auto" } },
+      ],
       include: [
         "code_interpreter_call.outputs",
         "reasoning.encrypted_content",
