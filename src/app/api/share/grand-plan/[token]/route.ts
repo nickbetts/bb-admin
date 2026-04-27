@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
+import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
+import type { GrandPlanData } from "@/lib/grand-plan-generator";
+
+function buildPublicHtml(plan: { planDataJson: string | null; generatedHtml: string | null }): string {
+  if (plan.planDataJson) {
+    try {
+      return renderGrandPlanHtml(JSON.parse(plan.planDataJson) as GrandPlanData, true);
+    } catch {
+      // fall through to stored HTML on parse error
+    }
+  }
+  return plan.generatedHtml ?? "";
+}
 
 export async function GET(
   _req: NextRequest,
@@ -19,6 +32,7 @@ export async function GET(
       sharePassword: true,
       shareExpiresAt: true,
       generatedHtml: true,
+      planDataJson: true,
       enquiryFormEnabled: true,
       prospectName: true,
       client: { select: { name: true } },
@@ -59,7 +73,7 @@ export async function GET(
     clientName: displayName,
     passwordRequired: false,
     enquiryFormEnabled: plan.enquiryFormEnabled,
-    html: plan.generatedHtml,
+    html: buildPublicHtml(plan),
   });
 }
 
@@ -80,6 +94,7 @@ export async function POST(
       sharePassword: true,
       shareExpiresAt: true,
       generatedHtml: true,
+      planDataJson: true,
       enquiryFormEnabled: true,
       prospectName: true,
       client: { select: { name: true } },
@@ -102,7 +117,7 @@ export async function POST(
       title: plan.title,
       clientName: displayName,
       enquiryFormEnabled: plan.enquiryFormEnabled,
-      html: plan.generatedHtml,
+      html: buildPublicHtml(plan),
     });
   }
 
@@ -129,6 +144,6 @@ export async function POST(
     title: plan.title,
     clientName: displayName,
     enquiryFormEnabled: plan.enquiryFormEnabled,
-    html: plan.generatedHtml,
+    html: buildPublicHtml(plan),
   });
 }

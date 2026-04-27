@@ -84,7 +84,7 @@ function heroSubtext(raw: string): string {
   return (lastSpace > 0 ? window.slice(0, lastSpace) : window) + "…";
 }
 
-export function renderGrandPlanHtml(plan: GrandPlanData): string {
+export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): string {
   const s = plan.sections;
 
   // ── Build chapter-grouped nav ──────────────────────────────────────────────
@@ -286,11 +286,11 @@ export function renderGrandPlanHtml(plan: GrandPlanData): string {
   </div>
 </div>
 
-${renderStrategyBrainPanel(plan.strategyBrain)}
-${renderCoherencePanel(plan.coherenceIssues)}
+${isPublicView ? "" : renderStrategyBrainPanel(plan.strategyBrain)}
+${isPublicView ? "" : renderCoherencePanel(plan.coherenceIssues)}
 
 <!-- Main Content -->
-${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods, plan.generationReport, plan.grounding, plan.dataSources, plan.clientWebsite, plan.sectionIntros, plan.audienceRationales)}
+${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods, plan.generationReport, plan.grounding, plan.dataSources, plan.clientWebsite, plan.sectionIntros, plan.audienceRationales, isPublicView)}
 
 <!-- Closing CTA -->
 ${renderCtaClose(plan.clientName)}
@@ -319,7 +319,7 @@ ${renderCtaClose(plan.clientName)}
 // ─── Chapter layout builder ─────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildChapteredSections(s: any, clientName: string, brief?: string, campaignPeriods?: { label: string; startMonth: number; endMonth: number; description?: string }[], generationReport?: Record<string, { status: string; error?: string }>, grounding?: GrandPlanData["grounding"], dataSources?: GrandPlanData["dataSources"], clientWebsite?: string, sectionIntros?: GrandPlanData["sectionIntros"], audienceRationales?: GrandPlanData["audienceRationales"]): string {
+function buildChapteredSections(s: any, clientName: string, brief?: string, campaignPeriods?: { label: string; startMonth: number; endMonth: number; description?: string }[], generationReport?: Record<string, { status: string; error?: string }>, grounding?: GrandPlanData["grounding"], dataSources?: GrandPlanData["dataSources"], clientWebsite?: string, sectionIntros?: GrandPlanData["sectionIntros"], audienceRationales?: GrandPlanData["audienceRationales"], isPublicView = false): string {
   let chapterNum = 0;
   const ch = (title: string, sub: string) => {
     chapterNum++;
@@ -335,16 +335,20 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   const hasCommercial = s.servicesInvestment || s.emailMarketing;
   const hasMeasurement = s.kpis?.length;
 
+  // grounding badge wrapper — no-op in public view
+  const wb = (html: string, g?: { grounding: string; sourceLabels: string[] } | null) =>
+    isPublicView ? html : withGroundingBadge(html, g ?? undefined);
+
   const parts: string[] = [];
 
-  // Data sources panel (only if at least one real data source was consulted)
-  if (dataSources?.length) {
+  // Data sources panel (internal only — hidden in client share view)
+  if (dataSources?.length && !isPublicView) {
     parts.push(renderDataSourcesPanel(dataSources));
   }
 
   if (hasContext) {
     parts.push(ch("Context", `The brief, target audiences, and campaign periods that define this plan.`));
-    parts.push(withGroundingBadge(renderContext(brief, s.audiences, campaignPeriods), grounding?.audiences));
+    parts.push(wb(renderContext(brief, s.audiences, campaignPeriods), grounding?.audiences));
   }
 
   if (hasStrategy) {
@@ -356,13 +360,13 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
 
   if (hasPaidSearch) {
     parts.push(ch("Paid Search", "Google Ads campaign structure, ad groups, and keyword targeting."));
-    if (s.googleAdsCampaigns) parts.push(renderGoogleAdsCampaigns(s.googleAdsCampaigns, clientWebsite, sectionIntros?.googleAdsCampaigns));
+    if (s.googleAdsCampaigns) parts.push(renderGoogleAdsCampaigns(s.googleAdsCampaigns, clientWebsite, sectionIntros?.googleAdsCampaigns, isPublicView));
   }
 
   if (hasPaidSocial) {
     parts.push(ch("Paid Social", "Facebook, Instagram, and LinkedIn campaign structures with audience targeting and ad creative."));
     if (s.metaCampaigns?.length) parts.push(renderMetaCampaigns(s.metaCampaigns, clientWebsite, sectionIntros?.metaCampaigns));
-    if (s.linkedInAds?.length) parts.push(withGroundingBadge(renderLinkedInAds(s.linkedInAds), grounding?.linkedInAds));
+    if (s.linkedInAds?.length) parts.push(wb(renderLinkedInAds(s.linkedInAds), grounding?.linkedInAds));
   }
 
   if (hasContent) {
@@ -376,13 +380,13 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   if (hasResearch) {
     parts.push(ch("Research", "Keyword research and competitor intelligence across all target areas."));
     if (s.keywordResearch) parts.push(renderKeywordResearch(s.keywordResearch));
-    if (s.competitorIntel?.length) parts.push(withGroundingBadge(renderCompetitorIntel(s.competitorIntel), grounding?.competitorIntel));
+    if (s.competitorIntel?.length) parts.push(wb(renderCompetitorIntel(s.competitorIntel), grounding?.competitorIntel));
   }
 
   if (hasCommercial) {
     parts.push(ch("Commercial", "Services, investment overview, and email lifecycle."));
     if (s.servicesInvestment) parts.push(renderServicesInvestment(s.servicesInvestment));
-    if (s.emailMarketing) parts.push(withGroundingBadge(renderEmailMarketing(s.emailMarketing), grounding?.emailMarketing));
+    if (s.emailMarketing) parts.push(wb(renderEmailMarketing(s.emailMarketing), grounding?.emailMarketing));
   }
 
   if (hasMeasurement) {
@@ -673,7 +677,7 @@ function renderKpis(channels: { channel: string; icon?: string; metrics: { name:
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: string): string {
+function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: string, isPublicView = false): string {
   const adDomain = (clientWebsite ?? "")
     .replace(/^https?:\/\//, "")
     .replace(/^www\./, "")
@@ -714,6 +718,11 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
         : "";
 
       const adCopyHtml = g.adCopy ? (() => {
+        // In public (client) view, replace unfinished fallback copy with a
+        // neutral holding message rather than exposing AI fallback content.
+        if (isPublicView && g.adCopy!.isFallback) {
+          return `<div class="ad-copy-section"><p class="section-intro" style="color:var(--mid);font-style:italic">Ad copy is being finalised — your campaign specialist will share the complete ad creatives shortly.</p></div>`;
+        }
         const charBadge = (len: number, max: number) => {
           const cls = len > max ? "char-over" : len > max - 5 ? "char-warn" : "char-ok";
           return `<span class="char-badge ${cls}">${len}/${max}</span>`;
@@ -2463,6 +2472,55 @@ details.cal-month[open] .cal-month-header::after{content:"\\2212"}
 .data-sources-list{display:flex;flex-wrap:wrap;gap:.4rem .6rem;margin:0;padding:0;list-style:none;font-size:12.5px}
 .data-sources-list li{background:#fff;border:1px solid #e2e8f0;border-radius:4px;padding:.25rem .55rem;color:#334155}
 .data-sources-list li .ds-detail{color:#64748b;font-size:11.5px;margin-left:4px}
+
+/* Strategy Brain panel (internal review — hidden in public share view) */
+.brain-panel{max-width:1180px;margin:2.5rem auto 0;background:#fafbff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;font-family:inherit}
+.brain-summary{display:flex;flex-wrap:wrap;align-items:baseline;gap:1rem;padding:1.25rem 1.75rem;cursor:pointer;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;list-style:none}
+.brain-summary::-webkit-details-marker{display:none}
+.brain-kicker{font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#a78bfa}
+.brain-title{font-size:1.05rem;font-weight:600;color:#fff}
+.brain-toggle{font-size:11px;color:#94a3b8;margin-left:auto}
+.brain-panel[open] .brain-toggle::before{content:"▾ "}
+.brain-panel:not([open]) .brain-toggle::before{content:"▸ "}
+.brain-inner{padding:1.75rem 2rem 2rem}
+.brain-headline{margin-bottom:1.75rem;padding-bottom:1.25rem;border-bottom:1px solid #e2e8f0}
+.brain-headline-label{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#6366f1;margin-bottom:.5rem}
+.brain-headline-statement{font-size:1.15rem;font-weight:600;color:#0f172a;line-height:1.5;margin:0 0 .75rem}
+.brain-proof{margin:.5rem 0 0;padding-left:1.25rem;color:#475569;font-size:13px;line-height:1.6}
+.brain-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem;margin-bottom:1.75rem}
+.brain-cell{padding:1rem 1.25rem;background:#fff;border:1px solid #e2e8f0;border-radius:10px}
+.brain-cell h4{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#475569;margin:0 0 .75rem}
+.brain-cell p{font-size:13px;color:#334155;line-height:1.55;margin:0 0 .5rem}
+.brain-cell ul{margin:.25rem 0 .75rem;padding-left:1.25rem;font-size:13px;color:#475569;line-height:1.55}
+.brain-cell-wide{grid-column:span 2}
+.brain-primary-msg{background:#eef2ff;border:1px solid #c7d2fe;padding:.6rem .85rem;border-radius:8px;font-weight:600;color:#1e1b4b !important}
+.brain-channels li{margin-bottom:.4rem}
+.brain-meta{color:#64748b;font-size:12px}
+.brain-audiences h4{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#475569;margin:0 0 .75rem}
+.brain-audience-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem}
+.brain-audience{padding:.85rem 1rem;background:#fff;border:1px solid #e2e8f0;border-radius:10px;border-left:3px solid #6366f1}
+.brain-audience-name{font-size:13px;font-weight:700;color:#0f172a;margin-bottom:.4rem}
+.brain-audience-line{font-size:12px;color:#475569;line-height:1.5;margin-bottom:.2rem}
+@media(max-width:760px){.brain-grid{grid-template-columns:1fr}.brain-cell-wide{grid-column:span 1}.brain-summary{padding:1rem 1.25rem}.brain-inner{padding:1.25rem}}
+
+/* Coherence issues panel (Strategist Review — internal only) */
+.coh-panel{max-width:1180px;margin:1.25rem auto 0;background:#fef3c7;border:1px solid #fcd34d;border-radius:14px;overflow:hidden}
+.coh-summary{display:flex;flex-wrap:wrap;align-items:baseline;gap:1rem;padding:1rem 1.5rem;cursor:pointer;list-style:none;background:#fbbf24;color:#451a03}
+.coh-summary::-webkit-details-marker{display:none}
+.coh-kicker{font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase}
+.coh-title{font-size:14px;font-weight:600}
+.coh-toggle{font-size:11px;color:#78350f;margin-left:auto}
+.coh-panel[open] .coh-toggle::before{content:"▾ "}
+.coh-panel:not([open]) .coh-toggle::before{content:"▸ "}
+.coh-inner{padding:1.25rem 1.75rem 1.5rem;background:#fffbeb}
+.coh-intro{font-size:13px;color:#78350f;margin:0 0 1rem}
+.coh-group{margin-bottom:1rem}
+.coh-section{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#78350f;margin-bottom:.4rem}
+.coh-group ul{margin:0;padding-left:1.25rem;font-size:13px;color:#451a03;line-height:1.55}
+.coh-item{margin-bottom:.5rem}
+.coh-issue{display:block;font-weight:600}
+.coh-fix{display:block;font-size:12px;color:#78350f;margin-top:2px}
+.coh-high{color:#7f1d1d}.coh-medium{color:#78350f}.coh-low{color:#92400e}
 `;
 
 
@@ -2655,8 +2713,9 @@ const I3_LOGO_SVG = `<svg viewBox="0 0 161 53" fill="none" xmlns="http://www.w3.
 // Renders the upstream reasoning the AI used to build the plan. Sits between
 // the stats band and the main body so strategists can sanity-check the
 // foundation before reading 14 channel write-ups built on top of it.
-function renderStrategyBrainPanel(brain: StrategyBrain | undefined): string {
+function renderStrategyBrainPanel(brain: StrategyBrain | undefined, isPublicView = false): string {
   if (!brain || !brain.positioning?.statement) return "";
+  if (isPublicView) return "";
   const audiences = (brain.audiences ?? []).slice(0, 6).map((a) => `
     <div class="brain-audience">
       <div class="brain-audience-name">${esc(a.name)}</div>
@@ -2674,7 +2733,7 @@ function renderStrategyBrainPanel(brain: StrategyBrain | undefined): string {
   const supporting = (brain.messageHierarchy?.secondary ?? []).map((m) => `<li>${esc(m)}</li>`).join("");
 
   return `
-<details class="brain-panel" open>
+<details class="brain-panel">
   <summary class="brain-summary">
     <span class="brain-kicker">Strategy Brain</span>
     <span class="brain-title">The reasoning behind this plan</span>
@@ -2715,42 +2774,13 @@ function renderStrategyBrainPanel(brain: StrategyBrain | undefined): string {
       <div class="brain-audience-grid">${audiences}</div>
     </div>` : ""}
   </div>
-</details>
-<style>
-.brain-panel{max-width:1180px;margin:2.5rem auto 0;background:#fafbff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;font-family:inherit}
-.brain-summary{display:flex;flex-wrap:wrap;align-items:baseline;gap:1rem;padding:1.25rem 1.75rem;cursor:pointer;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;list-style:none}
-.brain-summary::-webkit-details-marker{display:none}
-.brain-kicker{font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#a78bfa}
-.brain-title{font-size:1.05rem;font-weight:600;color:#fff}
-.brain-toggle{font-size:11px;color:#94a3b8;margin-left:auto}
-.brain-panel[open] .brain-toggle::before{content:"▾ "}
-.brain-panel:not([open]) .brain-toggle::before{content:"▸ "}
-.brain-inner{padding:1.75rem 2rem 2rem}
-.brain-headline{margin-bottom:1.75rem;padding-bottom:1.25rem;border-bottom:1px solid #e2e8f0}
-.brain-headline-label{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#6366f1;margin-bottom:.5rem}
-.brain-headline-statement{font-size:1.15rem;font-weight:600;color:#0f172a;line-height:1.5;margin:0 0 .75rem}
-.brain-proof{margin:.5rem 0 0;padding-left:1.25rem;color:#475569;font-size:13px;line-height:1.6}
-.brain-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem;margin-bottom:1.75rem}
-.brain-cell{padding:1rem 1.25rem;background:#fff;border:1px solid #e2e8f0;border-radius:10px}
-.brain-cell h4{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#475569;margin:0 0 .75rem}
-.brain-cell p{font-size:13px;color:#334155;line-height:1.55;margin:0 0 .5rem}
-.brain-cell ul{margin:.25rem 0 .75rem;padding-left:1.25rem;font-size:13px;color:#475569;line-height:1.55}
-.brain-cell-wide{grid-column:span 2}
-.brain-primary-msg{background:#eef2ff;border:1px solid #c7d2fe;padding:.6rem .85rem;border-radius:8px;font-weight:600;color:#1e1b4b !important}
-.brain-channels li{margin-bottom:.4rem}
-.brain-meta{color:#64748b;font-size:12px}
-.brain-audiences h4{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#475569;margin:0 0 .75rem}
-.brain-audience-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.75rem}
-.brain-audience{padding:.85rem 1rem;background:#fff;border:1px solid #e2e8f0;border-radius:10px;border-left:3px solid #6366f1}
-.brain-audience-name{font-size:13px;font-weight:700;color:#0f172a;margin-bottom:.4rem}
-.brain-audience-line{font-size:12px;color:#475569;line-height:1.5;margin-bottom:.2rem}
-@media(max-width:760px){.brain-grid{grid-template-columns:1fr}.brain-cell-wide{grid-column:span 1}.brain-summary{padding:1rem 1.25rem}.brain-inner{padding:1.25rem}}
-</style>`;
+</details>`;
 }
 
 // ─── Coherence issues panel (Strategist Review) ─────────────────────────────
-function renderCoherencePanel(issues: GrandPlanData["coherenceIssues"]): string {
+function renderCoherencePanel(issues: GrandPlanData["coherenceIssues"], isPublicView = false): string {
   if (!issues?.length) return "";
+  if (isPublicView) return "";
   const groups: Record<string, NonNullable<GrandPlanData["coherenceIssues"]>> = {};
   for (const i of issues) (groups[i.section] ??= []).push(i);
   const blocks = Object.entries(groups).map(([section, list]) => `
@@ -2773,24 +2803,5 @@ function renderCoherencePanel(issues: GrandPlanData["coherenceIssues"]): string 
     <p class="coh-intro">The coherence checker found these issues against the strategy brain. Use the Refine box below to ask the AI to correct them, or edit the section directly.</p>
     ${blocks}
   </div>
-</details>
-<style>
-.coh-panel{max-width:1180px;margin:1.25rem auto 0;background:#fef3c7;border:1px solid #fcd34d;border-radius:14px;overflow:hidden}
-.coh-summary{display:flex;flex-wrap:wrap;align-items:baseline;gap:1rem;padding:1rem 1.5rem;cursor:pointer;list-style:none;background:#fbbf24;color:#451a03}
-.coh-summary::-webkit-details-marker{display:none}
-.coh-kicker{font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase}
-.coh-title{font-size:14px;font-weight:600}
-.coh-toggle{font-size:11px;color:#78350f;margin-left:auto}
-.coh-panel[open] .coh-toggle::before{content:"▾ "}
-.coh-panel:not([open]) .coh-toggle::before{content:"▸ "}
-.coh-inner{padding:1.25rem 1.75rem 1.5rem;background:#fffbeb}
-.coh-intro{font-size:13px;color:#78350f;margin:0 0 1rem}
-.coh-group{margin-bottom:1rem}
-.coh-section{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#78350f;margin-bottom:.4rem}
-.coh-group ul{margin:0;padding-left:1.25rem;font-size:13px;color:#451a03;line-height:1.55}
-.coh-item{margin-bottom:.5rem}
-.coh-issue{display:block;font-weight:600}
-.coh-fix{display:block;font-size:12px;color:#78350f;margin-top:2px}
-.coh-high{color:#7f1d1d}.coh-medium{color:#78350f}.coh-low{color:#92400e}
-</style>`;
+</details>`;
 }

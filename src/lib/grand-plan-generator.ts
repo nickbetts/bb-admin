@@ -1812,11 +1812,11 @@ function buildFallbackAdCopy(adGroupName: string, topKeyword: string, clientName
     cap(`${kw} — Get a Quote`, 30),
     cap(`Trusted ${brand} Service`, 30),
     cap(`Book ${kw} Today`, 30),
-    cap(`UK ${kw} Specialists`, 30),
+    cap(`${kw} Specialists`, 30),
     cap(`Speak To Our Team`, 30),
     cap(`Free, No-Obligation Quote`, 30),
     cap(`Rated By Real Customers`, 30),
-    cap(`${brand} — UK Wide`, 30),
+    cap(`${brand} | Expert Team`, 30),
     cap(`Same-Day Response`, 30),
     cap(`Fast & Friendly Service`, 30),
     cap(`Local Experts You Can Trust`, 30),
@@ -1826,7 +1826,7 @@ function buildFallbackAdCopy(adGroupName: string, topKeyword: string, clientName
   ];
   const descriptions = [
     cap(`Looking for ${kw}? ${brand} delivers a clear, professional service. Get in touch today for a free quote.`, 90),
-    cap(`Friendly, expert ${kw} from ${brand}. UK customers trust us for quality work and clear pricing.`, 90),
+    cap(`Friendly, expert ${kw} from ${brand}. Trusted for quality work and transparent pricing.`, 90),
     cap(`Need help with ${kw}? Our team is ready to talk. Quick response, no pressure, honest advice.`, 90),
     cap(`${brand} makes ${kw} simple. Tell us what you need and we will come back with a tailored plan.`, 90),
   ];
@@ -2185,7 +2185,7 @@ const SECTOR_AD_SCHEDULE: Record<string, string> = {
   education:             "All week, 8am-10pm",
 };
 
-const BASE_NEGATIVES = ["free", "jobs", "career", "salary", "reddit", "template torrent"];
+const BASE_NEGATIVES = ["free", "jobs", "career", "salary", "reddit"];
 
 /**
  * Parse the client brief for explicit negative term instructions
@@ -2206,6 +2206,19 @@ function parseBriefNegatives(brief: string): string[] {
     }
   }
   return [...negatives];
+}
+
+/**
+ * Strip AI instruction-text that leaks into generated negative keyword arrays.
+ * Removes multiline strings, strings over 60 chars, and lines that start with
+ * common prompt-instruction phrases.
+ */
+function sanitiseNegativeTerms(terms: string[]): string[] {
+  const INSTRUCTION_RE = /^(focus on|avoid|note[:\s]|use |do not|consider|tip[:\s]|rationale|exclude|reminder)/i;
+  return terms
+    .map((t) => t.split("\n")[0].trim())            // drop multiline instruction leakage
+    .filter((t) => t.length > 0 && t.length <= 60)  // drop over-long strings
+    .filter((t) => !INSTRUCTION_RE.test(t));         // drop instruction-phrase prefixes
 }
 
 /**
@@ -2246,7 +2259,7 @@ function buildGoogleAdsCampaigns(
   const sector = sources.sector ?? "";
   const sectorNegs = SECTOR_NEGATIVES[sector] ?? [];
   const briefNegs = parseBriefNegatives(sources.clientBrief ?? "");
-  const aiCampaignNegs = (aiNegatives?.campaignLevel ?? []).map((n) => n.keyword);
+  const aiCampaignNegs = sanitiseNegativeTerms((aiNegatives?.campaignLevel ?? []).map((n) => n.keyword));
   const allNegatives = [...new Set([...BASE_NEGATIVES, ...sectorNegs, ...briefNegs, ...aiCampaignNegs])];
   // Keep the AI-supplied reasoned list separate so we can render it with rationale.
   const aiNegativesWithReason = (aiNegatives?.campaignLevel ?? []).filter((n) => n.keyword && n.reason);
