@@ -7,7 +7,7 @@ export default function PillarGatedLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-theme="light">
       <PillarSidebar />
       <main className="app-main" style={{ display: "flex", flexDirection: "column" }}>
         <TopBar alerts={3} />
