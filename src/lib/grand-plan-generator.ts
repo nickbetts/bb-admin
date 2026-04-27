@@ -236,6 +236,17 @@ interface WhyUsPoint {
   icon?: string;
 }
 
+interface InvestmentAllocationLine {
+  channel: string;
+  amount: number;
+  share: number;
+  rationale: string;
+}
+interface InvestmentAllocation {
+  totalMonthly: number;
+  byChannel: InvestmentAllocationLine[];
+}
+
 interface QuickWinAction {
   title: string;
   description: string;
@@ -556,6 +567,8 @@ export interface GrandPlanData {
     servicesInvestment?: {
       services: ServiceItem[];
       timeline: { phase: string; items: string[] }[] | TimelinePhase[];
+      /** Auto-generated investment allocation across selected channels. */
+      investmentAllocation?: InvestmentAllocation;
       /** Structured "why us" proof points — first-class on GrandPlan. */
       whyUs?: WhyUsPoint[];
     };
@@ -986,9 +999,9 @@ export async function generateGrandPlan(
       isEnabled("exampleArticles") && contentData
         ? runSection("Example Articles", "exampleArticles", () => generateExampleArticles(anthropic, contextSummary, contentData, sources))
         : Promise.resolve(undefined),
-      isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
-        ? runSection("Ad Copy", "googleAdsAdCopy", () => generateGoogleAdsAdCopy(anthropic, adGroups, contextSummary, sources))
-        : Promise.resolve(undefined),
+      // Ad copy generation removed — Google Ads is now research-only (keywords +
+      // negatives + ad-group structure). The PPC team writes the actual copy.
+      Promise.resolve(undefined),
       isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
         ? runSection("Negative Keywords", "googleAdsNegatives", () => generateNegativeKeywords(anthropic, adGroups, contextSummary, sources))
         : Promise.resolve(undefined),
@@ -1025,6 +1038,14 @@ export async function generateGrandPlan(
         : Promise.resolve(undefined),
     ]);
 
+  // Auto-generate Services & Investment from sector + budget + selected
+  // platforms (no proposal dependency).
+  const servicesInvestmentGenerated = isEnabled("servicesInvestment")
+    ? await runSection("Services & Investment", "servicesInvestment", () =>
+        generateServicesInvestment(anthropic, contextSummary, sources, enabledPlatforms),
+      )
+    : undefined;
+
   // Build Google Ads campaigns from keyword research (structured data + AI ad copy)
   const googleAdsCampaigns = isEnabled("googleAdsCampaigns") && sources.keywordResearch
     ? buildGoogleAdsCampaigns(adGroups, sources, adCopyData ?? [], aiNegatives)
@@ -1041,10 +1062,14 @@ export async function generateGrandPlan(
     ? buildContentStrategySection(contentData, aiContentClusters)
     : undefined;
 
-  // Build services section from proposal
-  const servicesInvestment = isEnabled("servicesInvestment") && sources.proposal
-    ? { services, timeline }
-    : undefined;
+  // Build services section: prefer auto-generated output (sector + budget +
+  // platforms). Falls back to a legacy proposal payload if one is supplied
+  // (kept for backwards compatibility, no longer wired in the new form).
+  const servicesInvestment = servicesInvestmentGenerated
+    ? servicesInvestmentGenerated
+    : (isEnabled("servicesInvestment") && sources.proposal
+        ? { services, timeline }
+        : undefined);
 
   // Unpack grounded sections (audiences, emailMarketing, linkedInAds, competitorIntel)
   // — these now return { value, grounding, sourceLabels } so we can surface badges.
@@ -1373,6 +1398,97 @@ ${context}${buildSharedContextBlocks(sources)}`,
     ],
   }));
   return extractText(res);
+}
+
+/**
+ * Auto-generates a Services & Investment block from sector + monthly budget +
+ * channel splits + selected platforms. Replaces the old proposal-driven flow.
+ * Returns recommended services, a delivery timeline, an investment allocation
+ * across channels, and short why-us proof points.
+ */
+async function generateServicesInvestment(
+  anthropic: Anthropic,
+  context: string,
+  sources: GrandPlanSources,
+  enabledPlatforms: string[],
+): Promise<{
+  services: ServiceItem[];
+  timeline: { phase: string; items: string[] }[];
+  investmentAllocation: InvestmentAllocation;
+  whyUs: WhyUsPoint[];
+}> {
+  const cb = sources.channelBudgets ?? {};
+  const totalChannelBudget = (cb.googleAds ?? 0) + (cb.metaAds ?? 0) + (cb.linkedInAds ?? 0);
+  const monthlyBudgetHint = totalChannelBudget > 0 ? totalChannelBudget : (sources.keywordResearch?.monthlyBudget ?? 0);
+  const platformList = enabledPlatforms.length > 0 ? enabledPlatforms.join(", ") : "(unspecified)";
+  const channelBudgetSummary = [
+    cb.googleAds ? `Google Ads: \u00a3${cb.googleAds}/mo` : "",
+    cb.metaAds ? `Meta Ads: \u00a3${cb.metaAds}/mo` : "",
+    cb.linkedInAds ? `LinkedIn Ads: \u00a3${cb.linkedInAds}/mo` : "",
+  ].filter(Boolean).join(", ") || "no per-channel splits supplied";
+
+  const res = await withAnthropicRetry("servicesInvestment", () => anthropic.messages.create({
+    model: MODEL_PRIMARY(),
+    max_tokens: 2200,
+    messages: [
+      {
+        role: "user",
+        content: `You are a senior account director at i3media, a UK digital marketing agency. Build a Services & Investment block for the client below.
+
+Inputs:
+- Sector: ${sources.sector ?? "(not specified)"}
+- Purpose: ${sources.purpose}
+- Selected platforms / channels in scope: ${platformList}
+- Per-channel ad spend on the form: ${channelBudgetSummary}
+- Approximate total monthly ad budget: \u00a3${monthlyBudgetHint || "(not specified)"}
+
+Rules:
+- British English. No em dashes. No semicolons. No marketing jargon ("leverage", "harness", "elevate", "robust", "tailored", "bespoke", "cutting-edge", "seamless").
+- Recommend 4\u20137 distinct services that match the platforms in scope. Typical agency line items: Strategy & Account Management, SEO, Google Ads Management, Meta Ads Management, LinkedIn Ads Management, Content & Copywriting, Email Marketing, Conversion Rate Optimisation, Reporting & Analytics. Only include services that are actually relevant to the channel mix.
+- Service prices should be realistic UK agency monthly retainers (e.g. SEO \u00a3800\u20131800/mo, Google Ads management 10\u201315% of media spend with a \u00a3500\u2013800/mo minimum, Meta Ads management similar, content packages \u00a3400\u20131200/mo). Use a string like "\u00a31,200/mo" or "\u00a3500/mo + 12% media".
+- Timeline: 3\u20134 phases covering onboarding (weeks 1\u20132), setup & launch (weeks 3\u20136), optimisation (months 2\u20133), and growth (months 4+). Each phase has 3\u20135 deliverable items.
+- Investment Allocation: split the total monthly budget across the channels in scope. The "amount" is the agreed monthly media spend (use the per-channel figures supplied where present). The "share" is the percentage of the total. Add a one-line "rationale" explaining why that channel gets that share given the sector and purpose. Channels with zero supplied budget can still appear if the platform is in scope, with a sensible recommended figure. Total of "amount" should equal totalMonthly. If no budget at all is supplied, propose a sensible split totalling \u00a32,500\u20135,000 based on sector.
+- Why Us: 3\u20134 short, specific proof points (no generic claims). Each has a title and a 1-sentence description.
+
+Return STRICT JSON only \u2014 no prose, no markdown, no code fences. Schema:
+{
+  "services": [{ "name": string, "description": string, "price": string }],
+  "timeline": [{ "phase": string, "items": [string] }],
+  "investmentAllocation": {
+    "totalMonthly": number,
+    "byChannel": [{ "channel": string, "amount": number, "share": number, "rationale": string }]
+  },
+  "whyUs": [{ "title": string, "description": string }]
+}
+
+Plan context:
+${context}${buildSharedContextBlocks(sources)}`,
+      },
+    ],
+  }));
+
+  const raw = extractText(res).trim();
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("servicesInvestment: AI did not return JSON");
+    parsed = JSON.parse(match[0]);
+  }
+  const obj = parsed as {
+    services?: ServiceItem[];
+    timeline?: { phase: string; items: string[] }[];
+    investmentAllocation?: InvestmentAllocation;
+    whyUs?: WhyUsPoint[];
+  };
+  return {
+    services: Array.isArray(obj.services) ? obj.services : [],
+    timeline: Array.isArray(obj.timeline) ? obj.timeline : [],
+    investmentAllocation: obj.investmentAllocation ?? { totalMonthly: 0, byChannel: [] },
+    whyUs: Array.isArray(obj.whyUs) ? obj.whyUs : [],
+  };
 }
 
 async function generateStrategyPlan(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<string> {

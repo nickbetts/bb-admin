@@ -1614,6 +1614,34 @@ function renderServicesInvestment(data: any): string {
     </div>`)
     .join("\n");
 
+  const ia = data.investmentAllocation as { totalMonthly?: number; byChannel?: { channel: string; amount: number; share: number; rationale: string }[] } | undefined;
+  const allocationHtml = ia && Array.isArray(ia.byChannel) && ia.byChannel.length > 0 ? `
+    <h3 style="margin:2rem 0 1rem">Investment Allocation</h3>
+    <p style="margin-bottom:1rem;color:#52525b">Recommended monthly media split across the channels in scope. Total monthly media spend: <strong>£${(ia.totalMonthly ?? 0).toLocaleString()}</strong>.</p>
+    <table class="channel-table">
+      <thead><tr><th>Channel</th><th>Monthly</th><th>Share</th><th>Rationale</th></tr></thead>
+      <tbody>
+        ${ia.byChannel.map((row) => `
+        <tr>
+          <td style="font-weight:600;white-space:nowrap">${esc(row.channel)}</td>
+          <td style="font-weight:600">£${(row.amount ?? 0).toLocaleString()}</td>
+          <td>${row.share ?? 0}%</td>
+          <td>${esc(row.rationale ?? "")}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>` : "";
+
+  const whyUs = (data.whyUs ?? []) as { title: string; description?: string }[];
+  const whyUsHtml = whyUs.length > 0 ? `
+    <h3 style="margin:2rem 0 1rem">Why i3media</h3>
+    <div class="deliv-grid">
+      ${whyUs.map((w, i) => `
+      <div class="deliv-card">
+        <div class="deliv-head ${DELIV_COLORS[i % DELIV_COLORS.length]}">${esc(w.title)}</div>
+        <div class="deliv-body"><div class="deliv-row"><div class="deliv-dot"></div><div>${esc(w.description ?? "")}</div></div></div>
+      </div>`).join("")}
+    </div>` : "";
+
   return `
     <section id="services" class="section">
       <div class="section-inner">
@@ -1621,6 +1649,8 @@ function renderServicesInvestment(data: any): string {
         <h2>Services &amp; Investment</h2>
       ${delivGrid ? `<h3 style="margin-bottom:1.25rem">Recommended Services</h3>${delivGrid}` : ""}
       ${timelineHtml ? `<h3 style="margin:2rem 0 1rem">Timeline</h3><div class="timeline-list">${timelineHtml}</div>` : ""}
+      ${allocationHtml}
+      ${whyUsHtml}
       </div>
     </section>`;
 }
