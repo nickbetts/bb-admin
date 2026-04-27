@@ -65,6 +65,23 @@ export default function middleware(request: NextRequest) {
     }
   }
 
+  // ── Pillar Comms mockup password gate ──────────────────────────────────────
+  if (pathname.startsWith("/pillar-comms")) {
+    const isLogin =
+      pathname === "/pillar-comms/login" ||
+      pathname.startsWith("/pillar-comms/login/");
+    const isApiAuth = pathname === "/api/pillar-comms/auth";
+    if (!isLogin && !isApiAuth) {
+      const cookie = request.cookies.get("pillar_comms_access")?.value;
+      if (cookie !== "ok") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/pillar-comms/login";
+        url.search = "";
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
   // ── 1) /share/report/<token> cookie propagation ────────────────────────────
   const shareMatch = pathname.match(/^\/share\/report\/([^/]+)/);
   if (shareMatch) {
