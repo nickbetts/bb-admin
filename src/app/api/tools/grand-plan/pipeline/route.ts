@@ -11,7 +11,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const plans = await prisma.grandPlan.findMany({
-    where: { userId: session.user.id },
+    where: {},
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,

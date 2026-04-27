@@ -29,9 +29,6 @@ export async function POST(
       include: { versions: { orderBy: { versionNumber: "desc" }, take: 1 } },
     });
     if (!plan) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    if (plan.userId !== session.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const target = await prisma.grandPlanVersion.findFirst({
       where: { id: body.versionId, grandPlanId: id },

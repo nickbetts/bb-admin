@@ -50,9 +50,6 @@ export async function PATCH(
       select: { id: true, userId: true, clientId: true },
     });
     if (!plan) return NextResponse.json({ error: "Grand plan not found" }, { status: 404 });
-    if (plan.userId !== session.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const updated = await prisma.grandPlan.update({
       where: { id },

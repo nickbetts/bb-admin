@@ -69,10 +69,6 @@ export async function GET(
     if (!grandPlan) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    if (grandPlan.userId !== session.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     return NextResponse.json({ grandPlan });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -93,9 +89,6 @@ export async function PATCH(
 
   const existing = await prisma.grandPlan.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (existing.userId !== session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   try {
     const body = (await request.json()) as {
@@ -161,9 +154,6 @@ export async function DELETE(
 
   const existing = await prisma.grandPlan.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (existing.userId !== session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   await prisma.grandPlan.delete({ where: { id } });
 

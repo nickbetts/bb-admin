@@ -60,9 +60,6 @@ export async function POST(
       select: { id: true, userId: true, clientBrief: true },
     });
     if (!plan) return NextResponse.json({ error: "Plan not found" }, { status: 404 });
-    if (plan.userId !== session.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;

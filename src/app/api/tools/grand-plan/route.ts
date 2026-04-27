@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status");
   const purpose = searchParams.get("purpose");
 
-  const where: Record<string, unknown> = { userId: session.user.id };
+  const where: Record<string, unknown> = {};
   if (clientId) where.clientId = clientId;
   if (status) where.status = status;
   if (purpose) where.purpose = purpose;
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     if (body.cloneFromId) {
       const source = await prisma.grandPlan.findUnique({ where: { id: body.cloneFromId } });
       if (!source) return NextResponse.json({ error: "Source plan not found" }, { status: 404 });
-      if (source.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
 
       const cloned = await prisma.grandPlan.create({
         data: {
@@ -202,9 +202,6 @@ export async function PATCH(request: NextRequest) {
 
     const existing = await prisma.grandPlan.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    if (existing.userId !== session.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     if (action === "share") {
       const shareToken = existing.shareToken || crypto.randomBytes(24).toString("hex");

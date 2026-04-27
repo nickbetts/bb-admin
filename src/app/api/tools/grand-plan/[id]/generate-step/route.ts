@@ -105,7 +105,6 @@ export async function POST(
   });
 
   if (!plan) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  if (plan.userId !== session.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const config = safeJsonParse<{
     sections?: string[];
