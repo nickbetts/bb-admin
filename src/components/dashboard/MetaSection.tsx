@@ -1876,8 +1876,9 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
           const h = parseInt(raw, 10);
           return isNaN(h) ? 0 : h % 24;
         };
-        const formatHourLabel = (raw: string) => {
-          const h = parseHour(raw);
+        const formatHourLabel = (raw: string | number | null | undefined) => {
+          if (raw === undefined || raw === null) return "";
+          const h = parseHour(String(raw));
           if (h === 0) return "12am";
           if (h < 12) return `${h}am`;
           if (h === 12) return "12pm";
@@ -1900,7 +1901,7 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                 <YAxis yAxisId="clicks" orientation="right" {...CHART_AXIS_STYLE} width={36} />
                 <Tooltip
                   contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
-                  labelFormatter={formatHourLabel}
+                  labelFormatter={formatHourLabel as (label: unknown) => string}
                   formatter={(value, name) => {
                     const num = typeof value === "number" ? value : Number(value ?? 0);
                     if (name === "Spend") return [formatCurrency(num), "Spend"];
