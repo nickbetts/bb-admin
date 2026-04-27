@@ -35,7 +35,7 @@ const SECTIONS: ReportSection[] = [
       { id: "narrative", label: "AI narrative" },
       { id: "themes", label: "Cross-channel themes" },
     ],
-    commentary: `March 2026 was an exceptionally strong month for Muslim Aid's fundraising operation. Total income reached £1.24 million — up 34% month-on-month — driven by the peak Ramadan window and a highly effective Palestine Emergency appeal. New supporter acquisition grew 28% against February, with 1,847 first-time donors converted through digital channels. Recurring giving remained stable at £312,000 MRR with churn holding at 3.1%, significantly below the sector average of 6.4%.\n\nThree cross-channel stories stand out this month: the synergy between paid social retargeting and email sequences delivered 18% higher average gift than either channel alone; the SMS Zakat reminder to lapsed donors recovered £41,200 that would otherwise have been lost; and organic social performed at its highest ever rate, contributing £88,000 in tracked donations with zero paid media cost.`,
+    commentary: `March 2026 was an exceptionally strong month for Muslim Aid's fundraising operation. Total income reached £1.24 million, up 34% month-on-month, driven by the peak Ramadan window and a highly effective Palestine Emergency appeal. New supporter acquisition grew 28% against February, with 1,847 first-time donors converted through digital channels. Recurring giving remained stable at £312,000 MRR with churn holding at 3.1%, significantly below the sector average of 6.4%.\n\nThree cross-channel stories stand out this month: the synergy between paid social retargeting and email sequences delivered 18% higher average gift than either channel alone; the SMS Zakat reminder to lapsed donors recovered £41,200 that would otherwise have been lost; and organic social performed at its highest ever rate, contributing £88,000 in tracked donations with zero paid media cost.`,
   },
   {
     id: "fundraising",
@@ -62,7 +62,7 @@ const SECTIONS: ReportSection[] = [
       { id: "lifetime-value", label: "LTV distribution" },
       { id: "segments", label: "Segment breakdown" },
     ],
-    commentary: `The supporter base grew to 24,832 active donors in March — a net increase of 643. New donor acquisition of 1,847 was partially offset by 1,204 lapses, of which 482 were recovered through the automated reactivation journey (recovery rate 40%). Pillar's Supporter Twin model predicts a 90-day churn risk of 8.4% of the active base, with 218 high-value donors flagged for stewardship outreach in April.\n\nThe average lifetime value of a Ramadan-acquired donor is £1,240 over 36 months — 3.4x the value of an emergency-only donor. This reinforces the recommendation to prioritise Ramadan welcome journeys as a retention investment rather than a cost centre.`,
+    commentary: `The supporter base grew to 24,832 active donors in March, a net increase of 643. New donor acquisition of 1,847 was partially offset by 1,204 lapses, of which 482 were recovered through the automated reactivation journey (recovery rate 40%). Pillar's Supporter Twin model predicts a 90-day churn risk of 8.4% of the active base, with 218 high-value donors flagged for stewardship outreach in April.\n\nThe average lifetime value of a Ramadan-acquired donor is £1,240 over 36 months. That is 3.4x the value of an emergency-only donor. This reinforces the recommendation to prioritise Ramadan welcome journeys as a retention investment rather than a cost centre.`,
   },
   {
     id: "campaigns",
@@ -75,7 +75,7 @@ const SECTIONS: ReportSection[] = [
       { id: "roi-chart", label: "ROI by channel" },
       { id: "a-b-tests", label: "A/B test results" },
     ],
-    commentary: `Eight campaigns were active in March. The Ramadan Final Push (24-29 March) was the highest performing single campaign in Muslim Aid's recorded history, raising £218,000 in six days. The Gaza Medical Aid emergency appeal exceeded its £250,000 goal on day 11 of a 30-day run.\n\nNotably, the WhatsApp broadcast to major donors (£500+ LTY) achieved a 68% open rate and £82 average gift — more than double the email equivalent. Three campaigns are rolling into April and are forecast to generate a further £340,000 based on current daily run rates.`,
+    commentary: `Eight campaigns were active in March. The Ramadan Final Push (24-29 March) was the highest performing single campaign in Muslim Aid's recorded history, raising £218,000 in six days. The Gaza Medical Aid emergency appeal exceeded its £250,000 goal on day 11 of a 30-day run.\n\nNotably, the WhatsApp broadcast to major donors (£500+ LTY) achieved a 68% open rate and £82 average gift, more than double the email equivalent. Three campaigns are rolling into April and are forecast to generate a further £340,000 based on current daily run rates.`,
   },
   {
     id: "sponsorships",
@@ -89,7 +89,7 @@ const SECTIONS: ReportSection[] = [
       { id: "failed-payments", label: "Failed payment queue" },
       { id: "renewals", label: "Renewals due" },
     ],
-    commentary: `Sponsorship programmes generated £18,750 in March from 312 active commitments across orphan, school and community water categories. Six new sponsorships were added via the website self-service flow. The lapse rate improved to 1.9% from 2.6% in February following the automated sponsor retention journey targeting at-risk accounts.\n\nFour payment failures remain unresolved (down from nine in February). The Pillar AI stewardship planner has drafted personalised outreach for each lapsed sponsor's account manager. Annual beneficiary welfare reports were dispatched to 147 sponsors in March — open rate 81%, reply rate 12%, both above benchmark.`,
+    commentary: `Sponsorship programmes generated £18,750 in March from 312 active commitments across orphan, school and community water categories. Six new sponsorships were added via the website self-service flow. The lapse rate improved to 1.9% from 2.6% in February following the automated sponsor retention journey targeting at-risk accounts.\n\nFour payment failures remain unresolved (down from nine in February). The Pillar AI stewardship planner has drafted personalised outreach for each lapsed sponsor's account manager. Annual beneficiary welfare reports were dispatched to 147 sponsors in March, with an 81% open rate and 12% reply rate, both above benchmark.`,
   },
   {
     id: "digital",
@@ -102,7 +102,7 @@ const SECTIONS: ReportSection[] = [
       { id: "social", label: "Social media" },
       { id: "email", label: "Email metrics" },
     ],
-    commentary: `The Muslim Aid website received 184,000 sessions in March (+42% YoY), with the donation flow recording a 3.8% conversion rate from landing — the highest since the redesign. Organic search delivered 62,000 sessions, with 'Zakat calculator' ranking position 2 nationally.\n\nThe email list grew to 112,000 active subscribers. March sends achieved an average open rate of 38.4% (industry benchmark: 22%) and a click-to-open rate of 14.2%. Social media organic reach hit 1.2 million across platforms, with a viral Ramadan video generating 840,000 views on TikTok and £18,400 in tracked donations.`,
+    commentary: `The Muslim Aid website received 184,000 sessions in March (+42% YoY), with the donation flow recording a 3.8% conversion rate from landing, the highest since the redesign. Organic search delivered 62,000 sessions, with 'Zakat calculator' ranking position 2 nationally.\n\nThe email list grew to 112,000 active subscribers. March sends achieved an average open rate of 38.4% (industry benchmark: 22%) and a click-to-open rate of 14.2%. Social media organic reach hit 1.2 million across platforms, with a viral Ramadan video generating 840,000 views on TikTok and £18,400 in tracked donations.`,
   },
   {
     id: "impact",
@@ -115,7 +115,7 @@ const SECTIONS: ReportSection[] = [
       { id: "fund-allocation", label: "Fund allocation" },
       { id: "sdgs", label: "SDG alignment" },
     ],
-    commentary: `Funds raised in March will reach an estimated 28,400 beneficiaries across 14 countries. Gaza and Yemen account for 61% of emergency programme allocation. The Ramadan food parcel programme dispatched 12,000 parcels in the final week of Ramadan, exceeding the 10,000 target.\n\nResticted fund balances remain fully compliant — all donor-designated funds are allocated within programme timelines. The Zakat fund received £148,000 in March and has been fully disbursed to Nisab-compliant asnaf categories as required by Islamic jurisprudence. A full SORP-compliant fund movement report is available in the One-off Exports section.`,
+    commentary: `Funds raised in March will reach an estimated 28,400 beneficiaries across 14 countries. Gaza and Yemen account for 61% of emergency programme allocation. The Ramadan food parcel programme dispatched 12,000 parcels in the final week of Ramadan, exceeding the 10,000 target.\n\nResticted fund balances remain fully compliant and all donor-designated funds are allocated within programme timelines. The Zakat fund received £148,000 in March and has been fully disbursed to Nisab-compliant asnaf categories as required by Islamic jurisprudence. A full SORP-compliant fund movement report is available in the One-off Exports section.`,
   },
 ];
 
@@ -448,7 +448,7 @@ export default function ReportBuilderPage({ params }: { params: Promise<{ id: st
                             <Stat label="Churn rate" value="3.1%" delta="-1.2pp" positive hint="below 6.4% avg" />
                           </div>
                           <AIInsight title="AI narrative" tone="indigo">
-                            This was the strongest March in Muslim Aid UK fundraising history. The Ramadan multiplier effect — where email, paid social, and SMS cadences align in the last 10 days — drove a 3x lift on daily average revenue. The data pattern is highly reproducible for future Ramadan campaigns.
+                            This was the strongest March in Muslim Aid UK fundraising history. The Ramadan multiplier effect, where email, paid social and SMS cadences align in the last 10 days, drove a 3x lift on daily average revenue. The data pattern is highly reproducible for future Ramadan campaigns.
                           </AIInsight>
                         </div>
                       )}

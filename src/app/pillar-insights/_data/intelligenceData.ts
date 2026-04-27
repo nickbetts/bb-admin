@@ -315,7 +315,7 @@ export const NEXT_ACTIONS = [
     effort: "Low",
     owner: "Sponsorship Ops",
     urgency: "Critical",
-    reason: "614 sponsorship slots gap > 14 days — detected as revenue leakage L-003",
+    reason: "614 sponsorship slots gap > 14 days. Detected as revenue leakage L-003.",
   },
 ];
 
@@ -457,7 +457,7 @@ export const BEHAVIOUR_ANOMALIES = [
     supporterId: "C-22841",
     name: "Zaynab Rahman",
     type: "Frequency increase",
-    detail: "From 1 gift/quarter to 4 gifts in 6 weeks — candidate for upgrade",
+    detail: "From 1 gift/quarter to 4 gifts in 6 weeks. Strong candidate for upgrade.",
     severity: "low",
     detectedAt: "1 day ago",
     suggestedAction: "Fast-track upgrade journey",

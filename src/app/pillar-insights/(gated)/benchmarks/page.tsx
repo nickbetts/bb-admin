@@ -105,7 +105,7 @@ export default function BenchmarksPage() {
         </div>
       </Section>
 
-      <Section title="Network effect benchmarks" subtitle="How your metrics compare when charities pool anonymised data — cohort intelligence from the Pillar network">
+      <Section title="Network effect benchmarks" subtitle="How your metrics compare when charities pool anonymised data. Cohort intelligence from the Pillar network.">
         {NETWORK_COHORTS.map((cohort) => (
           <div
             key={cohort.cohort}
@@ -149,7 +149,7 @@ export default function BenchmarksPage() {
         <AIInsight title="Pillar AI – network insight" tone="teal">
           Combining data across the Pillar network reveals a <strong>seasonal pattern invisible to individual charities</strong>: charities in the
           UK Islamic cohort that ran a follow-up Eid al-Adha campaign within 30 days of Qurbani saw <strong>2.4× higher annual LTV</strong> from
-          those donors vs. those that did not. Your post-Qurbani follow-up rate is currently <strong>28%</strong> — the top-quartile benchmark is 71%.
+          those donors vs. those that did not. Your post-Qurbani follow-up rate is currently <strong>28%</strong>. The top-quartile benchmark is 71%.
         </AIInsight>
       </Section>
     </div>

@@ -21,7 +21,7 @@ export default function OpportunitySimulatorPage() {
       <PageHeader
         eyebrow="AI & Predictions · Opportunity Simulator"
         title="Missed opportunity simulator"
-        description="Shows the revenue you could unlock if performance improved to target thresholds. Each scenario simulates the financial impact of specific improvements — grounded in your historical uplift data and sector benchmarks."
+        description="Shows the revenue you could unlock if performance improved to target thresholds. Each scenario simulates the financial impact of specific improvements, grounded in your historical uplift data and sector benchmarks."
         actions={
           <button className="btn btn-primary btn-sm">
             <Telescope className="h-3.5 w-3.5" /> Run custom simulation
@@ -155,9 +155,9 @@ export default function OpportunitySimulatorPage() {
       <Section title="What this would need" subtitle="Data required for scenario simulation and forecasting">
         <div className="grid-3">
           {[
-            ["benchmark_data", "Sector averages and top-quartile metrics — the comparison baseline for each scenario"],
-            ["current_metrics", "Your live KPIs (retention, CVR, upgrade rate, etc.) — the starting point for simulation"],
-            ["historical_uplift", "Prior A/B test and causal analysis results — validates simulation assumptions"],
+            ["benchmark_data", "Sector averages and top-quartile metrics. The comparison baseline for each scenario."],
+            ["current_metrics", "Your live KPIs (retention, CVR, upgrade rate, etc.). The starting point for simulation."],
+            ["historical_uplift", "Prior A/B test and causal analysis results. Validates simulation assumptions."],
             ["AI approach", "Simulation engine + forecasting (scenario-based what-if modelling)"],
             ["output", "Revenue range (low–mid–high) per scenario with confidence band and time-to-impact"],
             ["custom_scenarios", "Planner can define bespoke targets to simulate any improvement hypothesis"],

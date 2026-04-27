@@ -26,7 +26,7 @@ export default function FundFlowPage() {
       <PageHeader
         eyebrow="Insight Layer · Fund Flow & Impact"
         title="Fund flow transparency & impact efficiency"
-        description="Tracks money from donation through fund allocation to programme disbursement — with outcome-per-£ scores for every fund. Full financial transparency from gift to impact."
+        description="Tracks money from donation through fund allocation to programme disbursement, with outcome-per-£ scores for every fund. Full financial transparency from gift to impact."
         actions={
           <button className="btn btn-secondary btn-sm">
             <CheckCircle className="h-3.5 w-3.5" /> Export fund report
@@ -69,9 +69,9 @@ export default function FundFlowPage() {
       </div>
 
       <AIInsight title="Pillar AI – fund flow insight" tone="teal">
-        Your <strong>Water for All</strong> fund delivers <strong>£6.4 in outcomes per £1 donated</strong> — the highest in your portfolio and{" "}
+        Your <strong>Water for All</strong> fund delivers <strong>£6.4 in outcomes per £1 donated</strong>, the highest in your portfolio and{" "}
         <strong>42% above the UK charity sector average</strong> for WASH programmes. However, the fund is under-subscribed
-        relative to demand — current disbursement pipeline has capacity for £280k more this year. Pillar suggests a targeted
+        relative to demand. The current disbursement pipeline has capacity for £280k more this year. Pillar suggests a targeted
         reallocation campaign for Sadaqah Jariyah donors currently giving to the general fund.
       </AIInsight>
 
@@ -163,7 +163,7 @@ export default function FundFlowPage() {
       </Section>
 
       {/* Impact efficiency comparison */}
-      <Section title="Outcomes per £ — fund comparison" subtitle="Efficiency benchmark across all active funds">
+      <Section title="Outcomes per £: fund comparison" subtitle="Efficiency benchmark across all active funds">
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {[...FUND_FLOWS].sort((a, b) => b.outcomePerPound - a.outcomePerPound).map((fund) => (
             <div
@@ -188,12 +188,12 @@ export default function FundFlowPage() {
       <Section title="What this would need" subtitle="Data fields for fund flow transparency and impact efficiency">
         <div className="grid-3">
           {[
-            ["fund_id", "Identifies destination fund — joins charge to allocation record"],
+            ["fund_id", "Identifies the destination fund and joins the charge to its allocation record."],
             ["allocation_data", "Internal fund management records showing how donated money is divided"],
             ["disbursement_data", "Actual payment records to programmes, suppliers, partners"],
-            ["campaign_linkage", "Links campaigns to funds — enables per-campaign impact reporting"],
+            ["campaign_linkage", "Links campaigns to funds, enabling per-campaign impact reporting."],
             ["project / outcome data", "Outcome metrics per programme (beneficiaries, wells built, meals delivered)"],
-            ["AI approach", "Core reporting only — optional AI for disbursement anomaly alerts"],
+            ["AI approach", "Core reporting only. Optional AI layer for disbursement anomaly alerts."],
           ].map(([k, v]) => (
             <div
               key={k}

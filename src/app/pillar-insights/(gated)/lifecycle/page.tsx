@@ -30,7 +30,7 @@ export default function LifecyclePage() {
       <PageHeader
         eyebrow="Insight Layer · Lifecycle Value"
         title="Donor lifecycle value breakdown"
-        description="Shows where value is gained or lost across the entire donor journey — from first gift to loyal recurring. Includes time-to-value analysis: how quickly donors become valuable."
+        description="Shows where value is gained or lost across the entire donor journey, from first gift to loyal recurring. Includes time-to-value analysis showing how quickly donors become valuable."
         actions={
           <button className="btn btn-secondary btn-sm">
             <TrendingUp className="h-3.5 w-3.5" /> Export cohort data
@@ -76,8 +76,8 @@ export default function LifecyclePage() {
       <AIInsight title="Pillar AI – lifecycle insight" tone="teal">
         The biggest value leakage in your journey is the <strong>41.6% drop between 2nd and recurring</strong>. Donors
         who reach a 3rd gift but don&rsquo;t convert to recurring within <strong>28 days</strong> have a 72% probability
-        of lapsing within 6 months. Pillar recommends an auto-triggered upgrade journey at the 3rd-gift milestone — estimated
-        annual value recovery: <strong>£284k</strong>.
+        of lapsing within 6 months. Pillar recommends an auto-triggered upgrade journey at the 3rd-gift milestone, with an estimated
+        annual value recovery of <strong>£284k</strong>.
       </AIInsight>
 
       {/* Lifecycle stage funnel */}
@@ -199,7 +199,7 @@ export default function LifecyclePage() {
             ["lifetime_revenue", "Running total of all charges for the contact"],
             ["charge_date", "Used to calculate time between milestones"],
             ["is_recurring", "Identifies the conversion to monthly giving"],
-            ["created_at", "Contact creation date — start of the time-to-value clock"],
+            ["created_at", "Contact creation date. Marks the start of the time-to-value clock."],
           ].map(([k, v]) => (
             <div
               key={k}

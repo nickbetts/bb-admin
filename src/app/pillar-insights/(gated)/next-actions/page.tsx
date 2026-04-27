@@ -26,7 +26,7 @@ export default function NextActionsPage() {
       <PageHeader
         eyebrow="Action Layer · Next Best Actions"
         title="What should we do next?"
-        description="Pillar's decision engine analyses supporter scores, donation history, campaign performance and benchmark gaps — then outputs a prioritised, ranked list of actions to increase revenue."
+        description="Pillar's decision engine analyses supporter scores, donation history, campaign performance and benchmark gaps, then outputs a prioritised, ranked list of actions to increase revenue."
         actions={
           <button className="btn btn-primary btn-sm">
             <Zap className="h-3.5 w-3.5" /> Refresh recommendations
@@ -69,7 +69,7 @@ export default function NextActionsPage() {
       </div>
 
       <AIInsight title="Pillar AI – top recommendation" tone="indigo">
-        Your single highest-impact action is <strong>re-engaging failed payment donors via SMS</strong> within 48 hours of failure — estimated recovery
+        Your single highest-impact action is <strong>re-engaging failed payment donors via SMS</strong> within 48 hours of failure, with an estimated recovery
         rate 62%, worth <strong>£124k/year</strong> with low effort. Paired with the <strong>sponsorship gap plug</strong> (614 unmatched children),
         these two actions alone represent <strong>£248k in recoverable revenue</strong> requiring no new acquisition spend.
       </AIInsight>
@@ -192,10 +192,10 @@ export default function NextActionsPage() {
       <Section title="What this would need" subtitle="Data required to power the recommendation engine">
         <div className="grid-3">
           {[
-            ["supporter_scores", "Churn risk, upgrade likelihood, mission match — from Supporter Twin models"],
-            ["donation_history", "Full charge history per contact — recency, frequency, monetary (RFM)"],
-            ["campaign_performance", "ROI, CVR and lift per campaign — feeds opportunity ranking"],
-            ["benchmark_gaps", "Peer comparison data — identifies where you under-index vs sector"],
+            ["supporter_scores", "Churn risk, upgrade likelihood, mission match. Sourced from Supporter Twin models."],
+            ["donation_history", "Full charge history per contact covering recency, frequency and monetary (RFM)."],
+            ["campaign_performance", "ROI, CVR and lift per campaign. Feeds into opportunity ranking."],
+            ["benchmark_gaps", "Peer comparison data. Identifies where you under-index versus the sector."],
             ["AI approach", "Decision engine + recommendation system (gradient boosting + rules engine)"],
             ["output", "Prioritised action queue ranked by expected uplift × confidence"],
           ].map(([k, v]) => (

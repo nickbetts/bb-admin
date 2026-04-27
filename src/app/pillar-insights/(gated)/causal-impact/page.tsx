@@ -34,7 +34,7 @@ export default function CausalImpactPage() {
       <PageHeader
         eyebrow="Insight Layer · Causal Impact"
         title="Causal impact reporting"
-        description="Proves what actually caused performance changes — not just correlation. Every campaign is analysed against a held-out control group using causal-forest and difference-in-differences models."
+        description="Proves what actually caused performance changes, not just correlation. Every campaign is analysed against a held-out control group using causal-forest and difference-in-differences models."
         actions={
           <button className="btn btn-primary btn-sm">
             <FlaskConical className="h-3.5 w-3.5" /> New analysis
@@ -78,7 +78,7 @@ export default function CausalImpactPage() {
 
       <AIInsight title="Pillar AI – causal insight" tone="teal">
         Your <strong>Ramadan Email Sequence</strong> delivered a statistically significant <strong>+28.4% lift</strong> (94% confidence) over the control group. Causal forest modelling
-        shows the effect is concentrated among donors who had previously given to <strong>Zakat</strong> within 12 months — suggesting personalised Zakat-themed messaging is the primary driver,
+        shows the effect is concentrated among donors who had previously given to <strong>Zakat</strong> within 12 months, suggesting personalised Zakat-themed messaging is the primary driver,
         not timing alone. Applying this to the Qurbani sequence could yield an additional <strong>£180k</strong>.
       </AIInsight>
 
@@ -187,7 +187,7 @@ export default function CausalImpactPage() {
       <Section title="What this would need" subtitle="Data fields required to run live causal models">
         <div className="grid-3">
           {[
-            ["contact_id", "Links charge to supporter — joins exposed vs control groups"],
+            ["contact_id", "Links the charge to a supporter, joining exposed and control groups."],
             ["campaign_id / appeal_name", "Identifies which campaign the donor was exposed to"],
             ["charge_date", "Defines exposure window and outcome measurement period"],
             ["exposure flag", "Was this supporter in the test group or control holdout?"],

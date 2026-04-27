@@ -34,7 +34,7 @@ export default function RecurringStabilityPage() {
       <PageHeader
         eyebrow="AI & Predictions · Recurring Stability"
         title="Recurring revenue stability index"
-        description="Scores how stable your recurring income is — combining churn rate, failed payment patterns, retention cohorts and a 90-day MRR forecast. Identifies at-risk recurring donors before they cancel."
+        description="Scores how stable your recurring income is, combining churn rate, failed payment patterns, retention cohorts and a 90-day MRR forecast. Identifies at-risk recurring donors before they cancel."
         actions={
           <button className="btn btn-secondary btn-sm">
             <Waves className="h-3.5 w-3.5" /> View all recurring
@@ -68,7 +68,7 @@ export default function RecurringStabilityPage() {
           <div style={{ fontSize: 12, color: "var(--text-2)", textAlign: "center", lineHeight: 1.5, maxWidth: 160 }}>
             <strong style={{ color: "var(--text)" }}>Score 72/100</strong>
             <br />
-            Moderate — recurring income is broadly stable but has identifiable churn pressure points.
+            Moderate. Recurring income is broadly stable but has identifiable churn pressure points.
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, width: "100%" }}>
             {[
@@ -96,7 +96,7 @@ export default function RecurringStabilityPage() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <AIInsight title="Pillar AI – stability prediction" tone="amber">
-            Two churn pressure points detected: <strong>August payment failures</strong> (historically 4.8% fail rate — highest of the year)
+            Two churn pressure points detected: <strong>August payment failures</strong> (historically 4.8% fail rate, the highest of the year)
             and <strong>post-Ramadan donor fatigue</strong> (May–June recurring lapse rate runs +1.4pts above annual average).
             Pre-emptive retry logic and a &ldquo;Your impact this Ramadan&rdquo; email sent by 10 May could reduce the typical summer dip by
             an estimated <strong>30%</strong>.
@@ -161,7 +161,7 @@ export default function RecurringStabilityPage() {
       </Section>
 
       {/* At-risk recurring queue */}
-      <Section title="At-risk recurring donors" subtitle="Donors with high predicted churn — flagged for immediate intervention">
+      <Section title="At-risk recurring donors" subtitle="Donors with high predicted churn, flagged for immediate intervention">
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {atRiskRecurring.map((donor) => (
             <div
@@ -206,9 +206,9 @@ export default function RecurringStabilityPage() {
       <Section title="What this would need" subtitle="Data fields for recurring stability modelling">
         <div className="grid-3">
           {[
-            ["is_recurring", "Identifies recurring donors — the subject of all stability analysis"],
-            ["charge_date", "Defines payment cadence — detects gaps and irregular patterns"],
-            ["payment_status", "Completed · failed · retried — drives churn risk scoring"],
+            ["is_recurring", "Identifies recurring donors. The subject of all stability analysis."],
+            ["charge_date", "Defines payment cadence. Detects gaps and irregular patterns."],
+            ["payment_status", "Completed · failed · retried. Drives churn risk scoring."],
             ["monthly_amount", "Sponsorship and DD amounts used in MRR calculation and forecast"],
             ["churn_patterns", "Historical cancellations used to train the predictive churn model"],
             ["AI approach", "Predictive churn modelling (gradient boosting) + MRR time-series forecast"],

@@ -32,7 +32,7 @@ export default function DonorBrainPage() {
       <PageHeader
         eyebrow="Autonomy Layer · Heavy AI"
         title="AI collective donor brain"
-        description="A shared intelligence model trained on the anonymised giving behaviour of 2.84M donors across 47 UK charities. Your data contributes to — and benefits from — collective pattern recognition that no single organisation could build alone."
+        description="A shared intelligence model trained on the anonymised giving behaviour of 2.84M donors across 47 UK charities. Your data contributes to collective pattern recognition that no single organisation could build alone, and benefits from it in return."
         actions={
           <>
             <span
@@ -94,7 +94,7 @@ export default function DonorBrainPage() {
       <AIInsight title="Pillar AI – collective intelligence" tone="indigo">
         The collective model has identified a behavioural pattern you won&rsquo;t see in your own data alone: donors who gave to <strong>more than one cause area
         in the same Ramadan</strong> have a <strong>3.4× higher lifetime value</strong> than single-cause Ramadan donors. Your database contains an estimated
-        <strong> 8,412 latent multi-cause donors</strong> who have not yet been invited to a second cause — this represents your highest-confidence
+        <strong> 8,412 latent multi-cause donors</strong> who have not yet been invited to a second cause. This represents your highest-confidence
         upgrade opportunity this cycle.
       </AIInsight>
 
@@ -114,7 +114,7 @@ export default function DonorBrainPage() {
               Collective intelligence network
             </div>
             <div style={{ fontSize: 14, color: "var(--text-2)", lineHeight: 1.6, maxWidth: 600 }}>
-              All data is anonymised and federated — your donors&rsquo; identities are never shared. Only aggregate behavioural patterns (seasonality, gift size
+              All data is anonymised and federated. Your donors&rsquo; identities are never shared. Only aggregate behavioural patterns (seasonality, gift size
               distribution, channel preference) contribute to the collective model. Fully GDPR-compliant.
             </div>
           </div>
@@ -204,12 +204,12 @@ export default function DonorBrainPage() {
       <Section title="What this would need" subtitle="Infrastructure required to build and operate the collective donor brain">
         <div className="grid-3">
           {[
-            ["federated_learning_infrastructure", "Privacy-preserving ML framework (e.g. Flower, PySyft) — models train on-device, only gradients are shared"],
-            ["data_contribution_agreement", "Legal framework for the consortium — GDPR-compliant data processing agreements with all participating orgs"],
+            ["federated_learning_infrastructure", "Privacy-preserving ML framework (e.g. Flower, PySyft). Models train on-device and only gradients are shared."],
+            ["data_contribution_agreement", "Legal framework for the consortium. GDPR-compliant data processing agreements with all participating organisations."],
             ["anonymisation_pipeline", "k-anonymity or differential privacy layer applied before any data leaves an organisation's environment"],
-            ["model_registry", "Versioned model store with per-org performance tracking — ensures contributing orgs benefit proportionally"],
-            ["simulation_API", "Interface between collective model and per-org campaign planning tools — returns predicted response rates"],
-            ["AI approach", "Federated learning + differential privacy — the most technically demanding AI investment in this platform"],
+            ["model_registry", "Versioned model store with per-org performance tracking. Ensures contributing organisations benefit proportionally."],
+            ["simulation_API", "Interface between the collective model and per-org campaign planning tools. Returns predicted response rates."],
+            ["AI approach", "Federated learning with differential privacy. The most technically demanding AI investment in this platform."],
           ].map(([k, v]) => (
             <div
               key={k}

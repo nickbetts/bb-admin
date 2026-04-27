@@ -30,7 +30,7 @@ export default function GrowthEnginePage() {
       <PageHeader
         eyebrow="Autonomy Layer · Heavy AI"
         title="Autonomous growth engine"
-        description="A self-improving AI system that continuously runs experiments across your campaigns, donation forms and audience targeting — learns what works, and applies winning strategies automatically within configurable guardrails."
+        description="A self-improving AI system that continuously runs experiments across your campaigns, donation forms and audience targeting. It learns what works and applies winning strategies automatically within configurable guardrails."
         actions={
           <>
             <span
@@ -92,7 +92,7 @@ export default function GrowthEnginePage() {
       <AIInsight title="Pillar AI – growth engine status" tone="indigo">
         The growth engine has identified a <strong>statistically significant winner</strong> in your lapsed-donor re-engagement experiment:
         variant B (Ramadan urgency + personalised historical average) is outperforming your control by <strong>+62%</strong> on recovery rate
-        (p &lt; 0.01). Auto-apply is enabled on this experiment — the winning variant has been queued for full deployment to your next
+        (p &lt; 0.01). Auto-apply is enabled on this experiment and the winning variant has been queued for full deployment to your next
         lapsed-donor cohort (est. 4,284 donors). No human action required.
       </AIInsight>
 
@@ -206,12 +206,12 @@ export default function GrowthEnginePage() {
       <Section title="What this would need" subtitle="Infrastructure required to deploy the autonomous growth engine">
         <div className="grid-3">
           {[
-            ["A/B test tracking", "Event stream of variant impressions + conversions — the reward signal input"],
+            ["A/B test tracking", "Event stream of variant impressions and conversions. This is the reward signal input."],
             ["multi-armed bandit engine", "Probabilistic model (Thompson Sampling or UCB) to allocate traffic to winning variants"],
-            ["campaign mutation API", "Write access to campaign content, timing and audience settings — required for auto-apply"],
+            ["campaign mutation API", "Write access to campaign content, timing and audience settings. Required for auto-apply."],
             ["guardrail configuration UI", "Admin controls to define safety limits per experiment type"],
             ["experiment registry", "Database of active/concluded experiments with full audit trail of autonomous actions"],
-            ["AI approach", "Heavy AI — multi-armed bandit + Thompson Sampling + safety layer — requires infrastructure buildout"],
+            ["AI approach", "Heavy AI: multi-armed bandit with Thompson Sampling and a safety layer. Requires significant infrastructure buildout."],
           ].map(([k, v]) => (
             <div
               key={k}

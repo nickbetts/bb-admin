@@ -99,7 +99,7 @@ const ACTIONS = [
   {
     id: 5,
     title: "Complete Zakat campaign fund metadata (3 campaigns missing)",
-    description: "3 Zakat appeals are missing restricted fund_id tagging — required for Zakat accounting compliance.",
+    description: "3 Zakat appeals are missing restricted fund_id tagging. This is required for Zakat accounting compliance.",
     impact: "Compliance",
     impactLabel: "regulatory risk",
     effort: "low" as const,
@@ -110,11 +110,11 @@ const ACTIONS = [
 ];
 
 const AI_INSIGHTS = [
-  { tone: "green" as const, text: "April donations are tracking £924k — the strongest non-Ramadan month this year, up 44% vs March." },
+  { tone: "green" as const, text: "April donations are tracking £924k, the strongest non-Ramadan month this year, up 44% vs March." },
   { tone: "amber" as const, text: "Repeat giving dropped last week: 18,412 donors moved to At Risk post-Qurbani. This is the main issue to address." },
-  { tone: "amber" as const, text: "Recurring churn is slightly elevated this month (+0.4 pts). No action needed yet — monitor for 2 more weeks." },
+  { tone: "amber" as const, text: "Recurring churn is slightly elevated this month (+0.4 pts). No action needed yet. Monitor for 2 more weeks." },
   { tone: "red" as const, text: "Palestine & Gaza appeal is at 58% of its Q2 target. One creative refresh and a lookalike audience push could close the gap." },
-  { tone: "red" as const, text: "£84k in Gift Aid is unclaimed. 2,140 declarations are missing — the fastest compliance win available." },
+  { tone: "red" as const, text: "£84k in Gift Aid is unclaimed. 2,140 declarations are missing. This is the fastest compliance win available." },
 ];
 
 const TONE_COLORS: Record<string, string> = {
@@ -518,7 +518,7 @@ export default function PillarDashboardPage() {
           >
             <Sparkles className="h-4 w-4" style={{ color: "#6366f1", flexShrink: 0 }} />
             <span>
-              <strong style={{ color: "var(--text)" }}>Biggest opportunity:</strong> closing your donor retention gap from 71.3% to the peer median of 66.8% is already above average — reaching the top-quartile of 82.4% is worth an estimated{" "}
+              <strong style={{ color: "var(--text)" }}>Biggest opportunity:</strong> closing your donor retention gap from 71.3% to the peer median of 66.8% is already above average. Reaching the top-quartile of 82.4% is worth an estimated{" "}
               <strong style={{ color: "#6366f1" }}>+£380k/year</strong> in recovered income.
             </span>
           </div>

@@ -195,7 +195,7 @@ export default function CampaignsPage() {
           </table>
         </div>
         <AIInsight title="Pillar AI – story intelligence" tone="teal">
-          <strong>Beneficiary stories featuring a named individual</strong> consistently outperform all other story types — 92/100 AI score, highest repeat behaviour,
+          <strong>Beneficiary stories featuring a named individual</strong> consistently outperform all other story types, with a 92/100 AI score, the highest repeat behaviour,
           and £62.40 average gift. Content calendars built around this format for Ramadan, Qurbani and emergency appeals are estimated to lift campaign
           response rates by <strong>+18–24%</strong> vs. generic appeal copy. Religious obligation messaging performs best for upgrade and recurring asks.
         </AIInsight>

@@ -27,7 +27,7 @@ export default function FunnelPage() {
       <PageHeader
         eyebrow="Insight Layer · Conversion Funnel"
         title="Conversion funnel intelligence"
-        description="Tracks the full donation journey from appeal page impression to completed charge — identifying drop-off points, device performance gaps, and friction events that cost you revenue."
+        description="Tracks the full donation journey from appeal page impression to completed charge, identifying drop-off points, device performance gaps and friction events that cost you revenue."
         actions={
           <button className="btn btn-secondary btn-sm">
             <Filter className="h-3.5 w-3.5" /> Filter by campaign
@@ -70,7 +70,7 @@ export default function FunnelPage() {
       </div>
 
       <AIInsight title="Pillar AI – funnel insight" tone="rose">
-        Your biggest conversion opportunity is the <strong>form details step</strong> — 28.3% of donors who enter an amount abandon before completing their
+        Your biggest conversion opportunity is the <strong>form details step</strong>. 28.3% of donors who enter an amount abandon before completing their
         details. Analysis of 14,284 abandoned sessions shows <strong>page load time &gt; 3 seconds</strong> is the primary cause on mobile.
         A 1-second improvement in payment page load speed is estimated to recover <strong>£148k in annual revenue</strong> based on your current traffic volume.
       </AIInsight>
@@ -119,7 +119,7 @@ export default function FunnelPage() {
         </Section>
       </div>
 
-      <Section title="Friction event log" subtitle="Specific UX and technical events causing donor drop-off — sorted by impact" padded={false}>
+      <Section title="Friction event log" subtitle="Specific UX and technical events causing donor drop-off, sorted by impact" padded={false}>
         <div style={{ overflowX: "auto" }}>
           <table className="data-table">
             <thead>
@@ -178,12 +178,12 @@ export default function FunnelPage() {
       <Section title="What this would need" subtitle="Data required for full funnel intelligence">
         <div className="grid-3">
           {[
-            ["donation_start_events", "New event: fires when a donor opens a donation form — top-of-funnel anchor"],
-            ["completed_charges", "Existing — the outcome event at the bottom of the funnel"],
+            ["donation_start_events", "New event: fires when a donor opens a donation form. Top-of-funnel anchor."],
+            ["completed_charges", "Existing event. The outcome event at the bottom of the funnel."],
             ["campaign_metadata", "Links funnel sessions to campaigns for per-campaign CVR breakdowns"],
             ["device / channel (optional)", "Browser agent and referrer for device and channel segmentation"],
-            ["step_abandonment_events", "Which step in the form donors exit — requires frontend instrumentation"],
-            ["AI approach", "Light AI — pattern detection for drop-off clustering and root-cause analysis"],
+            ["step_abandonment_events", "Which step in the form donors exit. Requires frontend instrumentation."],
+            ["AI approach", "Light AI with pattern detection for drop-off clustering and root-cause analysis."],
           ].map(([k, v]) => (
             <div
               key={k}

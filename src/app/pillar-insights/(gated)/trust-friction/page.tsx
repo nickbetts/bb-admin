@@ -25,7 +25,7 @@ export default function TrustFrictionPage() {
       <PageHeader
         eyebrow="Insight Layer · Trust & Friction"
         title="Trust & friction score"
-        description="Measures how easy it is for donors to give and how much they trust your payment experience. A composite score of payment success, form completion, repeat giving and time-to-confirm — with a live friction event log."
+        description="Measures how easy it is for donors to give and how much they trust your payment experience. A composite score of payment success, form completion, repeat giving and time-to-confirm, with a live friction event log."
         actions={
           <button className="btn btn-secondary btn-sm">
             <CheckCircle className="h-3.5 w-3.5" /> View improvement plan
@@ -59,7 +59,7 @@ export default function TrustFrictionPage() {
           <div style={{ fontSize: 12, color: "var(--text-2)", textAlign: "center", lineHeight: 1.5, maxWidth: 160 }}>
             <strong style={{ color: "var(--text)" }}>Score {compositeScore}/100</strong>
             <br />
-            Moderate — donors find giving reasonably easy but mobile friction and failed payments are eroding trust.
+            Moderate. Donors find giving reasonably easy but mobile friction and failed payments are eroding trust.
           </div>
         </div>
 
@@ -101,8 +101,8 @@ export default function TrustFrictionPage() {
           <AIInsight title="Pillar AI – trust insight" tone="amber">
             Your trust score would improve by <strong>+8 points</strong> if you resolved two issues: reducing average form load time on mobile below 2 seconds
             (currently 3.4s) and adding Apple Pay / Google Pay as default payment options. These two changes alone could eliminate
-            an estimated <strong>22,841 annual form abandons</strong> and lift your completion rate to sector median — representing
-            £184k in recovered donations.
+            an estimated <strong>22,841 annual form abandons</strong> and lift your completion rate to sector median, recovering an estimated
+            £184k in donations.
           </AIInsight>
         </div>
       </div>
@@ -149,7 +149,7 @@ export default function TrustFrictionPage() {
       </Section>
 
       {/* Friction event log */}
-      <Section title="Friction event log" subtitle="Events actively eroding trust and donor completion — rolling 30 days" padded={false}>
+      <Section title="Friction event log" subtitle="Events actively eroding trust and donor completion, rolling 30 days" padded={false}>
         <div style={{ overflowX: "auto" }}>
           <table className="data-table">
             <thead>
@@ -205,12 +205,12 @@ export default function TrustFrictionPage() {
       <Section title="What this would need" subtitle="Data fields for the trust and friction composite score">
         <div className="grid-3">
           {[
-            ["payment_success_rate", "Completed vs attempted charges — primary trust signal (weight: 30%)"],
-            ["form_completion_rate", "Funnel data: forms opened vs charges completed — friction measure (25%)"],
-            ["repeat_donation_rate", "Donors who give again within 12 months — loyalty/trust proxy (20%)"],
-            ["time_to_confirm", "Frontend timing: form open to charge completion — UX speed signal (15%)"],
+            ["payment_success_rate", "Completed vs attempted charges. Primary trust signal (weight: 30%)."],
+            ["form_completion_rate", "Funnel data: forms opened vs charges completed. Friction measure (25%)."],
+            ["repeat_donation_rate", "Donors who give again within 12 months. Loyalty and trust proxy (20%)."],
+            ["time_to_confirm", "Frontend timing: form open to charge completion. UX speed signal (15%)."],
             ["mobile_ux_score", "Composite of mobile CVR, load time and form abandons (10%)"],
-            ["AI approach", "Composite scoring (weighted formula) — optional AI for anomaly alerts on score drops"],
+            ["AI approach", "Composite scoring (weighted formula). Optional AI for anomaly alerts on score drops."],
           ].map(([k, v]) => (
             <div
               key={k}

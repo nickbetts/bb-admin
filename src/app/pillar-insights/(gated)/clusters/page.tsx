@@ -25,7 +25,7 @@ export default function ClustersPage() {
       <PageHeader
         eyebrow="AI & Predictions · Behavioural Clusters"
         title="Behavioural pattern clustering"
-        description="Pillar&apos;s unsupervised clustering model automatically groups supporters by real giving behaviour — not demographics. Each cluster tells a story about how and why people give, enabling targeted strategies."
+        description="Pillar&apos;s unsupervised clustering model automatically groups supporters by real giving behaviour, not demographics. Each cluster tells a story about how and why people give, enabling targeted strategies."
         actions={
           <button className="btn btn-secondary btn-sm">
             <Network className="h-3.5 w-3.5" /> Re-run clustering
@@ -69,7 +69,7 @@ export default function ClustersPage() {
       </div>
 
       <AIInsight title="Pillar AI – clustering insight" tone="indigo">
-        <strong>Crisis responders</strong> (22,108 donors) represent your highest churn risk — 42% predicted to lapse within 90 days.
+        <strong>Crisis responders</strong> (22,108 donors) represent your highest churn risk. 42% are predicted to lapse within 90 days.
         However, those who receive a personal impact update within 14 days of their Gaza gift convert to recurring at <strong>3× your baseline rate</strong>.
         Pillar recommends auto-triggering a &ldquo;Your impact in Gaza&rdquo; personalised story email within 72 hours of each emergency gift.
       </AIInsight>
@@ -175,7 +175,7 @@ export default function ClustersPage() {
       {/* Behaviour anomaly feed */}
       <Section
         title="Behaviour change detection"
-        subtitle="AI-flagged unusual changes in supporter behaviour — detected in real time"
+        subtitle="AI-flagged unusual changes in supporter behaviour, detected in real time"
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {BEHAVIOUR_ANOMALIES.map((anomaly) => {
@@ -243,11 +243,11 @@ export default function ClustersPage() {
       <Section title="What this would need" subtitle="Data fields required for clustering and anomaly detection">
         <div className="grid-3">
           {[
-            ["charge_count", "Frequency dimension of RFM — tells the model how often someone gives"],
-            ["donation_value", "Monetary dimension — amount and variance over time"],
-            ["appeal_name", "Theme affinity — which appeals each donor responds to"],
-            ["is_recurring", "Major cluster discriminator — recurring vs one-off giving pattern"],
-            ["time_patterns", "Day/month/season of gifts — identifies Ramadan-anchored and seasonal clusters"],
+            ["charge_count", "Frequency dimension of RFM. Tells the model how often someone gives."],
+            ["donation_value", "Monetary dimension. Amount and variance over time."],
+            ["appeal_name", "Theme affinity. Shows which appeals each donor responds to."],
+            ["is_recurring", "Major cluster discriminator between recurring and one-off giving patterns."],
+            ["time_patterns", "Day, month and season of gifts. Identifies Ramadan-anchored and seasonal clusters."],
             ["AI approach", "Unsupervised clustering (K-means / DBSCAN) + anomaly detection (Isolation Forest)"],
           ].map(([k, v]) => (
             <div

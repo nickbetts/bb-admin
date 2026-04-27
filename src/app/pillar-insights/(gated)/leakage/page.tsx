@@ -25,7 +25,7 @@ export default function LeakagePage() {
       <PageHeader
         eyebrow="Insight Layer · Revenue Leakage"
         title="Revenue leakage detection"
-        description="Identifies hidden lost revenue across donations, recurring giving and operations. AI pattern detection flags anomalies before they compound — surfacing where money is silently leaking out of your fundraising pipeline."
+        description="Identifies hidden lost revenue across donations, recurring giving and operations. AI pattern detection flags anomalies before they compound, surfacing where money is silently leaking out of your fundraising pipeline."
         actions={
           <button className="btn btn-primary btn-sm">
             <RefreshCw className="h-3.5 w-3.5" /> Run detection
@@ -84,7 +84,7 @@ export default function LeakagePage() {
         />
       </Section>
 
-      <Section title="Leakage categories" subtitle="Identified sources of revenue loss — sorted by estimated annual impact">
+      <Section title="Leakage categories" subtitle="Identified sources of revenue loss, sorted by estimated annual impact">
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {LEAKAGE_BUCKETS.sort((a, b) => b.estimatedLoss - a.estimatedLoss).map((bucket) => (
             <div
@@ -151,7 +151,7 @@ export default function LeakagePage() {
       <Section title="What this would need" subtitle="Data fields required for leakage detection">
         <div className="grid-3">
           {[
-            ["payment_status", "Completed · failed · refunded — triggers failure pattern detection"],
+            ["payment_status", "Completed · failed · refunded. Triggers failure pattern detection."],
             ["is_recurring", "Flags which donors are in recurring giving (highest leakage risk)"],
             ["failed_payment_events", "Timestamped failure records for pattern detection and recovery"],
             ["inactivity_patterns", "Last charge date used to flag dormant recurring givers"],
