@@ -8,6 +8,8 @@ import {
   generateSectionIntros,
   buildAudienceRationales,
   synthesiseStrategyBrain,
+  runWithGrandPlanModelOverride,
+  type GrandPlanModelChoice,
   type GrandPlanSources,
   type GrandPlanData,
   type CampaignFocusPeriod,
@@ -111,12 +113,15 @@ export async function POST(
     kwBrief?: { website?: string; brief?: string; monthlyBudget?: string };
     contentBrief?: { domain?: string; database?: string; brief?: string; competitors?: string };
     channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number };
+    aiModel?: GrandPlanModelChoice;
+    semrushRegion?: string;
   }>(plan.configJson, {});
 
   const clientName = plan.client?.name || plan.proposal?.clientName || "Client";
   const brief = body.overrides?.clientBrief ?? plan.clientBrief ?? "";
   const website = config.kwBrief?.website ?? plan.client?.website ?? plan.keywordResearch?.website ?? "";
 
+  return runWithGrandPlanModelOverride(config.aiModel, async () => {
   try {
     // ─── STEP: start ─────────────────────────────────────────────────────────
     if (step === "start") {
@@ -225,7 +230,7 @@ export async function POST(
       }
 
       const csDomain = config.contentBrief?.domain ?? website.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "");
-      const csDatabase = config.contentBrief?.database ?? "uk";
+      const csDatabase = config.semrushRegion ?? config.contentBrief?.database ?? "uk";
       const csBrief = config.contentBrief?.brief || brief || `Full digital marketing strategy for ${clientName}`;
       const csCompetitors = config.contentBrief?.competitors
         ? config.contentBrief.competitors.split(",").map((s: string) => s.trim()).filter(Boolean)
@@ -256,7 +261,7 @@ export async function POST(
       }
 
       const csDomain = config.contentBrief?.domain ?? website.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "");
-      const csDatabase = config.contentBrief?.database ?? "uk";
+      const csDatabase = config.semrushRegion ?? config.contentBrief?.database ?? "uk";
       const csBrief = config.contentBrief?.brief || brief || `Full digital marketing strategy for ${clientName}`;
       const csCompetitors = config.contentBrief?.competitors
         ? config.contentBrief.competitors.split(",").map((s: string) => s.trim()).filter(Boolean)
@@ -921,6 +926,7 @@ export async function POST(
 
     return NextResponse.json({ error: message, step }, { status: 500 });
   }
+  }); // end runWithGrandPlanModelOverride
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -969,6 +975,8 @@ function buildSources(plan: any, config: any, brief: string): GrandPlanSources {
     postsPerMonth: typeof config.postsPerMonth === "number" && config.postsPerMonth > 0 ? config.postsPerMonth : undefined,
     socialPostsPerWeek: typeof config.socialPostsPerWeek === "number" && config.socialPostsPerWeek > 0 ? config.socialPostsPerWeek : undefined,
     channelBudgets: config.channelBudgets ?? undefined,
+    contentLimits: safeJsonParse<GrandPlanSources["contentLimits"]>(plan.client?.contentStrategyLimits ?? null, undefined) ?? undefined,
+    period: plan.period || undefined,
     proposal: plan.proposal
       ? {
           title: plan.proposal.title,

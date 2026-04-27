@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
       sector?: string;
       campaignFocusPeriods?: { startMonth: number; endMonth: number; label: string; description?: string }[];
       config?: { sections?: string[]; postsPerMonth?: number; socialPostsPerWeek?: number; channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number } };
+      period?: string;
       cloneFromId?: string;
     };
 
@@ -156,6 +157,7 @@ export async function POST(request: NextRequest) {
         targetAudiences: body.targetAudiences || null,
         campaignFocusPeriodsJson: JSON.stringify(body.campaignFocusPeriods ?? []),
         configJson: JSON.stringify({ ...(body.config ?? {}), ...(body.sector ? { sector: body.sector } : {}) }),
+        period: body.period?.trim() || null,
       },
       include: {
         client: { select: { id: true, name: true } },

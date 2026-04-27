@@ -1117,6 +1117,16 @@ export default function ContentStrategyPage() {
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 48px" }}>
       <ClientBackLink />
       <ClientFilterBanner />
+      {/* PR5 deprecation notice — Grand Plan supersedes standalone content strategies */}
+      <div style={{ background: "var(--warning-bg, #fef9c3)", border: "1px solid var(--warning-border, #fde68a)", borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <span style={{ fontSize: 16 }}>⚠️</span>
+        <div style={{ fontSize: 13, color: "var(--text-2, #78350f)" }}>
+          <strong>Content Strategy is being retired.</strong> New content plans should be created as a{" "}
+          <a href="/tools/grand-plan/new" style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline" }}>Grand Plan</a>{" "}
+          — which includes keyword research, paid media, and a shareable client microsite alongside the content plan.
+          Existing strategies remain fully accessible here.
+        </div>
+      </div>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28 }}>
         <div>

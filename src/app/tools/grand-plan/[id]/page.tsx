@@ -34,6 +34,7 @@ import {
   CircleAlert,
   Circle,
   ChevronRight,
+  Upload,
 } from "lucide-react";
 
 // ─── Section configuration ─────────────────────────────────────────────────
@@ -128,6 +129,8 @@ export default function GrandPlanViewPage({ params }: Props) {
   const [savingTitle, setSavingTitle] = useState(false);
 
   const [deleting, setDeleting] = useState(false);
+  const [exportingActions, setExportingActions] = useState(false);
+  const [importingContext, setImportingContext] = useState(false);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeLoaded, setIframeLoaded] = useState(false);
@@ -570,6 +573,44 @@ export default function GrandPlanViewPage({ params }: Props) {
     setDeleting(true);
     await fetch(`/api/tools/grand-plan/${id}`, { method: "DELETE" });
     router.push("/tools/grand-plan");
+  }
+
+  async function handleExportActions() {
+    if (!plan?.clientId) return;
+    if (!(window.confirm("Export plan recommendations as action items? This will create new tasks in the client's action plan."))) return;
+    setExportingActions(true);
+    try {
+      const res = await fetch(`/api/tools/grand-plan/${id}/export-actions`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Export failed");
+      alert(`Created ${data.created ?? 0} action items.`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setExportingActions(false);
+    }
+  }
+
+  async function handleImportContext(file: File) {
+    setImportingContext(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`/api/tools/grand-plan/${id}/import-context`, { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Import failed");
+      // Refresh plan so the brief textarea reflects the appended context
+      const planRes = await fetch(`/api/tools/grand-plan/${id}`);
+      if (planRes.ok) {
+        const updated = await planRes.json();
+        setPlan(updated.grandPlan ?? updated);
+      }
+      alert("Context imported and appended to client brief.");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Import failed");
+    } finally {
+      setImportingContext(false);
+    }
   }
 
   function handleDownload() {
@@ -1154,6 +1195,35 @@ export default function GrandPlanViewPage({ params }: Props) {
           <div style={{ flex: 1 }} />
 
           {/* Secondary actions */}
+          {isComplete && plan.clientId && (
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={handleExportActions}
+              disabled={exportingActions}
+              title="Export recommendations as action items"
+            >
+              {exportingActions ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" aria-hidden /> : <Download style={{ width: 14, height: 14 }} aria-hidden />}
+              {" "}Actions
+            </button>
+          )}
+          {/* Import context: hidden file input triggered by button */}
+          <label
+            className="btn btn-ghost btn-sm"
+            style={{ cursor: importingContext ? "wait" : "pointer" }}
+            title="Import a document to append to the client brief"
+          >
+            {importingContext
+              ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" aria-hidden />
+              : <Upload style={{ width: 14, height: 14 }} aria-hidden />}
+            {" "}Import
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv,.docx,.txt"
+              style={{ display: "none" }}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) { e.target.value = ""; handleImportContext(f); } }}
+              disabled={importingContext}
+            />
+          </label>
           <button
             className="btn btn-ghost btn-sm"
             onClick={handleClone}

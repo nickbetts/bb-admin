@@ -1,9 +1,46 @@
 import { getAnthropicClient } from "@/lib/anthropic-client";
 import type Anthropic from "@anthropic-ai/sdk";
 import { jsonrepair } from "jsonrepair";
+import { AsyncLocalStorage } from "node:async_hooks";
 
-const MODEL = "claude-sonnet-4-6";
-const MODEL_LIGHT = "claude-haiku-4-5";
+// Default models. Can be overridden per-generation via runWithGenerationOptions().
+const DEFAULT_MODEL = "claude-sonnet-4-6";
+const DEFAULT_MODEL_LIGHT = "claude-haiku-4-5";
+
+/** Whitelisted Anthropic model IDs callers may pick from. */
+export type GrandPlanModelChoice = "sonnet" | "haiku" | "opus";
+const MODEL_BY_CHOICE: Record<GrandPlanModelChoice, string> = {
+  sonnet: "claude-sonnet-4-6",
+  haiku: "claude-haiku-4-5",
+  // Opus 4 is the heavy-reasoning variant. Slow + expensive, opt-in only.
+  opus: "claude-opus-4-1",
+};
+
+interface GenerationContext {
+  /** Override for the primary model (used by all heavy generation steps). */
+  primary?: string;
+  /** Override for the light model (used by classifiers + small refinements). */
+  light?: string;
+}
+const generationContext = new AsyncLocalStorage<GenerationContext>();
+
+/** Resolves the primary model for the current generation, honouring overrides. */
+function MODEL_PRIMARY(): string {
+  return generationContext.getStore()?.primary ?? DEFAULT_MODEL;
+}
+/** Resolves the light model for the current generation, honouring overrides. */
+function MODEL_LIGHT_FN(): string {
+  return generationContext.getStore()?.light ?? DEFAULT_MODEL_LIGHT;
+}
+
+/** Wraps a generation run so MODEL_PRIMARY()/MODEL_LIGHT_FN() see the overrides. */
+export function runWithGrandPlanModelOverride<T>(choice: GrandPlanModelChoice | undefined, fn: () => Promise<T>): Promise<T> {
+  if (!choice) return fn();
+  const primary = MODEL_BY_CHOICE[choice];
+  // Light model stays as Haiku unless caller picked Haiku for everything.
+  const light = choice === "haiku" ? MODEL_BY_CHOICE.haiku : DEFAULT_MODEL_LIGHT;
+  return generationContext.run({ primary, light }, fn);
+}
 
 // ─── Resilience helpers ─────────────────────────────────────────────────────
 
@@ -78,12 +115,53 @@ interface ContentStrategyEntry {
   /** Names of audiences (matching AudienceItem.name) this asset is built for.
    * Used to render the cross-reference Audience Plays panel. */
   targetAudiences?: string[];
+  /** Estimated business impact for the impact/effort matrix render. */
+  impact?: "high" | "medium" | "low";
+  /** Implementation effort for the impact/effort matrix render. */
+  effort?: "high" | "medium" | "low";
+  /** schema.org type to recommend (e.g. "Article", "Product", "FAQPage").
+   *  Page-optimisation entries surface this as a structured-data suggestion. */
+  suggestedSchema?: string;
+}
+
+/** Dedicated link-target entries (anchor text + type + impact/effort).
+ *  Optional sub-section of contentStrategy — populated when a back-link plan
+ *  is part of the brief. */
+interface LinkTargetEntry {
+  url?: string;
+  anchorText?: string;
+  /** Anchor classification used by the renderer's coloured badge. */
+  anchorType?: "exact" | "broad" | "brand" | "naked" | "generic";
+  notes?: string;
+  impact?: "high" | "medium" | "low";
+  effort?: "high" | "medium" | "low";
+}
+
+/** First-class typing for the services / timeline / why-us blocks. */
+interface ServiceItem {
+  name: string;
+  description?: string;
+  price?: string;
+}
+interface TimelinePhase {
+  phase: string;
+  duration?: string;
+  description?: string;
+}
+interface WhyUsPoint {
+  title: string;
+  description?: string;
+  /** Optional emoji / lucide icon name surfaced in the proof card. */
+  icon?: string;
 }
 
 interface QuickWinAction {
   title: string;
   description: string;
   priority: "high" | "medium-high" | "medium" | "ongoing" | "long-term";
+  /** Optional impact / effort scoring used by the matrix render. */
+  impact?: "high" | "medium" | "low";
+  effort?: "high" | "medium" | "low";
 }
 
 interface KpiChannel {
@@ -374,13 +452,17 @@ export interface GrandPlanData {
       pageOptimisations: ContentStrategyEntry[];
       landingPages: ContentStrategyEntry[];
       blogPosts: ContentStrategyEntry[];
+      /** Dedicated link-target list with anchor text + type. Optional. */
+      linkTargets?: LinkTargetEntry[];
     };
     contentCalendar?: ContentCalendarMonth[];
     organicSocial?: OrganicSocialPlan;
     exampleArticles?: { title: string; html: string; seoMeta?: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } }[];
     servicesInvestment?: {
-      services: { name: string; description: string; price?: string }[];
-      timeline: { phase: string; items: string[] }[];
+      services: ServiceItem[];
+      timeline: { phase: string; items: string[] }[] | TimelinePhase[];
+      /** Structured "why us" proof points — first-class on GrandPlan. */
+      whyUs?: WhyUsPoint[];
     };
     mediaPlan?: {
       objective: string;
@@ -463,6 +545,16 @@ export interface GrandPlanSources {
   calendarMonths?: number;
   /** Per-channel paid advertising budgets (£/month) entered on the creation form. */
   channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number };
+  /** Per-client content output caps (read from `Client.contentStrategyLimits`). */
+  contentLimits?: {
+    pageOptimisations?: number;
+    landingPages?: number;
+    blogPosts?: number;
+    linkTargets?: number;
+  };
+  /** Explicit reporting / planning period label (e.g. "January 2026" or "Q1 2026").
+   *  Surfaced as a directive so generators can date copy correctly. */
+  period?: string;
 }
 
 // ─── Customer voice / web search helper ────────────────────────────────────
@@ -511,7 +603,7 @@ Be ruthless about authenticity — drop anything that sounds like marketing copy
   let res;
   try {
     res = await withAnthropicRetry("customerVoice", () => anthropic.messages.create({
-      model: MODEL,
+      model: MODEL_PRIMARY(),
       max_tokens: 3500,
       tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 } as unknown as Anthropic.Tool],
       messages: [{ role: "user", content: prompt }],
@@ -634,7 +726,7 @@ ${compComplaints ? `- What customers complain about competitors:\n${compComplain
 `;
 
   const res = await withAnthropicRetry("strategyBrain", () => anthropic.messages.create({
-    model: MODEL,
+    model: MODEL_PRIMARY(),
     max_tokens: 4000,
     messages: [{ role: "user", content: prompt }],
   }));
@@ -961,6 +1053,31 @@ function buildSectorBlock(sources: GrandPlanSources): string {
   return `\n\nSector: ${label}. Use sector-specific language, regulatory considerations, and benchmarks where relevant.`;
 }
 
+/**
+ * Surfaces per-client output caps so generators stay inside contracted scope.
+ * Returns an empty string when no limits are configured.
+ */
+function buildContentLimitsBlock(sources: GrandPlanSources): string {
+  const l = sources.contentLimits;
+  if (!l) return "";
+  const parts: string[] = [];
+  if (l.pageOptimisations) parts.push(`page optimisations: max ${l.pageOptimisations}`);
+  if (l.landingPages) parts.push(`landing pages: max ${l.landingPages}`);
+  if (l.blogPosts) parts.push(`blog posts: max ${l.blogPosts} (across the whole plan)`);
+  if (l.linkTargets) parts.push(`link targets: max ${l.linkTargets}`);
+  if (!parts.length) return "";
+  return `\n\nCONTENT OUTPUT CAPS (contracted scope \u2014 DO NOT exceed): ${parts.join(", ")}.`;
+}
+
+/**
+ * Surfaces the explicit reporting/planning period so date references in
+ * generated copy are accurate (e.g. "Q1 2026 will focus on\u2026").
+ */
+function buildPeriodBlock(sources: GrandPlanSources): string {
+  if (!sources.period) return "";
+  return `\n\nReporting period for this plan: ${sources.period}. Anchor any date references and timelines to this period.`;
+}
+
 function buildCampaignPeriodsBlock(sources: GrandPlanSources): string {
   if (!sources.campaignFocusPeriods.length) return "";
   const lines = sources.campaignFocusPeriods.map(
@@ -1028,6 +1145,8 @@ function buildSharedContextBlocks(sources: GrandPlanSources, directiveKey?: keyo
     + buildGeographyBlock(sources)
     + buildAudienceBlock(sources)
     + buildSectorBlock(sources)
+    + buildPeriodBlock(sources)
+    + buildContentLimitsBlock(sources)
     + buildCampaignPeriodsBlock(sources)
     + buildAccountDataBlock(sources)
     + buildCustomerVoiceBlock(sources);
@@ -1075,7 +1194,7 @@ function buildGeographyBlock(sources: GrandPlanSources): string {
 
 async function generateExecutiveSummary(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<string> {
   const res = await withAnthropicRetry("executiveSummary", () => anthropic.messages.create({
-    model: MODEL,
+    model: MODEL_PRIMARY(),
     max_tokens: 1400,
     messages: [
       {
@@ -1111,7 +1230,7 @@ ${context}${buildSharedContextBlocks(sources)}`,
 
 async function generateStrategyPlan(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<string> {
   const res = await withAnthropicRetry("strategyPlan", () => anthropic.messages.create({
-    model: MODEL,
+    model: MODEL_PRIMARY(),
     max_tokens: 1600,
     messages: [
       {
@@ -1152,7 +1271,7 @@ async function generateMetaCampaigns(anthropic: Anthropic, context: string, adGr
   const topThemes = ranked.slice(0, 4).map((g) => g.name).join(", ");
 
   const res = await withAnthropicRetry("metaCampaigns", () => anthropic.messages.create({
-    model: MODEL,
+    model: MODEL_PRIMARY(),
     max_tokens: 5000,
     messages: [
       {
@@ -1283,7 +1402,7 @@ async function generateContentCalendar(anthropic: Anthropic, context: string, co
   async function generateHalf(label: string, months: string[]): Promise<ContentCalendarMonth[]> {
     if (months.length === 0) return [];
     const res = await withAnthropicRetry(`contentCalendar:${label}`, () => anthropic.messages.create({
-      model: MODEL_LIGHT,
+      model: MODEL_LIGHT_FN(),
       max_tokens: 3500,
       messages: [
         {
@@ -1337,7 +1456,7 @@ ${context}${buildSharedContextBlocks(sources, "calendar")}`,
 async function generateOrganicSocial(anthropic: Anthropic, context: string, contentData: any, sources: GrandPlanSources): Promise<OrganicSocialPlan> {
   const socialPerWeek = sources.socialPostsPerWeek ?? 3;
   const res = await withAnthropicRetry("organicSocial", () => anthropic.messages.create({
-    model: MODEL_LIGHT,
+    model: MODEL_LIGHT_FN(),
     max_tokens: 2200,
     messages: [
       {
@@ -1429,7 +1548,7 @@ async function generateExampleArticles(anthropic: Anthropic, context: string, co
     const articleBrief = post.brief || post.notes || "";
 
     const res = await withAnthropicRetry(`exampleArticle:${topic}`, () => anthropic.messages.create({
-      model: MODEL_LIGHT,
+      model: MODEL_LIGHT_FN(),
       max_tokens: 2500,
       messages: [
         {
@@ -1636,7 +1755,7 @@ ${context}${buildSharedContextBlocks(sources, "googleAds")}`;
 
   for (let attempt = 0; attempt < 2; attempt++) {
     const res = await withAnthropicRetry(`googleAdsAdCopy:${attempt}`, () => anthropic.messages.create({
-      model: MODEL_LIGHT,
+      model: MODEL_LIGHT_FN(),
       max_tokens: 3000,
       messages: [{ role: "user", content: buildPrompt(feedback) }],
     }));
@@ -1818,7 +1937,7 @@ Allowed channels (you MUST choose ONLY from this list — the strategist has unt
 ${allowedChannelNames.map((c) => `- ${c}`).join("\n")}`;
 
   const res = await withAnthropicRetry("mediaPlanChannels", () => anthropic.messages.create({
-    model: MODEL_LIGHT,
+    model: MODEL_LIGHT_FN(),
     max_tokens: 2200,
     messages: [
       {
@@ -1940,7 +2059,7 @@ export async function generateHeroTagline(
     .slice(0, 600);
 
   const res = await withAnthropicRetry("heroTagline", () => anthropic.messages.create({
-    model: MODEL,
+    model: MODEL_PRIMARY(),
     max_tokens: 220,
     messages: [
       {
@@ -1988,7 +2107,7 @@ export async function generateSectionIntros(
     .join("\n");
 
   const res = await withAnthropicRetry("sectionIntros", () => anthropic.messages.create({
-    model: MODEL_LIGHT,
+    model: MODEL_LIGHT_FN(),
     max_tokens: 800,
     messages: [
       {
@@ -2196,7 +2315,7 @@ async function generateNegativeKeywords(
     .join("\n");
 
   const res = await withAnthropicRetry("googleAdsNegatives", () => anthropic.messages.create({
-    model: MODEL_LIGHT,
+    model: MODEL_LIGHT_FN(),
     max_tokens: 1500,
     messages: [
       {
@@ -2305,6 +2424,7 @@ function buildContentStrategySection(contentData: any) {
     pageOptimisations,
     landingPages: landingPages.map((p, i) => enrich(p, i === 0 ? "pillar" : "mega")),
     blogPosts: blogPosts.map((p) => enrich(p, "article")),
+    ...(contentData.linkTargets ? { linkTargets: contentData.linkTargets as LinkTargetEntry[] } : {}),
   };
 }
 
@@ -2323,7 +2443,7 @@ async function generateEmailMarketing(anthropic: Anthropic, context: string, sou
   if (hasCustomerVoice) sourceLabels.push("Customer voice (web search)");
 
   const res = await withAnthropicRetry("emailMarketing", () => anthropic.messages.create({
-    model: MODEL,
+    model: MODEL_PRIMARY(),
     max_tokens: 2500,
     messages: [
       {
@@ -2376,7 +2496,7 @@ async function generateLinkedInAds(anthropic: Anthropic, context: string, source
   if (hasAudienceJobTitles) sourceLabels.push("Strategist-supplied audiences");
 
   const res = await withAnthropicRetry("linkedInAds", () => anthropic.messages.create({
-    model: MODEL,
+    model: MODEL_PRIMARY(),
     max_tokens: 2500,
     messages: [
       {
@@ -2508,7 +2628,7 @@ async function generateCompetitorIntel(anthropic: Anthropic, context: string, so
       ? `\n\nReal customer complaints about competitors in this sector (use these to seed the weaknesses fields):\n- ${customerComplaints.slice(0, 8).join("\n- ")}`
       : "";
     const res = await withAnthropicRetry("competitorIntel:enrich", () => anthropic.messages.create({
-      model: MODEL,
+      model: MODEL_PRIMARY(),
       max_tokens: 1800,
       messages: [
         {
@@ -2554,7 +2674,7 @@ Rules: British English, no AI jargon, no fluff. Each strength/weakness must refe
 
   // No real data — fall back to AI estimates (renderer surfaces the disclaimer).
   const res = await withAnthropicRetry("competitorIntel", () => anthropic.messages.create({
-    model: MODEL,
+    model: MODEL_PRIMARY(),
     max_tokens: 2500,
     messages: [
       {
@@ -2642,7 +2762,7 @@ async function generateAudiences(
   }
 
   const res = await withAnthropicRetry("audiences", () => anthropic.messages.create({
-    model: MODEL_LIGHT,
+    model: MODEL_LIGHT_FN(),
     max_tokens: 2200,
     messages: [
       {
@@ -2753,7 +2873,7 @@ ${context}${buildSharedContextBlocks(sources)}`,
 
 async function generateQuickWins(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<QuickWinAction[]> {
   const res = await withAnthropicRetry("quickWins", () => anthropic.messages.create({
-    model: MODEL,
+    model: MODEL_PRIMARY(),
     max_tokens: 1500,
     messages: [
       {
@@ -2795,7 +2915,7 @@ ${context}${buildSharedContextBlocks(sources, "quickWins")}`,
 
 async function generateKpis(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<KpiChannel[]> {
   const res = await withAnthropicRetry("kpis", () => anthropic.messages.create({
-    model: MODEL,
+    model: MODEL_PRIMARY(),
     max_tokens: 1500,
     messages: [
       {

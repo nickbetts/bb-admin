@@ -68,18 +68,18 @@ const opsNavItems: NavItem[] = [
 ];
 
 const toolsNavItems: NavItem[] = [
+  // PR5: Grand Plan is now the primary pitch/strategy tool — moved to top
+  { href: "/tools/grand-plan", label: "Grand Plan", icon: <Map className="h-4 w-4" />, permission: "grand_plan" },
+  { href: "/tools/grand-plan/pipeline", label: "Pipeline CRM", icon: <LayoutGrid className="h-4 w-4" />, permission: "proposals" },
   { href: "/tools/page-analyser", label: "Page Analyser", icon: <ScanSearch className="h-4 w-4" />, permission: "page_analyser" },
   { href: "/tools/keyword-planner", label: "Proposal Generator", icon: <Sparkles className="h-4 w-4" />, permission: "proposal_generator" },
-  { href: "/tools/proposals", label: "Proposals", icon: <FileText className="h-4 w-4" />, permission: "proposals" },
-  { href: "/tools/proposals/pipeline", label: "Pipeline CRM", icon: <LayoutGrid className="h-4 w-4" />, permission: "proposals" },
+  // PR5: /tools/proposals and /tools/content-strategy retired from sidebar
   { href: "/tools/competitor-intelligence", label: "Competitor Intel", icon: <TrendingUp className="h-4 w-4" />, permission: "competitor_intelligence" },
   { href: "/tools/media-plan", label: "Media Planner", icon: <PieChart className="h-4 w-4" />, permission: "media_plan" },
   { href: "/tools/pricing", label: "Pricing", icon: <Tag className="h-4 w-4" />, permission: "pricing" },
   { href: "/tools/llm-generator", label: "LLM.txt Generator", icon: <Bot className="h-4 w-4" />, permission: "llm_generator" },
-  { href: "/tools/content-strategy", label: "Content Strategy", icon: <FileSpreadsheet className="h-4 w-4" />, permission: "content_strategy" },
   { href: "/tools/access-requester", label: "Access Requester", icon: <KeyRound className="h-4 w-4" />, permission: "access_requester" },
   { href: "/tools/landing-pages", label: "LP Generator", icon: <Globe className="h-4 w-4" />, permission: "landing_page_generator" },
-  { href: "/tools/grand-plan", label: "Grand Plan", icon: <Map className="h-4 w-4" />, permission: "grand_plan" },
   { href: "/tools/qa-checklist", label: "Client QA", icon: <ClipboardCheck className="h-4 w-4" />, permission: "qa_checklist" },
   { href: "/tools/subscriptions", label: "Subscriptions", icon: <CreditCard className="h-4 w-4" />, permission: "subscriptions" },
   { href: "/tools/email-verifier", label: "Email Verifier", icon: <MailCheck className="h-4 w-4" />, permission: "email_verifier" },

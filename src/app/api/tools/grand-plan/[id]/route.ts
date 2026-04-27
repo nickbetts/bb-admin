@@ -111,6 +111,7 @@ export async function PATCH(
       prospectName?: string | null;
       prospectWebsite?: string | null;
       enquiryFormEnabled?: boolean;
+      period?: string | null;
       campaignFocusPeriods?: { startMonth: number; endMonth: number; label: string; description?: string }[];
       config?: Record<string, unknown>;
     };
@@ -128,6 +129,7 @@ export async function PATCH(
     if (body.prospectName !== undefined) data.prospectName = body.prospectName;
     if (body.prospectWebsite !== undefined) data.prospectWebsite = body.prospectWebsite;
     if (body.enquiryFormEnabled !== undefined) data.enquiryFormEnabled = body.enquiryFormEnabled;
+    if (body.period !== undefined) data.period = body.period;
     if (body.campaignFocusPeriods !== undefined) {
       data.campaignFocusPeriodsJson = JSON.stringify(body.campaignFocusPeriods);
     }

@@ -347,6 +347,9 @@ model KeywordPlannerResearch {
   grandPlans       GrandPlan[]
 }
 
+// @deprecated PR5 (Apr 2026) — Proposals retired in favour of GrandPlan.
+// Existing rows remain queryable forever and shareable via /share/proposal/[token].
+// New pitches must be created as GrandPlan records. Do not add new fields here.
 model Proposal {
   id               String                  @id @default(cuid())
   userId           String
@@ -730,6 +733,9 @@ model ClickFraudEvent {
   @@index([clientId, isSuspicious])
 }
 
+// @deprecated PR5 (Apr 2026) — ContentStrategy retired in favour of GrandPlan.
+// Existing rows remain queryable forever and shareable via /share/content-strategy/[token].
+// New content plans must be created as GrandPlan records. Do not add new fields here.
 model ContentStrategy {
   id                String      @id @default(cuid())
   clientId          String?
@@ -895,6 +901,8 @@ model GrandPlan {
   lostReason               String?
   // Enquiry capture on the public share page — opt-in per plan so existing shares don't change
   enquiryFormEnabled       Boolean                 @default(false)
+  // Reporting / planning period (e.g. "January 2026", "Q1 2026", "12 months from Mar 2026") — distinct from `title`
+  period                   String?
   // Source links — all optional, sections auto-enabled based on what's linked
   proposalId               String?
   keywordResearchId        String?

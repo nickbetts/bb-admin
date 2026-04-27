@@ -83,6 +83,16 @@ export default function ProposalsPage() {
     <div className="page" style={{ maxWidth: 1000 }}>
       <ClientBackLink />
       <ClientFilterBanner />
+      {/* PR5 deprecation notice — Grand Plan supersedes standalone proposals */}
+      <div style={{ background: "var(--warning-bg, #fef9c3)", border: "1px solid var(--warning-border, #fde68a)", borderRadius: 10, padding: "10px 14px", marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <span style={{ fontSize: 16 }}>⚠️</span>
+        <div style={{ fontSize: 13, color: "var(--text-2, #78350f)" }}>
+          <strong>Proposals are being retired.</strong> New pitches should be created as a{" "}
+          <Link href="/tools/grand-plan/new" style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline" }}>Grand Plan</Link>{" "}
+          — which includes keyword research, content strategy, media plan, and a shareable microsite all in one.
+          Existing proposals remain fully accessible here.
+        </div>
+      </div>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

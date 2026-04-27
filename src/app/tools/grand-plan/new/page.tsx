@@ -117,6 +117,8 @@ export default function NewGrandPlanPage() {
   // Content volume — drives the calendar and organic social cadence
   const [postsPerMonth, setPostsPerMonth] = useState(4);
   const [socialPostsPerWeek, setSocialPostsPerWeek] = useState(3);
+  const [period, setPeriod] = useState("");
+  const [aiModel, setAiModel] = useState<"sonnet" | "haiku" | "opus">("sonnet");
 
   // Platforms — controls which paid/organic channels the AI focuses on
   const [platforms, setPlatforms] = useState<PlatformId[]>(["googleAds", "metaAds", "linkedInAds", "organicSocial", "emailMarketing"]);
@@ -203,13 +205,15 @@ export default function NewGrandPlanPage() {
           targetAudiences: targetAudiences || undefined,
           sector: sector || undefined,
           campaignFocusPeriods: focusPeriods.filter((fp) => fp.label),
+          period: period.trim() || undefined,
           config: {
             sections: enabledSections,
             postsPerMonth,
             socialPostsPerWeek,
             ...(sector ? { sector } : {}),
+            ...(aiModel !== "sonnet" ? { aiModel } : {}),
             ...(!selectedKwResearch && website ? { kwBrief: { website, brief, monthlyBudget: channelBudgets.googleAds || monthlyBudget } } : {}),
-            ...(!selectedContentStrategy && domain ? { contentBrief: { domain, database: csDatabase, brief, competitors: csCompetitors } } : {}),
+            ...(!selectedContentStrategy && domain ? { contentBrief: { domain, brief, competitors: csCompetitors }, ...(csDatabase && csDatabase !== "uk" ? { semrushRegion: csDatabase } : {}) } : {}),
             ...(Object.keys(channelBudgets).length > 0 ? { channelBudgets: Object.fromEntries(
               Object.entries(channelBudgets).filter(([, v]) => v && Number(v.replace(/[^0-9.]/g, "")) > 0)
                 .map(([k, v]) => [k, Number(v.replace(/[^0-9.]/g, ""))])
@@ -274,6 +278,12 @@ export default function NewGrandPlanPage() {
                 <input className="form-input" value={title} onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Acme Co — Go-to-Market Plan 2026" />
               </div>
+              <div>
+                <label className="form-label">Planning Period <span className="form-hint" style={{ fontWeight: "normal" }}>(optional)</span></label>
+                <input className="form-input" value={period} onChange={(e) => setPeriod(e.target.value)}
+                  placeholder="e.g. January 2026, Q1 2026, 12 months from March 2026" />
+                <span className="form-hint">Anchors date references in the generated plan. Leave blank if not relevant.</span>
+              </div>
             </div>
 
             {/* Prospect name — only for cold prospects with no client linked */}
@@ -335,6 +345,25 @@ export default function NewGrandPlanPage() {
                   {SECTORS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </select>
               </div>
+            </div>
+
+            {/* AI Model */}
+            <div>
+              <label className="form-label">AI Model</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                {(["sonnet", "haiku", "opus"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setAiModel(m)}
+                    className={aiModel === m ? "btn btn-primary btn-sm" : "btn btn-secondary btn-sm"}
+                    style={{ flex: 1, textTransform: "capitalize" }}
+                  >
+                    {m === "sonnet" ? "Sonnet (default)" : m === "haiku" ? "Haiku (faster)" : "Opus (deep)"}
+                  </button>
+                ))}
+              </div>
+              <span className="form-hint">Haiku is faster and cheaper. Opus is slower but reasons more deeply. Sonnet is the balanced default.</span>
             </div>
 
             {/* Brief */}

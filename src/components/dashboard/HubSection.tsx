@@ -203,13 +203,12 @@ export function HubSection({ clientId, clientSlug, clientName }: HubSectionProps
 
   // Quick-create links
   const createLinks = [
+    // PR5: New Content Strategy + New Proposal removed — use Grand Plan instead.
+    { label: "New Grand Plan", href: `/tools/grand-plan/new?clientId=${clientId}&clientName=${enc(clientName)}`, icon: Map },
     { label: "New Report", href: `/clients/${clientSlug}/report/new`, icon: FileText },
     { label: "New Landing Page", href: `/tools/landing-pages/new?clientId=${clientId}&clientName=${enc(clientName)}`, icon: Globe },
-    { label: "New Content Strategy", href: `/tools/content-strategy?clientId=${clientId}&clientName=${enc(clientName)}&action=new`, icon: BookOpen },
-    { label: "New Proposal", href: `/tools/proposals?clientId=${clientId}&clientName=${enc(clientName)}&action=new`, icon: FileSignature },
     { label: "New Media Plan", href: `/tools/media-plan?clientId=${clientId}&clientName=${enc(clientName)}&action=new`, icon: BarChart3 },
     { label: "New QA Checklist", href: `/tools/qa-checklist?clientId=${clientId}&clientName=${enc(clientName)}&action=new`, icon: CheckSquare },
-    { label: "New Grand Plan", href: `/tools/grand-plan/new?clientId=${clientId}&clientName=${enc(clientName)}`, icon: Map },
   ];
 
   // ─── Loading state ──────────────────────────────────────────────────────

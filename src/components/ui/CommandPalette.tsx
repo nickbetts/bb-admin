@@ -19,18 +19,18 @@ const STATIC_ITEMS = [
   { label: "Settings",           href: "/settings",                       icon: <Settings size={14} />,         group: "Navigation" },
   { label: "Task Overview",      href: "/tools/actions",                  icon: <CheckSquare size={14} />,      group: "Agency Tools" },
   { label: "Communications",     href: "/tools/communications",           icon: <MessageSquare size={14} />,    group: "Agency Tools" },
+  // PR5: Grand Plan is the primary pitch/strategy tool — at top of tools list
+  { label: "Grand Plan",         href: "/tools/grand-plan",             icon: <Map size={14} />,              group: "Agency Tools" },
+  { label: "Pipeline CRM",       href: "/tools/grand-plan/pipeline",    icon: <LayoutGrid size={14} />,       group: "Agency Tools" },
   { label: "Page Analyser",      href: "/tools/page-analyser",           icon: <ScanSearch size={14} />,       group: "Agency Tools" },
   { label: "Keyword Planner",    href: "/tools/keyword-planner",         icon: <Sparkles size={14} />,         group: "Agency Tools" },
-  { label: "Proposals",          href: "/tools/proposals",               icon: <FileText size={14} />,         group: "Agency Tools" },
-  { label: "Pipeline CRM",       href: "/tools/proposals/pipeline",      icon: <LayoutGrid size={14} />,       group: "Agency Tools" },
+  // PR5: Proposals and Content Strategy retired — entries removed from palette
   { label: "Competitor Intel",   href: "/tools/competitor-intelligence", icon: <TrendingUp size={14} />,       group: "Agency Tools" },
   { label: "Media Planner",      href: "/tools/media-plan",              icon: <PieChart size={14} />,         group: "Agency Tools" },
   { label: "Pricing",            href: "/tools/pricing",                 icon: <Tag size={14} />,              group: "Agency Tools" },
   { label: "LLM.txt Generator",  href: "/tools/llm-generator",          icon: <Bot size={14} />,              group: "Agency Tools" },
-  { label: "Content Strategy",   href: "/tools/content-strategy",       icon: <FileSpreadsheet size={14} />,  group: "Agency Tools" },
   { label: "Access Requester",   href: "/tools/access-requester",       icon: <KeyRound size={14} />,         group: "Agency Tools" },
   { label: "LP Generator",       href: "/tools/landing-pages",          icon: <Globe size={14} />,            group: "Agency Tools" },
-  { label: "Grand Plan",         href: "/tools/grand-plan",             icon: <Map size={14} />,              group: "Agency Tools" },
   { label: "Subscriptions",      href: "/tools/subscriptions",          icon: <CreditCard size={14} />,       group: "Agency Tools" },
   { label: "Email Verifier",     href: "/tools/email-verifier",         icon: <MailCheck size={14} />,        group: "Agency Tools" },
 ];
