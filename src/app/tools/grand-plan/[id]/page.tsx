@@ -179,6 +179,10 @@ export default function GrandPlanViewPage({ params }: Props) {
   const abortRef = useRef<AbortController | null>(null);
   const cancelledRef = useRef(false);
 
+  // Auto-start generation guard — ensures we only fire handleGenerate once
+  // per page load, even if loadPlan re-runs (e.g. after a polling update).
+  const autoStartedRef = useRef(false);
+
   useEffect(() => {
     loadPlan();
     return () => {
@@ -187,6 +191,23 @@ export default function GrandPlanViewPage({ params }: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Auto-start generation when arriving from the New Plan form. We trigger on
+  // the explicit ?autoStart=1 query param so users can still view existing
+  // draft plans without immediately re-firing the pipeline.
+  useEffect(() => {
+    if (autoStartedRef.current) return;
+    if (!plan || plan.status !== "draft") return;
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("autoStart") !== "1") return;
+    autoStartedRef.current = true;
+    // Strip the query so a refresh doesn't re-trigger generation.
+    url.searchParams.delete("autoStart");
+    window.history.replaceState({}, "", url.toString());
+    handleGenerate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan]);
 
   // Warn the user if they try to close/navigate away while generating.
   useEffect(() => {

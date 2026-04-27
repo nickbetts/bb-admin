@@ -6,41 +6,38 @@ import {
   Map,
   ChevronRight,
   Loader2,
-  FileText,
-  Search as SearchIcon,
-  Calendar,
   Plus,
   X,
   Sparkles,
-  Link as LinkIcon,
   Globe,
   Check,
+  Users,
+  Building2,
+  Search as SearchIcon,
 } from "lucide-react";
 
 interface Client {
   id: string;
   name: string;
   website?: string;
+  semrushDomain?: string;
 }
 
-interface AvailableSources {
-  proposals: { id: string; title: string; clientName: string; createdAt: string }[];
-  keywordResearch: { id: string; title: string; website: string; createdAt: string }[];
-  contentStrategies: { id: string; title: string; period: string; createdAt: string }[];
-  mediaPlans: { id: string; title: string; objective: string; totalBudget: number; createdAt: string }[];
-}
-
-interface FocusPeriod {
-  startMonth: number;
-  endMonth: number;
-  label: string;
+interface AudienceSuggestion {
+  name: string;
   description: string;
+  primaryPain?: string;
+  decisionTrigger?: string;
 }
 
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
+interface CompetitorEntry {
+  domain: string;
+  status: "valid" | "no-overlap" | "checking" | "invalid";
+  commonKeywords?: number;
+  pageContext?: { headings?: string[]; description?: string; ctaTexts?: string[]; h1?: string };
+  source: "manual" | "auto";
+  message?: string;
+}
 
 const SECTORS = [
   { value: "dental", label: "Dental Practices" },
@@ -103,25 +100,20 @@ export default function NewGrandPlanPage() {
   const [monthlyBudget, setMonthlyBudget] = useState("");
   const [channelBudgets, setChannelBudgets] = useState<Record<string, string>>({});
 
-  // Linked sources
-  const [sources, setSources] = useState<AvailableSources | null>(null);
-  const [loadingSources, setLoadingSources] = useState(false);
-  const [selectedProposal, setSelectedProposal] = useState("");
-  const [selectedKwResearch, setSelectedKwResearch] = useState("");
-  const [selectedContentStrategy, setSelectedContentStrategy] = useState("");
+  // Audiences — chip list with optional AI auto-populate from the brief.
+  const [audiences, setAudiences] = useState<AudienceSuggestion[]>([]);
+  const [suggestingAudiences, setSuggestingAudiences] = useState(false);
+  const [audienceInput, setAudienceInput] = useState("");
 
-  // Content strategy extras
-  const [csDatabase, setCsDatabase] = useState("uk");
-  const [csCompetitors, setCsCompetitors] = useState("");
-
-  // Target audiences
-  const [targetAudiences, setTargetAudiences] = useState("");
+  // Competitors — chip list with auto-detect (SEMrush) + manual add (validate).
+  const [competitors, setCompetitors] = useState<CompetitorEntry[]>([]);
+  const [detectingCompetitors, setDetectingCompetitors] = useState(false);
+  const [competitorInput, setCompetitorInput] = useState("");
+  const [validatingCompetitor, setValidatingCompetitor] = useState(false);
 
   // Content volume — drives the calendar and organic social cadence
   const [postsPerMonth, setPostsPerMonth] = useState(4);
   const [socialPostsPerWeek, setSocialPostsPerWeek] = useState(3);
-  const [period, setPeriod] = useState("");
-  const [aiModel, setAiModel] = useState<"sonnet" | "haiku" | "opus">("sonnet");
 
   // Platforms — controls which paid/organic channels the AI focuses on
   const [platforms, setPlatforms] = useState<PlatformId[]>(["googleAds", "metaAds", "linkedInAds", "organicSocial", "emailMarketing"]);
@@ -129,9 +121,6 @@ export default function NewGrandPlanPage() {
   function togglePlatform(id: PlatformId) {
     setPlatforms((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
   }
-
-  // Focus periods
-  const [focusPeriods, setFocusPeriods] = useState<FocusPeriod[]>([]);
 
   // UI
   const [creating, setCreating] = useState(false);
@@ -143,43 +132,131 @@ export default function NewGrandPlanPage() {
       .catch(() => {});
   }, []);
 
-  const loadSources = useCallback(async (cId: string) => {
-    if (!cId) { setSources(null); return; }
-    setLoadingSources(true);
-    try {
-      const res = await fetch(`/api/tools/grand-plan/sources?clientId=${cId}`);
-      if (res.ok) setSources(await res.json());
-    } catch { /* ignore */ }
-    finally { setLoadingSources(false); }
-  }, []);
-
   useEffect(() => {
     if (clientId) {
-      loadSources(clientId);
       const client = clients.find((c) => c.id === clientId);
       if (client) {
         if (!title) setTitle(`${client.name} — Go-to-Market Plan`);
         if (client.website && !website) setWebsite(client.website);
       }
     }
-  }, [clientId, clients, loadSources, title, website]);
-
-  function addFocusPeriod() {
-    setFocusPeriods((prev) => [
-      ...prev,
-      { startMonth: new Date().getMonth(), endMonth: new Date().getMonth() + 2, label: "", description: "" },
-    ]);
-  }
-
-  function removeFocusPeriod(index: number) {
-    setFocusPeriods((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function updateFocusPeriod(index: number, field: keyof FocusPeriod, value: string | number) {
-    setFocusPeriods((prev) => prev.map((fp, i) => (i === index ? { ...fp, [field]: value } : fp)));
-  }
+  }, [clientId, clients, title, website]);
 
   const domain = website.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "");
+
+  // ── Audience helpers ─────────────────────────────────────────────────────
+  const addAudience = useCallback((a: AudienceSuggestion) => {
+    setAudiences((prev) => {
+      if (prev.some((p) => p.name.toLowerCase() === a.name.toLowerCase())) return prev;
+      return [...prev, a];
+    });
+  }, []);
+
+  const removeAudience = useCallback((name: string) => {
+    setAudiences((prev) => prev.filter((a) => a.name !== name));
+  }, []);
+
+  const handleSuggestAudiences = useCallback(async () => {
+    if (brief.trim().length < 20) return;
+    setSuggestingAudiences(true);
+    try {
+      const res = await fetch("/api/tools/grand-plan/suggest-audiences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brief,
+          clientId: clientId || undefined,
+          sector: sector || undefined,
+          clientName: clients.find((c) => c.id === clientId)?.name,
+        }),
+      });
+      if (!res.ok) return;
+      const data = await res.json() as { audiences?: AudienceSuggestion[] };
+      if (Array.isArray(data.audiences)) setAudiences(data.audiences);
+    } finally {
+      setSuggestingAudiences(false);
+    }
+  }, [brief, clientId, sector, clients]);
+
+  const handleAddManualAudience = useCallback(() => {
+    const name = audienceInput.trim();
+    if (!name) return;
+    addAudience({ name, description: "" });
+    setAudienceInput("");
+  }, [audienceInput, addAudience]);
+
+  // ── Competitor helpers ───────────────────────────────────────────────────
+  const handleDetectCompetitors = useCallback(async () => {
+    if (!domain && !clientId) return;
+    setDetectingCompetitors(true);
+    try {
+      const res = await fetch("/api/tools/grand-plan/competitors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "detect", domain: domain || undefined, clientId: clientId || undefined }),
+      });
+      if (!res.ok) return;
+      const data = await res.json() as { competitors?: { domain: string; commonKeywords?: number }[] };
+      const detected: CompetitorEntry[] = (data.competitors ?? []).slice(0, 6).map((c) => ({
+        domain: c.domain,
+        commonKeywords: c.commonKeywords,
+        status: "valid",
+        source: "auto",
+      }));
+      setCompetitors((prev) => {
+        const seen = new Set(prev.map((p) => p.domain.toLowerCase()));
+        return [...prev, ...detected.filter((d) => !seen.has(d.domain.toLowerCase()))];
+      });
+    } finally {
+      setDetectingCompetitors(false);
+    }
+  }, [domain, clientId]);
+
+  const handleAddManualCompetitor = useCallback(async () => {
+    const raw = competitorInput.trim().toLowerCase()
+      .replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
+    if (!raw) return;
+    if (competitors.some((c) => c.domain.toLowerCase() === raw)) {
+      setCompetitorInput("");
+      return;
+    }
+    const placeholder: CompetitorEntry = { domain: raw, status: "checking", source: "manual" };
+    setCompetitors((prev) => [...prev, placeholder]);
+    setCompetitorInput("");
+    setValidatingCompetitor(true);
+    try {
+      const res = await fetch("/api/tools/grand-plan/competitors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "validate", competitor: raw, domain: domain || undefined, clientId: clientId || undefined }),
+      });
+      const data = await res.json() as {
+        valid?: boolean;
+        commonKeywords?: number;
+        pageContext?: CompetitorEntry["pageContext"];
+        message?: string;
+      };
+      setCompetitors((prev) => prev.map((c) => {
+        if (c.domain !== raw) return c;
+        if (!data.valid) return { ...c, status: "invalid", message: data.message };
+        return {
+          ...c,
+          status: data.commonKeywords && data.commonKeywords > 0 ? "valid" : "no-overlap",
+          commonKeywords: data.commonKeywords,
+          pageContext: data.pageContext,
+          message: data.message,
+        };
+      }));
+    } catch {
+      setCompetitors((prev) => prev.map((c) => c.domain === raw ? { ...c, status: "invalid", message: "Validation failed" } : c));
+    } finally {
+      setValidatingCompetitor(false);
+    }
+  }, [competitorInput, competitors, domain, clientId]);
+
+  const removeCompetitor = useCallback((d: string) => {
+    setCompetitors((prev) => prev.filter((c) => c.domain !== d));
+  }, []);
 
   async function handleCreate() {
     if (!title) return;
@@ -192,6 +269,23 @@ export default function NewGrandPlanPage() {
       );
       const enabledSections = Array.from(new Set([...ALWAYS_ON_SECTIONS, ...platformSections]));
 
+      // Stringify audiences in the same "Name: Description" format the
+      // existing generator already understands when targetAudiences is set.
+      const audiencesText = audiences.length
+        ? audiences.map((a) => `${a.name}: ${a.description}`.trim().replace(/:\s*$/, "")).join("\n")
+        : "";
+
+      // Strip out invalid competitors before sending. We do persist no-overlap
+      // ones because the generator falls back to scraped page context.
+      const finalCompetitors = competitors
+        .filter((c) => c.status === "valid" || c.status === "no-overlap")
+        .map((c) => ({
+          domain: c.domain,
+          commonKeywords: c.commonKeywords,
+          pageContext: c.pageContext,
+          source: c.source,
+        }));
+
       const res = await fetch("/api/tools/grand-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -201,22 +295,17 @@ export default function NewGrandPlanPage() {
           prospectWebsite: !clientId && website ? website : undefined,
           title,
           purpose,
-          proposalId: selectedProposal || undefined,
-          keywordResearchId: selectedKwResearch || undefined,
-          contentStrategyId: selectedContentStrategy || undefined,
           clientBrief: brief || undefined,
-          targetAudiences: targetAudiences || undefined,
+          targetAudiences: audiencesText || undefined,
           sector: sector || undefined,
-          campaignFocusPeriods: focusPeriods.filter((fp) => fp.label),
-          period: period.trim() || undefined,
+          competitors: finalCompetitors,
           config: {
             sections: enabledSections,
             postsPerMonth,
             socialPostsPerWeek,
             ...(sector ? { sector } : {}),
-            ...(aiModel !== "sonnet" ? { aiModel } : {}),
-            ...(!selectedKwResearch && website ? { kwBrief: { website, brief, monthlyBudget: channelBudgets.googleAds || monthlyBudget } } : {}),
-            ...(!selectedContentStrategy && domain ? { contentBrief: { domain, brief, competitors: csCompetitors }, ...(csDatabase && csDatabase !== "uk" ? { semrushRegion: csDatabase } : {}) } : {}),
+            ...(website ? { kwBrief: { website, brief, monthlyBudget: channelBudgets.googleAds || monthlyBudget } } : {}),
+            ...(domain ? { contentBrief: { domain, brief, competitors: finalCompetitors.map((c) => c.domain).join(",") } } : {}),
             ...(Object.keys(channelBudgets).length > 0 ? { channelBudgets: Object.fromEntries(
               Object.entries(channelBudgets).filter(([, v]) => v && Number(v.replace(/[^0-9.]/g, "")) > 0)
                 .map(([k, v]) => [k, Number(v.replace(/[^0-9.]/g, ""))])
@@ -226,15 +315,14 @@ export default function NewGrandPlanPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        router.push(`/tools/grand-plan/${data.grandPlan.id}`);
+        // Redirect with autoStart so the view page kicks off generation
+        // immediately — the user shouldn't have to press another button.
+        router.push(`/tools/grand-plan/${data.grandPlan.id}?autoStart=1`);
       }
     } finally {
       setCreating(false);
     }
   }
-
-  const hasLinkedKw = !!selectedKwResearch;
-  const hasLinkedCs = !!selectedContentStrategy;
 
   return (
     <div className="page" style={{ maxWidth: 720 }}>
@@ -270,7 +358,6 @@ export default function NewGrandPlanPage() {
                 <label className="form-label">Client</label>
                 <select className="form-input form-select" value={clientId} onChange={(e) => {
                   setClientId(e.target.value);
-                  setSelectedProposal(""); setSelectedKwResearch(""); setSelectedContentStrategy("");
                 }}>
                   <option value="">No client</option>
                   {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -280,12 +367,6 @@ export default function NewGrandPlanPage() {
                 <label className="form-label">Plan Title</label>
                 <input className="form-input" value={title} onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Acme Co — Go-to-Market Plan 2026" />
-              </div>
-              <div>
-                <label className="form-label">Planning Period <span className="form-hint" style={{ fontWeight: "normal" }}>(optional)</span></label>
-                <input className="form-input" value={period} onChange={(e) => setPeriod(e.target.value)}
-                  placeholder="e.g. January 2026, Q1 2026, 12 months from March 2026" />
-                <span className="form-hint">Anchors date references in the generated plan. Leave blank if not relevant.</span>
               </div>
             </div>
 
@@ -350,25 +431,6 @@ export default function NewGrandPlanPage() {
               </div>
             </div>
 
-            {/* AI Model */}
-            <div>
-              <label className="form-label">AI Model</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                {(["sonnet", "haiku", "opus"] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setAiModel(m)}
-                    className={aiModel === m ? "btn btn-primary btn-sm" : "btn btn-secondary btn-sm"}
-                    style={{ flex: 1, textTransform: "capitalize" }}
-                  >
-                    {m === "sonnet" ? "Sonnet (default)" : m === "haiku" ? "Haiku (faster)" : "Opus (deep)"}
-                  </button>
-                ))}
-              </div>
-              <span className="form-hint">Haiku is faster and cheaper. Opus is slower but reasons more deeply. Sonnet is the balanced default.</span>
-            </div>
-
             {/* Brief */}
             <div>
               <label className="form-label">Brief</label>
@@ -380,17 +442,138 @@ export default function NewGrandPlanPage() {
               />
             </div>
 
-            {/* Target Audiences */}
+            {/* Target Audiences — chips with optional Suggest from brief */}
             <div>
-              <label className="form-label">Target Audiences</label>
-              <textarea
-                className="form-input form-textarea"
-                value={targetAudiences}
-                onChange={(e) => setTargetAudiences(e.target.value)}
-                placeholder={"One per line — Name: Description\ne.g. Parents aged 30–45: looking for holiday football camps\nSchool PE coordinators: sourcing group coaching sessions"}
-                style={{ minHeight: 80 }}
-              />
-              <span className="form-hint">One audience per line. When filled in, the plan uses your exact personas rather than inferring them — and earns a stronger data grounding badge.</span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 0 }}>
+                  <Users style={{ width: 13, height: 13 }} />
+                  Target Audiences
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={brief.trim().length < 20 || suggestingAudiences}
+                  onClick={handleSuggestAudiences}
+                  title={brief.trim().length < 20 ? "Write a brief first (20+ characters)" : "Auto-populate audiences from the brief"}
+                >
+                  {suggestingAudiences
+                    ? <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
+                    : <Sparkles style={{ width: 12, height: 12 }} />}
+                  {suggestingAudiences ? "Suggesting…" : "Suggest from brief"}
+                </button>
+              </div>
+              {audiences.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                  {audiences.map((a) => (
+                    <span key={a.name} style={{
+                      display: "inline-flex", alignItems: "flex-start", gap: 6,
+                      padding: "6px 10px", borderRadius: 8,
+                      background: "var(--accent-bg)", border: "1px solid var(--accent)",
+                      color: "var(--text)", fontSize: 12, lineHeight: 1.35, maxWidth: 320,
+                    }}>
+                      <span style={{ flex: 1 }}>
+                        <strong>{a.name}</strong>
+                        {a.description && <span style={{ display: "block", color: "var(--text-3)", fontSize: 11, marginTop: 2 }}>{a.description}</span>}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeAudience(a.name)}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: 0, marginTop: 1 }}
+                        aria-label={`Remove ${a.name}`}
+                      >
+                        <X style={{ width: 12, height: 12 }} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 6 }}>
+                <input
+                  className="form-input"
+                  style={{ flex: 1, padding: "8px 12px", fontSize: 13 }}
+                  value={audienceInput}
+                  onChange={(e) => setAudienceInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddManualAudience(); } }}
+                  placeholder="Add an audience name and press Enter"
+                />
+                <button type="button" className="btn btn-secondary btn-sm" onClick={handleAddManualAudience} disabled={!audienceInput.trim()}>
+                  <Plus style={{ width: 12, height: 12 }} /> Add
+                </button>
+              </div>
+              <span className="form-hint">Use Suggest to auto-populate from the brief, or add manually. Empty list = AI infers them.</span>
+            </div>
+
+            {/* Competitors — chips with auto-detect (SEMrush) + manual add */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 0 }}>
+                  <Building2 style={{ width: 13, height: 13 }} />
+                  Competitors
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={(!domain && !clientId) || detectingCompetitors}
+                  onClick={handleDetectCompetitors}
+                  title={!domain && !clientId ? "Set a website or pick a client first" : "Auto-detect competitors via SEMrush"}
+                >
+                  {detectingCompetitors
+                    ? <Loader2 style={{ width: 12, height: 12, animation: "spin 1s linear infinite" }} />
+                    : <SearchIcon style={{ width: 12, height: 12 }} />}
+                  {detectingCompetitors ? "Detecting…" : "Auto-detect"}
+                </button>
+              </div>
+              {competitors.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                  {competitors.map((c) => {
+                    const tone =
+                      c.status === "valid" ? { bg: "#d1fae5", fg: "#065f46", border: "#059669" } :
+                      c.status === "no-overlap" ? { bg: "#fef3c7", fg: "#92400e", border: "#f59e0b" } :
+                      c.status === "checking" ? { bg: "var(--accent-bg)", fg: "var(--accent)", border: "var(--accent)" } :
+                      { bg: "#fee2e2", fg: "#991b1b", border: "#dc2626" };
+                    return (
+                      <span key={c.domain} style={{
+                        display: "inline-flex", alignItems: "center", gap: 8,
+                        padding: "6px 10px", borderRadius: 8,
+                        background: tone.bg, border: `1px solid ${tone.border}`,
+                        color: tone.fg, fontSize: 12,
+                      }}>
+                        <strong>{c.domain}</strong>
+                        {c.status === "checking" && <Loader2 style={{ width: 11, height: 11, animation: "spin 1s linear infinite" }} />}
+                        {typeof c.commonKeywords === "number" && c.commonKeywords > 0 && (
+                          <span style={{ fontSize: 11, opacity: 0.85 }}>{c.commonKeywords} common KWs</span>
+                        )}
+                        {c.status === "no-overlap" && <span style={{ fontSize: 11 }}>no SEMrush overlap</span>}
+                        {c.status === "invalid" && <span style={{ fontSize: 11 }}>{c.message ?? "invalid"}</span>}
+                        <span style={{ fontSize: 10, opacity: 0.7, textTransform: "uppercase" }}>{c.source}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeCompetitor(c.domain)}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: tone.fg, padding: 0 }}
+                          aria-label={`Remove ${c.domain}`}
+                        >
+                          <X style={{ width: 11, height: 11 }} />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 6 }}>
+                <input
+                  className="form-input"
+                  style={{ flex: 1, padding: "8px 12px", fontSize: 13 }}
+                  value={competitorInput}
+                  onChange={(e) => setCompetitorInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddManualCompetitor(); } }}
+                  placeholder="competitor.com"
+                  disabled={validatingCompetitor}
+                />
+                <button type="button" className="btn btn-secondary btn-sm" onClick={handleAddManualCompetitor} disabled={!competitorInput.trim() || validatingCompetitor}>
+                  <Plus style={{ width: 12, height: 12 }} /> Add
+                </button>
+              </div>
+              <span className="form-hint">Auto-detect uses SEMrush keyword overlap. Manual entries are scraped for headlines/CTAs when SEMrush has no data.</span>
             </div>
 
             {/* Content Volume */}
@@ -495,141 +678,6 @@ export default function NewGrandPlanPage() {
         </div>
       </div>
 
-      {/* ═══════ LINK EXISTING (only when client selected) ═══════ */}
-      {clientId && (
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", marginBottom: 12 }}>
-            Link Existing Records <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: "0" }}>(optional)</span>
-          </div>
-
-          {loadingSources ? (
-            <div style={{ padding: "20px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--text-4)", fontSize: 13 }}>
-              <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> Loading records...
-            </div>
-          ) : sources ? (
-            <div className="card">
-              {/* Keyword Research */}
-              {sources.keywordResearch.length > 0 && (
-                <div style={{ padding: "14px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
-                  <SearchIcon style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", minWidth: 100 }}>Keywords</span>
-                  <select className="form-input form-select" style={{ flex: 1, padding: "8px 12px", fontSize: 13 }} value={selectedKwResearch} onChange={(e) => setSelectedKwResearch(e.target.value)}>
-                    <option value="">Generate fresh from brief</option>
-                    {sources.keywordResearch.map((k) => <option key={k.id} value={k.id}>{k.title}</option>)}
-                  </select>
-                  {selectedKwResearch && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, color: "#059669", background: "#d1fae5", borderRadius: 12, padding: "2px 8px", flexShrink: 0 }}><LinkIcon style={{ width: 9, height: 9 }} /> Linked</span>}
-                </div>
-              )}
-
-              {/* Content Strategy */}
-              {sources.contentStrategies.length > 0 && (
-                <div style={{ padding: "14px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
-                  <Calendar style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", minWidth: 100 }}>Content</span>
-                  <select className="form-input form-select" style={{ flex: 1, padding: "8px 12px", fontSize: 13 }} value={selectedContentStrategy} onChange={(e) => setSelectedContentStrategy(e.target.value)}>
-                    <option value="">Generate fresh from SEMrush</option>
-                    {sources.contentStrategies.map((cs) => <option key={cs.id} value={cs.id}>{cs.title}</option>)}
-                  </select>
-                  {selectedContentStrategy && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, color: "#059669", background: "#d1fae5", borderRadius: 12, padding: "2px 8px", flexShrink: 0 }}><LinkIcon style={{ width: 9, height: 9 }} /> Linked</span>}
-                </div>
-              )}
-
-              {/* Proposal */}
-              {sources.proposals.length > 0 && (
-                <div style={{ padding: "14px 24px", display: "flex", alignItems: "center", gap: 12 }}>
-                  <FileText style={{ width: 14, height: 14, color: "var(--text-3)", flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", minWidth: 100 }}>Proposal</span>
-                  <select className="form-input form-select" style={{ flex: 1, padding: "8px 12px", fontSize: 13 }} value={selectedProposal} onChange={(e) => setSelectedProposal(e.target.value)}>
-                    <option value="">None</option>
-                    {sources.proposals.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
-                  </select>
-                  {selectedProposal && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, color: "#059669", background: "#d1fae5", borderRadius: 12, padding: "2px 8px", flexShrink: 0 }}><LinkIcon style={{ width: 9, height: 9 }} /> Linked</span>}
-                </div>
-              )}
-
-              {sources.keywordResearch.length === 0 && sources.contentStrategies.length === 0 && sources.proposals.length === 0 && (
-                <div className="card-body" style={{ padding: "20px 24px", fontSize: 13, color: "var(--text-4)" }}>
-                  No existing records found. Everything will be auto-generated.
-                </div>
-              )}
-            </div>
-          ) : null}
-        </div>
-      )}
-
-      {/* ═══════ EXTRAS ═══════ */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", marginBottom: 12 }}>
-          Extras
-        </div>
-
-        <div className="card">
-          {/* Content strategy settings */}
-          {!hasLinkedCs && (
-            <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--border)" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-3)", marginBottom: 10 }}>Content Strategy Settings</div>
-              <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 12 }}>
-                <div>
-                  <label className="form-label" style={{ fontSize: 12 }}>SEMrush Region</label>
-                  <select className="form-input form-select" style={{ padding: "8px 12px", fontSize: 13 }} value={csDatabase} onChange={(e) => setCsDatabase(e.target.value)}>
-                    <option value="uk">🇬🇧 UK</option>
-                    <option value="us">🇺🇸 US</option>
-                    <option value="au">🇦🇺 Australia</option>
-                    <option value="ca">🇨🇦 Canada</option>
-                    <option value="de">🇩🇪 Germany</option>
-                    <option value="fr">🇫🇷 France</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="form-label" style={{ fontSize: 12 }}>
-                    Competitors <span style={{ fontWeight: 400, color: "var(--text-3)" }}>(comma-separated)</span>
-                  </label>
-                  <input className="form-input" style={{ padding: "8px 12px", fontSize: 13 }} value={csCompetitors}
-                    onChange={(e) => setCsCompetitors(e.target.value)}
-                    placeholder="competitor1.com, competitor2.com" />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Focus periods */}
-          <div style={{ padding: "18px 24px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: focusPeriods.length > 0 ? 12 : 0 }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>Campaign Focus Periods</div>
-                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>Ramadan, Black Friday, seasonal peaks</div>
-              </div>
-              <button className="btn btn-secondary btn-sm" onClick={addFocusPeriod}>
-                <Plus style={{ width: 12, height: 12 }} /> Add
-              </button>
-            </div>
-            {focusPeriods.map((fp, i) => (
-              <div key={i} style={{
-                background: "var(--bg)", borderRadius: "var(--r-sm)", padding: 14,
-                marginBottom: 8, position: "relative",
-              }}>
-                <button onClick={() => removeFocusPeriod(i)} style={{ position: "absolute", top: 10, right: 10, background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: 2 }}>
-                  <X style={{ width: 13, height: 13 }} />
-                </button>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 10 }}>
-                  <select className="form-input form-select" style={{ padding: "8px 12px", fontSize: 13 }} value={fp.startMonth}
-                    onChange={(e) => updateFocusPeriod(i, "startMonth", parseInt(e.target.value))}>
-                    {MONTHS.map((m, mi) => <option key={mi} value={mi}>{m}</option>)}
-                  </select>
-                  <select className="form-input form-select" style={{ padding: "8px 12px", fontSize: 13 }} value={fp.endMonth}
-                    onChange={(e) => updateFocusPeriod(i, "endMonth", parseInt(e.target.value))}>
-                    {MONTHS.map((m, mi) => <option key={mi} value={mi}>{m}</option>)}
-                  </select>
-                  <input className="form-input" style={{ padding: "8px 12px", fontSize: 13 }} value={fp.label}
-                    onChange={(e) => updateFocusPeriod(i, "label", e.target.value)}
-                    placeholder="e.g. Ramadan, Summer Sale" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* ═══════ WHAT GETS GENERATED ═══════ */}
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="card-body" style={{ padding: "20px 24px" }}>
@@ -638,18 +686,21 @@ export default function NewGrandPlanPage() {
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {[
-              { label: "Executive Summary", ai: true, on: true },
-              { label: "Strategy Plan", ai: true, on: true },
-              { label: "Audiences", ai: true, on: true },
-              { label: "Google Ads + Ad Copy", ai: !hasLinkedKw, on: platforms.includes("googleAds") },
-              { label: "Keyword Research", ai: !hasLinkedKw, on: true },
-              { label: "Meta Campaigns", ai: true, on: platforms.includes("metaAds") },
-              { label: "LinkedIn Ads", ai: true, on: platforms.includes("linkedInAds") },
-              { label: "Content Strategy", ai: !hasLinkedCs, on: true },
-              { label: "Content Calendar", ai: true, on: true },
-              { label: "Organic Social", ai: true, on: platforms.includes("organicSocial") },
-              { label: "Email Marketing", ai: true, on: platforms.includes("emailMarketing") },
-              { label: "Example Articles", ai: true, on: true },
+              { label: "Executive Summary", on: true },
+              { label: "Strategy Plan", on: true },
+              { label: "Audiences", on: true },
+              { label: "Google Ads", on: platforms.includes("googleAds") },
+              { label: "Keyword Research", on: true },
+              { label: "Meta Campaigns", on: platforms.includes("metaAds") },
+              { label: "LinkedIn Ads", on: platforms.includes("linkedInAds") },
+              { label: "Content Strategy", on: true },
+              { label: "Content Calendar", on: true },
+              { label: "Organic Social", on: platforms.includes("organicSocial") },
+              { label: "Email Marketing", on: platforms.includes("emailMarketing") },
+              { label: "SEO Foundations", on: true },
+              { label: "Competitor Intelligence", on: true },
+              { label: "Quick Wins", on: true },
+              { label: "Example Articles", on: true },
             ]
               .filter((item) => item.on)
               .map((item) => (
@@ -660,16 +711,19 @@ export default function NewGrandPlanPage() {
                     borderRadius: "var(--r-sm)",
                     fontSize: 12,
                     fontWeight: 500,
-                    background: item.ai ? "var(--accent-bg)" : "#d1fae5",
-                    color: item.ai ? "var(--accent)" : "#059669",
+                    background: "var(--accent-bg)",
+                    color: "var(--accent)",
                     display: "inline-flex",
                     alignItems: "center",
                   }}
                 >
-                  {item.ai ? <Sparkles style={{ width: 10, height: 10, marginRight: 4 }} /> : <LinkIcon style={{ width: 10, height: 10, marginRight: 4 }} />}
+                  <Sparkles style={{ width: 10, height: 10, marginRight: 4 }} />
                   {item.label}
                 </span>
               ))}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 10 }}>
+            Pressing <strong>Create &amp; Generate</strong> will start the AI pipeline immediately on the next page.
           </div>
         </div>
       </div>
@@ -688,7 +742,7 @@ export default function NewGrandPlanPage() {
             ? <Loader2 style={{ width: 15, height: 15, animation: "spin 1s linear infinite" }} />
             : <ChevronRight style={{ width: 15, height: 15 }} />
           }
-          Create Plan
+          Create &amp; Generate
         </button>
       </div>
     </div>

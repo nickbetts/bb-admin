@@ -1830,10 +1830,21 @@ function renderCompetitorIntel(competitors: any[]): string {
     return n.toLocaleString();
   };
 
+  const sourceBadge = (source?: string) => {
+    if (source === "manual") return `<span class="comp-source-badge comp-source-manual">Client-named</span>`;
+    if (source === "auto") return `<span class="comp-source-badge comp-source-auto">SEMrush auto</span>`;
+    if (source === "inferred") return `<span class="comp-source-badge comp-source-inferred">AI inferred</span>`;
+    return "";
+  };
+  const overlapPill = (n?: number) =>
+    typeof n === "number" && n > 0
+      ? `<span class="comp-overlap-pill">${n.toLocaleString()} common keywords</span>`
+      : "";
+
   const tableRows = competitors
     .map((c) => `
     <tr>
-      <td class="comp-domain">${esc(c.domain ?? "")}</td>
+      <td class="comp-domain">${esc(c.domain ?? "")} ${sourceBadge(c.source)}</td>
       <td class="comp-num">${c.organicTraffic ? fmtNum(c.organicTraffic) : "—"}</td>
       <td class="comp-num">${c.organicKeywords ? fmtNum(c.organicKeywords) : "—"}</td>
       <td class="comp-num">${c.paidKeywords ? fmtNum(c.paidKeywords) : "—"}</td>
@@ -1844,7 +1855,8 @@ function renderCompetitorIntel(competitors: any[]): string {
   const detailCards = competitors
     .map((c) => `
     <div class="comp-detail-card">
-      <h4>${esc(c.domain ?? "")}</h4>
+      <h4>${esc(c.domain ?? "")} ${sourceBadge(c.source)} ${overlapPill(c.commonKeywords)}</h4>
+      ${c.pageContext?.h1 || c.pageContext?.description ? `<div class="comp-page-ctx">${c.pageContext.h1 ? `<div><strong>H1:</strong> ${esc(c.pageContext.h1)}</div>` : ""}${c.pageContext.description ? `<div><strong>Meta:</strong> ${esc(c.pageContext.description)}</div>` : ""}</div>` : ""}
       <div class="comp-keywords"><span class="comp-kw-label">Top Keywords:</span> ${(c.topKeywords ?? []).map((k: string) => `<span class="comp-kw-chip">${esc(k)}</span>`).join(" ")}</div>
       <div class="comp-sw-grid">
         <div class="comp-sw-col"><span class="comp-sw-title comp-strength">Strengths</span><ul>${(c.strengths ?? []).map((s: string) => `<li>${esc(s)}</li>`).join("")}</ul></div>
@@ -2556,6 +2568,13 @@ details.cal-month[open] .cal-month-header::after{content:"\\2212"}
 .comp-sw-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px}
 .comp-strength{color:#065f46}
 .comp-weakness{color:#dc2626}
+.comp-source-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.04em;margin-left:8px;vertical-align:middle}
+.comp-source-manual{background:#dbeafe;color:#1e40af}
+.comp-source-auto{background:#dcfce7;color:#166534}
+.comp-source-inferred{background:#fef3c7;color:#92400e}
+.comp-overlap-pill{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#ede9fe;color:#5b21b6;margin-left:6px;vertical-align:middle}
+.comp-page-ctx{font-size:12px;color:var(--text-light);background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.5}
+.comp-page-ctx strong{color:var(--heading);font-weight:600}
 /* SEO metadata on articles */
 .seo-meta-block{padding:1rem 1.25rem;background:#f8fafc;border:1px solid var(--border);border-radius:10px;margin-bottom:1.25rem}
 .seo-meta-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);margin-bottom:8px}

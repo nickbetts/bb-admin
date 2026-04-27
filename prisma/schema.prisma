@@ -917,6 +917,10 @@ model GrandPlan {
   customSectionsJson       String                  @default("[]") // JSON: user-added custom sections
   clientBrief              String? // Free-text brief for AI context
   targetAudiences          String? // Free-text description of target audiences for AI context
+  // JSON array of { domain, commonKeywords?, pageContext?, source: "manual"|"auto" }
+  // — captured at plan-creation time so the AI sees the same competitor list
+  // every regenerate, regardless of how SEMrush results drift.
+  competitorsJson          String                  @default("[]")
   // Sharing
   shareToken               String?                 @unique
   sharePassword            String? // SHA256 hash of password for share link

@@ -967,6 +967,7 @@ function buildSources(plan: any, config: any, brief: string): GrandPlanSources {
     sector: config.sector || undefined,
     enabledPlatforms: config.sections,
     campaignFocusPeriods: safeJsonParse(plan.campaignFocusPeriodsJson, []),
+    competitors: safeJsonParse<GrandPlanSources["competitors"]>(plan.competitorsJson, []) ?? undefined,
     accountData,
     customerVoice,
     strategyBrain,

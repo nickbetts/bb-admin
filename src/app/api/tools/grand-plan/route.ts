@@ -76,6 +76,12 @@ export async function POST(request: NextRequest) {
       targetAudiences?: string;
       sector?: string;
       campaignFocusPeriods?: { startMonth: number; endMonth: number; label: string; description?: string }[];
+      competitors?: {
+        domain: string;
+        commonKeywords?: number;
+        pageContext?: { headings?: string[]; description?: string; ctaTexts?: string[]; h1?: string };
+        source?: "manual" | "auto";
+      }[];
       config?: { sections?: string[]; postsPerMonth?: number; socialPostsPerWeek?: number; channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number } };
       period?: string;
       cloneFromId?: string;
@@ -104,6 +110,7 @@ export async function POST(request: NextRequest) {
           clientBrief: source.clientBrief,
           targetAudiences: source.targetAudiences,
           campaignFocusPeriodsJson: source.campaignFocusPeriodsJson,
+          competitorsJson: source.competitorsJson,
           configJson: source.configJson,
         },
         include: { client: { select: { id: true, name: true } } },
@@ -156,6 +163,7 @@ export async function POST(request: NextRequest) {
         clientBrief: body.clientBrief || null,
         targetAudiences: body.targetAudiences || null,
         campaignFocusPeriodsJson: JSON.stringify(body.campaignFocusPeriods ?? []),
+        competitorsJson: JSON.stringify(body.competitors ?? []),
         configJson: JSON.stringify({ ...(body.config ?? {}), ...(body.sector ? { sector: body.sector } : {}) }),
         period: body.period?.trim() || null,
       },
