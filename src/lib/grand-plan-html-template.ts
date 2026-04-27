@@ -293,6 +293,15 @@ ${buildChapteredSections(s, plan.clientName, plan.brief, plan.campaignPeriods, p
 <!-- Closing CTA -->
 ${renderCtaClose(plan.clientName)}
 
+<!-- TLDR view (internal only) -->
+${isPublicView ? "" : renderTldrView(plan)}
+
+<!-- TLDR toggle button (internal only) -->
+${isPublicView ? "" : `<button id="tldr-toggle" class="tldr-toggle" type="button" title="Toggle TLDR view">
+  <span class="tldr-toggle-icon" aria-hidden="true">\u2630</span>
+  <span class="tldr-toggle-label">TLDR</span>
+</button>`}
+
 <!-- Watermark -->
 <div class="watermark">Confidential</div>
 
@@ -426,6 +435,262 @@ function renderCtaClose(clientName: string): string {
   </div>
 </section>`;
 }
+
+// ─── TLDR view ──────────────────────────────────────────────────────────────
+// Internal-only condensed view of the entire plan. Toggled via the floating
+// "TLDR" button. Hides the full document and shows a single column of
+// digestible cards: brief, audiences, competitors, and a one-glance overview
+// of every section that ran. Intended as a quick handoff/skim view for the
+// internal team — never shown on public share links.
+
+function stripHtml(s: string): string {
+  return String(s ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function firstSentence(text: string, maxLen = 220): string {
+  const clean = stripHtml(text);
+  if (!clean) return "";
+  const stop = clean.search(/[.!?]\s+[A-Z]/);
+  const cut = stop > 60 ? clean.slice(0, stop + 1) : clean;
+  if (cut.length <= maxLen) return cut;
+  const window = cut.slice(0, maxLen);
+  const lastSpace = window.lastIndexOf(" ");
+  return (lastSpace > 0 ? window.slice(0, lastSpace) : window) + "\u2026";
+}
+
+function renderTldrView(plan: GrandPlanData): string {
+  const s = plan.sections;
+  const cards: string[] = [];
+
+  const card = (id: string, title: string, body: string, kicker?: string) => `
+    <article class="tldr-card" data-tldr-id="${esc(id)}">
+      ${kicker ? `<div class="tldr-kicker">${esc(kicker)}</div>` : ""}
+      <h3 class="tldr-card-title">${esc(title)}</h3>
+      <div class="tldr-card-body">${body}</div>
+      <button type="button" class="tldr-jump" data-jump="${esc(id)}">Jump to full section &rarr;</button>
+    </article>`;
+
+  // Brief
+  if (plan.brief) {
+    cards.push(card(
+      "tldr-brief",
+      "The Brief",
+      `<p>${esc(firstSentence(plan.brief, 420))}</p>`,
+      "Context",
+    ));
+  }
+
+  // Audiences
+  if (s.audiences?.length) {
+    const items = s.audiences.map((a) => `
+      <li class="tldr-aud">
+        <div class="tldr-aud-name">${esc(a.name)}</div>
+        <div class="tldr-aud-desc">${esc(firstSentence(a.description, 160))}</div>
+        ${a.painPoints?.length ? `<div class="tldr-aud-pains"><span class="tldr-pill">Pain</span> ${esc(a.painPoints.slice(0, 2).join(" \u00b7 "))}</div>` : ""}
+      </li>`).join("");
+    cards.push(card("tldr-audiences", "Audiences", `<ul class="tldr-list">${items}</ul>`, `${s.audiences.length} target ${s.audiences.length === 1 ? "audience" : "audiences"}`));
+  }
+
+  // Competitors
+  if (s.competitorIntel?.length) {
+    const rows = s.competitorIntel.slice(0, 8).map((c) => {
+      const sourceBadge = c.source ? `<span class="tldr-src tldr-src-${esc(c.source)}">${esc(c.source)}</span>` : "";
+      const overlap = (c.commonKeywords ?? 0) > 0 ? `<span class="tldr-pill">${c.commonKeywords} common KWs</span>` : "";
+      const takeaway = c.strengths?.[0] || c.pageContext?.h1 || c.pageContext?.description || "";
+      return `
+      <li class="tldr-comp">
+        <div class="tldr-comp-head">
+          <span class="tldr-comp-domain">${esc(c.domain)}</span>
+          ${sourceBadge}
+          ${overlap}
+        </div>
+        ${takeaway ? `<div class="tldr-comp-take">${esc(firstSentence(takeaway, 180))}</div>` : ""}
+      </li>`;
+    }).join("");
+    cards.push(card(
+      "tldr-competitors",
+      "Competitors",
+      `<ul class="tldr-list">${rows}</ul>`,
+      `${s.competitorIntel.length} analysed`,
+    ));
+  }
+
+  // Executive Summary (just the first sentence)
+  if (s.executiveSummary) {
+    cards.push(card("executive-summary", "Executive Summary", `<p>${esc(firstSentence(s.executiveSummary, 360))}</p>`, "Strategy"));
+  }
+
+  // Strategy Plan
+  if (s.strategyPlan) {
+    cards.push(card("strategy-plan", "Strategy Plan", `<p>${esc(firstSentence(s.strategyPlan, 320))}</p>`, "Strategy"));
+  }
+
+  // Quick Wins
+  if (s.quickWins?.length) {
+    const items = s.quickWins.slice(0, 6).map((q) => `
+      <li class="tldr-row">
+        <span class="tldr-pill tldr-pri-${esc(q.priority)}">${esc(q.priority)}</span>
+        <span class="tldr-row-text">${esc(q.title)}</span>
+      </li>`).join("");
+    cards.push(card("quick-wins", "Quick Wins", `<ul class="tldr-list">${items}</ul>`, `${s.quickWins.length} prioritised`));
+  }
+
+  // Google Ads
+  if (s.googleAdsCampaigns) {
+    const ga = s.googleAdsCampaigns;
+    const adGroups = (ga.adGroups ?? []) as { name: string; keywords: unknown[] }[];
+    const totalKws = adGroups.reduce((sum, g) => sum + (g.keywords?.length ?? 0), 0);
+    const groupNames = adGroups.slice(0, 6).map((g) => `<span class="tldr-tag">${esc(g.name)}</span>`).join("");
+    const more = adGroups.length > 6 ? `<span class="tldr-tag tldr-tag-more">+${adGroups.length - 6} more</span>` : "";
+    const negCount = (ga.negativeKeywords?.length ?? 0) + (ga.aiNegativesWithReason?.length ?? 0);
+    const overview = ga.overview ?? {};
+    const facts = [
+      overview.Budget ? `<div class="tldr-fact"><span class="tldr-fact-label">Budget</span> <strong>${esc(String(overview.Budget))}</strong></div>` : "",
+      overview.Locations ? `<div class="tldr-fact"><span class="tldr-fact-label">Locations</span> <strong>${esc(String(overview.Locations))}</strong></div>` : "",
+      `<div class="tldr-fact"><span class="tldr-fact-label">Ad groups</span> <strong>${adGroups.length}</strong></div>`,
+      `<div class="tldr-fact"><span class="tldr-fact-label">Keywords</span> <strong>${totalKws}</strong></div>`,
+      negCount ? `<div class="tldr-fact"><span class="tldr-fact-label">Negatives</span> <strong>${negCount}</strong></div>` : "",
+    ].filter(Boolean).join("");
+    cards.push(card(
+      "google-ads",
+      "Google Ads (research only)",
+      `<div class="tldr-facts">${facts}</div>${groupNames || more ? `<div class="tldr-tag-row">${groupNames}${more}</div>` : ""}`,
+      "Paid Search",
+    ));
+  }
+
+  // Meta Campaigns
+  if (s.metaCampaigns?.length) {
+    const items = s.metaCampaigns.slice(0, 6).map((c) => `
+      <li class="tldr-row">
+        <span class="tldr-row-text"><strong>${esc(c.campaignName)}</strong> <span class="tldr-muted">\u00b7 ${esc(c.objective)} \u00b7 ${esc(c.budget)}</span></span>
+      </li>`).join("");
+    cards.push(card("meta-campaigns", "Meta Campaigns", `<ul class="tldr-list">${items}</ul>`, `${s.metaCampaigns.length} campaigns`));
+  }
+
+  // LinkedIn Ads
+  if (s.linkedInAds?.length) {
+    const items = s.linkedInAds.slice(0, 6).map((c) => `
+      <li class="tldr-row">
+        <span class="tldr-row-text"><strong>${esc(c.campaignName)}</strong> <span class="tldr-muted">\u00b7 ${esc(c.objective)} \u00b7 ${esc(c.budget)}</span></span>
+      </li>`).join("");
+    cards.push(card("linkedin-ads", "LinkedIn Ads", `<ul class="tldr-list">${items}</ul>`, `${s.linkedInAds.length} campaigns`));
+  }
+
+  // Content Strategy
+  if (s.contentStrategy) {
+    const cs = s.contentStrategy;
+    const facts = [
+      cs.pageOptimisations?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Page optimisations</span> <strong>${cs.pageOptimisations.length}</strong></div>` : "",
+      cs.landingPages?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Landing pages</span> <strong>${cs.landingPages.length}</strong></div>` : "",
+      cs.blogPosts?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Blog posts</span> <strong>${cs.blogPosts.length}</strong></div>` : "",
+    ].filter(Boolean).join("");
+    cards.push(card("content-strategy", "Content Strategy", `<div class="tldr-facts">${facts}</div>`, "Content & SEO"));
+  }
+
+  // SEO Foundations
+  if (s.seoFoundations) {
+    const sf = s.seoFoundations;
+    const facts = [
+      sf.quickWins?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Page wins</span> <strong>${sf.quickWins.length}</strong></div>` : "",
+      sf.internalLinking?.hubs?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Linking hubs</span> <strong>${sf.internalLinking.hubs.length}</strong></div>` : "",
+      sf.linkBuilding?.targets?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Link targets</span> <strong>${sf.linkBuilding.targets.length}</strong></div>` : "",
+    ].filter(Boolean).join("");
+    cards.push(card("seo-foundations", "SEO Foundations", `<div class="tldr-facts">${facts}</div>${sf.intro ? `<p>${esc(firstSentence(sf.intro, 220))}</p>` : ""}`, "Content & SEO"));
+  }
+
+  // Content Calendar
+  if (s.contentCalendar?.length) {
+    const first = s.contentCalendar[0];
+    const topics = (first.blogPosts ?? []).slice(0, 4).map((p) => `<span class="tldr-tag">${esc(p.title)}</span>`).join("");
+    cards.push(card(
+      "content-calendar",
+      "Content Calendar",
+      `<div class="tldr-muted" style="margin-bottom:.5rem">${esc(first.month)} \u2014 first month preview</div><div class="tldr-tag-row">${topics}</div>`,
+      `${s.contentCalendar.length} months planned`,
+    ));
+  }
+
+  // Organic Social
+  if (s.organicSocial) {
+    const pillars = (s.organicSocial.pillars ?? []).slice(0, 5).map((p) => `<span class="tldr-tag">${esc(p.name)}</span>`).join("");
+    cards.push(card(
+      "organic-social",
+      "Organic Social",
+      `<div class="tldr-muted" style="margin-bottom:.5rem">${esc(s.organicSocial.postingFrequency ?? "")}</div><div class="tldr-tag-row">${pillars}</div>`,
+      "Content & SEO",
+    ));
+  }
+
+  // Example Articles
+  if (s.exampleArticles?.length) {
+    const titles = s.exampleArticles.slice(0, 5).map((a) => `<li class="tldr-row"><span class="tldr-row-text">${esc(a.title)}</span></li>`).join("");
+    cards.push(card("example-articles", "Example Articles", `<ul class="tldr-list">${titles}</ul>`, `${s.exampleArticles.length} drafted`));
+  }
+
+  // Keyword Research
+  if (s.keywordResearch?.adGroups?.length) {
+    const totalKws = s.keywordResearch.adGroups.reduce((sum: number, g: { keywords: unknown[] }) => sum + (g.keywords?.length ?? 0), 0);
+    cards.push(card(
+      "keyword-research",
+      "Keyword Research",
+      `<div class="tldr-facts">
+        <div class="tldr-fact"><span class="tldr-fact-label">Ad groups</span> <strong>${s.keywordResearch.adGroups.length}</strong></div>
+        <div class="tldr-fact"><span class="tldr-fact-label">Keywords</span> <strong>${totalKws}</strong></div>
+      </div>`,
+      "Research",
+    ));
+  }
+
+  // Services & Investment
+  if (s.servicesInvestment) {
+    const si = s.servicesInvestment;
+    const services = (si.services ?? []).slice(0, 6).map((sv) => `<li class="tldr-row"><span class="tldr-row-text"><strong>${esc(sv.name)}</strong>${sv.price ? ` <span class="tldr-muted">\u00b7 ${esc(sv.price)}</span>` : ""}</span></li>`).join("");
+    const ia = si.investmentAllocation;
+    const allocation = ia && ia.byChannel?.length ? `
+      <div class="tldr-muted" style="margin:.75rem 0 .35rem">Investment allocation \u2014 \u00a3${(ia.totalMonthly ?? 0).toLocaleString()}/mo total</div>
+      <ul class="tldr-list">
+        ${ia.byChannel.map((row) => `<li class="tldr-row"><span class="tldr-row-text"><strong>${esc(row.channel)}</strong> <span class="tldr-muted">\u00b7 \u00a3${(row.amount ?? 0).toLocaleString()}/mo (${row.share ?? 0}%)</span></span></li>`).join("")}
+      </ul>` : "";
+    cards.push(card("services", "Services & Investment", `<ul class="tldr-list">${services}</ul>${allocation}`, "Commercial"));
+  }
+
+  // Email Marketing
+  if (s.emailMarketing) {
+    const em = s.emailMarketing;
+    const facts = [
+      em.flows?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Flows</span> <strong>${em.flows.length}</strong></div>` : "",
+      em.campaigns?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Campaigns</span> <strong>${em.campaigns.length}</strong></div>` : "",
+      em.segmentation?.segments?.length ? `<div class="tldr-fact"><span class="tldr-fact-label">Segments</span> <strong>${em.segmentation.segments.length}</strong></div>` : "",
+    ].filter(Boolean).join("");
+    cards.push(card("email-marketing", "Email Marketing", `<div class="tldr-facts">${facts}</div>`, "Commercial"));
+  }
+
+  // KPIs
+  if (s.kpis?.length) {
+    const items = s.kpis.slice(0, 8).map((k) => {
+      const metricCount = k.metrics?.length ?? 0;
+      return `<li class="tldr-row"><span class="tldr-row-text"><strong>${esc(k.channel)}</strong> <span class="tldr-muted">\u00b7 ${metricCount} ${metricCount === 1 ? "metric" : "metrics"}</span></span></li>`;
+    }).join("");
+    cards.push(card("kpis", "KPIs &amp; Targets", `<ul class="tldr-list">${items}</ul>`, "Measurement"));
+  }
+
+  return `
+<aside id="gp-tldr-view" class="tldr-view" aria-hidden="true">
+  <header class="tldr-header">
+    <div>
+      <div class="tldr-header-kicker">Internal handoff</div>
+      <h2 class="tldr-header-title">${esc(plan.title)} \u2014 TLDR</h2>
+      <p class="tldr-header-sub">A condensed snapshot for the team. Click any card to jump into the full section.</p>
+    </div>
+    <button type="button" id="tldr-close" class="tldr-close-btn" aria-label="Close TLDR">Show full plan</button>
+  </header>
+  <div class="tldr-cards">
+    ${cards.join("\n")}
+  </div>
+</aside>`;
+}
+
 
 // ─── Section renderers ──────────────────────────────────────────────────────
 
@@ -2912,6 +3177,72 @@ details.cal-month[open] .cal-month-header::after{content:"\\2212"}
 .coh-issue{display:block;font-weight:600}
 .coh-fix{display:block;font-size:12px;color:#78350f;margin-top:2px}
 .coh-high{color:#7f1d1d}.coh-medium{color:#78350f}.coh-low{color:#92400e}
+
+/* ── TLDR view (internal handoff) ─────────────────────────────────────── */
+.tldr-toggle{position:fixed;top:1rem;right:1rem;z-index:9998;display:inline-flex;align-items:center;gap:.5rem;padding:.55rem .9rem;border-radius:999px;background:#0f172a;color:#fff;border:1px solid rgba(255,255,255,.1);font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.02em;cursor:pointer;box-shadow:0 6px 24px rgba(15,23,42,.18);transition:transform .15s ease,background .15s ease}
+.tldr-toggle:hover{transform:translateY(-1px);background:#1e293b}
+.tldr-toggle-icon{font-size:14px;line-height:1}
+body.tldr-mode .tldr-toggle{background:#7c3aed;border-color:rgba(255,255,255,.18)}
+body.tldr-mode .tldr-toggle .tldr-toggle-label::after{content:" \u2715";opacity:.7;margin-left:.15rem}
+
+.tldr-view{display:none;position:fixed;inset:0;z-index:9990;background:#f8fafc;overflow-y:auto;padding:5rem 1.5rem 4rem;font-family:inherit;color:#0f172a}
+body.tldr-mode .tldr-view{display:block}
+body.tldr-mode .hero,body.tldr-mode .stats-band,body.tldr-mode .strategy-brain-panel,body.tldr-mode .coherence-panel,body.tldr-mode .chapter-panel,body.tldr-mode .section,body.tldr-mode .cta-section,body.tldr-mode #sticky-nav,body.tldr-mode #gp-toc,body.tldr-mode .watermark{display:none !important}
+body.tldr-mode{background:#f8fafc}
+
+.tldr-header{max-width:1100px;margin:0 auto 2rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid #e2e8f0}
+.tldr-header-kicker{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#7c3aed;margin-bottom:.4rem}
+.tldr-header-title{font-size:clamp(1.5rem,3vw,2rem);font-weight:800;letter-spacing:-.5px;margin:0 0 .35rem;color:#0f172a}
+.tldr-header-sub{margin:0;color:#64748b;font-size:14px;max-width:560px}
+.tldr-close-btn{flex:0 0 auto;padding:.6rem 1.1rem;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#0f172a;font-weight:600;font-size:13px;cursor:pointer;transition:background .15s ease}
+.tldr-close-btn:hover{background:#f1f5f9}
+
+.tldr-cards{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
+.tldr-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1.1rem 1.15rem 1rem;display:flex;flex-direction:column;gap:.6rem;box-shadow:0 1px 2px rgba(15,23,42,.04);transition:border-color .15s ease,box-shadow .15s ease}
+.tldr-card:hover{border-color:#cbd5e1;box-shadow:0 4px 16px rgba(15,23,42,.06)}
+.tldr-kicker{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#7c3aed}
+.tldr-card-title{font-size:1rem;font-weight:700;color:#0f172a;margin:0;letter-spacing:-.2px}
+.tldr-card-body{font-size:13.5px;color:#334155;line-height:1.55}
+.tldr-card-body p{margin:0 0 .4rem}
+.tldr-jump{align-self:flex-start;background:none;border:none;color:#7c3aed;font-weight:600;font-size:12.5px;cursor:pointer;padding:0;margin-top:.25rem;font-family:inherit}
+.tldr-jump:hover{text-decoration:underline}
+
+.tldr-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:.45rem}
+.tldr-row{display:flex;align-items:center;gap:.5rem;font-size:13px;color:#334155;line-height:1.45}
+.tldr-row-text{flex:1;min-width:0}
+.tldr-muted{color:#94a3b8;font-weight:400}
+.tldr-pill{display:inline-flex;align-items:center;padding:.12rem .5rem;border-radius:999px;background:#f1f5f9;color:#475569;font-size:11px;font-weight:600;letter-spacing:.02em;white-space:nowrap}
+.tldr-pri-high{background:#fee2e2;color:#991b1b}
+.tldr-pri-medium-high{background:#ffedd5;color:#9a3412}
+.tldr-pri-medium{background:#fef3c7;color:#854d0e}
+.tldr-pri-ongoing{background:#dbeafe;color:#1e40af}
+.tldr-pri-long-term{background:#e0e7ff;color:#3730a3}
+
+.tldr-aud{display:flex;flex-direction:column;gap:.2rem;padding:.55rem .65rem;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0}
+.tldr-aud-name{font-weight:700;font-size:13px;color:#0f172a}
+.tldr-aud-desc{font-size:12.5px;color:#475569;line-height:1.5}
+.tldr-aud-pains{display:flex;align-items:center;gap:.4rem;font-size:12px;color:#64748b;margin-top:.15rem}
+
+.tldr-comp{display:flex;flex-direction:column;gap:.3rem;padding:.55rem .65rem;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0}
+.tldr-comp-head{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.tldr-comp-domain{font-weight:700;font-size:13px;color:#0f172a}
+.tldr-comp-take{font-size:12.5px;color:#475569;line-height:1.5}
+.tldr-src{display:inline-flex;padding:.1rem .45rem;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.tldr-src-manual{background:#dbeafe;color:#1e3a8a}
+.tldr-src-auto{background:#dcfce7;color:#166534}
+.tldr-src-inferred{background:#fef3c7;color:#854d0e}
+
+.tldr-facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.5rem;margin-bottom:.4rem}
+.tldr-fact{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:.5rem .65rem;font-size:12px;color:#64748b;line-height:1.4}
+.tldr-fact-label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;margin-bottom:.15rem}
+.tldr-fact strong{color:#0f172a;font-size:14px;font-weight:700}
+
+.tldr-tag-row{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.25rem}
+.tldr-tag{display:inline-flex;padding:.18rem .55rem;border-radius:6px;background:#f1f5f9;color:#334155;font-size:11.5px;font-weight:500;line-height:1.3}
+.tldr-tag-more{background:#e2e8f0;color:#64748b;font-style:italic}
+
+@media print{.tldr-toggle{display:none !important}}
+@media (max-width:640px){.tldr-header{flex-direction:column;align-items:flex-start}.tldr-cards{grid-template-columns:1fr}}
 `;
 
 
@@ -3082,6 +3413,41 @@ document.querySelectorAll('.lp-iframe[data-lp-html]').forEach(function(iframe){
     }
   }catch(e){console.error('LP decode error:',e);}
 });
+
+// TLDR toggle (internal handoff view). Not present in public share view.
+(function(){
+  var btn=document.getElementById('tldr-toggle');
+  if(!btn)return;
+  var view=document.getElementById('gp-tldr-view');
+  var closeBtn=document.getElementById('tldr-close');
+  function setMode(on){
+    document.body.classList.toggle('tldr-mode',on);
+    if(view)view.setAttribute('aria-hidden',on?'false':'true');
+    try{sessionStorage.setItem('gp_tldr_mode',on?'1':'0');}catch(e){}
+    if(on)window.scrollTo({top:0,behavior:'instant'});
+  }
+  btn.addEventListener('click',function(){setMode(!document.body.classList.contains('tldr-mode'));});
+  if(closeBtn)closeBtn.addEventListener('click',function(){setMode(false);});
+  // Restore prior mode
+  try{if(sessionStorage.getItem('gp_tldr_mode')==='1')setMode(true);}catch(e){}
+  // Jump-to-section from TLDR cards
+  document.querySelectorAll('.tldr-jump').forEach(function(b){
+    b.addEventListener('click',function(){
+      var id=this.getAttribute('data-jump');
+      if(!id)return;
+      setMode(false);
+      requestAnimationFrame(function(){
+        var el=document.getElementById(id);
+        if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+      });
+    });
+  });
+  // Keyboard shortcut: "t" to toggle (internal use)
+  document.addEventListener('keydown',function(e){
+    if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return;
+    if(e.key==='t'||e.key==='T'){setMode(!document.body.classList.contains('tldr-mode'));}
+  });
+})();
 `;
 
 // ─── i3media logo SVG ───────────────────────────────────────────────────────
