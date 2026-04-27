@@ -465,6 +465,75 @@ export function AIInsight({
 }
 
 /* ------------------------------------------------------------------ */
+/*  Funnel chart                                                       */
+/* ------------------------------------------------------------------ */
+
+export function FunnelChart({
+  steps,
+}: {
+  steps: { step: string; count: number; dropPct: number; color: string }[];
+}) {
+  const max = steps[0]?.count || 1;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {steps.map((s, i) => {
+        const widthPct = (s.count / max) * 100;
+        const fmt = (n: number) => n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(0)}k` : n.toLocaleString();
+        return (
+          <div key={i}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{s.step}</div>
+              <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>{fmt(s.count)}</span>
+                {i > 0 && (
+                  <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600 }}>-{s.dropPct.toFixed(1)}%</span>
+                )}
+              </div>
+            </div>
+            <div style={{ width: "100%", height: 10, background: "var(--border-subtle)", borderRadius: 99, overflow: "hidden" }}>
+              <div
+                style={{
+                  width: `${widthPct}%`,
+                  height: "100%",
+                  background: `linear-gradient(90deg, ${s.color}, #6366f1)`,
+                  borderRadius: 99,
+                  transition: "width 0.4s ease",
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Status badge                                                       */
+/* ------------------------------------------------------------------ */
+
+export function StatusBadge({ label, color }: { label: string; color?: string }) {
+  const bg = color ? `${color}18` : "var(--border-subtle)";
+  const text = color ?? "var(--text-2)";
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "2px 10px",
+        borderRadius: 99,
+        fontSize: 11,
+        fontWeight: 700,
+        background: bg,
+        color: text,
+        border: `1px solid ${color ? `${color}30` : "var(--border-subtle)"}`,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Avatar                                                             */
 /* ------------------------------------------------------------------ */
 

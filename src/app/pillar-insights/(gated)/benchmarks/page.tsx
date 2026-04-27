@@ -3,6 +3,7 @@
 import { Trophy, Info } from "lucide-react";
 import { PageHeader, MockupBanner, Section, AIInsight, Progress } from "../../_components/PillarUI";
 import { BENCHMARKS } from "../../_data/mockData";
+import { NETWORK_COHORTS } from "../../_data/intelligenceData";
 
 export default function BenchmarksPage() {
   return (
@@ -102,6 +103,54 @@ export default function BenchmarksPage() {
             <button className="btn btn-primary btn-sm">View full benchmark report</button>
           </div>
         </div>
+      </Section>
+
+      <Section title="Network effect benchmarks" subtitle="How your metrics compare when charities pool anonymised data — cohort intelligence from the Pillar network">
+        {NETWORK_COHORTS.map((cohort) => (
+          <div
+            key={cohort.cohort}
+            style={{
+              marginBottom: 24,
+              padding: "20px 22px",
+              border: "1px solid var(--border-subtle)",
+              borderRadius: "var(--r-lg)",
+              background: "rgb(255 255 255 / 0.6)",
+            }}
+          >
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 14 }}>{cohort.cohort}</div>
+            <div style={{ display: "grid", gap: 14 }}>
+              {cohort.metrics.map((m) => (
+                <div key={m.label}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, color: "var(--text-2)" }}>{m.label}</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        padding: "2px 8px",
+                        borderRadius: 99,
+                        fontWeight: 700,
+                        background: m.you > m.peers ? "#10b98115" : "#f59e0b15",
+                        color: m.you > m.peers ? "#10b981" : "#f59e0b",
+                      }}
+                    >
+                      {m.you > m.peers ? "+" : ""}{(((m.you - m.peers) / m.peers) * 100).toFixed(1)}% vs peers
+                    </span>
+                  </div>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <Row label="You" value={`${m.unit === "£" ? "£" : ""}${m.you}${m.unit === "%" ? "%" : " " + m.unit}`} pct={(m.you / Math.max(m.you, m.peers, m.top) * 100)} color="#14b8a6" highlight />
+                    <Row label="Peer median" value={`${m.unit === "£" ? "£" : ""}${m.peers}${m.unit === "%" ? "%" : " " + m.unit}`} pct={(m.peers / Math.max(m.you, m.peers, m.top) * 100)} color="#6366f1" />
+                    <Row label="Top 10%" value={`${m.unit === "£" ? "£" : ""}${m.top}${m.unit === "%" ? "%" : " " + m.unit}`} pct={(m.top / Math.max(m.you, m.peers, m.top) * 100)} color="#a855f7" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+        <AIInsight title="Pillar AI – network insight" tone="teal">
+          Combining data across the Pillar network reveals a <strong>seasonal pattern invisible to individual charities</strong>: charities in the
+          UK Islamic cohort that ran a follow-up Eid al-Adha campaign within 30 days of Qurbani saw <strong>2.4× higher annual LTV</strong> from
+          those donors vs. those that did not. Your post-Qurbani follow-up rate is currently <strong>28%</strong> — the top-quartile benchmark is 71%.
+        </AIInsight>
       </Section>
     </div>
   );

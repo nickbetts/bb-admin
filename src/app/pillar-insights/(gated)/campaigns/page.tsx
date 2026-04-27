@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Plus, Filter } from "lucide-react";
 import { PageHeader, MockupBanner, Stat, Section, AIInsight, Progress, BarChart } from "../../_components/PillarUI";
 import { CAMPAIGNS, CHANNEL_BREAKDOWN } from "../../_data/mockData";
+import { STORY_TYPES } from "../../_data/intelligenceData";
 
 const statusBadge = (status: string) => {
   if (status === "active") return "badge-green";
@@ -154,6 +155,51 @@ export default function CampaignsPage() {
             </div>
           ))}
         </div>
+      </Section>
+
+      <Section title="Story performance intelligence" subtitle="Which story types drive the most giving and repeat behaviour">
+        <div style={{ overflowX: "auto", marginBottom: 16 }}>
+          <table className="data-table">
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border-subtle)", background: "rgb(99 102 241 / 0.04)" }}>
+                {["Story type", "Campaigns", "Avg response rate", "Avg gift", "Repeat behaviour", "AI score", "Best theme"].map((h) => (
+                  <th key={h} style={{ padding: "14px 18px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", whiteSpace: "nowrap" }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {STORY_TYPES.map((st) => (
+                <tr key={st.type} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                  <td style={{ padding: "16px 18px", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{st.type}</td>
+                  <td style={{ padding: "16px 18px", fontSize: 13, color: "var(--text-2)", textAlign: "center" }}>{st.campaigns}</td>
+                  <td style={{ padding: "16px 18px", fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{st.avgResponseRate}%</td>
+                  <td style={{ padding: "16px 18px", fontSize: 13, color: "var(--text-2)" }}>£{st.avgGift}</td>
+                  <td style={{ padding: "16px 18px" }}>
+                    <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 99, fontWeight: 700, background: st.repeatBehaviourPct >= 50 ? "#10b98115" : st.repeatBehaviourPct >= 35 ? "#6366f115" : "#f59e0b15", color: st.repeatBehaviourPct >= 50 ? "#10b981" : st.repeatBehaviourPct >= 35 ? "#6366f1" : "#f59e0b" }}>
+                      {st.repeatBehaviourPct >= 50 ? "very high" : st.repeatBehaviourPct >= 35 ? "high" : "moderate"} ({st.repeatBehaviourPct}%)
+                    </span>
+                  </td>
+                  <td style={{ padding: "16px 18px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ height: 6, borderRadius: 99, flex: 1, background: "var(--border-subtle)" }}>
+                        <div style={{ height: "100%", width: `${st.aiScore}%`, borderRadius: 99, background: st.aiScore >= 85 ? "#10b981" : st.aiScore >= 75 ? "#6366f1" : "#f59e0b" }} />
+                      </div>
+                      <span style={{ fontSize: 12, fontWeight: 700, minWidth: 28, color: "var(--text)" }}>{st.aiScore}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: "16px 18px", fontSize: 12, color: "var(--text-2)" }}>{st.bestTheme}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <AIInsight title="Pillar AI – story intelligence" tone="teal">
+          <strong>Beneficiary stories featuring a named individual</strong> consistently outperform all other story types — 92/100 AI score, highest repeat behaviour,
+          and £62.40 average gift. Content calendars built around this format for Ramadan, Qurbani and emergency appeals are estimated to lift campaign
+          response rates by <strong>+18–24%</strong> vs. generic appeal copy. Religious obligation messaging performs best for upgrade and recurring asks.
+        </AIInsight>
       </Section>
     </div>
   );
