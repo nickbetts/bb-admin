@@ -1501,7 +1501,7 @@ ${context}${buildSharedContextBlocks(sources, "calendar")}`,
   // evergreen markers and truncate the surplus rather than silently drift.
   const byLabel = new Map(result.map((m) => [m.month, m] as const));
   const evergreenBlog = (): ContentCalendarMonth["blogPosts"][number] => ({
-    title: "Evergreen brand story (placeholder)",
+    title: "Evergreen brand story",
     intent: "awareness",
     targetKeyword: sources.clientName.toLowerCase(),
     angle: "Slot for an evergreen brand or audience story — replace with a topical angle nearer the time.",
@@ -1509,7 +1509,7 @@ ${context}${buildSharedContextBlocks(sources, "calendar")}`,
   const evergreenSocial = (): ContentCalendarMonth["socialPosts"][number] => ({
     platform: "instagram",
     type: "static",
-    topic: "Evergreen brand moment (placeholder)",
+    topic: "Evergreen brand moment",
   });
   const padded: ContentCalendarMonth[] = monthLabels.map((label) => {
     const m = byLabel.get(label) ?? { month: label, focusLabel: null, blogPosts: [], socialPosts: [] };
@@ -2352,7 +2352,7 @@ function buildGoogleAdsCampaigns(
         ? `£${sources.channelBudgets.googleAds}/month`
         : sources.keywordResearch?.monthlyBudget
           ? `£${sources.keywordResearch.monthlyBudget}/month`
-          : "TBC",
+          : "Custom",
       "Locations": (sources.strategyBrain?.targetGeographies?.length
         ? sources.strategyBrain.targetGeographies.join(", ")
         : detectLocations(sources.clientBrief)),

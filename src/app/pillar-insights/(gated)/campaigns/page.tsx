@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, Filter } from "lucide-react";
+import { Filter } from "lucide-react";
 import { PageHeader, MockupBanner, Stat, Section, AIInsight, Progress, BarChart } from "../../_components/PillarUI";
 import { CAMPAIGNS, CHANNEL_BREAKDOWN } from "../../_data/mockData";
 import { STORY_TYPES } from "../../_data/intelligenceData";
@@ -28,7 +28,6 @@ export default function CampaignsPage() {
         actions={
           <>
             <button className="btn btn-secondary btn-sm"><Filter className="h-3.5 w-3.5" /> Filter</button>
-            <button className="btn btn-primary btn-sm"><Plus className="h-3.5 w-3.5" /> New campaign</button>
           </>
         }
       />

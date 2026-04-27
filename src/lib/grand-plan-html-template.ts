@@ -267,7 +267,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
       <div class="hero-meta-item"><strong>Client</strong><span>${esc(plan.clientName)}</span></div>
       <div class="hero-meta-item"><strong>Agency</strong><span>i3media</span></div>
       <div class="hero-meta-item"><strong>Date</strong><span>${new Date(plan.generatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</span></div>
-      <div class="hero-meta-item"><strong>Scope</strong><span>${navItems.slice(0, 4).map(n => n.label.split(" ")[0]).join(", ")}</span></div>
+      <div class="hero-meta-item"><strong>Scope</strong><span>${navItems.filter(n => n.isChapter).map(n => n.label).join(", ")}</span></div>
     </div>
   </div>
 </section>
@@ -1808,7 +1808,7 @@ a{color:var(--accent);text-decoration:none}
 .stat-label{font-size:10.5px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.1em;line-height:1.2}
 
 /* ── Sections ──────────────────────────────────────────────── */
-.section{padding:5rem 3rem}
+.section{padding:4rem 3rem}
 .section.alt{background:var(--bg)}
 .section.dark{background:#0a1124}
 .section-inner{max-width:1100px;margin:0 auto}
@@ -2142,7 +2142,7 @@ details.cal-month[open] .cal-month-header::after{content:"\\2212"}
 /* Watermark */
 .watermark{position:fixed;bottom:16px;right:16px;font-size:10px;color:rgba(0,0,0,.05);font-weight:600;text-transform:uppercase;letter-spacing:.25em;pointer-events:none;z-index:50}
 /* Chapter panels — slimmer divider, brand gradient accent */
-.chapter-panel{background:linear-gradient(135deg,#0a1124 0%,#0f172a 55%,#131f38 100%);padding:3.5rem 3rem;position:relative;overflow:hidden}
+.chapter-panel{background:linear-gradient(135deg,#0a1124 0%,#0f172a 55%,#131f38 100%);padding:2.5rem 3rem;position:relative;overflow:hidden}
 .chapter-panel::before{content:'';position:absolute;inset:0 0 auto 0;height:1px;background:linear-gradient(90deg,transparent,rgba(99,102,241,.35),rgba(168,85,247,.25),transparent)}
 .chapter-panel::after{content:'';position:absolute;inset:auto 0 0 0;height:1px;background:linear-gradient(90deg,transparent,rgba(99,102,241,.2),transparent)}
 .chapter-panel-orb{position:absolute;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,.18) 0%,rgba(168,85,247,.06) 40%,transparent 70%);right:-160px;top:-180px;pointer-events:none}
@@ -2544,6 +2544,7 @@ details.cal-month[open] .cal-month-header::after{content:"\\2212"}
 
 /* Strategy Brain panel (internal review — hidden in public share view) */
 .brain-panel{max-width:1180px;margin:2.5rem auto 0;background:#fafbff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;font-family:inherit}
+.brain-panel .section-inner{padding:1.75rem 2rem 0}
 .brain-summary{display:flex;flex-wrap:wrap;align-items:baseline;gap:1rem;padding:1.25rem 1.75rem;cursor:pointer;background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;list-style:none}
 .brain-summary::-webkit-details-marker{display:none}
 .brain-kicker{font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#a78bfa}

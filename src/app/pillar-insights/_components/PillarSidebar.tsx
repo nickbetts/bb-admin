@@ -26,7 +26,6 @@ import {
   Bot,
   BrainCircuit,
   Waves,
-  PieChart,
   Telescope,
 } from "lucide-react";
 
@@ -71,7 +70,6 @@ const actionAutonomy: NavItem[] = [
 
 const reporting: NavItem[] = [
   { href: "/pillar-insights/reports", label: "Reports & exports", icon: <FileText className="h-4 w-4" /> },
-  { href: "/pillar-insights/communications", label: "Communications", icon: <PieChart className="h-4 w-4" /> },
 ];
 
 function NavGroup({ label, items, isActive, mt = 16 }: { label: string; items: NavItem[]; isActive: (href: string) => boolean; mt?: number }) {
