@@ -240,7 +240,7 @@ interface MetaInstantExp { adId: string; adName: string; clicksToOpen: number; o
 interface MetaCustomConv { id: string; name: string; pixelRule: string; customEventType: string }
 interface MetaSavedAud { id: string; name: string; approximateCount: number; type: string; subtype: string }
 interface MetaSpendLimit { campaignId: string; campaignName: string; spendingLimit: number | null; dailyBudget: number | null; lifetimeBudget: number | null; amountSpent: number }
-interface MetaHourlyRow { hourOfDay: string; impressions: number; clicks: number; spend: number; conversions: number; cpc: number }
+interface MetaHourlyRow { hourOfDay: string; impressions: number; clicks: number; spend: number; conversions: number; conversionValue: number; cpc: number }
 
 export function MetaSection({ clientId, clientName, startDate, endDate, compareStartDate, compareEndDate, crossPlatformContext, visibleBlocks, hideAlerts, hideAi, reportMode, clickFraudToken, signalConfig, onMetricsReady, onPreviousMetricsReady, afterHeader }: MetaSectionProps) {
   const show = (block: string) => !visibleBlocks || visibleBlocks.length === 0 || visibleBlocks.includes(block);
@@ -1417,22 +1417,165 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {isExplicit("audiences") && adSetAudiences.length === 0 && (
         <EmptyBlockState title="Audience Performance" />
       )}
-      {show("audiences") && adSetAudiences.length > 0 && (
-        <SectionCard title="Audience Targeting" subtitle={`Targeting details for ${adSetAudiences.length} ad set${adSetAudiences.length !== 1 ? "s" : ""}`}>
-          <DataTable<AdSetAudience>
-            data={adSetAudiences}
-            pageSize={0}
-            columns={[
-              { key: "adSetName", label: "Ad Set" },
-              { key: "ageMin", label: "Age", render: (_, aud) => aud.ageMin != null && aud.ageMax != null ? `${aud.ageMin}–${aud.ageMax}` : "All" },
-              { key: "genders", label: "Gender", render: (_, aud) => aud.genders.length === 1 ? (aud.genders[0] === 1 ? "Male" : "Female") : "All" },
-              { key: "geoSummary", label: "Location", render: (v) => (v as string) || "All locations" },
-              { key: "interests", label: "Interests", render: (_, aud) => aud.interests.length > 0 ? aud.interests.slice(0, 3).join(", ") + (aud.interests.length > 3 ? ` +${aud.interests.length - 3}` : "") : "—" },
-              { key: "customAudiences", label: "Custom Audiences", render: (_, aud) => aud.customAudiences.length > 0 ? aud.customAudiences.map(c => c.name).join(", ") : "—" },
-            ]}
-          />
-        </SectionCard>
-      )}
+      {show("audiences") && adSetAudiences.length > 0 && (() => {
+        // Join audience targeting with ad set performance data
+        const adSetPerfMap = new Map(adSets.map((s) => [s.id, s]));
+        const enrichedAudiences = adSetAudiences.map((aud) => {
+          const perf = adSetPerfMap.get(aud.adSetId);
+          return {
+            ...aud,
+            spend: perf?.spend ?? 0,
+            impressions: perf?.impressions ?? 0,
+            clicks: perf?.clicks ?? 0,
+            ctr: perf?.ctr ?? 0,
+            conversions: perf?.conversions ?? 0,
+            roas: perf?.roas ?? 0,
+            cpc: perf?.cpc ?? 0,
+          };
+        }).filter((a) => a.spend > 0 || a.impressions > 0);
+
+        // Bar chart — spend per audience/ad set
+        const chartData = [...enrichedAudiences]
+          .sort((a, b) => b.spend - a.spend)
+          .slice(0, 15)
+          .map((a) => ({
+            name: a.adSetName.length > 22 ? a.adSetName.slice(0, 20) + "…" : a.adSetName,
+            spend: a.spend,
+            conversions: a.conversions,
+          }));
+
+        return (
+          <SectionCard title="Audience Targeting Performance" subtitle={`Performance by targeting configuration — ${enrichedAudiences.length} ad set${enrichedAudiences.length !== 1 ? "s" : ""}`}>
+            {chartData.length > 0 && (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={chartData} barSize={20} margin={{ top: 4, right: 8, left: 0, bottom: 48 }}>
+                  <CartesianGrid {...CHART_GRID_STYLE} />
+                  <XAxis dataKey="name" {...CHART_AXIS_STYLE} angle={-35} textAnchor="end" interval={0} />
+                  <YAxis yAxisId="spend" {...CHART_AXIS_STYLE} tickFormatter={(v) => `£${v}`} width={52} />
+                  <YAxis yAxisId="conversions" orientation="right" {...CHART_AXIS_STYLE} width={36} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE.contentStyle} formatter={(value, name) => {
+                    const num = typeof value === "number" ? value : Number(value ?? 0);
+                    if (name === "Spend") return [formatCurrency(num), "Spend"];
+                    return [formatNumber(num), String(name)];
+                  }} />
+                  <Bar {...CHART_BAR_STYLE} yAxisId="spend" dataKey="spend" fill="#8b5cf6" name="Spend" />
+                  <Bar {...CHART_BAR_STYLE} yAxisId="conversions" dataKey="conversions" fill="#10b981" name="Conversions" />
+                  <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+            <DataTable
+              data={enrichedAudiences}
+              pageSize={10}
+              className="mt-4"
+              exportable
+              exportFilename="meta-audience-performance"
+              columns={[
+                { key: "adSetName", label: "Ad Set" },
+                { key: "ageMin", label: "Age", render: (_, aud) => {
+                  const a = aud as typeof enrichedAudiences[0];
+                  return a.ageMin != null && a.ageMax != null ? `${a.ageMin}–${a.ageMax}` : "All";
+                }},
+                { key: "genders", label: "Gender", render: (_, aud) => {
+                  const a = aud as typeof enrichedAudiences[0];
+                  return a.genders.length === 1 ? (a.genders[0] === 1 ? "Male" : "Female") : "All";
+                }},
+                { key: "geoSummary", label: "Location", render: (v) => (v as string) || "All" },
+                { key: "interests", label: "Targeting", render: (_, aud) => {
+                  const a = aud as typeof enrichedAudiences[0];
+                  const parts: string[] = [];
+                  if (a.interests.length > 0) parts.push(a.interests.slice(0, 2).join(", ") + (a.interests.length > 2 ? ` +${a.interests.length - 2}` : ""));
+                  if (a.customAudiences.length > 0) parts.push(`Custom: ${a.customAudiences.map(c => c.name).slice(0, 2).join(", ")}`);
+                  return parts.join(" | ") || "Broad";
+                }},
+                { key: "spend", label: "Spend", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+                { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                { key: "ctr", label: "CTR", align: "right", sortable: true, render: (v) => `${(v as number).toFixed(2)}%` },
+                { key: "conversions", label: "Conv.", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                { key: "roas", label: "ROAS", align: "right", sortable: true, render: (v) => <span className={`font-semibold ${(v as number) >= 2 ? "text-emerald-600" : (v as number) >= 1 ? "text-amber-600" : "text-red-600"}`}>{(v as number).toFixed(2)}x</span> },
+              ]}
+            />
+          </SectionCard>
+        );
+      })()}
+
+      {/* Custom Audience Segment Performance */}
+      {show("audiences") && adSetAudiences.some((a) => a.customAudiences.length > 0) && (() => {
+        // Aggregate performance by custom audience name (an ad set may target multiple)
+        const adSetPerfMap = new Map(adSets.map((s) => [s.id, s]));
+        const segMap = new Map<string, { name: string; adSets: string[]; spend: number; impressions: number; clicks: number; conversions: number; roas: number; _roasSum: number; _roasCount: number }>();
+
+        for (const aud of adSetAudiences) {
+          if (aud.customAudiences.length === 0) continue;
+          const perf = adSetPerfMap.get(aud.adSetId);
+          if (!perf || (perf.spend === 0 && perf.impressions === 0)) continue;
+
+          for (const ca of aud.customAudiences) {
+            if (!segMap.has(ca.name)) {
+              segMap.set(ca.name, { name: ca.name, adSets: [], spend: 0, impressions: 0, clicks: 0, conversions: 0, roas: 0, _roasSum: 0, _roasCount: 0 });
+            }
+            const seg = segMap.get(ca.name)!;
+            if (!seg.adSets.includes(aud.adSetName)) seg.adSets.push(aud.adSetName);
+            seg.spend += perf.spend;
+            seg.impressions += perf.impressions;
+            seg.clicks += perf.clicks;
+            seg.conversions += perf.conversions;
+            if (perf.roas > 0) { seg._roasSum += perf.roas; seg._roasCount += 1; }
+          }
+        }
+
+        const segments = [...segMap.values()].map((s) => ({
+          ...s,
+          roas: s._roasCount > 0 ? s._roasSum / s._roasCount : 0,
+          ctr: s.impressions > 0 ? (s.clicks / s.impressions) * 100 : 0,
+          cpa: s.conversions > 0 ? s.spend / s.conversions : 0,
+        })).sort((a, b) => b.spend - a.spend);
+
+        if (segments.length === 0) return null;
+
+        return (
+          <SectionCard title="Custom Audience Segment Performance" subtitle={`${segments.length} custom audience${segments.length !== 1 ? "s" : ""} with spend data`}>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={segments.slice(0, 12).map(s => ({ name: s.name.length > 20 ? s.name.slice(0, 18) + "…" : s.name, spend: s.spend, conversions: s.conversions }))} barSize={20} margin={{ top: 4, right: 8, left: 0, bottom: 48 }}>
+                <CartesianGrid {...CHART_GRID_STYLE} />
+                <XAxis dataKey="name" {...CHART_AXIS_STYLE} angle={-35} textAnchor="end" interval={0} />
+                <YAxis yAxisId="spend" {...CHART_AXIS_STYLE} tickFormatter={(v) => `£${v}`} width={52} />
+                <YAxis yAxisId="conversions" orientation="right" {...CHART_AXIS_STYLE} width={36} />
+                <Tooltip contentStyle={CHART_TOOLTIP_STYLE.contentStyle} formatter={(value, name) => {
+                  const num = typeof value === "number" ? value : Number(value ?? 0);
+                  if (name === "Spend") return [formatCurrency(num), "Spend"];
+                  return [formatNumber(num), String(name)];
+                }} />
+                <Bar {...CHART_BAR_STYLE} yAxisId="spend" dataKey="spend" fill="#6366f1" name="Spend" />
+                <Bar {...CHART_BAR_STYLE} yAxisId="conversions" dataKey="conversions" fill="#f59e0b" name="Conversions" />
+                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+              </BarChart>
+            </ResponsiveContainer>
+            <DataTable
+              data={segments}
+              pageSize={10}
+              className="mt-4"
+              exportable
+              exportFilename="meta-custom-audiences"
+              columns={[
+                { key: "name", label: "Custom Audience" },
+                { key: "adSets", label: "Ad Sets", render: (v) => {
+                  const arr = v as string[];
+                  return arr.length <= 2 ? arr.join(", ") : `${arr.slice(0, 2).join(", ")} +${arr.length - 2}`;
+                }},
+                { key: "spend", label: "Spend", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+                { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                { key: "ctr", label: "CTR", align: "right", sortable: true, render: (v) => `${(v as number).toFixed(2)}%` },
+                { key: "conversions", label: "Conv.", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                { key: "cpa", label: "CPA", align: "right", sortable: true, render: (v) => (v as number) > 0 ? formatCurrency(v as number) : "—" },
+                { key: "roas", label: "ROAS", align: "right", sortable: true, render: (v) => <span className={`font-semibold ${(v as number) >= 2 ? "text-emerald-600" : (v as number) >= 1 ? "text-amber-600" : "text-red-600"}`}>{(v as number).toFixed(2)}x</span> },
+              ]}
+            />
+          </SectionCard>
+        );
+      })()}
 
       {/* Demographics */}
       {isExplicit("demographics") && demographicsData.length === 0 && (
@@ -1726,22 +1869,57 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
       {isExplicit("hourly_breakdown") && hourlyBreakdown.length === 0 && (
         <EmptyBlockState title="Hourly Breakdown" />
       )}
-      {show("hourly_breakdown") && hourlyBreakdown.length > 0 && (
-        <SectionCard title="Hourly Performance" subtitle="Performance by hour of day">
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={hourlyBreakdown} barSize={16}>
-              <CartesianGrid {...CHART_GRID_STYLE} />
-              <XAxis dataKey="hourOfDay" {...CHART_AXIS_STYLE} tickFormatter={(v) => `${v}:00`} />
-              <YAxis yAxisId="spend" {...CHART_AXIS_STYLE} tickFormatter={(v) => `£${v}`} width={50} />
-              <YAxis yAxisId="clicks" orientation="right" {...CHART_AXIS_STYLE} width={40} />
-              <Tooltip contentStyle={CHART_TOOLTIP_STYLE.contentStyle} labelFormatter={(v) => `${v}:00`} />
-              <Bar {...CHART_BAR_STYLE} yAxisId="spend" dataKey="spend" fill="#ef4444" name="Spend" />
-              <Bar {...CHART_BAR_STYLE} yAxisId="clicks" dataKey="clicks" fill="#3b82f6" name="Clicks" />
-              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-            </BarChart>
-          </ResponsiveContainer>
-        </SectionCard>
-      )}
+      {show("hourly_breakdown") && hourlyBreakdown.length > 0 && (() => {
+        // Parse and sort by hour; format labels as 12-hour clock
+        const parseHour = (raw: string) => {
+          // Meta returns e.g. "0" or "00:00:00+00:00" or just an hour number string
+          const h = parseInt(raw, 10);
+          return isNaN(h) ? 0 : h % 24;
+        };
+        const formatHourLabel = (raw: string) => {
+          const h = parseHour(raw);
+          if (h === 0) return "12am";
+          if (h < 12) return `${h}am`;
+          if (h === 12) return "12pm";
+          return `${h - 12}pm`;
+        };
+        const hasConvValue = hourlyBreakdown.some((r) => r.conversionValue > 0);
+        const sorted = [...hourlyBreakdown].sort((a, b) => parseHour(a.hourOfDay) - parseHour(b.hourOfDay));
+        return (
+          <SectionCard title="Hourly Performance" subtitle="Performance by hour of day (advertiser timezone)">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={sorted} barSize={12} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid {...CHART_GRID_STYLE} />
+                <XAxis
+                  dataKey="hourOfDay"
+                  {...CHART_AXIS_STYLE}
+                  tickFormatter={formatHourLabel}
+                  interval={1}
+                />
+                <YAxis yAxisId="spend" {...CHART_AXIS_STYLE} tickFormatter={(v) => `£${v}`} width={52} />
+                <YAxis yAxisId="clicks" orientation="right" {...CHART_AXIS_STYLE} width={36} />
+                <Tooltip
+                  contentStyle={CHART_TOOLTIP_STYLE.contentStyle}
+                  labelFormatter={formatHourLabel}
+                  formatter={(value, name) => {
+                    const num = typeof value === "number" ? value : Number(value ?? 0);
+                    if (name === "Spend") return [formatCurrency(num), "Spend"];
+                    if (name === "Conv. Value") return [formatCurrency(num), "Conv. Value"];
+                    return [formatNumber(num), String(name)];
+                  }}
+                />
+                <Bar {...CHART_BAR_STYLE} yAxisId="spend" dataKey="spend" fill="#ef4444" name="Spend" />
+                <Bar {...CHART_BAR_STYLE} yAxisId="clicks" dataKey="clicks" fill="#3b82f6" name="Clicks" />
+                <Bar {...CHART_BAR_STYLE} yAxisId="clicks" dataKey="conversions" fill="#10b981" name="Conversions" />
+                {hasConvValue && (
+                  <Bar {...CHART_BAR_STYLE} yAxisId="spend" dataKey="conversionValue" fill="#f59e0b" name="Conv. Value" />
+                )}
+                <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+              </BarChart>
+            </ResponsiveContainer>
+          </SectionCard>
+        );
+      })()}
 
       {/* Lightbox overlay */}
       {lightbox && (

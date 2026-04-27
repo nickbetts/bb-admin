@@ -1153,9 +1153,10 @@ model AdImageSession {
   userId          String
   clientId        String?
   title           String
-  size            String   @default("1024x1024") // gpt-image-1 size
-  messages        String   @default("[]") // JSON: AdImageTurn[]
+  size            String   @default("1024x1024")
+  messages        String   @default("[]") // JSON: ChatTurn[]
   currentImageUrl String?
+  lastResponseId  String? // OpenAI Responses API response ID — used as previous_response_id for multi-turn chaining
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

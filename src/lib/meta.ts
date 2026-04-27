@@ -2083,6 +2083,7 @@ export interface MetaHourlyBreakdown {
   clicks: number;
   spend: number;
   conversions: number;
+  conversionValue: number;
   cpc: number;
 }
 
@@ -2095,7 +2096,7 @@ export async function getMetaHourlyBreakdown(
   const params = new URLSearchParams({
     access_token: getAccessToken(accessToken),
     time_range: JSON.stringify({ since: startDate, until: endDate }),
-    fields: "impressions,clicks,spend,actions,cpc",
+    fields: "impressions,clicks,spend,actions,action_values,cpc",
     breakdowns: "hourly_stats_aggregated_by_advertiser_time_zone",
     level: "account",
     limit: "24",
@@ -2116,10 +2117,14 @@ export async function getMetaHourlyBreakdown(
         clicks?: string;
         spend?: string;
         actions?: { action_type: string; value: string }[];
+        action_values?: { action_type: string; value: string }[];
         cpc?: string;
       }) => {
         const convAction = (item.actions ?? []).find(
           (a) => a.action_type === "offsite_conversion.fb_pixel_purchase" || a.action_type === "offsite_conversion.fb_pixel_lead" || a.action_type === "lead"
+        );
+        const convValueAction = (item.action_values ?? []).find(
+          (a) => a.action_type === "offsite_conversion.fb_pixel_purchase" || a.action_type === "purchase"
         );
         return {
           hourOfDay: item.hourly_stats_aggregated_by_advertiser_time_zone ?? "",
@@ -2127,6 +2132,7 @@ export async function getMetaHourlyBreakdown(
           clicks: parseInt(item.clicks ?? "0"),
           spend: parseFloat(item.spend ?? "0"),
           conversions: parseInt(convAction?.value ?? "0"),
+          conversionValue: parseFloat(convValueAction?.value ?? "0"),
           cpc: parseFloat(item.cpc ?? "0"),
         };
       }

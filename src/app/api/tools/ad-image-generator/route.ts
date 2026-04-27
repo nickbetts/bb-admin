@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
-import OpenAI, { toFile } from "openai";
 import { getSession } from "@/lib/auth";
 import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
@@ -8,71 +7,122 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-interface AdImageTurn {
+// ─── Stored prompt configuration ────────────────────────────────────────────
+// Update PROMPT_VERSION when you publish a new version on platform.openai.com/prompts
+const PROMPT_ID = "pmpt_69ef528ea6d88193b4c6dcf5c157c41d023877d9234b9680";
+const PROMPT_VERSION = "5";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface Citation {
+  title: string;
+  url: string;
+}
+
+interface TextBlock {
+  type: "text";
+  text: string;
+  citations: Citation[];
+}
+
+interface ReasoningBlock {
+  type: "reasoning";
+  summary: string;
+}
+
+interface ImageBlock {
+  type: "image";
+  url: string;
+}
+
+interface CodeBlock {
+  type: "code_output";
+  text: string;
+}
+
+type ContentBlock = TextBlock | ReasoningBlock | ImageBlock | CodeBlock;
+
+interface ChatTurn {
   role: "user" | "assistant";
-  prompt?: string;
-  imageUrl?: string;
+  blocks: ContentBlock[];
   createdAt: string;
 }
 
-const ALLOWED_SIZES = ["1024x1024", "1024x1536", "1536x1024", "auto"] as const;
-type AllowedSize = (typeof ALLOWED_SIZES)[number];
-
-function parseTurns(messages: string): AdImageTurn[] {
+function parseTurns(messages: string): ChatTurn[] {
   try {
     const parsed = JSON.parse(messages);
-    return Array.isArray(parsed) ? (parsed as AdImageTurn[]) : [];
+    return Array.isArray(parsed) ? (parsed as ChatTurn[]) : [];
   } catch {
     return [];
   }
 }
 
-async function uploadGeneratedImage(buffer: Buffer, sessionId: string): Promise<string> {
-  const filename = `ad-images/${sessionId}/${Date.now()}.png`;
-  const blob = await put(filename, buffer, {
-    access: "public",
-    contentType: "image/png",
-    addRandomSuffix: false,
-  });
-  return blob.url;
+// ─── Parse Responses API output into typed blocks ────────────────────────────
+async function parseOutputBlocks(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  output: any[],
+  sessionId: string,
+): Promise<ContentBlock[]> {
+  const blocks: ContentBlock[] = [];
+
+  for (const item of output ?? []) {
+    // Reasoning summary
+    if (item.type === "reasoning") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const summaryText = (item.summary ?? []).map((s: any) => s.text ?? "").join("\n").trim();
+      if (summaryText) blocks.push({ type: "reasoning", summary: summaryText });
+      continue;
+    }
+
+    // Assistant message with text + citations
+    if (item.type === "message") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const part of item.content ?? []) {
+        if (part.type === "output_text") {
+          const citations: Citation[] = (part.annotations ?? [])
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .filter((a: any) => a.type === "url_citation")
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map((a: any) => ({ title: a.title ?? a.url, url: a.url }));
+          blocks.push({ type: "text", text: part.text ?? "", citations });
+        }
+      }
+      continue;
+    }
+
+    // Image generation — result is a base64-encoded PNG
+    if (item.type === "image_generation_call" && item.result) {
+      try {
+        const buffer = Buffer.from(item.result as string, "base64");
+        const blobPath = `ai-assistant/${sessionId}/${Date.now()}.png`;
+        const blob = await put(blobPath, buffer, {
+          access: "public",
+          contentType: "image/png",
+          addRandomSuffix: false,
+        });
+        blocks.push({ type: "image", url: blob.url });
+      } catch (err) {
+        console.error("ai-assistant: failed to upload generated image", err);
+      }
+      continue;
+    }
+
+    // Code interpreter outputs
+    if (item.type === "code_interpreter_call") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const output of item.outputs ?? []) {
+        const text: string =
+          output.type === "logs" ? (output.logs ?? "") : output.type === "text" ? (output.text ?? "") : "";
+        if (text.trim()) blocks.push({ type: "code_output", text });
+      }
+      continue;
+    }
+  }
+
+  return blocks;
 }
 
-async function generateImage(openai: OpenAI, prompt: string, size: AllowedSize): Promise<Buffer> {
-  const result = await openai.images.generate({
-    model: "gpt-image-2",
-    prompt,
-    size,
-    n: 1,
-  });
-  const b64 = result.data?.[0]?.b64_json;
-  if (!b64) throw new Error("OpenAI did not return an image.");
-  return Buffer.from(b64, "base64");
-}
-
-async function editImage(
-  openai: OpenAI,
-  prompt: string,
-  size: AllowedSize,
-  sourceImageUrl: string,
-): Promise<Buffer> {
-  const fetched = await fetch(sourceImageUrl);
-  if (!fetched.ok) throw new Error(`Failed to fetch source image (${fetched.status})`);
-  const sourceBuffer = Buffer.from(await fetched.arrayBuffer());
-  const imageFile = await toFile(sourceBuffer, "source.png", { type: "image/png" });
-
-  const result = await openai.images.edit({
-    model: "gpt-image-2",
-    image: imageFile,
-    prompt,
-    size,
-    n: 1,
-  });
-  const b64 = result.data?.[0]?.b64_json;
-  if (!b64) throw new Error("OpenAI did not return an edited image.");
-  return Buffer.from(b64, "base64");
-}
-
-// ─── GET: list sessions for current user ─────────────────────────────────────
+// ─── GET: list sessions or fetch one ─────────────────────────────────────────
 export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -88,131 +138,114 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       id: row.id,
       title: row.title,
-      clientId: row.clientId,
-      size: row.size,
       currentImageUrl: row.currentImageUrl,
       messages: parseTurns(row.messages),
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
+      lastResponseId: row.lastResponseId,
     });
   }
 
   const sessions = await prisma.adImageSession.findMany({
     where: { userId: session.user.id },
     orderBy: { updatedAt: "desc" },
-    select: {
-      id: true,
-      title: true,
-      clientId: true,
-      currentImageUrl: true,
-      createdAt: true,
-      updatedAt: true,
-    },
+    select: { id: true, title: true, currentImageUrl: true, createdAt: true, updatedAt: true },
   });
   return NextResponse.json({ sessions });
 }
 
-// ─── POST: create session OR add a turn (refine) ─────────────────────────────
+// ─── POST: send a message (new session or continue) ──────────────────────────
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = (await request.json()) as {
-      sessionId?: string;
-      prompt?: string;
-      size?: string;
-      title?: string;
-      clientId?: string | null;
-    };
+    const body = (await request.json()) as { input?: string; sessionId?: string };
+    const userMessage = (body.input ?? "").trim();
+    if (!userMessage) return NextResponse.json({ error: "Input is required" }, { status: 400 });
+    if (userMessage.length > 8000)
+      return NextResponse.json({ error: "Input too long (max 8000 chars)" }, { status: 400 });
 
-    const prompt = (body.prompt ?? "").trim();
-    if (!prompt) return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
-    if (prompt.length > 4000) {
-      return NextResponse.json({ error: "Prompt is too long (max 4000 chars)" }, { status: 400 });
+    // Load or create the DB session
+    let dbSession = body.sessionId
+      ? await prisma.adImageSession.findFirst({
+          where: { id: body.sessionId, userId: session.user.id },
+        })
+      : null;
+
+    if (body.sessionId && !dbSession)
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+
+    if (!dbSession) {
+      dbSession = await prisma.adImageSession.create({
+        data: { userId: session.user.id, title: userMessage.slice(0, 120).trim(), messages: "[]" },
+      });
     }
-
-    const requestedSize = (body.size ?? "1024x1024") as AllowedSize;
-    const size: AllowedSize = ALLOWED_SIZES.includes(requestedSize) ? requestedSize : "1024x1024";
 
     const openai = await getOpenAiClient();
 
-    // Existing session → refine via images.edit
-    if (body.sessionId) {
-      const existing = await prisma.adImageSession.findFirst({
-        where: { id: body.sessionId, userId: session.user.id },
-      });
-      if (!existing) return NextResponse.json({ error: "Session not found" }, { status: 404 });
-      if (!existing.currentImageUrl) {
-        return NextResponse.json({ error: "Session has no image to refine" }, { status: 400 });
-      }
-
-      const buffer = await editImage(openai, prompt, size, existing.currentImageUrl);
-      const imageUrl = await uploadGeneratedImage(buffer, existing.id);
-
-      const turns = parseTurns(existing.messages);
-      const now = new Date().toISOString();
-      turns.push({ role: "user", prompt, createdAt: now });
-      turns.push({ role: "assistant", imageUrl, createdAt: now });
-
-      const updated = await prisma.adImageSession.update({
-        where: { id: existing.id },
-        data: {
-          messages: JSON.stringify(turns),
-          currentImageUrl: imageUrl,
-          size,
-        },
-      });
-
-      return NextResponse.json({
-        id: updated.id,
-        title: updated.title,
-        size: updated.size,
-        currentImageUrl: updated.currentImageUrl,
-        messages: parseTurns(updated.messages),
-      });
-    }
-
-    // New session → fresh generate
-    const created = await prisma.adImageSession.create({
-      data: {
-        userId: session.user.id,
-        clientId: body.clientId ?? null,
-        title: (body.title ?? prompt.slice(0, 80)).trim() || "Untitled image",
-        size,
-        messages: "[]",
-      },
+    // Call the Responses API with the stored prompt
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const openaiResponse = await (openai.responses.create as any)({
+      prompt: { id: PROMPT_ID, version: PROMPT_VERSION },
+      input: [{ role: "user", content: userMessage }],
+      ...(dbSession.lastResponseId ? { previous_response_id: dbSession.lastResponseId } : {}),
+      store: true,
+      include: [
+        "code_interpreter_call.outputs",
+        "reasoning.encrypted_content",
+        "web_search_call.action.sources",
+      ],
     });
 
-    const buffer = await generateImage(openai, prompt, size);
-    const imageUrl = await uploadGeneratedImage(buffer, created.id);
+    const assistantBlocks = await parseOutputBlocks(openaiResponse.output ?? [], dbSession.id);
 
+    // Append user + assistant turns
+    const turns = parseTurns(dbSession.messages);
     const now = new Date().toISOString();
-    const turns: AdImageTurn[] = [
-      { role: "user", prompt, createdAt: now },
-      { role: "assistant", imageUrl, createdAt: now },
-    ];
+    turns.push({ role: "user", blocks: [{ type: "text", text: userMessage, citations: [] }], createdAt: now });
+    turns.push({ role: "assistant", blocks: assistantBlocks, createdAt: now });
+
+    const latestImage = assistantBlocks.find((b): b is ImageBlock => b.type === "image");
 
     const updated = await prisma.adImageSession.update({
-      where: { id: created.id },
+      where: { id: dbSession.id },
       data: {
         messages: JSON.stringify(turns),
-        currentImageUrl: imageUrl,
+        lastResponseId: openaiResponse.id,
+        ...(latestImage ? { currentImageUrl: latestImage.url } : {}),
       },
     });
 
     return NextResponse.json({
       id: updated.id,
       title: updated.title,
-      size: updated.size,
       currentImageUrl: updated.currentImageUrl,
-      messages: parseTurns(updated.messages),
+      messages: turns,
+      lastResponseId: updated.lastResponseId,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("ad-image-generator error:", error);
+    console.error("ai-assistant error:", error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+// ─── PATCH: rename a session ─────────────────────────────────────────────────
+export async function PATCH(request: NextRequest) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = (await request.json()) as { id?: string; title?: string };
+  if (!body.id || !body.title?.trim())
+    return NextResponse.json({ error: "id and title required" }, { status: 400 });
+
+  const row = await prisma.adImageSession.findFirst({
+    where: { id: body.id, userId: session.user.id },
+    select: { id: true },
+  });
+  if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  await prisma.adImageSession.update({ where: { id: body.id }, data: { title: body.title.trim().slice(0, 200) } });
+  return NextResponse.json({ ok: true });
 }
 
 // ─── DELETE: remove a session ────────────────────────────────────────────────
@@ -231,28 +264,5 @@ export async function DELETE(request: NextRequest) {
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.adImageSession.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
-}
-
-// ─── PATCH: rename a session ─────────────────────────────────────────────────
-export async function PATCH(request: NextRequest) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const body = (await request.json()) as { id?: string; title?: string };
-  if (!body.id || !body.title?.trim()) {
-    return NextResponse.json({ error: "id and title required" }, { status: 400 });
-  }
-
-  const row = await prisma.adImageSession.findFirst({
-    where: { id: body.id, userId: session.user.id },
-    select: { id: true },
-  });
-  if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  await prisma.adImageSession.update({
-    where: { id: body.id },
-    data: { title: body.title.trim().slice(0, 200) },
-  });
   return NextResponse.json({ ok: true });
 }
