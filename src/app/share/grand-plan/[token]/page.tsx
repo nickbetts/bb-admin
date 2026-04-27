@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, use, useRef } from "react";
-import { Loader2, Lock, Download, Calendar, Printer } from "lucide-react";
+import { Loader2, Lock, Download, Calendar, Printer, MessageSquare, X } from "lucide-react";
 
 export default function GrandPlanSharePage({
   params,
@@ -17,6 +17,8 @@ export default function GrandPlanSharePage({
   const [passwordRequired, setPasswordRequired] = useState(false);
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [enquiryFormEnabled, setEnquiryFormEnabled] = useState(false);
+  const [enquiryOpen, setEnquiryOpen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   useEffect(() => {
@@ -29,9 +31,11 @@ export default function GrandPlanSharePage({
           setPasswordRequired(true);
           setTitle(data.title);
           setClientName(data.clientName ?? null);
+          setEnquiryFormEnabled(Boolean(data.enquiryFormEnabled));
         } else {
           setTitle(data.title);
           setClientName(data.clientName ?? null);
+          setEnquiryFormEnabled(Boolean(data.enquiryFormEnabled));
           setHtml(data.html);
         }
       })
@@ -68,6 +72,7 @@ export default function GrandPlanSharePage({
       } else {
         setHtml(data.html);
         setClientName(data.clientName ?? clientName);
+        setEnquiryFormEnabled(Boolean(data.enquiryFormEnabled));
         setPasswordRequired(false);
       }
     } catch {
@@ -179,6 +184,15 @@ export default function GrandPlanSharePage({
           <Calendar className="h-4 w-4" aria-hidden />
           Book a call
         </a>
+        {enquiryFormEnabled && (
+          <button
+            onClick={() => setEnquiryOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors shadow-lg"
+          >
+            <MessageSquare className="h-4 w-4" aria-hidden />
+            Get in touch
+          </button>
+        )}
         <button
           onClick={handlePrint}
           className="flex items-center gap-2 px-4 py-2 bg-white text-slate-900 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors shadow-lg"
@@ -227,6 +241,15 @@ export default function GrandPlanSharePage({
           <Calendar className="h-4 w-4" aria-hidden />
           Book a call
         </a>
+        {enquiryFormEnabled && (
+          <button
+            onClick={() => setEnquiryOpen(true)}
+            className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white text-slate-900 border border-slate-200 rounded-lg text-sm font-medium"
+            aria-label="Get in touch"
+          >
+            <MessageSquare className="h-4 w-4" aria-hidden />
+          </button>
+        )}
         <button
           onClick={handlePrint}
           className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white text-slate-900 border border-slate-200 rounded-lg text-sm font-medium"
@@ -241,6 +264,140 @@ export default function GrandPlanSharePage({
         >
           <Download className="h-4 w-4" aria-hidden />
         </button>
+      </div>
+
+      {enquiryFormEnabled && enquiryOpen && (
+        <EnquiryModal
+          token={token}
+          title={title}
+          clientName={clientName}
+          onClose={() => setEnquiryOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Enquiry capture modal ──────────────────────────────────────────────────
+// Submits to /api/share/grand-plan/[token]/enquiry which validates the plan
+// has enquiryFormEnabled = true server-side. We don't trust client state alone.
+function EnquiryModal({
+  token,
+  title,
+  clientName,
+  onClose,
+}: {
+  token: string;
+  title: string;
+  clientName: string | null;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setErr("");
+    try {
+      const res = await fetch(`/api/share/grand-plan/${token}/enquiry`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, phone, message }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErr(data.error ?? "Failed to send. Please try again.");
+      } else {
+        setDone(true);
+      }
+    } catch {
+      setErr("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="flex items-start justify-between px-6 pt-6 pb-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600 mb-1">
+              Get in touch
+            </p>
+            <h2 className="text-lg font-bold text-slate-900 leading-tight">
+              {clientName ? `Reply to ${clientName.split(" ")[0]}'s plan` : title}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="text-slate-400 hover:text-slate-700 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        {done ? (
+          <div className="px-6 pb-6 pt-2 text-center">
+            <p className="text-slate-700 text-sm leading-relaxed">
+              Thanks — your message is on its way to the i3media team. We&apos;ll be in touch shortly.
+            </p>
+            <button
+              onClick={onClose}
+              className="mt-5 w-full py-3 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="px-6 pb-6 pt-2 space-y-3">
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              required
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+              required
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Phone (optional)"
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="What would you like to discuss?"
+              required
+              rows={4}
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+            {err && <p className="text-red-600 text-sm">{err}</p>}
+            <button
+              type="submit"
+              disabled={submitting || !name || !email || !message}
+              className="w-full py-3 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-800 disabled:opacity-50 transition-colors"
+            >
+              {submitting ? "Sending…" : "Send message"}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

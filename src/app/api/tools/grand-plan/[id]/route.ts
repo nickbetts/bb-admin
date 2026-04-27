@@ -108,6 +108,9 @@ export async function PATCH(
       mediaPlanId?: string | null;
       clientBrief?: string;
       targetAudiences?: string;
+      prospectName?: string | null;
+      prospectWebsite?: string | null;
+      enquiryFormEnabled?: boolean;
       campaignFocusPeriods?: { startMonth: number; endMonth: number; label: string; description?: string }[];
       config?: Record<string, unknown>;
     };
@@ -122,6 +125,9 @@ export async function PATCH(
     if (body.mediaPlanId !== undefined) data.mediaPlanId = body.mediaPlanId;
     if (body.clientBrief !== undefined) data.clientBrief = body.clientBrief;
     if (body.targetAudiences !== undefined) data.targetAudiences = body.targetAudiences;
+    if (body.prospectName !== undefined) data.prospectName = body.prospectName;
+    if (body.prospectWebsite !== undefined) data.prospectWebsite = body.prospectWebsite;
+    if (body.enquiryFormEnabled !== undefined) data.enquiryFormEnabled = body.enquiryFormEnabled;
     if (body.campaignFocusPeriods !== undefined) {
       data.campaignFocusPeriodsJson = JSON.stringify(body.campaignFocusPeriods);
     }

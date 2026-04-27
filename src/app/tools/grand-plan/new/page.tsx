@@ -95,6 +95,7 @@ export default function NewGrandPlanPage() {
   const [purpose, setPurpose] = useState<"pitch" | "onboarding" | "strategy_refresh">("pitch");
   const [sector, setSector] = useState("");
   const [website, setWebsite] = useState("");
+  const [prospectName, setProspectName] = useState("");
   const [brief, setBrief] = useState("");
   const [monthlyBudget, setMonthlyBudget] = useState("");
   const [channelBudgets, setChannelBudgets] = useState<Record<string, string>>({});
@@ -191,6 +192,8 @@ export default function NewGrandPlanPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clientId: clientId || undefined,
+          prospectName: !clientId && prospectName.trim() ? prospectName.trim() : undefined,
+          prospectWebsite: !clientId && website ? website : undefined,
           title,
           purpose,
           proposalId: selectedProposal || undefined,
@@ -272,6 +275,22 @@ export default function NewGrandPlanPage() {
                   placeholder="e.g. Acme Co — Go-to-Market Plan 2026" />
               </div>
             </div>
+
+            {/* Prospect name — only for cold prospects with no client linked */}
+            {!clientId && (
+              <div>
+                <label className="form-label">Prospect name</label>
+                <input
+                  className="form-input"
+                  value={prospectName}
+                  onChange={(e) => setProspectName(e.target.value)}
+                  placeholder="e.g. Acme Co (cold prospect)"
+                />
+                <span className="form-hint">
+                  Used for the share-page heading and pipeline. Convert to a full client later when they sign.
+                </span>
+              </div>
+            )}
 
             {/* Website + Budget row */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: 16 }}>

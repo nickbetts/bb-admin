@@ -879,11 +879,22 @@ model GrandPlan {
   clientId                 String?
   userId                   String // Creator
   title                    String
+  // Cold-prospect mode: when no clientId, fall back to these for display + share-page personalisation
+  prospectName             String? // Display name for orphan plans (e.g. "Acme Co")
+  prospectWebsite          String? // Website for orphan plans
   status                   String                  @default("draft") // draft | generating | complete | failed
   statusMessage            String? // Progress message during generation (e.g., "Researching keywords...")
   purpose                  String                  @default("pitch") // pitch | onboarding | strategy_refresh
   generationMs             Int? // How long AI generation took in ms
   generationError          String? // Error message when status = "failed"
+  // Sales pipeline (CRM) — mirrors Proposal.pipelineStage
+  pipelineStage            String                  @default("prospect") // prospect|sent|viewed|negotiating|won|lost
+  pipelineNotes            String?
+  expectedValue            Float? // Deal value in GBP
+  closeDate                String? // ISO date string for forecast close
+  lostReason               String?
+  // Enquiry capture on the public share page — opt-in per plan so existing shares don't change
+  enquiryFormEnabled       Boolean                 @default(false)
   // Source links — all optional, sections auto-enabled based on what's linked
   proposalId               String?
   keywordResearchId        String?
@@ -916,9 +927,27 @@ model GrandPlan {
   contentStrategy          ContentStrategy?        @relation(fields: [contentStrategyId], references: [id], onDelete: SetNull)
   mediaPlan                MediaPlan?              @relation(fields: [mediaPlanId], references: [id], onDelete: SetNull)
   versions                 GrandPlanVersion[]
+  enquiries                GrandPlanEnquiry[]
 
   @@index([clientId, createdAt])
   @@index([userId, createdAt])
+  @@index([userId, pipelineStage])
+}
+
+// Public-form enquiry/lead capture from the share page.
+// Mirrors ProposalEnquiry — used so a single Grand Plan share link can collect
+// new business leads as well as render the strategy.
+model GrandPlanEnquiry {
+  id          String    @id @default(cuid())
+  grandPlanId String
+  name        String
+  email       String
+  phone       String?
+  message     String
+  createdAt   DateTime  @default(now())
+  grandPlan   GrandPlan @relation(fields: [grandPlanId], references: [id], onDelete: Cascade)
+
+  @@index([grandPlanId, createdAt])
 }
 
 // Version history: every AI refinement creates a new version

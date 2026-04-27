@@ -34,11 +34,17 @@ export async function GET(request: NextRequest) {
         viewCount: true,
         lastViewedAt: true,
         clientId: true,
+        prospectName: true,
+        prospectWebsite: true,
+        pipelineStage: true,
+        expectedValue: true,
+        closeDate: true,
+        enquiryFormEnabled: true,
         generationMs: true,
         createdAt: true,
         updatedAt: true,
         client: { select: { id: true, name: true } },
-        _count: { select: { versions: true } },
+        _count: { select: { versions: true, enquiries: true } },
       },
     });
 
@@ -58,6 +64,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as {
       clientId?: string;
+      prospectName?: string;
+      prospectWebsite?: string;
       title: string;
       purpose?: string;
       proposalId?: string;
@@ -136,6 +144,8 @@ export async function POST(request: NextRequest) {
       data: {
         userId: session.user.id,
         clientId: body.clientId || null,
+        prospectName: body.clientId ? null : (body.prospectName?.trim() || null),
+        prospectWebsite: body.clientId ? null : (body.prospectWebsite?.trim() || null),
         title: body.title,
         purpose: body.purpose || "pitch",
         proposalId: body.proposalId || null,

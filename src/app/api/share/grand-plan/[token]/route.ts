@@ -19,6 +19,8 @@ export async function GET(
       sharePassword: true,
       shareExpiresAt: true,
       generatedHtml: true,
+      enquiryFormEnabled: true,
+      prospectName: true,
       client: { select: { name: true } },
     },
   });
@@ -31,12 +33,15 @@ export async function GET(
     return NextResponse.json({ error: "This share link has expired" }, { status: 410 });
   }
 
+  const displayName = plan.client?.name ?? plan.prospectName ?? null;
+
   if (plan.sharePassword) {
     return NextResponse.json({
       id: plan.id,
       title: plan.title,
-      clientName: plan.client?.name ?? null,
+      clientName: displayName,
       passwordRequired: true,
+      enquiryFormEnabled: plan.enquiryFormEnabled,
     });
   }
 
@@ -51,8 +56,9 @@ export async function GET(
   return NextResponse.json({
     id: plan.id,
     title: plan.title,
-    clientName: plan.client?.name ?? null,
+    clientName: displayName,
     passwordRequired: false,
+    enquiryFormEnabled: plan.enquiryFormEnabled,
     html: plan.generatedHtml,
   });
 }
@@ -74,6 +80,8 @@ export async function POST(
       sharePassword: true,
       shareExpiresAt: true,
       generatedHtml: true,
+      enquiryFormEnabled: true,
+      prospectName: true,
       client: { select: { name: true } },
     },
   });
@@ -86,11 +94,14 @@ export async function POST(
     return NextResponse.json({ error: "This share link has expired" }, { status: 410 });
   }
 
+  const displayName = plan.client?.name ?? plan.prospectName ?? null;
+
   if (!plan.sharePassword) {
     return NextResponse.json({
       id: plan.id,
       title: plan.title,
-      clientName: plan.client?.name ?? null,
+      clientName: displayName,
+      enquiryFormEnabled: plan.enquiryFormEnabled,
       html: plan.generatedHtml,
     });
   }
@@ -116,7 +127,8 @@ export async function POST(
   return NextResponse.json({
     id: plan.id,
     title: plan.title,
-    clientName: plan.client?.name ?? null,
+    clientName: displayName,
+    enquiryFormEnabled: plan.enquiryFormEnabled,
     html: plan.generatedHtml,
   });
 }
