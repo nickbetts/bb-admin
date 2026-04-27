@@ -2829,7 +2829,7 @@ Strategic foundation:
 - Audiences:\n${audienceLines}
 
 Context:
-${context}${buildSharedContextBlocks(sources, "seo-foundations")}`;
+${context}${buildSharedContextBlocks(sources, "content")}`;
 
   const res = await withAnthropicRetry("seoFoundations", () => anthropic.messages.create({
     model: MODEL_PRIMARY(),
