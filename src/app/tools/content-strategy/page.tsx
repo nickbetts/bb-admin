@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -1122,7 +1123,7 @@ export default function ContentStrategyPage() {
         <span style={{ fontSize: 16 }}>⚠️</span>
         <div style={{ fontSize: 13, color: "var(--text-2, #78350f)" }}>
           <strong>Content Strategy is being retired.</strong> New content plans should be created as a{" "}
-          <a href="/tools/grand-plan/new" style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline" }}>Grand Plan</a>{" "}
+          <Link href="/tools/grand-plan/new" style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "underline" }}>Grand Plan</Link>{" "}
           — which includes keyword research, paid media, and a shareable client microsite alongside the content plan.
           Existing strategies remain fully accessible here.
         </div>

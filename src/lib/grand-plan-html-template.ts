@@ -97,7 +97,8 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   };
 
   const hasContext = s.audiences?.length || plan.brief || plan.campaignPeriods?.length;
-  const hasStrategy = s.executiveSummary || s.strategyPlan || s.quickWins?.length;
+  void hasContext; // Context chapter removed — brief & audiences now surface inside the Strategy Brain panel.
+  const hasStrategy = s.strategyPlan || s.quickWins?.length || plan.strategyBrain?.positioning?.statement;
   const hasPaidSearch = !!s.googleAdsCampaigns;
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
   const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial || s.exampleArticles?.length;
@@ -105,13 +106,9 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   const hasCommercial = s.servicesInvestment || s.emailMarketing;
   const hasMeasurement = s.kpis?.length;
 
-  if (hasContext) {
-    addChapter("Context");
-    navItems.push({ id: "context", label: "Brief & Audiences" });
-  }
   if (hasStrategy) {
     addChapter("Strategy");
-    if (s.executiveSummary) navItems.push({ id: "executive-summary", label: "Executive Summary" });
+    if (plan.strategyBrain?.positioning?.statement) navItems.push({ id: "strategy-brain", label: "Strategic Foundation" });
     if (s.strategyPlan) navItems.push({ id: "strategy-plan", label: "Strategy Plan" });
     if (s.quickWins?.length) navItems.push({ id: "quick-wins", label: "Quick Wins" });
   }
@@ -286,7 +283,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   </div>
 </div>
 
-${isPublicView ? "" : renderStrategyBrainPanel(plan.strategyBrain)}
+${renderStrategyBrainPanel(plan.strategyBrain)}
 ${isPublicView ? "" : renderCoherencePanel(plan.coherenceIssues)}
 
 <!-- Main Content -->
@@ -327,7 +324,8 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   };
 
   const hasContext = brief || s.audiences?.length || campaignPeriods?.length;
-  const hasStrategy = s.executiveSummary || s.strategyPlan || s.quickWins?.length;
+  void hasContext; // Context chapter removed — brief lives in the brain panel; audiences appear inline per channel.
+  const hasStrategy = s.strategyPlan || s.quickWins?.length;
   const hasPaidSearch = !!s.googleAdsCampaigns;
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
   const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial || s.exampleArticles?.length;
@@ -341,19 +339,12 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
 
   const parts: string[] = [];
 
-  // Data sources panel (internal only — hidden in client share view)
-  if (dataSources?.length && !isPublicView) {
-    parts.push(renderDataSourcesPanel(dataSources));
-  }
-
-  if (hasContext) {
-    parts.push(ch("Context", `The brief, target audiences, and campaign periods that define this plan.`));
-    parts.push(wb(renderContext(brief, s.audiences, campaignPeriods), grounding?.audiences));
-  }
+  // Data sources panel removed — the Strategy Brain panel above already explains
+  // the foundation. Internal teams can inspect plan.dataSources via the API.
+  void dataSources;
 
   if (hasStrategy) {
-    parts.push(ch("Strategy", `The overall marketing strategy and executive overview for ${clientName}.`));
-    if (s.executiveSummary) parts.push(renderExecutiveSummary(s.executiveSummary));
+    parts.push(ch("Strategy", `The overall marketing strategy and quick-win priorities for ${clientName}.`));
     if (s.strategyPlan) parts.push(renderStrategyPlan(s.strategyPlan));
     if (s.quickWins?.length) parts.push(renderQuickWins(s.quickWins));
   }
@@ -419,14 +410,6 @@ function renderCtaClose(clientName: string): string {
   <div class="section-inner" style="max-width:800px;margin:0 auto;position:relative;z-index:1">
     <div class="section-kicker" style="color:rgba(255,255,255,.45)">Next Steps</div>
     <h2 style="font-size:clamp(2rem,5vw,3.25rem);color:#fff;letter-spacing:-1.5px;margin-bottom:1.25rem">Ready when you are.</h2>
-    <p style="font-size:1.1rem;color:rgba(255,255,255,.6);max-width:560px;line-height:1.7;margin-bottom:3rem">This plan is ready to execute. If you have any questions about the strategy for ${esc(clientName)}, get in touch and we can walk through it together.</p>
-    <div class="cta-links">
-      <a href="mailto:hello@i3media.co.uk" class="cta-link-card">
-        <span class="cta-link-icon">✉</span>
-        <div><div class="cta-link-label">Email us</div><div class="cta-link-val">hello@i3media.co.uk</div></div>
-      </a>
-      <a href="https://i3media.co.uk" class="cta-link-card" target="_blank" rel="noopener">
-        <span class="cta-link-icon">🌐</span>
     <p style="font-size:1.1rem;color:rgba(255,255,255,.6);max-width:560px;line-height:1.7;margin-bottom:3rem">This plan is ready to execute. If you have any questions about the strategy for ${esc(clientName)}, get in touch and we can walk through it together.</p>
     <div class="cta-links">
       <a href="mailto:hello@i3media.co.uk" class="cta-link-card">
@@ -687,10 +670,6 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
     .map(([k, v]) => `<div class="ov-item"><span class="ov-label">${esc(k)}</span><span class="ov-value">${esc(v)}</span></div>`)
     .join("\n");
 
-  const negKws = ((data.negativeKeywords ?? []) as string[])
-    .map((k: string) => `<span class="neg-chip">${esc(k)}</span>`)
-    .join(" ");
-
   const aiNegReasoned = ((data.aiNegativesWithReason ?? []) as { keyword: string; reason: string }[])
     .filter((n) => n.keyword && n.reason);
   const aiNegHtml = aiNegReasoned.length > 0 ? `
@@ -701,6 +680,16 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
               <span class="neg-reason-text">${esc(n.reason)}</span>
             </div>`).join("")}
         </div>` : "";
+
+  // Show any sector/brief-derived flat negatives that the AI did NOT already
+  // surface with rationale, so the strategist still sees the full sweep
+  // without rendering a duplicated chip wall.
+  const reasonedSet = new Set(aiNegReasoned.map((n) => n.keyword.toLowerCase()));
+  const flatExtras = ((data.negativeKeywords ?? []) as string[])
+    .filter((k) => k && !reasonedSet.has(k.toLowerCase()));
+  const flatExtrasHtml = flatExtras.length > 0
+    ? `<div class="neg-list" style="margin-top:.75rem">${flatExtras.map((k) => `<span class="neg-chip">${esc(k)}</span>`).join(" ")}</div>`
+    : "";
 
   const adGroupsHtml = ((data.adGroups ?? []) as { name: string; keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number; adCopy?: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; urlPaths?: string[]; isFallback?: boolean }; adGroupNegatives?: string[] }[])
     .map((g, i) => {
@@ -848,8 +837,8 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
         <div class="overview-grid">${overviewGrid}</div>
         <div class="neg-section">
           <h4>Campaign-Level Negative Keywords</h4>
-          <div class="neg-list">${negKws}</div>
-          ${aiNegHtml ? `<h4 style="margin-top:1.5rem">AI-Recommended Negatives <span style="font-weight:400;color:var(--mid);font-size:.8em">— with rationale</span></h4>${aiNegHtml}` : ""}
+          ${aiNegHtml ? `${aiNegHtml}` : `<p class="section-intro" style="font-style:italic;color:var(--mid)">No campaign-level negatives recommended for this account yet.</p>`}
+          ${flatExtras.length > 0 ? `<h5 style="margin-top:1.25rem;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mid)">Sector & brief negatives</h5>${flatExtrasHtml}` : ""}
         </div>
         <h3 class="ag-heading">Ad Groups</h3>
         ${adGroupsHtml}
@@ -873,8 +862,14 @@ function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: s
       ].join(" ");
 
       const creatives = (c.adCreatives ?? [])
-        .map((cr: { format: string; headline: string; primaryText: string; cta: string }) =>
-          `<div class="ad-card">
+        .map((cr: { format: string; headline: string; primaryText: string; description?: string; cta: string; previewMockup?: string }) => {
+          const headlineLen = (cr.headline ?? "").length;
+          const primaryLen = (cr.primaryText ?? "").length;
+          const descLen = (cr.description ?? "").length;
+          const headlineCls = headlineLen <= 40 ? "char-ok" : "char-over";
+          const primaryCls = primaryLen >= 80 && primaryLen <= 125 ? "char-ok" : "char-over";
+          const descCls = descLen === 0 ? "char-ok" : descLen <= 30 ? "char-ok" : "char-over";
+          return `<div class="ad-card">
             <div class="ad-card-header"><span class="ad-badge meta">Meta</span><span style="font-size:11px;color:rgba(255,255,255,.5)">${esc(cr.format)}</span></div>
             <div class="ad-card-body">
               <div class="mad-header">
@@ -882,15 +877,23 @@ function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: s
                 <div><div class="mad-info-name">${esc(c.campaignName ?? "")}</div><div class="mad-info-sub">Sponsored &middot; ${esc(cr.format)}</div></div>
               </div>
               <div class="mad-image-wrap">
-                <div class="mad-img-content"><strong>${esc(cr.headline)}</strong><span class="char-badge ${(cr.headline ?? "").length <= 40 ? "char-ok" : "char-over"}" style="margin-top:8px;display:inline-block">${(cr.headline ?? "").length}/40</span></div>
+                ${cr.previewMockup
+                  ? `<div class="mad-img-mockup"><span class="mad-img-mockup-label">Visual concept</span><p>${esc(cr.previewMockup)}</p></div>`
+                  : `<div class="mad-img-content"><strong>${esc(cr.headline)}</strong></div>`}
               </div>
-              <p class="mad-caption">${(cr.primaryText ?? "").length > 125 ? `${esc((cr.primaryText ?? "").slice(0, 125))}<span style="color:var(--mid)">... <em>See more</em></span>` : esc(cr.primaryText)}</p>
+              <p class="mad-caption">${primaryLen > 125 ? `${esc((cr.primaryText ?? "").slice(0, 125))}<span style="color:var(--mid)">... <em>See more</em></span>` : esc(cr.primaryText)}</p>
               <div class="mad-cta-block">
                 <div><div class="mad-cta-block-url">${esc(adDomain)}</div><div class="mad-cta-block-title">${esc(cr.headline)}</div></div>
                 <div class="mad-cta-btn">${esc(cr.cta)}</div>
               </div>
+              <div class="mad-char-meter">
+                <span class="char-badge ${headlineCls}" title="Headline: ${headlineLen}/40">H ${headlineLen}/40</span>
+                <span class="char-badge ${primaryCls}" title="Primary text: ${primaryLen}/80–125">P ${primaryLen}/80–125</span>
+                ${descLen > 0 ? `<span class="char-badge ${descCls}" title="Description: ${descLen}/30">D ${descLen}/30</span>` : ""}
+              </div>
             </div>
-          </div>`)
+          </div>`;
+        })
         .join("\n");
 
       const captions = (c.captionCopyBank ?? [])
@@ -1058,12 +1061,21 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
     url?: string; title?: string;
     keywords?: { keyword: string; volume?: number }[];
     notes?: string; brief?: string;
+    summary?: string;
+    primaryKeyword?: string;
+    secondaryKeywords?: string[];
+    longTailKeywords?: string[];
     tier?: "pillar" | "mega" | "article";
     intent?: string;
     // Content-strategy generator returns {url, anchorText} objects, but legacy
     // data may be plain strings. Render handles both shapes.
     internalLinks?: (string | { url?: string; anchorText?: string })[];
     targetAudiences?: string[];
+    // ── Structured on-page optimisation fields (AI clusters) ──
+    titleTag?: string;
+    metaDescription?: string;
+    contentEnhancements?: string[];
+    schema?: string;
   };
 
   const pageOpts = (data.pageOptimisations ?? []).slice(0, 15) as Entry[];
@@ -1079,33 +1091,55 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
   const intentClass = (intent?: string): string => {
     if (!intent) return "";
     const v = intent.toLowerCase();
-    if (v.startsWith("dec") || v.includes("transact")) return "intent-dc";
-    if (v.startsWith("comm") || v.includes("consider")) return "intent-cm";
+    if (v.startsWith("dec")) return "intent-dc";
+    if (v.includes("transact") || v.includes("convers") || v.includes("purchase")) return "intent-tr";
+    if (v.startsWith("comm") || v.includes("consider") || v.includes("compar")) return "intent-cm";
+    if (v.includes("info") || v.includes("how to") || v.includes("educat") || v.includes("learn") || v.includes("guide")) return "intent-in";
     return "intent-aw";
   };
   const intentLabel = (intent?: string): string => {
     if (!intent) return "";
     const v = intent.toLowerCase();
-    if (v.startsWith("dec") || v.includes("transact")) return "Decision";
-    if (v.startsWith("comm") || v.includes("consider")) return "Commercial";
+    if (v.startsWith("dec")) return "Decision";
+    if (v.includes("transact") || v.includes("convers") || v.includes("purchase")) return "Transactional";
+    if (v.startsWith("comm") || v.includes("consider") || v.includes("compar")) return "Commercial";
+    if (v.includes("info") || v.includes("how to") || v.includes("educat") || v.includes("learn") || v.includes("guide")) return "Informational";
     return "Awareness";
   };
 
   const card = (entry: Entry, tier: "pillar" | "mega" | "article", typeLabel: string): string => {
-    const kw = entry.keywords?.[0]?.keyword;
+    const primary = entry.primaryKeyword ?? entry.keywords?.[0]?.keyword;
     const intent = entry.intent;
-    const briefText = entry.brief ?? entry.notes;
+    const summary = entry.summary ?? entry.brief ?? entry.notes;
+    const secondary = entry.secondaryKeywords ?? [];
+    const longTail = entry.longTailKeywords ?? [];
     const audChips = (entry.targetAudiences ?? []).slice(0, 3)
       .map((n) => `<span class="audience-tag">${esc(n)}</span>`).join(" ");
     return `
       <div class="cluster-card ${tier}">
-        <div class="cluster-card-head"><span class="cluster-type-pill">${esc(typeLabel)}</span></div>
+        <div class="cluster-card-head">
+          <span class="cluster-type-pill">${esc(typeLabel)}</span>
+          ${intent ? `<span class="cc-intent ${intentClass(intent)}">${esc(intentLabel(intent))}</span>` : ""}
+        </div>
         <div class="cluster-card-body">
           <div class="cc-title">${esc(entry.title ?? entry.url ?? "Untitled")}</div>
-          ${kw ? `<div class="cc-kw">${esc(kw)}</div>` : ""}
-          ${intent ? `<span class="cc-intent ${intentClass(intent)}">${esc(intentLabel(intent))}</span>` : ""}
+          ${primary ? `
+          <div class="cc-kw-block">
+            <div class="cc-kw-label">Primary keyword</div>
+            <div class="cc-kw-primary">${esc(primary)}</div>
+          </div>` : ""}
+          ${secondary.length ? `
+          <div class="cc-kw-block">
+            <div class="cc-kw-label">Secondary keywords</div>
+            <div class="cc-kw-chips">${secondary.slice(0, 6).map((k) => `<span class="kw-pill">${esc(k)}</span>`).join(" ")}</div>
+          </div>` : ""}
+          ${longTail.length ? `
+          <div class="cc-kw-block">
+            <div class="cc-kw-label">Long-tail variants</div>
+            <div class="cc-kw-chips">${longTail.slice(0, 8).map((k) => `<span class="kw-pill kw-pill-mute">${esc(k)}</span>`).join(" ")}</div>
+          </div>` : ""}
           ${audChips ? `<div class="cc-audiences">${audChips}</div>` : ""}
-          ${briefText ? `<div class="cc-brief">${formatBriefBlock(briefText)}</div>` : ""}
+          ${summary ? `<p class="cc-summary">${esc(summary)}</p>` : ""}
         </div>
       </div>`;
   };
@@ -1169,6 +1203,19 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
         const url = p.url || "";
         const audChips = (p.targetAudiences ?? []).slice(0, 3)
           .map((n) => `<span class="audience-tag">${esc(n)}</span>`).join(" ");
+        const internalLinksList = (p.internalLinks ?? [])
+          .map((l) => typeof l === "string" ? l : (l.anchorText ?? l.url ?? ""))
+          .filter(Boolean)
+          .slice(0, 5);
+        const hasStructured = !!(p.titleTag || p.metaDescription || (p.contentEnhancements && p.contentEnhancements.length) || internalLinksList.length || p.schema);
+        const structuredHtml = hasStructured ? `
+          <div class="onpage-structured">
+            ${p.titleTag ? `<div class="onpage-row"><span class="onpage-label">Title tag</span><div class="onpage-val">${esc(p.titleTag)} <span class="char-badge ${p.titleTag.length <= 60 ? "char-ok" : "char-over"}">${p.titleTag.length}/60</span></div></div>` : ""}
+            ${p.metaDescription ? `<div class="onpage-row"><span class="onpage-label">Meta description</span><div class="onpage-val">${esc(p.metaDescription)} <span class="char-badge ${p.metaDescription.length <= 160 ? "char-ok" : "char-over"}">${p.metaDescription.length}/160</span></div></div>` : ""}
+            ${p.contentEnhancements?.length ? `<div class="onpage-row"><span class="onpage-label">Content enhancements</span><ul class="onpage-list">${p.contentEnhancements.slice(0, 6).map((e) => `<li>${esc(e)}</li>`).join("")}</ul></div>` : ""}
+            ${internalLinksList.length ? `<div class="onpage-row"><span class="onpage-label">Internal links</span><div class="onpage-chips">${internalLinksList.map((l) => `<span class="kw-pill kw-pill-mute">${esc(l)}</span>`).join(" ")}</div></div>` : ""}
+            ${p.schema ? `<div class="onpage-row"><span class="onpage-label">Schema</span><div class="onpage-val"><code>${esc(p.schema)}</code></div></div>` : ""}
+          </div>` : "";
         return `
       <div class="content-card">
         <div class="content-url-row">
@@ -1177,7 +1224,8 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
         </div>
         ${p.keywords?.length ? `<div class="content-kws">${p.keywords.slice(0, 5).map((k) => `<span class="kw-pill">${esc(k.keyword)}</span>`).join(" ")}</div>` : ""}
         ${audChips ? `<div class="cc-audiences" style="margin-top:6px">${audChips}</div>` : ""}
-        ${p.notes ? `<div class="content-notes">${formatBriefBlock(p.notes)}</div>` : ""}
+        ${structuredHtml}
+        ${!hasStructured && p.notes ? `<div class="content-notes">${formatBriefBlock(p.notes)}</div>` : ""}
       </div>`;
       }).join("\n")}
     </div>` : "";
@@ -1893,6 +1941,14 @@ a{color:var(--accent);text-decoration:none}
 .content-notes li{margin-bottom:.2rem}
 .content-notes .cc-brief-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);font-weight:700;margin:.65rem 0 .3rem}
 .content-notes .cc-brief-label:first-child{margin-top:0}
+.onpage-structured{margin-top:.75rem;padding:.75rem .9rem;background:#f8fafc;border-left:3px solid var(--accent);border-radius:4px;display:flex;flex-direction:column;gap:.7rem}
+.onpage-row{display:flex;flex-direction:column;gap:.25rem}
+.onpage-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);font-weight:700}
+.onpage-val{font-size:13px;color:var(--text);line-height:1.5;display:flex;flex-wrap:wrap;align-items:center;gap:.4rem}
+.onpage-val code{font-family:'SF Mono','Fira Code','Courier New',monospace;background:#eef2ff;color:#3730a3;padding:2px 6px;border-radius:4px;font-size:12px}
+.onpage-list{margin:0;padding-left:1.1rem;font-size:13px;color:var(--text);line-height:1.55}
+.onpage-list li{margin-bottom:.2rem}
+.onpage-chips{display:flex;flex-wrap:wrap;gap:4px}
 .kw-pill{display:inline-block;padding:2px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:11px;color:var(--text-light)}
 .intent-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
 .intent-awareness,.intent-informational{background:#dbeafe;color:#1e40af}
@@ -1919,8 +1975,17 @@ a{color:var(--accent);text-decoration:none}
 .cc-kw{font-size:12px;color:var(--text-light);margin-bottom:.45rem;font-family:'SF Mono','Fira Code','Courier New',monospace}
 .cc-intent{font-size:11px;padding:1px 8px;border-radius:10px;display:inline-block;margin-bottom:.55rem;font-weight:600}
 .cc-intent.intent-aw,.cc-intent.intent-awareness{background:#dbeafe;color:#1e40af}
+.cc-intent.intent-in,.cc-intent.intent-informational{background:#cffafe;color:#155e75}
 .cc-intent.intent-cm,.cc-intent.intent-commercial{background:#fef3c7;color:#92400e}
+.cc-intent.intent-tr,.cc-intent.intent-transactional{background:#fed7aa;color:#9a3412}
 .cc-intent.intent-dc,.cc-intent.intent-decision{background:#d1fae5;color:#065f46}
+.cc-kw-block{margin:.55rem 0}
+.cc-kw-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);font-weight:700;margin-bottom:.3rem}
+.cc-kw-primary{font-size:13px;font-weight:600;color:var(--heading);font-family:'SF Mono','Fira Code','Courier New',monospace;background:#f1f5f9;padding:4px 8px;border-radius:4px;display:inline-block}
+.cc-kw-chips{display:flex;flex-wrap:wrap;gap:4px}
+.kw-pill{font-size:11px;padding:2px 8px;border-radius:10px;background:#eef2ff;color:#3730a3;font-weight:500}
+.kw-pill-mute{background:#f1f5f9;color:#475569;font-weight:400}
+.cc-summary{font-size:13px;color:var(--text);line-height:1.55;margin:.55rem 0 0;padding:10px 12px;background:#f8fafc;border-left:3px solid var(--accent);border-radius:4px}
 .cc-brief{font-size:13px;color:var(--text);line-height:1.55;margin:0;padding:10px 12px;background:#f8fafc;border-left:3px solid var(--accent);border-radius:4px}
 .cc-brief p{margin:0 0 .55rem;font-size:13px;color:var(--text);line-height:1.55}
 .cc-brief p:last-child{margin-bottom:0}
@@ -2441,6 +2506,10 @@ details.cal-month[open] .cal-month-header::after{content:"\\2212"}
 .mad-img-content{padding:1.5rem;color:#fff;text-align:center}
 .mad-img-content strong{font-size:.95rem;font-weight:800;display:block;line-height:1.35}
 .mad-img-content span{font-size:12px;opacity:.75;margin-top:4px;display:block}
+.mad-img-mockup{padding:1.1rem 1.25rem;color:#e2e8f0;text-align:left;width:100%}
+.mad-img-mockup-label{display:block;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8;font-weight:700;margin-bottom:6px}
+.mad-img-mockup p{margin:0;font-size:12.5px;line-height:1.5;font-style:italic;color:#f1f5f9}
+.mad-char-meter{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
 .mad-caption{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px}
 .mad-cta-block{background:var(--bg);border-radius:8px;padding:.65rem 1rem;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .mad-cta-block-url{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--mid)}
@@ -2713,9 +2782,9 @@ const I3_LOGO_SVG = `<svg viewBox="0 0 161 53" fill="none" xmlns="http://www.w3.
 // Renders the upstream reasoning the AI used to build the plan. Sits between
 // the stats band and the main body so strategists can sanity-check the
 // foundation before reading 14 channel write-ups built on top of it.
-function renderStrategyBrainPanel(brain: StrategyBrain | undefined, isPublicView = false): string {
+function renderStrategyBrainPanel(brain: StrategyBrain | undefined, _isPublicView = false): string {
   if (!brain || !brain.positioning?.statement) return "";
-  if (isPublicView) return "";
+  void _isPublicView; // brain is now public-friendly and rendered in both views
   const audiences = (brain.audiences ?? []).slice(0, 6).map((a) => `
     <div class="brain-audience">
       <div class="brain-audience-name">${esc(a.name)}</div>
@@ -2731,50 +2800,57 @@ function renderStrategyBrainPanel(brain: StrategyBrain | undefined, isPublicView
   const messagesToOwn = (brain.competitorAngle?.messagesToOwn ?? []).map((m) => `<li>${esc(m)}</li>`).join("");
   const messagesToAvoid = (brain.competitorAngle?.messagesToAvoid ?? []).map((m) => `<li>${esc(m)}</li>`).join("");
   const supporting = (brain.messageHierarchy?.secondary ?? []).map((m) => `<li>${esc(m)}</li>`).join("");
+  const geos = (brain.targetGeographies ?? []).map((g) => `<span class="brain-geo-chip">${esc(g)}</span>`).join("");
 
   return `
-<details class="brain-panel">
-  <summary class="brain-summary">
-    <span class="brain-kicker">Strategy Brain</span>
-    <span class="brain-title">The reasoning behind this plan</span>
-    <span class="brain-toggle">Click to collapse</span>
-  </summary>
-  <div class="brain-inner">
-    <div class="brain-headline">
-      <div class="brain-headline-label">Positioning</div>
-      <p class="brain-headline-statement">${esc(brain.positioning.statement)}</p>
-      ${brain.positioning.proofPoints?.length ? `<ul class="brain-proof">${brain.positioning.proofPoints.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}
+<section class="section-block brain-panel" id="strategy-brain" data-snap>
+  <div class="section-inner">
+    <div class="section-kicker">Strategic Foundation</div>
+    <h2>The strategy that powers this plan</h2>
+    <p class="section-intro">Before any channel writes a single line, we agree the strategic foundation: who we are talking to, what we lead with, where we win against the competition, and which markets we play in. Every section that follows is built on this.</p>
+    <div class="brain-inner">
+      <div class="brain-headline">
+        <div class="brain-headline-label">Positioning</div>
+        <p class="brain-headline-statement">${esc(brain.positioning.statement)}</p>
+        ${brain.positioning.proofPoints?.length ? `<ul class="brain-proof">${brain.positioning.proofPoints.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}
+      </div>
+      ${geos ? `
+      <div class="brain-geos">
+        <h4>Markets we are targeting</h4>
+        <div class="brain-geo-chips">${geos}</div>
+      </div>` : ""}
+      <div class="brain-grid">
+        <div class="brain-cell">
+          <h4>Market context</h4>
+          <p><strong>State:</strong> ${esc(brain.marketContext?.state ?? "")}</p>
+          <p><strong>Opportunity:</strong> ${esc(brain.marketContext?.opportunity ?? "")}</p>
+          <p><strong>Threat:</strong> ${esc(brain.marketContext?.threat ?? "")}</p>
+        </div>
+        <div class="brain-cell">
+          <h4>Competitor angle</h4>
+          <p><strong>How we win:</strong> ${esc(brain.competitorAngle?.differentiator ?? "")}</p>
+          ${messagesToOwn ? `<p><strong>Messages to own:</strong></p><ul>${messagesToOwn}</ul>` : ""}
+          ${messagesToAvoid ? `<p><strong>Messages to avoid (saturated):</strong></p><ul>${messagesToAvoid}</ul>` : ""}
+        </div>
+        <div class="brain-cell">
+          <h4>Message hierarchy</h4>
+          <p class="brain-primary-msg">${esc(brain.messageHierarchy?.primary ?? "")}</p>
+          ${supporting ? `<p><strong>Supporting:</strong></p><ul>${supporting}</ul>` : ""}
+        </div>
+        <div class="brain-cell brain-cell-wide">
+          <h4>Channel strategy</h4>
+          <ul class="brain-channels">${channels}</ul>
+        </div>
+      </div>
+      ${audiences ? `
+      <div class="brain-audiences">
+        <h4>Audience definitions</h4>
+        <p class="brain-audience-intro">These names appear verbatim across every channel below — ad copy, email segments, content briefs, social pillars.</p>
+        <div class="brain-audience-grid">${audiences}</div>
+      </div>` : ""}
     </div>
-    <div class="brain-grid">
-      <div class="brain-cell">
-        <h4>Market context</h4>
-        <p><strong>State:</strong> ${esc(brain.marketContext?.state ?? "")}</p>
-        <p><strong>Opportunity:</strong> ${esc(brain.marketContext?.opportunity ?? "")}</p>
-        <p><strong>Threat:</strong> ${esc(brain.marketContext?.threat ?? "")}</p>
-      </div>
-      <div class="brain-cell">
-        <h4>Competitor angle</h4>
-        <p><strong>Differentiator:</strong> ${esc(brain.competitorAngle?.differentiator ?? "")}</p>
-        ${messagesToOwn ? `<p><strong>Messages to own:</strong></p><ul>${messagesToOwn}</ul>` : ""}
-        ${messagesToAvoid ? `<p><strong>Messages to avoid (saturated):</strong></p><ul>${messagesToAvoid}</ul>` : ""}
-      </div>
-      <div class="brain-cell">
-        <h4>Message hierarchy</h4>
-        <p class="brain-primary-msg">${esc(brain.messageHierarchy?.primary ?? "")}</p>
-        ${supporting ? `<p><strong>Supporting:</strong></p><ul>${supporting}</ul>` : ""}
-      </div>
-      <div class="brain-cell brain-cell-wide">
-        <h4>Channel strategy</h4>
-        <ul class="brain-channels">${channels}</ul>
-      </div>
-    </div>
-    ${audiences ? `
-    <div class="brain-audiences">
-      <h4>Audience definitions (these names are used everywhere downstream)</h4>
-      <div class="brain-audience-grid">${audiences}</div>
-    </div>` : ""}
   </div>
-</details>`;
+</section>`;
 }
 
 // ─── Coherence issues panel (Strategist Review) ─────────────────────────────

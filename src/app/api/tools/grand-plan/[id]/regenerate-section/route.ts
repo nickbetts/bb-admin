@@ -66,7 +66,14 @@ export async function POST(
 
   try {
     const existingPlanData: GrandPlanData = JSON.parse(plan.planDataJson);
-    const config = safeJsonParse<{ sector?: string; sections?: string[] }>(plan.configJson, {});
+    const config = safeJsonParse<{
+      sector?: string;
+      sections?: string[];
+      channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number };
+      postsPerMonth?: number;
+      socialPostsPerWeek?: number;
+      calendarMonths?: number;
+    }>(plan.configJson, {});
     const clientName = plan.client?.name || plan.proposal?.clientName || "Client";
 
     // Rebuild sources from linked records (same pattern as generate route)
@@ -78,6 +85,11 @@ export async function POST(
       sector: config.sector || undefined,
       enabledPlatforms: config.sections,
       campaignFocusPeriods: safeJsonParse(plan.campaignFocusPeriodsJson, []),
+      strategyBrain: existingPlanData.strategyBrain,
+      postsPerMonth: typeof config.postsPerMonth === "number" && config.postsPerMonth > 0 ? config.postsPerMonth : undefined,
+      socialPostsPerWeek: typeof config.socialPostsPerWeek === "number" && config.socialPostsPerWeek > 0 ? config.socialPostsPerWeek : undefined,
+      calendarMonths: typeof config.calendarMonths === "number" && config.calendarMonths > 0 ? config.calendarMonths : undefined,
+      channelBudgets: config.channelBudgets ?? undefined,
       proposal: plan.proposal
         ? {
             title: plan.proposal.title,

@@ -106,15 +106,33 @@ interface ContentStrategyEntry {
   type?: string;
   /** Cluster tier — drives the cluster-card colour treatment. */
   tier?: "pillar" | "mega" | "article";
-  /** Top-level intent classification used for the coloured intent badge. */
-  intent?: "awareness" | "commercial" | "decision";
+  /** Top-level intent classification used for the coloured intent badge.
+   * Five-stage funnel: awareness → informational → commercial → transactional → decision. */
+  intent?: "awareness" | "informational" | "commercial" | "transactional" | "decision";
+  /** Primary target keyword for this asset (drives the page title and primary H1). */
+  primaryKeyword?: string;
+  /** Secondary keywords reinforcing the topic — used in subheadings. */
+  secondaryKeywords?: string[];
+  /** Long-tail keyword variants the asset should pick up incidentally. */
+  longTailKeywords?: string[];
+  /** One-paragraph editorial summary surfaced inside the cluster card. */
+  summary?: string;
   /** One-paragraph writer brief surfaced inside the cluster card. */
   brief?: string;
   /** Internal linking recommendations (one short sentence each). */
-  internalLinks?: string[];
+  internalLinks?: (string | { url?: string; anchorText?: string })[];
   /** Names of audiences (matching AudienceItem.name) this asset is built for.
    * Used to render the cross-reference Audience Plays panel. */
   targetAudiences?: string[];
+  /** ── Structured on-page optimisation fields (used for pageOptimisations entries) ── */
+  /** Rewritten <title> tag (≤ 60 chars). */
+  titleTag?: string;
+  /** Rewritten meta description (≤ 160 chars). */
+  metaDescription?: string;
+  /** 3-5 specific edits to make to the page body. */
+  contentEnhancements?: string[];
+  /** schema.org type to deploy on the page. */
+  schema?: string;
   /** Estimated business impact for the impact/effort matrix render. */
   impact?: "high" | "medium" | "low";
   /** Implementation effort for the impact/effort matrix render. */
@@ -188,6 +206,8 @@ interface MetaCampaign {
     primaryText: string;
     description?: string;
     cta: string;
+    /** Short paragraph describing the visual — opening shot, on-screen text, key beat. Used by the renderer to draw a faux ad mockup so the client can visualise the creative. */
+    previewMockup?: string;
   }[];
   captionCopyBank: string[];
   contentPillars: string[];
@@ -201,8 +221,8 @@ interface MetaCampaign {
 
 interface ContentCalendarMonth {
   month: string;
-  focusLabel?: string;
-  blogPosts: { title: string; intent: string; targetKeyword: string }[];
+  focusLabel?: string | null;
+  blogPosts: { title: string; intent: string; targetKeyword: string; angle?: string }[];
   socialPosts: { platform: string; type: string; topic: string }[];
 }
 
@@ -378,6 +398,9 @@ export interface StrategyBrain {
     primaryAudience: string;
     successMetric: string;
   }>;
+  /** Geographic markets the plan should target. Inferred from the brief, target audiences
+   * and sector. Used by every paid-channel section so locations are not hard-coded. */
+  targetGeographies: string[];
   /** Per-section directives. Each generator reads its own block as guardrails so
    * email segments mirror audience names, ad copy uses the agreed primary pain, etc. */
   directives: {
@@ -692,6 +715,7 @@ Return ONLY valid JSON (no markdown fences) matching this exact schema:
   "competitorAngle": { "differentiator": string, "messagesToAvoid": string[], "messagesToOwn": string[] },
   "messageHierarchy": { "primary": string, "secondary": string[] },
   "channelStrategy": [ { "channel": string, "role": string, "primaryAudience": string, "successMetric": string } ],
+  "targetGeographies": string[],
   "directives": {
     "audiences": string, "googleAds": string, "meta": string, "linkedIn": string,
     "email": string, "content": string, "organicSocial": string, "calendar": string,
@@ -705,6 +729,7 @@ Hard rules:
 - "messagesToOwn" must be specific, ownable angles — not generic claims every competitor could make.
 - Each "directives" entry is 1-3 short sentences that tell the channel writer what to do (and what NOT to do). Reference audience names, the primary message, and (where relevant) the channel budget so the downstream prompt has guardrails.
 - "channelStrategy" entries: only include channels that are actually enabled.
+- "targetGeographies" must be the actual markets this client serves — infer from the brief, audience names (e.g. "Owner-operators in West Yorkshire" → ["United Kingdom (West Yorkshire)"]), and sector. Use full country / region names ("United Kingdom", "Republic of Ireland", "United States", "London", "Greater Manchester"). NEVER default to a region that is not evidenced. If the brief is silent, return ["United Kingdom"].
 - British English, no AI jargon, no em dashes.
 
 Inputs:
@@ -738,6 +763,7 @@ ${compComplaints ? `- What customers complain about competitors:\n${compComplain
     competitorAngle: { differentiator: "", messagesToAvoid: [], messagesToOwn: [] },
     messageHierarchy: { primary: "", secondary: [] },
     channelStrategy: [],
+    targetGeographies: [],
     directives: {},
   };
   return safeJsonParse<StrategyBrain>(raw, fallback);
@@ -794,6 +820,7 @@ export async function generateGrandPlan(
   if (isEnabled("audiences")) sectionNames.push("Audiences");
   if (isEnabled("executiveSummary")) sectionNames.push("Executive Summary");
   if (isEnabled("strategyPlan")) sectionNames.push("Strategy Plan");
+  if (isEnabled("contentStrategy") && !contentData) sectionNames.push("Content Clusters");
   if (isEnabled("metaCampaigns") && sources.keywordResearch) sectionNames.push("Meta Campaigns");
   if (isEnabled("contentCalendar")) sectionNames.push("Content Calendar");
   if (isEnabled("organicSocial")) sectionNames.push("Organic Social");
@@ -829,7 +856,7 @@ export async function generateGrandPlan(
   if (onProgress) await onProgress(`Generating ${total} AI sections...`);
 
   // Batch 1: core sections (errors are isolated — one failure does not abort the rest)
-  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, adCopyData, aiNegatives] =
+  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, adCopyData, aiNegatives, aiContentClusters] =
     await Promise.all([
       isEnabled("executiveSummary")
         ? runSection("Executive Summary", "executiveSummary", () => generateExecutiveSummary(anthropic, contextSummary, sources))
@@ -854,6 +881,11 @@ export async function generateGrandPlan(
         : Promise.resolve(undefined),
       isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
         ? runSection("Negative Keywords", "googleAdsNegatives", () => generateNegativeKeywords(anthropic, adGroups, contextSummary, sources))
+        : Promise.resolve(undefined),
+      // Brain-driven content clusters — only run when no spreadsheet contentData
+      // is supplied. Replaces the legacy SEMrush spreadsheet upload pathway.
+      isEnabled("contentStrategy") && !contentData
+        ? runSection("Content Clusters", "contentClusters", () => generateContentClusters(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
     ]);
 
@@ -890,9 +922,10 @@ export async function generateGrandPlan(
     ? buildKeywordResearchSection(adGroups)
     : undefined;
 
-  // Build content strategy section from existing data
-  const contentStrategySection = isEnabled("contentStrategy") && contentData
-    ? buildContentStrategySection(contentData)
+  // Build content strategy section: prefer AI clusters (form-driven), fall back
+  // to legacy spreadsheet data when a ContentStrategy record is linked.
+  const contentStrategySection = isEnabled("contentStrategy")
+    ? buildContentStrategySection(contentData, aiContentClusters)
     : undefined;
 
   // Build services section from proposal
@@ -1285,13 +1318,18 @@ Return a JSON object with key "campaigns" containing an array of campaign object
 - placements: string (e.g., "Facebook Feed, Instagram Feed, Instagram Reels, Stories")
 - bidding: string (e.g., "Lowest Cost" or "Cost Cap")
 - audienceTargeting: { interests: string[], customAudiences: string[], lookalikes: string[] }
-- adCreatives: array of { format: "feed"|"reel"|"story", headline: string, primaryText: string, description?: string, cta: string }
+- adCreatives: array of { format: "feed"|"reel"|"story", headline: string, primaryText: string, description?: string, cta: string, previewMockup: string }
 - captionCopyBank: string[] (5-8 ready-to-use captions — POLISHED ad copy only, no compliance/strategy notes)
 - contentPillars: string[] (4-6 organic content themes)
 - complianceNotes: string[] (OPTIONAL — only if Meta policy or audience constraints require it: under-18 targeting workarounds, geo-restricted product mentions, prohibited categories. Each note ONE short sentence, NEVER duplicated in captions.)
 
 Rules:
 - Create 2-3 campaigns based on the keyword themes provided AND the target audiences below. Each campaign should clearly map to one or more named audiences.
+- AD CREATIVE BUILD: each campaign needs 2-3 adCreatives. Mix formats (at least one reel or story alongside feed). Each creative MUST have all six fields populated.
+- HARD CHARACTER LIMITS (Meta enforced — count every character including spaces): headline ≤ 40, primaryText 80–125, description ≤ 30. If you cannot fit the message inside these limits, rewrite it shorter, do not exceed.
+- CTA enum (use the exact label, capitalised as shown): "Learn More", "Shop Now", "Sign Up", "Book Now", "Get Quote", "Contact Us", "Apply Now", "Download", "Subscribe", "Get Offer". No invented CTAs.
+- previewMockup field: 1–2 sentences describing the actual creative — opening visual, on-screen text overlay, key beat, brand cue. Treat it as a brief to a designer (e.g. "Tight shot of barista pouring oat milk, on-screen text 'New autumn menu', logo bug bottom-right"). NEVER repeat the headline or primaryText verbatim — describe what the eye sees.
+- The strongest creative MUST reference the Strategy Brain primary message and the named audience pain point being relieved. Mediocre creatives that do not connect to the brain's positioning will be rejected.
 ${(() => {
   const metaBudget = sources.channelBudgets?.metaAds;
   if (!metaBudget) return "";
@@ -1309,7 +1347,6 @@ ${(() => {
 })()}- Audience targeting interests/customAudiences/lookalikes should reflect the real personas, not generic demographics. Mix specific behaviours, life events, and adjacent interests, not just first-person pain points.
 - CAPTION HOOK RULE: Every caption in captionCopyBank MUST open with a single sentence of 12 words or fewer that would stop a scroll — a provocative question, a specific pain point stated as fact, or a surprising statistic. The detail and offer follow in lines 2-3.
 - COPY VARIANTS: Of the 5-8 captions, produce: 2 written in first-person from the customer's perspective (e.g. "I spent three months searching for..."), 2 in brand voice, and 2 as direct offers (lead with the outcome or price point).
-- AD CREATIVE HEADLINE LIMIT: Meta headline is 40 characters maximum. Count every character including spaces. Hard limit.
 - Captions and creative copy must speak directly to the audience's situation in plain British English.
 - If campaign focus periods are listed, design at least one campaign or creative variant around the most imminent period, include specific dates/windows in the ad copy to drive urgency.
 - British English, no AI jargon, no em-dashes
@@ -1390,13 +1427,19 @@ async function generateContentCalendar(anthropic: Anthropic, context: string, co
   // Default to a full 12-month calendar so strategists get an annual plan, not a half-year stub.
   const monthCount = sources.calendarMonths ?? 12;
 
-  // Compute month labels deterministically so each parallel half gets the right
-  // window. Calendar starts from next month relative to "now".
+  // For a default 12-month calendar, render the current calendar year (Jan–Dec)
+  // so the plan reads like an annual operating plan rather than a rolling
+  // window. For shorter custom windows fall back to "next N months from now".
   const now = new Date();
   const monthLabels: string[] = [];
-  for (let i = 1; i <= monthCount; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    monthLabels.push(`${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`);
+  if (monthCount === 12) {
+    const year = now.getFullYear();
+    for (let i = 0; i < 12; i++) monthLabels.push(`${MONTH_NAMES[i]} ${year}`);
+  } else {
+    for (let i = 1; i <= monthCount; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      monthLabels.push(`${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`);
+    }
   }
 
   async function generateHalf(label: string, months: string[]): Promise<ContentCalendarMonth[]> {
@@ -1439,6 +1482,7 @@ ${context}${buildSharedContextBlocks(sources, "calendar")}`,
 
   // For 12+ months, split in two parallel Haiku calls (faster, lighter).
   // For shorter calendars run a single call.
+  let result: ContentCalendarMonth[];
   if (monthCount >= 8) {
     const half = Math.ceil(monthCount / 2);
     const firstHalf = monthLabels.slice(0, half);
@@ -1447,9 +1491,40 @@ ${context}${buildSharedContextBlocks(sources, "calendar")}`,
       generateHalf(`first ${firstHalf.length} months`, firstHalf),
       generateHalf(`final ${secondHalf.length} months`, secondHalf),
     ]);
-    return [...a, ...b];
+    result = [...a, ...b];
+  } else {
+    result = await generateHalf(`${monthCount}-month calendar`, monthLabels);
   }
-  return generateHalf(`${monthCount}-month calendar`, monthLabels);
+
+  // Enforce exact post counts so the calendar always honours the form-supplied
+  // cadence. AI sometimes returns 3 or 5 posts when asked for 4 — pad with
+  // evergreen markers and truncate the surplus rather than silently drift.
+  const byLabel = new Map(result.map((m) => [m.month, m] as const));
+  const evergreenBlog = (): ContentCalendarMonth["blogPosts"][number] => ({
+    title: "Evergreen brand story (placeholder)",
+    intent: "awareness",
+    targetKeyword: sources.clientName.toLowerCase(),
+    angle: "Slot for an evergreen brand or audience story — replace with a topical angle nearer the time.",
+  });
+  const evergreenSocial = (): ContentCalendarMonth["socialPosts"][number] => ({
+    platform: "instagram",
+    type: "static",
+    topic: "Evergreen brand moment (placeholder)",
+  });
+  const padded: ContentCalendarMonth[] = monthLabels.map((label) => {
+    const m = byLabel.get(label) ?? { month: label, focusLabel: null, blogPosts: [], socialPosts: [] };
+    const blogs = [...(m.blogPosts ?? [])];
+    while (blogs.length < postsPerMonth) blogs.push(evergreenBlog());
+    const socials = [...(m.socialPosts ?? [])];
+    while (socials.length < socialPerMonth) socials.push(evergreenSocial());
+    return {
+      ...m,
+      month: label,
+      blogPosts: blogs.slice(0, postsPerMonth),
+      socialPosts: socials.slice(0, socialPerMonth),
+    };
+  });
+  return padded;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2185,7 +2260,9 @@ const SECTOR_AD_SCHEDULE: Record<string, string> = {
   education:             "All week, 8am-10pm",
 };
 
-const BASE_NEGATIVES = ["free", "jobs", "career", "salary", "reddit"];
+// Note: previously held a hardcoded universal-negatives list ("free","jobs","career","salary","reddit").
+// Removed in favour of letting the AI negative keyword pass infer what's appropriate per client/sector.
+// SECTOR_NEGATIVES + parseBriefNegatives still apply.
 
 /**
  * Parse the client brief for explicit negative term instructions
@@ -2260,7 +2337,7 @@ function buildGoogleAdsCampaigns(
   const sectorNegs = SECTOR_NEGATIVES[sector] ?? [];
   const briefNegs = parseBriefNegatives(sources.clientBrief ?? "");
   const aiCampaignNegs = sanitiseNegativeTerms((aiNegatives?.campaignLevel ?? []).map((n) => n.keyword));
-  const allNegatives = [...new Set([...BASE_NEGATIVES, ...sectorNegs, ...briefNegs, ...aiCampaignNegs])];
+  const allNegatives = [...new Set([...sectorNegs, ...briefNegs, ...aiCampaignNegs])];
   // Keep the AI-supplied reasoned list separate so we can render it with rationale.
   const aiNegativesWithReason = (aiNegatives?.campaignLevel ?? []).filter((n) => n.keyword && n.reason);
   const adSchedule = SECTOR_AD_SCHEDULE[sector] ?? "Mon-Fri, 7am-9pm";
@@ -2276,7 +2353,9 @@ function buildGoogleAdsCampaigns(
         : sources.keywordResearch?.monthlyBudget
           ? `£${sources.keywordResearch.monthlyBudget}/month`
           : "TBC",
-      "Locations": detectLocations(sources.clientBrief),
+      "Locations": (sources.strategyBrain?.targetGeographies?.length
+        ? sources.strategyBrain.targetGeographies.join(", ")
+        : detectLocations(sources.clientBrief)),
       "Language": "English",
       "Ad Schedule": adSchedule,
       "Conversion Tracking": "Website form submissions, phone calls",
@@ -2413,23 +2492,77 @@ function buildKeywordResearchSection(adGroups: AdGroup[]) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildContentStrategySection(contentData: any) {
-  // Map intent strings from the source spreadsheet to the canonical short codes
-  // used by the renderer's coloured intent badges.
-  const normaliseIntent = (raw: unknown): "awareness" | "commercial" | "decision" | undefined => {
+function buildContentStrategySection(contentData: any, aiClusters?: AiContentClusters | undefined) {
+  // Five-stage intent funnel.
+  type IntentVal = NonNullable<ContentStrategyEntry["intent"]>;
+  const normaliseIntent = (raw: unknown): IntentVal | undefined => {
     if (typeof raw !== "string") return undefined;
     const v = raw.toLowerCase();
-    if (v.includes("decis") || v.includes("transact") || v.includes("convers")) return "decision";
-    if (v.includes("comm") || v.includes("consider") || v.includes("eval")) return "commercial";
-    if (v.includes("aware") || v.includes("info") || v.includes("educat")) return "awareness";
+    if (v.includes("decis")) return "decision";
+    if (v.includes("transact") || v.includes("convers") || v.includes("purchase") || v.includes("buy")) return "transactional";
+    if (v.includes("comm") || v.includes("consider") || v.includes("eval") || v.includes("compar")) return "commercial";
+    if (v.includes("info") || v.includes("how to") || v.includes("educat") || v.includes("learn") || v.includes("guide")) return "informational";
+    if (v.includes("aware") || v.includes("brand")) return "awareness";
     return undefined;
   };
   const enrich = (entry: ContentStrategyEntry, tier: ContentStrategyEntry["tier"]): ContentStrategyEntry => ({
     ...entry,
     tier,
-    intent: entry.intent ?? normaliseIntent(entry.keywords?.[0]?.intent) ?? (tier === "pillar" ? "decision" : tier === "mega" ? "awareness" : "commercial"),
-    brief: entry.brief ?? entry.notes,
+    intent: entry.intent ?? normaliseIntent(entry.keywords?.[0]?.intent) ?? (tier === "pillar" ? "decision" : tier === "mega" ? "informational" : "commercial"),
+    brief: entry.brief ?? entry.summary ?? entry.notes,
   });
+
+  // ── AI clusters preferred (Strategy Brain drives this when no spreadsheet is linked) ──
+  if (aiClusters && (aiClusters.pillars?.length || aiClusters.pageOptimisations?.length)) {
+    const landingPages: ContentStrategyEntry[] = [];
+    const blogPosts: ContentStrategyEntry[] = [];
+    aiClusters.pillars.forEach((p, pi) => {
+      // Pillar entry
+      landingPages.push(enrich({
+        title: p.pillar.title,
+        primaryKeyword: p.pillar.primaryKeyword,
+        secondaryKeywords: p.pillar.secondaryKeywords ?? [],
+        longTailKeywords: p.pillar.longTailKeywords ?? [],
+        intent: normaliseIntent(p.pillar.intent),
+        summary: p.pillar.summary,
+        brief: p.pillar.summary,
+        targetAudiences: p.pillar.targetAudiences ?? [],
+        keywords: p.pillar.primaryKeyword ? [{ keyword: p.pillar.primaryKeyword, intent: p.pillar.intent }] : [],
+      }, pi === 0 ? "pillar" : "mega"));
+      // Mega guide entries
+      (p.megaGuides ?? []).forEach((m) => landingPages.push(enrich({
+        title: m.title,
+        primaryKeyword: m.primaryKeyword,
+        secondaryKeywords: m.secondaryKeywords ?? [],
+        longTailKeywords: m.longTailKeywords ?? [],
+        intent: normaliseIntent(m.intent),
+        summary: m.summary,
+        brief: m.summary,
+        targetAudiences: m.targetAudiences ?? [],
+        keywords: m.primaryKeyword ? [{ keyword: m.primaryKeyword, intent: m.intent }] : [],
+      }, "mega")));
+      // Articles
+      (p.articles ?? []).forEach((a) => blogPosts.push(enrich({
+        title: a.title,
+        primaryKeyword: a.primaryKeyword,
+        secondaryKeywords: a.secondaryKeywords ?? [],
+        longTailKeywords: a.longTailKeywords ?? [],
+        intent: normaliseIntent(a.intent),
+        summary: a.summary,
+        brief: a.summary,
+        targetAudiences: a.targetAudiences ?? [],
+        keywords: a.primaryKeyword ? [{ keyword: a.primaryKeyword, intent: a.intent }] : [],
+      }, "article")));
+    });
+    return {
+      pageOptimisations: aiClusters.pageOptimisations ?? [],
+      landingPages,
+      blogPosts,
+    };
+  }
+
+  // ── Legacy: read from linked ContentStrategy spreadsheet data ──
+  if (!contentData) return undefined;
   const landingPages = (contentData.landingPages ?? []) as ContentStrategyEntry[];
   const blogPosts = (contentData.blogPosts ?? []) as ContentStrategyEntry[];
   const pageOptimisations = (contentData.pageOptimisations ?? []) as ContentStrategyEntry[];
@@ -2439,6 +2572,99 @@ function buildContentStrategySection(contentData: any) {
     blogPosts: blogPosts.map((p) => enrich(p, "article")),
     ...(contentData.linkTargets ? { linkTargets: contentData.linkTargets as LinkTargetEntry[] } : {}),
   };
+}
+
+// ─── AI-generated content clusters (Strategy Brain driven) ──────────────────
+// Replaces the spreadsheet-upload pathway. Produces a structured topic-cluster
+// plan (3 pillars × 2 mega guides + 4 articles each, plus on-page optimisations)
+// straight from the brief, brain, and form inputs.
+
+interface AiContentClusters {
+  pillars: Array<{
+    pillar: AiContentEntry;
+    megaGuides: AiContentEntry[];
+    articles: AiContentEntry[];
+  }>;
+  pageOptimisations: ContentStrategyEntry[];
+}
+
+interface AiContentEntry {
+  title: string;
+  primaryKeyword: string;
+  secondaryKeywords?: string[];
+  longTailKeywords?: string[];
+  intent?: string;
+  summary: string;
+  targetAudiences?: string[];
+}
+
+async function generateContentClusters(
+  anthropic: Anthropic,
+  context: string,
+  sources: GrandPlanSources,
+): Promise<AiContentClusters> {
+  const brain = sources.strategyBrain;
+  const audienceLines = (brain?.audiences ?? []).map((a) => `- ${a.name}: ${a.coreInsight} (lead pain: ${a.primaryPain})`).join("\n") || "(no brain audiences)";
+  const messageLines = brain ? `Primary message: ${brain.messageHierarchy?.primary ?? ""}\nMessages to own: ${(brain.competitorAngle?.messagesToOwn ?? []).join("; ")}` : "";
+  const directive = brain?.directives?.content ?? "";
+  const limits = sources.contentLimits ?? {};
+  const optsCap = limits.pageOptimisations ?? 12;
+
+  const prompt = `${STYLE_RULES}
+
+You are the SEO content lead at i3media. Build a complete topic-cluster content strategy for ${sources.clientName} from the strategic foundation below.
+
+Return ONLY valid JSON (no markdown fences) matching this schema:
+{
+  "pillars": [
+    {
+      "pillar": { "title": string, "primaryKeyword": string, "secondaryKeywords": string[], "longTailKeywords": string[], "intent": "awareness"|"informational"|"commercial"|"transactional"|"decision", "summary": string, "targetAudiences": string[] },
+      "megaGuides": [ /* 2 entries, same schema */ ],
+      "articles": [ /* 4 entries, same schema */ ]
+    }
+  ],
+  "pageOptimisations": [
+    { "url": string, "title": string, "keywords": [ { "keyword": string, "intent": string } ], "titleTag": string, "metaDescription": string, "contentEnhancements": string[], "internalLinks": [ { "url": string, "anchorText": string } ], "schema": string, "summary": string, "targetAudiences": string[] }
+  ]
+}
+
+Hard rules:
+- EXACTLY 3 pillars. Each pillar MUST have EXACTLY 2 megaGuides and EXACTLY 4 articles.
+- The 4 articles per pillar MUST span the full intent funnel \u2014 at least one each from awareness/informational/commercial/transactional, with the pillar itself sitting at decision.
+- Pillars represent the 3 most commercially valuable topics for this client based on the brief, market, and audiences. They are the cornerstones the rest of the cluster supports.
+- Mega guides go deep on a sub-topic of the pillar. Articles answer specific questions, target long-tail searches, or capture stage-specific intent.
+- "primaryKeyword" must be a real search term a target customer would type (not jargon, not a slogan).
+- "secondaryKeywords" (3-5) are supporting variants the article will pick up.
+- "longTailKeywords" (4-8) are full-question, low-volume searches the article should also rank for.
+- "summary" is one paragraph (2-3 sentences) stating what the asset says, who it is for, and why it converts.
+- "targetAudiences" must use the EXACT audience names listed below \u2014 these names already appear in ad copy, email segments, and the strategy brain.
+- "pageOptimisations": list ${optsCap} existing pages on ${sources.keywordResearch?.website ?? "the client's website"} that need refreshing. Use real-looking URL slugs (e.g. /services/dental-implants).
+  - "titleTag": rewritten <title> (\u2264 60 characters, primary keyword near the start, brand suffix if it fits).
+  - "metaDescription": rewritten meta description (\u2264 160 characters, ends with a soft CTA).
+  - "contentEnhancements": 3-5 specific bullet points naming what to add (e.g. "Add comparison table vs Invisalign", "Insert FAQ block targeting 5 long-tail questions", "Add schema FAQ markup").
+  - "internalLinks": 2-4 outgoing internal links {url, anchorText} that strengthen the cluster (link to pillar/mega/article URLs you create above wherever possible).
+  - "schema": single short string naming the most appropriate schema.org type (e.g. "Service", "Product", "FAQPage", "LocalBusiness").
+- British English, no AI jargon, no em dashes.
+${directive ? `\nContent directive from the strategy brain: ${directive}` : ""}
+
+Strategic foundation:
+- Client: ${sources.clientName}
+- Sector: ${sources.sector ?? "not specified"}
+- Brief: ${(sources.clientBrief ?? "").slice(0, 1500) || "(none provided)"}
+- Markets: ${(brain?.targetGeographies ?? []).join(", ") || "United Kingdom"}
+- Audiences:\n${audienceLines}
+${messageLines ? `\n${messageLines}` : ""}
+
+Context:
+${context}${buildSharedContextBlocks(sources, "content")}`;
+
+  const res = await withAnthropicRetry("contentClusters", () => anthropic.messages.create({
+    model: MODEL_PRIMARY(),
+    max_tokens: 6000,
+    messages: [{ role: "user", content: prompt }],
+  }));
+  const fallback: AiContentClusters = { pillars: [], pageOptimisations: [] };
+  return safeJsonParse<AiContentClusters>(extractText(res), fallback);
 }
 
 // ─── Email Marketing generator ──────────────────────────────────────────────

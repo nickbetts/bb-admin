@@ -60,14 +60,15 @@ const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered
 // Steps shown in the generation pipeline. These mirror the server's
 // generate-step endpoint but include estimates so the user can see whether
 // they should grab a coffee or wait.
+//
+// Note: the legacy SEMrush spreadsheet pathway (prepare-content-data /
+// prepare-content-1/2/3 / prepare-content-audit) was removed in favour of the
+// Strategy Brain driving the entire content cluster section from form input.
+// Those step handlers are still present in generate-step/route.ts for any
+// historic plans that resume mid-pipeline, but new generations skip them.
 const PIPELINE_STEPS: { key: string; label: string; estSeconds: number }[] = [
   { key: "start", label: "Initialising", estSeconds: 2 },
   { key: "prepare-keywords", label: "Researching keywords", estSeconds: 30 },
-  { key: "prepare-content-data", label: "Collecting SEMrush data", estSeconds: 25 },
-  { key: "prepare-content-1", label: "Generating page optimisations (1/3)", estSeconds: 90 },
-  { key: "prepare-content-2", label: "Generating blog + link targets (2/3)", estSeconds: 90 },
-  { key: "prepare-content-3", label: "Generating blog posts & roadmap (3/3)", estSeconds: 90 },
-  { key: "prepare-content-audit", label: "Auditing on-page SEO", estSeconds: 30 },
   { key: "prepare-research", label: "Harvesting account data (GA4 / GSC / SEMrush)", estSeconds: 60 },
   { key: "prepare-customer-voice", label: "Researching customer voice (web search)", estSeconds: 60 },
   { key: "prepare-strategy-brain", label: "Synthesising strategy brain (positioning, audiences, messaging)", estSeconds: 45 },

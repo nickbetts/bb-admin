@@ -104,6 +104,10 @@ export async function POST(
         contentBrief?: { domain?: string; database?: string; brief?: string; competitors?: string };
         mediaBrief?: { objective?: string; totalBudget?: number; duration?: number };
         lpBrief?: { campaignType?: string };
+        channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number };
+        postsPerMonth?: number;
+        socialPostsPerWeek?: number;
+        calendarMonths?: number;
       }>(plan.configJson, {});
 
       const website = config.kwBrief?.website ?? plan.client?.website ?? plan.keywordResearch?.website ?? "";
@@ -180,61 +184,12 @@ export async function POST(
         }
       }
 
-      // ── Auto-generate content strategy if not linked ───────────────────────
-      let contentStrategyData = plan.contentStrategy;
-      if (!contentStrategyData && website) {
-        const csDomain = config.contentBrief?.domain ?? website.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "");
-        const csDatabase = config.contentBrief?.database ?? "uk";
-        const csBrief = config.contentBrief?.brief || brief || `Full digital marketing strategy for ${clientName}`;
-        const csCompetitors = config.contentBrief?.competitors
-          ? config.contentBrief.competitors.split(",").map((s: string) => s.trim()).filter(Boolean)
-          : [];
-        const searchConsoleSiteUrl = plan.client?.searchConsoleSiteUrl ?? undefined;
-
-        try {
-          await setProgress("Running SEMrush analysis and generating content strategy with Claude...");
-          const strategyResult = await generateContentStrategy(
-            csDomain,
-            clientName,
-            csBrief,
-            csCompetitors,
-            csDatabase,
-            searchConsoleSiteUrl ?? null,
-            "claude-opus-4-6",
-          );
-
-          // Save as a real ContentStrategy record
-          const now = new Date();
-          const period = `${now.toLocaleString("en-GB", { month: "long", year: "numeric" })} — Auto-generated`;
-
-          const savedStrategy = await prisma.contentStrategy.create({
-            data: {
-              clientId: clientId ?? undefined,
-              createdBy: "Grand Plan Auto-Pipeline",
-              title: `${clientName} — Content & SEO Strategy`,
-              period,
-              spreadsheetData: JSON.stringify(strategyResult.data),
-              generatedHtml: "", // HTML not rendered during auto-pipeline — can be generated later
-            },
-          });
-
-          // Link to the grand plan
-          await prisma.grandPlan.update({
-            where: { id: planId },
-            data: { contentStrategyId: savedStrategy.id },
-          });
-
-          contentStrategyData = {
-            id: savedStrategy.id,
-            title: savedStrategy.title,
-            period: savedStrategy.period,
-            spreadsheetData: savedStrategy.spreadsheetData,
-          };
-        } catch (csError) {
-          console.error("Auto content strategy generation failed (continuing without):", csError);
-          pipelineWarnings.push("Auto content strategy generation failed. The plan was generated without a content strategy section.");
-        }
-      }
+      // ── Content strategy ───────────────────────────────────────────────────
+      // Spreadsheet auto-generation pathway removed. The Strategy Brain now
+      // drives the entire content cluster section from form input via
+      // generateContentClusters() inside generateGrandPlan(). Linked records
+      // (plan.contentStrategy) are still respected as a legacy fallback.
+      const contentStrategyData = plan.contentStrategy;
 
       await setProgress("Generating plan sections with Claude...");
 
@@ -246,6 +201,10 @@ export async function POST(
         sector: config.sector || undefined,
         enabledPlatforms: enabledSections,
         campaignFocusPeriods: focusPeriods,
+        postsPerMonth: typeof config.postsPerMonth === "number" && config.postsPerMonth > 0 ? config.postsPerMonth : undefined,
+        socialPostsPerWeek: typeof config.socialPostsPerWeek === "number" && config.socialPostsPerWeek > 0 ? config.socialPostsPerWeek : undefined,
+        calendarMonths: typeof config.calendarMonths === "number" && config.calendarMonths > 0 ? config.calendarMonths : undefined,
+        channelBudgets: config.channelBudgets ?? undefined,
         proposal: plan.proposal
           ? {
               title: plan.proposal.title,
