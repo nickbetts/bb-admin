@@ -1502,44 +1502,68 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
 
       {/* Custom Audience Segment Performance */}
       {show("audiences") && adSetAudiences.some((a) => a.customAudiences.length > 0) && (() => {
-        // Aggregate performance by custom audience name (an ad set may target multiple)
+        // Meta's Insights API does not support a `custom_audience` breakdown — when
+        // an ad set targets multiple custom audiences, performance is only reported
+        // at the ad set level (combined). The most accurate drill-down is therefore
+        // per ad set, with the audiences that ad set uses listed.
         const adSetPerfMap = new Map(adSets.map((s) => [s.id, s]));
-        const segMap = new Map<string, { name: string; adSets: string[]; spend: number; impressions: number; clicks: number; conversions: number; roas: number; _roasSum: number; _roasCount: number }>();
+        const rows = adSetAudiences
+          .filter((aud) => aud.customAudiences.length > 0)
+          .map((aud) => {
+            const perf = adSetPerfMap.get(aud.adSetId);
+            if (!perf || (perf.spend === 0 && perf.impressions === 0)) return null;
+            return {
+              adSetId: aud.adSetId,
+              adSetName: aud.adSetName,
+              audienceCount: aud.customAudiences.length,
+              audiences: aud.customAudiences.map((c) => c.name),
+              excluded: aud.excludedAudiences.map((c) => c.name),
+              spend: perf.spend,
+              impressions: perf.impressions,
+              clicks: perf.clicks,
+              ctr: perf.ctr,
+              conversions: perf.conversions,
+              roas: perf.roas,
+              cpa: perf.conversions > 0 ? perf.spend / perf.conversions : 0,
+              isolated: aud.customAudiences.length === 1,
+            };
+          })
+          .filter((r): r is NonNullable<typeof r> => r !== null)
+          .sort((a, b) => b.spend - a.spend);
 
-        for (const aud of adSetAudiences) {
-          if (aud.customAudiences.length === 0) continue;
-          const perf = adSetPerfMap.get(aud.adSetId);
-          if (!perf || (perf.spend === 0 && perf.impressions === 0)) continue;
+        if (rows.length === 0) return null;
 
-          for (const ca of aud.customAudiences) {
-            if (!segMap.has(ca.name)) {
-              segMap.set(ca.name, { name: ca.name, adSets: [], spend: 0, impressions: 0, clicks: 0, conversions: 0, roas: 0, _roasSum: 0, _roasCount: 0 });
-            }
-            const seg = segMap.get(ca.name)!;
-            if (!seg.adSets.includes(aud.adSetName)) seg.adSets.push(aud.adSetName);
-            seg.spend += perf.spend;
-            seg.impressions += perf.impressions;
-            seg.clicks += perf.clicks;
-            seg.conversions += perf.conversions;
-            if (perf.roas > 0) { seg._roasSum += perf.roas; seg._roasCount += 1; }
-          }
-        }
-
-        const segments = [...segMap.values()].map((s) => ({
-          ...s,
-          roas: s._roasCount > 0 ? s._roasSum / s._roasCount : 0,
-          ctr: s.impressions > 0 ? (s.clicks / s.impressions) * 100 : 0,
-          cpa: s.conversions > 0 ? s.spend / s.conversions : 0,
-        })).sort((a, b) => b.spend - a.spend);
-
-        if (segments.length === 0) return null;
+        const stackedCount = rows.filter((r) => !r.isolated).length;
+        const isolatedRows = rows.filter((r) => r.isolated);
 
         return (
-          <SectionCard title="Custom Audience Segment Performance" subtitle={`${segments.length} custom audience${segments.length !== 1 ? "s" : ""} with spend data`}>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={segments.slice(0, 12).map(s => ({ name: s.name.length > 20 ? s.name.slice(0, 18) + "…" : s.name, spend: s.spend, conversions: s.conversions }))} barSize={20} margin={{ top: 4, right: 8, left: 0, bottom: 48 }}>
+          <SectionCard
+            title="Custom Audience Performance"
+            subtitle={`Per-ad-set breakdown — ${rows.length} ad set${rows.length !== 1 ? "s" : ""} using custom audiences`}
+          >
+            {/* Limitation notice */}
+            {stackedCount > 0 && (
+              <div style={{ borderRadius: 8, border: "1px solid #fde68a", background: "#fffbeb", padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#92400e", display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "#d97706" }} />
+                <div>
+                  <strong>API limitation:</strong> Meta does not split performance by individual custom audience when an ad set stacks multiple audiences. {stackedCount} of your {rows.length} ad set{rows.length !== 1 ? "s" : ""} target{stackedCount === 1 ? "s" : ""} more than one audience, so their numbers are reported as a combined total. To get true per-audience attribution, isolate each custom audience in its own ad set.
+                </div>
+              </div>
+            )}
+
+            {/* Bar chart by ad set */}
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart
+                data={rows.slice(0, 12).map((r) => ({
+                  name: r.adSetName.length > 22 ? r.adSetName.slice(0, 20) + "…" : r.adSetName,
+                  spend: r.spend,
+                  conversions: r.conversions,
+                }))}
+                barSize={20}
+                margin={{ top: 4, right: 8, left: 0, bottom: 60 }}
+              >
                 <CartesianGrid {...CHART_GRID_STYLE} />
-                <XAxis dataKey="name" {...CHART_AXIS_STYLE} angle={-35} textAnchor="end" interval={0} />
+                <XAxis dataKey="name" {...CHART_AXIS_STYLE} angle={-35} textAnchor="end" interval={0} height={60} />
                 <YAxis yAxisId="spend" {...CHART_AXIS_STYLE} tickFormatter={(v) => `£${v}`} width={52} />
                 <YAxis yAxisId="conversions" orientation="right" {...CHART_AXIS_STYLE} width={36} />
                 <Tooltip contentStyle={CHART_TOOLTIP_STYLE.contentStyle} formatter={(value, name) => {
@@ -1552,17 +1576,40 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                 <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
               </BarChart>
             </ResponsiveContainer>
+
+            {/* Per-ad-set table with audience composition */}
             <DataTable
-              data={segments}
+              data={rows}
               pageSize={10}
               className="mt-4"
               exportable
-              exportFilename="meta-custom-audiences"
+              exportFilename="meta-custom-audiences-by-adset"
               columns={[
-                { key: "name", label: "Custom Audience" },
-                { key: "adSets", label: "Ad Sets", render: (v) => {
-                  const arr = v as string[];
-                  return arr.length <= 2 ? arr.join(", ") : `${arr.slice(0, 2).join(", ")} +${arr.length - 2}`;
+                { key: "adSetName", label: "Ad Set", render: (_v, r) => {
+                  const row = r as typeof rows[0];
+                  return (
+                    <div>
+                      <p style={{ fontWeight: 600, color: "var(--text)" }}>{row.adSetName}</p>
+                      <p style={{ fontSize: 10, color: "var(--text-3)", marginTop: 2 }}>
+                        {row.isolated
+                          ? <span style={{ color: "#059669", fontWeight: 600 }}>● Isolated audience</span>
+                          : <span style={{ color: "#d97706", fontWeight: 600 }}>● {row.audienceCount} audiences stacked</span>}
+                      </p>
+                    </div>
+                  );
+                }},
+                { key: "audiences", label: "Custom Audiences", render: (_v, r) => {
+                  const row = r as typeof rows[0];
+                  return (
+                    <div style={{ fontSize: 11, color: "var(--text-2)" }}>
+                      {row.audiences.map((a, i) => <div key={i}>• {a}</div>)}
+                      {row.excluded.length > 0 && (
+                        <div style={{ marginTop: 4, color: "#dc2626" }}>
+                          {row.excluded.map((a, i) => <div key={i}>✕ Excluded: {a}</div>)}
+                        </div>
+                      )}
+                    </div>
+                  );
                 }},
                 { key: "spend", label: "Spend", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
                 { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
@@ -1573,6 +1620,35 @@ export function MetaSection({ clientId, clientName, startDate, endDate, compareS
                 { key: "roas", label: "ROAS", align: "right", sortable: true, render: (v) => <span className={`font-semibold ${(v as number) >= 2 ? "text-emerald-600" : (v as number) >= 1 ? "text-amber-600" : "text-red-600"}`}>{(v as number).toFixed(2)}x</span> },
               ]}
             />
+
+            {/* True per-audience block — only safe when audience is isolated in its own ad set */}
+            {isolatedRows.length > 0 && (
+              <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid var(--border-subtle)" }}>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-3)", marginBottom: 4 }}>
+                  Verified per-audience performance
+                </p>
+                <p style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 12 }}>
+                  These ad sets target a single custom audience, so the metrics below are attributable to that exact audience.
+                </p>
+                <DataTable
+                  data={isolatedRows.map((r) => ({ audience: r.audiences[0], adSetName: r.adSetName, spend: r.spend, impressions: r.impressions, clicks: r.clicks, ctr: r.ctr, conversions: r.conversions, cpa: r.cpa, roas: r.roas }))}
+                  pageSize={0}
+                  exportable
+                  exportFilename="meta-isolated-audience-performance"
+                  columns={[
+                    { key: "audience", label: "Custom Audience" },
+                    { key: "adSetName", label: "Ad Set" },
+                    { key: "spend", label: "Spend", align: "right", sortable: true, render: (v) => formatCurrency(v as number) },
+                    { key: "impressions", label: "Impressions", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                    { key: "clicks", label: "Clicks", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                    { key: "ctr", label: "CTR", align: "right", sortable: true, render: (v) => `${(v as number).toFixed(2)}%` },
+                    { key: "conversions", label: "Conv.", align: "right", sortable: true, render: (v) => formatNumber(v as number) },
+                    { key: "cpa", label: "CPA", align: "right", sortable: true, render: (v) => (v as number) > 0 ? formatCurrency(v as number) : "—" },
+                    { key: "roas", label: "ROAS", align: "right", sortable: true, render: (v) => <span className={`font-semibold ${(v as number) >= 2 ? "text-emerald-600" : (v as number) >= 1 ? "text-amber-600" : "text-red-600"}`}>{(v as number).toFixed(2)}x</span> },
+                  ]}
+                />
+              </div>
+            )}
           </SectionCard>
         );
       })()}
