@@ -48,7 +48,7 @@ const SECTION_KEYS = [
   "executiveSummary", "strategyPlan", "audiences", "googleAdsCampaigns", "metaCampaigns",
   "keywordResearch", "contentStrategy", "contentCalendar", "organicSocial",
   "exampleArticles", "servicesInvestment", "emailMarketing",
-  "linkedInAds", "competitorIntel", "quickWins", "kpis",
+  "linkedInAds", "competitorIntel", "quickWins", "kpis", "seoFoundations",
 ];
 
 /**

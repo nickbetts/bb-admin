@@ -80,6 +80,8 @@ const ALWAYS_ON_SECTIONS = [
   "competitorIntel",
   "contentStrategy",
   "seoFoundations",
+  "quickWins",
+  "kpis",
   "keywordResearch",
   "servicesInvestment",
 ];
