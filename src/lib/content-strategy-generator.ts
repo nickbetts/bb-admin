@@ -1189,23 +1189,28 @@ export async function runOnPageAudit(
 //     with potential ranking band, recommended schema, schema gaps and a
 //     full FAQ Q+A draft.
 //
-// Runs as a Haiku call per URL with limited concurrency so the main 16k
-// Opus call doesn't have to carry the extra structured output.
+// Runs as two parallel calls per URL (Haiku for keywords/schema, Opus for
+// title/meta/FAQ) with limited concurrency so the main 16k Opus call doesn't
+// have to carry the extra structured output.
 
 const ENRICH_MAX_PAGES = 15;
 const ENRICH_CONCURRENCY = 5;
 const POTENTIAL_BANDS = ["Top 3", "Top 10", "Top 20", "Top 50"] as const;
 type PotentialBand = (typeof POTENTIAL_BANDS)[number];
 
-const ENRICH_SYSTEM_PROMPT = `You are a senior technical SEO + conversion specialist. For a single web page you receive:
+// Two-model split:
+//   • Keywords + schema gap analysis = Haiku (cheap, structured, deterministic).
+//   • Copy (title, meta, FAQ Q+A)   = Opus (better voice, sharper meta, more
+//                                            natural FAQ answers).
+// Both calls run in parallel per page.
+
+const ENRICH_KEYWORDS_SYSTEM_PROMPT = `You are a senior technical SEO analyst. For a single web page you receive:
   - the page's current title, meta description, H1, schema types, FAQ status
   - the keywords the page currently ranks for (with position, volume)
-  - the primary / secondary keywords the strategy team has already chosen for this page
-  - the page's purpose (intent + audiences)
+  - the primary / secondary keywords the strategy team has already chosen
+  - the page's purpose (intent)
 
 You return ONE JSON object with these exact fields:
-  - suggestedTitle: rewritten <title> (string, MAX 60 chars, primary keyword in first half, brand at end if room)
-  - suggestedMetaDescription: rewritten meta description (string, MAX 160 chars, includes primary keyword + 1 CTA verb)
   - suggestedKeywords: 4–8 additional or replacement keywords this page should target. Each entry:
       { keyword, volume?, difficulty?, currentPosition?, potentialBand, rationale }
     potentialBand MUST be one of: "Top 3", "Top 10", "Top 20", "Top 50". Be conservative:
@@ -1213,16 +1218,33 @@ You return ONE JSON object with these exact fields:
       - "Top 10" only if currentPosition is 1–20, or KD < 30 with strong topical match.
       - "Top 20" if KD 30–55, or currentPosition 11–40.
       - "Top 50" otherwise.
-    rationale is one short sentence explaining why this band (e.g. "Already pos 12 for 'X' — page rewrite + 2 internal links closes the gap").
+    rationale is one short sentence explaining why this band (e.g. "Already pos 12 for 'X', page rewrite + 2 internal links closes the gap").
   - recommendedSchema: array of JSON-LD @type values this page SHOULD have (e.g. ["Service", "FAQPage", "BreadcrumbList"]).
   - schemaGaps: array of items in recommendedSchema that are NOT in the page's current schemaTypes. Empty array if none missing.
+
+Rules:
+  - British English everywhere. NEVER use em dashes.
+  - Output ONLY the JSON object. No prose, no markdown, no code fences.
+  - Never invent volume / KD numbers. If unknown, omit the field.
+  - If a field cannot be filled responsibly, return an empty array — never fabricate.`;
+
+const ENRICH_COPY_SYSTEM_PROMPT = `You are a senior conversion copywriter writing for a UK marketing agency's strategy deliverable. For a single web page you receive:
+  - the page's current title, meta description, H1, schema types, FAQ status, existing FAQ questions (if any)
+  - the primary / secondary keywords the strategy team has chosen for this page
+  - the page's purpose (intent)
+  - a short list of keywords the page currently ranks for (for context only)
+
+You return ONE JSON object with these exact fields:
+  - suggestedTitle: rewritten <title> (string, MAX 60 chars, primary keyword in first half, brand at end if room).
+  - suggestedMetaDescription: rewritten meta description (string, MAX 160 chars, includes primary keyword + 1 CTA verb, benefit-led).
   - faq:
       { hasExisting: boolean, recommendation: "add" | "expand" | "ok", items: [{ question, answer }] }
       items: 0 entries if recommendation is "ok"; otherwise 4–6 draft Q+A pairs the agency can paste straight in.
-      Questions must read like a real prospect would ask them. Answers MAX 60 words, factual, paraphrasable from page topic, British English.
+      Questions must read like a real prospect would ask them. Avoid duplicating any existingFaqQuestions verbatim.
+      Answers MAX 60 words, factual, paraphrasable from page topic, written in confident British English.
 
 Rules:
-  - British English everywhere ("optimise", "behaviour", "specialise"). NEVER use em dashes.
+  - British English everywhere ("optimise", "behaviour", "specialise"). NEVER use em dashes — use commas, semi-colons or full stops.
   - Output ONLY the JSON object. No prose, no markdown, no code fences.
   - Stay grounded — never invent service prices, guarantees, awards or testimonials.
   - If a field cannot be filled responsibly, return an empty string / empty array — never fabricate.`;
@@ -1246,7 +1268,68 @@ interface EnrichmentOutput {
   faq?: PageOptimisation["faq"];
 }
 
-async function callEnrichmentLLM(input: EnrichmentInput): Promise<EnrichmentOutput | null> {
+async function callAnthropicJson(
+  model: string,
+  systemPrompt: string,
+  userPayload: unknown,
+  maxTokens: number,
+  logTag: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const anthropic = await getAnthropicClient();
+    const response = await anthropic.messages.create({
+      model,
+      max_tokens: maxTokens,
+      system: systemPrompt,
+      messages: [{ role: "user", content: JSON.stringify(userPayload) }],
+    });
+    const block = response.content[0];
+    const rawText = block.type === "text" ? block.text.trim() : "";
+    if (!rawText) return null;
+    const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]+?)```/) ?? rawText.match(/(\{[\s\S]+\})/);
+    const jsonText = jsonMatch ? jsonMatch[1].trim() : rawText;
+    try {
+      return JSON.parse(jsonText) as Record<string, unknown>;
+    } catch {
+      const repaired = jsonrepair(jsonText);
+      return JSON.parse(repaired) as Record<string, unknown>;
+    }
+  } catch (err) {
+    console.warn(`[${logTag}] failed: ${err instanceof Error ? err.message : String(err)}`);
+    return null;
+  }
+}
+
+async function callKeywordsLLM(input: EnrichmentInput): Promise<EnrichmentOutput | null> {
+  const audit = input.audit;
+  const userPayload = {
+    url: input.url,
+    intent: input.intent ?? "unknown",
+    primaryKeyword: input.primaryKeyword ?? "",
+    secondaryKeywords: input.secondaryKeywords,
+    currentState: {
+      title: audit?.titleText ?? "",
+      h1: audit?.h1Text ?? "",
+      schemaTypes: audit?.schemaTypes ?? [],
+      hasFaqSchema: audit?.hasFaqSchema ?? false,
+    },
+    rankings: {
+      total: input.totalRankingKeywords,
+      top: input.currentRankings.slice(0, 15),
+    },
+  };
+  const parsed = await callAnthropicJson(
+    "claude-haiku-4-5",
+    ENRICH_KEYWORDS_SYSTEM_PROMPT,
+    userPayload,
+    1500,
+    `enrich-kw:${input.url}`,
+  );
+  if (!parsed) return null;
+  return parseKeywordsOutput(parsed);
+}
+
+async function callCopyLLM(input: EnrichmentInput): Promise<EnrichmentOutput | null> {
   const audit = input.audit;
   const userPayload = {
     url: input.url,
@@ -1264,49 +1347,21 @@ async function callEnrichmentLLM(input: EnrichmentInput): Promise<EnrichmentOutp
       hasFaqContent: audit?.hasFaqContent ?? false,
       existingFaqQuestions: audit?.existingFaqQuestions ?? [],
     },
-    rankings: {
-      total: input.totalRankingKeywords,
-      top: input.currentRankings.slice(0, 15),
-    },
+    currentlyRankingFor: input.currentRankings.slice(0, 8).map((r) => r.keyword),
   };
-
-  try {
-    const anthropic = await getAnthropicClient();
-    const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 2000,
-      system: ENRICH_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: JSON.stringify(userPayload) }],
-    });
-    const block = response.content[0];
-    const rawText = block.type === "text" ? block.text.trim() : "";
-    if (!rawText) return null;
-
-    const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]+?)```/) ?? rawText.match(/(\{[\s\S]+\})/);
-    const jsonText = jsonMatch ? jsonMatch[1].trim() : rawText;
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(jsonText) as Record<string, unknown>;
-    } catch {
-      const repaired = jsonrepair(jsonText);
-      parsed = JSON.parse(repaired) as Record<string, unknown>;
-    }
-    return parseEnrichmentOutput(parsed);
-  } catch (err) {
-    console.warn(`[enrich:${input.url}] failed: ${err instanceof Error ? err.message : String(err)}`);
-    return null;
-  }
+  const parsed = await callAnthropicJson(
+    "claude-opus-4-6",
+    ENRICH_COPY_SYSTEM_PROMPT,
+    userPayload,
+    1800,
+    `enrich-copy:${input.url}`,
+  );
+  if (!parsed) return null;
+  return parseCopyOutput(parsed);
 }
 
-function parseEnrichmentOutput(raw: Record<string, unknown>): EnrichmentOutput {
+function parseKeywordsOutput(raw: Record<string, unknown>): EnrichmentOutput {
   const out: EnrichmentOutput = {};
-
-  if (typeof raw.suggestedTitle === "string" && raw.suggestedTitle.trim()) {
-    out.suggestedTitle = raw.suggestedTitle.trim().slice(0, 80);
-  }
-  if (typeof raw.suggestedMetaDescription === "string" && raw.suggestedMetaDescription.trim()) {
-    out.suggestedMetaDescription = raw.suggestedMetaDescription.trim().slice(0, 200);
-  }
 
   if (Array.isArray(raw.suggestedKeywords)) {
     out.suggestedKeywords = (raw.suggestedKeywords as Record<string, unknown>[])
@@ -1342,6 +1397,19 @@ function parseEnrichmentOutput(raw: Record<string, unknown>): EnrichmentOutput {
       .filter((s): s is string => typeof s === "string" && !!s.trim())
       .map((s) => s.trim())
       .slice(0, 8);
+  }
+
+  return out;
+}
+
+function parseCopyOutput(raw: Record<string, unknown>): EnrichmentOutput {
+  const out: EnrichmentOutput = {};
+
+  if (typeof raw.suggestedTitle === "string" && raw.suggestedTitle.trim()) {
+    out.suggestedTitle = raw.suggestedTitle.trim().slice(0, 80);
+  }
+  if (typeof raw.suggestedMetaDescription === "string" && raw.suggestedMetaDescription.trim()) {
+    out.suggestedMetaDescription = raw.suggestedMetaDescription.trim().slice(0, 200);
   }
 
   const rawFaq = raw.faq as Record<string, unknown> | undefined;
@@ -1443,7 +1511,7 @@ export async function enrichPageOptimisationsDeep(
       return;
     }
 
-    const enriched = await callEnrichmentLLM({
+    const enrichInput: EnrichmentInput = {
       url,
       intent: opt.intent,
       primaryKeyword: primary?.keyword,
@@ -1451,17 +1519,26 @@ export async function enrichPageOptimisationsDeep(
       audit,
       currentRankings: rankings,
       totalRankingKeywords: rankings.length,
-    });
+    };
 
-    if (enriched) {
-      if (enriched.suggestedTitle) opt.suggestedTitle = enriched.suggestedTitle;
-      if (enriched.suggestedMetaDescription) opt.suggestedMetaDescription = enriched.suggestedMetaDescription;
-      if (enriched.suggestedKeywords?.length) opt.suggestedKeywords = enriched.suggestedKeywords;
-      if (enriched.recommendedSchema?.length) opt.recommendedSchema = enriched.recommendedSchema;
-      if (enriched.schemaGaps) opt.schemaGaps = enriched.schemaGaps;
-      if (enriched.faq) opt.faq = enriched.faq;
-    }
-    console.log(`[enrich:${url}] done in ${Date.now() - tStart}ms (kws=${rankings.length}, ai=${enriched ? "ok" : "skip"})`);
+    // Two parallel calls per page: cheap structured pass (Haiku) +
+    // higher-quality copy pass (Opus).
+    const [kwResult, copyResult] = await Promise.all([
+      callKeywordsLLM(enrichInput),
+      callCopyLLM(enrichInput),
+    ]);
+
+    if (kwResult?.suggestedKeywords?.length) opt.suggestedKeywords = kwResult.suggestedKeywords;
+    if (kwResult?.recommendedSchema?.length) opt.recommendedSchema = kwResult.recommendedSchema;
+    if (kwResult?.schemaGaps) opt.schemaGaps = kwResult.schemaGaps;
+
+    if (copyResult?.suggestedTitle) opt.suggestedTitle = copyResult.suggestedTitle;
+    if (copyResult?.suggestedMetaDescription) opt.suggestedMetaDescription = copyResult.suggestedMetaDescription;
+    if (copyResult?.faq) opt.faq = copyResult.faq;
+
+    console.log(
+      `[enrich:${url}] done in ${Date.now() - tStart}ms (kws=${rankings.length}, kw=${kwResult ? "ok" : "skip"}, copy=${copyResult ? "ok" : "skip"})`,
+    );
   };
 
   // Limited concurrency: process in chunks of ENRICH_CONCURRENCY.
