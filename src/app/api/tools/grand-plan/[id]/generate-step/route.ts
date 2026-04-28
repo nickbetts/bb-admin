@@ -20,7 +20,7 @@ import {
   type ManualPageIntel,
   runWebSearchResearch,
 } from "@/lib/grand-plan-generator";
-import { validateCoherence } from "@/lib/grand-plan-coherence";
+import { autoFixCoherence, validateCoherence } from "@/lib/grand-plan-coherence";
 import { fetchPageSignals } from "@/lib/landing-page-analyzer";
 import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import { suggestAdGroups, researchKeywords } from "@/lib/keyword-planner-pipeline";
@@ -928,11 +928,12 @@ export async function POST(
       const brainStash = (planData as any)._strategyBrain as StrategyBrain | undefined;
       if (brainStash) planData.strategyBrain = brainStash;
 
-      // ── Coherence validation ────────────────────────────────────────────
-      // Cross-check the assembled plan against the strategy brain. We surface
-      // issues in a "Strategist Review" panel rather than auto-correcting,
-      // so the strategist stays in the loop and any LLM rewrite happens in
-      // the user-driven Refine step (no extra Anthropic latency at assemble).
+      // ── Coherence validation + auto-fix ─────────────────────────────────
+      // Cross-check the assembled plan against the strategy brain and
+      // silently correct the offending fields (audience name mismatches,
+      // negative-keyword vs focus-period overlaps). Deterministic — no LLM
+      // call. Anything that can't be auto-fixed is dropped silently rather
+      // than surfaced to the strategist.
       try {
         const fullPlan = await prisma.grandPlan.findUnique({
           where: { id },
@@ -945,11 +946,17 @@ export async function POST(
         });
         if (fullPlan) {
           const sources = buildSources(fullPlan, config, brief);
-          const issues = validateCoherence(planData, brainStash, sources);
-          if (issues.length) planData.coherenceIssues = issues;
+          const before = validateCoherence(planData, brainStash, sources);
+          if (before.length) {
+            const fixes = autoFixCoherence(planData, brainStash, sources);
+            const after = validateCoherence(planData, brainStash, sources);
+            console.log(`[grand-plan:${id}] coherence auto-fix: flagged=${before.length}, fixed=${fixes}, remaining=${after.length}`);
+          }
+          // Never surface coherenceIssues to the renderer — the panel is gone.
+          planData.coherenceIssues = undefined;
         }
       } catch (err) {
-        console.warn(`[grand-plan:${id}] coherence validation skipped:`, err);
+        console.warn(`[grand-plan:${id}] coherence auto-fix skipped:`, err);
       }
 
       // Strip transient working state before final render/persistence.

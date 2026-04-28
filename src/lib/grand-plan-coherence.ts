@@ -128,3 +128,106 @@ export function validateCoherence(plan: GrandPlanData, brain: StrategyBrain | un
 
   return issues;
 }
+
+/**
+ * Deterministic auto-correction for the coherence issues that
+ * `validateCoherence` flags. No LLM call — just normalises offending
+ * fields against the approved audience list / focus periods.
+ *
+ * Returns a count of mutations applied (for logging only). The plan
+ * object is mutated in place. Issues that can't be auto-fixed safely
+ * are simply left untouched and will be re-flagged on the next call.
+ */
+export function autoFixCoherence(
+  plan: GrandPlanData,
+  brain: StrategyBrain | undefined,
+  sources: GrandPlanSources,
+): number {
+  const approvedAudiences = (brain?.audiences.map((a) => a.name) ?? [])
+    .concat((plan.sections.audiences ?? []).map((a) => a.name))
+    .filter((n): n is string => !!n);
+
+  let fixes = 0;
+
+  // Pick the approved audience with the most token overlap with `candidate`.
+  // Falls back to round-robin (using the rotateIdx counter) so we don't
+  // pile every offending item onto the same audience.
+  const rotate = { i: 0 };
+  const pickAudience = (candidate: string): string | null => {
+    if (!approvedAudiences.length) return null;
+    const c = normName(candidate);
+    if (c) {
+      const cTokens = new Set(c.split(" ").filter((t) => t.length > 3));
+      let best: { name: string; score: number } | null = null;
+      for (const a of approvedAudiences) {
+        const aTokens = new Set(normName(a).split(" ").filter((t) => t.length > 3));
+        let shared = 0;
+        cTokens.forEach((t) => { if (aTokens.has(t)) shared++; });
+        if (!best || shared > best.score) best = { name: a, score: shared };
+      }
+      if (best && best.score >= 1) return best.name;
+    }
+    const pick = approvedAudiences[rotate.i % approvedAudiences.length];
+    rotate.i += 1;
+    return pick;
+  };
+
+  // ── Email segments → rename to closest approved audience ───────────────
+  const emailSegments = plan.sections.emailMarketing?.segmentation?.segments ?? [];
+  if (emailSegments.length && approvedAudiences.length) {
+    for (const seg of emailSegments) {
+      if (!seg?.name) continue;
+      if (hasAnyMatch(seg.name, approvedAudiences)) continue;
+      const replacement = pickAudience(seg.name);
+      if (replacement && replacement !== seg.name) {
+        seg.name = replacement;
+        fixes += 1;
+      }
+    }
+  }
+
+  // ── Calendar blog posts → rewrite the "Written for X" tag ──────────────
+  const calendar = plan.sections.contentCalendar ?? [];
+  if (calendar.length && approvedAudiences.length) {
+    for (const month of calendar) {
+      for (const post of month.blogPosts ?? []) {
+        const angle = (post as { angle?: string }).angle ?? "";
+        const m = angle.match(/written for\s+([^,]+)/i);
+        const tag = m?.[1]?.trim();
+        if (!tag) continue;
+        if (hasAnyMatch(tag, approvedAudiences)) continue;
+        const replacement = pickAudience(`${tag} ${post.title ?? ""} ${(post as { targetKeyword?: string }).targetKeyword ?? ""}`);
+        if (!replacement) continue;
+        // Replace the captured group, preserving the surrounding wording.
+        const next = angle.replace(/(written for\s+)([^,]+)/i, `$1${replacement}`);
+        if (next !== angle) {
+          (post as { angle?: string }).angle = next;
+          fixes += 1;
+        }
+      }
+    }
+  }
+
+  // ── Negative keywords overlapping focus periods → drop them ────────────
+  const negsContainer = plan.sections.googleAdsCampaigns;
+  const negs = negsContainer?.aiNegativesWithReason ?? [];
+  if (negs.length) {
+    const focusTokens = new Set<string>();
+    (sources.campaignFocusPeriods ?? []).forEach((p) => {
+      [p.label, p.description ?? ""].forEach((s) => {
+        s.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 4).forEach((t) => focusTokens.add(t));
+      });
+    });
+    if (focusTokens.size > 0 && negsContainer) {
+      const keep = negs.filter((n) => {
+        const tokens = (n.keyword ?? "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+        const hit = tokens.some((t) => focusTokens.has(t));
+        if (hit) fixes += 1;
+        return !hit;
+      });
+      negsContainer.aiNegativesWithReason = keep;
+    }
+  }
+
+  return fixes;
+}
