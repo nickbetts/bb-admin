@@ -179,6 +179,10 @@ interface SeoQuickWinPage {
   onPageSuggestions?: string[];
   /** 2–4 cross-links to add from THIS page to other pages on the site. */
   crossLinksToAdd: { targetUrl: string; anchorText: string; rationale?: string }[];
+  /** Suggested FAQ Q+A pairs to add (or expand) on this page. Surfaced in a modal with copy buttons. */
+  suggestedFaq?: { question: string; answer: string }[];
+  /** Suggested schema markup for this page. Each entry is a JSON-LD snippet ready to paste. */
+  suggestedSchema?: { type: string; jsonLd: string }[];
   estimatedTimeToImpact?: "1–2 weeks" | "3–4 weeks" | "1–2 months";
   effort?: "low" | "medium" | "high";
 }
@@ -3092,6 +3096,8 @@ Return ONLY valid JSON (no markdown fences) matching this schema:
       "newMetaDescription": string,
       "onPageSuggestions": [ string ],
       "crossLinksToAdd": [ { "targetUrl": string, "anchorText": string, "rationale": string } ],
+      "suggestedFaq": [ { "question": string, "answer": string } ],
+      "suggestedSchema": [ { "type": string, "jsonLd": string } ],
       "estimatedTimeToImpact": "1–2 weeks" | "3–4 weeks" | "1–2 months",
       "effort": "low" | "medium" | "high"
     }
@@ -3139,6 +3145,8 @@ Hard rules:
   - "newMetaDescription" ≤ 160 characters, MUST contain the primary keyword and end with a soft CTA.
   - "onPageSuggestions": 3–5 concrete on-page changes beyond the title/meta — eg "Add a comparison table for X vs Y above the fold", "Insert FAQ schema with 4 questions", "Rewrite H1 to lead with primary keyword", "Add trust block (logos / testimonials) under hero". Be specific to this page, not generic.
   - "crossLinksToAdd": EXACTLY 3 cross-links per page, pointing to OTHER URLs from the KNOWN PAGES list. Anchor text must be natural prose (not bare keywords stuffed in).
+  - "suggestedFaq": 4–6 question + answer pairs the client can add to the page as an FAQ section. Questions must reflect real user intent for this page (use commercial-intent / objection-handling questions, not generic FAQs). Answers 1–3 sentences, plain language, no markdown.
+  - "suggestedSchema": 1–3 JSON-LD schema snippets the client can paste into the page <head>. Always include the most relevant schema type (e.g. Service, Product, Course, LocalBusiness, Organisation, Article) plus FAQPage built from the suggestedFaq above. Each "jsonLd" string must be a complete, valid <script type="application/ld+json">-ready JSON object as a single string with @context set to https://schema.org. Use real values from the page intel where known, sensible placeholders elsewhere. The string must be valid JSON — escape internal quotes properly.
 - "internalLinking.hubs": UP TO 4 hub pages, each chosen from KNOWN PAGES. A hub is a high-commercial-value page that should attract internal links from supporting pages.
   - Each hub has 4–6 inboundLinks (other URLs from KNOWN PAGES that should link to it). Mix anchor text — do NOT repeat the same exact-match anchor across all 4–6 inbound links.
   - "rationale" on each inbound link is one short sentence explaining why the link belongs there.

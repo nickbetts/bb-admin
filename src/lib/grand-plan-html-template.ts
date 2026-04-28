@@ -98,19 +98,14 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
 
   const hasContext = s.audiences?.length || plan.brief || plan.campaignPeriods?.length;
   void hasContext; // Context chapter removed — brief & audiences now surface inside the Strategy Brain panel.
-  const hasStrategy = s.strategyPlan || s.quickWins?.length || plan.strategyBrain?.positioning?.statement;
+  // Strategy chapter removed — Strategy Plan, Quick Wins (Action Plan) and Strategic Foundation
+  // are no longer rendered. Channel sections carry the strategy through directly.
   const hasPaidSearch = !!s.googleAdsCampaigns;
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
   const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial || s.exampleArticles?.length;
   const hasResearch = s.competitorIntel?.length;
   const hasCommercial = s.servicesInvestment || s.emailMarketing;
 
-  if (hasStrategy) {
-    addChapter("Strategy");
-    if (plan.strategyBrain?.positioning?.statement) navItems.push({ id: "strategy-brain", label: "Strategic Foundation" });
-    if (s.strategyPlan) navItems.push({ id: "strategy-plan", label: "Strategy Plan" });
-    if (s.quickWins?.length) navItems.push({ id: "quick-wins", label: "Quick Wins" });
-  }
   if (hasPaidSearch) {
     addChapter("Paid Search");
     if (s.googleAdsCampaigns) navItems.push({ id: "google-ads", label: "Google Ads" });
@@ -305,6 +300,22 @@ ${isPublicView ? "" : `<button id="tldr-toggle" class="tldr-toggle" type="button
   </div>
 </div>
 
+<!-- Quick-win FAQ / schema modal -->
+<div id="qw-modal" class="qw-modal" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="qw-modal-backdrop" data-qw-close></div>
+  <div class="qw-modal-panel">
+    <header class="qw-modal-head">
+      <div>
+        <div class="qw-modal-eyebrow" id="qw-modal-eyebrow"></div>
+        <h3 id="qw-modal-title">Suggested content</h3>
+        <a class="qw-modal-url" id="qw-modal-url" href="#" target="_blank" rel="noopener"></a>
+      </div>
+      <button type="button" class="qw-modal-close" data-qw-close aria-label="Close">&times;</button>
+    </header>
+    <div class="qw-modal-body" id="qw-modal-body"></div>
+  </div>
+</div>
+
 <script>${JS}</script>
 </body>
 </html>`;
@@ -322,7 +333,7 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
 
   const hasContext = brief || s.audiences?.length || campaignPeriods?.length;
   void hasContext; // Context chapter removed — brief lives in the brain panel; audiences appear inline per channel.
-  const hasStrategy = s.strategyPlan || s.quickWins?.length;
+  // Strategy chapter (Strategy Plan + Quick Wins) removed — channel chapters open the plan directly.
   const hasPaidSearch = !!s.googleAdsCampaigns;
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
   const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial || s.exampleArticles?.length;
@@ -338,12 +349,6 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   // Data sources panel removed — the Strategy Brain panel above already explains
   // the foundation. Internal teams can inspect plan.dataSources via the API.
   void dataSources;
-
-  if (hasStrategy) {
-    parts.push(ch("Strategy", `The overall marketing strategy and quick-win priorities for ${clientName}.`));
-    if (s.strategyPlan) parts.push(renderStrategyPlan(s.strategyPlan));
-    if (s.quickWins?.length) parts.push(renderQuickWins(s.quickWins));
-  }
 
   if (hasPaidSearch) {
     parts.push(ch("Paid Search", "Google Ads campaign structure, ad groups, and keyword targeting."));
@@ -1389,6 +1394,12 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
 
   // Audience Plays panel removed.
   void audienceRationales;
+  // The "On-Page Optimisations" block was retired in favour of the
+  // SEO Foundations > Quick Wins on Existing Pages block, which carries
+  // the same data with deeper enrichment. We keep the variable assignment
+  // (pageOpts is still derived above) so the typed pipeline remains intact
+  // but no longer render it.
+  void pageOptsHtml;
 
   return `
     <section id="content-strategy" class="section">
@@ -1397,7 +1408,6 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
         <h2>Content & SEO Strategy</h2>
         <p class="section-intro">${intro ? esc(intro) : "A topic-cluster approach: one anchoring pillar page, supporting deep-dive guides, and themed articles that capture every stage of intent."}</p>
       ${clusterBlock}
-      ${pageOptsHtml}
       </div>
     </section>`;
 }
@@ -1480,7 +1490,7 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
     <h3 class="seo-sub-heading">Quick Wins on Existing Pages</h3>
     <p class="seo-sub-intro">Existing pages that can move within weeks: rewritten title tags, refreshed meta descriptions, and the cross-links to add inside the page body.</p>
     <div class="qw-grid">
-      ${quickWins.map((q) => {
+      ${quickWins.map((q, qi) => {
         const title = q.newTitleTag ?? "";
         const meta = q.newMetaDescription ?? "";
         const cross = q.crossLinksToAdd ?? [];
@@ -1489,14 +1499,21 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
         const secondary = kw.secondary ?? [];
         const longTail = kw.longTail ?? [];
         const intentClass = (q.intent || "").toLowerCase();
+        const faqItems = (q as { suggestedFaq?: { question: string; answer: string }[] }).suggestedFaq ?? [];
+        const schemaItems = (q as { suggestedSchema?: { type: string; jsonLd: string }[] }).suggestedSchema ?? [];
+        // Build modal payloads as base64 to dodge HTML-escaping headaches in jsonLd.
+        const faqPayload = faqItems.length
+          ? Buffer.from(JSON.stringify({ url: q.url, items: faqItems }), "utf-8").toString("base64")
+          : "";
+        const schemaPayload = schemaItems.length
+          ? Buffer.from(JSON.stringify({ url: q.url, items: schemaItems }), "utf-8").toString("base64")
+          : "";
         return `
-        <div class="qw-card">
+        <div class="qw-card" id="qw-card-${qi}">
           <div class="qw-head">
             <a class="qw-url" href="${esc(linkUrl(q.url))}" target="_blank" rel="noopener">${esc(q.url)}</a>
             <div class="qw-badges">
               ${q.intent ? `<span class="qw-badge qw-intent qw-intent-${esc(intentClass)}">${esc(q.intent)} intent</span>` : ""}
-              ${q.effort ? `<span class="qw-badge qw-effort qw-effort-${esc(q.effort)}">${esc(q.effort)} effort</span>` : ""}
-              ${q.estimatedTimeToImpact ? `<span class="qw-badge qw-time">${esc(q.estimatedTimeToImpact)}</span>` : ""}
             </div>
           </div>
           ${q.pageTitle ? `<div class="qw-page-title">${esc(q.pageTitle)}</div>` : ""}
@@ -1539,6 +1556,11 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
                   ${c.rationale ? `<div class="qw-cross-why">${esc(c.rationale)}</div>` : ""}
                 </li>`).join("")}
             </ul>
+          </div>` : ""}
+          ${(faqItems.length || schemaItems.length) ? `
+          <div class="qw-actions">
+            ${faqItems.length ? `<button type="button" class="qw-action-btn qw-action-faq" data-qw-modal="faq" data-qw-payload="${faqPayload}"><span class="qw-action-ico">&#x2753;</span>Suggested FAQs<span class="qw-action-count">${faqItems.length}</span></button>` : ""}
+            ${schemaItems.length ? `<button type="button" class="qw-action-btn qw-action-schema" data-qw-modal="schema" data-qw-payload="${schemaPayload}"><span class="qw-action-ico">&lt;/&gt;</span>Suggested schema<span class="qw-action-count">${schemaItems.length}</span></button>` : ""}
           </div>` : ""}
         </div>`;
       }).join("\n")}
@@ -2391,6 +2413,40 @@ a{color:var(--accent);text-decoration:none}
 .qw-cross-url{font-family:'SF Mono','Fira Code','Courier New',monospace;font-size:11.5px;color:var(--accent);text-decoration:none;word-break:break-all}
 .qw-cross-url:hover{text-decoration:underline}
 .qw-cross-why{flex-basis:100%;font-size:11.5px;color:var(--text-light);font-style:italic;margin-top:2px}
+.qw-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem;padding-top:.75rem;border-top:1px dashed var(--border)}
+.qw-action-btn{display:inline-flex;align-items:center;gap:.4rem;padding:6px 12px;border:1px solid var(--border);background:#fff;border-radius:6px;font-size:12.5px;font-weight:600;color:var(--heading);cursor:pointer;transition:all .15s ease;font-family:inherit}
+.qw-action-btn:hover{border-color:#3b82f6;color:#1e40af;background:#eff6ff}
+.qw-action-faq:hover{border-color:#7c3aed;color:#5b21b6;background:#f5f3ff}
+.qw-action-schema:hover{border-color:#059669;color:#047857;background:#ecfdf5}
+.qw-action-ico{font-size:13px;line-height:1}
+.qw-action-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;font-size:10.5px;font-weight:700;background:rgba(0,0,0,.06);color:var(--text);border-radius:9px}
+.qw-modal{position:fixed;inset:0;z-index:1000;display:none;align-items:flex-start;justify-content:center;padding:60px 20px 20px}
+.qw-modal[aria-hidden="false"]{display:flex}
+.qw-modal-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(2px)}
+.qw-modal-panel{position:relative;width:min(820px,100%);max-height:calc(100vh - 80px);background:#fff;border-radius:12px;box-shadow:0 25px 70px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden}
+.qw-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1.1rem 1.4rem;border-bottom:1px solid var(--border);background:#f8fafc}
+.qw-modal-eyebrow{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:.25rem}
+.qw-modal-head h3{font-size:18px;margin:0;color:var(--heading);font-weight:700}
+.qw-modal-url{display:block;margin-top:.25rem;font-size:12px;color:#3b82f6;text-decoration:none;word-break:break-all}
+.qw-modal-url:hover{text-decoration:underline}
+.qw-modal-close{appearance:none;border:none;background:transparent;font-size:28px;line-height:1;color:#64748b;cursor:pointer;padding:0 4px;flex-shrink:0}
+.qw-modal-close:hover{color:var(--heading)}
+.qw-modal-body{padding:1.2rem 1.4rem;overflow-y:auto;display:flex;flex-direction:column;gap:1rem}
+.qw-modal-faq-item{border:1px solid var(--border);border-radius:8px;padding:.85rem 1rem;background:#fafbfc}
+.qw-modal-faq-q{font-size:14px;font-weight:600;color:var(--heading);margin:0 0 .35rem;line-height:1.4}
+.qw-modal-faq-a{font-size:13px;color:var(--text);line-height:1.55;margin:0}
+.qw-modal-faq-foot{display:flex;justify-content:flex-end;margin-top:.6rem}
+.qw-modal-schema-item{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#0f172a}
+.qw-modal-schema-head{display:flex;align-items:center;justify-content:space-between;padding:.55rem .85rem;background:#1e293b;color:#e2e8f0}
+.qw-modal-schema-type{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#67e8f9}
+.qw-modal-schema-pre{margin:0;padding:.85rem 1rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.5;color:#e2e8f0;white-space:pre-wrap;word-break:break-word;max-height:340px;overflow-y:auto}
+.qw-modal-copy{appearance:none;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#e2e8f0;padding:3px 10px;border-radius:5px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit}
+.qw-modal-copy:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3)}
+.qw-modal-copy.qw-copied{background:#059669;border-color:#059669;color:#fff}
+.qw-modal-copy-inline{appearance:none;border:1px solid var(--border);background:#fff;color:var(--heading);padding:3px 10px;border-radius:5px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit}
+.qw-modal-copy-inline:hover{background:#f1f5f9}
+.qw-modal-copy-inline.qw-copied{background:#059669;border-color:#059669;color:#fff}
+@media print{.qw-actions,.qw-modal{display:none !important}}
 /* Internal linking structure (hub-and-spoke) */
 .ils-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.1rem;margin-bottom:1rem}
 @media (max-width:900px){.ils-grid{grid-template-columns:1fr}}
@@ -3404,6 +3460,97 @@ document.querySelectorAll('.lp-iframe[data-lp-html]').forEach(function(iframe){
   document.addEventListener('keydown',function(e){
     if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return;
     if(e.key==='t'||e.key==='T'){setMode(!document.body.classList.contains('tldr-mode'));}
+  });
+})();
+
+// Quick-win FAQ / schema modal
+(function(){
+  var modal=document.getElementById('qw-modal');
+  if(!modal)return;
+  var titleEl=document.getElementById('qw-modal-title');
+  var eyebrowEl=document.getElementById('qw-modal-eyebrow');
+  var urlEl=document.getElementById('qw-modal-url');
+  var bodyEl=document.getElementById('qw-modal-body');
+  function escHtml(s){return String(s||'').replace(/[&<>"']/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"})[c];});}
+  function pretty(jsonStr){
+    try{return JSON.stringify(JSON.parse(jsonStr),null,2);}catch(e){return jsonStr;}
+  }
+  function copyText(btn,text){
+    navigator.clipboard.writeText(text).then(function(){
+      var orig=btn.textContent;
+      btn.textContent='Copied';
+      btn.classList.add('qw-copied');
+      setTimeout(function(){btn.textContent=orig;btn.classList.remove('qw-copied');},1500);
+    });
+  }
+  function openModal(kind,payloadB64){
+    var data;
+    try{data=JSON.parse(decodeURIComponent(escape(atob(payloadB64))));}
+    catch(e){try{data=JSON.parse(atob(payloadB64));}catch(e2){return;}}
+    var url=data.url||'';
+    urlEl.textContent=url;
+    urlEl.setAttribute('href',url);
+    if(kind==='faq'){
+      eyebrowEl.textContent='Suggested FAQs';
+      titleEl.textContent='FAQ for this page';
+      var allFaq=(data.items||[]).map(function(it){return 'Q: '+it.question+'\\nA: '+it.answer;}).join('\\n\\n');
+      var html=(data.items||[]).map(function(it,i){
+        var combined='Q: '+it.question+'\\nA: '+it.answer;
+        return '<div class="qw-modal-faq-item">'
+          +'<p class="qw-modal-faq-q">'+escHtml(it.question)+'</p>'
+          +'<p class="qw-modal-faq-a">'+escHtml(it.answer)+'</p>'
+          +'<div class="qw-modal-faq-foot"><button type="button" class="qw-modal-copy-inline" data-qw-copy-id="qw-faq-'+i+'">Copy Q&amp;A</button></div>'
+          +'<textarea id="qw-faq-'+i+'" style="display:none">'+escHtml(combined)+'</textarea>'
+          +'</div>';
+      }).join('');
+      html='<div style="display:flex;justify-content:flex-end;margin-bottom:.25rem"><button type="button" class="qw-modal-copy-inline" data-qw-copy-text="'+escHtml(allFaq)+'">Copy all</button></div>'+html;
+      bodyEl.innerHTML=html;
+    }else if(kind==='schema'){
+      eyebrowEl.textContent='Suggested schema';
+      titleEl.textContent='JSON-LD ready to paste';
+      var html=(data.items||[]).map(function(it,i){
+        var formatted=pretty(it.jsonLd||'');
+        return '<div class="qw-modal-schema-item">'
+          +'<div class="qw-modal-schema-head">'
+          +'<span class="qw-modal-schema-type">'+escHtml(it.type||'Schema')+'</span>'
+          +'<button type="button" class="qw-modal-copy" data-qw-copy-id="qw-schema-'+i+'">Copy</button>'
+          +'</div>'
+          +'<pre class="qw-modal-schema-pre" id="qw-schema-pre-'+i+'">'+escHtml(formatted)+'</pre>'
+          +'<textarea id="qw-schema-'+i+'" style="display:none">'+escHtml(formatted)+'</textarea>'
+          +'</div>';
+      }).join('');
+      bodyEl.innerHTML=html;
+    }
+    modal.setAttribute('aria-hidden','false');
+    document.body.style.overflow='hidden';
+  }
+  function closeModal(){
+    modal.setAttribute('aria-hidden','true');
+    document.body.style.overflow='';
+    bodyEl.innerHTML='';
+  }
+  document.addEventListener('click',function(e){
+    var t=e.target;
+    if(!t)return;
+    var trigger=t.closest&&t.closest('[data-qw-modal]');
+    if(trigger){
+      e.preventDefault();
+      openModal(trigger.getAttribute('data-qw-modal'),trigger.getAttribute('data-qw-payload'));
+      return;
+    }
+    if(t.hasAttribute&&t.hasAttribute('data-qw-close')){closeModal();return;}
+    if(t.hasAttribute&&t.hasAttribute('data-qw-copy-id')){
+      var src=document.getElementById(t.getAttribute('data-qw-copy-id'));
+      if(src)copyText(t,src.value||src.textContent||'');
+      return;
+    }
+    if(t.hasAttribute&&t.hasAttribute('data-qw-copy-text')){
+      copyText(t,t.getAttribute('data-qw-copy-text'));
+      return;
+    }
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'&&modal.getAttribute('aria-hidden')==='false')closeModal();
   });
 })();
 `;
