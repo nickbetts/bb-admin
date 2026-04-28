@@ -25,6 +25,7 @@ import { suggestAdGroups, researchKeywords } from "@/lib/keyword-planner-pipelin
 import { generateContentStrategy, generateContentStrategySection, collectSemrushData, runOnPageAudit, type ContentStrategyData } from "@/lib/content-strategy-generator";
 import { withApiCache } from "@/lib/api-cache";
 import { getAnthropicClient } from "@/lib/anthropic-client";
+import { fetchSitemapUrls } from "@/lib/sitemap";
 import {
   getGA4Overview,
   getGA4TrafficSources,
@@ -46,9 +47,9 @@ export const dynamic = "force-dynamic";
 // Valid AI/computed section keys that can be generated individually
 const SECTION_KEYS = [
   "executiveSummary", "strategyPlan", "audiences", "googleAdsCampaigns", "metaCampaigns",
-  "keywordResearch", "contentStrategy", "contentCalendar", "organicSocial",
+  "contentStrategy", "contentCalendar", "organicSocial",
   "exampleArticles", "servicesInvestment", "emailMarketing",
-  "linkedInAds", "competitorIntel", "quickWins", "kpis", "seoFoundations",
+  "linkedInAds", "competitorIntel", "quickWins", "seoFoundations",
 ];
 
 /**
@@ -499,7 +500,7 @@ export async function POST(
         }
       };
 
-      const [ga4Overview, ga4Traffic, ga4Demo, ga4Devices, ga4Convs, ga4TopPages, ga4Geo, gscQueries, gscPages, semCompetitors] = await Promise.all([
+      const [ga4Overview, ga4Traffic, ga4Demo, ga4Devices, ga4Convs, ga4TopPages, ga4Geo, gscQueries, gscPages, semCompetitors, sitemapPagesRaw] = await Promise.all([
         propertyId ? safe("ga4Overview", () => withApiCache(`gp-research:ga4-overview:${propertyId}:${startDate}:${endDate}`, cacheTtlHours, () => getGA4Overview(propertyId, startDate, endDate))) : Promise.resolve(null),
         propertyId ? safe("ga4Traffic", () => withApiCache(`gp-research:ga4-traffic:${propertyId}:${startDate}:${endDate}`, cacheTtlHours, () => getGA4TrafficSources(propertyId, startDate, endDate))) : Promise.resolve(null),
         propertyId ? safe("ga4Demo", () => withApiCache(`gp-research:ga4-demo:${propertyId}:${startDate}:${endDate}`, cacheTtlHours, () => getGA4Demographics(propertyId, startDate, endDate))) : Promise.resolve(null),
@@ -511,6 +512,7 @@ export async function POST(
         gscSite ? safe("gscQueries", () => withApiCache(`gp-research:gsc-queries:${gscSite}:${startDate}:${endDate}`, cacheTtlHours, () => getGSCTopQueries(gscSite, startDate, endDate, 25))) : Promise.resolve(null),
         gscSite ? safe("gscPages", () => withApiCache(`gp-research:gsc-pages:${gscSite}:${startDate}:${endDate}`, cacheTtlHours, () => getGSCTopPages(gscSite, startDate, endDate))) : Promise.resolve(null),
         semDomain ? safe("semCompetitors", () => withApiCache(`gp-research:sem-competitors:${semDomain}:uk`, cacheTtlHours, () => getCompetitors(semDomain, "uk", 6))) : Promise.resolve(null),
+        semDomain ? safe("sitemap", () => withApiCache(`gp-research:sitemap:${semDomain}`, cacheTtlHours, () => fetchSitemapUrls(semDomain))) : Promise.resolve(null),
       ]);
       void ga4Geo; // reserved for future use
 
@@ -577,6 +579,7 @@ export async function POST(
           topPages: Array.isArray(gscPages) ? gscPages.slice(0, 20) : undefined,
         } : undefined,
         competitorData: competitorEnriched.length ? competitorEnriched : undefined,
+        sitemapPages: Array.isArray(sitemapPagesRaw) ? sitemapPagesRaw.slice(0, 200) : undefined,
       };
 
       // Stash on planDataJson under a transient key. Stripped at assemble time.

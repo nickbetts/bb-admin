@@ -256,13 +256,6 @@ interface QuickWinAction {
   effort?: "high" | "medium" | "low";
 }
 
-interface KpiChannel {
-  channel: string;
-  /** Short emoji or symbol shown above the KPI list. */
-  icon?: string;
-  metrics: { name: string; target: string }[];
-}
-
 interface MetaCampaign {
   campaignName: string;
   objective: string;
@@ -419,6 +412,8 @@ export interface AccountResearchData {
     backlinks: number;
     topKeywords: string[];
   }[];
+  /** URLs harvested from the client's sitemap.xml — used to ground SEO recommendations to real pages. */
+  sitemapPages?: string[];
 }
 
 /** Customer-voice research harvested via Anthropic web search. */
@@ -493,7 +488,6 @@ export interface StrategyBrain {
     content?: string;
     organicSocial?: string;
     calendar?: string;
-    kpis?: string;
     competitorIntel?: string;
     quickWins?: string;
   };
@@ -546,12 +540,10 @@ export interface GrandPlanData {
       overview: Record<string, string>;
       negativeKeywords: string[];
       aiNegativesWithReason?: { keyword: string; reason: string }[];
-      adGroups: { name: string; keywords: AdGroupKeyword[]; adCopy?: { headlines: string[]; descriptions: string[]; sitelinks?: string[] }; adGroupNegatives?: string[] }[];
+      suggestedLocations?: string[];
+      adGroups: { name: string; keywords: AdGroupKeyword[]; audience?: string; adGroupNegatives?: string[] }[];
     };
     metaCampaigns?: MetaCampaign[];
-    keywordResearch?: {
-      adGroups: { name: string; keywords: { keyword: string; volume?: number; cpc?: number }[] }[];
-    };
     contentStrategy?: {
       pageOptimisations: ContentStrategyEntry[];
       landingPages: ContentStrategyEntry[];
@@ -582,8 +574,6 @@ export interface GrandPlanData {
     competitorIntel?: CompetitorInsight[];
     /** Prioritised list of next-step actions, surfaced under Strategy. */
     quickWins?: QuickWinAction[];
-    /** KPI/measurement framework grouped by channel. */
-    kpis?: KpiChannel[];
   };
   /** Per-section grounding flags + source labels — used by the renderer to
    * surface badges next to each section heading. Keyed by the same keys as
@@ -841,7 +831,7 @@ Return ONLY valid JSON (no markdown fences) matching this exact schema:
   "directives": {
     "audiences": string, "googleAds": string, "meta": string, "linkedIn": string,
     "email": string, "content": string, "organicSocial": string, "calendar": string,
-    "kpis": string, "competitorIntel": string, "quickWins": string
+    "competitorIntel": string, "quickWins": string
   }
 }
 
@@ -954,7 +944,6 @@ export async function generateGrandPlan(
   if (isEnabled("linkedInAds")) sectionNames.push("LinkedIn Ads");
   if (isEnabled("competitorIntel") && sources.keywordResearch) sectionNames.push("Competitor Intel");
   if (isEnabled("quickWins")) sectionNames.push("Quick Wins");
-  if (isEnabled("kpis")) sectionNames.push("KPIs");
 
   let completedCount = 0;
   const total = sectionNames.length;
@@ -979,7 +968,7 @@ export async function generateGrandPlan(
   if (onProgress) await onProgress(`Generating ${total} AI sections...`);
 
   // Batch 1: core sections (errors are isolated — one failure does not abort the rest)
-  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, adCopyData, aiNegatives, aiContentClusters] =
+  const [executiveSummary, strategyPlan, metaCampaigns, contentCalendar, organicSocial, exampleArticles, , aiNegatives, aiContentClusters] =
     await Promise.all([
       isEnabled("executiveSummary")
         ? runSection("Executive Summary", "executiveSummary", () => generateExecutiveSummary(anthropic, contextSummary, sources))
@@ -1013,7 +1002,7 @@ export async function generateGrandPlan(
     ]);
 
   // Batch 2: supplementary sections
-  const [emailMarketing, linkedInAds, competitorIntel, audiences, quickWins, kpis, seoFoundations] =
+  const [emailMarketing, linkedInAds, competitorIntel, audiences, quickWins, seoFoundations] =
     await Promise.all([
       isEnabled("emailMarketing")
         ? runSection("Email Marketing", "emailMarketing", () => generateEmailMarketing(anthropic, contextSummary, sources))
@@ -1030,9 +1019,6 @@ export async function generateGrandPlan(
       isEnabled("quickWins")
         ? runSection("Quick Wins", "quickWins", () => generateQuickWins(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
-      isEnabled("kpis")
-        ? runSection("KPIs", "kpis", () => generateKpis(anthropic, contextSummary, sources))
-        : Promise.resolve(undefined),
       isEnabled("seoFoundations")
         ? runSection("SEO Foundations", "seoFoundations", () => generateSeoFoundations(anthropic, contextSummary, sources))
         : Promise.resolve(undefined),
@@ -1046,14 +1032,12 @@ export async function generateGrandPlan(
       )
     : undefined;
 
-  // Build Google Ads campaigns from keyword research (structured data + AI ad copy)
-  const googleAdsCampaigns = isEnabled("googleAdsCampaigns") && sources.keywordResearch
-    ? buildGoogleAdsCampaigns(adGroups, sources, adCopyData ?? [], aiNegatives)
+  // Build Google Ads campaigns from keyword research (structured data + AI targeting)
+  const googleAdsTargeting = isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
+    ? await runSection("Google Ads Targeting", "googleAdsTargeting", () => generateGoogleAdsTargeting(anthropic, sources, adGroups))
     : undefined;
-
-  // Build keyword research section
-  const keywordResearch = isEnabled("keywordResearch") && sources.keywordResearch
-    ? buildKeywordResearchSection(adGroups)
+  const googleAdsCampaigns = isEnabled("googleAdsCampaigns") && sources.keywordResearch
+    ? buildGoogleAdsCampaigns(adGroups, sources, aiNegatives, googleAdsTargeting)
     : undefined;
 
   // Build content strategy section: prefer AI clusters (form-driven), fall back
@@ -1108,7 +1092,6 @@ export async function generateGrandPlan(
       strategyPlan,
       googleAdsCampaigns,
       metaCampaigns,
-      keywordResearch,
       contentStrategy: contentStrategySection,
       seoFoundations,
       contentCalendar,
@@ -1119,7 +1102,6 @@ export async function generateGrandPlan(
       linkedInAds: linkedInAds?.value,
       competitorIntel: competitorIntel?.value,
       quickWins,
-      kpis,
     },
     grounding: Object.keys(grounding).length ? grounding : undefined,
     dataSources: dataSources.length ? dataSources : undefined,
@@ -2558,46 +2540,37 @@ function detectLocations(brief?: string): string {
 function buildGoogleAdsCampaigns(
   adGroups: AdGroup[],
   sources: GrandPlanSources,
-  adCopyData: { name: string; adCopy: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; urlPaths?: string[]; isFallback?: boolean } }[],
   aiNegatives?: { campaignLevel: { keyword: string; reason: string }[]; byAdGroup: { name: string; negatives: string[] }[] },
+  targeting?: { suggestedLocations: string[]; adGroupAudiences: { name: string; audience: string }[] },
 ) {
-  const adCopyMap = new Map(adCopyData.map((d) => [d.name, d.adCopy]));
   const adGroupNegMap = new Map((aiNegatives?.byAdGroup ?? []).map((g) => [g.name, g.negatives]));
+  const audienceMap = new Map((targeting?.adGroupAudiences ?? []).map((a) => [a.name, a.audience]));
   const sector = sources.sector ?? "";
   const sectorNegs = SECTOR_NEGATIVES[sector] ?? [];
   const briefNegs = parseBriefNegatives(sources.clientBrief ?? "");
   const aiCampaignNegs = sanitiseNegativeTerms((aiNegatives?.campaignLevel ?? []).map((n) => n.keyword));
   const allNegatives = [...new Set([...sectorNegs, ...briefNegs, ...aiCampaignNegs])];
-  // Keep the AI-supplied reasoned list separate so we can render it with rationale.
   const aiNegativesWithReason = (aiNegatives?.campaignLevel ?? []).filter((n) => n.keyword && n.reason);
-  const adSchedule = SECTOR_AD_SCHEDULE[sector] ?? "Mon-Fri, 7am-9pm";
+
+  const suggestedLocations = (targeting?.suggestedLocations?.length
+    ? targeting.suggestedLocations
+    : (sources.strategyBrain?.targetGeographies?.length
+        ? sources.strategyBrain.targetGeographies
+        : [detectLocations(sources.clientBrief)])).filter(Boolean);
 
   return {
     campaignName: `${sources.clientName} — Search`,
     overview: {
-      "Campaign Type": "Search",
-      "Goal": "Conversions",
-      "Bidding": "Maximise Conversions",
-      "Budget": sources.channelBudgets?.googleAds
+      "Monthly Budget": sources.channelBudgets?.googleAds
         ? `£${sources.channelBudgets.googleAds}/month`
         : sources.keywordResearch?.monthlyBudget
           ? `£${sources.keywordResearch.monthlyBudget}/month`
           : "Custom",
-      "Locations": (sources.strategyBrain?.targetGeographies?.length
-        ? sources.strategyBrain.targetGeographies.join(", ")
-        : detectLocations(sources.clientBrief)),
-      "Language": "English",
-      "Ad Schedule": adSchedule,
-      "Conversion Tracking": "Website form submissions, phone calls",
-      "Networks": "Search Network only",
-      "Max CPC": sources.keywordResearch?.maxCpc ? `£${sources.keywordResearch.maxCpc}` : "Auto",
     },
+    suggestedLocations,
     negativeKeywords: allNegatives,
     aiNegativesWithReason,
     adGroups: adGroups.map((g) => {
-      // Drop zero/null-volume keywords — they don't deserve real estate in the
-      // ad group breakdown. If everything is zero (rare), keep the original
-      // list so the strategist still sees something. Sort by volume desc.
       const filtered = g.keywords
         .filter((k) => (k.volume ?? 0) > 0)
         .sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0));
@@ -2612,11 +2585,67 @@ function buildGoogleAdsCampaigns(
           cpc: k.cpc,
         })),
         hiddenLowVolumeCount: filtered.length > 0 ? hiddenCount : 0,
-        adCopy: adCopyMap.get(g.name),
+        audience: audienceMap.get(g.name),
         adGroupNegatives: adGroupNegMap.get(g.name) ?? [],
       };
     }),
   };
+}
+
+// Use Opus to suggest tailored geo-targeting for the Search campaign and to
+// map each ad group to the most relevant audience from the Strategy Brain.
+async function generateGoogleAdsTargeting(
+  anthropic: Anthropic,
+  sources: GrandPlanSources,
+  adGroups: AdGroup[],
+): Promise<{ suggestedLocations: string[]; adGroupAudiences: { name: string; audience: string }[] }> {
+  const audiences = (sources.strategyBrain?.audiences ?? []).map((a) => a.name).filter(Boolean);
+  const adGroupNames = adGroups.map((g) => g.name).slice(0, 20);
+  const brainGeos = (sources.strategyBrain?.targetGeographies ?? []).join(", ");
+  const briefGeo = detectLocations(sources.clientBrief);
+
+  const prompt = `You are a Google Ads strategist at i3media. Reason carefully before answering.
+
+Client: ${sources.clientName}
+Sector: ${sources.sector ?? "general"}
+Brief: ${(sources.clientBrief ?? "").slice(0, 1500) || "(none)"}
+Strategy Brain target geographies: ${brainGeos || "(none)"}
+Detected geo from brief: ${briefGeo}
+Audiences from Strategy Brain: ${audiences.length ? audiences.join(" | ") : "(none)"}
+Ad groups: ${adGroupNames.length ? adGroupNames.join(" | ") : "(none)"}
+
+Return ONLY valid JSON (no markdown fences) matching this schema:
+{
+  "suggestedLocations": string[],
+  "adGroupAudiences": [ { "name": string, "audience": string } ]
+}
+
+Rules:
+- suggestedLocations: 3-8 specific Google Ads location targets (countries, regions, cities or postcode areas). Use the geographies above. Be specific, not vague ("London" not "South of England"; "Greater Manchester" not "North West").
+- adGroupAudiences: one entry per ad group above, mapping the ad group name verbatim to the SINGLE most relevant audience name verbatim from the audiences list. If no audience clearly maps, use "All audiences".
+- British English. No commentary.`;
+
+  try {
+    const res = await withAnthropicRetry("googleAdsTargeting", () => anthropic.messages.create({
+      model: MODEL_PRIMARY(),
+      max_tokens: 1500,
+      messages: [{ role: "user", content: prompt }],
+    }));
+    const parsed = safeJsonParse<{ suggestedLocations?: unknown; adGroupAudiences?: unknown }>(extractText(res), {});
+    const locs = Array.isArray(parsed.suggestedLocations)
+      ? parsed.suggestedLocations.map((l) => String(l).trim()).filter(Boolean).slice(0, 8)
+      : [];
+    const map = Array.isArray(parsed.adGroupAudiences)
+      ? parsed.adGroupAudiences
+          .filter((g): g is { name?: unknown; audience?: unknown } => !!g && typeof g === "object")
+          .map((g) => ({ name: String(g.name ?? "").trim(), audience: String(g.audience ?? "").trim() }))
+          .filter((g) => g.name && g.audience)
+      : [];
+    return { suggestedLocations: locs, adGroupAudiences: map };
+  } catch (err) {
+    console.warn("[grand-plan] googleAdsTargeting failed:", err instanceof Error ? err.message : err);
+    return { suggestedLocations: [], adGroupAudiences: [] };
+  }
 }
 
 /**
@@ -2698,27 +2727,6 @@ ${context}${buildSharedContextBlocks(sources, "googleAds")}`,
         .filter((g: { name: string; negatives: string[] }) => g.name && g.negatives.length > 0)
     : [];
   return { campaignLevel, byAdGroup };
-}
-
-function buildKeywordResearchSection(adGroups: AdGroup[]) {
-  return {
-    adGroups: adGroups.map((g) => {
-      const filtered = g.keywords
-        .filter((k) => (k.volume ?? 0) > 0)
-        .sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0));
-      const hiddenCount = g.keywords.length - filtered.length;
-      const visible = filtered.length > 0 ? filtered : g.keywords;
-      return {
-        name: g.name,
-        keywords: visible.map((k) => ({
-          keyword: k.keyword,
-          volume: k.volume,
-          cpc: k.cpc,
-        })),
-        hiddenLowVolumeCount: filtered.length > 0 ? hiddenCount : 0,
-      };
-    }),
-  };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2913,6 +2921,17 @@ async function generateSeoFoundations(
   const website = sources.keywordResearch?.website ?? "the client's website";
   const geos = (brain?.targetGeographies ?? []).join(", ") || "United Kingdom";
 
+  // Build the KNOWN PAGES list — every URL the AI uses MUST come from here.
+  // Combine sitemap pages (authoritative) with GA4 top pages.
+  const sitemapUrls = sources.accountData?.sitemapPages ?? [];
+  const ga4Pages = sources.accountData?.ga4?.topPages ?? [];
+  const cleanWebsite = website.replace(/\/$/, "");
+  const ga4Paths = ga4Pages.map((p) => p.path.startsWith("http") ? p.path : `${cleanWebsite}${p.path.startsWith("/") ? p.path : `/${p.path}`}`);
+  const knownPages = [...new Set([...sitemapUrls, ...ga4Paths])].slice(0, 80);
+  const knownPagesBlock = knownPages.length > 0
+    ? `KNOWN PAGES (the ONLY URLs you may use anywhere in the response):\n${knownPages.map((u) => `- ${u}`).join("\n")}`
+    : `KNOWN PAGES: none available — DO NOT INVENT URLs. Return empty quickWins, empty internalLinking.hubs and empty linkBuilding.targets rather than fabricate URLs.`;
+
   const prompt = `${STYLE_RULES}
 
 You are the SEO lead at i3media. Build a tight, actionable SEO foundations brief for ${sources.clientName} covering THREE things only:
@@ -2966,15 +2985,16 @@ Return ONLY valid JSON (no markdown fences) matching this schema:
 }
 
 Hard rules:
+- ABSOLUTE URL RULE: Every "url", "targetUrl", "fromUrl" and "hubUrl" field MUST be copied verbatim from the KNOWN PAGES list below. Do NOT invent, guess, modify or extrapolate URLs. If you cannot find a suitable known page for a quick win, hub, or link-building target, OMIT that entry rather than fabricate a URL. Returning fewer entries that are accurate is far better than the requested count with invented URLs.
 - "intro": one paragraph (2 sentences) framing the SEO foundations work as the multiplier on top of the content cluster.
-- "quickWins": EXACTLY 6 entries. Pick existing pages on ${website} that are realistic quick wins (commercial pages and key service/category pages — not blog posts). Use real-looking URL slugs.
+- "quickWins": UP TO 6 entries (fewer is fine if KNOWN PAGES is short). Pick existing commercial / service / category pages from the KNOWN PAGES list — not blog posts.
   - "newTitleTag" ≤ 60 characters, primary keyword near the start, brand suffix if it fits.
   - "newMetaDescription" ≤ 160 characters, ends with a soft CTA.
-  - "crossLinksToAdd": EXACTLY 3 cross-links per page, pointing to other existing pages on the same site. Anchor text must be natural prose (not bare keywords stuffed in).
-- "internalLinking.hubs": EXACTLY 4 hub pages. A hub is a high-commercial-value page that should attract internal links from supporting pages.
-  - Each hub has 4–6 inboundLinks (other pages that should link to it). Mix anchor text — do NOT repeat the same exact-match anchor across all 4–6 inbound links.
+  - "crossLinksToAdd": EXACTLY 3 cross-links per page, pointing to OTHER URLs from the KNOWN PAGES list. Anchor text must be natural prose (not bare keywords stuffed in).
+- "internalLinking.hubs": UP TO 4 hub pages, each chosen from KNOWN PAGES. A hub is a high-commercial-value page that should attract internal links from supporting pages.
+  - Each hub has 4–6 inboundLinks (other URLs from KNOWN PAGES that should link to it). Mix anchor text — do NOT repeat the same exact-match anchor across all 4–6 inbound links.
   - "rationale" on each inbound link is one short sentence explaining why the link belongs there.
-- "linkBuilding.targets": EXACTLY 4 target pages on the client's own site. Order by priority (tier-1 first).
+- "linkBuilding.targets": UP TO 4 target pages chosen from KNOWN PAGES. Order by priority (tier-1 first).
   - "anchorMix": EXACTLY 5 entries per target representing the recommended diversification. Suggested shares should add to roughly 100% (e.g. 30% / 25% / 20% / 15% / 10%).
   - Anchor type discipline: aim for 20–30% exact, 25–35% partial, 25–35% branded, 5–15% naked URL, 5–15% generic. Adjust per target if a more conservative or aggressive mix is warranted and explain why in the rationale.
   - "outreachAngles": 3–5 concrete placement ideas (named site types, content angles, journalist beats — not generic "guest posts").
@@ -2988,6 +3008,8 @@ Strategic foundation:
 - Markets: ${geos}
 - Brief: ${(sources.clientBrief ?? "").slice(0, 1200) || "(none provided)"}
 - Audiences:\n${audienceLines}
+
+${knownPagesBlock}
 
 Context:
 ${context}${buildSharedContextBlocks(sources, "content")}`;
@@ -3550,50 +3572,6 @@ ${context}${buildSharedContextBlocks(sources, "quickWins")}`,
         ? a.priority
         : "medium",
     }));
-}
-
-// ─── KPI / measurement framework generator ──────────────────────────────────
-
-async function generateKpis(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<KpiChannel[]> {
-  const res = await withAnthropicRetry("kpis", () => anthropic.messages.create({
-    model: MODEL_PRIMARY(),
-    max_tokens: 1500,
-    messages: [
-      {
-        role: "user",
-        content: `You are a senior strategist at i3media. Define the measurement framework — the KPIs the team will report on for each active channel.
-
-Return ONLY a JSON array (no markdown fences) of 4-6 objects:
-{ "channel": string, "icon": string, "metrics": [{ "name": string, "target": string }] }
-
-Rules:
-- Channel options: "Google Ads", "Meta Ads", "LinkedIn Ads", "SEO & Content", "Organic Social", "Email Marketing", "Website / CRO". Only include channels actually in the plan.
-- icon is a single emoji (one character) appropriate for the channel — e.g. "🔍", "📱", "💼", "📈", "📨", "🛒".
-- Each channel returns 3-5 metric objects.
-- Metric "name" is a short KPI (e.g. "Cost per lead", "Organic sessions", "Email click rate").
-- Metric "target" is a specific 90-day target — a number, percentage, or directional change ("£35 max", "+25% MoM", "8-12 leads/month"). Numbers should be sensible for the budget and sector implied by the context.
-- Mix acquisition + engagement + conversion KPIs per channel.
-- British English. No AI jargon.
-
-Client: ${sources.clientName}
-Context:
-${context}${buildSharedContextBlocks(sources, "kpis")}`,
-      },
-    ],
-  }));
-
-  const parsed = safeJsonParse<KpiChannel[]>(extractText(res), []);
-  if (!Array.isArray(parsed)) return [];
-  return parsed
-    .filter((k) => k && typeof k.channel === "string" && Array.isArray(k.metrics))
-    .map((k) => ({
-      channel: String(k.channel).trim(),
-      icon: typeof k.icon === "string" && k.icon.trim() ? k.icon.trim() : "📊",
-      metrics: k.metrics
-        .filter((m) => m && typeof m.name === "string" && typeof m.target === "string")
-        .map((m) => ({ name: String(m.name).trim(), target: String(m.target).trim() })),
-    }))
-    .filter((k) => k.metrics.length > 0);
 }
 
 // ─── Google Ads Forecast builder (computed, no AI) ──────────────────────────

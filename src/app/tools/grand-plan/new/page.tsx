@@ -73,13 +73,11 @@ const ALWAYS_ON_SECTIONS: { key: string; label: string }[] = [
   { key: "strategyPlan",      label: "Strategy Plan" },
   { key: "audiences",         label: "Audiences" },
   { key: "quickWins",         label: "Quick Wins" },
-  { key: "keywordResearch",   label: "Keyword Research" },
   { key: "contentStrategy",   label: "Content Strategy" },
   { key: "contentCalendar",   label: "Content Calendar" },
   { key: "exampleArticles",   label: "Example Articles" },
   { key: "seoFoundations",    label: "SEO Foundations" },
   { key: "competitorIntel",   label: "Competitor Intelligence" },
-  { key: "kpis",              label: "KPIs" },
   { key: "servicesInvestment",label: "Services &amp; Investment" },
 ];
 

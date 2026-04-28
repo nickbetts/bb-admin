@@ -102,9 +102,8 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   const hasPaidSearch = !!s.googleAdsCampaigns;
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
   const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial || s.exampleArticles?.length;
-  const hasResearch = s.keywordResearch || s.competitorIntel?.length;
+  const hasResearch = s.competitorIntel?.length;
   const hasCommercial = s.servicesInvestment || s.emailMarketing;
-  const hasMeasurement = s.kpis?.length;
 
   if (hasStrategy) {
     addChapter("Strategy");
@@ -131,17 +130,12 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   }
   if (hasResearch) {
     addChapter("Research");
-    if (s.keywordResearch) navItems.push({ id: "keyword-research", label: "Keyword Research" });
     if (s.competitorIntel?.length) navItems.push({ id: "competitor-intel", label: "Competitor Intel" });
   }
   if (hasCommercial) {
     addChapter("Commercial");
     if (s.servicesInvestment) navItems.push({ id: "services", label: "Services & Investment" });
     if (s.emailMarketing) navItems.push({ id: "email-marketing", label: "Email Marketing" });
-  }
-  if (hasMeasurement) {
-    addChapter("Measurement");
-    navItems.push({ id: "kpis", label: "KPIs & Targets" });
   }
 
   // ── Stats band ─────────────────────────────────────────────────────────────
@@ -162,9 +156,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   const paidStats: StatItem[] = [];
   if (s.googleAdsCampaigns?.adGroups?.length) {
     paidStats.push({ num: String(s.googleAdsCampaigns.adGroups.length), label: "Google Ad Groups" });
-  }
-  if (s.keywordResearch?.adGroups?.length) {
-    const totalKws = s.keywordResearch.adGroups.reduce((sum: number, g: { keywords: unknown[] }) => sum + g.keywords.length, 0);
+    const totalKws = s.googleAdsCampaigns.adGroups.reduce((sum: number, g: { keywords: unknown[] }) => sum + (g.keywords?.length ?? 0), 0);
     if (totalKws) paidStats.push({ num: totalKws > 100 ? `${Math.round(totalKws / 10) * 10}+` : String(totalKws), label: "Target Keywords" });
   }
   const negCount = (s.googleAdsCampaigns?.negativeKeywords?.length ?? 0)
@@ -196,11 +188,6 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
 
   const measurementStats: StatItem[] = [];
   if (s.competitorIntel?.length) measurementStats.push({ num: String(s.competitorIntel.length), label: "Competitors Analysed" });
-  if (s.kpis?.length) {
-    const metricCount = s.kpis.reduce((sum: number, k: { metrics?: unknown[] }) => sum + (k.metrics?.length ?? 0), 0);
-    measurementStats.push({ num: String(s.kpis.length), label: "KPI Channels" });
-    if (metricCount) measurementStats.push({ num: String(metricCount), label: "Tracked Metrics" });
-  }
   void fmt; // reserved for future formatting use
 
   const statGroups: StatGroup[] = [
@@ -339,9 +326,8 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   const hasPaidSearch = !!s.googleAdsCampaigns;
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
   const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial || s.exampleArticles?.length;
-  const hasResearch = s.keywordResearch || s.competitorIntel?.length;
+  const hasResearch = s.competitorIntel?.length;
   const hasCommercial = s.servicesInvestment || s.emailMarketing;
-  const hasMeasurement = s.kpis?.length;
 
   // grounding badge wrapper — no-op in public view
   const wb = (html: string, g?: { grounding: string; sourceLabels: string[] } | null) =>
@@ -380,8 +366,7 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   }
 
   if (hasResearch) {
-    parts.push(ch("Research", "Keyword research and competitor intelligence across all target areas."));
-    if (s.keywordResearch) parts.push(renderKeywordResearch(s.keywordResearch));
+    parts.push(ch("Research", "Competitor intelligence across all target areas."));
     if (s.competitorIntel?.length) parts.push(wb(renderCompetitorIntel(s.competitorIntel), grounding?.competitorIntel));
   }
 
@@ -389,11 +374,6 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
     parts.push(ch("Commercial", "Services, investment overview, and email lifecycle."));
     if (s.servicesInvestment) parts.push(renderServicesInvestment(s.servicesInvestment));
     if (s.emailMarketing) parts.push(wb(renderEmailMarketing(s.emailMarketing), grounding?.emailMarketing));
-  }
-
-  if (hasMeasurement) {
-    parts.push(ch("Measurement", "The KPIs, targets, and reporting cadence that will tell us whether the plan is working."));
-    parts.push(renderKpis(s.kpis));
   }
 
   return parts.join("\n");
@@ -628,19 +608,7 @@ function renderTldrView(plan: GrandPlanData): string {
     cards.push(card("example-articles", "Example Articles", `<ul class="tldr-list">${titles}</ul>`, `${s.exampleArticles.length} drafted`));
   }
 
-  // Keyword Research
-  if (s.keywordResearch?.adGroups?.length) {
-    const totalKws = s.keywordResearch.adGroups.reduce((sum: number, g: { keywords: unknown[] }) => sum + (g.keywords?.length ?? 0), 0);
-    cards.push(card(
-      "keyword-research",
-      "Keyword Research",
-      `<div class="tldr-facts">
-        <div class="tldr-fact"><span class="tldr-fact-label">Ad groups</span> <strong>${s.keywordResearch.adGroups.length}</strong></div>
-        <div class="tldr-fact"><span class="tldr-fact-label">Keywords</span> <strong>${totalKws}</strong></div>
-      </div>`,
-      "Research",
-    ));
-  }
+  // Keyword Research TLDR card removed — keywords now live inside the Google Ads section.
 
   // Services & Investment
   if (s.servicesInvestment) {
@@ -666,14 +634,7 @@ function renderTldrView(plan: GrandPlanData): string {
     cards.push(card("email-marketing", "Email Marketing", `<div class="tldr-facts">${facts}</div>`, "Commercial"));
   }
 
-  // KPIs
-  if (s.kpis?.length) {
-    const items = s.kpis.slice(0, 8).map((k) => {
-      const metricCount = k.metrics?.length ?? 0;
-      return `<li class="tldr-row"><span class="tldr-row-text"><strong>${esc(k.channel)}</strong> <span class="tldr-muted">\u00b7 ${metricCount} ${metricCount === 1 ? "metric" : "metrics"}</span></span></li>`;
-    }).join("");
-    cards.push(card("kpis", "KPIs &amp; Targets", `<ul class="tldr-list">${items}</ul>`, "Measurement"));
-  }
+  // KPIs TLDR card removed.
 
   return `
 <aside id="gp-tldr-view" class="tldr-view" aria-hidden="true">
@@ -904,38 +865,17 @@ function renderQuickWins(items: { title: string; description: string; priority: 
     </section>`;
 }
 
-function renderKpis(channels: { channel: string; icon?: string; metrics: { name: string; target: string }[] }[]): string {
-  if (!channels?.length) return "";
-  const cards = channels.map((c) => `
-    <div class="kpi-card">
-      <div class="kpi-icon">${esc(c.icon ?? "📊")}</div>
-      <h4>${esc(c.channel)}</h4>
-      <ul>
-        ${c.metrics.map((m) => `<li><span class="kpi-name">${esc(m.name)}</span><span class="kpi-target">${esc(m.target)}</span></li>`).join("\n")}
-      </ul>
-    </div>`).join("\n");
-  return `
-    <section id="kpis" class="section">
-      <div class="section-inner">
-        <div class="section-kicker">Measurement</div>
-        <h2>KPIs &amp; Success Metrics</h2>
-        <p class="section-intro">The numbers we will report on each month, channel by channel. Targets are 90-day benchmarks calibrated to the budget and sector.</p>
-        <div class="kpi-grid">${cards}</div>
-        <div class="callout">Reporting cadence: a monthly performance report against these KPIs, plus a quarterly strategic review to recalibrate targets and reallocate budget where needed.</div>
-      </div>
-    </section>`;
-}
+// renderKpis removed — KPIs section deleted.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: string, isPublicView = false): string {
-  const adDomain = (clientWebsite ?? "")
-    .replace(/^https?:\/\//, "")
-    .replace(/^www\./, "")
-    .replace(/\/.*$/, "")
-    .trim() || "yourbrand.com";
-  const overviewGrid = Object.entries((data.overview ?? {}) as Record<string, string>)
-    .map(([k, v]) => `<div class="ov-item"><span class="ov-label">${esc(k)}</span><span class="ov-value">${esc(v)}</span></div>`)
-    .join("\n");
+  void clientWebsite;
+  void isPublicView;
+  const monthlyBudget = (data.overview ?? {})["Monthly Budget"] ?? (data.overview ?? {})["Budget"] ?? "Custom";
+  const suggestedLocations = Array.isArray(data.suggestedLocations) ? data.suggestedLocations : [];
+  const locationsHtml = suggestedLocations.length
+    ? `<div class="loc-card"><div class="loc-card-label">Suggested Locations</div><div class="loc-chips">${suggestedLocations.map((l: string) => `<span class="loc-chip">${esc(l)}</span>`).join("")}</div></div>`
+    : "";
 
   const aiNegReasoned = ((data.aiNegativesWithReason ?? []) as { keyword: string; reason: string }[])
     .filter((n) => n.keyword && n.reason);
@@ -948,9 +888,6 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
             </div>`).join("")}
         </div>` : "";
 
-  // Show any sector/brief-derived flat negatives that the AI did NOT already
-  // surface with rationale, so the strategist still sees the full sweep
-  // without rendering a duplicated chip wall.
   const reasonedSet = new Set(aiNegReasoned.map((n) => n.keyword.toLowerCase()));
   const flatExtras = ((data.negativeKeywords ?? []) as string[])
     .filter((k) => k && !reasonedSet.has(k.toLowerCase()));
@@ -958,7 +895,7 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
     ? `<div class="neg-list" style="margin-top:.75rem">${flatExtras.map((k) => `<span class="neg-chip">${esc(k)}</span>`).join(" ")}</div>`
     : "";
 
-  const adGroupsHtml = ((data.adGroups ?? []) as { name: string; keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number; adCopy?: { headlines: string[]; descriptions: string[]; sitelinks?: string[]; urlPaths?: string[]; isFallback?: boolean }; adGroupNegatives?: string[] }[])
+  const adGroupsHtml = ((data.adGroups ?? []) as { name: string; keywords: { keyword: string; matchType: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number; audience?: string; adGroupNegatives?: string[] }[])
     .map((g, i) => {
       const kwRows = (g.keywords ?? [])
         .map((k) => {
@@ -973,105 +910,13 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
         ? `<p class="kw-hidden-note" style="font-size:12px;color:var(--mid);margin:.5rem 0 0">${g.hiddenLowVolumeCount} low/zero-volume keyword${g.hiddenLowVolumeCount === 1 ? "" : "s"} hidden from this view.</p>`
         : "";
 
-      const adCopyHtml = g.adCopy ? (() => {
-        // In public (client) view, replace unfinished fallback copy with a
-        // neutral holding message rather than exposing AI fallback content.
-        if (isPublicView && g.adCopy!.isFallback) {
-          return `<div class="ad-copy-section"><p class="section-intro" style="color:var(--mid);font-style:italic">Ad copy is being finalised — your campaign specialist will share the complete ad creatives shortly.</p></div>`;
-        }
-        const charBadge = (len: number, max: number) => {
-          const cls = len > max ? "char-over" : len > max - 5 ? "char-warn" : "char-ok";
-          return `<span class="char-badge ${cls}">${len}/${max}</span>`;
-        };
-        const headlinesHtml = g.adCopy!.headlines
-          .map((h, hi) => `<div class="headline-item"><span class="headline-num">${hi + 1}</span><span class="headline-text">${esc(h)}</span>${charBadge(h.length, 30)}<button class="copy-btn-sm" onclick="copySingle(this,'${escAttr(h)}')">Copy</button></div>`)
-          .join("\n");
-        const descriptionsHtml = g.adCopy!.descriptions
-          .map((d, di) => `<div class="desc-item"><span class="headline-num">${di + 1}</span><span class="headline-text">${esc(d)}</span>${charBadge(d.length, 90)}<button class="copy-btn-sm" onclick="copySingle(this,'${escAttr(d)}')">Copy</button></div>`)
-          .join("\n");
-        const sitelinksHtml = (g.adCopy!.sitelinks ?? []).length > 0
-          ? `<div class="sitelinks-section"><div class="ad-copy-label">Sitelinks</div><div class="sitelink-chips">${g.adCopy!.sitelinks!.map((s) => `<span class="sitelink-chip">${esc(s)}${charBadge(s.length, 25)}</span>`).join("")}</div></div>`
-          : "";
-
-        // Google ad preview mockup — pick 3 visually distinct headlines
-        // rather than the first 3 (which often share the same keyword prefix
-        // and get truncated to the same "keyword..." string in the preview).
-        // We pull from the structured 15-headline distribution: index 0
-        // (keyword-led), 4 (benefit-led), 8 (USP/differentiator).
-        const headlines = g.adCopy!.headlines;
-        const pickDistinct = (preferred: number[], cap = 30): string => {
-          for (const idx of preferred) {
-            const h = headlines[idx];
-            if (h && h.length <= cap) return h;
-          }
-          // Fallback: shortest headline still under cap
-          const ranked = [...headlines].filter((h) => h && h.length <= cap).sort((a, b) => a.length - b.length);
-          return ranked[0] ?? "";
-        };
-        const usedIndices = new Set<number>();
-        const pickUnique = (preferred: number[]): string => {
-          for (const idx of preferred) {
-            if (usedIndices.has(idx)) continue;
-            const h = headlines[idx];
-            if (h) { usedIndices.add(idx); return h; }
-          }
-          // Fallback: any unused headline that's reasonably short
-          const sorted = headlines
-            .map((h, i) => ({ h, i }))
-            .filter((x) => x.h && !usedIndices.has(x.i))
-            .sort((a, b) => a.h.length - b.h.length);
-          if (sorted[0]) { usedIndices.add(sorted[0].i); return sorted[0].h; }
-          return "";
-        };
-        // Force the first headline to be reasonably short so the preview
-        // doesn't show three truncated identical-looking strings.
-        const h1 = pickUnique([0, 1, 2, 3]) || pickDistinct([0]);
-        const h2 = pickUnique([4, 5, 6, 7]); // benefit-led
-        const h3 = pickUnique([8, 9, 10, 11]); // USP / urgency
-        const desc1 = g.adCopy!.descriptions[0] ?? "";
-        const previewSitelinks = (g.adCopy!.sitelinks ?? []).slice(0, 4);
-        const gadPreview = `
-        <div class="ad-channel-group" style="margin-top:1.5rem">
-          <div class="ad-channel-label">&#128269; Ad Preview</div>
-          <div class="ad-card">
-            <div class="ad-card-header"><span class="ad-badge google">Google</span><span style="font-size:11px;color:var(--mid)">${esc(g.name) || `Ad Group ${i + 1}`}</span></div>
-            <div class="ad-card-body">
-              <div class="gad-sponsor-row"><div class="gad-dot"></div><span class="gad-sponsored-tag">Sponsored</span></div>
-              <div class="gad-url-text">https://${esc(adDomain)}${g.adCopy!.urlPaths?.[0] ? ` <span style="color:#70757a">&#8250;</span> <span style="color:#70757a">${esc(g.adCopy!.urlPaths[0])}</span>` : ""}${g.adCopy!.urlPaths?.[1] ? ` <span style="color:#70757a">&#8250;</span> <span style="color:#70757a">${esc(g.adCopy!.urlPaths[1])}</span>` : ""}</div>
-              <div class="gad-headline">${[h1, h2, h3].filter(Boolean).map((h, idx) => `<span class="gad-h-part">${esc(h)}</span>${idx < [h1, h2, h3].filter(Boolean).length - 1 ? `<span class="gad-headline-sep">|</span>` : ""}`).join("")}</div>
-              <div class="gad-desc">${esc(desc1)}</div>
-              ${previewSitelinks.length ? `<div class="gad-sitelinks">${previewSitelinks.map((sl: string) => `<span class="gad-sitelink">${esc(sl)}</span>`).join("")}</div>` : ""}
-            </div>
-          </div>
-        </div>`;
-
-        return `
-        <div class="ad-copy-section">
-          <div class="ad-copy-title">Ad Copy${g.adCopy!.isFallback ? ` <span class="char-badge char-warn" style="margin-left:.5rem" title="AI generation didn't return usable copy. Placeholder shown — regenerate from the dashboard.">AI fallback</span>` : ""}</div>
-          <div class="ad-copy-cols">
-            <div class="ad-copy-col">
-              <div class="ad-copy-label">Headlines <span class="ad-copy-count">${g.adCopy!.headlines.length}</span></div>
-              <div class="headlines-list">${headlinesHtml}</div>
-              <button class="copy-btn" onclick="copyAdItems(this,'headlines')">Copy All Headlines</button>
-            </div>
-            <div class="ad-copy-col">
-              <div class="ad-copy-label">Descriptions <span class="ad-copy-count">${g.adCopy!.descriptions.length}</span></div>
-              <div class="descriptions-list">${descriptionsHtml}</div>
-              <button class="copy-btn" onclick="copyAdItems(this,'descriptions')">Copy All Descriptions</button>
-            </div>
-          </div>
-          ${sitelinksHtml}
-          ${gadPreview}
-        </div>`;
-      })() : "";
-
       return `
       <div class="ag-section open">
         <div class="ag-header" onclick="this.parentElement.classList.toggle('open')">
           <span class="ag-num">${i + 1}</span>
           <span class="ag-name">${esc(g.name) || `Ad Group ${i + 1}`}</span>
+          ${g.audience ? `<span class="ag-audience">${esc(g.audience)}</span>` : ""}
           <span class="ag-count">${g.keywords.length} keywords</span>
-          ${g.adCopy ? `<span class="ag-count ag-adcount">${g.adCopy.headlines.length} headlines, ${g.adCopy.descriptions.length} descriptions, ad preview</span>` : ""}
           <span class="ag-chevron">+</span>
         </div>
         <div class="ag-body">
@@ -1086,7 +931,6 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
             <h5>Ad Group Negatives</h5>
             <div class="neg-list">${g.adGroupNegatives.map((n) => `<span class="neg-chip">${esc(n)}</span>`).join(" ")}</div>
           </div>` : ""}
-          ${adCopyHtml}
         </div>
       </div>`;
     })
@@ -1101,13 +945,19 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
         <div class="campaign-hero">
           <h3>${esc(data.campaignName)}</h3>
         </div>
-        <div class="overview-grid">${overviewGrid}</div>
+        <div class="budget-loc-grid">
+          <div class="loc-card"><div class="loc-card-label">Monthly Budget</div><div class="loc-budget">${esc(monthlyBudget)}</div></div>
+          ${locationsHtml}
+        </div>
         <div class="neg-section">
           <h4>Campaign-Level Negative Keywords</h4>
           ${aiNegHtml ? `${aiNegHtml}` : `<p class="section-intro" style="font-style:italic;color:var(--mid)">No campaign-level negatives recommended for this account yet.</p>`}
           ${flatExtras.length > 0 ? `<h5 style="margin-top:1.25rem;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mid)">Sector & brief negatives</h5>${flatExtrasHtml}` : ""}
         </div>
-        <h3 class="ag-heading">Ad Groups</h3>
+        <div class="ag-heading-row">
+          <h3 class="ag-heading">Ad Groups</h3>
+          <button class="copy-btn" onclick="copyAllCampaignKws(this)">Copy All Keywords</button>
+        </div>
         ${adGroupsHtml}
       </div>
     </section>`;
@@ -1115,11 +965,7 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: string): string {
-  const adDomain = (clientWebsite ?? "")
-    .replace(/^https?:\/\//, "")
-    .replace(/^www\./, "")
-    .replace(/\/.*$/, "")
-    .trim() || "yourbrand.com";
+  void clientWebsite;
   const campaignsHtml = campaigns
     .map((c, idx) => {
       const audiences = [
@@ -1127,41 +973,6 @@ function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: s
         ...(c.audienceTargeting?.customAudiences ?? []).map((a: string) => `<span class="audience-chip custom">${esc(a)}</span>`),
         ...(c.audienceTargeting?.lookalikes ?? []).map((l: string) => `<span class="audience-chip lookalike">${esc(l)}</span>`),
       ].join(" ");
-
-      const creatives = (c.adCreatives ?? [])
-        .map((cr: { format: string; headline: string; primaryText: string; description?: string; cta: string; previewMockup?: string }) => {
-          const headlineLen = (cr.headline ?? "").length;
-          const primaryLen = (cr.primaryText ?? "").length;
-          const descLen = (cr.description ?? "").length;
-          const headlineCls = headlineLen <= 40 ? "char-ok" : "char-over";
-          const primaryCls = primaryLen >= 80 && primaryLen <= 125 ? "char-ok" : "char-over";
-          const descCls = descLen === 0 ? "char-ok" : descLen <= 30 ? "char-ok" : "char-over";
-          return `<div class="ad-card">
-            <div class="ad-card-header"><span class="ad-badge meta">Meta</span><span style="font-size:11px;color:rgba(255,255,255,.5)">${esc(cr.format)}</span></div>
-            <div class="ad-card-body">
-              <div class="mad-header">
-                <div class="mad-avatar">i3</div>
-                <div><div class="mad-info-name">${esc(c.campaignName ?? "")}</div><div class="mad-info-sub">Sponsored &middot; ${esc(cr.format)}</div></div>
-              </div>
-              <div class="mad-image-wrap">
-                ${cr.previewMockup
-                  ? `<div class="mad-img-mockup"><span class="mad-img-mockup-label">Visual concept</span><p>${esc(cr.previewMockup)}</p></div>`
-                  : `<div class="mad-img-content"><strong>${esc(cr.headline)}</strong></div>`}
-              </div>
-              <p class="mad-caption">${primaryLen > 125 ? `${esc((cr.primaryText ?? "").slice(0, 125))}<span style="color:var(--mid)">... <em>See more</em></span>` : esc(cr.primaryText)}</p>
-              <div class="mad-cta-block">
-                <div><div class="mad-cta-block-url">${esc(adDomain)}</div><div class="mad-cta-block-title">${esc(cr.headline)}</div></div>
-                <div class="mad-cta-btn">${esc(cr.cta)}</div>
-              </div>
-              <div class="mad-char-meter">
-                <span class="char-badge ${headlineCls}" title="Headline: ${headlineLen}/40">H ${headlineLen}/40</span>
-                <span class="char-badge ${primaryCls}" title="Primary text: ${primaryLen}/80–125">P ${primaryLen}/80–125</span>
-                ${descLen > 0 ? `<span class="char-badge ${descCls}" title="Description: ${descLen}/30">D ${descLen}/30</span>` : ""}
-              </div>
-            </div>
-          </div>`;
-        })
-        .join("\n");
 
       const captions = (c.captionCopyBank ?? [])
         .map((cap: string) => `<div class="caption-item"><p>${esc(cap)}</p><button class="copy-btn-sm" onclick="copySingle(this,'${escAttr(cap)}')">Copy</button></div>`)
@@ -1183,8 +994,6 @@ function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: s
         <div class="meta-campaign-body">
           <h5>Audience Targeting</h5>
           <div class="audience-list">${audiences}</div>
-          <h5>Ad Creatives</h5>
-          <div class="ad-mockup-grid">${creatives}</div>
           <h5>Caption Copy Bank</h5>
           <div class="captions-list">${captions}</div>
           ${pillars ? `<h5>Content Pillars</h5><ul class="pillars-list">${pillars}</ul>` : ""}
@@ -1205,41 +1014,7 @@ function renderMetaCampaigns(campaigns: any[], clientWebsite?: string, intro?: s
     </section>`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderKeywordResearch(data: any): string {
-  const groupsHtml = ((data.adGroups ?? []) as { name: string; keywords: { keyword: string; volume?: number; cpc?: number }[]; hiddenLowVolumeCount?: number }[])
-    .map((g, gi) => {
-      const kwLines = (g.keywords ?? []).map((k) => {
-        const vol = k.volume != null ? ` <span class="kw-meta">${k.volume.toLocaleString()}/mo</span>` : "";
-        return `<div class="kw-line"><span class="kw-word">${esc(k.keyword)}</span>${vol}<button class="copy-btn-sm" onclick="copySingle(this,'${escAttr(k.keyword)}')">Copy</button></div>`;
-      }).join("\n");
-
-      const hiddenNote = g.hiddenLowVolumeCount && g.hiddenLowVolumeCount > 0
-        ? `<p class="kw-hidden-note" style="font-size:12px;color:var(--mid);margin:.5rem 0 0">${g.hiddenLowVolumeCount} low/zero-volume keyword${g.hiddenLowVolumeCount === 1 ? "" : "s"} hidden from this view.</p>`
-        : "";
-
-      return `
-      <div class="kw-group">
-        <div class="kw-group-header">
-          <h4>${esc(g.name) || `Keyword Group ${gi + 1}`}</h4>
-          <button class="copy-btn" onclick="copyGroupKws(this)">Copy All</button>
-        </div>
-        <div class="kw-line-list">${kwLines}</div>
-        ${hiddenNote}
-      </div>`;
-    })
-    .join("\n");
-
-  return `
-    <section id="keyword-research" class="section alt">
-      <div class="section-inner">
-        <div class="section-kicker">Keywords</div>
-        <h2>Keyword Research</h2>
-      <p class="section-intro">Keywords organised by ad group. Use the copy buttons to export directly into Google Keyword Planner or Ads Editor.</p>
-      ${groupsHtml}
-      </div>
-    </section>`;
-}
+// renderKeywordResearch removed — keyword research is now embedded inside the Google Ads section.
 
 /**
  * Convert a single brief text blob into structured HTML.
@@ -1497,39 +1272,8 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
       }).join("\n")}
     </div>` : "";
 
-  // ── Audience Plays cross-reference panel ──────────────────────────────
-  // Group every content asset by the audiences it serves, so the strategist
-  // can see at a glance which audiences are well-covered and which are thin.
-  const allAssets: { kind: string; title: string; entry: Entry }[] = [];
-  if (pillar) allAssets.push({ kind: "Pillar Page", title: pillar.title ?? pillar.url ?? "", entry: pillar });
-  megas.forEach((m, i) => allAssets.push({ kind: megas.length === 1 ? "Mega Guide" : `Mega Guide ${i + 1}`, title: m.title ?? m.url ?? "", entry: m }));
-  articles.forEach((a, i) => allAssets.push({ kind: `Article ${i + 1}`, title: a.title ?? a.url ?? "", entry: a }));
-  pageOpts.forEach((p) => allAssets.push({ kind: "On-Page", title: p.url ?? p.title ?? "", entry: p }));
-  const audienceMap = new Map<string, { kind: string; title: string }[]>();
-  for (const asset of allAssets) {
-    for (const audName of asset.entry.targetAudiences ?? []) {
-      const key = audName.trim();
-      if (!key) continue;
-      if (!audienceMap.has(key)) audienceMap.set(key, []);
-      audienceMap.get(key)!.push({ kind: asset.kind, title: asset.title });
-    }
-  }
-  const audiencePlaysHtml = audienceMap.size > 0 ? `
-    <h3 style="margin-top:2.5rem">Audience Plays</h3>
-    <p class="section-intro" style="margin-bottom:1rem">Which content assets serve which audience. Use this to spot gaps before sign-off.</p>
-    <div class="audience-plays">
-      ${[...audienceMap.entries()].map(([audName, items]) => {
-        const why = audienceRationales?.[audName];
-        return `
-      <div class="audience-play">
-        <div class="audience-play-name">${esc(audName)} <span class="audience-play-count">${items.length} asset${items.length === 1 ? "" : "s"}</span></div>
-        ${why ? `<p class="audience-play-why">${esc(why)}</p>` : ""}
-        <ul class="audience-play-list">
-          ${items.slice(0, 8).map((it) => `<li><span class="audience-play-kind">${esc(it.kind)}</span> ${esc(it.title)}</li>`).join("")}
-        </ul>
-      </div>`;
-      }).join("\n")}
-    </div>` : "";
+  // Audience Plays panel removed.
+  void audienceRationales;
 
   return `
     <section id="content-strategy" class="section">
@@ -1539,7 +1283,6 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
         <p class="section-intro">${intro ? esc(intro) : "A topic-cluster approach: one anchoring pillar page, supporting deep-dive guides, and themed articles that capture every stage of intent."}</p>
       ${clusterBlock}
       ${pageOptsHtml}
-      ${audiencePlaysHtml}
       </div>
     </section>`;
 }
@@ -1739,6 +1482,14 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderContentCalendar(months: any[]): string {
+  const first = months[0] ?? {};
+  const blogCount = Array.isArray(first.blogPosts) ? first.blogPosts.length : 0;
+  const socialCount = Array.isArray(first.socialPosts) ? first.socialPosts.length : 0;
+  const socialPerWeek = socialCount ? Math.round(socialCount / 4) : 0;
+  const cadenceBits: string[] = [];
+  if (blogCount) cadenceBits.push(`${blogCount} blog post${blogCount === 1 ? "" : "s"}/month`);
+  if (socialPerWeek) cadenceBits.push(`${socialPerWeek} social post${socialPerWeek === 1 ? "" : "s"}/week`);
+  const cadenceLabel = cadenceBits.length ? ` Cadence: ${cadenceBits.join(" \u00b7 ")}.` : "";
   const monthsHtml = months
     .map((m) => {
       const blogs = (m.blogPosts ?? [])
@@ -1769,7 +1520,7 @@ function renderContentCalendar(months: any[]): string {
       <div class="section-inner">
         <div class="section-kicker">Publishing</div>
         <h2>Content Calendar</h2>
-      <p class="section-intro">A 6-month publishing schedule across blog content and organic social, aligned to campaign focus periods.</p>
+      <p class="section-intro">A 6-month publishing schedule across blog content and organic social, aligned to campaign focus periods.${cadenceLabel}</p>
       <div class="calendar-grid">${monthsHtml}</div>
       </div>
     </section>`;
@@ -1788,10 +1539,18 @@ function renderOrganicSocial(data: any, intro?: string): string {
     </div>`)
     .join("\n");
 
-  const mixHtml = (data.contentMix ?? [])
-    .map((m: { type: string; percentage: number }) =>
-      `<div class="mix-item"><span class="mix-type">${esc(m.type)}</span><div class="mix-bar"><div class="mix-fill" style="width:${m.percentage}%"></div></div><span class="mix-pct">${m.percentage}%</span></div>`)
-    .join("\n");
+  const mixItems = (Array.isArray(data.contentMix) ? data.contentMix : [])
+    .map((m: { type: string; percentage: number | string }) => ({
+      type: String(m?.type ?? "").trim(),
+      pct: Math.max(0, Math.min(100, Number(m?.percentage) || 0)),
+    }))
+    .filter((m: { type: string; pct: number }) => m.type && m.pct > 0);
+  const mixHtml = mixItems.length
+    ? mixItems
+        .map((m: { type: string; pct: number }) =>
+          `<div class="mix-item"><span class="mix-type">${esc(m.type)}</span><div class="mix-bar"><div class="mix-fill" style="width:${m.pct}%"></div></div><span class="mix-pct">${m.pct}%</span></div>`)
+        .join("\n")
+    : `<p class="section-intro" style="font-style:italic;color:var(--mid)">Content mix not yet provided.</p>`;
 
   const warnSet = new Set<number>(Array.isArray(data.hashtagWarnings) ? data.hashtagWarnings : []);
   const hashtags = (data.hashtagStrategy ?? [])
@@ -2633,17 +2392,16 @@ a{color:var(--accent);text-decoration:none}
 .pri-og{background:#eef2ff;color:#3730a3}
 .pri-lt{background:#fdf4ff;color:#7e22ce}
 /* KPI / measurement grid */
-.kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin-top:1rem}
-@media (max-width:1000px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:540px){.kpi-grid{grid-template-columns:1fr}}
-.kpi-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.15rem;box-shadow:0 2px 12px rgba(0,0,0,.03)}
-.kpi-icon{font-size:1.4rem;margin-bottom:6px;line-height:1}
-.kpi-card h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-light);margin:0 0 .55rem}
-.kpi-card ul{list-style:none;padding:0;margin:0}
-.kpi-card ul li{font-size:12.5px;color:var(--text);padding:5px 0;border-bottom:1px dotted var(--border);display:flex;justify-content:space-between;gap:8px;line-height:1.4}
-.kpi-card ul li:last-child{border:none}
-.kpi-card ul li .kpi-name{color:var(--text-light)}
-.kpi-card ul li .kpi-target{font-weight:700;color:var(--heading);text-align:right;flex-shrink:0}
+/* KPI styles removed */
+.budget-loc-grid{display:grid;grid-template-columns:auto 1fr;gap:1rem;margin:1rem 0 1.5rem}
+@media (max-width:720px){.budget-loc-grid{grid-template-columns:1fr}}
+.loc-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem}
+.loc-card-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-light);margin-bottom:.4rem}
+.loc-budget{font-size:24px;font-weight:700;color:var(--heading)}
+.loc-chips{display:flex;flex-wrap:wrap;gap:6px}
+.loc-chip{display:inline-block;padding:4px 10px;background:var(--bg);border-radius:999px;font-size:12px;color:var(--text)}
+.ag-audience{display:inline-block;padding:2px 8px;background:rgba(99,102,241,.12);color:#4f46e5;border-radius:999px;font-size:11px;font-weight:600;margin-left:.5rem}
+.ag-heading-row{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-top:1.5rem;flex-wrap:wrap}
 /* Callout box */
 .callout{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1.15rem 1.3rem;margin-top:1.25rem;font-size:13.5px;color:var(--text);line-height:1.6}
 /* Collapsible calendar months */
@@ -2670,7 +2428,7 @@ details.cal-month[open] .cal-month-header::after{content:"\\2212"}
 .mix-chart{display:flex;flex-direction:column;gap:10px;margin-bottom:2rem}
 .mix-item{display:flex;align-items:center;gap:12px}
 .mix-type{width:90px;font-size:13px;font-weight:600;color:var(--heading);text-transform:capitalize}
-.mix-bar{flex:1;height:28px;background:var(--bg);border-radius:8px;overflow:hidden}
+.mix-bar{flex:1;height:28px;background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .mix-fill{height:100%;background:linear-gradient(90deg,#0f172a,#334155);border-radius:8px;transition:width .5s}
 .mix-pct{width:40px;text-align:right;font-size:13px;font-weight:700;color:var(--text)}
 .pillars-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:1.5rem}
@@ -2903,7 +2661,6 @@ details.cal-month[open] .cal-month-header::after{content:"\\2212"}
   .deliv-grid{grid-template-columns:1fr}
   .ad-mockup-grid{grid-template-columns:1fr}
   .opp-grid{grid-template-columns:1fr}
-  .kpi-grid{grid-template-columns:repeat(2,1fr)}
 }
 /* Print */
 @media print{
@@ -3003,13 +2760,7 @@ details.cal-month[open] .cal-month-header::after{content:"\\2212"}
 .pri-low{background:#f1f5f9;color:#64748b}
 
 /* ── KPI cards ──────────────────────────────────────────────── */
-.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
-.kpi-card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:1.25rem;box-shadow:0 2px 12px rgba(0,0,0,.03)}
-.kpi-icon{font-size:1.35rem;margin-bottom:6px}
-.kpi-card h4{font-size:13px;font-weight:700;color:var(--heading);margin-bottom:6px}
-.kpi-card ul{list-style:none;padding:0}
-.kpi-card ul li{font-size:12px;color:var(--text);padding:3px 0;border-bottom:1px dotted var(--border)}
-.kpi-card ul li:last-child{border:none}
+/* duplicate KPI styles removed */
 
 /* ── Future items list ──────────────────────────────────────── */
 .fut-list{display:flex;flex-direction:column}
@@ -3275,6 +3026,27 @@ document.addEventListener('click', function(e){
     setTimeout(function(){ t.textContent = orig; }, 1500);
   });
 });
+
+// Copy all keywords across every ad group in a section
+function copyAllCampaignKws(btn){
+  var sec=btn.closest('section');
+  if(!sec)return;
+  var cells=sec.querySelectorAll('.kw-text');
+  var seen={};
+  var lines=[];
+  Array.from(cells).forEach(function(c){
+    var t=(c.textContent||'').trim();
+    if(!t)return;
+    if(seen[t])return;
+    seen[t]=1;
+    lines.push(t);
+  });
+  navigator.clipboard.writeText(lines.join('\n')).then(function(){
+    var orig=btn.textContent;
+    btn.textContent='Copied!';
+    setTimeout(function(){btn.textContent=orig;},1800);
+  });
+}
 
 // Copy ad group keywords
 function copyAgKeywords(btn){

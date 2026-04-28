@@ -10,7 +10,7 @@ export const maxDuration = 800;
 
 const VALID_SECTIONS = [
   "executiveSummary", "strategyPlan", "googleAdsCampaigns", "metaCampaigns",
-  "keywordResearch", "contentStrategy", "contentCalendar", "organicSocial",
+  "contentStrategy", "contentCalendar", "organicSocial",
   "exampleArticles", "servicesInvestment", "mediaPlan", "emailMarketing",
   "linkedInAds", "competitorIntel", "googleAdsForecast", "audiences",
 ];

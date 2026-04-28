@@ -47,7 +47,6 @@ const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered
   { key: "googleAdsForecast", label: "Google Ads Forecast", description: "Estimated clicks, conversions, CPA from keyword data", aiPowered: false },
   { key: "metaCampaigns", label: "Meta Campaigns", description: "AI-generated Facebook/Instagram campaigns", aiPowered: true },
   { key: "linkedInAds", label: "LinkedIn Ads", description: "AI-generated LinkedIn campaign structures", aiPowered: true },
-  { key: "keywordResearch", label: "Keyword Research", description: "Ad groups and keyword data", aiPowered: false },
   { key: "contentStrategy", label: "Content Strategy", description: "Page optimisations, landing pages, blog posts", aiPowered: false },
   { key: "contentCalendar", label: "Content Calendar", description: "12-month blog and social posting schedule", aiPowered: true },
   { key: "organicSocial", label: "Organic Social", description: "Social pillars, posting frequency, hashtags", aiPowered: true },
@@ -55,7 +54,6 @@ const ALL_SECTIONS: { key: string; label: string; description: string; aiPowered
   { key: "exampleArticles", label: "Example Articles", description: "3 sample blog posts with SEO metadata", aiPowered: true },
   { key: "competitorIntel", label: "Competitor Intelligence", description: "AI-generated competitive analysis", aiPowered: true },
   { key: "quickWins", label: "Quick Wins", description: "High-impact, low-effort actions achievable in 30 days", aiPowered: true },
-  { key: "kpis", label: "KPIs & Targets", description: "Success metrics and 90-day targets per channel", aiPowered: true },
   { key: "seoFoundations", label: "SEO Foundations", description: "Quick wins on existing pages, internal linking structure, and link-building plan", aiPowered: true },
   { key: "servicesInvestment", label: "Services & Investment", description: "Pricing and timeline from proposal", aiPowered: false },
 ];

@@ -98,24 +98,7 @@ export function validateCoherence(plan: GrandPlanData, brain: StrategyBrain | un
     }
   }
 
-  // ── KPI targets sanity ──────────────────────────────────────────────────
-  // We don't know the GA4 baseline numerically inside the renderer, so this
-  // is a soft check: targets that are obviously placeholder ("TBC", "TBD",
-  // "various") are flagged.
-  const kpis = plan.sections.kpis ?? [];
-  for (const channel of kpis) {
-    for (const m of channel.metrics ?? []) {
-      const target = (m.target ?? "").trim();
-      if (!target || /^(tbc|tbd|various|n\/a|tbd\.?)$/i.test(target)) {
-        issues.push({
-          section: "kpis",
-          issue: `KPI "${m.name}" on ${channel.channel} has a placeholder target ("${target || "(empty)"}").`,
-          suggestedFix: `Replace with a specific 90-day target appropriate for the channel and the monthly budget.`,
-          severity: "low",
-        });
-      }
-    }
-  }
+  // KPI sanity check removed — KPIs section no longer exists.
 
   // ── Negative keywords don't conflict with focus periods ────────────────
   // If a focus period mentions a theme (e.g. "Summer school holiday camps"),
