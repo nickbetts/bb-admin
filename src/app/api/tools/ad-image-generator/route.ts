@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
+import { toFile } from "openai";
 import { getSession } from "@/lib/auth";
 import { getOpenAiClient } from "@/lib/openai-client";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
+export const requestBodySizeLimit = "20mb";
 
 // ─── Stored prompt configuration ────────────────────────────────────────────
 // Update PROMPT_VERSION when you publish a new version on platform.openai.com/prompts
@@ -46,7 +48,23 @@ interface ChatTurn {
   role: "user" | "assistant";
   blocks: ContentBlock[];
   createdAt: string;
+  files?: { name: string }[];
 }
+
+interface FileAttachment {
+  name: string;
+  mimeType: string;
+  base64: string;
+}
+
+// Allowed MIME types for file attachments
+const ALLOWED_MIME_TYPES = new Set([
+  "image/png", "image/jpeg", "image/gif", "image/webp",
+  "application/pdf",
+  "text/plain", "text/csv", "text/markdown",
+]);
+
+const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 
 function parseTurns(messages: string): ChatTurn[] {
   try {
@@ -158,7 +176,7 @@ export async function POST(request: NextRequest) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = (await request.json()) as { input?: string; sessionId?: string };
+    const body = (await request.json()) as { input?: string; sessionId?: string; files?: FileAttachment[] };
     const userMessage = (body.input ?? "").trim();
     if (!userMessage) return NextResponse.json({ error: "Input is required" }, { status: 400 });
     if (userMessage.length > 8000)
@@ -182,13 +200,49 @@ export async function POST(request: NextRequest) {
 
     const openai = await getOpenAiClient();
 
+    // ── Build multi-modal content parts ──────────────────────────────────
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const contentParts: any[] = [{ type: "input_text", text: userMessage }];
+    const attachedFileNames: { name: string }[] = [];
+
+    for (const file of (body.files ?? []).slice(0, 5)) {
+      if (!file.name || !file.mimeType || !file.base64) continue;
+      // Validate MIME type server-side
+      if (!ALLOWED_MIME_TYPES.has(file.mimeType)) continue;
+      // Validate size (base64 → ~75% of original; cap at 20 MB raw)
+      if (file.base64.length > Math.ceil(20 * 1024 * 1024 * (4 / 3))) continue;
+
+      attachedFileNames.push({ name: file.name });
+
+      if (IMAGE_MIME_TYPES.has(file.mimeType)) {
+        // Inline image — no upload needed
+        contentParts.push({
+          type: "input_image",
+          image_url: { url: `data:${file.mimeType};base64,${file.base64}` },
+        });
+      } else {
+        // Upload to OpenAI Files API (PDFs, text, etc.)
+        try {
+          const buffer = Buffer.from(file.base64, "base64");
+          const uploadable = await toFile(buffer, file.name, { type: file.mimeType });
+          const created = await openai.files.create({ file: uploadable, purpose: "user_data" });
+          contentParts.push({ type: "input_file", file_id: created.id });
+        } catch (uploadErr) {
+          console.warn("ai-assistant: skipping file upload for", file.name, uploadErr);
+        }
+      }
+    }
+
+    // Use array content when files are present, plain string otherwise
+    const inputContent = contentParts.length > 1 ? contentParts : userMessage;
+
     // Call the Responses API with the stored prompt.
     // We pass tools explicitly to avoid the `tool_search requires at least one deferred tool` error
     // that occurs when the stored prompt's tool_search is activated without deferred function tools.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const openaiResponse = await (openai.responses.create as any)({
       prompt: { id: PROMPT_ID, version: PROMPT_VERSION },
-      input: [{ role: "user", content: userMessage }],
+      input: [{ role: "user", content: inputContent }],
       ...(dbSession.lastResponseId ? { previous_response_id: dbSession.lastResponseId } : {}),
       store: true,
       tools: [
@@ -208,7 +262,12 @@ export async function POST(request: NextRequest) {
     // Append user + assistant turns
     const turns = parseTurns(dbSession.messages);
     const now = new Date().toISOString();
-    turns.push({ role: "user", blocks: [{ type: "text", text: userMessage, citations: [] }], createdAt: now });
+    turns.push({
+      role: "user",
+      blocks: [{ type: "text", text: userMessage, citations: [] }],
+      createdAt: now,
+      ...(attachedFileNames.length > 0 ? { files: attachedFileNames } : {}),
+    });
     turns.push({ role: "assistant", blocks: assistantBlocks, createdAt: now });
 
     const latestImage = assistantBlocks.find((b): b is ImageBlock => b.type === "image");

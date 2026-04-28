@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Brain, Plus, Trash2, Edit2, Check, X, Download,
-  ChevronDown, ChevronRight, Send, Loader2, Sparkles,
+  ChevronDown, ChevronRight, Send, Loader2, Sparkles, Paperclip,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -18,6 +18,7 @@ interface ChatTurn {
   role: "user" | "assistant";
   blocks: ContentBlock[];
   createdAt: string;
+  files?: { name: string }[];
 }
 
 interface SessionSummary {
@@ -32,11 +33,33 @@ interface SessionDetail extends SessionSummary {
   lastResponseId: string | null;
 }
 
+interface AttachedFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  base64: string;
+}
+
+const ALLOWED_MIME_TYPES = [
+  "image/png", "image/jpeg", "image/gif", "image/webp",
+  "application/pdf",
+  "text/plain", "text/csv", "text/markdown",
+];
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+const MAX_FILES     = 5;
+
 const SUGGESTIONS = [
   "Generate a Facebook ad image for a summer sale",
   "Research the best performing ad formats on Meta right now",
   "Write a Google Ads campaign brief for a local restaurant",
 ];
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024)             return `${bytes} B`;
+  if (bytes < 1024 * 1024)     return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 // ── Block renderers ────────────────────────────────────────────────────────
 
@@ -158,8 +181,11 @@ export default function AIAssistantPage() {
   const [error, setError]                 = useState("");
   const [renameId, setRenameId]           = useState<string | null>(null);
   const [renameValue, setRenameValue]     = useState("");
+  const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const bottomRef   = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadSessions = useCallback(async () => {
     try {
@@ -181,7 +207,42 @@ export default function AIAssistantPage() {
     } catch { setError("Failed to load conversation."); }
   }
 
-  function newChat() { setActiveSession(null); setInput(""); setError(""); }
+  function newChat() { setActiveSession(null); setInput(""); setError(""); setAttachedFiles([]); }
+
+  function handleFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const fileList = e.target.files;
+    if (!fileList) return;
+    setError("");
+
+    const remaining = MAX_FILES - attachedFiles.length;
+    Array.from(fileList).slice(0, remaining).forEach(file => {
+      if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+        setError(`"${file.name}" is not a supported file type.`);
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        setError(`"${file.name}" exceeds the 20 MB limit.`);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string;
+        const base64 = dataUrl.split(",")[1] ?? "";
+        setAttachedFiles(prev => [
+          ...prev,
+          { id: `${Date.now()}-${Math.random()}`, name: file.name, mimeType: file.type, size: file.size, base64 },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Reset so the same file can be added again if removed
+    e.target.value = "";
+  }
+
+  function removeFile(id: string) {
+    setAttachedFiles(prev => prev.filter(f => f.id !== id));
+  }
 
   async function send() {
     const text = input.trim();
@@ -190,10 +251,14 @@ export default function AIAssistantPage() {
     setError("");
     setInput("");
 
+    const filesToSend = attachedFiles.slice();
+    setAttachedFiles([]);
+
     const userTurn: ChatTurn = {
       role: "user",
       blocks: [{ type: "text", text, citations: [] }],
       createdAt: new Date().toISOString(),
+      ...(filesToSend.length > 0 ? { files: filesToSend.map(f => ({ name: f.name })) } : {}),
     };
     setActiveSession(s =>
       s
@@ -204,10 +269,14 @@ export default function AIAssistantPage() {
 
     try {
       const sessionId = activeSession?.id === "__pending__" ? undefined : (activeSession?.id ?? undefined);
+      const payload: Record<string, unknown> = { sessionId, input: text };
+      if (filesToSend.length > 0) {
+        payload.files = filesToSend.map(f => ({ name: f.name, mimeType: f.mimeType, base64: f.base64 }));
+      }
       const res = await fetch("/api/tools/ad-image-generator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, input: text }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -248,6 +317,8 @@ export default function AIAssistantPage() {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); send(); }
   }
 
+  const canSend = !submitting && (input.trim().length > 0 || attachedFiles.length > 0);
+
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
@@ -281,20 +352,20 @@ export default function AIAssistantPage() {
             </p>
           )}
           {sessions.map(s => {
-            const active = activeSession?.id === s.id;
+            const active  = activeSession?.id === s.id;
+            const hovered = hoveredSessionId === s.id;
             return (
               <div
                 key={s.id}
                 onClick={() => openSession(s.id)}
+                onMouseEnter={() => setHoveredSessionId(s.id)}
+                onMouseLeave={() => setHoveredSessionId(null)}
                 style={{
                   display: "flex", alignItems: "center", gap: 10, padding: "8px 10px",
                   borderRadius: "var(--r-sm)", cursor: "pointer",
-                  background: active ? "var(--accent-bg)" : "transparent",
+                  background: active ? "var(--accent-bg)" : hovered ? "var(--border-subtle)" : "transparent",
                   transition: "background 0.15s",
                 }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.background = "var(--border-subtle)"; }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}
-                className="group"
               >
                 {s.currentImageUrl
                   ? <img src={s.currentImageUrl} alt="" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover", flexShrink: 0, border: "1px solid var(--border)" }} />
@@ -324,7 +395,10 @@ export default function AIAssistantPage() {
                       <button onClick={() => submitRename(s.id)} style={{ padding: 3, background: "none", border: "none", cursor: "pointer", color: "var(--success)" }}><Check style={{ width: 13, height: 13 }} /></button>
                       <button onClick={() => setRenameId(null)} style={{ padding: 3, background: "none", border: "none", cursor: "pointer", color: "var(--danger)" }}><X style={{ width: 13, height: 13 }} /></button>
                     </div>
-                  : <div style={{ display: "flex", gap: 1, flexShrink: 0, opacity: 0 }} className="session-actions" onClick={e => e.stopPropagation()}>
+                  : <div
+                      style={{ display: "flex", gap: 1, flexShrink: 0, opacity: hovered ? 1 : 0, transition: "opacity 0.15s" }}
+                      onClick={e => e.stopPropagation()}
+                    >
                       <button
                         onClick={() => { setRenameId(s.id); setRenameValue(s.title); }}
                         style={{ padding: 4, background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", borderRadius: 5 }}
@@ -354,7 +428,7 @@ export default function AIAssistantPage() {
           <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--gradient-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Brain style={{ width: 18, height: 18, color: "white" }} />
           </div>
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <h1 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {activeSession?.title ?? "AI Assistant"}
             </h1>
@@ -362,6 +436,24 @@ export default function AIAssistantPage() {
               Web search · Image generation · Code interpreter
             </p>
           </div>
+          {activeSession && activeSession.id !== "__pending__" && (
+            <button
+              onClick={() => deleteSession(activeSession.id)}
+              title="Delete this conversation"
+              style={{
+                flexShrink: 0, display: "flex", alignItems: "center", gap: 5,
+                padding: "6px 10px", borderRadius: "var(--r-sm)",
+                background: "none", border: "1px solid var(--border)",
+                cursor: "pointer", color: "var(--text-3)", fontSize: 12,
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--danger-border)"; e.currentTarget.style.color = "var(--danger)"; e.currentTarget.style.background = "var(--danger-bg)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-3)"; e.currentTarget.style.background = "none"; }}
+            >
+              <Trash2 style={{ width: 13, height: 13 }} />
+              <span>Delete chat</span>
+            </button>
+          )}
         </div>
 
         {/* Messages */}
@@ -404,12 +496,28 @@ export default function AIAssistantPage() {
               style={{ display: "flex", justifyContent: turn.role === "user" ? "flex-end" : "flex-start" }}
             >
               {turn.role === "user"
-                ? <div style={{
-                    maxWidth: "70%", borderRadius: "16px 16px 4px 16px",
-                    padding: "10px 16px", background: "var(--gradient-accent)",
-                    color: "white", fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap",
-                  }}>
-                    {turn.blocks.map((b, j) => b.type === "text" ? <span key={j}>{b.text}</span> : null)}
+                ? <div style={{ maxWidth: "70%", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                    {turn.files && turn.files.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }}>
+                        {turn.files.map((f, fi) => (
+                          <div key={fi} style={{
+                            display: "flex", alignItems: "center", gap: 4, padding: "3px 8px",
+                            borderRadius: 20, background: "var(--border-subtle)", border: "1px solid var(--border)",
+                            fontSize: 11, color: "var(--text-3)",
+                          }}>
+                            <Paperclip style={{ width: 10, height: 10, flexShrink: 0 }} />
+                            <span style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{
+                      borderRadius: "16px 16px 4px 16px",
+                      padding: "10px 16px", background: "var(--gradient-accent)",
+                      color: "white", fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap",
+                    }}>
+                      {turn.blocks.map((b, j) => b.type === "text" ? <span key={j}>{b.text}</span> : null)}
+                    </div>
                   </div>
                 : <AssistantMessage blocks={turn.blocks} />
               }
@@ -443,12 +551,66 @@ export default function AIAssistantPage() {
 
         {/* Composer */}
         <div style={{ flexShrink: 0, padding: "12px 24px 16px", background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
+
+          {/* Attached file chips */}
+          {attachedFiles.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+              {attachedFiles.map(f => (
+                <div key={f.id} style={{
+                  display: "flex", alignItems: "center", gap: 5, padding: "4px 8px 4px 10px",
+                  borderRadius: 20, border: "1px solid var(--border)", background: "var(--border-subtle)",
+                  fontSize: 12, color: "var(--text-2)",
+                }}>
+                  <Paperclip style={{ width: 11, height: 11, flexShrink: 0, color: "var(--accent)" }} />
+                  <span style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                  <span style={{ color: "var(--text-3)", marginLeft: 2 }}>({formatFileSize(f.size)})</span>
+                  <button
+                    onClick={() => removeFile(f.id)}
+                    style={{ marginLeft: 2, padding: 2, background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", display: "flex", borderRadius: "50%" }}
+                    title={`Remove ${f.name}`}
+                  >
+                    <X style={{ width: 11, height: 11 }} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div style={{
             display: "flex", gap: 10, alignItems: "flex-end",
             border: "1px solid var(--border)", borderRadius: "var(--r)",
             background: "var(--bg)", padding: "10px 12px",
             boxShadow: "var(--shadow-xs)",
           }}>
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept={ALLOWED_MIME_TYPES.join(",")}
+              onChange={handleFileInputChange}
+              style={{ display: "none" }}
+            />
+
+            {/* Attach button */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={submitting || attachedFiles.length >= MAX_FILES}
+              title="Attach files (images, PDFs, text)"
+              style={{
+                width: 32, height: 32, borderRadius: "var(--r-sm)", flexShrink: 0,
+                background: "none", border: "1px solid var(--border)", cursor: (submitting || attachedFiles.length >= MAX_FILES) ? "default" : "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: attachedFiles.length > 0 ? "var(--accent)" : "var(--text-3)",
+                opacity: (submitting || attachedFiles.length >= MAX_FILES) ? 0.4 : 1,
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => { if (!submitting && attachedFiles.length < MAX_FILES) e.currentTarget.style.borderColor = "var(--accent)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; }}
+            >
+              <Paperclip style={{ width: 14, height: 14 }} />
+            </button>
+
             <textarea
               ref={textareaRef}
               value={input}
@@ -465,18 +627,18 @@ export default function AIAssistantPage() {
             />
             <button
               onClick={send}
-              disabled={submitting || !input.trim()}
+              disabled={!canSend}
               style={{
                 width: 36, height: 36, borderRadius: "var(--r-sm)", flexShrink: 0,
-                background: (!submitting && input.trim()) ? "var(--gradient-accent)" : "var(--border)",
-                border: "none", cursor: (!submitting && input.trim()) ? "pointer" : "default",
+                background: canSend ? "var(--gradient-accent)" : "var(--border)",
+                border: "none", cursor: canSend ? "pointer" : "default",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "background 0.15s",
               }}
             >
               {submitting
                 ? <Loader2 style={{ width: 15, height: 15, color: "white", animation: "spin 1s linear infinite" }} />
-                : <Send style={{ width: 15, height: 15, color: (!submitting && input.trim()) ? "white" : "var(--text-3)" }} />
+                : <Send style={{ width: 15, height: 15, color: canSend ? "white" : "var(--text-3)" }} />
               }
             </button>
           </div>
@@ -486,11 +648,6 @@ export default function AIAssistantPage() {
         </div>
 
       </div>
-
-      <style>{`
-        .session-actions { opacity: 0; }
-        [class~="group"]:hover .session-actions { opacity: 1; }
-      `}</style>
     </div>
   );
 }
