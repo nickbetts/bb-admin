@@ -3402,7 +3402,10 @@ async function generateAudiences(
 
   const res = await withAnthropicRetry("audiences", () => anthropic.messages.create({
     model: MODEL_LIGHT_FN(),
-    max_tokens: strategistAudienceNames.length >= 5 ? 3500 : 2200,
+    // Scale token budget with the number of audiences. Each audience needs
+    // ~600 tokens for description + 4-6 painPoints + sectorPreview JSON.
+    // Floor at 2200 (covers the default 3-5 audiences).
+    max_tokens: Math.max(2200, (strategistAudienceNames.length || 5) * 600),
     messages: [
       {
         role: "user",
