@@ -24,7 +24,7 @@ import { validateCoherence } from "@/lib/grand-plan-coherence";
 import { fetchPageSignals } from "@/lib/landing-page-analyzer";
 import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import { suggestAdGroups, researchKeywords } from "@/lib/keyword-planner-pipeline";
-import { generateContentStrategy, generateContentStrategySection, collectSemrushData, runOnPageAudit, type ContentStrategyData } from "@/lib/content-strategy-generator";
+import { generateContentStrategy, generateContentStrategySection, collectSemrushData, runOnPageAudit, enrichPageOptimisationsDeep, type ContentStrategyData } from "@/lib/content-strategy-generator";
 import { withApiCache } from "@/lib/api-cache";
 import { getAnthropicClient } from "@/lib/anthropic-client";
 import { fetchSitemapUrls } from "@/lib/sitemap";
@@ -472,7 +472,22 @@ export async function POST(
       await setStatus(id, "Auditing on-page SEO for proposed page optimisations...");
       await runOnPageAudit(csDomain, pageOpts);
 
-      // Persist the audit results back onto the saved strategy
+      // Deep enrichment: pull current SEMrush rankings + Haiku-generated
+      // rewrites (title, meta, suggested keywords with potential ranking band,
+      // recommended schema, FAQ Q+A) per page. Cap 15 URLs, parallelism 5.
+      const csDatabase = config.semrushRegion ?? config.contentBrief?.database ?? "uk";
+      try {
+        await setStatus(id, "Generating page rewrites & FAQ drafts...");
+        await enrichPageOptimisationsDeep(
+          csDomain,
+          csDatabase,
+          pageOpts as Parameters<typeof enrichPageOptimisationsDeep>[2],
+        );
+      } catch (err) {
+        console.warn(`[grand-plan:${id}] enrichPageOptimisationsDeep failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`);
+      }
+
+      // Persist the audit + enrichment results back onto the saved strategy
       const merged = { ...data, pageOptimisations: pageOpts };
       await prisma.contentStrategy.update({
         where: { id: freshPlan.contentStrategy.id },

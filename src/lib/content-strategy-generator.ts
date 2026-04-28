@@ -1,5 +1,6 @@
 import {
   getTopOrganicKeywords,
+  getUrlOrganicKeywords,
   getCompetitors,
   getContentGap,
   getKeywordDifficultyAndIntent,
@@ -63,6 +64,13 @@ interface OnPageAudit {
   h1Text: string;
   h1Present: boolean;
   h1ContainsKeyword: boolean;
+  // ── Deep audit (Phase: SEO Quick Wins enhancement) ──
+  /** True if the page has FAQPage JSON-LD schema. */
+  hasFaqSchema?: boolean;
+  /** Heuristic detection of FAQ-style content on page (≥ 3 question-style headings or <details><summary>). */
+  hasFaqContent?: boolean;
+  /** Up to 8 question-style heading texts already on the page (for AI to know what's covered). */
+  existingFaqQuestions?: string[];
 }
 
 interface PageOptimisation {
@@ -77,6 +85,46 @@ interface PageOptimisation {
   intent?: string; // "informational" | "commercial" | "transactional" | "navigational"
   suggestedSchema?: string; // e.g. "Article", "FAQPage", "Product", "Service"
   contextLinks?: { url: string; anchorText: string }[]; // existing pages that should link TO this page
+  targetAudiences?: string[]; // audience names this page should resonate with
+  // ── Deep enrichment (Phase: SEO Quick Wins enhancement) ──
+  /** Snapshot of the live page state at the time of audit, surfaced to clients verbatim. */
+  currentState?: {
+    title?: string;
+    titleLength?: number;
+    metaDescription?: string;
+    metaDescriptionLength?: number;
+    h1?: string;
+    schemaTypes?: string[];
+    hasFaqSchema?: boolean;
+    hasFaqContent?: boolean;
+    /** Total keywords SEMrush reports the page ranks for (capped at 100). */
+    totalRankingKeywords?: number;
+    /** Top 10 current rankings by traffic, with position. */
+    topCurrentKeywords?: { keyword: string; position: number; volume: number }[];
+  };
+  /** AI-suggested rewrite of <title> (≤ 60 chars, primary keyword front-loaded). */
+  suggestedTitle?: string;
+  /** AI-suggested rewrite of meta description (≤ 160 chars). */
+  suggestedMetaDescription?: string;
+  /** AI-recommended additional / replacement keywords with potential ranking band. */
+  suggestedKeywords?: {
+    keyword: string;
+    volume?: number;
+    difficulty?: number;
+    currentPosition?: number;
+    potentialBand: "Top 3" | "Top 10" | "Top 20" | "Top 50";
+    rationale: string;
+  }[];
+  /** All schema types AI thinks the page should implement. */
+  recommendedSchema?: string[];
+  /** Items in recommendedSchema that are absent from currentState.schemaTypes. */
+  schemaGaps?: string[];
+  /** FAQ assessment + draft Q+A copy ready for paste-in. */
+  faq?: {
+    hasExisting: boolean;
+    recommendation: "add" | "expand" | "ok";
+    items: { question: string; answer: string }[];
+  };
 }
 
 interface ProposedPage {
@@ -1062,10 +1110,25 @@ async function auditOnPage(
       } catch { /* malformed JSON-LD — skip */ }
     }
     const uniqueSchemaTypes = [...new Set(schemaTypes)];
+    const hasFaqSchema = uniqueSchemaTypes.some((t) => /^FAQPage$/i.test(t));
 
     // H1
     const h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
     const h1TextRaw = h1Match ? h1Match[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim() : "";
+
+    // ── FAQ heuristic ──────────────────────────────────────────────────────
+    // Pull headings (h2/h3/h4) + <summary> + <strong>/<dt> question-style
+    // text. Anything ending with "?" counts as a question-style heading.
+    const questionTexts: string[] = [];
+    const headingRe = /<(h[2-4]|summary|strong|dt)[^>]*>([\s\S]*?)<\/\1>/gi;
+    for (const m of html.matchAll(headingRe)) {
+      const text = m[2].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+      if (!text || text.length > 200) continue;
+      if (text.endsWith("?")) questionTexts.push(text);
+    }
+    const detailsCount = (html.match(/<details[\s>]/gi) ?? []).length;
+    const uniqueQuestions = [...new Set(questionTexts)].slice(0, 8);
+    const hasFaqContent = uniqueQuestions.length >= 3 || detailsCount >= 3;
 
     return {
       titleText,
@@ -1080,6 +1143,9 @@ async function auditOnPage(
       h1Text: h1TextRaw,
       h1Present: h1TextRaw.length > 0,
       h1ContainsKeyword: h1TextRaw.toLowerCase().includes(kwLower),
+      hasFaqSchema,
+      hasFaqContent,
+      existingFaqQuestions: uniqueQuestions,
     };
   } catch {
     return { ...EMPTY_AUDIT };
@@ -1109,6 +1175,299 @@ export async function runOnPageAudit(
   for (let i = 0; i < pagesToAudit.length; i++) {
     const r = results[i];
     pagesToAudit[i].audit = r.status === "fulfilled" ? r.value : { ...EMPTY_AUDIT };
+  }
+}
+
+// ─── Deep enrichment for page optimisations ────────────────────────────────
+//
+// Two-pass architecture: the main Opus content-strategy call returns the
+// pageOptimisations[] entries with primary keywords + notes + intent. This
+// follow-up step attaches:
+//   - the live page state (from runOnPageAudit results)
+//   - SEMrush rankings (current + total) per URL
+//   - AI-generated rewrites (title, meta description), suggested keywords
+//     with potential ranking band, recommended schema, schema gaps and a
+//     full FAQ Q+A draft.
+//
+// Runs as a Haiku call per URL with limited concurrency so the main 16k
+// Opus call doesn't have to carry the extra structured output.
+
+const ENRICH_MAX_PAGES = 15;
+const ENRICH_CONCURRENCY = 5;
+const POTENTIAL_BANDS = ["Top 3", "Top 10", "Top 20", "Top 50"] as const;
+type PotentialBand = (typeof POTENTIAL_BANDS)[number];
+
+const ENRICH_SYSTEM_PROMPT = `You are a senior technical SEO + conversion specialist. For a single web page you receive:
+  - the page's current title, meta description, H1, schema types, FAQ status
+  - the keywords the page currently ranks for (with position, volume)
+  - the primary / secondary keywords the strategy team has already chosen for this page
+  - the page's purpose (intent + audiences)
+
+You return ONE JSON object with these exact fields:
+  - suggestedTitle: rewritten <title> (string, MAX 60 chars, primary keyword in first half, brand at end if room)
+  - suggestedMetaDescription: rewritten meta description (string, MAX 160 chars, includes primary keyword + 1 CTA verb)
+  - suggestedKeywords: 4–8 additional or replacement keywords this page should target. Each entry:
+      { keyword, volume?, difficulty?, currentPosition?, potentialBand, rationale }
+    potentialBand MUST be one of: "Top 3", "Top 10", "Top 20", "Top 50". Be conservative:
+      - "Top 3" only if the page already ranks position 1–10 for the term OR a closely-matched variant.
+      - "Top 10" only if currentPosition is 1–20, or KD < 30 with strong topical match.
+      - "Top 20" if KD 30–55, or currentPosition 11–40.
+      - "Top 50" otherwise.
+    rationale is one short sentence explaining why this band (e.g. "Already pos 12 for 'X' — page rewrite + 2 internal links closes the gap").
+  - recommendedSchema: array of JSON-LD @type values this page SHOULD have (e.g. ["Service", "FAQPage", "BreadcrumbList"]).
+  - schemaGaps: array of items in recommendedSchema that are NOT in the page's current schemaTypes. Empty array if none missing.
+  - faq:
+      { hasExisting: boolean, recommendation: "add" | "expand" | "ok", items: [{ question, answer }] }
+      items: 0 entries if recommendation is "ok"; otherwise 4–6 draft Q+A pairs the agency can paste straight in.
+      Questions must read like a real prospect would ask them. Answers MAX 60 words, factual, paraphrasable from page topic, British English.
+
+Rules:
+  - British English everywhere ("optimise", "behaviour", "specialise"). NEVER use em dashes.
+  - Output ONLY the JSON object. No prose, no markdown, no code fences.
+  - Stay grounded — never invent service prices, guarantees, awards or testimonials.
+  - If a field cannot be filled responsibly, return an empty string / empty array — never fabricate.`;
+
+interface EnrichmentInput {
+  url: string;
+  intent?: string;
+  primaryKeyword?: string;
+  secondaryKeywords: string[];
+  audit?: OnPageAudit;
+  currentRankings: { keyword: string; position: number; volume: number }[];
+  totalRankingKeywords: number;
+}
+
+interface EnrichmentOutput {
+  suggestedTitle?: string;
+  suggestedMetaDescription?: string;
+  suggestedKeywords?: PageOptimisation["suggestedKeywords"];
+  recommendedSchema?: string[];
+  schemaGaps?: string[];
+  faq?: PageOptimisation["faq"];
+}
+
+async function callEnrichmentLLM(input: EnrichmentInput): Promise<EnrichmentOutput | null> {
+  const audit = input.audit;
+  const userPayload = {
+    url: input.url,
+    intent: input.intent ?? "unknown",
+    primaryKeyword: input.primaryKeyword ?? "",
+    secondaryKeywords: input.secondaryKeywords,
+    currentState: {
+      title: audit?.titleText ?? "",
+      titleLength: audit?.titleLength ?? 0,
+      metaDescription: audit?.descriptionText ?? "",
+      metaDescriptionLength: audit?.descriptionLength ?? 0,
+      h1: audit?.h1Text ?? "",
+      schemaTypes: audit?.schemaTypes ?? [],
+      hasFaqSchema: audit?.hasFaqSchema ?? false,
+      hasFaqContent: audit?.hasFaqContent ?? false,
+      existingFaqQuestions: audit?.existingFaqQuestions ?? [],
+    },
+    rankings: {
+      total: input.totalRankingKeywords,
+      top: input.currentRankings.slice(0, 15),
+    },
+  };
+
+  try {
+    const anthropic = await getAnthropicClient();
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 2000,
+      system: ENRICH_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: JSON.stringify(userPayload) }],
+    });
+    const block = response.content[0];
+    const rawText = block.type === "text" ? block.text.trim() : "";
+    if (!rawText) return null;
+
+    const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]+?)```/) ?? rawText.match(/(\{[\s\S]+\})/);
+    const jsonText = jsonMatch ? jsonMatch[1].trim() : rawText;
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(jsonText) as Record<string, unknown>;
+    } catch {
+      const repaired = jsonrepair(jsonText);
+      parsed = JSON.parse(repaired) as Record<string, unknown>;
+    }
+    return parseEnrichmentOutput(parsed);
+  } catch (err) {
+    console.warn(`[enrich:${input.url}] failed: ${err instanceof Error ? err.message : String(err)}`);
+    return null;
+  }
+}
+
+function parseEnrichmentOutput(raw: Record<string, unknown>): EnrichmentOutput {
+  const out: EnrichmentOutput = {};
+
+  if (typeof raw.suggestedTitle === "string" && raw.suggestedTitle.trim()) {
+    out.suggestedTitle = raw.suggestedTitle.trim().slice(0, 80);
+  }
+  if (typeof raw.suggestedMetaDescription === "string" && raw.suggestedMetaDescription.trim()) {
+    out.suggestedMetaDescription = raw.suggestedMetaDescription.trim().slice(0, 200);
+  }
+
+  if (Array.isArray(raw.suggestedKeywords)) {
+    out.suggestedKeywords = (raw.suggestedKeywords as Record<string, unknown>[])
+      .filter((k) => typeof k.keyword === "string" && k.keyword.trim())
+      .slice(0, 8)
+      .map((k) => {
+        const band = typeof k.potentialBand === "string" && (POTENTIAL_BANDS as readonly string[]).includes(k.potentialBand)
+          ? (k.potentialBand as PotentialBand)
+          : "Top 50";
+        return {
+          keyword: (k.keyword as string).trim(),
+          volume: typeof k.volume === "number" && k.volume >= 0 ? Math.round(k.volume) : undefined,
+          difficulty: typeof k.difficulty === "number" && k.difficulty >= 0 && k.difficulty <= 100
+            ? Math.round(k.difficulty)
+            : undefined,
+          currentPosition: typeof k.currentPosition === "number" && k.currentPosition > 0
+            ? Math.round(k.currentPosition)
+            : undefined,
+          potentialBand: band,
+          rationale: typeof k.rationale === "string" ? k.rationale.trim().slice(0, 240) : "",
+        };
+      });
+  }
+
+  if (Array.isArray(raw.recommendedSchema)) {
+    out.recommendedSchema = (raw.recommendedSchema as unknown[])
+      .filter((s): s is string => typeof s === "string" && !!s.trim())
+      .map((s) => s.trim())
+      .slice(0, 8);
+  }
+  if (Array.isArray(raw.schemaGaps)) {
+    out.schemaGaps = (raw.schemaGaps as unknown[])
+      .filter((s): s is string => typeof s === "string" && !!s.trim())
+      .map((s) => s.trim())
+      .slice(0, 8);
+  }
+
+  const rawFaq = raw.faq as Record<string, unknown> | undefined;
+  if (rawFaq && typeof rawFaq === "object") {
+    const recommendation = ["add", "expand", "ok"].includes(String(rawFaq.recommendation))
+      ? (rawFaq.recommendation as "add" | "expand" | "ok")
+      : "ok";
+    const items = Array.isArray(rawFaq.items)
+      ? (rawFaq.items as Record<string, unknown>[])
+          .filter((it) => typeof it.question === "string" && typeof it.answer === "string" && it.question.trim() && it.answer.trim())
+          .slice(0, 6)
+          .map((it) => ({
+            question: (it.question as string).trim().slice(0, 240),
+            answer: (it.answer as string).trim().slice(0, 600),
+          }))
+      : [];
+    out.faq = {
+      hasExisting: !!rawFaq.hasExisting,
+      recommendation,
+      items: recommendation === "ok" ? [] : items,
+    };
+  }
+
+  return out;
+}
+
+/**
+ * Fetch SEMrush rankings + run the Haiku enrichment for each page in parallel
+ * (concurrency ENRICH_CONCURRENCY, capped at ENRICH_MAX_PAGES URLs). Mutates
+ * each page in place — adds `currentState`, `suggestedTitle`,
+ * `suggestedMetaDescription`, `suggestedKeywords`, `recommendedSchema`,
+ * `schemaGaps`, `faq`.
+ *
+ * Pages with no audit (fetch failed) still get SEMrush rankings if available
+ * but skip the AI enrichment so the renderer can show "live page unreachable".
+ */
+export async function enrichPageOptimisationsDeep(
+  domain: string,
+  semDatabase: string,
+  pageOptimisations: PageOptimisation[],
+): Promise<void> {
+  const targets = pageOptimisations.slice(0, ENRICH_MAX_PAGES);
+  if (!targets.length) return;
+
+  const fullUrl = (urlOrPath: string): string => {
+    if (/^https?:\/\//i.test(urlOrPath)) return urlOrPath;
+    const cleanDomain = domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const cleanPath = urlOrPath.replace(/^\/+/, "");
+    return `https://${cleanPath.startsWith(cleanDomain) ? cleanPath : `${cleanDomain}/${cleanPath}`}`;
+  };
+
+  const enrichOne = async (opt: PageOptimisation): Promise<void> => {
+    const url = fullUrl(opt.url);
+    const tStart = Date.now();
+
+    // Pull current rankings (cached 7 days at the api-cache layer).
+    let rankings: { keyword: string; position: number; volume: number }[] = [];
+    try {
+      const kws = await withApiCache(
+        `cs-enrich-rankings:${url}:${semDatabase}`,
+        7 * 24,
+        () => getUrlOrganicKeywords(url, semDatabase, 100),
+      );
+      rankings = (kws ?? []).map((k) => ({
+        keyword: k.keyword,
+        position: k.position,
+        volume: k.searchVolume,
+      }));
+    } catch (err) {
+      console.warn(`[enrich:${url}] semrush rankings failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    const audit = opt.audit;
+    const primary = opt.keywords.find((k) => k.type === "primary") ?? opt.keywords[0];
+    const secondary = opt.keywords
+      .filter((k) => k.type === "secondary" || k.type === "long-tail")
+      .map((k) => k.keyword)
+      .slice(0, 6);
+
+    // Always populate currentState — even when AI enrichment is skipped, the
+    // client should see the live page snapshot.
+    opt.currentState = {
+      title: audit?.titleText || undefined,
+      titleLength: audit?.titleLength,
+      metaDescription: audit?.descriptionText || undefined,
+      metaDescriptionLength: audit?.descriptionLength,
+      h1: audit?.h1Text || undefined,
+      schemaTypes: audit?.schemaTypes,
+      hasFaqSchema: audit?.hasFaqSchema,
+      hasFaqContent: audit?.hasFaqContent,
+      totalRankingKeywords: rankings.length,
+      topCurrentKeywords: rankings.slice(0, 10),
+    };
+
+    // Skip the AI call if the audit clearly failed (no title, no h1, no schema)
+    // — there's nothing meaningful to ground the rewrite against.
+    if (!audit || (!audit.titleText && !audit.h1Text && !audit.schemaTypes.length && rankings.length === 0)) {
+      console.log(`[enrich:${url}] skipped AI (no audit data) in ${Date.now() - tStart}ms`);
+      return;
+    }
+
+    const enriched = await callEnrichmentLLM({
+      url,
+      intent: opt.intent,
+      primaryKeyword: primary?.keyword,
+      secondaryKeywords: secondary,
+      audit,
+      currentRankings: rankings,
+      totalRankingKeywords: rankings.length,
+    });
+
+    if (enriched) {
+      if (enriched.suggestedTitle) opt.suggestedTitle = enriched.suggestedTitle;
+      if (enriched.suggestedMetaDescription) opt.suggestedMetaDescription = enriched.suggestedMetaDescription;
+      if (enriched.suggestedKeywords?.length) opt.suggestedKeywords = enriched.suggestedKeywords;
+      if (enriched.recommendedSchema?.length) opt.recommendedSchema = enriched.recommendedSchema;
+      if (enriched.schemaGaps) opt.schemaGaps = enriched.schemaGaps;
+      if (enriched.faq) opt.faq = enriched.faq;
+    }
+    console.log(`[enrich:${url}] done in ${Date.now() - tStart}ms (kws=${rankings.length}, ai=${enriched ? "ok" : "skip"})`);
+  };
+
+  // Limited concurrency: process in chunks of ENRICH_CONCURRENCY.
+  for (let i = 0; i < targets.length; i += ENRICH_CONCURRENCY) {
+    const chunk = targets.slice(i, i + ENRICH_CONCURRENCY);
+    await Promise.allSettled(chunk.map(enrichOne));
   }
 }
 
@@ -1785,6 +2144,9 @@ ${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item 
         intent: typeof p.intent === "string" ? p.intent : undefined,
         suggestedSchema: typeof p.suggestedSchema === "string" ? p.suggestedSchema : undefined,
         contextLinks: parseLinks(p.contextLinks),
+        targetAudiences: Array.isArray(p.targetAudiences)
+          ? (p.targetAudiences as unknown[]).filter((s): s is string => typeof s === "string" && !!s.trim()).slice(0, 3)
+          : undefined,
       }));
   }
 

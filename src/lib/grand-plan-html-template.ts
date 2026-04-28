@@ -1118,6 +1118,36 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
     metaDescription?: string;
     contentEnhancements?: string[];
     schema?: string;
+    // ── Deep enrichment fields (Now → Better) ──
+    currentState?: {
+      title?: string;
+      titleLength?: number;
+      metaDescription?: string;
+      metaDescriptionLength?: number;
+      h1?: string;
+      schemaTypes?: string[];
+      hasFaqSchema?: boolean;
+      hasFaqContent?: boolean;
+      totalRankingKeywords?: number;
+      topCurrentKeywords?: { keyword: string; position: number; volume: number }[];
+    };
+    suggestedTitle?: string;
+    suggestedMetaDescription?: string;
+    suggestedKeywords?: {
+      keyword: string;
+      volume?: number;
+      difficulty?: number;
+      currentPosition?: number;
+      potentialBand: string;
+      rationale: string;
+    }[];
+    recommendedSchema?: string[];
+    schemaGaps?: string[];
+    faq?: {
+      hasExisting: boolean;
+      recommendation: "add" | "expand" | "ok";
+      items: { question: string; answer: string }[];
+    };
   };
 
   const pageOpts = (data.pageOptimisations ?? []).slice(0, 15) as Entry[];
@@ -1258,6 +1288,85 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
             ${internalLinksList.length ? `<div class="onpage-row"><span class="onpage-label">Internal links</span><div class="onpage-chips">${internalLinksList.map((l) => `<span class="kw-pill kw-pill-mute">${esc(l)}</span>`).join(" ")}</div></div>` : ""}
             ${p.schema ? `<div class="onpage-row"><span class="onpage-label">Schema</span><div class="onpage-val"><code>${esc(p.schema)}</code></div></div>` : ""}
           </div>` : "";
+
+        // ── Deep-enrichment "Now → Better" blocks ────────────────────────
+        const cs = p.currentState;
+        const hasCurrentState = !!(cs && (cs.title || cs.metaDescription || cs.h1 || (cs.schemaTypes?.length) || (cs.totalRankingKeywords ?? 0) > 0));
+        const charBadge = (text: string, max: number) => {
+          const len = text.length;
+          const cls = len === 0 ? "char-over" : len <= max ? "char-ok" : "char-over";
+          return `<span class="char-badge ${cls}">${len}/${max}</span>`;
+        };
+        const faqPill = cs?.hasFaqSchema
+          ? `<span class="status-chip status-chip-ok" title="FAQPage schema detected">FAQ schema \u2713</span>`
+          : cs?.hasFaqContent
+            ? `<span class="status-chip status-chip-warn" title="FAQ content detected but no schema">FAQ content (no schema)</span>`
+            : `<span class="status-chip status-chip-miss" title="No FAQ detected">No FAQ</span>`;
+        const currentStateHtml = hasCurrentState ? `
+          <div class="page-state-block">
+            <h5 class="page-state-heading">Current state</h5>
+            <div class="page-state-grid">
+              ${cs?.title ? `<div class="onpage-row"><span class="onpage-label">Title</span><div class="onpage-val">${esc(cs.title)} ${charBadge(cs.title, 60)}</div></div>` : `<div class="onpage-row"><span class="onpage-label">Title</span><div class="onpage-val onpage-missing">Missing</div></div>`}
+              ${cs?.metaDescription ? `<div class="onpage-row"><span class="onpage-label">Meta description</span><div class="onpage-val">${esc(cs.metaDescription)} ${charBadge(cs.metaDescription, 160)}</div></div>` : `<div class="onpage-row"><span class="onpage-label">Meta description</span><div class="onpage-val onpage-missing">Missing</div></div>`}
+              ${cs?.h1 ? `<div class="onpage-row"><span class="onpage-label">H1</span><div class="onpage-val">${esc(cs.h1)}</div></div>` : ""}
+              ${cs?.schemaTypes?.length ? `<div class="onpage-row"><span class="onpage-label">Schema present</span><div class="onpage-chips">${cs.schemaTypes.map((s) => `<span class="kw-pill kw-pill-mute">${esc(s)}</span>`).join(" ")}</div></div>` : `<div class="onpage-row"><span class="onpage-label">Schema present</span><div class="onpage-val onpage-missing">None detected</div></div>`}
+              ${(cs?.totalRankingKeywords ?? 0) > 0 ? `<div class="onpage-row"><span class="onpage-label">Currently ranks for</span><div class="onpage-val"><strong>${cs!.totalRankingKeywords}</strong> keyword${cs!.totalRankingKeywords === 1 ? "" : "s"}${cs!.topCurrentKeywords?.length ? ` \u2014 top ${Math.min(5, cs!.topCurrentKeywords.length)}: ${cs!.topCurrentKeywords.slice(0, 5).map((k) => `<span class="kw-pill kw-pill-mute">${esc(k.keyword)} (#${k.position})</span>`).join(" ")}` : ""}</div></div>` : `<div class="onpage-row"><span class="onpage-label">Currently ranks for</span><div class="onpage-val onpage-missing">No SEMrush data</div></div>`}
+              <div class="onpage-row"><span class="onpage-label">FAQ status</span><div class="onpage-val">${faqPill}</div></div>
+            </div>
+          </div>` : "";
+
+        const hasRewrites = !!(p.suggestedTitle || p.suggestedMetaDescription);
+        const rewritesHtml = hasRewrites ? `
+          <div class="page-rewrite-block">
+            <h5 class="page-state-heading">Recommended rewrites</h5>
+            ${p.suggestedTitle ? `<div class="onpage-row"><span class="onpage-label">Title \u2192</span><div class="onpage-val onpage-suggest">${esc(p.suggestedTitle)} ${charBadge(p.suggestedTitle, 60)}</div></div>` : ""}
+            ${p.suggestedMetaDescription ? `<div class="onpage-row"><span class="onpage-label">Meta \u2192</span><div class="onpage-val onpage-suggest">${esc(p.suggestedMetaDescription)} ${charBadge(p.suggestedMetaDescription, 160)}</div></div>` : ""}
+          </div>` : "";
+
+        const sk = p.suggestedKeywords ?? [];
+        const suggestedKeywordsHtml = sk.length ? `
+          <div class="page-kw-block">
+            <h5 class="page-state-heading">Suggested keywords (and where they could rank)</h5>
+            <div class="kw-table-wrap">
+              <table class="kw-table">
+                <thead><tr><th>Keyword</th><th>Vol</th><th>KD</th><th>Currently</th><th>Potential</th><th>Why</th></tr></thead>
+                <tbody>
+                  ${sk.map((k) => `<tr>
+                    <td><strong>${esc(k.keyword)}</strong></td>
+                    <td>${k.volume != null ? k.volume.toLocaleString() : "\u2013"}</td>
+                    <td>${k.difficulty != null ? k.difficulty : "\u2013"}</td>
+                    <td>${k.currentPosition != null ? `#${k.currentPosition}` : "Not ranking"}</td>
+                    <td><span class="potential-band band-${esc(k.potentialBand.replace(/\s+/g, "-").toLowerCase())}">${esc(k.potentialBand)}</span></td>
+                    <td class="kw-rationale">${esc(k.rationale)}</td>
+                  </tr>`).join("")}
+                </tbody>
+              </table>
+            </div>
+          </div>` : "";
+
+        const recSchema = p.recommendedSchema ?? [];
+        const schemaGaps = new Set(p.schemaGaps ?? []);
+        const schemaHtml = recSchema.length ? `
+          <div class="page-schema-block">
+            <h5 class="page-state-heading">Recommended schema</h5>
+            <div class="onpage-chips">
+              ${recSchema.map((s) => {
+                const missing = schemaGaps.has(s);
+                return `<span class="kw-pill ${missing ? "kw-pill-miss" : "kw-pill-ok"}" title="${missing ? "Currently missing" : "Already present"}">${esc(s)}${missing ? " \u2014 add" : " \u2713"}</span>`;
+              }).join(" ")}
+            </div>
+          </div>` : "";
+
+        const faq = p.faq;
+        const faqHtml = faq && faq.recommendation !== "ok" && faq.items.length ? `
+          <div class="page-faq-block">
+            <h5 class="page-state-heading">${faq.recommendation === "expand" ? "Expand the FAQ" : "Add an FAQ section"} \u2014 draft Q+A</h5>
+            ${faq.items.map((it) => `<details class="faq-item">
+              <summary>${esc(it.question)}</summary>
+              <div class="faq-answer">${esc(it.answer)}</div>
+            </details>`).join("")}
+          </div>` : "";
+
         return `
       <div class="content-card">
         <div class="content-url-row">
@@ -1266,8 +1375,14 @@ function renderContentStrategy(data: any, intro?: string, audienceRationales?: R
         </div>
         ${p.keywords?.length ? `<div class="content-kws">${p.keywords.slice(0, 5).map((k) => `<span class="kw-pill">${esc(k.keyword)}</span>`).join(" ")}</div>` : ""}
         ${audChips ? `<div class="cc-audiences" style="margin-top:6px">${audChips}</div>` : ""}
+        ${currentStateHtml}
+        ${rewritesHtml}
+        ${suggestedKeywordsHtml}
+        ${schemaHtml}
+        ${faqHtml}
         ${structuredHtml}
-        ${!hasStructured && p.notes ? `<div class="content-notes">${formatBriefBlock(p.notes)}</div>` : ""}
+        ${!hasStructured && !hasCurrentState && !hasRewrites && p.notes ? `<div class="content-notes">${formatBriefBlock(p.notes)}</div>` : ""}
+        ${(hasCurrentState || hasRewrites) && p.notes ? `<div class="content-notes" style="margin-top:.75rem"><strong>Notes:</strong> ${formatBriefBlock(p.notes)}</div>` : ""}
       </div>`;
       }).join("\n")}
     </div>` : "";
@@ -2571,6 +2686,39 @@ details.cal-month[open] .cal-month-header::after{content:"\\2212"}
 .char-ok{background:#d1fae5;color:#065f46}
 .char-warn{background:#fef3c7;color:#92400e}
 .char-over{background:#fee2e2;color:#dc2626}
+/* Page-optimisation deep enrichment ("Now \u2192 Better") */
+.page-state-block,.page-rewrite-block,.page-kw-block,.page-schema-block,.page-faq-block{margin-top:.85rem;padding:.75rem .9rem;border-radius:6px;border-left:3px solid var(--accent);background:#f8fafc}
+.page-rewrite-block{border-left-color:#10b981;background:#ecfdf5}
+.page-kw-block{border-left-color:#6366f1;background:#eef2ff}
+.page-schema-block{border-left-color:#f59e0b;background:#fffbeb}
+.page-faq-block{border-left-color:#8b5cf6;background:#f5f3ff}
+.page-state-heading{margin:0 0 .55rem 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mid)}
+.page-state-grid{display:flex;flex-direction:column;gap:.55rem}
+.onpage-suggest{font-weight:600;color:#065f46}
+.onpage-missing{color:#dc2626;font-style:italic;font-size:12px}
+.status-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px}
+.status-chip-ok{background:#d1fae5;color:#065f46}
+.status-chip-warn{background:#fef3c7;color:#92400e}
+.status-chip-miss{background:#fee2e2;color:#dc2626}
+.kw-pill-ok{background:#d1fae5;color:#065f46}
+.kw-pill-miss{background:#fee2e2;color:#dc2626}
+.kw-table-wrap{overflow-x:auto}
+.kw-table{width:100%;border-collapse:collapse;font-size:12px}
+.kw-table th{text-align:left;padding:6px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);border-bottom:1px solid #e2e8f0;white-space:nowrap}
+.kw-table td{padding:6px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+.kw-table tr:last-child td{border-bottom:none}
+.kw-rationale{color:var(--text-light);font-size:11px;line-height:1.4}
+.potential-band{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap}
+.band-top-3{background:#fee2e2;color:#991b1b}
+.band-top-10{background:#fed7aa;color:#9a3412}
+.band-top-20{background:#fef3c7;color:#854d0e}
+.band-top-50{background:#e0e7ff;color:#3730a3}
+.faq-item{margin-top:.4rem;border:1px solid #e2e8f0;border-radius:4px;background:#fff}
+.faq-item summary{cursor:pointer;padding:.55rem .7rem;font-weight:600;font-size:13px;color:var(--text);list-style:none}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-item summary::before{content:"+ ";color:var(--accent);font-weight:700;margin-right:4px}
+.faq-item[open] summary::before{content:"\u2212 "}
+.faq-answer{padding:0 .7rem .65rem .7rem;font-size:12px;line-height:1.55;color:var(--text-light)}
 /* Media plan table */
 .channel-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:1rem}
 .channel-table th{text-align:left;padding:10px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--mid);background:var(--bg);border-bottom:1px solid var(--border)}
