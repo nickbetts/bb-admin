@@ -20,16 +20,30 @@ import { withApiCache } from "@/lib/api-cache";
 export async function detectCompetitors(
   domain: string,
   database: string = "uk",
-): Promise<{ domain: string; commonKeywords: number }[]> {
+): Promise<{ domain: string; commonKeywords: number; pageContext?: CompetitorPageContext }[]> {
   const competitors = await withApiCache(
     `cs:competitors:${domain}:${database}`,
     168,
     () => getCompetitors(domain, database, 5),
   );
-  return competitors.map((c) => ({
-    domain: c.domain,
-    commonKeywords: c.commonKeywords,
-  }));
+  // Scrape each detected competitor's homepage in parallel so the generator
+  // has messaging context (h1, headings, CTAs) and not just a domain name.
+  // Cached individually so repeat detections / shared domains don't re-fetch.
+  const scraped = await Promise.all(
+    competitors.map(async (c) => {
+      const pageContext = await withApiCache(
+        `cs:competitor-scrape:${c.domain}`,
+        168,
+        () => scrapeCompetitorSite(c.domain),
+      );
+      return {
+        domain: c.domain,
+        commonKeywords: c.commonKeywords,
+        pageContext: pageContext ?? undefined,
+      };
+    }),
+  );
+  return scraped;
 }
 
 // ─── Site scrape fallback for competitors with no keyword overlap ───────────
@@ -83,24 +97,24 @@ export async function validateCompetitor(
   competitor: string,
   database: string = "uk",
 ): Promise<{ commonKeywords: number; scraped: boolean; pageContext?: CompetitorPageContext }> {
-  const commonKeywords = await withApiCache(
-    `cs:competitor-overlap:${domain}:${competitor}:${database}`,
-    168,
-    () => getSingleCompetitorOverlap(domain, competitor, database),
-  );
-
-  if (commonKeywords > 0) {
-    return { commonKeywords, scraped: false };
-  }
-
-  const pageContext = await withApiCache(
-    `cs:competitor-scrape:${competitor}`,
-    168,
-    () => scrapeCompetitorSite(competitor),
-  );
+  // Always run overlap + scrape in parallel — manually-added competitors are
+  // explicit user choices, so we want messaging context regardless of whether
+  // SEMrush returns any keyword overlap.
+  const [commonKeywords, pageContext] = await Promise.all([
+    withApiCache(
+      `cs:competitor-overlap:${domain}:${competitor}:${database}`,
+      168,
+      () => getSingleCompetitorOverlap(domain, competitor, database),
+    ),
+    withApiCache(
+      `cs:competitor-scrape:${competitor}`,
+      168,
+      () => scrapeCompetitorSite(competitor),
+    ),
+  ]);
 
   return {
-    commonKeywords: 0,
+    commonKeywords,
     scraped: pageContext !== null,
     pageContext: pageContext ?? undefined,
   };

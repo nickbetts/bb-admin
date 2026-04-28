@@ -305,10 +305,11 @@ export default function NewGrandPlanPage() {
         body: JSON.stringify({ action: "detect", domain: domain || undefined, clientId: clientId || undefined }),
       });
       if (!res.ok) return;
-      const data = await res.json() as { competitors?: { domain: string; commonKeywords?: number }[] };
+      const data = await res.json() as { competitors?: { domain: string; commonKeywords?: number; pageContext?: CompetitorEntry["pageContext"] }[] };
       const detected: CompetitorEntry[] = (data.competitors ?? []).slice(0, 6).map((c) => ({
         domain: c.domain,
         commonKeywords: c.commonKeywords,
+        pageContext: c.pageContext,
         status: "valid",
         source: "auto",
       }));
