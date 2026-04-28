@@ -462,6 +462,58 @@ function renderTldrView(plan: GrandPlanData): string {
     ));
   }
 
+  // Strategic Foundation — bullets out the Strategy Brain
+  if (plan.strategyBrain) {
+    const sb = plan.strategyBrain;
+    const bulletList = (items: (string | undefined | null)[]) => {
+      const clean = items.map((i) => stripHtml(String(i ?? "")).trim()).filter(Boolean);
+      if (!clean.length) return "";
+      return `<ul class="tldr-bullets">${clean.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>`;
+    };
+    const groups: string[] = [];
+    if (sb.positioning?.statement) {
+      groups.push(`<div class="tldr-sf-group"><div class="tldr-sf-label">Positioning</div><p class="tldr-sf-statement">${esc(stripHtml(sb.positioning.statement))}</p>${bulletList(sb.positioning.proofPoints ?? [])}</div>`);
+    }
+    if (sb.messageHierarchy?.primary || sb.messageHierarchy?.secondary?.length) {
+      groups.push(`<div class="tldr-sf-group"><div class="tldr-sf-label">Message hierarchy</div>${sb.messageHierarchy.primary ? `<p class="tldr-sf-statement">${esc(stripHtml(sb.messageHierarchy.primary))}</p>` : ""}${bulletList(sb.messageHierarchy.secondary ?? [])}</div>`);
+    }
+    if (sb.marketContext) {
+      const mc = sb.marketContext;
+      const items: string[] = [];
+      if (mc.state) items.push(`State: ${stripHtml(mc.state)}`);
+      if (mc.opportunity) items.push(`Opportunity: ${stripHtml(mc.opportunity)}`);
+      if (mc.threat) items.push(`Threat: ${stripHtml(mc.threat)}`);
+      if (items.length) groups.push(`<div class="tldr-sf-group"><div class="tldr-sf-label">Market context</div>${bulletList(items)}</div>`);
+    }
+    if (sb.competitorAngle?.differentiator || sb.competitorAngle?.messagesToOwn?.length || sb.competitorAngle?.messagesToAvoid?.length) {
+      const ca = sb.competitorAngle;
+      const items: string[] = [];
+      if (ca.differentiator) items.push(`Win: ${stripHtml(ca.differentiator)}`);
+      (ca.messagesToOwn ?? []).slice(0, 4).forEach((m) => items.push(`Own: ${stripHtml(m)}`));
+      (ca.messagesToAvoid ?? []).slice(0, 4).forEach((m) => items.push(`Avoid: ${stripHtml(m)}`));
+      groups.push(`<div class="tldr-sf-group"><div class="tldr-sf-label">Competitor angle</div>${bulletList(items)}</div>`);
+    }
+    if (sb.targetGeographies?.length) {
+      groups.push(`<div class="tldr-sf-group"><div class="tldr-sf-label">Markets</div><div class="tldr-tag-row">${sb.targetGeographies.slice(0, 12).map((g) => `<span class="tldr-tag">${esc(g)}</span>`).join("")}</div></div>`);
+    }
+    if (sb.channelStrategy?.length) {
+      const items = sb.channelStrategy.slice(0, 8).map((c) => `${stripHtml(c.channel)}: ${stripHtml(c.role)}`);
+      groups.push(`<div class="tldr-sf-group"><div class="tldr-sf-label">Channel strategy</div>${bulletList(items)}</div>`);
+    }
+    if (sb.audiences?.length) {
+      const items = sb.audiences.slice(0, 6).map((a) => `${stripHtml(a.name)} \u2014 ${stripHtml(a.primaryPain || a.coreInsight || "")}`);
+      groups.push(`<div class="tldr-sf-group"><div class="tldr-sf-label">Audiences</div>${bulletList(items)}</div>`);
+    }
+    if (groups.length) {
+      cards.push(card(
+        "tldr-strategy-foundation",
+        "Strategic Foundation",
+        groups.join(""),
+        "Strategy",
+      ));
+    }
+  }
+
   // Audiences
   if (s.audiences?.length) {
     const items = s.audiences.map((a) => `
@@ -473,26 +525,28 @@ function renderTldrView(plan: GrandPlanData): string {
     cards.push(card("tldr-audiences", "Audiences", `<ul class="tldr-list">${items}</ul>`, `${s.audiences.length} target ${s.audiences.length === 1 ? "audience" : "audiences"}`));
   }
 
-  // Competitors
+  // Competitors — rendered as a mini-card grid alongside the Strategic Foundation
   if (s.competitorIntel?.length) {
-    const rows = s.competitorIntel.slice(0, 8).map((c) => {
+    const tiles = s.competitorIntel.slice(0, 8).map((c) => {
       const sourceBadge = c.source ? `<span class="tldr-src tldr-src-${esc(c.source)}">${esc(c.source)}</span>` : "";
-      const overlap = (c.commonKeywords ?? 0) > 0 ? `<span class="tldr-pill">${c.commonKeywords} common KWs</span>` : "";
-      const takeaway = c.strengths?.[0] || c.pageContext?.h1 || c.pageContext?.description || "";
+      const overlap = (c.commonKeywords ?? 0) > 0 ? `<span class="tldr-pill">${c.commonKeywords} KWs</span>` : "";
+      const strengths = (c.strengths ?? []).slice(0, 2).map((t) => `<li>${esc(stripHtml(t))}</li>`).join("");
+      const weaknesses = (c.weaknesses ?? []).slice(0, 2).map((t) => `<li>${esc(stripHtml(t))}</li>`).join("");
       return `
-      <li class="tldr-comp">
+      <div class="tldr-comp-tile">
         <div class="tldr-comp-head">
           <span class="tldr-comp-domain">${esc(c.domain)}</span>
           ${sourceBadge}
           ${overlap}
         </div>
-        ${takeaway ? `<div class="tldr-comp-take">${esc(firstSentence(takeaway, 180))}</div>` : ""}
-      </li>`;
+        ${strengths ? `<div class="tldr-comp-block"><span class="tldr-comp-block-label">Strengths</span><ul class="tldr-bullets">${strengths}</ul></div>` : ""}
+        ${weaknesses ? `<div class="tldr-comp-block"><span class="tldr-comp-block-label">Weaknesses</span><ul class="tldr-bullets">${weaknesses}</ul></div>` : ""}
+      </div>`;
     }).join("");
     cards.push(card(
       "tldr-competitors",
-      "Competitors",
-      `<ul class="tldr-list">${rows}</ul>`,
+      "Competitor Analysis",
+      `<div class="tldr-comp-grid">${tiles}</div>`,
       `${s.competitorIntel.length} analysed`,
     ));
   }
@@ -3185,6 +3239,19 @@ body.tldr-mode{background:#f8fafc}
 .tldr-src-manual{background:#dbeafe;color:#1e3a8a}
 .tldr-src-auto{background:#dcfce7;color:#166534}
 .tldr-src-inferred{background:#fef3c7;color:#854d0e}
+
+.tldr-bullets{margin:.25rem 0 0;padding-left:1.05rem;display:flex;flex-direction:column;gap:.18rem}
+.tldr-bullets li{font-size:12.5px;color:#475569;line-height:1.5}
+
+.tldr-sf-group{padding:.55rem .65rem;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:.5rem}
+.tldr-sf-group:last-child{margin-bottom:0}
+.tldr-sf-label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6366f1;margin-bottom:.3rem}
+.tldr-sf-statement{font-size:13px;font-weight:600;color:#0f172a;margin:0 0 .25rem;line-height:1.5}
+
+.tldr-comp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.5rem}
+.tldr-comp-tile{display:flex;flex-direction:column;gap:.4rem;padding:.6rem .7rem;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0}
+.tldr-comp-block{display:flex;flex-direction:column;gap:.15rem}
+.tldr-comp-block-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8}
 
 .tldr-facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.5rem;margin-bottom:.4rem}
 .tldr-fact{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:.5rem .65rem;font-size:12px;color:#64748b;line-height:1.4}
