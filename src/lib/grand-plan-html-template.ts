@@ -4,7 +4,7 @@
  * Produces self-contained HTML matching the Lux Technical example design:
  * - Dark navy hero gradients
  * - Sticky sidebar navigation
- * - Match-type keyword badges
+ * - Seed phrase suggestion panels
  * - Copy-to-clipboard buttons
  * - Expandable sections
  * - Password gate
@@ -969,11 +969,8 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
     .map((g, i) => {
       const kwChips = (g.keywords ?? [])
         .map((k) => {
-          const display = k.matchType === "exact" ? `[${k.keyword}]` : k.matchType === "phrase" ? `"${k.keyword}"` : k.keyword;
-          const badge = k.matchType === "exact" ? "match-exact" : k.matchType === "phrase" ? "match-phrase" : "match-broad";
-          const badgeLabel = k.matchType === "exact" ? "Exact" : k.matchType === "phrase" ? "Phrase" : "Broad";
           const volTitle = k.volume != null ? ` title="Volume: ${k.volume.toLocaleString()}"` : "";
-          return `<span class="kw-chip"${volTitle}><span class="kw-text">${esc(display)}</span><span class="match-badge ${badge}">${badgeLabel}</span></span>`;
+          return `<span class="kw-chip"${volTitle}><span class="kw-text">${esc(k.keyword)}</span></span>`;
         })
         .join(" ");
 
@@ -1026,6 +1023,32 @@ function renderGoogleAdsCampaigns(data: any, clientWebsite?: string, intro?: str
           <button class="copy-btn" onclick="copyAllCampaignKws(this)">Copy all valid keywords (every group)</button>
         </div>
         ${adGroupsHtml}
+        ${(() => {
+          const seeds = (data.seedSuggestions ?? []) as { theme: string; phrases: string[] }[];
+          if (!seeds.length) return "";
+          const themesHtml = seeds.map((s, i) => {
+            const phrases = (s.phrases ?? []).map((p) => `<span class="seed-chip kw-text">${esc(p)}</span>`).join(" ");
+            return `
+              <div class="seed-theme">
+                <div class="seed-theme-head">
+                  <span class="seed-num">${i + 1}</span>
+                  <h4>${esc(s.theme)}</h4>
+                  <span class="seed-count">${s.phrases.length} phrases</span>
+                  <button class="copy-btn" onclick="copySeedTheme(this)">Copy theme</button>
+                </div>
+                <div class="seed-chip-list">${phrases}</div>
+              </div>`;
+          }).join("\n");
+          return `
+        <div class="seed-section">
+          <div class="seed-section-head">
+            <h3>Seed Phrase Suggestions for PPC Research</h3>
+            <button class="copy-btn" onclick="copyAllSeeds(this)">Copy every seed phrase</button>
+          </div>
+          <p class="section-intro" style="margin-top:.25rem">Variants of the core terms above \u2014 alternative names, misspellings, synonyms, abbreviations, regional phrasings. Plug them into Google Keyword Planner and Search Term reports to expand the keyword pool. These are research seeds, not bid recommendations.</p>
+          ${themesHtml}
+        </div>`;
+        })()}
       </div>
     </section>`;
 }
@@ -2353,8 +2376,23 @@ a{color:var(--accent);text-decoration:none}
 .section.dark .kw-chip{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
 .kw-chip .kw-text{font-family:'SF Mono','Fira Code','Courier New',monospace;font-size:12.5px;color:var(--text)}
 .section.dark .kw-chip .kw-text{color:#e2e8f0}
-.kw-chip .match-badge{font-size:10px;padding:1px 6px}
 .ag-actions{display:flex;justify-content:flex-end;margin-top:.5rem}
+/* Seed phrase suggestions panel (PPC research) */
+.seed-section{margin-top:2.25rem;padding-top:1.5rem;border-top:1px dashed var(--border)}
+.section.dark .seed-section{border-top-color:rgba(255,255,255,.12)}
+.seed-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:.25rem}
+.seed-section-head h3{font-size:1.1rem;font-weight:700;color:var(--heading);margin:0}
+.section.dark .seed-section-head h3{color:#fff}
+.seed-theme{margin-top:1rem;padding:14px 16px;background:var(--white);border:1px solid var(--border);border-radius:12px}
+.section.dark .seed-theme{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
+.seed-theme-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:.6rem}
+.seed-theme-head h4{flex:1;margin:0;font-size:14px;font-weight:600;color:var(--heading)}
+.section.dark .seed-theme-head h4{color:#fff}
+.seed-num{width:24px;height:24px;border-radius:6px;background:var(--accent,#6366f1);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.seed-count{font-size:11px;color:var(--mid);text-transform:uppercase;letter-spacing:.04em}
+.seed-chip-list{display:flex;flex-wrap:wrap;gap:6px}
+.seed-chip{display:inline-flex;align-items:center;background:var(--bg);border:1px dashed var(--border);padding:3px 10px;border-radius:20px;font-size:12.5px;line-height:1.4;font-family:'SF Mono','Fira Code','Courier New',monospace;color:var(--text)}
+.section.dark .seed-chip{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.12);color:#e2e8f0}
 /* Ad groups */
 .ag-heading{font-size:1.1rem;font-weight:700;color:var(--heading);margin-bottom:1rem}
 .section.dark .ag-heading{color:#fff}
@@ -2381,10 +2419,7 @@ a{color:var(--accent);text-decoration:none}
 .section.dark .kw-tbl td{border-bottom-color:rgba(255,255,255,.06);color:#cbd5e1}
 .kw-text{font-family:'SF Mono','Fira Code','Courier New',monospace;font-size:13px}
 .kw-vol{text-align:right;color:var(--text-light);font-size:12px}
-.match-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
-.match-exact{background:#d1fae5;color:#065f46}
-.match-phrase{background:#dbeafe;color:#1e40af}
-.match-broad{background:#fef3c7;color:#92400e}
+.match-badge{display:none}
 /* Copy buttons */
 .copy-btn{margin-top:12px;padding:9px 18px;background:var(--gradient-accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:filter .15s,transform .15s;font-family:inherit;letter-spacing:-.005em}
 .copy-btn:hover{filter:brightness(1.08)}
@@ -3439,6 +3474,39 @@ function copyAllNegatives(btn){
   var sec=btn.closest('section');
   if(!sec)return;
   var chips=sec.querySelectorAll('.neg-chip-list .neg-chip');
+  var seen={};
+  var lines=[];
+  Array.from(chips).forEach(function(c){
+    var t=(c.textContent||'').trim();
+    if(!t||seen[t])return;
+    seen[t]=1;
+    lines.push(t);
+  });
+  navigator.clipboard.writeText(lines.join('\\n')).then(function(){
+    var orig=btn.textContent;
+    btn.textContent='Copied!';
+    setTimeout(function(){btn.textContent=orig;},1800);
+  });
+}
+
+// Copy a single seed-suggestion theme's phrases
+function copySeedTheme(btn){
+  var theme=btn.closest('.seed-theme');
+  if(!theme)return;
+  var chips=theme.querySelectorAll('.seed-chip-list .seed-chip');
+  var text=Array.from(chips).map(function(c){return (c.textContent||'').trim()}).filter(Boolean).join('\\n');
+  navigator.clipboard.writeText(text).then(function(){
+    var orig=btn.textContent;
+    btn.textContent='Copied!';
+    setTimeout(function(){btn.textContent=orig;},1800);
+  });
+}
+
+// Copy every seed phrase across every theme in the section
+function copyAllSeeds(btn){
+  var sec=btn.closest('.seed-section');
+  if(!sec)return;
+  var chips=sec.querySelectorAll('.seed-chip-list .seed-chip');
   var seen={};
   var lines=[];
   Array.from(chips).forEach(function(c){

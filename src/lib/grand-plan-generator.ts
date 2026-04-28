@@ -563,6 +563,10 @@ export interface GrandPlanData {
       aiNegativesWithReason?: { keyword: string; reason: string }[];
       suggestedLocations?: string[];
       adGroups: { name: string; keywords: AdGroupKeyword[]; audience?: string; adGroupNegatives?: string[] }[];
+      /** PPC seed-phrase variants (alternative names, spellings, synonyms,
+       *  abbreviations, regional terms) for the team to research with the
+       *  Keyword Planner. Surfaced as a panel under the ad groups. */
+      seedSuggestions?: { theme: string; phrases: string[] }[];
     };
     metaCampaigns?: MetaCampaign[];
     contentStrategy?: {
@@ -1062,8 +1066,14 @@ export async function generateGrandPlan(
   const googleAdsTargeting = isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
     ? await runSection("Google Ads Targeting", "googleAdsTargeting", () => generateGoogleAdsTargeting(anthropic, sources, adGroups))
     : undefined;
+  // PPC seed-phrase research suggestions — alternative names, spellings,
+  // synonyms, abbreviations, regional terms — for the team to plug into
+  // Keyword Planner / Search Term reports.
+  const googleAdsSeedSuggestions = isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0
+    ? await runSection("Google Ads Seed Suggestions", "googleAdsSeedSuggestions", () => generateGoogleAdsSeedSuggestions(anthropic, sources, adGroups))
+    : undefined;
   const googleAdsCampaigns = isEnabled("googleAdsCampaigns") && sources.keywordResearch
-    ? buildGoogleAdsCampaigns(adGroups, sources, aiNegatives, googleAdsTargeting)
+    ? buildGoogleAdsCampaigns(adGroups, sources, aiNegatives, googleAdsTargeting, googleAdsSeedSuggestions)
     : undefined;
 
   // Build content strategy section: prefer AI clusters (form-driven), fall back
@@ -2466,6 +2476,7 @@ function buildGoogleAdsCampaigns(
   sources: GrandPlanSources,
   aiNegatives?: { campaignLevel: { keyword: string; reason: string }[]; byAdGroup: { name: string; negatives: string[] }[] },
   targeting?: { suggestedLocations: string[]; adGroupAudiences: { name: string; audience: string }[] },
+  seedSuggestions?: { theme: string; phrases: string[] }[],
 ) {
   const adGroupNegMap = new Map((aiNegatives?.byAdGroup ?? []).map((g) => [g.name, g.negatives]));
   const audienceMap = new Map((targeting?.adGroupAudiences ?? []).map((a) => [a.name, a.audience]));
@@ -2494,25 +2505,31 @@ function buildGoogleAdsCampaigns(
     suggestedLocations,
     negativeKeywords: allNegatives,
     aiNegativesWithReason,
-    adGroups: adGroups.map((g) => {
-      const filtered = g.keywords
-        .filter((k) => (k.volume ?? 0) > 0)
-        .sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0));
-      const hiddenCount = g.keywords.length - filtered.length;
-      const visible = filtered.length > 0 ? filtered : g.keywords;
-      return {
-        name: g.name,
-        keywords: visible.map((k) => ({
-          keyword: k.keyword,
-          matchType: k.matchType || "broad" as const,
-          volume: k.volume,
-          cpc: k.cpc,
-        })),
-        hiddenLowVolumeCount: filtered.length > 0 ? hiddenCount : 0,
-        audience: audienceMap.get(g.name),
-        adGroupNegatives: adGroupNegMap.get(g.name) ?? [],
-      };
-    }),
+    adGroups: adGroups
+      .map((g) => {
+        const filtered = g.keywords
+          .filter((k) => (k.volume ?? 0) > 0)
+          .sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0));
+        return {
+          name: g.name,
+          keywords: filtered.map((k) => ({
+            keyword: k.keyword,
+            matchType: k.matchType || "broad" as const,
+            volume: k.volume,
+            cpc: k.cpc,
+          })),
+          // Drop the hidden-low-volume note: we now omit zero-volume groups
+          // entirely rather than collapse them.
+          hiddenLowVolumeCount: 0,
+          audience: audienceMap.get(g.name),
+          adGroupNegatives: adGroupNegMap.get(g.name) ?? [],
+        };
+      })
+      // ZERO-VOLUME RULE: if every keyword in a group has 0 (or no) volume,
+      // the group has no media value — drop it. The PPC team can pick up
+      // related variants from the Seed Suggestions panel.
+      .filter((g) => g.keywords.length > 0),
+    seedSuggestions: seedSuggestions && seedSuggestions.length > 0 ? seedSuggestions : undefined,
   };
 }
 
@@ -2569,6 +2586,78 @@ Rules:
   } catch (err) {
     console.warn("[grand-plan] googleAdsTargeting failed:", err instanceof Error ? err.message : err);
     return { suggestedLocations: [], adGroupAudiences: [] };
+  }
+}
+
+/**
+ * PPC seed-phrase suggestions. Asks Anthropic for grouped variants of the
+ * client's core service terms — alternative names, common misspellings,
+ * synonyms, abbreviations, regional terms, slang — that the PPC team can
+ * plug into Keyword Planner / Search Term reports to expand the keyword
+ * pool. NOT keywords to add directly — these are research seeds.
+ */
+async function generateGoogleAdsSeedSuggestions(
+  anthropic: Anthropic,
+  sources: GrandPlanSources,
+  adGroups: AdGroup[],
+): Promise<{ theme: string; phrases: string[] }[]> {
+  // Pull the top keyword from each ad group as the anchor list.
+  const anchors = adGroups
+    .slice(0, 12)
+    .map((g) => {
+      const top = [...g.keywords].sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0))[0];
+      return top ? `${g.name} → "${top.keyword}"` : `${g.name}`;
+    })
+    .join("\n");
+  const geos = (sources.strategyBrain?.targetGeographies ?? []).join(", ") || detectLocations(sources.clientBrief) || "United Kingdom";
+
+  const prompt = `You are a senior PPC strategist at i3media. Generate seed-phrase research suggestions for the team to plug into Google Keyword Planner and Search Term reports.
+
+Client: ${sources.clientName}
+Sector: ${sources.sector ?? "general"}
+Markets: ${geos}
+Brief: ${(sources.clientBrief ?? "").slice(0, 1200) || "(none)"}
+
+Anchor terms (one per ad group):
+${anchors || "(none)"}
+
+Return ONLY valid JSON (no markdown fences) matching:
+{
+  "themes": [
+    { "theme": "short theme label (e.g. \\"Football camps — name variants\\")", "phrases": [ "phrase 1", "phrase 2", ... ] }
+  ]
+}
+
+Rules:
+- 4–7 themes total. Each theme groups RELATED variants of one core idea (a service, a product, an audience descriptor, a location).
+- Each theme has 8–18 phrases.
+- Cover at least: alternative names (e.g. "soccer camp" for "football camp"), common misspellings ("foot ball camps"), synonyms, abbreviations / informal terms (e.g. "kids footy"), British vs American variants where relevant ("colour" vs "color"), regional / dialect terms, hyphenated / unhyphenated forms, plural / singular splits.
+- These are RESEARCH SEEDS for the team to validate in Keyword Planner — not keywords to bid on directly. Cast a wider net than you would for live ad groups.
+- Do NOT repeat the anchor terms verbatim — focus on variants the strategist might miss.
+- British English in your theme labels. Phrases themselves can include American / regional spellings since that's the point.
+- No commentary, no markdown.`;
+
+  try {
+    const res = await withAnthropicRetry("googleAdsSeedSuggestions", () => anthropic.messages.create({
+      model: MODEL_PRIMARY(),
+      max_tokens: 2200,
+      messages: [{ role: "user", content: prompt }],
+    }));
+    const parsed = safeJsonParse<{ themes?: unknown }>(extractText(res), { themes: [] });
+    if (!Array.isArray(parsed.themes)) return [];
+    return parsed.themes
+      .filter((t): t is { theme?: unknown; phrases?: unknown } => !!t && typeof t === "object")
+      .map((t) => ({
+        theme: String(t.theme ?? "").trim(),
+        phrases: Array.isArray(t.phrases)
+          ? Array.from(new Set(t.phrases.map((p) => String(p).trim()).filter(Boolean))).slice(0, 24)
+          : [],
+      }))
+      .filter((t) => t.theme && t.phrases.length > 0)
+      .slice(0, 8);
+  } catch (err) {
+    console.warn("[grand-plan] googleAdsSeedSuggestions failed:", err instanceof Error ? err.message : err);
+    return [];
   }
 }
 
