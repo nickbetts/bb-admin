@@ -1527,6 +1527,62 @@ export type ContentStrategySection = "pageOptimisations" | "landingPages" | "blo
  *
  * Returns the partial ContentStrategyData so the caller can merge it.
  */
+
+/**
+ * Build a "PRIORITY PAGES — client requested" block for the page optimisations
+ * prompt. Forces the AI to emit a Page Optimisation entry for every URL the
+ * user pasted into the Grand Plan generate form, biased toward commercial /
+ * transactional intent and using the scraped page content as the rewrite
+ * anchor.
+ */
+function buildManualPagePriorityBlock(
+  section: ContentStrategySection,
+  intel?: {
+    url: string;
+    title?: string;
+    h1?: string;
+    metaDescription?: string;
+    bodySnippet?: string;
+    organicKeywords?: { keyword: string; position: number; volume: number; cpc: number }[];
+    fetchError?: string;
+  }[],
+): string {
+  if (section !== "pageOptimisations") return "";
+  const list = (intel ?? []).filter((p) => p && p.url);
+  if (!list.length) return "";
+
+  const lines = list.map((p, i) => {
+    const meta: string[] = [];
+    if (p.title) meta.push(`Title tag: "${p.title}"`);
+    if (p.h1) meta.push(`H1: "${p.h1}"`);
+    if (p.metaDescription) meta.push(`Meta description: "${p.metaDescription}"`);
+    if (p.bodySnippet) meta.push(`Body snippet: ${p.bodySnippet.slice(0, 240)}`);
+    if (p.organicKeywords?.length) {
+      const kws = p.organicKeywords.slice(0, 12).map((k) => `"${k.keyword}" (pos ${k.position}, vol ${k.volume.toLocaleString()}, CPC £${k.cpc.toFixed(2)})`).join("; ");
+      meta.push(`Currently ranks for: ${kws}`);
+    } else if (p.fetchError) {
+      meta.push(`(scrape error: ${p.fetchError})`);
+    } else {
+      meta.push(`(no organic keyword data found)`);
+    }
+    return `Page ${i + 1}:\n  URL: ${p.url}\n  ${meta.join("\n  ")}`;
+  }).join("\n\n");
+
+  return `\n\nPRIORITY PAGES — the client explicitly asked for these URLs to be optimised. They MUST appear FIRST in the pageOptimisations array, in the same order, before any other suggestions. For each priority page:
+- Use the scraped title / H1 / meta / body snippet shown below as the rewrite anchor — do NOT invent page content.
+- "intent" MUST be "transactional" or "commercial" unless the page is unambiguously informational.
+- "keywords": the "primary" keyword MUST be commercial / transactional (someone ready to buy, enquire, book, get a quote). Use the SEMrush keywords the page already ranks for as the source pool wherever possible — prioritise lifting an existing position 4–20 keyword over the line.
+- Include 2–4 secondary keywords (commercial variants) and 3–5 long-tail keywords (4+ words, conversational / question-led / location-modified).
+- "notes" MUST list 3–5 concrete on-page changes (rewrite H1 to lead with primary keyword; add FAQ schema; insert comparison block above the fold; tighten CTA copy; add trust signals; etc.) — specific to THIS page, not generic.
+- "impact" should be 4 or 5 for these pages (the client has already told us they matter).
+
+${lines}
+
+After the priority pages, you may add additional pageOptimisations entries from your own analysis of the wider data set.
+
+`;
+}
+
 export async function generateContentStrategySection(
   section: ContentStrategySection,
   domain: string,
@@ -1538,6 +1594,15 @@ export async function generateContentStrategySection(
   limits?: ContentStrategyLimits,
   competitorContexts?: { domain: string; pageContext: CompetitorPageContext }[],
   audienceNames?: string[],
+  manualPageIntel?: {
+    url: string;
+    title?: string;
+    h1?: string;
+    metaDescription?: string;
+    bodySnippet?: string;
+    organicKeywords?: { keyword: string; position: number; volume: number; cpc: number }[];
+    fetchError?: string;
+  }[],
 ): Promise<Partial<ContentStrategyData>> {
   const t0 = Date.now();
   console.log(`[content-strategy:${section}] start — domain=${domain}`);
@@ -1617,7 +1682,7 @@ export async function generateContentStrategySection(
   const sectionPrompt = `${basePrompt}
 
 IMPORTANT: You are generating ONLY the "${section}" section of the strategy. The other sections will be generated in separate calls.
-${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item to 1-3 of these by exact name in the "targetAudiences" array): ${audienceNames.map((n) => `"${n}"`).join(", ")}\n` : ""}${SECTION_SCHEMAS[section]}`;
+${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item to 1-3 of these by exact name in the "targetAudiences" array): ${audienceNames.map((n) => `"${n}"`).join(", ")}\n` : ""}${buildManualPagePriorityBlock(section, manualPageIntel)}${SECTION_SCHEMAS[section]}`;
   // Scale max_tokens by section size. pageOptimisations can be huge on large sites
   // (390-page sitemap → 50+ suggestions), and blogPosts + roadmap is always the
   // largest section. landingPages is typically smaller.

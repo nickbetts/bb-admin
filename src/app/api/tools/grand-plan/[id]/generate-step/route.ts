@@ -17,9 +17,11 @@ import {
   type CustomerVoiceData,
   type DataAvailability,
   type StrategyBrain,
+  type ManualPageIntel,
   runWebSearchResearch,
 } from "@/lib/grand-plan-generator";
 import { validateCoherence } from "@/lib/grand-plan-coherence";
+import { fetchPageSignals } from "@/lib/landing-page-analyzer";
 import { renderGrandPlanHtml } from "@/lib/grand-plan-html-template";
 import { suggestAdGroups, researchKeywords } from "@/lib/keyword-planner-pipeline";
 import { generateContentStrategy, generateContentStrategySection, collectSemrushData, runOnPageAudit, type ContentStrategyData } from "@/lib/content-strategy-generator";
@@ -35,7 +37,7 @@ import {
   getGA4TopPages,
 } from "@/lib/ga4";
 import { getGSCTopQueries, getGSCTopPages } from "@/lib/search-console";
-import { getDomainOverview, getCompetitors, getTopOrganicKeywords, getBacklinks } from "@/lib/semrush";
+import { getDomainOverview, getCompetitors, getTopOrganicKeywords, getBacklinks, getUrlOrganicKeywords } from "@/lib/semrush";
 
 // 800s = Vercel Pro maximum. The heaviest steps (prepare-content with Claude
 // Opus 32k tokens, prepare-lp-refine with multi-pass critique) can exceed
@@ -115,6 +117,8 @@ export async function POST(
     channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number };
     aiModel?: GrandPlanModelChoice;
     semrushRegion?: string;
+    /** User-supplied URLs for SEO Quick Wins / Page Optimisations focus. */
+    manualPageUrls?: string[];
   }>(plan.configJson, {});
 
   const clientName = plan.client?.name || plan.proposal?.clientName || "Client";
@@ -282,6 +286,12 @@ export async function POST(
         .filter(Boolean)
         .slice(0, 6);
 
+      // Pull the manual page intel (scraped + SEMrush) stashed by
+      // prepare-research so the page optimisations call can prioritise the
+      // URLs the client explicitly asked us to optimise.
+      const stashForContent = safeJsonParse<(GrandPlanData & { _researchData?: AccountResearchData }) | null>(plan.planDataJson, null);
+      const manualIntelForContent = stashForContent?._researchData?.manualPageIntel;
+
       // ── Legacy single-shot step (kept for backwards compatibility) ──────────
       if (step === "prepare-content") {
         await setStatus(id, "Generating content strategy with Claude Opus...");
@@ -313,7 +323,7 @@ export async function POST(
         console.log(`[grand-plan:${id}] prepare-content-1 start — domain=${csDomain} db=${csDatabase}`);
         await setStatus(id, "Generating page optimisations (1/3)...");
         const partial = await generateContentStrategySection(
-          "pageOptimisations", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null, undefined, undefined, audienceNames,
+          "pageOptimisations", csDomain, clientName, csBrief, csCompetitors, csDatabase, searchConsoleSiteUrl ?? null, undefined, undefined, audienceNames, manualIntelForContent,
         );
         console.log(`[grand-plan:${id}] prepare-content-1 AI done in ${Date.now() - t1}ms — pageOpts=${partial.pageOptimisations?.length ?? 0}`);
         const now = new Date();
@@ -534,6 +544,44 @@ export async function POST(
         };
       }));
 
+      // Per-URL intel for the user-supplied "optimise these pages" list.
+      // Each URL is scraped (title / H1 / meta / body snippet) and run
+      // through SEMrush url_organic to pull the keywords that page already
+      // ranks for. Both calls are cached for 7 days. We cap at 10 URLs
+      // upstream on the form, so this is bounded work.
+      const manualUrls = (config.manualPageUrls ?? [])
+        .map((u) => (u || "").trim())
+        .filter((u) => /^https?:\/\//i.test(u))
+        .slice(0, 10);
+      const semDb = config.semrushRegion ?? "uk";
+      const manualPageIntel: ManualPageIntel[] = manualUrls.length
+        ? await Promise.all(manualUrls.map(async (url) => {
+            const [signals, kws] = await Promise.all([
+              safe(`scrape:${url}`, () => withApiCache(`gp-research:scrape:${url}`, cacheTtlHours, () => fetchPageSignals(url))),
+              safe(`url-kws:${url}:${semDb}`, () => withApiCache(`gp-research:url-kws:${url}:${semDb}`, cacheTtlHours, () => getUrlOrganicKeywords(url, semDb, 25))),
+            ]);
+            const intel: ManualPageIntel = { url };
+            if (signals) {
+              intel.title = signals.title;
+              intel.metaDescription = signals.metaDescription;
+              intel.h1 = (signals.h1Tags ?? [])[0];
+              intel.bodySnippet = (signals.bodySnippets ?? []).join(" ").slice(0, 320);
+              if (signals.fetchError) intel.fetchError = signals.fetchError;
+            } else {
+              intel.fetchError = "scrape failed";
+            }
+            if (Array.isArray(kws) && kws.length) {
+              intel.organicKeywords = kws.slice(0, 25).map((k) => ({
+                keyword: k.keyword,
+                position: k.position,
+                volume: k.searchVolume,
+                cpc: k.cpc,
+              }));
+            }
+            return intel;
+          }))
+        : [];
+
       const research: AccountResearchData = {
         ga4: propertyId ? {
           propertyId,
@@ -580,6 +628,7 @@ export async function POST(
         } : undefined,
         competitorData: competitorEnriched.length ? competitorEnriched : undefined,
         sitemapPages: Array.isArray(sitemapPagesRaw) ? sitemapPagesRaw.slice(0, 200) : undefined,
+        manualPageIntel: manualPageIntel.length ? manualPageIntel : undefined,
       };
 
       // Stash on planDataJson under a transient key. Stripped at assemble time.
@@ -594,6 +643,7 @@ export async function POST(
         ga4: !!research.ga4,
         gsc: !!research.searchConsole,
         competitors: research.competitorData?.length ?? 0,
+        manualPages: research.manualPageIntel?.length ?? 0,
       } });
     }
 

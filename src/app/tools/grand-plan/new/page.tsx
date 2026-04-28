@@ -98,6 +98,12 @@ export default function NewGrandPlanPage() {
   const [monthlyBudget, setMonthlyBudget] = useState("");
   const [channelBudgets, setChannelBudgets] = useState<Record<string, string>>({});
 
+  // Manual page URLs — pages the user explicitly wants the AI + SEMrush to
+  // analyse for SEO Quick Wins and Page Optimisations (commercial /
+  // transactional intent keyword recommendations: primary, secondary,
+  // long-tail).
+  const [manualPageUrlsText, setManualPageUrlsText] = useState("");
+
   // Audiences — chip list with optional AI auto-populate from the brief.
   const [audiences, setAudiences] = useState<AudienceSuggestion[]>([]);
   const [suggestingAudiences, setSuggestingAudiences] = useState(false);
@@ -299,6 +305,16 @@ export default function NewGrandPlanPage() {
           source: c.source,
         }));
 
+      // Parse the manual page URLs textarea: one URL per line, trim, dedupe,
+      // keep only http(s) URLs, cap at 10 to stay within the SEMrush quota
+      // and keep the prepare-research step inside the lambda budget.
+      const manualPageUrls = Array.from(new Set(
+        manualPageUrlsText
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter((line) => /^https?:\/\//i.test(line)),
+      )).slice(0, 10);
+
       const res = await fetch("/api/tools/grand-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -317,6 +333,7 @@ export default function NewGrandPlanPage() {
             postsPerMonth,
             socialPostsPerWeek,
             ...(sector ? { sector } : {}),
+            ...(manualPageUrls.length ? { manualPageUrls } : {}),
             ...(website ? { kwBrief: { website, brief, monthlyBudget: channelBudgets.googleAds || monthlyBudget } } : {}),
             ...(domain ? { contentBrief: { domain, brief, competitors: finalCompetitors.map((c) => c.domain).join(",") } } : {}),
             ...(Object.keys(channelBudgets).length > 0 ? { channelBudgets: Object.fromEntries(
@@ -453,6 +470,24 @@ export default function NewGrandPlanPage() {
                 onChange={(e) => setBrief(e.target.value)}
                 placeholder="Describe the business, their goals, campaign focus, and any pain points. This single brief powers keywords, ads, content, and the landing page."
               />
+            </div>
+
+            {/* Manual page URLs to optimise — drives SEO Quick Wins + Page Optimisations
+                with per-page SEMrush keyword data and AI commercial-intent recommendations. */}
+            <div>
+              <label className="form-label">
+                Pages to optimise (one URL per line)
+              </label>
+              <textarea
+                className="form-input form-textarea"
+                value={manualPageUrlsText}
+                onChange={(e) => setManualPageUrlsText(e.target.value)}
+                placeholder={"https://www.example.com/services/example-service/\nhttps://www.example.com/locations/london/"}
+                style={{ minHeight: 90, fontFamily: "var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)", fontSize: 12.5 }}
+              />
+              <div style={{ fontSize: 11.5, color: "var(--mid)", marginTop: 4, lineHeight: 1.45 }}>
+                We&apos;ll scrape each page (title, H1, meta, body), pull the SEMrush keywords each one currently ranks for, and bias the SEO Quick Wins and Page Optimisations toward commercial / transactional intent — primary, secondary, long-tail. Up to 10 URLs.
+              </div>
             </div>
 
             {/* Target Audiences — chips with optional Suggest from brief */}

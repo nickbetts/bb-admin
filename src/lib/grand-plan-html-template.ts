@@ -1296,8 +1296,11 @@ type SeoFoundationsData = {
     url: string;
     pageTitle?: string;
     rationale?: string;
+    intent?: string;
+    keywords?: { primary?: string; secondary?: string[]; longTail?: string[] };
     newTitleTag?: string;
     newMetaDescription?: string;
+    onPageSuggestions?: string[];
     crossLinksToAdd?: { targetUrl: string; anchorText: string; rationale?: string }[];
     estimatedTimeToImpact?: string;
     effort?: string;
@@ -1366,17 +1369,32 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
         const title = q.newTitleTag ?? "";
         const meta = q.newMetaDescription ?? "";
         const cross = q.crossLinksToAdd ?? [];
+        const onPage = q.onPageSuggestions ?? [];
+        const kw = q.keywords ?? {};
+        const secondary = kw.secondary ?? [];
+        const longTail = kw.longTail ?? [];
+        const intentClass = (q.intent || "").toLowerCase();
         return `
         <div class="qw-card">
           <div class="qw-head">
             <a class="qw-url" href="${esc(linkUrl(q.url))}" target="_blank" rel="noopener">${esc(q.url)}</a>
             <div class="qw-badges">
+              ${q.intent ? `<span class="qw-badge qw-intent qw-intent-${esc(intentClass)}">${esc(q.intent)} intent</span>` : ""}
               ${q.effort ? `<span class="qw-badge qw-effort qw-effort-${esc(q.effort)}">${esc(q.effort)} effort</span>` : ""}
               ${q.estimatedTimeToImpact ? `<span class="qw-badge qw-time">${esc(q.estimatedTimeToImpact)}</span>` : ""}
             </div>
           </div>
           ${q.pageTitle ? `<div class="qw-page-title">${esc(q.pageTitle)}</div>` : ""}
           ${q.rationale ? `<p class="qw-rationale">${esc(q.rationale)}</p>` : ""}
+          ${kw.primary ? `
+          <div class="qw-row">
+            <div class="qw-row-label">Target keywords</div>
+            <div class="qw-row-val">
+              <div class="qw-kw-line"><span class="qw-kw-label qw-kw-primary">Primary</span> <strong>${esc(kw.primary)}</strong></div>
+              ${secondary.length ? `<div class="qw-kw-line"><span class="qw-kw-label qw-kw-secondary">Secondary</span> ${secondary.map((k) => `<span class="qw-kw-chip">${esc(k)}</span>`).join(" ")}</div>` : ""}
+              ${longTail.length ? `<div class="qw-kw-line"><span class="qw-kw-label qw-kw-longtail">Long-tail</span> ${longTail.map((k) => `<span class="qw-kw-chip qw-kw-chip-lt">${esc(k)}</span>`).join(" ")}</div>` : ""}
+            </div>
+          </div>` : ""}
           ${title ? `
           <div class="qw-row">
             <div class="qw-row-label">New title tag</div>
@@ -1386,6 +1404,13 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
           <div class="qw-row">
             <div class="qw-row-label">New meta description</div>
             <div class="qw-row-val">${esc(meta)} <span class="char-badge ${meta.length <= 160 ? "char-ok" : "char-over"}">${meta.length}/160</span></div>
+          </div>` : ""}
+          ${onPage.length ? `
+          <div class="qw-row">
+            <div class="qw-row-label">On-page suggestions</div>
+            <ul class="qw-onpage-list">
+              ${onPage.map((s) => `<li>${esc(s)}</li>`).join("")}
+            </ul>
           </div>` : ""}
           ${cross.length ? `
           <div class="qw-row">
@@ -2226,6 +2251,20 @@ a{color:var(--accent);text-decoration:none}
 .qw-effort-medium{background:#fef3c7;color:#92400e}
 .qw-effort-high{background:#fee2e2;color:#991b1b}
 .qw-time{background:#eef2ff;color:#4338ca}
+.qw-intent-transactional{background:#dcfce7;color:#166534}
+.qw-intent-commercial{background:#cffafe;color:#155e75}
+.qw-intent-informational{background:#fef3c7;color:#92400e}
+.qw-intent-navigational{background:#e5e7eb;color:#374151}
+.qw-kw-line{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;width:100%;line-height:1.6}
+.qw-kw-line+.qw-kw-line{margin-top:.3rem}
+.qw-kw-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:4px;flex-shrink:0}
+.qw-kw-primary{background:#fee2e2;color:#991b1b}
+.qw-kw-secondary{background:#dbeafe;color:#1e40af}
+.qw-kw-longtail{background:#ede9fe;color:#5b21b6}
+.qw-kw-chip{display:inline-block;font-size:11.5px;color:var(--text);background:#fff;border:1px solid var(--border);padding:1px 7px;border-radius:4px}
+.qw-kw-chip-lt{font-style:italic;color:var(--text-light)}
+.qw-onpage-list{list-style:disc;margin:.15rem 0 0;padding:0 0 0 1.2rem;display:flex;flex-direction:column;gap:.3rem}
+.qw-onpage-list>li{font-size:12.5px;color:var(--text);line-height:1.5}
 .qw-page-title{font-size:14.5px;font-weight:600;color:var(--heading);line-height:1.35}
 .qw-rationale{font-size:12.5px;color:var(--text-light);margin:0;font-style:italic;line-height:1.55;padding-left:.65rem;border-left:2px solid var(--border)}
 .qw-row{display:flex;flex-direction:column;gap:.3rem}

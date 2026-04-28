@@ -163,10 +163,20 @@ interface SeoQuickWinPage {
   pageTitle?: string;
   /** Why this page is a quick win (e.g. "Ranks position 6 for 'X' — light edits could push to top 3"). */
   rationale: string;
+  /** Search intent classification — bias the primary keyword toward commercial / transactional. */
+  intent?: "transactional" | "commercial" | "informational" | "navigational";
+  /** Keyword breakdown the rewrites should target. */
+  keywords?: {
+    primary: string;
+    secondary: string[];
+    longTail: string[];
+  };
   /** Rewritten <title> (≤ 60 chars). */
   newTitleTag: string;
   /** Rewritten meta description (≤ 160 chars). */
   newMetaDescription: string;
+  /** Concrete on-page changes beyond the title/meta (H1 rewrite, FAQ block, schema, CTAs, etc.). */
+  onPageSuggestions?: string[];
   /** 2–4 cross-links to add from THIS page to other pages on the site. */
   crossLinksToAdd: { targetUrl: string; anchorText: string; rationale?: string }[];
   estimatedTimeToImpact?: "1–2 weeks" | "3–4 weeks" | "1–2 months";
@@ -414,6 +424,25 @@ export interface AccountResearchData {
   }[];
   /** URLs harvested from the client's sitemap.xml — used to ground SEO recommendations to real pages. */
   sitemapPages?: string[];
+  /**
+   * User-supplied "please optimise these specific pages" URLs, with the
+   * page scraped (title / H1 / meta / body snippet) and the keywords each
+   * page already ranks for via SEMrush. Drives the priority list for SEO
+   * Quick Wins and Page Optimisations with a strong commercial /
+   * transactional intent bias.
+   */
+  manualPageIntel?: ManualPageIntel[];
+}
+
+/** Per-URL intel for a manually flagged "optimise this page" request. */
+export interface ManualPageIntel {
+  url: string;
+  title?: string;
+  metaDescription?: string;
+  h1?: string;
+  bodySnippet?: string;
+  organicKeywords?: { keyword: string; position: number; volume: number; cpc: number }[];
+  fetchError?: string;
 }
 
 /** Customer-voice research harvested via Anthropic web search. */
@@ -1303,7 +1332,45 @@ function buildSharedContextBlocks(sources: GrandPlanSources, directiveKey?: keyo
     + buildContentLimitsBlock(sources)
     + buildCampaignPeriodsBlock(sources)
     + buildAccountDataBlock(sources)
+    + buildManualPageIntelBlock(sources)
     + buildCustomerVoiceBlock(sources);
+}
+
+/**
+ * Build the "PRIORITY PAGES" block — the user explicitly flagged these URLs
+ * on the generate form. Surfaces the scraped title / H1 / meta and current
+ * organic keywords so generators (Quick Wins, SEO Foundations, Page
+ * Optimisations) can target commercial / transactional intent against
+ * pages the client actually wants to move.
+ */
+function buildManualPageIntelBlock(sources: GrandPlanSources): string {
+  const pages = sources.accountData?.manualPageIntel ?? [];
+  if (!pages.length) return "";
+  const lines = pages.map((p, i) => {
+    const meta: string[] = [`URL: ${p.url}`];
+    if (p.title) meta.push(`Title tag: "${p.title}"`);
+    if (p.h1) meta.push(`H1: "${p.h1}"`);
+    if (p.metaDescription) meta.push(`Meta description: "${p.metaDescription}"`);
+    if (p.bodySnippet) meta.push(`Body snippet: ${p.bodySnippet.slice(0, 240)}`);
+    if (p.organicKeywords?.length) {
+      const kws = p.organicKeywords.slice(0, 12).map((k) => `"${k.keyword}" (pos ${k.position}, vol ${k.volume.toLocaleString()}, CPC £${k.cpc.toFixed(2)})`).join("; ");
+      meta.push(`Currently ranks for: ${kws}`);
+    } else if (p.fetchError) {
+      meta.push(`(scrape error: ${p.fetchError})`);
+    } else {
+      meta.push(`(no organic keyword data found)`);
+    }
+    return `Page ${i + 1}: ${meta.join("\n  ")}`;
+  }).join("\n\n");
+  return `\n\n<priority_pages>
+PRIORITY PAGES — the client explicitly asked us to optimise these URLs (paste-in list from the brief). Treat these as the FIRST priority for any SEO Quick Wins and Page Optimisations work. Recommendations for these pages MUST:
+- Use the actual title / H1 / meta / body content shown below as the rewrite anchor (do not invent page content).
+- Lead with COMMERCIAL or TRANSACTIONAL intent keywords (people ready to buy / enquire / book). Push informational keywords to a secondary role.
+- Where possible, cite the SEMrush keywords the page already ranks for and propose a clear "primary / secondary / long-tail" tier.
+- Suggest concrete on-page changes (title tag, meta description, H1, intra-page sections, CTA copy, schema) — not generic advice.
+
+${lines}
+</priority_pages>`;
 }
 
 function buildStrategyBrainBlock(sources: GrandPlanSources, directiveKey?: keyof StrategyBrain["directives"]): string {
@@ -2925,11 +2992,13 @@ async function generateSeoFoundations(
   // Combine sitemap pages (authoritative) with GA4 top pages.
   const sitemapUrls = sources.accountData?.sitemapPages ?? [];
   const ga4Pages = sources.accountData?.ga4?.topPages ?? [];
+  const manualUrls = (sources.accountData?.manualPageIntel ?? []).map((p) => p.url);
   const cleanWebsite = website.replace(/\/$/, "");
   const ga4Paths = ga4Pages.map((p) => p.path.startsWith("http") ? p.path : `${cleanWebsite}${p.path.startsWith("/") ? p.path : `/${p.path}`}`);
-  const knownPages = [...new Set([...sitemapUrls, ...ga4Paths])].slice(0, 80);
+  // Manual URLs go first so they survive the slice cap and are clearly the priority list.
+  const knownPages = [...new Set([...manualUrls, ...sitemapUrls, ...ga4Paths])].slice(0, 80);
   const knownPagesBlock = knownPages.length > 0
-    ? `KNOWN PAGES (the ONLY URLs you may use anywhere in the response):\n${knownPages.map((u) => `- ${u}`).join("\n")}`
+    ? `KNOWN PAGES (the ONLY URLs you may use anywhere in the response):\n${knownPages.map((u) => `- ${u}${manualUrls.includes(u) ? "  ← PRIORITY (client requested)" : ""}`).join("\n")}`
     : `KNOWN PAGES: none available — DO NOT INVENT URLs. Return empty quickWins, empty internalLinking.hubs and empty linkBuilding.targets rather than fabricate URLs.`;
 
   const prompt = `${STYLE_RULES}
@@ -2947,8 +3016,15 @@ Return ONLY valid JSON (no markdown fences) matching this schema:
       "url": string,
       "pageTitle": string,
       "rationale": string,
+      "intent": "transactional" | "commercial" | "informational" | "navigational",
+      "keywords": {
+        "primary": string,
+        "secondary": [ string ],
+        "longTail": [ string ]
+      },
       "newTitleTag": string,
       "newMetaDescription": string,
+      "onPageSuggestions": [ string ],
       "crossLinksToAdd": [ { "targetUrl": string, "anchorText": string, "rationale": string } ],
       "estimatedTimeToImpact": "1–2 weeks" | "3–4 weeks" | "1–2 months",
       "effort": "low" | "medium" | "high"
@@ -2988,8 +3064,14 @@ Hard rules:
 - ABSOLUTE URL RULE: Every "url", "targetUrl", "fromUrl" and "hubUrl" field MUST be copied verbatim from the KNOWN PAGES list below. Do NOT invent, guess, modify or extrapolate URLs. If you cannot find a suitable known page for a quick win, hub, or link-building target, OMIT that entry rather than fabricate a URL. Returning fewer entries that are accurate is far better than the requested count with invented URLs.
 - "intro": one paragraph (2 sentences) framing the SEO foundations work as the multiplier on top of the content cluster.
 - "quickWins": UP TO 6 entries (fewer is fine if KNOWN PAGES is short). Pick existing commercial / service / category pages from the KNOWN PAGES list — not blog posts.
-  - "newTitleTag" ≤ 60 characters, primary keyword near the start, brand suffix if it fits.
-  - "newMetaDescription" ≤ 160 characters, ends with a soft CTA.
+  - PRIORITY ORDER: Any pages marked "← PRIORITY (client requested)" in the KNOWN PAGES list MUST appear in quickWins first, in the same order. Use the <priority_pages> intel block (page title / H1 / meta / current ranking keywords) as the rewrite anchor.
+  - INTENT BIAS: Prefer transactional and commercial-intent keywords (people ready to buy, enquire, get a quote, book) for the "primary" keyword on every quick win — especially the priority pages. Push purely informational keywords into "longTail" only.
+  - "keywords.primary": ONE keyword. Must be commercial / transactional unless the page is unambiguously informational. If the page already ranks for related keywords (see <priority_pages>), choose a primary that lifts an existing position 4–20 keyword over the line.
+  - "keywords.secondary": 2–4 supporting keywords (mix of commercial and longer-tail commercial variants).
+  - "keywords.longTail": 3–5 long-tail variants (4+ words, conversational / question-led / location-modified).
+  - "newTitleTag" ≤ 60 characters, MUST contain the primary keyword near the start, brand suffix if it fits.
+  - "newMetaDescription" ≤ 160 characters, MUST contain the primary keyword and end with a soft CTA.
+  - "onPageSuggestions": 3–5 concrete on-page changes beyond the title/meta — eg "Add a comparison table for X vs Y above the fold", "Insert FAQ schema with 4 questions", "Rewrite H1 to lead with primary keyword", "Add trust block (logos / testimonials) under hero". Be specific to this page, not generic.
   - "crossLinksToAdd": EXACTLY 3 cross-links per page, pointing to OTHER URLs from the KNOWN PAGES list. Anchor text must be natural prose (not bare keywords stuffed in).
 - "internalLinking.hubs": UP TO 4 hub pages, each chosen from KNOWN PAGES. A hub is a high-commercial-value page that should attract internal links from supporting pages.
   - Each hub has 4–6 inboundLinks (other URLs from KNOWN PAGES that should link to it). Mix anchor text — do NOT repeat the same exact-match anchor across all 4–6 inbound links.

@@ -116,6 +116,47 @@ export async function getTopOrganicKeywords(
   });
 }
 
+/**
+ * Fetch the organic keywords a single URL ranks for. Uses SEMrush
+ * `url_organic` report so the data is page-level, not domain-level. Useful
+ * when the user has called out a specific page they want optimised: the
+ * AI can then ground primary / secondary / long-tail keyword
+ * recommendations against the keywords that page already ranks for.
+ */
+export async function getUrlOrganicKeywords(
+  url: string,
+  database: string = "uk",
+  limit: number = 25,
+): Promise<SemrushKeywordData[]> {
+  const apiKey = getApiKey();
+  const params = new URLSearchParams({
+    type: "url_organic",
+    key: apiKey,
+    export_columns: "Ph,Po,Nq,Cp,Co,Tr",
+    url,
+    database,
+    display_limit: limit.toString(),
+    display_sort: "tr_desc",
+  });
+
+  const response = await axios.get(`${SEMRUSH_BASE_URL}/?${params.toString()}`);
+  const lines = response.data.trim().split("\n");
+  if (lines.length < 2) return [];
+
+  return lines.slice(1).map((line: string) => {
+    const [keyword, position, searchVolume, cpc, , trafficPercent] = line.split(";");
+    return {
+      keyword: keyword || "",
+      position: parseInt(position) || 0,
+      previousPosition: 0,
+      searchVolume: parseInt(searchVolume) || 0,
+      cpc: parseFloat(cpc) || 0,
+      url,
+      trafficPercent: parseFloat(trafficPercent) || 0,
+    };
+  });
+}
+
 export async function getRankMovers(
   domain: string,
   database: string = "uk",
