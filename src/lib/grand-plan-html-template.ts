@@ -102,7 +102,7 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
   // are no longer rendered. Channel sections carry the strategy through directly.
   const hasPaidSearch = !!s.googleAdsCampaigns;
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
-  const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial || s.exampleArticles?.length;
+  const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial;
   const hasResearch = s.competitorIntel?.length;
   const hasCommercial = s.servicesInvestment || s.emailMarketing;
 
@@ -121,7 +121,6 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
     if (s.seoFoundations) navItems.push({ id: "seo-foundations", label: "SEO Foundations" });
     if (s.contentCalendar?.length) navItems.push({ id: "content-calendar", label: "Content Calendar" });
     if (s.organicSocial) navItems.push({ id: "organic-social", label: "Organic Social" });
-    if (s.exampleArticles?.length) navItems.push({ id: "example-articles", label: "Example Articles" });
   }
   if (hasResearch) {
     addChapter("Research");
@@ -170,7 +169,6 @@ export function renderGrandPlanHtml(plan: GrandPlanData, isPublicView = false): 
     if (blogs) contentStats.push({ num: String(blogs), label: "Blog Posts" });
   }
   if (s.contentCalendar?.length) contentStats.push({ num: String(s.contentCalendar.length), label: "Calendar Months" });
-  if (s.exampleArticles?.length) contentStats.push({ num: String(s.exampleArticles.length), label: "Example Articles" });
 
   const organicStats: StatItem[] = [];
   if (s.organicSocial?.pillars?.length) organicStats.push({ num: String(s.organicSocial.pillars.length), label: "Social Pillars" });
@@ -336,7 +334,7 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
   // Strategy chapter (Strategy Plan + Quick Wins) removed — channel chapters open the plan directly.
   const hasPaidSearch = !!s.googleAdsCampaigns;
   const hasPaidSocial = s.metaCampaigns?.length || s.linkedInAds?.length;
-  const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial || s.exampleArticles?.length;
+  const hasContent = s.contentStrategy || s.contentCalendar?.length || s.organicSocial;
   const hasResearch = s.competitorIntel?.length;
   const hasCommercial = s.servicesInvestment || s.emailMarketing;
 
@@ -367,7 +365,6 @@ function buildChapteredSections(s: any, clientName: string, brief?: string, camp
     if (s.seoFoundations) parts.push(renderSeoFoundations(s.seoFoundations));
     if (s.contentCalendar?.length) parts.push(renderContentCalendar(s.contentCalendar));
     if (s.organicSocial) parts.push(renderOrganicSocial(s.organicSocial, sectionIntros?.organicSocial));
-    if (s.exampleArticles?.length) parts.push(renderExampleArticles(s.exampleArticles));
   }
 
   if (hasResearch) {
@@ -607,11 +604,6 @@ function renderTldrView(plan: GrandPlanData): string {
     ));
   }
 
-  // Example Articles
-  if (s.exampleArticles?.length) {
-    const titles = s.exampleArticles.slice(0, 5).map((a) => `<li class="tldr-row"><span class="tldr-row-text">${esc(a.title)}</span></li>`).join("");
-    cards.push(card("example-articles", "Example Articles", `<ul class="tldr-list">${titles}</ul>`, `${s.exampleArticles.length} drafted`));
-  }
 
   // Keyword Research TLDR card removed — keywords now live inside the Google Ads section.
 
@@ -1744,42 +1736,6 @@ function renderOrganicSocial(data: any, intro?: string): string {
     </section>`;
 }
 
-function renderExampleArticles(articles: { title: string; html: string; seoMeta?: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } }[]): string {
-  const articlesHtml = articles
-    .map((a, i) => {
-      const seoBlock = a.seoMeta ? `
-        <div class="seo-meta-block">
-          <div class="seo-meta-title">SEO Metadata</div>
-          <div class="seo-meta-grid">
-            ${a.seoMeta.titleTag ? `<div class="seo-meta-item"><span class="seo-meta-label">Title Tag</span><span class="seo-meta-value">${esc(a.seoMeta.titleTag)}<span class="char-badge ${a.seoMeta.titleTag.length <= 60 ? "char-ok" : "char-over"}">${a.seoMeta.titleTag.length}/60</span></span></div>` : ""}
-            ${a.seoMeta.metaDescription ? `<div class="seo-meta-item"><span class="seo-meta-label">Meta Description</span><span class="seo-meta-value">${esc(a.seoMeta.metaDescription)}<span class="char-badge ${a.seoMeta.metaDescription.length <= 160 ? "char-ok" : "char-over"}">${a.seoMeta.metaDescription.length}/160</span></span></div>` : ""}
-            ${a.seoMeta.primaryKeyword ? `<div class="seo-meta-item"><span class="seo-meta-label">Primary Keyword</span><span class="seo-meta-value">${esc(a.seoMeta.primaryKeyword)}</span></div>` : ""}
-            ${a.seoMeta.secondaryKeywords?.length ? `<div class="seo-meta-item"><span class="seo-meta-label">Secondary Keywords</span><span class="seo-meta-value">${a.seoMeta.secondaryKeywords.map(k => `<span class="seo-kw-chip">${esc(k)}</span>`).join(" ")}</span></div>` : ""}
-          </div>
-        </div>` : "";
-      return `
-    <div class="example-article">
-      <div class="article-header" onclick="this.parentElement.classList.toggle('open')">
-        <span class="article-num">${i + 1}</span>
-        <span class="article-title">${esc(a.title)}</span>
-        <span class="article-badge">Example</span>
-        <span class="ag-chevron">+</span>
-      </div>
-      <div class="article-body">${seoBlock}${a.html}</div>
-    </div>`;
-    })
-    .join("\n");
-
-  return `
-    <section id="example-articles" class="section alt">
-      <div class="section-inner">
-        <div class="section-kicker">Content Examples</div>
-        <h2>Example Articles</h2>
-      <p class="section-intro">These are example articles showing the quality and style of content this plan will deliver. Click to expand.</p>
-      ${articlesHtml}
-      </div>
-    </section>`;
-}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderServicesInvestment(data: any): string {

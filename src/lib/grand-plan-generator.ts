@@ -588,7 +588,6 @@ export interface GrandPlanData {
     seoFoundations?: SeoFoundations;
     contentCalendar?: ContentCalendarMonth[];
     organicSocial?: OrganicSocialPlan;
-    exampleArticles?: { title: string; html: string; seoMeta?: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } }[];
     servicesInvestment?: {
       services: ServiceItem[];
       timeline: { phase: string; items: string[] }[] | TimelinePhase[];
@@ -992,7 +991,6 @@ export async function generateGrandPlan(
   if (isEnabled("metaCampaigns") && sources.keywordResearch) sectionNames.push("Meta Campaigns");
   if (isEnabled("contentCalendar")) sectionNames.push("Content Calendar");
   if (isEnabled("organicSocial")) sectionNames.push("Organic Social");
-  if (isEnabled("exampleArticles") && contentData) sectionNames.push("Example Articles");
   if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0) sectionNames.push("Ad Copy");
   if (isEnabled("googleAdsCampaigns") && sources.keywordResearch && adGroups.length > 0) sectionNames.push("Negative Keywords");
   if (isEnabled("emailMarketing")) sectionNames.push("Email Marketing");
@@ -1022,7 +1020,7 @@ export async function generateGrandPlan(
   if (onProgress) await onProgress(`Generating ${total} AI sections...`);
 
   // Batch 1: core sections (errors are isolated — one failure does not abort the rest)
-  const [executiveSummary, metaCampaigns, contentCalendar, organicSocial, exampleArticles, , aiNegatives, aiContentClusters] =
+  const [executiveSummary, metaCampaigns, contentCalendar, organicSocial, , aiNegatives, aiContentClusters] =
     await Promise.all([
       isEnabled("executiveSummary")
         ? runSection("Executive Summary", "executiveSummary", () => generateExecutiveSummary(anthropic, contextSummary, sources))
@@ -1035,9 +1033,6 @@ export async function generateGrandPlan(
         : Promise.resolve(undefined),
       isEnabled("organicSocial")
         ? runSection("Organic Social", "organicSocial", () => generateOrganicSocial(anthropic, contextSummary, contentData, sources))
-        : Promise.resolve(undefined),
-      isEnabled("exampleArticles") && contentData
-        ? runSection("Example Articles", "exampleArticles", () => generateExampleArticles(anthropic, contextSummary, contentData, sources))
         : Promise.resolve(undefined),
       // Ad copy generation removed — Google Ads is now research-only (keywords +
       // negatives + ad-group structure). The PPC team writes the actual copy.
@@ -1143,7 +1138,6 @@ export async function generateGrandPlan(
       seoFoundations,
       contentCalendar,
       organicSocial,
-      exampleArticles,
       servicesInvestment,
       emailMarketing: emailMarketing?.value,
       linkedInAds: linkedInAds?.value,
@@ -1919,129 +1913,6 @@ ${context}${buildSharedContextBlocks(sources, "organicSocial")}`,
   return plan;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function generateExampleArticles(anthropic: Anthropic, context: string, contentData: any, sources: GrandPlanSources): Promise<{ title: string; html: string; seoMeta?: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } }[]> {
-  // Pick up to 3 blog topics, prioritising audience coverage over list order.
-  // If blog posts carry targetAudiences, take the first post per distinct audience
-  // so the samples span the audience set rather than clustering on one persona.
-  const blogPosts = (contentData?.blogPosts ?? []) as { title?: string; keyword?: string; targetAudiences?: string[]; brief?: string; notes?: string; intent?: string; keywords?: { keyword: string }[] }[];
-  const seenAudiences = new Set<string>();
-  const picked: typeof blogPosts = [];
-  for (const post of blogPosts) {
-    const audKey = (post.targetAudiences?.[0] ?? "").trim().toLowerCase();
-    if (audKey && !seenAudiences.has(audKey)) {
-      seenAudiences.add(audKey);
-      picked.push(post);
-      if (picked.length >= 3) break;
-    }
-  }
-  // Top-up with remaining posts in original order if we have fewer than 3.
-  for (const post of blogPosts) {
-    if (picked.length >= 3) break;
-    if (!picked.includes(post)) picked.push(post);
-  }
-  const topicsToGenerate = picked.slice(0, 3);
-
-  if (topicsToGenerate.length === 0) return [];
-
-  // Pull strategist-supplied audience names + customer-voice pain points so we
-  // can give each article a SPECIFIC audience anchor, not generic copy.
-  const audienceNames = (sources.targetAudiences ?? "")
-    .split(/\n+/).map((l) => l.trim().replace(/^[-•*\d.)\s]+/, "").split(/[:–—]/)[0].trim()).filter(Boolean);
-  const customerPains = (sources.customerVoice?.painPoints ?? []).slice(0, 8);
-
-  const articles: { title: string; html: string; seoMeta?: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } }[] = [];
-
-  // Run all 3 articles in parallel (each is its own Haiku call) — sequential
-  // generation was wasting ~30-45s of wall time on every plan run.
-  const generated = await Promise.all(topicsToGenerate.map(async (post) => {
-    const topic = post.title || post.keyword || "Untitled";
-    const articleAudience = post.targetAudiences?.[0]?.trim() || audienceNames[0] || "";
-    const articlePrimaryKeyword = post.keywords?.[0]?.keyword || post.keyword || "";
-    const articleBrief = post.brief || post.notes || "";
-
-    const res = await withAnthropicRetry(`exampleArticle:${topic}`, () => anthropic.messages.create({
-      model: MODEL_LIGHT_FN(),
-      max_tokens: 2500,
-      messages: [
-        {
-          role: "user",
-          content: `${STYLE_RULES}
-
-You are a senior content writer at i3media. Write a full SEO-optimised article.
-
-Rules:
-- British English, no em dashes, no semicolons
-- No AI jargon: never "harness", "leverage", "supercharge", "elevate", "craft", "tailored", "seamlessly"
-- Structure: H2 sections (4-5), H3 subsections where needed, introductory paragraph, FAQ section (3-4 questions), conclusion with CTA
-- 800-1000 words
-- Write directly to the named target audience for this topic. Address their pain points and reading-level. State who the article is for in the intro.
-- Return HTML content only (h2, h3, p, ul, li, blockquote, strong). No wrapper div, no article tag.
-- This is an EXAMPLE article to show what the content plan will deliver. Mark it clearly as an example.
-- MANDATORY — at the very end, add this comment block. EVERY field is required (no skipping):
-  <!-- SEO_META
-  title_tag: [55-60 char title tag containing the primary keyword]
-  meta_description: [150-160 char meta description with primary keyword and a clear CTA]
-  primary_keyword: [the main target keyword for this article]
-  secondary_keywords: [2-3 related keywords, comma separated]
-  -->
-  Do not omit any field. Do not skip the SEO_META block. The downstream report renders nothing if it is missing.
-
-Article topic: "${topic}"
-Client: ${sources.clientName}
-${articlePrimaryKeyword ? `Primary keyword to use: ${articlePrimaryKeyword}` : ""}
-${articleAudience ? `Primary target audience: ${articleAudience}` : ""}
-${post.intent ? `Search intent: ${post.intent}` : ""}
-${articleBrief ? `Writer brief from the content plan: ${articleBrief}` : ""}
-
-${customerPains.length ? `Real pain points this audience has expressed (use the language and frustrations naturally in the article — do not paste verbatim):
-${customerPains.map((p) => `  - ${p}`).join("\n")}
-` : ""}
-Context:
-${context}${buildSharedContextBlocks(sources, "content")}`,
-        },
-      ],
-    }));
-
-    const html = extractText(res);
-    if (!html) return null;
-
-    const seoMatch = html.match(/<!--\s*SEO_META\s*\n([\s\S]*?)-->/);
-    let seoMeta: { titleTag?: string; metaDescription?: string; primaryKeyword?: string; secondaryKeywords?: string[] } | undefined;
-    if (seoMatch) {
-      const lines = seoMatch[1].split("\n").map(l => l.trim()).filter(Boolean);
-      const meta: Record<string, string> = {};
-      for (const line of lines) {
-        const [key, ...rest] = line.split(":");
-        if (key && rest.length) meta[key.trim()] = rest.join(":").trim();
-      }
-      seoMeta = {
-        titleTag: meta.title_tag,
-        metaDescription: meta.meta_description,
-        primaryKeyword: meta.primary_keyword,
-        secondaryKeywords: meta.secondary_keywords?.split(",").map(s => s.trim()),
-      };
-    }
-    const fallbackTitleTag = topic.length <= 60 ? topic : topic.slice(0, 57).trim() + "...";
-    const fallbackMetaDesc = articlePrimaryKeyword
-      ? `Practical guidance on ${articlePrimaryKeyword} from ${sources.clientName}. Read the full guide and get in touch to find out more.`
-      : `Read the full guide from ${sources.clientName} and get in touch to find out how we can help.`;
-    seoMeta = {
-      titleTag: seoMeta?.titleTag || fallbackTitleTag,
-      metaDescription: seoMeta?.metaDescription || fallbackMetaDesc.slice(0, 160),
-      primaryKeyword: seoMeta?.primaryKeyword || articlePrimaryKeyword || undefined,
-      secondaryKeywords: seoMeta?.secondaryKeywords?.length
-        ? seoMeta.secondaryKeywords
-        : (post.keywords ?? []).slice(1, 4).map((k) => k.keyword).filter(Boolean),
-    };
-    const cleanHtml = html.replace(/<!--\s*SEO_META\s*\n[\s\S]*?-->/, "").trim();
-    return { title: topic, html: cleanHtml, seoMeta };
-  }));
-
-  for (const a of generated) if (a) articles.push(a);
-
-  return articles;
-}
 
 // ─── Google Ads ad copy generator ───────────────────────────────────────────
 

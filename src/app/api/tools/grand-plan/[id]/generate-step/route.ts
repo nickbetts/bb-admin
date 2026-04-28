@@ -50,7 +50,7 @@ export const dynamic = "force-dynamic";
 const SECTION_KEYS = [
   "executiveSummary", "audiences", "googleAdsCampaigns", "metaCampaigns",
   "contentStrategy", "contentCalendar", "organicSocial",
-  "exampleArticles", "servicesInvestment", "emailMarketing",
+  "servicesInvestment", "emailMarketing",
   "linkedInAds", "competitorIntel", "seoFoundations",
 ];
 

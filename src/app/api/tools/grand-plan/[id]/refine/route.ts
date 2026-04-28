@@ -77,9 +77,8 @@ ${sectionContext}
 
 The user will tell you what to change. Return a JSON object with ONLY the sections you modified.
 
-For text sections (executiveSummary, strategyPlan), return the updated HTML string.
+For text sections (executiveSummary), return the updated HTML string.
 For structured sections (googleAdsCampaigns, metaCampaigns, etc.), return the updated JSON structure.
-For exampleArticles, return an array of {title, html} objects.
 
 Only include sections you actually changed. Keep the same data shape as the original.
 Return ONLY valid JSON, no markdown fencing.
