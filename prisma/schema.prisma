@@ -908,6 +908,11 @@ model GrandPlan {
   keywordResearchId        String?
   contentStrategyId        String?
   mediaPlanId              String?
+  // Sprint continuity — optional self-relation pointing to a previous 90-day
+  // sprint plan. The generator reads the prior plan's outputs and tells the
+  // AI not to duplicate quick wins, pillars, page optimisations or blog
+  // topics that have already been shipped.
+  previousPlanId           String?
   // Generated output
   planDataJson             String? // JSON: structured plan data for interactive viewer
   generatedHtml            String? // Full standalone HTML deliverable
@@ -940,10 +945,13 @@ model GrandPlan {
   mediaPlan                MediaPlan?              @relation(fields: [mediaPlanId], references: [id], onDelete: SetNull)
   versions                 GrandPlanVersion[]
   enquiries                GrandPlanEnquiry[]
+  previousPlan             GrandPlan?              @relation("PriorSprint", fields: [previousPlanId], references: [id], onDelete: SetNull)
+  nextSprints              GrandPlan[]             @relation("PriorSprint")
 
   @@index([clientId, createdAt])
   @@index([userId, createdAt])
   @@index([userId, pipelineStage])
+  @@index([previousPlanId])
 }
 
 // Public-form enquiry/lead capture from the share page.

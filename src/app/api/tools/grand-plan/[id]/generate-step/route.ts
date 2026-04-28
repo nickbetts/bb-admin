@@ -119,6 +119,10 @@ export async function POST(
     semrushRegion?: string;
     /** User-supplied URLs for SEO Quick Wins / Page Optimisations focus. */
     manualPageUrls?: string[];
+    /** Per-plan caps that override the client-level content limits. */
+    contentLimits?: { pillarPages?: number; pageOptimisations?: number; landingPages?: number; blogPosts?: number; linkTargets?: number };
+    /** Plan duration mode — affects calendar, roadmap, quick wins, exec summary. */
+    planMode?: "annual" | "sprint90";
   }>(plan.configJson, {});
 
   const clientName = plan.client?.name || plan.proposal?.clientName || "Client";
@@ -582,8 +586,7 @@ export async function POST(
           }))
         : [];
 
-      const research: AccountResearchData = {
-        ga4: propertyId ? {
+      const research: AccountResearchData = {        ga4: propertyId ? {
           propertyId,
           overview: ga4Overview ? {
             sessions: ga4Overview.sessions,
@@ -633,9 +636,39 @@ export async function POST(
 
       // Stash on planDataJson under a transient key. Stripped at assemble time.
       const fresh = await prisma.grandPlan.findUnique({ where: { id }, select: { planDataJson: true } });
-      const data = safeJsonParse<(GrandPlanData & { _researchData?: AccountResearchData }) | null>(fresh?.planDataJson ?? null, null);
+      const data = safeJsonParse<(GrandPlanData & { _researchData?: AccountResearchData; _priorSprint?: GrandPlanSources["priorSprint"] }) | null>(fresh?.planDataJson ?? null, null);
       if (data) {
         data._researchData = research;
+        // If this plan continues from a previous sprint, harvest the prior
+        // plan's outputs so the generator can avoid duplicating quick wins,
+        // pillars, page optimisations, landing pages and blog topics.
+        if (plan.previousPlanId) {
+          const prior = await prisma.grandPlan.findUnique({
+            where: { id: plan.previousPlanId },
+            select: { title: true, planDataJson: true },
+          });
+          if (prior) {
+            const priorData = safeJsonParse<GrandPlanData | null>(prior.planDataJson, null);
+            const priorSections = priorData?.sections;
+            const cs = (priorSections as unknown as { contentStrategy?: { pillars?: Array<{ pillar?: { title?: string } }>; landingPages?: Array<{ title?: string }>; blogPosts?: Array<{ title?: string }>; pageOptimisations?: Array<{ url?: string }> } } | undefined)?.contentStrategy;
+            const seo = priorSections?.seoFoundations as { quickWins?: Array<{ url?: string }> } | undefined;
+            const summaryOutcome = (() => {
+              const html = priorSections?.executiveSummary ?? "";
+              const m = html.match(/<strong>Outcome:<\/strong>\s*([^<]+)/i);
+              return m ? m[1].trim() : undefined;
+            })();
+            data._priorSprint = {
+              title: prior.title ?? undefined,
+              headlineOutcome: summaryOutcome,
+              quickWinTitles: (priorSections?.quickWins ?? []).map((q) => q.title).filter(Boolean),
+              seoQuickWinUrls: (seo?.quickWins ?? []).map((q) => q.url).filter((u): u is string => !!u),
+              pageOptimisationUrls: (cs?.pageOptimisations ?? []).map((p) => p.url).filter((u): u is string => !!u),
+              pillarTitles: (cs?.pillars ?? []).map((p) => p.pillar?.title).filter((t): t is string => !!t),
+              landingPageTitles: (cs?.landingPages ?? []).map((p) => p.title).filter((t): t is string => !!t),
+              blogPostTitles: (cs?.blogPosts ?? []).map((p) => p.title).filter((t): t is string => !!t),
+            };
+          }
+        }
         await prisma.grandPlan.update({ where: { id }, data: { planDataJson: JSON.stringify(data) } });
       }
 
@@ -913,6 +946,8 @@ export async function POST(
       delete (planData as any)._customerVoice;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (planData as any)._strategyBrain;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (planData as any)._priorSprint;
 
       const html = renderGrandPlanHtml(planData);
 
@@ -998,7 +1033,7 @@ function buildSources(plan: any, config: any, brief: string): GrandPlanSources {
 
   // Pull research / customer-voice stashes off planDataJson if the prepare-* steps
   // have run. These are stripped before the final assemble step renders the HTML.
-  const stash = safeJsonParse<{ _researchData?: AccountResearchData; _customerVoice?: CustomerVoiceData; _strategyBrain?: StrategyBrain } | null>(plan.planDataJson, null);
+  const stash = safeJsonParse<{ _researchData?: AccountResearchData; _customerVoice?: CustomerVoiceData; _strategyBrain?: StrategyBrain; _priorSprint?: GrandPlanSources["priorSprint"] } | null>(plan.planDataJson, null);
   const accountData = stash?._researchData;
   const customerVoice = stash?._customerVoice;
   const strategyBrain = stash?._strategyBrain;
@@ -1028,7 +1063,15 @@ function buildSources(plan: any, config: any, brief: string): GrandPlanSources {
     postsPerMonth: typeof config.postsPerMonth === "number" && config.postsPerMonth > 0 ? config.postsPerMonth : undefined,
     socialPostsPerWeek: typeof config.socialPostsPerWeek === "number" && config.socialPostsPerWeek > 0 ? config.socialPostsPerWeek : undefined,
     channelBudgets: config.channelBudgets ?? undefined,
-    contentLimits: safeJsonParse<GrandPlanSources["contentLimits"]>(plan.client?.contentStrategyLimits ?? null, undefined) ?? undefined,
+    contentLimits: (() => {
+      const clientLimits = safeJsonParse<GrandPlanSources["contentLimits"]>(plan.client?.contentStrategyLimits ?? null, undefined) ?? undefined;
+      const overrides = config.contentLimits as GrandPlanSources["contentLimits"] | undefined;
+      if (!clientLimits && !overrides) return undefined;
+      return { ...(clientLimits ?? {}), ...(overrides ?? {}) };
+    })(),
+    planMode: config.planMode === "sprint90" ? "sprint90" : "annual",
+    previousPlanId: plan.previousPlanId ?? undefined,
+    priorSprint: stash?._priorSprint,
     period: plan.period || undefined,
     proposal: plan.proposal
       ? {

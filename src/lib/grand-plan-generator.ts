@@ -678,6 +678,24 @@ export interface GrandPlanSources {
     landingPages?: number;
     blogPosts?: number;
     linkTargets?: number;
+    pillarPages?: number;
+  };
+  /** Plan duration mode. Sprint90 reframes calendar, roadmap, quick wins and
+   *  exec summary around a 12-week window. Defaults to annual. */
+  planMode?: "annual" | "sprint90";
+  /** Optional id of the previous sprint plan this one continues from. */
+  previousPlanId?: string;
+  /** When `previousPlanId` is set, harvested items from the prior sprint
+   *  that the generator must NOT propose again. */
+  priorSprint?: {
+    title?: string;
+    headlineOutcome?: string;
+    quickWinTitles?: string[];
+    seoQuickWinUrls?: string[];
+    pageOptimisationUrls?: string[];
+    pillarTitles?: string[];
+    landingPageTitles?: string[];
+    blogPostTitles?: string[];
   };
   /** Explicit reporting / planning period label (e.g. "January 2026" or "Q1 2026").
    *  Surfaced as a directive so generators can date copy correctly. */
@@ -1257,8 +1275,43 @@ function buildContentLimitsBlock(sources: GrandPlanSources): string {
  * generated copy are accurate (e.g. "Q1 2026 will focus on\u2026").
  */
 function buildPeriodBlock(sources: GrandPlanSources): string {
-  if (!sources.period) return "";
-  return `\n\nReporting period for this plan: ${sources.period}. Anchor any date references and timelines to this period.`;
+  const sprint = sources.planMode === "sprint90";
+  const periodLine = sources.period
+    ? `\n\nReporting period for this plan: ${sources.period}. Anchor any date references and timelines to this period.`
+    : "";
+  if (!sprint) return periodLine;
+  return `${periodLine}\n\n<sprint_window>
+THIS IS A 90-DAY SPRINT PLAN — NOT AN ANNUAL STRATEGY.
+- Every recommendation, calendar entry, roadmap item, milestone and timeline MUST fit inside the next 12 weeks (~3 months).
+- Do NOT propose anything that lands beyond week 12. No "Q3", "year-end", "annual", "next 12 months" framing.
+- Frame everything as a punchy quarterly sprint with a clear week-by-week shape (weeks 1–4 quick wins, 5–8 build, 9–12 finish + measure).
+- Quantities follow the brief's per-month / per-week inputs scaled to 12 weeks (postsPerMonth × 3; socialPostsPerWeek × 13). Landing pages, pillar pages, page optimisations are TOTALS for the sprint, not monthly.
+</sprint_window>`;
+}
+
+/**
+ * When this plan is a continuation of a previous sprint, list the items that
+ * the prior plan already delivered or recommended. The new plan must NOT
+ * propose any of these again unless it is materially upgrading them.
+ */
+function buildPriorSprintBlock(sources: GrandPlanSources): string {
+  const prior = sources.priorSprint;
+  if (!prior) return "";
+  const lines: string[] = [];
+  if (prior.title) lines.push(`Prior sprint: "${prior.title}"`);
+  if (prior.headlineOutcome) lines.push(`Prior outcome commitment: ${prior.headlineOutcome}`);
+  if (prior.quickWinTitles?.length) lines.push(`Prior quick wins (do NOT repeat):\n- ${prior.quickWinTitles.slice(0, 20).join("\n- ")}`);
+  if (prior.seoQuickWinUrls?.length) lines.push(`Prior SEO quick win URLs (already optimised):\n- ${prior.seoQuickWinUrls.slice(0, 20).join("\n- ")}`);
+  if (prior.pageOptimisationUrls?.length) lines.push(`Prior page optimisation URLs (already rewritten):\n- ${prior.pageOptimisationUrls.slice(0, 20).join("\n- ")}`);
+  if (prior.pillarTitles?.length) lines.push(`Prior pillar topics (already in flight):\n- ${prior.pillarTitles.slice(0, 10).join("\n- ")}`);
+  if (prior.landingPageTitles?.length) lines.push(`Prior landing pages (already shipped):\n- ${prior.landingPageTitles.slice(0, 15).join("\n- ")}`);
+  if (prior.blogPostTitles?.length) lines.push(`Prior blog topics (already covered):\n- ${prior.blogPostTitles.slice(0, 25).join("\n- ")}`);
+  if (!lines.length) return "";
+  return `\n\n<prior_sprint>
+PRIOR SPRINT — these items have already been shipped or recommended in the previous 90-day sprint. Do NOT propose any of them again unless you are MATERIALLY upgrading them. Lead this sprint's recommendations with NEW initiatives that build on what was done. Where you reference prior work, frame it as "now that X is live, the next move is Y".
+
+${lines.join("\n\n")}
+</prior_sprint>`;
 }
 
 function buildCampaignPeriodsBlock(sources: GrandPlanSources): string {
@@ -1333,6 +1386,7 @@ function buildSharedContextBlocks(sources: GrandPlanSources, directiveKey?: keyo
     + buildCampaignPeriodsBlock(sources)
     + buildAccountDataBlock(sources)
     + buildManualPageIntelBlock(sources)
+    + buildPriorSprintBlock(sources)
     + buildCustomerVoiceBlock(sources);
 }
 
@@ -1439,6 +1493,7 @@ Rules:
   <p><strong>Why this matters:</strong> one sentence on the strategic stake — make it specific to their market.</p>
   <p><strong>Outcome:</strong> the measurable result we expect if the plan is executed. Name a number or direction.</p>
   <p><strong>Risk:</strong> the single most likely reason this plan fails. Be honest — it builds trust.</p>
+${sources.planMode === "sprint90" ? "\n- THIS IS A 90-DAY SPRINT executive memo. Open by naming the sprint window (e.g. 'Over the next 12 weeks…'). The 'Outcome' callout MUST commit to a measurable result by week 12, not by year-end. Frame the situation/complication/resolution arc around what gets done in this single quarter, not an annual strategy." : ""}
 
 Write the executive summary for this plan:
 
@@ -1703,8 +1758,10 @@ async function generateContentCalendar(anthropic: Anthropic, context: string, co
   const socialPerWeek = sources.socialPostsPerWeek ?? 3;
   const socialPerMonth = socialPerWeek * 4;
 
-  // Default to a full 12-month calendar so strategists get an annual plan, not a half-year stub.
-  const monthCount = sources.calendarMonths ?? 12;
+  // Sprint mode forces a 3-month calendar regardless of any explicit
+  // calendarMonths override. Otherwise default to a full 12-month calendar.
+  const sprint = sources.planMode === "sprint90";
+  const monthCount = sprint ? 3 : (sources.calendarMonths ?? 12);
 
   // For a default 12-month calendar, render the current calendar year (Jan–Dec)
   // so the plan reads like an annual operating plan rather than a rolling
@@ -1731,7 +1788,7 @@ async function generateContentCalendar(anthropic: Anthropic, context: string, co
           role: "user",
           content: `${STYLE_RULES}
 
-You are a content strategist at i3media. Generate the ${label} of a ${monthCount}-month content calendar.
+You are a content strategist at i3media. Generate the ${label} of a ${sprint ? "12-week sprint calendar (3 months)" : `${monthCount}-month content calendar`}.
 
 Months you must cover (use these EXACT labels, in order): ${months.map(m => `"${m}"`).join(", ")}
 
@@ -2914,6 +2971,7 @@ async function generateContentClusters(
   const directive = brain?.directives?.content ?? "";
   const limits = sources.contentLimits ?? {};
   const optsCap = limits.pageOptimisations ?? 12;
+  const pillarCap = Math.max(1, Math.min(6, limits.pillarPages ?? 3));
 
   const prompt = `${STYLE_RULES}
 
@@ -2934,9 +2992,9 @@ Return ONLY valid JSON (no markdown fences) matching this schema:
 }
 
 Hard rules:
-- EXACTLY 3 pillars. Each pillar MUST have EXACTLY 2 megaGuides and EXACTLY 4 articles.
+- EXACTLY ${pillarCap} pillar${pillarCap === 1 ? "" : "s"}. Each pillar MUST have EXACTLY 2 megaGuides and EXACTLY 4 articles.
 - The 4 articles per pillar MUST span the full intent funnel \u2014 at least one each from awareness/informational/commercial/transactional, with the pillar itself sitting at decision.
-- Pillars represent the 3 most commercially valuable topics for this client based on the brief, market, and audiences. They are the cornerstones the rest of the cluster supports.
+- Pillars represent the most commercially valuable topics for this client based on the brief, market, and audiences. They are the cornerstones the rest of the cluster supports.
 - Mega guides go deep on a sub-topic of the pillar. Articles answer specific questions, target long-tail searches, or capture stage-specific intent.
 - "primaryKeyword" must be a real search term a target customer would type (not jargon, not a slogan).
 - "secondaryKeywords" (3-5) are supporting variants the article will pick up.
@@ -3617,6 +3675,7 @@ ${context}${buildSharedContextBlocks(sources)}`,
 // ─── Quick Wins (priority actions) generator ────────────────────────────────
 
 async function generateQuickWins(anthropic: Anthropic, context: string, sources: GrandPlanSources): Promise<QuickWinAction[]> {
+  const sprint = sources.planMode === "sprint90";
   const res = await withAnthropicRetry("quickWins", () => anthropic.messages.create({
     model: MODEL_PRIMARY(),
     max_tokens: 1500,
@@ -3625,13 +3684,15 @@ async function generateQuickWins(anthropic: Anthropic, context: string, sources:
         role: "user",
         content: `You are a senior strategist at i3media. Distil the plan below into a prioritised action list — what should be done first, then second, then ongoing.
 
-Return ONLY a JSON array (no markdown fences, no commentary) of 8-10 objects:
-{ "title": string, "description": string, "priority": "high" | "medium-high" | "medium" | "ongoing" | "long-term" }
+Return ONLY a JSON array (no markdown fences, no commentary) of ${sprint ? "8" : "8-10"} objects:
+{ "title": string, "description": string, "priority": ${sprint ? "\"high\" | \"medium-high\" | \"medium\"" : "\"high\" | \"medium-high\" | \"medium\" | \"ongoing\" | \"long-term\""} }
 
 Rules:
 - Title is 4-8 words, action-led ("Launch brand search campaign", "Rebuild homepage hero section").
 - Description is one short sentence (max 22 words) explaining why and the expected outcome.
-- Mix: at least 2 "high" (do first 30 days), 2 "medium-high", 2 "medium", 1-2 "ongoing", 1-2 "long-term".
+${sprint
+  ? "- This is a 90-DAY SPRINT plan. Mix MUST be: at least 4 \"high\" (weeks 1-4), 2 \"medium-high\" (weeks 5-8), 2 \"medium\" (weeks 9-12). Do NOT use \"ongoing\" or \"long-term\" — anything beyond week 12 does not belong in a sprint plan."
+  : "- Mix: at least 2 \"high\" (do first 30 days), 2 \"medium-high\", 2 \"medium\", 1-2 \"ongoing\", 1-2 \"long-term\"."}
 - Cover paid media, content/SEO, conversion/landing-page, measurement, organic social where relevant.
 - Each action must be concrete and reference real assets, channels, or audiences from the plan — no platitudes.
 - British English. No AI jargon ("harness", "leverage", "supercharge", "elevate", "craft", "tailored", "seamlessly", "robust", "cutting-edge").
@@ -3645,14 +3706,15 @@ ${context}${buildSharedContextBlocks(sources, "quickWins")}`,
 
   const parsed = safeJsonParse<QuickWinAction[]>(extractText(res), []);
   if (!Array.isArray(parsed)) return [];
+  const allowed = sprint
+    ? ["high", "medium-high", "medium"]
+    : ["high", "medium-high", "medium", "ongoing", "long-term"];
   return parsed
     .filter((a) => a && typeof a.title === "string" && typeof a.description === "string")
     .map((a) => ({
       title: String(a.title).trim(),
       description: String(a.description).trim(),
-      priority: ["high", "medium-high", "medium", "ongoing", "long-term"].includes(a.priority)
-        ? a.priority
-        : "medium",
+      priority: allowed.includes(a.priority) ? a.priority : "medium",
     }));
 }
 

@@ -118,6 +118,24 @@ export default function NewGrandPlanPage() {
   // Content volume — drives the calendar and organic social cadence
   const [postsPerMonth, setPostsPerMonth] = useState(4);
   const [socialPostsPerWeek, setSocialPostsPerWeek] = useState(3);
+  // Pillar-page count — caps the number of topic-cluster pillars the AI returns.
+  const [pillarCount, setPillarCount] = useState(3);
+
+  // Plan duration mode — "annual" (default) or "sprint90" (12-week sprint).
+  // Sprint mode reframes calendar, roadmap, quick wins and exec summary
+  // around a 12-week window. When sprint + previousPlanId are both set the
+  // generator treats the plan as a strategy refresh by default.
+  const [planMode, setPlanMode] = useState<"annual" | "sprint90">("annual");
+
+  // Previous sprint to continue from — only used when planMode === "sprint90"
+  // AND a clientId is selected. The picker is populated from past sprint
+  // plans for that client. When chosen, brief / audiences / competitors are
+  // pre-filled from the prior plan (still editable) and the generator
+  // receives a "do not duplicate" block listing prior items.
+  interface PriorSprintOption { id: string; title: string; createdAt: string }
+  const [priorSprints, setPriorSprints] = useState<PriorSprintOption[]>([]);
+  const [previousPlanId, setPreviousPlanId] = useState<string>("");
+  const [loadingPriorSprints, setLoadingPriorSprints] = useState(false);
 
   // Platforms — controls which paid/organic channels the AI focuses on
   const [platforms, setPlatforms] = useState<PlatformId[]>(["googleAds", "metaAds", "linkedInAds", "organicSocial", "emailMarketing"]);
@@ -158,6 +176,84 @@ export default function NewGrandPlanPage() {
       }
     }
   }, [clientId, clients, title, website]);
+
+  // Suggest a sprint-flavoured title when sprint mode flips on. Only sets
+  // a title if one hasn't been customised already.
+  useEffect(() => {
+    if (planMode !== "sprint90") return;
+    const client = clients.find((c) => c.id === clientId);
+    const clientName = client?.name ?? prospectName ?? "";
+    if (!clientName) return;
+    const annualSuffix = " — Go-to-Market Plan";
+    if (!title || title === `${clientName}${annualSuffix}`) {
+      const now = new Date();
+      const quarter = Math.floor(now.getMonth() / 3) + 1;
+      setTitle(`${clientName} — 90-Day Sprint (Q${quarter} ${now.getFullYear()})`);
+    }
+  }, [planMode, clientId, clients, prospectName, title]);
+
+  // Load prior sprint plans for the picker when sprint+client are both set.
+  useEffect(() => {
+    if (planMode !== "sprint90" || !clientId) {
+      setPriorSprints([]);
+      setPreviousPlanId("");
+      return;
+    }
+    let cancelled = false;
+    setLoadingPriorSprints(true);
+    fetch(`/api/tools/grand-plan?clientId=${encodeURIComponent(clientId)}&planMode=sprint90`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        const list = (Array.isArray(data) ? data : data.grandPlans ?? []) as Array<{ id: string; title: string; createdAt: string }>;
+        setPriorSprints(list.map((p) => ({ id: p.id, title: p.title, createdAt: p.createdAt })));
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoadingPriorSprints(false); });
+    return () => { cancelled = true; };
+  }, [planMode, clientId]);
+
+  // When user picks a previous sprint, prefill brief / audiences / competitors
+  // from that plan (still editable). Existing user input is preserved.
+  useEffect(() => {
+    if (!previousPlanId) return;
+    let cancelled = false;
+    fetch(`/api/tools/grand-plan/${previousPlanId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        const prior = data.grandPlan ?? data;
+        if (!prior) return;
+        if (!brief && prior.clientBrief) setBrief(prior.clientBrief);
+        if (audiences.length === 0 && typeof prior.targetAudiences === "string" && prior.targetAudiences.trim()) {
+          const lines = prior.targetAudiences.split(/\r?\n/).map((line: string) => line.trim()).filter(Boolean);
+          const parsed: AudienceSuggestion[] = lines.map((line: string) => {
+            const idx = line.indexOf(":");
+            return idx > -1
+              ? { name: line.slice(0, idx).trim(), description: line.slice(idx + 1).trim() }
+              : { name: line, description: "" };
+          });
+          if (parsed.length) setAudiences(parsed);
+        }
+        if (competitors.length === 0 && prior.competitorsJson) {
+          try {
+            const list = JSON.parse(prior.competitorsJson) as Array<{ domain: string; commonKeywords?: number; pageContext?: CompetitorEntry["pageContext"]; source?: "auto" | "manual" }>;
+            if (Array.isArray(list) && list.length) {
+              setCompetitors(list.map((c) => ({
+                domain: c.domain,
+                status: "valid",
+                commonKeywords: c.commonKeywords,
+                pageContext: c.pageContext,
+                source: c.source ?? "auto",
+              })));
+            }
+          } catch {}
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previousPlanId]);
 
   const domain = website.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "");
 
@@ -323,17 +419,22 @@ export default function NewGrandPlanPage() {
           prospectName: !clientId && prospectName.trim() ? prospectName.trim() : undefined,
           prospectWebsite: !clientId && website ? website : undefined,
           title,
-          purpose,
+          // In sprint mode with a previous sprint chosen, treat as a strategy
+          // refresh — this aligns audit trails / pipeline buckets.
+          purpose: planMode === "sprint90" && previousPlanId ? "strategy_refresh" : purpose,
           clientBrief: brief || undefined,
           targetAudiences: audiencesText || undefined,
           sector: sector || undefined,
           competitors: finalCompetitors,
+          previousPlanId: planMode === "sprint90" && previousPlanId ? previousPlanId : undefined,
           config: {
             sections: enabledSections,
             postsPerMonth,
             socialPostsPerWeek,
+            planMode,
             ...(sector ? { sector } : {}),
             ...(manualPageUrls.length ? { manualPageUrls } : {}),
+            contentLimits: { pillarPages: pillarCount },
             ...(website ? { kwBrief: { website, brief, monthlyBudget: channelBudgets.googleAds || monthlyBudget } } : {}),
             ...(domain ? { contentBrief: { domain, brief, competitors: finalCompetitors.map((c) => c.domain).join(",") } } : {}),
             ...(Object.keys(channelBudgets).length > 0 ? { channelBudgets: Object.fromEntries(
@@ -434,24 +535,73 @@ export default function NewGrandPlanPage() {
               </div>
             </div>
 
-            {/* Purpose + Sector row */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <div>
-                <label className="form-label">Purpose</label>
-                <div style={{ display: "flex", gap: 6 }}>
-                  {(["pitch", "onboarding", "strategy_refresh"] as const).map((p) => (
-                    <button key={p} onClick={() => setPurpose(p)} style={{
-                      flex: 1, padding: "9px 0", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600,
-                      border: `1.5px solid ${purpose === p ? "var(--accent)" : "var(--border)"}`,
-                      background: purpose === p ? "var(--gradient-accent)" : "transparent",
-                      color: purpose === p ? "white" : "var(--text-3)", cursor: "pointer",
-                      transition: "all 0.2s",
-                    }}>
-                      {p === "pitch" ? "Pitch" : p === "onboarding" ? "Onboarding" : "Refresh"}
-                    </button>
-                  ))}
-                </div>
+            {/* Plan duration — annual vs 90-day sprint */}
+            <div>
+              <label className="form-label">Plan duration</label>
+              <div style={{ display: "flex", gap: 6 }}>
+                {([
+                  { id: "annual", label: "Annual" },
+                  { id: "sprint90", label: "90-Day Sprint" },
+                ] as const).map((m) => (
+                  <button key={m.id} type="button" onClick={() => setPlanMode(m.id)} style={{
+                    flex: 1, padding: "9px 0", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600,
+                    border: `1.5px solid ${planMode === m.id ? "var(--accent)" : "var(--border)"}`,
+                    background: planMode === m.id ? "var(--gradient-accent)" : "transparent",
+                    color: planMode === m.id ? "white" : "var(--text-3)", cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}>
+                    {m.label}
+                  </button>
+                ))}
               </div>
+              <span className="form-hint">
+                Annual = 12-month strategy. 90-Day Sprint = focused 12-week plan you can re-run quarterly.
+              </span>
+            </div>
+
+            {/* Previous sprint picker — only shown in sprint mode with a client. */}
+            {planMode === "sprint90" && clientId && (
+              <div>
+                <label className="form-label">Continue from previous sprint</label>
+                <select
+                  className="form-input form-select"
+                  value={previousPlanId}
+                  onChange={(e) => setPreviousPlanId(e.target.value)}
+                  disabled={loadingPriorSprints}
+                >
+                  <option value="">{loadingPriorSprints ? "Loading…" : "(none — fresh sprint)"}</option>
+                  {priorSprints.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title} — {new Date(p.createdAt).toLocaleDateString("en-GB")}
+                    </option>
+                  ))}
+                </select>
+                <span className="form-hint">
+                  When set, the new sprint reads the prior plan and won&apos;t propose the same quick wins, pillars, page optimisations or blog topics again. Brief, audiences and competitors are pre-filled but stay editable.
+                </span>
+              </div>
+            )}
+
+            {/* Purpose + Sector row — Purpose hidden in sprint mode (sprint IS the purpose). */}
+            <div style={{ display: "grid", gridTemplateColumns: planMode === "sprint90" ? "1fr" : "1fr 1fr", gap: 16 }}>
+              {planMode !== "sprint90" && (
+                <div>
+                  <label className="form-label">Purpose</label>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {(["pitch", "onboarding", "strategy_refresh"] as const).map((p) => (
+                      <button key={p} onClick={() => setPurpose(p)} style={{
+                        flex: 1, padding: "9px 0", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600,
+                        border: `1.5px solid ${purpose === p ? "var(--accent)" : "var(--border)"}`,
+                        background: purpose === p ? "var(--gradient-accent)" : "transparent",
+                        color: purpose === p ? "white" : "var(--text-3)", cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}>
+                        {p === "pitch" ? "Pitch" : p === "onboarding" ? "Onboarding" : "Refresh"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="form-label">Sector</label>
                 <select className="form-input form-select" value={sector} onChange={(e) => setSector(e.target.value)}>
@@ -631,7 +781,7 @@ export default function NewGrandPlanPage() {
             {/* Content Volume */}
             <div>
               <label className="form-label">Content Volume</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                 <div>
                   <input
                     className="form-input"
@@ -653,6 +803,17 @@ export default function NewGrandPlanPage() {
                     onChange={(e) => setSocialPostsPerWeek(Math.max(1, Number(e.target.value) || 1))}
                   />
                   <span className="form-hint">Social posts per week</span>
+                </div>
+                <div>
+                  <input
+                    className="form-input"
+                    type="number"
+                    min={1}
+                    max={6}
+                    value={pillarCount}
+                    onChange={(e) => setPillarCount(Math.max(1, Math.min(6, Number(e.target.value) || 1)))}
+                  />
+                  <span className="form-hint">Pillar pages (1–6)</span>
                 </div>
               </div>
             </div>

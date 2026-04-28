@@ -34,6 +34,7 @@ export interface ContentStrategyLimits {
   landingPages?: number;
   blogPosts?: number;
   linkTargets?: number;
+  pillarPages?: number;
 }
 
 // ─── Types ──────────────────────────────────────────────────────────────────

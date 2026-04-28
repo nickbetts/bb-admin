@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
   const clientId = searchParams.get("clientId");
   const status = searchParams.get("status");
   const purpose = searchParams.get("purpose");
+  const planMode = searchParams.get("planMode");
 
   const where: Record<string, unknown> = {};
   if (clientId) where.clientId = clientId;
@@ -43,12 +44,27 @@ export async function GET(request: NextRequest) {
         generationMs: true,
         createdAt: true,
         updatedAt: true,
+        ...(planMode ? { configJson: true } : {}),
         client: { select: { id: true, name: true } },
         _count: { select: { versions: true, enquiries: true } },
       },
     });
 
-    return NextResponse.json({ grandPlans });
+    // Filter by planMode (stored inside configJson) when requested.
+    const filtered = planMode
+      ? grandPlans.filter((p) => {
+          const cfg = (p as { configJson?: string | null }).configJson;
+          if (!cfg) return planMode === "annual"; // legacy plans = annual
+          try {
+            const parsed = JSON.parse(cfg) as { planMode?: string };
+            return (parsed.planMode ?? "annual") === planMode;
+          } catch {
+            return planMode === "annual";
+          }
+        })
+      : grandPlans;
+
+    return NextResponse.json({ grandPlans: filtered });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Grand plans list error:", error);
@@ -82,7 +98,8 @@ export async function POST(request: NextRequest) {
         pageContext?: { headings?: string[]; description?: string; ctaTexts?: string[]; h1?: string };
         source?: "manual" | "auto";
       }[];
-      config?: { sections?: string[]; postsPerMonth?: number; socialPostsPerWeek?: number; channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number }; manualPageUrls?: string[] };
+      config?: { sections?: string[]; postsPerMonth?: number; socialPostsPerWeek?: number; channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number }; manualPageUrls?: string[]; contentLimits?: { pillarPages?: number; pageOptimisations?: number; landingPages?: number; blogPosts?: number; linkTargets?: number }; planMode?: "annual" | "sprint90"; previousPlanId?: string };
+      previousPlanId?: string;
       period?: string;
       cloneFromId?: string;
     };
@@ -166,6 +183,7 @@ export async function POST(request: NextRequest) {
         competitorsJson: JSON.stringify(body.competitors ?? []),
         configJson: JSON.stringify({ ...(body.config ?? {}), ...(body.sector ? { sector: body.sector } : {}) }),
         period: body.period?.trim() || null,
+        ...(body.previousPlanId ? { previousPlanId: body.previousPlanId } : {}),
       },
       include: {
         client: { select: { id: true, name: true } },
