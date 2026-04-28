@@ -1194,7 +1194,7 @@ export async function runOnPageAudit(
 // have to carry the extra structured output.
 
 const ENRICH_MAX_PAGES = 15;
-const ENRICH_CONCURRENCY = 5;
+const ENRICH_CONCURRENCY = 8;
 const POTENTIAL_BANDS = ["Top 3", "Top 10", "Top 20", "Top 50"] as const;
 type PotentialBand = (typeof POTENTIAL_BANDS)[number];
 
@@ -2116,10 +2116,6 @@ export async function generateContentStrategySection(
 }`,
   };
 
-  const sectionPrompt = `${basePrompt}
-
-IMPORTANT: You are generating ONLY the "${section}" section of the strategy. The other sections will be generated in separate calls.
-${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item to 1-3 of these by exact name in the "targetAudiences" array): ${audienceNames.map((n) => `"${n}"`).join(", ")}\n` : ""}${buildManualPagePriorityBlock(section, manualPageIntel)}${SECTION_SCHEMAS[section]}`;
   // Scale max_tokens by section size. pageOptimisations can be huge on large sites
   // (390-page sitemap → 50+ suggestions), and blogPosts + roadmap is always the
   // largest section. landingPages is typically smaller.
@@ -2129,22 +2125,54 @@ ${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item 
     blogPosts: 14000,
   };
   const maxTokens = MAX_TOKENS_BY_SECTION[section];
-  console.log(`[content-strategy:${section}] sectionPrompt length=${sectionPrompt.length} chars — calling Claude Opus (max_tokens=${maxTokens})...`);
+  console.log(`[content-strategy:${section}] basePrompt length=${basePrompt.length} chars — calling Claude Opus (max_tokens=${maxTokens})...`);
+
+  // Build a section-specific tail (audiences + manual intel + schema). The
+  // large stable head (basePrompt: collected SEMrush/GSC data + brief +
+  // competitor context) is sent as a separate cached block so the second and
+  // third section calls reuse it for ~85% input-token cost reduction and
+  // ~50% lower TTFT.
+  const sectionTail = `\n\nIMPORTANT: You are generating ONLY the "${section}" section of the strategy. The other sections will be generated in separate calls.
+${audienceNames && audienceNames.length ? `\nTARGET AUDIENCES (assign each item to 1-3 of these by exact name in the "targetAudiences" array): ${audienceNames.map((n) => `"${n}"`).join(", ")}\n` : ""}${buildManualPagePriorityBlock(section, manualPageIntel)}${SECTION_SCHEMAS[section]}`;
 
   const tClaude = Date.now();
   const anthropic = await getAnthropicClient();
   const stream = anthropic.messages.stream({
     model: "claude-opus-4-6",
     max_tokens: maxTokens,
-    system: STRATEGY_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: sectionPrompt }],
+    system: [
+      {
+        type: "text",
+        text: STRATEGY_SYSTEM_PROMPT,
+        cache_control: { type: "ephemeral" },
+      },
+    ],
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: basePrompt,
+            cache_control: { type: "ephemeral" },
+          },
+          { type: "text", text: sectionTail },
+        ],
+      },
+    ],
   });
   const response = await stream.finalMessage();
+  const cacheUsage = response.usage as typeof response.usage & {
+    cache_creation_input_tokens?: number;
+    cache_read_input_tokens?: number;
+  };
   console.log(
     `[content-strategy:${section}] Claude done in ${Date.now() - tClaude}ms — ` +
     `stop_reason=${response.stop_reason} ` +
     `input_tokens=${response.usage.input_tokens} ` +
-    `output_tokens=${response.usage.output_tokens}`,
+    `output_tokens=${response.usage.output_tokens} ` +
+    `cache_write=${cacheUsage.cache_creation_input_tokens ?? 0} ` +
+    `cache_read=${cacheUsage.cache_read_input_tokens ?? 0}`,
   );
 
   const block = response.content[0];
