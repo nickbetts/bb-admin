@@ -3402,7 +3402,7 @@ async function generateAudiences(
 
   const res = await withAnthropicRetry("audiences", () => anthropic.messages.create({
     model: MODEL_LIGHT_FN(),
-    max_tokens: 2200,
+    max_tokens: strategistAudienceNames.length >= 5 ? 3500 : 2200,
     messages: [
       {
         role: "user",
@@ -3419,7 +3419,7 @@ Rules:
 - The personaQuote must sound like something this person would actually say to a colleague (one sentence, max 25 words, no marketing speak)
 - The sectorPreview must reference real keywords, services, and campaign angles that fit this audience and sector
 - Return ONLY a valid JSON array, no prose, no markdown fences
-- 3 to 5 audiences maximum
+- ${strategistAudienceNames.length ? `Produce EXACTLY ${strategistAudienceNames.length} audiences — one per strategist-supplied name below, in the order given. Do NOT cap at 5.` : "3 to 5 audiences maximum"}
 
 Return JSON in this exact format:
 [
