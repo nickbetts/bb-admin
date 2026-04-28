@@ -1718,7 +1718,6 @@ function renderContentCalendar(months: any[]): string {
   type RowDef = { key: string; label: string; cls: string };
   const ROWS: RowDef[] = [
     { key: "pillar",    label: "Pillar Page", cls: "row-pillar" },
-    { key: "blog",      label: "Blog",        cls: "row-blog" },
     { key: "reel",      label: "Reel",        cls: "row-reel" },
     { key: "carousel",  label: "Carousel",    cls: "row-carousel" },
     { key: "static",    label: "Static Post", cls: "row-static" },

@@ -2853,6 +2853,11 @@ async function generateSeoFoundations(
   const manualUrls = (sources.accountData?.manualPageIntel ?? []).map((p) => p.url);
   const cleanWebsite = website.replace(/\/$/, "");
   const ga4Paths = ga4Pages.map((p) => p.path.startsWith("http") ? p.path : `${cleanWebsite}${p.path.startsWith("/") ? p.path : `/${p.path}`}`);
+  // Manual-only mode: when the strategist supplies pages, those are the
+  // ONLY quick wins we want — do not let the AI suggest extras from the
+  // sitemap. Internal linking / link building still draw on the broader
+  // page list because they need a wider hub-and-spoke surface.
+  const manualOnly = manualUrls.length > 0;
   // Manual URLs go first so they survive the slice cap and are clearly the priority list.
   const knownPages = [...new Set([...manualUrls, ...sitemapUrls, ...ga4Paths])].slice(0, 80);
   const knownPagesBlock = knownPages.length > 0
@@ -2923,9 +2928,8 @@ Return ONLY valid JSON (no markdown fences) matching this schema:
 Hard rules:
 - ABSOLUTE URL RULE: Every "url", "targetUrl", "fromUrl" and "hubUrl" field MUST be copied verbatim from the KNOWN PAGES list below. Do NOT invent, guess, modify or extrapolate URLs. If you cannot find a suitable known page for a quick win, hub, or link-building target, OMIT that entry rather than fabricate a URL. Returning fewer entries that are accurate is far better than the requested count with invented URLs.
 - "intro": one paragraph (2 sentences) framing the SEO foundations work as the multiplier on top of the content cluster.
-- "quickWins": You MUST include a quickWin entry for EVERY page marked "← PRIORITY (client requested)" in the KNOWN PAGES list — no exceptions, even if the list is long. After all priority pages are covered, you MAY add up to 4 additional commercial / service / category pages from the rest of KNOWN PAGES (do not pick blog posts). Pick existing pages only.
-  - PRIORITY ORDER: All "← PRIORITY (client requested)" pages MUST appear first in quickWins, in the same order they appear in KNOWN PAGES. Use the <priority_pages> intel block (page title / H1 / meta / current ranking keywords) as the rewrite anchor.
-  - INTENT BIAS: Prefer transactional and commercial-intent keywords (people ready to buy, enquire, get a quote, book) for the "primary" keyword on every quick win — especially the priority pages. Push purely informational keywords into "longTail" only.
+- "quickWins": Produce one entry for EACH URL in the QUICK WIN URLS list below — in the exact order they appear, no extras, no omissions, no substitutions. Even if the list is long, you MUST return EVERY URL.
+  - INTENT BIAS: Prefer transactional and commercial-intent keywords (people ready to buy, enquire, get a quote, book) for the "primary" keyword on every quick win. Push purely informational keywords into "longTail" only.
   - "keywords.primary": ONE keyword. Must be commercial / transactional unless the page is unambiguously informational. If the page already ranks for related keywords (see <priority_pages>), choose a primary that lifts an existing position 4–20 keyword over the line.
   - "keywords.secondary": 2–4 supporting keywords (mix of commercial and longer-tail commercial variants).
   - "keywords.longTail": 3–5 long-tail variants (4+ words, conversational / question-led / location-modified).
@@ -2955,12 +2959,15 @@ Strategic foundation:
 
 ${knownPagesBlock}
 
+${manualOnly ? `QUICK WIN URLS (produce one quickWins entry for EACH, in this order — no others):
+${manualUrls.map((u) => `- ${u}`).join("\n")}` : `QUICK WIN URLS: choose UP TO 6 commercial / service / category pages from KNOWN PAGES (do not pick blog posts).`}
+
 Context:
 ${context}${buildSharedContextBlocks(sources, "content")}`;
 
   const res = await withAnthropicRetry("seoFoundations", () => anthropic.messages.create({
     model: MODEL_PRIMARY(),
-    max_tokens: 5000,
+    max_tokens: manualOnly ? Math.min(16000, 2200 + manualUrls.length * 1100) : 6000,
     messages: [{ role: "user", content: prompt }],
   }));
 
@@ -2972,39 +2979,121 @@ ${context}${buildSharedContextBlocks(sources, "content")}`;
   const parsed = safeJsonParse<SeoFoundations>(extractText(res), fallback);
 
   // Backfill: every manually-entered URL MUST appear in quickWins. If the AI
-  // omitted any, synthesise a stub entry so the renderer still emits a card.
+  // omitted any (truncation, hallucinated different URL, etc.), retry just
+  // those URLs one-by-one in parallel rather than show an empty stub.
   if (manualUrls.length > 0) {
     const present = new Set((parsed.quickWins ?? []).map((q) => (q.url || "").trim().toLowerCase()));
     const missing = manualUrls.filter((u) => !present.has(u.trim().toLowerCase()));
     if (missing.length > 0) {
-      const stubs: SeoQuickWinPage[] = missing.map((url) => ({
-        url,
-        pageTitle: "",
-        rationale: "Awaiting deeper analysis — page submitted manually but the AI did not return a quick win for it.",
-        intent: "commercial",
-        keywords: { primary: "", secondary: [], longTail: [] },
-        newTitleTag: "",
-        newMetaDescription: "",
-        onPageSuggestions: [],
-        crossLinksToAdd: [],
-        suggestedFaq: [],
-        suggestedSchema: [],
-        estimatedTimeToImpact: "3–4 weeks",
-        effort: "medium",
+      const intelByUrl = new Map(
+        (sources.accountData?.manualPageIntel ?? []).map((p) => [p.url.trim().toLowerCase(), p]),
+      );
+      const retried = await Promise.all(missing.map(async (url) => {
+        try {
+          return await generateQuickWinForUrl(anthropic, url, intelByUrl.get(url.trim().toLowerCase()), sources);
+        } catch {
+          return null;
+        }
       }));
+      const recovered = retried.filter((q): q is SeoQuickWinPage => q !== null);
       // Priority pages (manual) come first — interleave so manual order is preserved.
       const manualOrder = new Map(manualUrls.map((u, i) => [u.trim().toLowerCase(), i]));
       const priority: SeoQuickWinPage[] = [];
       const rest: SeoQuickWinPage[] = [];
-      for (const q of [...(parsed.quickWins ?? []), ...stubs]) {
+      for (const q of [...(parsed.quickWins ?? []), ...recovered]) {
         const key = (q.url || "").trim().toLowerCase();
         if (manualOrder.has(key)) priority.push(q); else rest.push(q);
       }
       priority.sort((a, b) => (manualOrder.get((a.url || "").trim().toLowerCase()) ?? 0) - (manualOrder.get((b.url || "").trim().toLowerCase()) ?? 0));
       parsed.quickWins = [...priority, ...rest];
+    } else {
+      // All manual URLs present — still enforce manual ordering.
+      const manualOrder = new Map(manualUrls.map((u, i) => [u.trim().toLowerCase(), i]));
+      const priority: SeoQuickWinPage[] = [];
+      const rest: SeoQuickWinPage[] = [];
+      for (const q of parsed.quickWins ?? []) {
+        const key = (q.url || "").trim().toLowerCase();
+        if (manualOrder.has(key)) priority.push(q); else rest.push(q);
+      }
+      priority.sort((a, b) => (manualOrder.get((a.url || "").trim().toLowerCase()) ?? 0) - (manualOrder.get((b.url || "").trim().toLowerCase()) ?? 0));
+      // Manual-only mode: drop the AI's extras. Otherwise keep them.
+      parsed.quickWins = manualOnly ? priority : [...priority, ...rest];
     }
   }
 
+  return parsed;
+}
+
+/**
+ * Per-URL fallback for SEO quick wins. Used when the main batch prompt drops
+ * a manually-submitted page (token truncation, swapped URL, etc.). Smaller
+ * prompt, single page, generous tokens — designed to always come back valid.
+ */
+async function generateQuickWinForUrl(
+  anthropic: Anthropic,
+  url: string,
+  intel: ManualPageIntel | undefined,
+  sources: GrandPlanSources,
+): Promise<SeoQuickWinPage | null> {
+  const intelLines: string[] = [`URL: ${url}`];
+  if (intel?.title) intelLines.push(`Current title tag: "${intel.title}"`);
+  if (intel?.h1) intelLines.push(`Current H1: "${intel.h1}"`);
+  if (intel?.metaDescription) intelLines.push(`Current meta description: "${intel.metaDescription}"`);
+  if (intel?.bodySnippet) intelLines.push(`Body snippet: ${intel.bodySnippet.slice(0, 400)}`);
+  if (intel?.organicKeywords?.length) {
+    const kws = intel.organicKeywords.slice(0, 12).map((k) => `"${k.keyword}" (pos ${k.position}, vol ${k.volume.toLocaleString()}, CPC \u00a3${k.cpc.toFixed(2)})`).join("; ");
+    intelLines.push(`Currently ranks for: ${kws}`);
+  }
+
+  // Derive a clean website root for the cross-links hint.
+  const websiteRoot = (sources.keywordResearch?.website ?? "").replace(/\/$/, "");
+
+  const prompt = `${STYLE_RULES}
+
+You are an SEO lead at i3media. Produce ONE detailed SEO quick win for the page below. Return ONLY a single valid JSON object (no markdown fences) matching this schema:
+
+{
+  "url": string,
+  "pageTitle": string,
+  "rationale": string,
+  "intent": "transactional" | "commercial" | "informational" | "navigational",
+  "keywords": { "primary": string, "secondary": [string], "longTail": [string] },
+  "newTitleTag": string,
+  "newMetaDescription": string,
+  "onPageSuggestions": [string],
+  "crossLinksToAdd": [ { "targetUrl": string, "anchorText": string, "rationale": string } ],
+  "suggestedFaq": [ { "question": string, "answer": string } ],
+  "suggestedSchema": [ { "type": string, "jsonLd": string } ],
+  "estimatedTimeToImpact": "1\u20132 weeks" | "3\u20134 weeks" | "1\u20132 months",
+  "effort": "low" | "medium" | "high"
+}
+
+Rules:
+- "url" MUST be exactly: ${url}
+- Lead with COMMERCIAL or TRANSACTIONAL intent for the primary keyword unless the page is unambiguously informational. Push informational variants into longTail.
+- newTitleTag \u2264 60 chars, primary keyword near the start.
+- newMetaDescription \u2264 160 chars, ends with a soft CTA.
+- onPageSuggestions: 3\u20135 specific changes (FAQ block, schema, comparison table, trust block, internal links, etc.).
+- crossLinksToAdd: EXACTLY 3 cross-links. Anchor text natural prose. Use other URLs from the client's site (e.g. ${websiteRoot}/...).
+- suggestedFaq: 4\u20136 commercial-intent / objection-handling Q+A pairs.
+- suggestedSchema: 1\u20133 complete JSON-LD snippets (each "jsonLd" is a single valid JSON string with @context https://schema.org). Always include the most relevant schema type plus FAQPage built from the suggestedFaq.
+- British English, no AI jargon, no em dashes.
+
+Client: ${sources.clientName}
+Sector: ${sources.sector ?? "not specified"}
+Brief: ${(sources.clientBrief ?? "").slice(0, 800) || "(none)"}
+
+Page intel:
+${intelLines.join("\n")}`;
+
+  const res = await withAnthropicRetry(`seoQuickWin:${url}`, () => anthropic.messages.create({
+    model: MODEL_PRIMARY(),
+    max_tokens: 2400,
+    messages: [{ role: "user", content: prompt }],
+  }));
+  const parsed = safeJsonParse<SeoQuickWinPage | null>(extractText(res), null);
+  if (!parsed || !parsed.url) return null;
+  parsed.url = url; // enforce exact match
   return parsed;
 }
 
