@@ -71,6 +71,7 @@ export async function POST(
       sections?: string[];
       channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number };
       postsPerMonth?: number;
+      socialPostsPerMonth?: number;
       socialPostsPerWeek?: number;
       calendarMonths?: number;
     }>(plan.configJson, {});
@@ -87,6 +88,7 @@ export async function POST(
       campaignFocusPeriods: safeJsonParse(plan.campaignFocusPeriodsJson, []),
       strategyBrain: existingPlanData.strategyBrain,
       postsPerMonth: typeof config.postsPerMonth === "number" && config.postsPerMonth > 0 ? config.postsPerMonth : undefined,
+      socialPostsPerMonth: typeof config.socialPostsPerMonth === "number" && config.socialPostsPerMonth >= 0 ? config.socialPostsPerMonth : undefined,
       socialPostsPerWeek: typeof config.socialPostsPerWeek === "number" && config.socialPostsPerWeek > 0 ? config.socialPostsPerWeek : undefined,
       calendarMonths: typeof config.calendarMonths === "number" && config.calendarMonths > 0 ? config.calendarMonths : undefined,
       channelBudgets: config.channelBudgets ?? undefined,

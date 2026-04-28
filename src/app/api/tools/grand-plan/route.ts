@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
         pageContext?: { headings?: string[]; description?: string; ctaTexts?: string[]; h1?: string };
         source?: "manual" | "auto";
       }[];
-      config?: { sections?: string[]; postsPerMonth?: number; socialPostsPerWeek?: number; channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number }; manualPageUrls?: string[]; contentLimits?: { pillarPages?: number; pageOptimisations?: number; landingPages?: number; blogPosts?: number; linkTargets?: number }; planMode?: "annual" | "sprint90"; previousPlanId?: string };
+      config?: { sections?: string[]; postsPerMonth?: number; socialPostsPerMonth?: number; socialPostsPerWeek?: number; channelBudgets?: { googleAds?: number; metaAds?: number; linkedInAds?: number }; manualPageUrls?: string[]; contentLimits?: { pillarPages?: number; pageOptimisations?: number; landingPages?: number; blogPosts?: number; linkTargets?: number }; planMode?: "annual" | "sprint90"; previousPlanId?: string };
       previousPlanId?: string;
       period?: string;
       cloneFromId?: string;

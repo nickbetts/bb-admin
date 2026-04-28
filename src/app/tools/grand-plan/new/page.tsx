@@ -117,7 +117,7 @@ export default function NewGrandPlanPage() {
 
   // Content volume — drives the calendar and organic social cadence
   const [postsPerMonth, setPostsPerMonth] = useState(4);
-  const [socialPostsPerWeek, setSocialPostsPerWeek] = useState(3);
+  const [socialPostsPerMonth, setSocialPostsPerMonth] = useState(8);
   // Pillar-page count — caps the number of topic-cluster pillars the AI returns.
   const [pillarCount, setPillarCount] = useState(3);
 
@@ -430,7 +430,7 @@ export default function NewGrandPlanPage() {
           config: {
             sections: enabledSections,
             postsPerMonth,
-            socialPostsPerWeek,
+            socialPostsPerMonth,
             planMode,
             ...(sector ? { sector } : {}),
             ...(manualPageUrls.length ? { manualPageUrls } : {}),
@@ -797,12 +797,12 @@ export default function NewGrandPlanPage() {
                   <input
                     className="form-input"
                     type="number"
-                    min={1}
-                    max={14}
-                    value={socialPostsPerWeek}
-                    onChange={(e) => setSocialPostsPerWeek(Math.max(1, Number(e.target.value) || 1))}
+                    min={0}
+                    max={60}
+                    value={socialPostsPerMonth}
+                    onChange={(e) => setSocialPostsPerMonth(Math.max(0, Number(e.target.value) || 0))}
                   />
-                  <span className="form-hint">Social posts per week</span>
+                  <span className="form-hint">Social posts per month</span>
                 </div>
                 <div>
                   <input

@@ -1083,6 +1083,7 @@ function buildSources(plan: any, config: any, brief: string): GrandPlanSources {
     strategyBrain,
     dataAvailability,
     postsPerMonth: typeof config.postsPerMonth === "number" && config.postsPerMonth > 0 ? config.postsPerMonth : undefined,
+    socialPostsPerMonth: typeof config.socialPostsPerMonth === "number" && config.socialPostsPerMonth >= 0 ? config.socialPostsPerMonth : undefined,
     socialPostsPerWeek: typeof config.socialPostsPerWeek === "number" && config.socialPostsPerWeek > 0 ? config.socialPostsPerWeek : undefined,
     channelBudgets: config.channelBudgets ?? undefined,
     contentLimits: (() => {

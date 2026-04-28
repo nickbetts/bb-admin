@@ -665,8 +665,13 @@ export interface GrandPlanSources {
   strategyBrain?: StrategyBrain;
   /** Booleans the generators inspect to decide when to fall back to AI inference. */
   dataAvailability?: DataAvailability;
-  /** Optional content-volume overrides (default 4 blog posts/month, 3 social/week). */
+  /** Optional content-volume overrides (default 4 blog posts/month, 8 social/month). */
   postsPerMonth?: number;
+  /** Preferred input: explicit social posts per month. Falls back to
+   *  socialPostsPerWeek * 4 when only the legacy field is supplied. */
+  socialPostsPerMonth?: number;
+  /** Legacy: social posts per week. Retained for backwards compatibility
+   *  with plans saved before the form switched to per-month semantics. */
   socialPostsPerWeek?: number;
   /** Number of months the content calendar should cover. Defaults to 12 (a full year). */
   calendarMonths?: number;
@@ -1755,8 +1760,9 @@ async function generateContentCalendar(anthropic: Anthropic, context: string, co
     : "";
 
   const postsPerMonth = sources.postsPerMonth ?? 4;
-  const socialPerWeek = sources.socialPostsPerWeek ?? 3;
-  const socialPerMonth = socialPerWeek * 4;
+  const socialPerMonth = sources.socialPostsPerMonth
+    ?? ((sources.socialPostsPerWeek ?? 2) * 4);
+  const socialPerWeek = Math.max(1, Math.round(socialPerMonth / 4));
 
   // Sprint mode forces a 3-month calendar regardless of any explicit
   // calendarMonths override. Otherwise default to a full 12-month calendar.
@@ -1865,7 +1871,9 @@ ${context}${buildSharedContextBlocks(sources, "calendar")}`,
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function generateOrganicSocial(anthropic: Anthropic, context: string, contentData: any, sources: GrandPlanSources): Promise<OrganicSocialPlan> {
-  const socialPerWeek = sources.socialPostsPerWeek ?? 3;
+  const socialPerMonth = sources.socialPostsPerMonth
+    ?? ((sources.socialPostsPerWeek ?? 2) * 4);
+  const socialPerWeek = Math.max(1, Math.round(socialPerMonth / 4));
   const res = await withAnthropicRetry("organicSocial", () => anthropic.messages.create({
     model: MODEL_LIGHT_FN(),
     max_tokens: 2200,
