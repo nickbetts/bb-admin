@@ -1,6 +1,6 @@
 "use client";
 import { Mail, MessageSquare, MessagesSquare, Phone, Stamp, Database, Sparkles } from "lucide-react";
-import { MockupBanner, Section, Tag, AIInsight, StatusBadge } from "../../_components/PillarCommsUI";
+import { MockupBanner, Section, Tag, AIInsight, StatusBadge, PageStack } from "../../_components/PillarCommsUI";
 
 const PROVIDERS = [
   { name: "SendGrid", category: "Email", icon: <Mail className="h-4 w-4" />, status: "connected", colour: "#6366f1", note: "Twilio SendGrid · 4 sub-accounts · 62k sends / 30d" },
@@ -27,6 +27,7 @@ export default function Page() {
         <p className="page-desc" style={{ margin: "8px 0 0", maxWidth: 720 }}>The plumbing - every channel and every CRM connected, monitored and replayable.</p>
       </div>
 
+      <PageStack>
       <AIInsight title="AI-monitored integrations" tone="indigo">
         Every provider has a per-minute health check. If SendGrid suddenly drops below 92% delivery, or Aircall webhooks stop firing, the model auto-pages on-call and queues a fallback path so donor-facing comms never silently fail.
       </AIInsight>
@@ -53,7 +54,8 @@ export default function Page() {
         </div>
       </Section>
 
-      <div style={{ marginTop: 16 }}><Tag label="Mockup" /></div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}><Tag label="Mockup" /></div>
+      </PageStack>
     </div>
   );
 }

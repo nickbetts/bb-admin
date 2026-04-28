@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
-import { MockupBanner, Section, AIInsight, Tag } from "./PillarCommsUI";
+import { MockupBanner, Section, AIInsight, Tag, PageStack } from "./PillarCommsUI";
 
 export interface StubFeature {
   title: string;
@@ -50,13 +50,14 @@ export function StubPage({
         <p className="page-desc" style={{ margin: "8px 0 0", maxWidth: 720 }}>{subtitle}</p>
       </div>
 
-      {ai && (
-        <AIInsight title={ai.title} tone={ai.tone ?? "rose"}>
-          {ai.body}
-        </AIInsight>
-      )}
+      <PageStack>
+        {ai && (
+          <AIInsight title={ai.title} tone={ai.tone ?? "rose"}>
+            {ai.body}
+          </AIInsight>
+        )}
 
-      <Section title="What this surface delivers" subtitle="Mockup capabilities planned for this view">
+        <Section title="What this surface delivers" subtitle="Mockup capabilities planned for this view">
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
           {features.map((f) => (
             <div
@@ -119,12 +120,13 @@ export function StubPage({
         </Section>
       )}
 
-      <div style={{ marginTop: 24, display: "flex", gap: 8, alignItems: "center" }}>
-        <Tag label="Mockup" />
-        <span style={{ fontSize: 11, color: "var(--text-3)" }}>
-          Static preview - no live data fetched. Wired to mock fixtures only.
-        </span>
-      </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Tag label="Mockup" />
+          <span style={{ fontSize: 11, color: "var(--text-3)" }}>
+            Static preview - no live data fetched. Wired to mock fixtures only.
+          </span>
+        </div>
+      </PageStack>
     </div>
   );
 }

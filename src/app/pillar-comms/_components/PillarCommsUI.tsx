@@ -17,7 +17,6 @@ export {
   PageHeader,
   MockupBanner,
   Stat,
-  Section,
   BarChart,
   Donut,
   Spark,
@@ -37,6 +36,50 @@ export {
   Funnel,
   TopBar,
 } from "../../pillar-insights/_components/PillarUI";
+
+/**
+ * Comms-flavoured Section: identical to the shared `Section` but spacing is
+ * controlled by the parent (use `<PageStack>`) rather than a fixed top
+ * margin. Pass `mt` to override.
+ */
+export function Section({
+  title,
+  subtitle,
+  actions,
+  children,
+  padded,
+  mt = 0,
+}: {
+  title: string;
+  subtitle?: string;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+  padded?: boolean;
+  /** Override the top margin (default 0 - rely on `<PageStack>` gap). */
+  mt?: number;
+}) {
+  return (
+    <div className="card" style={{ marginTop: mt }}>
+      <div className="card-header">
+        <div>
+          <div className="card-title">{title}</div>
+          {subtitle && <div className="card-subtitle">{subtitle}</div>}
+        </div>
+        {actions}
+      </div>
+      <div className={padded === false ? "" : "card-body"}>{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Vertical stack with consistent gap. Use as the page's main wrapper to
+ * eliminate marginTop drift between cards / AIInsights / custom blocks.
+ */
+export function PageStack({ children, gap = 16 }: { children: React.ReactNode; gap?: number }) {
+  return <div style={{ display: "flex", flexDirection: "column", gap }}>{children}</div>;
+}
+
 
 export type Channel = "email" | "sms" | "whatsapp" | "voice" | "direct-mail";
 

@@ -1,5 +1,5 @@
 "use client";
-import { MockupBanner, Section, Stat, Tag, AIInsight, CallRow, Spark } from "../../_components/PillarCommsUI";
+import { MockupBanner, Section, Stat, Tag, AIInsight, CallRow, Spark, PageStack } from "../../_components/PillarCommsUI";
 import { CALLS } from "../../_data/messagesData";
 
 export default function Page() {
@@ -14,7 +14,8 @@ export default function Page() {
         <p className="page-desc" style={{ margin: "8px 0 0", maxWidth: 720 }}>Inbound + outbound calls, AI transcription, sentiment-scored recordings and real-time agent coaching.</p>
       </div>
 
-      <div className="stat-card-grid" style={{ marginBottom: 16 }}>
+      <PageStack>
+      <div className="stat-card-grid">
         <Stat label="Calls · 30d" value="4,218" hint="2,890 inbound · 1,328 outbound" />
         <Stat label="Avg duration" value="6:14" hint="-32s vs prior month" />
         <Stat label="First-call resolution" value="78%" hint="+8 pts" />
@@ -27,7 +28,7 @@ export default function Page() {
         Every recording is transcribed, diarised and summarised in 60 seconds. Action items, amounts mentioned, campaigns referenced and complaints are auto-extracted into the donor record.
       </AIInsight>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, marginTop: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
         <Section title="Recent calls" subtitle="Click to open transcript + waveform + AI actions">
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {CALLS.map((c) => (
@@ -52,7 +53,8 @@ export default function Page() {
         </Section>
       </div>
 
-      <div style={{ marginTop: 16 }}><Tag label="Mockup" /></div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}><Tag label="Mockup" /></div>
+      </PageStack>
     </div>
   );
 }

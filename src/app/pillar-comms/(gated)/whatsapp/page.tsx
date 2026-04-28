@@ -1,6 +1,6 @@
 "use client";
 import { Fragment } from "react";
-import { MockupBanner, Section, Stat, Tag, AIInsight, StatusBadge } from "../../_components/PillarCommsUI";
+import { MockupBanner, Section, Stat, Tag, AIInsight, StatusBadge, PageStack } from "../../_components/PillarCommsUI";
 import { WHATSAPP_TEMPLATES, WHATSAPP_KPIS } from "../../_data/messagesData";
 
 export default function Page() {
@@ -15,7 +15,8 @@ export default function Page() {
         <p className="page-desc" style={{ margin: "8px 0 0", maxWidth: 720 }}>Templates, 24h sessions, opt-ins and richer media for high-engagement audiences.</p>
       </div>
 
-      <div className="stat-card-grid" style={{ marginBottom: 16 }}>
+      <PageStack>
+      <div className="stat-card-grid">
         <Stat label="Active 24h sessions" value={WHATSAPP_KPIS.active24hSessions.toLocaleString()} hint="open conversation windows" />
         <Stat label="Templates approved" value={WHATSAPP_KPIS.templatesApproved.toString()} hint="across 4 languages" />
         <Stat label="Opt-in rate" value={`${WHATSAPP_KPIS.optInRate}%`} hint="of supporters" />
@@ -48,7 +49,8 @@ export default function Page() {
         </div>
       </Section>
 
-      <div style={{ marginTop: 16 }}><Tag label="Mockup" /></div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}><Tag label="Mockup" /></div>
+      </PageStack>
     </div>
   );
 }

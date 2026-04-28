@@ -1,5 +1,5 @@
 "use client";
-import { MockupBanner, Section, Stat, Tag, AIInsight, Spark, MessageBubble } from "../../_components/PillarCommsUI";
+import { MockupBanner, Section, Stat, Tag, AIInsight, Spark, MessageBubble, PageStack } from "../../_components/PillarCommsUI";
 import { SMS_MESSAGES, SMS_KPIS } from "../../_data/messagesData";
 import { COMMS_CONTACTS } from "../../_data/commsData";
 
@@ -15,7 +15,8 @@ export default function Page() {
         <p className="page-desc" style={{ margin: "8px 0 0", maxWidth: 720 }}>2-way SMS, segment optimisation, STOP handling and AI compaction.</p>
       </div>
 
-      <div className="stat-card-grid" style={{ marginBottom: 16 }}>
+      <PageStack>
+      <div className="stat-card-grid">
         <Stat label="Delivered · 30d" value={SMS_KPIS.delivered30d.toLocaleString()} hint="98.3% deliverability" />
         <Stat label="Failed" value={SMS_KPIS.failed30d.toString()} hint="auto-retried" />
         <Stat label="Opt-outs" value={SMS_KPIS.optOut30d.toString()} hint="STOP keyword" />
@@ -28,7 +29,7 @@ export default function Page() {
         The model rewrites outbound copy to fit within 160-char segments without losing tone or meaning. Last week it saved <strong>£612 across 28k sends</strong> and reduced multi-segment messages by 41%.
       </AIInsight>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 16, marginTop: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 16 }}>
         <Section title="Recent SMS conversations" subtitle="Two-way thread view">
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {SMS_MESSAGES.map((m) => {
@@ -60,7 +61,8 @@ export default function Page() {
         </Section>
       </div>
 
-      <div style={{ marginTop: 16 }}><Tag label="Mockup" /></div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}><Tag label="Mockup" /></div>
+      </PageStack>
     </div>
   );
 }

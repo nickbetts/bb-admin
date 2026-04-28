@@ -31,6 +31,7 @@ import {
   Section,
   Tag,
   CHANNEL_COLORS,
+  PageStack,
 } from "../_components/PillarCommsUI";
 import { COMMS_KPIS, COMMS_FEED, ORG_NAME, LANGUAGES } from "../_data/commsData";
 
@@ -94,7 +95,8 @@ export default function PillarCommsHome() {
       </div>
 
       {/* KPI strip */}
-      <div className="stat-card-grid" style={{ marginBottom: 16 }}>
+      <PageStack>
+      <div className="stat-card-grid">
         <KPI label="Open conversations" value={COMMS_KPIS.openConversations.toLocaleString()} delta="+12% vs prior week" trend="up" icon={<MessagesSquare className="h-4 w-4" />} colour="#8b5cf6" />
         <KPI label="Inbound today" value={fmt(COMMS_KPIS.inboundToday)} delta="+18% vs avg Tue" trend="up" icon={<Inbox className="h-4 w-4" />} colour="#6366f1" />
         <KPI label="Avg first-response time" value={`${COMMS_KPIS.avgFirstResponseMins} min`} delta="-2.1 min vs 30d" trend="down-good" icon={<Clock className="h-4 w-4" />} colour="#10b981" />
@@ -103,27 +105,25 @@ export default function PillarCommsHome() {
       </div>
 
       {/* AI strategic insight */}
-      <div style={{ marginBottom: 16 }}>
-        <AIInsight
-          tone="rose"
-          title="Ramadan inbound is up 312% week-on-week, sentiment is strongest in WhatsApp"
-        >
-          <div style={{ marginBottom: 10 }}>
-            Inbound traffic has tripled in 7 days. <strong>WhatsApp is leading on sentiment (+18 pts)</strong> and reply-rate (12.8%); <strong>SMS is showing fatigue</strong> (opt-outs +84). The model recommends pivoting promotional messaging to WhatsApp for Asian-language audiences and pulling SMS frequency back from 3/week to 1/week. Email remains essential for legacy and high-LTV donors.
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <Link href="/pillar-comms/cadences" className="btn btn-primary btn-sm" style={{ background: "linear-gradient(135deg, #8b5cf6, #f43f5e)" }}>
-              Apply recommendation <ArrowRight className="h-3 w-3" />
-            </Link>
-            <Link href="/pillar-comms/sentiment" className="btn btn-secondary btn-sm">
-              View sentiment trail
-            </Link>
-          </div>
-        </AIInsight>
-      </div>
+      <AIInsight
+        tone="rose"
+        title="Ramadan inbound is up 312% week-on-week, sentiment is strongest in WhatsApp"
+      >
+        <div style={{ marginBottom: 10 }}>
+          Inbound traffic has tripled in 7 days. <strong>WhatsApp is leading on sentiment (+18 pts)</strong> and reply-rate (12.8%); <strong>SMS is showing fatigue</strong> (opt-outs +84). The model recommends pivoting promotional messaging to WhatsApp for Asian-language audiences and pulling SMS frequency back from 3/week to 1/week. Email remains essential for legacy and high-LTV donors.
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Link href="/pillar-comms/cadences" className="btn btn-primary btn-sm" style={{ background: "linear-gradient(135deg, #8b5cf6, #f43f5e)" }}>
+            Apply recommendation <ArrowRight className="h-3 w-3" />
+          </Link>
+          <Link href="/pillar-comms/sentiment" className="btn btn-secondary btn-sm">
+            View sentiment trail
+          </Link>
+        </div>
+      </AIInsight>
 
       {/* Top split: live feed + sidebar of priority queues + channel mix */}
-      <div className="grid-3" style={{ marginBottom: 16, gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)" }}>
+      <div className="grid-3" style={{ gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)" }}>
         {/* Live feed */}
         <Section
           title="Live cross-channel feed"
@@ -192,7 +192,7 @@ export default function PillarCommsHome() {
       </div>
 
       {/* Sentiment trend + AI quick actions */}
-      <div className="grid-3" style={{ marginBottom: 16, gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)" }}>
+      <div className="grid-3" style={{ gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)" }}>
         <Section
           title="Donor sentiment index - last 30 days"
           subtitle="Composite score across channels (0 = severe distrust, 100 = advocacy)"
@@ -303,16 +303,15 @@ export default function PillarCommsHome() {
       </div>
 
       {/* Compliance bar */}
-      <div style={{ marginTop: 16 }}>
-        <Section title="Compliance & deliverability" subtitle="At-a-glance regulatory health">
-          <div className="grid-4" style={{ gap: 12 }}>
-            <ComplianceTile icon={<ShieldCheck className="h-4 w-4" />} label="Consent coverage" value="98.4%" hint="GDPR opt-ins synced from CRM" colour="#10b981" />
-            <ComplianceTile icon={<Activity className="h-4 w-4" />} label="Email reputation" value="98 / 100" hint="Postmaster, Google + Microsoft" colour="#6366f1" />
-            <ComplianceTile icon={<AlertTriangle className="h-4 w-4" />} label="Spam complaints" value="0.04%" hint="Threshold 0.10%" colour="#10b981" />
-            <ComplianceTile icon={<Zap className="h-4 w-4" />} label="Suppression queue" value="412" hint="STOP / RTS / hard bounces" colour="#f59e0b" />
-          </div>
-        </Section>
-      </div>
+      <Section title="Compliance & deliverability" subtitle="At-a-glance regulatory health">
+        <div className="grid-4" style={{ gap: 12 }}>
+          <ComplianceTile icon={<ShieldCheck className="h-4 w-4" />} label="Consent coverage" value="98.4%" hint="GDPR opt-ins synced from CRM" colour="#10b981" />
+          <ComplianceTile icon={<Activity className="h-4 w-4" />} label="Email reputation" value="98 / 100" hint="Postmaster, Google + Microsoft" colour="#6366f1" />
+          <ComplianceTile icon={<AlertTriangle className="h-4 w-4" />} label="Spam complaints" value="0.04%" hint="Threshold 0.10%" colour="#10b981" />
+          <ComplianceTile icon={<Zap className="h-4 w-4" />} label="Suppression queue" value="412" hint="STOP / RTS / hard bounces" colour="#f59e0b" />
+        </div>
+      </Section>
+      </PageStack>
     </div>
   );
 }

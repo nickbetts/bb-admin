@@ -113,7 +113,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
         </div>
       </div>
 
-      <div style={{ marginTop: 16 }}><Tag label="Mockup" /></div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 16 }}><Tag label="Mockup" /></div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ConversationRow, MockupBanner, Section, Tag } from "../../_components/PillarCommsUI";
+import { ConversationRow, MockupBanner, Section, Tag, PageStack } from "../../_components/PillarCommsUI";
 import { THREADS } from "../../_data/messagesData";
 import { COMMS_FEED } from "../../_data/commsData";
 
@@ -18,6 +18,7 @@ export default function Page() {
         </p>
       </div>
 
+      <PageStack>
       <Section title={`Open threads (${COMMS_FEED.length + THREADS.length})`} subtitle="Click any thread to open the full timeline">
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {THREADS.map((t) => (
@@ -50,12 +51,13 @@ export default function Page() {
         </div>
       </Section>
 
-      <div style={{ marginTop: 16 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <Tag label="Mockup" />{" "}
         <Link href="/pillar-comms/inbox" style={{ fontSize: 12, color: "#8b5cf6", fontWeight: 600 }}>
           Open the unified inbox →
         </Link>
       </div>
+      </PageStack>
     </div>
   );
 }

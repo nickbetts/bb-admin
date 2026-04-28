@@ -231,20 +231,23 @@ export default function NewGrandPlanPage() {
         body: JSON.stringify({ action: "validate", competitor: raw, domain: domain || undefined, clientId: clientId || undefined }),
       });
       const data = await res.json() as {
-        valid?: boolean;
         commonKeywords?: number;
+        scraped?: boolean;
         pageContext?: CompetitorEntry["pageContext"];
-        message?: string;
+        error?: string;
       };
       setCompetitors((prev) => prev.map((c) => {
         if (c.domain !== raw) return c;
-        if (!data.valid) return { ...c, status: "invalid", message: data.message };
+        // API error or non-OK response → mark invalid
+        if (!res.ok || data.error) return { ...c, status: "invalid", message: data.error ?? "Could not validate" };
+        // Successful response: use keyword count to decide status.
+        // Even with 0 overlap (scraped fallback), keep as no-overlap so it's
+        // still included and the AI uses the scraped page context.
         return {
           ...c,
-          status: data.commonKeywords && data.commonKeywords > 0 ? "valid" : "no-overlap",
+          status: (data.commonKeywords ?? 0) > 0 ? "valid" : "no-overlap",
           commonKeywords: data.commonKeywords,
           pageContext: data.pageContext,
-          message: data.message,
         };
       }));
     } catch {
@@ -543,7 +546,11 @@ export default function NewGrandPlanPage() {
                         {typeof c.commonKeywords === "number" && c.commonKeywords > 0 && (
                           <span style={{ fontSize: 11, opacity: 0.85 }}>{c.commonKeywords} common KWs</span>
                         )}
-                        {c.status === "no-overlap" && <span style={{ fontSize: 11 }}>no SEMrush overlap</span>}
+                        {c.status === "no-overlap" && (
+                          <span style={{ fontSize: 11 }}>
+                            {c.pageContext ? "scraped — no SEMrush overlap" : "no SEMrush overlap"}
+                          </span>
+                        )}
                         {c.status === "invalid" && <span style={{ fontSize: 11 }}>{c.message ?? "invalid"}</span>}
                         <span style={{ fontSize: 10, opacity: 0.7, textTransform: "uppercase" }}>{c.source}</span>
                         <button

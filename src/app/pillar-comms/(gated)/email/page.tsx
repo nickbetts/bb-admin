@@ -1,6 +1,6 @@
 "use client";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
-import { MockupBanner, Section, ConversationRow, Stat, Spark, Tag, AIInsight } from "../../_components/PillarCommsUI";
+import { MockupBanner, Section, ConversationRow, Stat, Spark, Tag, AIInsight, PageStack } from "../../_components/PillarCommsUI";
 import { EMAILS, EMAIL_DELIVERABILITY_30D } from "../../_data/messagesData";
 import { COMMS_CONTACTS } from "../../_data/commsData";
 
@@ -16,7 +16,8 @@ export default function Page() {
         <p className="page-desc" style={{ margin: "8px 0 0", maxWidth: 720 }}>Inbound, outbound, deliverability and AI drafting in one place.</p>
       </div>
 
-      <div className="stat-card-grid" style={{ marginBottom: 16 }}>
+      <PageStack>
+      <div className="stat-card-grid">
         <Stat label="Sent · 30d" value="62.4k" hint="across 18 cadences" />
         <Stat label="Delivered" value="94.2%" hint="vs 92% benchmark" />
         <Stat label="Open rate" value="38.6%" hint="+4.2 pts MoM" />
@@ -29,7 +30,7 @@ export default function Page() {
         Open rates are climbing across the Ramadan series but reply velocity dropped 22% on Tuesday afternoons. The model suggests <strong>moving the Tuesday send to Wednesday 09:30</strong>, where comparable cohorts open at 44% and reply 4× more.
       </AIInsight>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", gap: 16, marginTop: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", gap: 16 }}>
         <Section title="Latest inbound email" subtitle="Sentiment-scored, AI-categorised">
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {EMAILS.map((e) => {
@@ -82,7 +83,8 @@ export default function Page() {
         </div>
       </Section>
 
-      <div style={{ marginTop: 16 }}><Tag label="Mockup" /></div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}><Tag label="Mockup" /></div>
+      </PageStack>
     </div>
   );
 }
