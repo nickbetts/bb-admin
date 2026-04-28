@@ -1484,7 +1484,12 @@ function renderSeoFoundations(data: SeoFoundationsData): string {
     if (v.includes("2")) return "tier-pill-2";
     return "tier-pill-3";
   };
-  const linkUrl = (u: string): string => u.startsWith("http") ? u : (u.startsWith("/") ? u : `https://${u}`);
+  const linkUrl = (u: string | null | undefined): string => {
+    const s = (u ?? "").toString().trim();
+    if (!s) return "#";
+    if (s.startsWith("http") || s.startsWith("/")) return s;
+    return `https://${s}`;
+  };
 
   const quickWinsHtml = quickWins.length ? `
     <h3 class="seo-sub-heading">Quick Wins on Existing Pages</h3>
