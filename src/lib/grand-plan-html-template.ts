@@ -2050,7 +2050,6 @@ function renderCompetitorIntel(competitors: any[]): string {
     .map((c) => `
     <div class="comp-detail-card">
       <h4>${esc(c.domain ?? "")} ${sourceBadge(c.source)} ${overlapPill(c.commonKeywords)}</h4>
-      ${c.pageContext?.h1 || c.pageContext?.description ? `<div class="comp-page-ctx">${c.pageContext.h1 ? `<div><strong>H1:</strong> ${esc(c.pageContext.h1)}</div>` : ""}${c.pageContext.description ? `<div><strong>Meta:</strong> ${esc(c.pageContext.description)}</div>` : ""}</div>` : ""}
       <div class="comp-keywords"><span class="comp-kw-label">Top Keywords:</span> ${(c.topKeywords ?? []).map((k: string) => `<span class="comp-kw-chip">${esc(k)}</span>`).join(" ")}</div>
       <div class="comp-sw-grid">
         <div class="comp-sw-col"><span class="comp-sw-title comp-strength">Strengths</span><ul>${(c.strengths ?? []).map((s: string) => `<li>${esc(s)}</li>`).join("")}</ul></div>

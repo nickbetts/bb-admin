@@ -540,7 +540,7 @@ export async function POST(
         Promise.resolve(null),
         gscSite ? safe("gscQueries", () => withApiCache(`gp-research:gsc-queries:${gscSite}:${startDate}:${endDate}`, cacheTtlHours, () => getGSCTopQueries(gscSite, startDate, endDate, 25))) : Promise.resolve(null),
         gscSite ? safe("gscPages", () => withApiCache(`gp-research:gsc-pages:${gscSite}:${startDate}:${endDate}`, cacheTtlHours, () => getGSCTopPages(gscSite, startDate, endDate))) : Promise.resolve(null),
-        semDomain ? safe("semCompetitors", () => withApiCache(`gp-research:sem-competitors:${semDomain}:uk`, cacheTtlHours, () => getCompetitors(semDomain, "uk", 6))) : Promise.resolve(null),
+        semDomain ? safe("semCompetitors", () => withApiCache(`gp-research:sem-competitors:${semDomain}:uk:v2`, cacheTtlHours, () => getCompetitors(semDomain, "uk", 12))) : Promise.resolve(null),
         semDomain ? safe("sitemap", () => withApiCache(`gp-research:sitemap:${semDomain}`, cacheTtlHours, () => fetchSitemapUrls(semDomain))) : Promise.resolve(null),
       ]);
       void ga4Geo; // reserved for future use
@@ -548,7 +548,69 @@ export async function POST(
       // Per-competitor enrichment (top organic keywords + backlinks). Limited
       // to the top 4 competitors to stay inside SEMrush quota and the lambda
       // budget. Each is independently cached for 7 days.
-      const topCompetitors = (semCompetitors ?? []).slice(0, 4);
+      //
+      // SEMrush returns competitors sorted purely by keyword overlap, which
+      // often pulls in directories, news sites, or tangentially related
+      // domains (e.g. for a football academy, generic football news sites).
+      // We run a Haiku relevance pass first to keep only competitors that
+      // actually compete with the client's offering, then enrich the top 4.
+      const rawCompetitors = (semCompetitors ?? []) as { domain: string; commonKeywords?: number; organicKeywords?: number; organicTraffic?: number }[];
+      let relevantCompetitors = rawCompetitors;
+      if (rawCompetitors.length > 0 && (brief || config.sector || plan.client?.name)) {
+        const filtered = await safe("competitorRelevanceFilter", async () => {
+          const anthropic = await getAnthropicClient();
+          const candidateBlock = rawCompetitors
+            .map((c, i) => `${i + 1}. ${c.domain} (${(c.commonKeywords ?? 0).toLocaleString()} shared keywords, ${(c.organicTraffic ?? 0).toLocaleString()} organic visits/mo)`)
+            .join("\n");
+          const res = await anthropic.messages.create({
+            model: "claude-haiku-4-5",
+            max_tokens: 600,
+            messages: [
+              {
+                role: "user",
+                content: `You are filtering a list of SEMrush-detected competitors for a UK marketing strategy. Keep only competitors whose core offering directly competes with the client. Drop news sites, directories, generic media, or tangentially related domains that just happen to share keywords.
+
+Return a JSON object: { "keep": ["domain1.com", "domain2.com", ...] } — list of domains to keep, in priority order (most directly competitive first). Aim for 4-6 entries if possible; return fewer rather than padding with weak matches.
+
+Client: ${plan.client?.name ?? ""}
+Website: ${semDomain ?? ""}
+Sector: ${config.sector ?? "(not specified)"}
+Brief / offering: ${(brief || "").slice(0, 800)}
+
+Candidates:
+${candidateBlock}
+
+Return ONLY valid JSON, no markdown fences.`,
+              },
+            ],
+          });
+          const text = res.content
+            .filter((b) => b.type === "text")
+            .map((b) => (b as { type: "text"; text: string }).text)
+            .join("")
+            .trim()
+            .replace(/^```(?:json)?\s*/i, "")
+            .replace(/\s*```$/i, "");
+          const parsed = JSON.parse(text) as { keep?: string[] };
+          const norm = (d: string) => d.toLowerCase().replace(/^www\./, "").replace(/\/$/, "");
+          const keepSet = new Set((parsed.keep ?? []).map(norm));
+          const ordered: typeof rawCompetitors = [];
+          for (const d of parsed.keep ?? []) {
+            const match = rawCompetitors.find((c) => norm(c.domain) === norm(d));
+            if (match) ordered.push(match);
+          }
+          // Append any kept entries we couldn't reorder (defensive)
+          for (const c of rawCompetitors) {
+            if (keepSet.has(norm(c.domain)) && !ordered.includes(c)) ordered.push(c);
+          }
+          return ordered;
+        });
+        if (filtered && filtered.length > 0) {
+          relevantCompetitors = filtered;
+          console.log(`[grand-plan:${id}] competitor relevance filter: ${rawCompetitors.length} → ${filtered.length} kept`);
+        }
+      }
+      const topCompetitors = relevantCompetitors.slice(0, 6);
       const competitorEnriched = await Promise.all(topCompetitors.map(async (c) => {
         const overview = await safe(`sem-comp-overview:${c.domain}`, () => withApiCache(`gp-research:sem-comp-overview:${c.domain}:uk`, cacheTtlHours, () => getDomainOverview(c.domain, "uk")));
         const kws = await safe(`sem-comp-kws:${c.domain}`, () => withApiCache(`gp-research:sem-comp-kws:${c.domain}:uk`, cacheTtlHours, () => getTopOrganicKeywords(c.domain, "uk", 10)));

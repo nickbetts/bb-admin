@@ -3436,7 +3436,7 @@ Return a JSON object with key "competitors" containing one entry per competitor 
 - domain: string (must match exactly)
 - topKeywords: string[] (5-8 keywords; pull from SEMrush data when present, otherwise infer from page headings/CTAs)
 - strengths: string[] (2-3 specific competitive strengths; reference the SEMrush numbers OR scraped messaging)
-- weaknesses: string[] (2-3 areas where ${sources.clientName} could beat them, drawing on the customer complaints below where possible)
+- weaknesses: string[] (ALWAYS return 2-3 weaknesses for every competitor — never empty. Where SEMrush data is missing, infer plausible weaknesses from their messaging gaps, missing offers, vague positioning, thin CTAs, or category norms. Where customer complaints below are relevant, draw on them. ${sources.clientName} needs an angle for every competitor.)
 
 Competitor data:
 ${competitorBlock}${complaintBlock}
