@@ -67,20 +67,20 @@ const PLATFORMS: { id: PlatformId; label: string; description: string; sections:
   { id: "emailMarketing", label: "Email Marketing", description: "Lifecycle and nurture flows", sections: ["emailMarketing"] },
 ];
 
-// Sections that should always run (independent of platform selection).
-const ALWAYS_ON_SECTIONS = [
-  "executiveSummary",
-  "strategyPlan",
-  "audiences",
-  "contentCalendar",
-  "exampleArticles",
-  "competitorIntel",
-  "contentStrategy",
-  "seoFoundations",
-  "quickWins",
-  "kpis",
-  "keywordResearch",
-  "servicesInvestment",
+// Sections that can be toggled on/off independently of platform selection.
+const ALWAYS_ON_SECTIONS: { key: string; label: string }[] = [
+  { key: "executiveSummary",  label: "Executive Summary" },
+  { key: "strategyPlan",      label: "Strategy Plan" },
+  { key: "audiences",         label: "Audiences" },
+  { key: "quickWins",         label: "Quick Wins" },
+  { key: "keywordResearch",   label: "Keyword Research" },
+  { key: "contentStrategy",   label: "Content Strategy" },
+  { key: "contentCalendar",   label: "Content Calendar" },
+  { key: "exampleArticles",   label: "Example Articles" },
+  { key: "seoFoundations",    label: "SEO Foundations" },
+  { key: "competitorIntel",   label: "Competitor Intelligence" },
+  { key: "kpis",              label: "KPIs" },
+  { key: "servicesInvestment",label: "Services &amp; Investment" },
 ];
 
 export default function NewGrandPlanPage() {
@@ -120,6 +120,19 @@ export default function NewGrandPlanPage() {
 
   function togglePlatform(id: PlatformId) {
     setPlatforms((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]));
+  }
+
+  // Always-on section toggles — defaults to all enabled
+  const [enabledAlwaysOn, setEnabledAlwaysOn] = useState<Set<string>>(
+    () => new Set(ALWAYS_ON_SECTIONS.map((s) => s.key))
+  );
+
+  function toggleAlwaysOn(key: string) {
+    setEnabledAlwaysOn((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
   }
 
   // UI
@@ -265,12 +278,11 @@ export default function NewGrandPlanPage() {
     if (!title) return;
     setCreating(true);
     try {
-      // Build the section enable list from selected platforms + always-on
-      // sections, so the generator knows exactly what to produce.
+      // Build the section enable list from toggled always-on sections + selected platforms.
       const platformSections = platforms.flatMap(
         (id) => PLATFORMS.find((p) => p.id === id)?.sections ?? [],
       );
-      const enabledSections = Array.from(new Set([...ALWAYS_ON_SECTIONS, ...platformSections]));
+      const enabledSections = Array.from(new Set([...Array.from(enabledAlwaysOn), ...platformSections]));
 
       // Stringify audiences in the same "Name: Description" format the
       // existing generator already understands when targetAudiences is set.
@@ -688,49 +700,80 @@ export default function NewGrandPlanPage() {
       {/* ═══════ WHAT GETS GENERATED ═══════ */}
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="card-body" style={{ padding: "20px 24px" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)", marginBottom: 10 }}>
-            What gets generated
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-3)" }}>
+              What gets generated
+            </div>
+            <span style={{ fontSize: 11, color: "var(--text-3)" }}>Click to toggle sections on or off</span>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {[
-              { label: "Executive Summary", on: true },
-              { label: "Strategy Plan", on: true },
-              { label: "Audiences", on: true },
-              { label: "Google Ads", on: platforms.includes("googleAds") },
-              { label: "Keyword Research", on: true },
-              { label: "Meta Campaigns", on: platforms.includes("metaAds") },
-              { label: "LinkedIn Ads", on: platforms.includes("linkedInAds") },
-              { label: "Content Strategy", on: true },
-              { label: "Content Calendar", on: true },
-              { label: "Organic Social", on: platforms.includes("organicSocial") },
-              { label: "Email Marketing", on: platforms.includes("emailMarketing") },
-              { label: "SEO Foundations", on: true },
-              { label: "Competitor Intelligence", on: true },
-              { label: "Quick Wins", on: true },
-              { label: "Example Articles", on: true },
-            ]
-              .filter((item) => item.on)
-              .map((item) => (
-                <span
-                  key={item.label}
+            {/* Always-on sections — individually toggleable */}
+            {ALWAYS_ON_SECTIONS.map((s) => {
+              const on = enabledAlwaysOn.has(s.key);
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => toggleAlwaysOn(s.key)}
                   style={{
                     padding: "4px 12px",
                     borderRadius: "var(--r-sm)",
                     fontSize: 12,
                     fontWeight: 500,
-                    background: "var(--accent-bg)",
-                    color: "var(--accent)",
+                    border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`,
+                    background: on ? "var(--accent-bg)" : "transparent",
+                    color: on ? "var(--accent)" : "var(--text-3)",
+                    cursor: "pointer",
                     display: "inline-flex",
                     alignItems: "center",
+                    gap: 4,
+                    opacity: on ? 1 : 0.55,
+                    transition: "all 0.15s",
                   }}
+                  title={on ? `Disable ${s.label}` : `Enable ${s.label}`}
                 >
-                  <Sparkles style={{ width: 10, height: 10, marginRight: 4 }} />
-                  {item.label}
-                </span>
-              ))}
+                  {on
+                    ? <Sparkles style={{ width: 10, height: 10 }} />
+                    : <X style={{ width: 10, height: 10 }} />}
+                  <span dangerouslySetInnerHTML={{ __html: s.label }} />
+                </button>
+              );
+            })}
+            {/* Platform sections — reflect the platform toggles above, not individually toggleable here */}
+            {([
+              { label: "Google Ads",     on: platforms.includes("googleAds") },
+              { label: "Meta Campaigns", on: platforms.includes("metaAds") },
+              { label: "LinkedIn Ads",   on: platforms.includes("linkedInAds") },
+              { label: "Organic Social", on: platforms.includes("organicSocial") },
+              { label: "Email Marketing",on: platforms.includes("emailMarketing") },
+            ] as { label: string; on: boolean }[]).map((item) => (
+              <span
+                key={item.label}
+                style={{
+                  padding: "4px 12px",
+                  borderRadius: "var(--r-sm)",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  border: `1.5px solid ${item.on ? "var(--accent)" : "var(--border)"}`,
+                  background: item.on ? "var(--accent-bg)" : "transparent",
+                  color: item.on ? "var(--accent)" : "var(--text-3)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  opacity: item.on ? 1 : 0.45,
+                }}
+                title="Toggle this in the Platforms section above"
+              >
+                {item.on
+                  ? <Sparkles style={{ width: 10, height: 10 }} />
+                  : <X style={{ width: 10, height: 10 }} />}
+                {item.label}
+              </span>
+            ))}
           </div>
           <div style={{ fontSize: 11, color: "var(--text-3)", marginTop: 10 }}>
-            Pressing <strong>Create &amp; Generate</strong> will start the AI pipeline immediately on the next page.
+            Platform sections (Google Ads, Meta, etc.) are toggled in the <strong>Platforms</strong> panel above.
+            Pressing <strong>Create &amp; Generate</strong> starts the pipeline immediately.
           </div>
         </div>
       </div>
